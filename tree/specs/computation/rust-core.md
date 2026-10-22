@@ -159,3 +159,32 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
+- **Wrong answers from two caches keyed by heap address (found by the 2026-10-22 review; first).** The range memo
+  (`eval.rs` `memo`, keyed by `args.as_ptr()`) compares the argument values but not the function, and the call-site
+  table (`sites`, keyed by `raw.as_ptr()`) compares the name and arity but not which slots are blank. A LAMBDA's body
+  is cloned per evaluation and dropped after, so the next clone can reuse the address. A computed column over
+  `xs = [1,2,3]`, `CONCAT(MAP(SEQUENCE(1),LAMBDA(x,MAX(xs))),"|",MAP(SEQUENCE(1),LAMBDA(y,SUM(xs))))`, answers
+  `"3|3"` on most rows where `"3|6"` is right (SUM read MAX's memo); `POWER(5,)` beside `POWER(5,n)` hands the second
+  the first's blank mask. Key both on something that can't be reused while the cache lives (bodies as `Rc<Ast>`, or an
+  `Rc` held in the entry), and name the function in the memo key.
+- **A trap kills the engine for the session.** `MAKEARRAY(1e15, 0, LAMBDA(i,j,1))` passes the `r*c` cap and aborts
+  (`unreachable`); develop caps each side at least one (`8e86887`). Nothing in `evaluateOnCore`, `callCore` or
+  `computeColumnOnEngine` catches the RuntimeError, and the shadow stack isn't restored, so after a few hundred traps
+  every call, `SUM(xs)` included, throws `memory access out of bounds` until reload. A trap needs to fall back to the TS
+  and reinstantiate the module.
+- **Slicing an emoji turns its halves into U+FFFD** (`from_utf16` → `from_utf16_lossy`, `excel_functions.rs` and
+  `text_ops.rs`): for `t = "a😀b"`, `LEFT(t,2)&RIGHT(t,2)` is `a��b` on the core and `a😀b` on the TS, and
+  `UNICODE(MID(t,3,1))` 65533 against 56832. The conformance `canon()` runs `toWellFormed` on every frozen string, so
+  it can't see this; bailing when the strict `String::from_utf16` fails keeps the spec's lone-surrogate rule.
+- **Case-insensitive backreferences fold ſ↔s and ı↔I** (`js_regex.rs`, regress's `fold_equals`), where V8's
+  Canonicalize doesn't: `REGEXTEST("sſ","(.)\1",1)` is 1 on the core, 0 in V8.
+- **Port develop `e5b18f0`, `a03b040` and `8e86887`**: a helper LAMBDA's one-cell list is that cell (`MAP(ys,
+  LAMBDA(x, FILTER(vals, keys="b")))` was #SHAPE!), ACOT by `atan(1/x)` (`ACOT(1e8)` lost eight digits; the Math
+  Function card's `acot` in `scalar.ts` too), `lnGamma` exact at 1 and 2, and MAKEARRAY's per-side cap.
+- **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
+  every captured value on each call (`compilePositional` → `coreValue`), so `x - AVERAGE(vals)` over 3,000 items takes
+  1.8 s against 8 ms on develop, quadratic in the list. Cards that map a body over a list pay about 4 µs an item:
+  UPPER over 50,000 items is 278 ms against 23 ms.
+- **A card's answer can differ from its formula's on an error argument.** `callCore` doesn't scan the arguments for an
+  error first as the evaluator does, so a SUMPRODUCT card over `[1, #N/A, 3]` answers #VALUE! where
+  `SUMPRODUCT(a,b)` answers #N/A.
