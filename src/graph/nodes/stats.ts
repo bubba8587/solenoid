@@ -6,13 +6,12 @@ import { rk4 } from "./odeOps";
 import type { Shape } from "../frameShape";
 import { resolveFn } from "./tableLambda";
 import { lambdaIn } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
-import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, stlDecompose, type DecomposeModel } from "./forecastOps";
+import type { DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
-import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
+import { FIT_FAMILIES, type FitFamily } from "./fitOps";
 import type { FrameValue } from "../frame";
-import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
@@ -735,28 +734,8 @@ export class EtsForecastNode extends ClassicPreset.Node {
     return outKey === "forecast" ? { columns: [{ name: "Forecast", type: "number" }, { name: "Interval", type: "number" }] } : null;
   }
 
-  data(inputs: { values?: (number | null | SolError)[][]; horizon?: number[]; season?: number[] }): { forecast: FrameValue | SolError | null; detected: number | null } {
-    const blank = () => { this.cachedResult = null; this.cachedSeason = null; return { forecast: null, detected: null }; };
-    const prep = forAggregate(inputs.values?.[0] ?? []);
-    if (prep.error) { this.cachedResult = prep.error; this.cachedSeason = null; return { forecast: prep.error, detected: null }; }
-    const y = prep.nums;
-    const horizon = readRole<number | SolError>(this, "horizon", inputs.horizon);
-    const seasonArg = readRole<number>(this, "season", inputs.season);
-    if (isSolError(horizon)) { this.cachedResult = horizon; this.cachedSeason = null; return { forecast: horizon, detected: null }; }
-    if (y.length < 3) return blank();
-    const h = Math.max(1, Math.round(horizon));
-    const m = seasonArg === 1 ? detectSeason(y) : Math.max(1, Math.round(seasonArg));
-    const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null);
-    if (!fit) return blank();
-    const forecast = etsForecast(fit, h);
-    const interval = Array.from({ length: h }, (_, i) => etsInterval(fit, i + 1));
-    this.cachedSeason = fit.season > 1 ? fit.season : 0;
-    const frame: FrameValue = { __frame: true, columns: [
-      { name: "Forecast", type: "number", values: forecast },
-      { name: "Interval", type: "number", values: interval },
-    ] };
-    this.cachedResult = frame;
-    return { forecast: frame, detected: this.cachedSeason };
+  data(inputs: Record<string, unknown[] | undefined>): { forecast: FrameValue | SolError | null; detected: number | null } {
+    return nodeOnCore(this, inputs) as { forecast: FrameValue | SolError | null; detected: number | null };
   }
 }
 
@@ -797,27 +776,8 @@ export class FitDistributionNode extends ClassicPreset.Node {
     ] };
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedRanking = prep.error; this.cachedBest = null; this.cachedParams = null; return { ranking: prep.error, best: null, params: null }; }
-    const fits = fitAll(prep.nums);
-    if (fits.length === 0) { this.cachedRanking = null; this.cachedBest = null; this.cachedParams = null; return { ranking: null, best: null, params: null }; }
-    const pname = (f: DistFit, i: number) => f.paramNames[i] ?? "";
-    const pval = (f: DistFit, i: number) => (i < f.params.length ? f.params[i] : null);
-    const ranking: FrameValue = { __frame: true, columns: [
-      { name: "family", type: "string", values: fits.map((f) => FIT_FAMILY_LABEL[f.family]) },
-      { name: "parameter 1", type: "string", values: fits.map((f) => pname(f, 0)) },
-      { name: "value 1", type: "number", values: fits.map((f) => pval(f, 0)) },
-      { name: "parameter 2", type: "string", values: fits.map((f) => pname(f, 1)) },
-      { name: "value 2", type: "number", values: fits.map((f) => pval(f, 1)) },
-      { name: "log-likelihood", type: "number", values: fits.map((f) => f.logLik) },
-      { name: "AIC", type: "number", values: fits.map((f) => f.aic) },
-      { name: "KS", type: "number", values: fits.map((f) => f.ks) },
-    ] };
-    this.cachedRanking = ranking;
-    this.cachedBest = FIT_FAMILY_LABEL[fits[0].family];
-    this.cachedParams = fits[0].params;
-    return { ranking, best: this.cachedBest, params: this.cachedParams };
+  data(inputs: Record<string, unknown[] | undefined>): { ranking: FrameValue | SolError | null; best: string | null; params: number[] | null } {
+    return nodeOnCore(this, inputs) as { ranking: FrameValue | SolError | null; best: string | null; params: number[] | null };
   }
 }
 export { FIT_FAMILIES };
@@ -855,24 +815,8 @@ export class DecomposeNode extends ClassicPreset.Node {
     return { columns: [{ name: "Trend", type: "number" }, { name: "Seasonal", type: "number" }, { name: "Residual", type: "number" }] };
   }
 
-  data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }): { decomposition: FrameValue | SolError | null } {
-    const blank = (err: SolError | null = null) => { this.cachedResult = err; return { decomposition: err }; };
-    const raw = inputs.values?.[0] ?? null;
-    const period = readRole<number | SolError>(this, "period", inputs.period);
-    if (isSolError(period)) return blank(period);
-    if (raw === null) return blank();
-    const err = raw.find((v): v is SolError => isSolError(v));
-    if (err) return blank(err);
-    const nums = raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
-    const d = this.model === "stl" ? stlDecompose(nums, period) : seasonalDecompose(nums, period, this.model);
-    if (!d) return blank();
-    const frame: FrameValue = { __frame: true, columns: [
-      { name: "Trend", type: "number", values: d.trend },
-      { name: "Seasonal", type: "number", values: d.seasonal },
-      { name: "Residual", type: "number", values: d.residual },
-    ] };
-    this.cachedResult = frame;
-    return { decomposition: frame };
+  data(inputs: Record<string, unknown[] | undefined>): { decomposition: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { decomposition: FrameValue | SolError | null };
   }
 }
 

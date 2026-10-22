@@ -1,12 +1,10 @@
 // [[B11]]
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, BASIS_DOC } from "./shared";
 import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
-import { frameFnOnCore } from "../frameBackend";
 import type { Shape } from "../frameShape";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { MAX_GENERATED } from "./listOps";
+import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import { EquationNode } from "./equation";
 import { amortizationSchedule, RETURNS_OP_META, type ReturnsOp } from "./financeOps";
@@ -15,7 +13,6 @@ export type { ReturnsOp } from "./financeOps";
 import type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
-import { readMoneyInputs } from "../financeUnits";
 
 export type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
@@ -820,37 +817,9 @@ export class AmortizationNode extends ClassicPreset.Node {
     ] };
   }
 
-  data(inputs: { rate?: unknown[]; nper?: unknown[]; pv?: unknown[]; fv?: unknown[] }): { frame: FrameValue | SolError | null } {
-    const m = readMoneyInputs("Amortization", inputs, ["pv", "fv"]);
-    if (isSolError(m)) { this.cachedResult = null; return { frame: m }; }
-    const { frame } = this.compute(m.inputs as never);
-    if (!frame || isSolError(frame) || !m.unit) return { frame };
-    const unit = m.unit;
-    return { frame: { ...frame, columns: frame.columns.map((c) => (c.name === "Period" ? c : { ...c, unit })) } };
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
-
-  private compute(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | SolError | null } {
-    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
-    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
-    if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
-    // A row per period: a huge or infinite count would fill the memory before it finished ([[C120]] linearWork).
-    if (Math.floor(nper) > MAX_GENERATED) {
-      this.cachedResult = null;
-      return { frame: solError("#DOMAIN!", "Amortization takes at most 1,000,000 periods") };
-    }
-    const frame = amortizationOnCore(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0) ?? amortizationFrame(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
-    this.cachedResult = frame;
-    return { frame };
-  }
-}
-
-/** The schedule on the core ([[D99]] rustIsSpec): undefined where it leaves it to the TS, null for no rows. */
-function amortizationOnCore(rate: number, nper: number, pv: number, fv: number, type: 0 | 1): FrameValue | null | undefined {
-  const r = frameFnOnCore("amortizationSchedule", [], [rate, nper, pv, fv, type]);
-  if (!r) return undefined;
-  return "frame" in r ? r.frame : null;
 }
 
 export function amortizationFrame(rate: number, nper: number, pv: number, fv: number, type: 0 | 1): FrameValue | null {
