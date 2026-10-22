@@ -173,9 +173,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   it can't see this; bailing when the strict `String::from_utf16` fails keeps the spec's lone-surrogate rule.
 - **Case-insensitive backreferences fold ſ↔s and ı↔I** (`js_regex.rs`, regress's `fold_equals`), where V8's
   Canonicalize doesn't: `REGEXTEST("sſ","(.)\1",1)` is 1 on the core, 0 in V8.
-- **Port develop `e5b18f0`, `a03b040` and `8e86887`**: a helper LAMBDA's one-cell list is that cell (`MAP(ys,
-  LAMBDA(x, FILTER(vals, keys="b")))` was #SHAPE!), ACOT by `atan(1/x)` (`ACOT(1e8)` lost eight digits; the Math
-  Function card's `acot` in `scalar.ts` too), `lnGamma` exact at 1 and 2, and MAKEARRAY's per-side cap.
 - **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
   every captured value on each call (`compilePositional` → `coreValue`), so `x - AVERAGE(vals)` over 3,000 items takes
   1.8 s against 8 ms on develop, quadratic in the list. Cards that map a body over a list pay about 4 µs an item:

@@ -40,6 +40,7 @@ export function iterMax(it: Iterable<number>): number {
 
 export function lnGamma(x: number): number {
   if (x <= 0) return Infinity;
+  if (x === 1 || x === 2) return 0;
   if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
   x -= 1;
   const g = 7;

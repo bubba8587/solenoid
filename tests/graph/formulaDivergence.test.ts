@@ -90,6 +90,10 @@ describe("ACOT, GAMMALN and GAMMALN.PRECISE answer Excel's (FX is wrong)", () =>
   it("ACOT is in (0, π) and the log-gamma of 0 or less is #DOMAIN!, as the Math Function card's", () => {
     expect(num(call("ACOT", -1))).toBeCloseTo(3 * Math.PI / 4, 14);
     expect(num(call("ACOT", 1))).toBeCloseTo(Math.PI / 4, 14);
+    expect(call("ACOT", 1e8)).toBe(1e-8);
+    expect(call("ACOT", 0)).toBe(Math.PI / 2);
+    expect(new MathFXNode({ op: "acot" }).data({ in: [1e8] }).result).toBe(1e-8);
+    expect(call("GAMMALN", 1)).toBe(0);
     for (const name of ["GAMMALN", "GAMMALN.PRECISE"]) {
       for (const x of [-3.7, 0]) expect((call(name, x) as { code?: string }).code).toBe("#DOMAIN!");
       expect(call(name, 4.5)).toBe(new MathFXNode({ op: "gammaln" }).data({ in: [4.5] }).result);

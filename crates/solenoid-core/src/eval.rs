@@ -852,8 +852,19 @@ impl Eval<'_> {
         };
         let absent = |v: &V| matches!(v, V::Null | V::Undef);
         // `oneValue`: the LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
+        // A list or table of one cell is that cell, as Excel reads a 1×1 array.
         let one = |each: &str, r: V| match r {
-            V::List(_) => V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))),
+            V::List(l) => {
+                let cell = match l.as_slice() {
+                    [V::List(row)] => match row.as_slice() {
+                        [c] if !matches!(c, V::List(_)) => Some(c.clone()),
+                        _ => None,
+                    },
+                    [c] => Some(c.clone()),
+                    _ => None,
+                };
+                cell.unwrap_or_else(|| V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
+            }
             other => other,
         };
         match name {
@@ -939,14 +950,16 @@ impl Eval<'_> {
                 if absent(&arg(0)) || absent(&arg(1)) {
                     return V::Null;
                 }
-                let count = |v: &V| {
-                    let n = js_unary(v).floor().max(0.0);
-                    if n.is_nan() { 0.0 } else { n }
-                };
-                let (r, c) = (count(&arg(0)), count(&arg(1)));
-                if r * c > MAX_GENERATED {
-                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(r * c))));
+                // JS's Math.max: NaN stays NaN, so a NaN side passes the cap and builds nothing.
+                let js_max = |a: f64, b: f64| if a.is_nan() { a } else { a.max(b) };
+                let side = |v: &V| js_max(js_unary(v).floor(), 0.0);
+                let (r, c) = (side(&arg(0)), side(&arg(1)));
+                // Each side counts as at least one, so a zero side can't hide a huge other one.
+                let cells = js_max(r, 1.0) * js_max(c, 1.0);
+                if cells > MAX_GENERATED {
+                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
                 }
+                let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
                 list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
             }
             "GROUPBY" => {

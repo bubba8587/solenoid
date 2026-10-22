@@ -160,16 +160,15 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
-// Where the formula twin answers differently (last-digit noise, ACOT's range, the ERF approximation, ACOTH
+// Where the formula twin answers differently (last-digit noise, the ERF approximation, ACOTH
 // at 1 and -1), the card keeps its own kernel; the rest run on the core.
-const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "acot", "coth", "csch", "acoth", "erf", "erfc", "gammaln"]);
+const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "coth", "csch", "acoth", "erf", "erfc", "gammaln"]);
 
 function ownKernel(op: MathFnOp, x: number): number | null {
   switch (op) {
     case "tanh":    return Math.tanh(x);
     case "sinh":    return Math.sinh(x);
     case "asinh":   return Math.asinh(x);
-    case "acot":    return Math.PI / 2 - Math.atan(x);
     case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
     case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
     case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;

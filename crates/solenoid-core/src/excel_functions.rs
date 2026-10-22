@@ -2753,7 +2753,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err(name);
             }
             if name == "ACOT" {
-                return V::Num(std::f64::consts::FRAC_PI_2 - crate::fdlibm::atan(x));
+                // atan(1/x) keeps the digits π/2 − atan(x) cancels away as x grows.
+                return V::Num(if x > 0.0 {
+                    crate::fdlibm::atan(1.0 / x)
+                } else if x < 0.0 {
+                    std::f64::consts::PI + crate::fdlibm::atan(1.0 / x)
+                } else {
+                    std::f64::consts::FRAC_PI_2
+                });
             }
             if x <= 0.0 {
                 return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));

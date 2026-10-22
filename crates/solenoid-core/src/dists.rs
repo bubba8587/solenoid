@@ -16,6 +16,9 @@ pub fn ln_gamma(x: f64) -> f64 {
     if x <= 0.0 {
         return f64::INFINITY;
     }
+    if x == 1.0 || x == 2.0 {
+        return 0.0;
+    }
     if x < 0.5 {
         return log(PI / sin(PI * x)) - ln_gamma(1.0 - x);
     }
