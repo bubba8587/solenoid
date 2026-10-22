@@ -24,6 +24,7 @@ import { tagFrameCellUnit } from "../../src/graph/unitColumn";
 import { isUnitCell, type ColumnUnit, type UnitCell } from "../../src/graph/unitValue";
 import { coreValue, readReply, syncExternalNames } from "../../src/graph/coreValues";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
+import { settingsStore } from "../../src/graph/settingsStore";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
 import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
@@ -1183,6 +1184,13 @@ type ExprUnitCase = { src: string; env: Record<string, unknown>; want: unknown }
  *  display unit the formula reads its numbers in, the point weight over readings and the result's unit, frozen from
  *  `ExpressionNode.data()` over generated inputs with a unit. */
 const expressionUnits = frozen<ExprUnitCase>("expression-units", () => {
+  // `data()` asks the core first; the frozen answers are the TS's.
+  const engine = settingsStore.get("wasmEngine");
+  settingsStore.set("wasmEngine", false);
+  try { return expressionUnitCases(); } finally { settingsStore.set("wasmEngine", engine); }
+});
+
+function expressionUnitCases(): ExprUnitCase[] {
   const cases: ExprUnitCase[] = [];
   const rand = mulberry32(8484);
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
@@ -1232,14 +1240,14 @@ const expressionUnits = frozen<ExprUnitCase>("expression-units", () => {
     cases.push({ src, env, want });
   }
   return cases;
-});
+}
 
 describe("Expression's unit wrapper answers as frozen", () => {
   it(`${expressionUnits.length} formulas`, () => {
     const bad: unknown[] = [];
     for (const c of expressionUnits) {
       const env = Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, coreValue(v, true)]));
-      const r = readReply(wasmInvokeSync<unknown>("engine_expression_units", { src: c.src, env, clock: engineClock() }));
+      const r = readReply(wasmInvokeSync<unknown>("engine_expression_units", { src: c.src, env, order: Object.keys(c.env), clock: engineClock() }));
       const got = r ? unitData(r.value) : { bailed: true };
       if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ src: c.src, env: c.env, got, want: c.want });
     }

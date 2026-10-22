@@ -49,8 +49,9 @@ fn dimensioned(v: &V) -> Option<&UnitCell> {
     }
 }
 
-fn env_dim(v: &V) -> Dim {
-    match v {
+/// A variable's one dimension, or the #UNIT! for a list mixing two: the formula reads each variable in one unit.
+fn env_dim(name: &str, v: &V) -> Result<Dim, crate::error_value::SolError> {
+    Ok(match v {
         V::Unit(u) => u.dim.clone(),
         V::List(_) => {
             let mut dim: Option<Dim> = None;
@@ -58,14 +59,17 @@ fn env_dim(v: &V) -> Dim {
                 let V::Unit(u) = c else { continue };
                 match &dim {
                     None => dim = Some(u.dim.clone()),
-                    Some(d) if !dim_equal(d, &u.dim) => return Dim::new(),
+                    Some(d) if !dim_equal(d, &u.dim) => {
+                        let (a, b) = (crate::unit_lists::format_dim(d), crate::unit_lists::format_dim(&u.dim));
+                        return Err(sol_error("#UNIT!", format!("{name} holds mixed units: {a} and {b}.")));
+                    }
                     _ => {}
                 }
             }
             dim.unwrap_or_default()
         }
         _ => Dim::new(),
-    }
+    })
 }
 
 fn env_currency_code(v: &V, dim: &Dim) -> Option<String> {
@@ -197,11 +201,19 @@ struct Shown {
 }
 
 /// The formula over its read inputs, wrapped in their units; None leaves the whole Expression to the TS.
-pub fn expression_units(src: &str, env: &Env) -> Option<V> {
+/// `order` is the formula's variables as the TS reads them, the first mixed one naming the error.
+pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let ast = crate::excel_formula::parse_formula(src)?;
     let mut names: Vec<&String> = env.keys().collect();
     names.sort();
-    let dims: BTreeMap<String, Dim> = names.iter().map(|n| ((*n).clone(), env_dim(&env[*n]))).collect();
+    let mut dims: BTreeMap<String, Dim> = BTreeMap::new();
+    let ordered = order.iter().filter(|n| env.contains_key(*n)).chain(names.iter().copied().filter(|n| !order.contains(n)));
+    for n in ordered {
+        match env_dim(n, &env[n]) {
+            Ok(d) => dims.insert(n.clone(), d),
+            Err(e) => return Some(V::err(e)),
+        };
+    }
     let mut dr: Option<Dim> = None;
     let mut shown: Option<Shown> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {
@@ -268,7 +280,13 @@ pub fn expression_units(src: &str, env: &Env) -> Option<V> {
         };
         result = match result {
             V::Num(n) => tag(n),
-            V::List(items) => V::List(Rc::new(items.iter().map(|c| if let V::Num(n) = c { tag(*n) } else { c.clone() }).collect())),
+            V::List(items) => {
+                let cell = |c: &V| if let V::Num(n) = c { tag(*n) } else { c.clone() };
+                V::List(Rc::new(items.iter().map(|c| match c {
+                    V::List(row) => V::List(Rc::new(row.iter().map(cell).collect())),
+                    other => cell(other),
+                }).collect()))
+            }
             other => other,
         };
     }

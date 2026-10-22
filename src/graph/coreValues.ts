@@ -164,7 +164,7 @@ export function expressionUnitsOnCore(src: string, env: Record<string, unknown>)
     wire[k] = w;
   }
   syncExternalNames();
-  return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, clock: engineClock() }));
+  return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, order: Object.keys(env), clock: engineClock() }));
 }
 
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what

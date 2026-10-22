@@ -352,7 +352,8 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
-        crate::unit_expression::expression_units(&src, &env).unwrap_or_else(crate::excel_functions::bail)
+        let order = parse::<Option<Vec<String>>>(args, "order")?.unwrap_or_default();
+        crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(crate::excel_functions::bail)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;

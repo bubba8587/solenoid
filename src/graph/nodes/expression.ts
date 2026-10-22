@@ -5,13 +5,13 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
-import { isSolError, solError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
+import { isUnitCell, isAffineDisplay, tagDim, fromUnit, unitError, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf, readInDeclaredUnit } from "../unitBridge";
 import { formulaDim, formulaAffineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { expressionUnitsOnCore } from "../coreValues";
-import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
+import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf, formatDim } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
@@ -83,14 +83,15 @@ function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   return code;
 }
 
-function envDim(v: unknown): Dim {
+/** A variable's one dimension, or the #UNIT! for a list mixing two: the formula reads each variable in one unit. */
+function envDim(name: string, v: unknown): Dim | SolError {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) {
     let dim: Dim | null = null;
     for (const c of v.flat()) {
       if (!isUnitCell(c)) continue;
       if (dim === null) dim = c.dim;
-      else if (!dimEqual(dim, c.dim)) return DIMENSIONLESS;
+      else if (!dimEqual(dim, c.dim)) return unitError(`${name} holds mixed units: ${formatDim(dim)} and ${formatDim(c.dim)}.`);
     }
     return dim ?? DIMENSIONLESS;
   }
@@ -215,13 +216,22 @@ export class ExpressionNode extends ClassicPreset.Node {
         reconcileResultRank(this, core.value);
         return { result: core.value };
       }
+      const dims: Record<string, Dim> = {};
+      for (const v of this.varNames) {
+        const d = envDim(v, rawEnv[v]);
+        if (isSolError(d)) {
+          this.cachedResult = d; this.cachedError = null;
+          return { result: d };
+        }
+        dims[v] = d;
+      }
       let dr: Dim | null = null;
       let shown: { id: string; unit: Unit; k: number | null; point: 0 | 1 | null } | null = null;
-      if (this.ast && this.varNames.some((v) => !isDimensionless(envDim(rawEnv[v])))) {
+      if (this.ast && this.varNames.some((v) => !isDimensionless(dims[v]))) {
         const dimEnv: DimEnv = {};
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
-          dimEnv[v] = envDim(rawEnv[v]);
+          dimEnv[v] = dims[v];
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
@@ -236,7 +246,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         // An affine one (°C) is a point scale: `affineWeight` says whether the answer is
         // a reading, a difference in the base unit, or #UNIT!.
         const sd = sharedDisplay(this.varNames.map((v) => rawEnv[v]));
-        const united = this.varNames.filter((v) => !isDimensionless(envDim(rawEnv[v])));
+        const united = this.varNames.filter((v) => !isDimensionless(dims[v]));
         // Readings in different offset units (°C and °F) run in base SI, but still classify.
         let point: 0 | 1 | null = null;
         if (sd ? sd.unit.offset : allReadings(united.map((v) => rawEnv[v]))) {
@@ -271,9 +281,10 @@ export class ExpressionNode extends ClassicPreset.Node {
           if (sh.point === 0) return tagDim(c * sh.unit.scale ** sh.k, d);
           return tagDim(c * sh.unit.scale ** sh.k, d, sh.k === 1 ? sh.id : undefined);
         };
+        const tagCell = (c: unknown) => (typeof c === "number" ? tag(c) : c);
         result = Array.isArray(result)
-          ? result.map((c) => (typeof c === "number" ? tag(c) : c))
-          : (typeof result === "number" ? tag(result) : result);
+          ? result.map((c) => (Array.isArray(c) ? c.map(tagCell) : tagCell(c)))
+          : tagCell(result);
       }
       this.cachedResult = result;
       this.cachedError  = null;
