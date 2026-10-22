@@ -35,7 +35,7 @@ const MAX_GENERATED: f64 = 1_000_000.0;
 #[serde(rename_all = "camelCase")]
 pub struct Traits {
     pub kind: Kind,
-    pub prep: String,
+    pub prep: Prep,
     pub inspects_null: bool,
     pub nullable_ok: bool,
     pub free: bool,
@@ -61,6 +61,22 @@ pub enum Kind {
     Whole,
     Range,
     Handler,
+}
+
+/// How a range call readies its lists before the body reads them (`prepRangeArgs`).
+#[derive(serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Prep {
+    /// Blanks drop.
+    Default,
+    /// Blanks read 0.
+    Zero,
+    /// A position blank in any list drops from every list.
+    Paired,
+    /// The lists as they come.
+    Raw,
+    /// As they come, and a matrix among them is refused.
+    Positional,
 }
 
 /// A name's facts beside its traits: `ETA_HOSTS`, `LAMBDA_HOSTS`, `MEMO_SHAPERS`, `BRANCH_SELECTORS`, and whether the
@@ -805,7 +821,7 @@ impl Eval<'_> {
             }
         }
         if !t.matrix_args && argv.iter().any(is_matrix) {
-            if t.prep == "positional" {
+            if t.prep == Prep::Positional {
                 return V::err(sol_error("#SHAPE!", format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
             }
             if t.kind == Kind::Range {
@@ -826,7 +842,7 @@ impl Eval<'_> {
                 if column { as_column(r) } else { r }
             }
             Kind::Range => {
-                let args = match prep_range_args(&t.prep, argv) {
+                let args = match prep_range_args(t.prep, argv) {
                     Ok(a) => a,
                     Err(e) => return e,
                 };
@@ -1135,7 +1151,6 @@ fn as_column(r: V) -> V {
     }
 }
 
-/// `prepRangeArgs`: a list's first error answers, and its blanks drop (or read 0, or drop pairwise).
 /// The error a body called by name answers before it runs, as a formula's call scans for one (`argumentError` in
 /// excelFormula.ts): an error argument, or for a range function an error among a list's cells. None for the error
 /// handlers, which read errors.
@@ -1152,11 +1167,12 @@ pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
         return None;
     }
     let flat = argv.iter().map(|a| if !t.matrix_args && is_matrix(a) { flat1(a) } else { a.clone() }).collect();
-    prep_range_args(&t.prep, flat).err()
+    prep_range_args(t.prep, flat).err()
 }
 
-fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
-    if prep == "raw" || prep == "positional" {
+/// `prepRangeArgs`: a list's first error answers, then its blanks go as `prep` says.
+fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
+    if matches!(prep, Prep::Raw | Prep::Positional) {
         return Ok(argv);
     }
     for a in &argv {
@@ -1170,28 +1186,29 @@ fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
             }
         }
     }
-    match prep {
-        "zero" => Ok(argv.into_iter().map(|a| match a {
+    Ok(match prep {
+        Prep::Zero => argv.into_iter().map(|a| match a {
             V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
             other => other,
-        }).collect()),
-        "paired" => {
+        }).collect(),
+        Prep::Paired => {
             let lens: Vec<usize> = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
             let Some(&n) = lens.iter().min() else { return Ok(argv) };
             let keep: Vec<usize> = (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
             if keep.len() == n {
                 return Ok(argv);
             }
-            Ok(argv.into_iter().map(|a| match a {
+            argv.into_iter().map(|a| match a {
                 V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
                 other => other,
-            }).collect())
+            }).collect()
         }
-        _ => Ok(argv.into_iter().map(|a| match a {
+        Prep::Default => argv.into_iter().map(|a| match a {
             V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
             other => other,
-        }).collect()),
-    }
+        }).collect(),
+        Prep::Raw | Prep::Positional => argv,
+    })
 }
 
 /// `applyArgRoles`: each argument read by its role; the answer is which slots the null rule must not blank on.
