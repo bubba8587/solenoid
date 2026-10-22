@@ -164,7 +164,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
   column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
 - **Size.** The module is 2.3 MB raw / 835 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. `regress`
-  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) never takes a non-ASCII unit to ASCII, as V8's doesn't, so `ſ` and `s` don't match each other. The `no-property-escapes` feature: `\p{…}` parses only in
+  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) reads as V8's: a non-ASCII unit never goes to ASCII (`ſ` and `s` don't match each other), and a unit whose full uppercase is two units stays itself (`ᾳ` and `ᾼ` don't), from a 102-unit table taken from V8 (`wasmEngine.test.ts` checks every BMP unit beside its own cases). The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
   NFD, every code point, combining classes read off its reordering; 19 KB gzipped) instead of `unicode-normalization`. Size
@@ -191,8 +191,5 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
   in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
   `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).
-- **Caseless backreferences still fold Greek letters with a subscript iota** (`ᾳ`/`ᾼ`, `ᾀ`/`ᾈ`, `ῃ`/`ῌ`, `ῳ`/`ῼ`):
-  `REGEXTEST("ᾳᾼ","(.)\1",1)` is 1 on the core, 0 in V8, since regress's `fold_code_point` takes the one-character
-  uppercase where V8 keeps a character whose full uppercase is two.
 - **The TS fallback still keeps a halved surrogate**, so `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b` on the
   core and `a😀b` where the formula falls back; the author's well-formed rule has no leaf yet.

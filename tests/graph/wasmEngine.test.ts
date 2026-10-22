@@ -926,6 +926,22 @@ it("a caseless backreference folds as V8's Canonicalize: never a non-ASCII unit 
   expect(fn("sſ", "(.)\\1", 1)).toBe(0);
 });
 
+it("a caseless backreference matches as V8's for every BMP unit beside its own upper and lower case", () => {
+  const fn = resolveExcelFunction("REGEXTEST")!;
+  const bad: string[] = [];
+  for (let c = 0; c < 0x10000; c++) {
+    if (c >= 0xd800 && c < 0xe000) continue;
+    const ch = String.fromCharCode(c);
+    for (const other of new Set([ch.toUpperCase(), ch.toLowerCase()])) {
+      if (other.length !== 1 || other === ch) continue;
+      const args = [ch + other, "(.)\\1", 1];
+      const core = wasmInvokeSync("engine_call", { name: "REGEXTEST", args: args.map(callWire) });
+      if (JSON.stringify(core) !== JSON.stringify(jsAnswer(fn, args))) bad.push(ch + other);
+    }
+  }
+  expect(bad).toEqual([]);
+});
+
 describe("DOLLAR matches Intl's currency text on ties, huge values and negatives", () => {
   it(`${FUZZ_RUNS * 3} values`, { timeout: 600_000 }, () => {
     const rand = mulberry32(2121 + FUZZ_SEED);
