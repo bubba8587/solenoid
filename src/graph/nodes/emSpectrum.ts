@@ -1,9 +1,9 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl
 
 import { ClassicPreset } from "rete";
-import { numIn, numOut, strOut, readInput } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
-import { emSpectrum } from "./emSpectrumOps";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, numOut, strOut } from "./shared";
+import { type SolError } from "../errorValue";
 
 export class EmSpectrumNode extends ClassicPreset.Node {
   label: string;
@@ -24,18 +24,7 @@ export class EmSpectrumNode extends ClassicPreset.Node {
     this.addOutput("wavelength", numOut("m"));
   }
 
-  data(inputs: { freq?: (number | null)[]; wavelength?: (number | null)[] }) {
-    const f = readInput(inputs.freq, this.literals.freq ?? null);
-    const wl = readInput(inputs.wavelength, this.literals.wavelength ?? null);
-    const finish = (band: string | SolError | null, freq: number | SolError | null, wavelength: number | SolError | null) => {
-      this.cachedBand = band;
-      this.cachedFreq = freq;
-      this.cachedWavelength = wavelength;
-      return { band, freq, wavelength };
-    };
-    const r = emSpectrum(typeof f === "number" ? f : null, typeof wl === "number" ? wl : null);
-    if (r === null) return finish(null, null, null);
-    if (isSolError(r)) return finish(r, r, r);
-    return finish(r.band, r.freq, r.wavelength);
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { band: string | SolError | null; freq: number | SolError | null; wavelength: number | SolError | null };
   }
 }

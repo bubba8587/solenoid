@@ -1,11 +1,12 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
 
 import { ClassicPreset } from "rete";
-import { numIn, frameOut, readInput } from "./shared";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, frameOut } from "./shared";
 import type { FrameValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
-import { solError, type SolError } from "../errorValue";
-import { ZONES, hrZonesDomainOk, hrZoneBounds } from "./healthOps";
+import { type SolError } from "../errorValue";
+import { ZONES, hrZoneBounds } from "./healthOps";
 
 export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValue {
   const bounds = hrZoneBounds(maxHr, restingHr);
@@ -39,19 +40,7 @@ export class HrZonesNode extends ClassicPreset.Node {
     return shapeOfFrameValue(hrZonesFrame(0, null));
   }
 
-  data(inputs: { age?: (number | null)[]; resting?: (number | null)[]; max?: (number | null)[] }) {
-    const age = readInput(inputs.age, this.literals.age ?? null);
-    const resting = readInput(inputs.resting, this.literals.resting ?? null);
-    const maxIn = readInput(inputs.max, this.literals.max ?? null);
-    const maxHr = typeof maxIn === "number" ? maxIn : typeof age === "number" ? 220 - age : null;
-    let zones: FrameValue | SolError | null = null;
-    if (maxHr !== null) {
-      const rest = typeof resting === "number" ? resting : null;
-      zones = hrZonesDomainOk(maxHr, rest)
-        ? hrZonesFrame(maxHr, rest)
-        : solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
-    }
-    this.cachedFrame = zones;
-    return { zones };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { zones: FrameValue | SolError | null };
   }
 }

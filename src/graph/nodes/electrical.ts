@@ -1,9 +1,10 @@
 // [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
 
 import { ClassicPreset } from "rete";
-import { listIn, numIn, numOut, readInput } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { parallelCombine, nearestESeries, awgWire, decodeResistor, type ESeriesOp } from "./electricalOps";
+import { nodeOnCore } from "../nodeOnCore";
+import { listIn, numIn, numOut } from "./shared";
+import { type SolError } from "../errorValue";
+import { decodeResistor, type ESeriesOp } from "./electricalOps";
 
 export class ParallelCombineNode extends ClassicPreset.Node {
   label: string;
@@ -18,10 +19,8 @@ export class ParallelCombineNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
-    const result = parallelCombine(inputs.list?.[0] ?? []);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 export class ESeriesNode extends ClassicPreset.Node {
@@ -42,21 +41,8 @@ export class ESeriesNode extends ClassicPreset.Node {
     this.addOutput("errpct", numOut("Error %"));
   }
 
-  data(inputs: { value?: (number | null)[] }) {
-    const v = readInput(inputs.value, this.literals.value);
-    let nearest: number | SolError | null = null;
-    let errpct: number | SolError | null = null;
-    if (typeof v === "number") {
-      if (v > 0 && Number.isFinite(v)) {
-        nearest = nearestESeries(v, this.op);
-        errpct = ((nearest - v) / v) * 100;
-      } else {
-        nearest = errpct = solError("#DOMAIN!", "A component value must be a positive number");
-      }
-    }
-    this.cachedNearest = nearest;
-    this.cachedError = errpct;
-    return { nearest, errpct };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { nearest: number | SolError | null; errpct: number | SolError | null };
   }
 }
 export class AwgNode extends ClassicPreset.Node {
@@ -79,25 +65,8 @@ export class AwgNode extends ClassicPreset.Node {
     this.addOutput("ampacity", numOut("Ampacity A"));
   }
 
-  data(inputs: { gauge?: (number | null)[] }) {
-    const n = readInput(inputs.gauge, this.literals.gauge);
-    let diameter: number | SolError | null = null;
-    let area: number | SolError | null = null;
-    let resistance: number | SolError | null = null;
-    let ampacity: number | SolError | null = null;
-    if (typeof n === "number") {
-      const w = awgWire(n);
-      if (isSolError(w)) {
-        diameter = area = resistance = ampacity = w;
-      } else {
-        ({ diameter, area, resistance, ampacity } = w);
-      }
-    }
-    this.cachedDiameter = diameter;
-    this.cachedArea = area;
-    this.cachedResistance = resistance;
-    this.cachedAmpacity = ampacity;
-    return { diameter, area, resistance, ampacity };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { diameter: number | SolError | null; area: number | SolError | null; resistance: number | SolError | null; ampacity: number | SolError | null };
   }
 }
 export class ResistorCodeNode extends ClassicPreset.Node {
