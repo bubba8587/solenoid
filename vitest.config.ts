@@ -47,8 +47,8 @@ export default defineConfig({
     // worker's module cache; tests/setup/sharedWorker.ts undoes a file's global edits.
     // A file that mocks a module would leak the mock, so it runs isolated.
     projects: [
-      { extends: true, test: { name: "shared", isolate: false, setupFiles: ["tests/setup/graphEngine.ts", "tests/setup/sharedWorker.ts"], include: ALL, exclude: ISOLATED } },
-      { extends: true, test: { name: "isolated", setupFiles: ["tests/setup/graphEngine.ts"], include: ISOLATED } },
+      { extends: true, test: { name: "shared", isolate: false, setupFiles: ["tests/setup/graphEngine.ts", "tests/setup/sharedWorker.ts", "tests/setup/nodeRecorder.ts"], include: ALL, exclude: ISOLATED } },
+      { extends: true, test: { name: "isolated", setupFiles: ["tests/setup/graphEngine.ts", "tests/setup/nodeRecorder.ts"], include: ISOLATED } },
     ],
   },
 });

@@ -3,7 +3,7 @@
 // engine takes over IPC, answered in-process. `npm run build:wasm` regenerates `engineWasm/`.
 import init, { initSync, __wbg_reset, engine_invoke, engine_source_bin, engine_read_bin, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_core.js";
 const wasmUrl = new URL("./engineWasm/solenoid_core_bg.wasm", import.meta.url);
-import { toSolError } from "./ipcBridge";
+import { toSolError } from "./errorValue";
 
 let _ready: Promise<boolean> | null = null;
 let _loaded = false;

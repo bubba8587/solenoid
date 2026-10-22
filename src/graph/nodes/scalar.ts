@@ -4,11 +4,12 @@ import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, read
 import { rolesFrom, required, argRole } from "../inputRoles";
 import { lnGamma, combinatoric } from "./mathUtils";
 import { callCore } from "../coreValues";
+import { nodeOnCore } from "../nodeOnCore";
 import { solError, type SolError, isSolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
@@ -50,33 +51,8 @@ export class ArithmeticNode extends ClassicPreset.Node {
     return ARITHMETIC_OP_META[this.op].carry ? [{ output: "result", inputs: ["a", "b"] }] : [];
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
-    const divZero = () => solError("#DIV/0!", "Division by zero");
-    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-    if (a !== null && b !== null) {
-      if (anyDimensioned(a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[])) {
-        result = broadcastUnit((x, y) => arithmeticCell(this.op, x, y),
-          a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[]);
-      } else {
-        result = broadcastErr((x, y) => {
-          switch (this.op) {
-            case "add": return x + y;
-            case "sub": return x - y;
-            case "mul": return x * y;
-            case "div": return y === 0 ? divZero() : x / y;
-            // Excel MOD's sign follows the divisor and JS % the dividend, so use the floored form.
-            case "mod":      return callCore("MOD", [x, y]) as number | SolError;
-            case "pow":      return callCore("POWER", [x, y]) as number | SolError;
-            case "quotient": return callCore("QUOTIENT", [x, y]) as number | SolError;
-          }
-          return null;
-        }, a, b);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null };
   }
 }
 

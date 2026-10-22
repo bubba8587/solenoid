@@ -1,6 +1,7 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { toSolError, ipcInvoke, enginePing } from "../../src/graph/ipcBridge";
+import { ipcInvoke, enginePing } from "../../src/graph/ipcBridge";
+import { toSolError } from "../../src/graph/errorValue";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
 describe("toSolError — IPC failure → tagged SolError", () => {

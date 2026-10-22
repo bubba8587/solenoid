@@ -489,7 +489,7 @@ impl serde::Serialize for CallReply {
 }
 
 /// A value as the reply spells it: `{"num": "<bits>"}`, `{"list": [...]}`, `{"err", "msg"}` and so on.
-struct Out<'a>(&'a crate::excel_functions::V);
+pub(crate) struct Out<'a>(pub(crate) &'a crate::excel_functions::V);
 
 impl serde::Serialize for Out<'_> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {

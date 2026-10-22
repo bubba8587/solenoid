@@ -1,0 +1,153 @@
+//! [[D99]] rustIsSpec: every card body on the core answers as its frozen TypeScript did (`fixtures/core/nodes/`,
+//! frozen by `scripts/freeze-nodes.mjs`). A class with no body on the core is skipped; one with a body must answer
+//! every frozen case. `NODES=ArithmeticNode,MathFXNode cargo test --test nodes` runs only those.
+
+use serde_json::Value as Json;
+use solenoid_core::excel_functions::V;
+use solenoid_core::nodes::{reply, Shown};
+use std::io::Read;
+use std::path::PathBuf;
+
+fn fixtures() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/nodes")
+}
+
+fn load(path: &std::path::Path) -> Vec<Json> {
+    let mut s = String::new();
+    flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap()).read_to_string(&mut s).unwrap();
+    serde_json::from_str(&s).unwrap()
+}
+
+/// The same value as the TS reads it back: numbers by their bits (any NaN is NaN), errors by code and message, unit
+/// cells by what crosses back.
+fn same(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::Num(x), V::Num(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
+        (V::Str(x), V::Str(y)) => x == y,
+        (V::Bool(x), V::Bool(y)) => x == y,
+        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
+        (V::Err(x), V::Err(y)) => x.code == y.code && x.message == y.message,
+        (V::Cx(a1, b1), V::Cx(a2, b2)) => same(&V::Num(*a1), &V::Num(*a2)) && same(&V::Num(*b1), &V::Num(*b2)),
+        (V::List(x), V::List(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q)),
+        (V::Unit(x), V::Unit(y)) => {
+            same(&V::Num(x.value), &V::Num(y.value)) && x.display == y.display && x.ratio == y.ratio && {
+                let nz = |d: &std::collections::BTreeMap<String, f64>| d.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| (k.clone(), v.to_bits())).collect::<Vec<_>>();
+                nz(&x.dim) == nz(&y.dim)
+            }
+        }
+        _ => false,
+    }
+}
+
+fn show(v: &V) -> String {
+    match v {
+        V::Num(n) => format!("{n:?}"),
+        V::Str(s) => format!("{s:?}"),
+        V::Bool(b) => b.to_string(),
+        V::Null => "null".into(),
+        V::Undef => "undefined".into(),
+        V::Err(e) => format!("{}({:?})", e.code, e.message),
+        V::Cx(a, b) => format!("cx({a},{b})"),
+        V::List(l) => format!("[{}]", l.iter().map(show).collect::<Vec<_>>().join(", ")),
+        V::Unit(u) => format!("unit({} {:?} {:?})", u.value, u.dim, u.display),
+        V::Lambda(_) => "lambda".into(),
+        V::Fx(m) => format!("fx({m})"),
+    }
+}
+
+fn dec(j: &Json) -> V {
+    solenoid_core::eval::decode_value(j)
+}
+
+/// Why the core's answer differs from the frozen one, or `None` where they agree.
+fn mismatch(case: &Json) -> Option<String> {
+    let mut args = case.clone();
+    args["clock"] = case["ctx"]["clock"].clone();
+    let r = reply(&args);
+    let answer = r.answer.expect("checked by the caller");
+    let result = &case["result"];
+    match (&answer, result.get("out"), result.get("thrown")) {
+        (Ok(outs), Some(Json::Object(want)), _) => {
+            for (k, w) in want {
+                match outs.iter().find(|(o, _)| o == k) {
+                    Some((_, got)) if same(got, &dec(w)) => {}
+                    Some((_, got)) => return Some(format!("out {k}: got {}, want {}", show(got), show(&dec(w)))),
+                    None => return Some(format!("out {k}: missing, want {}", show(&dec(w)))),
+                }
+            }
+            if let Some((k, _)) = outs.iter().find(|(o, _)| !want.contains_key(o)) {
+                return Some(format!("out {k}: not frozen"));
+            }
+        }
+        (Err(e), _, Some(w)) if same(e, &dec(w)) => {}
+        (Ok(outs), _, _) => return Some(format!("got outputs {:?}, want {result}", outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>())),
+        (Err(e), _, _) => return Some(format!("threw {}, want {result}", show(e))),
+    }
+    let want = case["display"].as_object().cloned().unwrap_or_default();
+    let prior = case["prior"].as_object().cloned().unwrap_or_default();
+    let mut set = std::collections::BTreeSet::new();
+    for (k, got) in &r.display {
+        set.insert(k.clone());
+        let w = want.get(k).or_else(|| prior.get(k));
+        let ok = match (got, w) {
+            (Shown::Undef, None) => true,
+            (Shown::Undef, Some(w)) => w.get("__undef").is_some(),
+            (Shown::Json(g), Some(w)) => w.get("__json") == Some(g),
+            (Shown::V(g), Some(w)) if w.get("__json").is_none() && w.get("__deleted").is_none() => same(g, &dec(w)),
+            _ => false,
+        };
+        if !ok {
+            let g = match got {
+                Shown::V(v) => show(v),
+                Shown::Json(j) => j.to_string(),
+                Shown::Undef => "undefined".into(),
+            };
+            return Some(format!("display {k}: got {g}, want {w:?}"));
+        }
+    }
+    if let Some(k) = want.keys().find(|k| !set.contains(*k)) {
+        return Some(format!("display {k}: not set, want {}", want[k]));
+    }
+    None
+}
+
+#[test]
+fn card_bodies_answer_as_frozen() {
+    let only: Option<Vec<String>> = std::env::var("NODES").ok().map(|s| s.split(',').map(String::from).collect());
+    let mut files: Vec<_> = std::fs::read_dir(fixtures()).unwrap().map(|e| e.unwrap().path()).collect();
+    files.sort();
+    let (mut ported, mut failures) = (0, Vec::new());
+    for path in files {
+        let kind = path.file_name().unwrap().to_str().unwrap().trim_end_matches(".json.gz").to_string();
+        if only.as_ref().is_some_and(|o| !o.contains(&kind)) {
+            continue;
+        }
+        let cases = load(&path);
+        let Some(first) = cases.first() else { continue };
+        let mut probe = first.clone();
+        probe["kind"] = Json::String(kind.clone());
+        if reply(&probe).answer.is_none() {
+            continue;
+        }
+        ported += 1;
+        let (mut bad, mut shown) = (0, Vec::new());
+        for case in &cases {
+            if case.get("unstable").is_some() {
+                continue;
+            }
+            let mut case = case.clone();
+            case["kind"] = Json::String(kind.clone());
+            if let Some(why) = mismatch(&case) {
+                bad += 1;
+                if shown.len() < 4 {
+                    shown.push(format!("    {why}\n      init {} lits {} inputs {}", case["init"], case["literals"], case["inputs"]));
+                }
+            }
+        }
+        if bad > 0 {
+            failures.push(format!("{kind}: {bad} of {} differ\n{}", cases.len(), shown.join("\n")));
+        }
+    }
+    eprintln!("{ported} classes on the core");
+    assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}

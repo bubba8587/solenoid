@@ -27,6 +27,7 @@ pub fn engine_invoke(command: &str, args: &str) -> String {
             Ok(r) => format!("{{\"ok\":{}}}", serde_json::to_string(&r).expect("a call's reply serializes")),
             Err(e) => reply(Err(e)),
         },
+        Ok(parsed) if command == "engine_node" => format!("{{\"ok\":{}}}", serde_json::to_string(&crate::nodes::reply(&parsed)).expect("a card's reply serializes")),
         Ok(parsed) => reply(invoke(command, &parsed)),
         Err(e) => reply(Err(crate::error_value::sol_error("#ERROR!", e.to_string()))),
     }

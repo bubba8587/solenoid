@@ -12,6 +12,7 @@ import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
 import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
 import { loadGraphEngine } from "./graph/dataflowEngine";
+import { loadWasmEngine } from "./graph/engineWasm";
 import { documentStore } from "./graph/documentStore";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
@@ -116,11 +117,12 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-// Formulas compute on the Rust core ([[D99]] rustIsSpec), so the first calc waits for it, never past a few seconds.
-// Nothing computes without the graph engine ([[D102]] graphOnCore), so it has no deadline.
+// Nothing computes without the graph engine and the core the cards' bodies run on ([[D102]] graphOnCore), so they
+// have no deadline; the frame backend's native engine gets a few seconds.
 const backendReady = Promise.all([
   Promise.race([initFrameBackend(), new Promise<void>((done) => setTimeout(done, 4000))]),
   loadGraphEngine(),
+  loadWasmEngine(),
 ]);
 watchEngineSetting(() => void documentStore.reloadCurrent());
 

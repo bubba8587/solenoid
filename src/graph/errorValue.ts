@@ -267,3 +267,25 @@ export function installErrorGuards(node: object): void {
     }
   };
 }
+
+// The real code set, so a foreign or malformed code from the boundary becomes #ERROR! rather than being trusted.
+const CANONICAL_CODES: ReadonlySet<string> = new Set(Object.keys(ERROR_EXPLANATIONS));
+
+function isCanonicalCode(c: unknown): c is SolErrorCode {
+  return typeof c === "string" && CANONICAL_CODES.has(c);
+}
+
+/** Rust sets `__solError` itself, so its code must be re-validated. */
+export function toSolError(thrown: unknown): SolError {
+  if (isSolError(thrown)) {
+    return isCanonicalCode(thrown.code) ? thrown : solError("#ERROR!", thrown.message);
+  }
+  if (thrown && typeof thrown === "object") {
+    const o = thrown as Record<string, unknown>;
+    const message = typeof o.message === "string" ? o.message : "IPC call failed";
+    if (isCanonicalCode(o.code)) return solError(o.code, message);
+    return solError("#ERROR!", message);
+  }
+  if (typeof thrown === "string") return solError("#ERROR!", thrown);
+  return solError("#ERROR!", "IPC call failed");
+}
