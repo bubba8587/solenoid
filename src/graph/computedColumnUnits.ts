@@ -130,6 +130,8 @@ export function planColumnUnits<C>(
   }
   const r = dimEvalWithCode(def.ast, env, codes, def.fns);
   if (isSolError(r)) return r;
+  // Indeterminate: the unit drops and the cells are the numbers the columns show, never base SI with no unit.
+  if (r === null) return plain;
   const dr = r === null || isDimensionless(r.dim) ? null : r.dim;
 
   if (authored && dr && !dimEqual(dr, authored.dim)) {
