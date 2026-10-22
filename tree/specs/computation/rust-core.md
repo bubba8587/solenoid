@@ -194,3 +194,11 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 - **The TS fallback still keeps a halved surrogate**, so `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b` on the
   core and `a😀b` where the formula falls back; the author's well-formed rule has no leaf yet.
 - **After a trap, `collectPreview` of a dead instance's FrameRef throws** its `#REF!` rather than returning it.
+- **Port develop `3eaf4ea6` and `b767a0fc`** (the author, 2026-10-22). A6 divergeByDesign, B17 typedValueModel and
+  C25 firstClassUnits now make carrying units the rule: every calculation carries type, unit and shape where their
+  meaning is defined, and stripping at the unit boundary is only the fallback for cards not yet unit-aware. D101
+  financeCarriesMoney is new: `FINANCE_MONEY` (`financeUnits.ts`) names each finance function's money arguments, the
+  dimension pass carries the currency code through those calls (`financeDim`, the core's unit-dimension pass needs
+  the same table), the money finance cards are `unitAware` and read their inputs through `readMoneyInputs` before
+  their kernels (here they reach the core through `callCore`, so the wrapper sits in front of that), and the
+  equation solver tags its answer with the code (`dimEvalWithCode`). Merging develop brings the tree and TS halves.
