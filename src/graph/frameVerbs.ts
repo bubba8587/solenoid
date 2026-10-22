@@ -6,9 +6,9 @@ import {
   isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame, frameToCube,
 } from "./frame";
 import { isSolError, solError, type SolError } from "./errorValue";
-import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
+import { isUnitCell, withDisplay, sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
 import { dimEqual, dimPow, formatDim } from "./dimension";
-import { fcUnitToUnit } from "./unitBridge";
+import { fcUnitToUnit, displayMagnitudeOf } from "./unitBridge";
 import { forAggregate, guardFinite, decimalFromText, logicalOrTypeError } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
@@ -1413,7 +1413,7 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   let sawNumber = false, sawBool = false, sawOther = false;
   for (const cell of col.cells) {
     if (cell === null || isSolError(cell)) continue;
-    if (typeof cell === "number") sawNumber = true;
+    if (typeof cell === "number" || isUnitCell(cell)) sawNumber = true;
     else if (typeof cell === "boolean") sawBool = true;
     else sawOther = true;
   }
@@ -1421,6 +1421,16 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   if (sawNumber) return "number";
   if (sawBool) return "logical";
   return "string";
+}
+
+function keysInDisplayUnit(cells: readonly CubeCell[]): readonly CubeCell[] {
+  const first = cells.find(isUnitCell);
+  if (!first) return cells;
+  return cells.map((c) => {
+    if (!isUnitCell(c)) return c;
+    if (!dimEqual(c.dim, first.dim)) return null;
+    return first.display ? displayMagnitudeOf(withDisplay(c, first.display) as typeof c) : c.value;
+  });
 }
 
 export function lookupCell(
@@ -1444,7 +1454,7 @@ export function lookupRowIndex(
   }
   const needle = lookupNeedle(lookup, keyType);
   if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
-  const keys = key.cells.slice(0, cubeRowCount(c));
+  const keys = keysInDisplayUnit(key.cells.slice(0, cubeRowCount(c)));
   const idx = xmatchIndex(needle, keys, NODE_TO_XMATCH_MODE[matchMode], searchMode);
   return isSolError(idx) ? -1 : idx;
 }

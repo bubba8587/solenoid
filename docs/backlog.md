@@ -22,9 +22,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 ## Expect
 - [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
 
-## Frames
-- [ ] **Frame XLookup never matches a lookup column that carries a unit** (found 2026-10-21): `frameToCube` turns the key cells into unit cells, so exact match's `===` and approximate match's number check skip them; looking up "5" in a USD column answers #N/A. Decide what unit the typed needle is read in (the column's display unit, most likely), then compare magnitudes.
-
 ## Formula library
 - [ ] **Own the formula library instead of leaning on Formula.js** (author 2026-10-21, to weigh): the tsrs sweep found Formula.js recursing to stack overflows (FACT, COMBIN), dividing factorials (`COMBIN(30, 15)` off), looping once per period or order (DB, DDB, BESSEL*), throwing on plain arguments (CLEAN(5)) and mutating its first list argument; each is now an override in `tree/specs/computation/formulajs-divergences.md`. Options: fork it, publish Solenoid's own JS function set, or export one package from Solenoid (the TS kernels, the divergence tripwires as its tests, and the Rust core's ports as a sibling crate). Weigh against [[C17]] shareImpl and what a public package must keep stable.
 
