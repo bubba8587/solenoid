@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use crate::error_value::SolError;
-use crate::excel_formula::Ast;
+use crate::excel_formula::{Ast, BinOp, UnaryOp};
 use crate::finance_units::{finance_dim, finance_money};
 use crate::unit_value::{unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
 
@@ -253,16 +253,16 @@ fn call_dim(name: &str, args: &[DimResult]) -> DimResult {
 fn const_num(node: &Ast) -> Option<f64> {
     match node {
         Ast::Num(_, v) => Some(*v),
-        Ast::Unary { op, arg } => const_num(arg).map(|v| if *op == '-' { -v } else { v }),
+        Ast::Unary { op, arg } => const_num(arg).map(|v| if *op == UnaryOp::Neg { -v } else { v }),
         Ast::Bin { op, l, r } => {
             let (l, r) = (const_num(l)?, const_num(r)?);
-            match op.as_str() {
-                "+" => Some(l + r),
-                "-" => Some(l - r),
-                "*" => Some(l * r),
-                "/" => (r != 0.0).then(|| l / r),
-                "^" => Some(crate::excel_functions::js_pow(l, r)),
-                _ => None,
+            match op {
+                BinOp::Add => Some(l + r),
+                BinOp::Sub => Some(l - r),
+                BinOp::Mul => Some(l * r),
+                BinOp::Div => (r != 0.0).then(|| l / r),
+                BinOp::Pow => Some(crate::excel_functions::js_pow(l, r)),
+                BinOp::Concat | BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => None,
             }
         }
         _ => None,
@@ -380,13 +380,13 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
             let rv = op_eval(r, env, codes);
             let l = l?;
             let rv = rv?;
-            match op.as_str() {
-                "*" | "/" => {
+            match op {
+                BinOp::Mul | BinOp::Div => {
                     let (Some(l), Some(r)) = (l, rv) else { return Ok(None) };
                     if let Some(e) = clash(&l, &r) {
                         return Err(e);
                     }
-                    let rd = if op == "*" { dim_mul(&l.dim, &r.dim) } else { dim_div(&l.dim, &r.dim) };
+                    let rd = if *op == BinOp::Mul { dim_mul(&l.dim, &r.dim) } else { dim_div(&l.dim, &r.dim) };
                     let truthy = |c: &Option<String>| c.as_ref().filter(|c| !c.is_empty()).cloned();
                     let code = match (truthy(&l.code), truthy(&r.code)) {
                         (Some(c), _) if dim_equal(&rd, &l.dim) => Some(c),
@@ -395,7 +395,7 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                     };
                     Ok(Some(Op { dim: rd, code }))
                 }
-                "+" | "-" => {
+                BinOp::Add | BinOp::Sub => {
                     let (Some(l), Some(r)) = (l, rv) else { return Ok(None) };
                     if let Some(e) = clash(&l, &r) {
                         return Err(e);
@@ -410,17 +410,17 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                     if is_dimensionless(&r.dim) {
                         return Ok(Some(l));
                     }
-                    Err(unit_error(&format!("Can't {} values with different units.", if op == "+" { "add" } else { "subtract" })))
+                    Err(unit_error(&format!("Can't {} values with different units.", if *op == BinOp::Add { "add" } else { "subtract" })))
                 }
-                "^" => {
+                BinOp::Pow => {
                     let Some(l) = l else { return Ok(None) };
                     if let Some(k) = const_num(r) {
                         return plain(dim_pow(&l.dim, k));
                     }
                     if is_dimensionless(&l.dim) { plain(dimless()) } else { Ok(None) }
                 }
-                "&" => plain(dimless()),
-                _ => {
+                BinOp::Concat => plain(dimless()),
+                BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
                     let (Some(l), Some(r)) = (l, rv) else { return plain(dimless()) };
                     if let Some(e) = clash(&l, &r) {
                         return Err(e);
@@ -596,7 +596,7 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
         Ast::WholeCol(n) => Ok(aff(scope.point(n), true)),
         Ast::Unary { op, arg } => {
             let a = aff_eval(arg, scope)?;
-            Ok(if *op == '-' { Aff { w: -a.w, konst: a.konst.map(|k| -k), ..a } } else { a })
+            Ok(if *op == UnaryOp::Neg { Aff { w: -a.w, konst: a.konst.map(|k| -k), ..a } } else { a })
         }
         Ast::Percent(arg) => {
             let a = aff_eval(arg, scope)?;
@@ -611,10 +611,10 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                 (Some(a), Some(b)) => Some(f(a, b)),
                 _ => None,
             };
-            Ok(match op.as_str() {
-                "+" => Aff { w: l.w + r.w, list, konst: both(|a, b| a + b), scaled: l.scaled || r.scaled, bare: false },
-                "-" => Aff { w: l.w - r.w, list, konst: both(|a, b| a - b), scaled: l.scaled || r.scaled, bare: false },
-                "*" => {
+            Ok(match op {
+                BinOp::Add => Aff { w: l.w + r.w, list, konst: both(|a, b| a + b), scaled: l.scaled || r.scaled, bare: false },
+                BinOp::Sub => Aff { w: l.w - r.w, list, konst: both(|a, b| a - b), scaled: l.scaled || r.scaled, bare: false },
+                BinOp::Mul => {
                     if l.w != 0.0 && r.w != 0.0 {
                         return Err(aff_err());
                     }
@@ -628,7 +628,7 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                         Aff { list, konst: both(|a, b| a * b), ..ZERO }
                     }
                 }
-                "/" => {
+                BinOp::Div => {
                     if r.w != 0.0 {
                         return Err(aff_err());
                     }
@@ -645,13 +645,13 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                         Aff { list, konst: k, ..ZERO }
                     }
                 }
-                "^" => {
+                BinOp::Pow => {
                     if l.w != 0.0 || r.w != 0.0 {
                         return Err(aff_err());
                     }
                     aff(0.0, list)
                 }
-                _ => ZERO,
+                BinOp::Concat | BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => ZERO,
             })
         }
         Ast::Call { name, args: nodes } => {

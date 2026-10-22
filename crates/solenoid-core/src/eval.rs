@@ -11,7 +11,7 @@ use crate::error_value::sol_error;
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
 use crate::fxhash::FxHashMap;
-use crate::excel_formula::Ast;
+use crate::excel_formula::{Ast, BinOp, UnaryOp};
 
 pub type Env = FxHashMap<String, V>;
 
@@ -317,9 +317,9 @@ fn format_cx(re: f64, im: f64) -> String {
     if im < 0.0 { format!("{r} - {i}") } else { format!("{r} + {i}") }
 }
 
-fn apply_cx_op(op: &str, a: &V, b: &V) -> V {
+fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
     match op {
-        "&" => {
+        BinOp::Concat => {
             let s = |v: &V| match v {
                 V::Cx(re, im) => format_cx(*re, *im),
                 V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
@@ -328,17 +328,17 @@ fn apply_cx_op(op: &str, a: &V, b: &V) -> V {
             };
             V::Str(Rc::from(s(a) + &s(b)))
         }
-        "=" | "<>" => {
+        BinOp::Eq | BinOp::Ne => {
             let eq = matches!((a, b), (V::Cx(ar, ai), V::Cx(br, bi)) if ar == br && ai == bi);
-            V::Bool(if op == "=" { eq } else { !eq })
+            V::Bool(if op == BinOp::Eq { eq } else { !eq })
         }
-        "<" | ">" | "<=" | ">=" => V::err(sol_error("#TYPE!", "Complex numbers have no order. Compare their IMABS values instead")),
-        _ => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
+        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => V::err(sol_error("#TYPE!", "Complex numbers have no order. Compare their IMABS values instead")),
+        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
     }
 }
 
 /// `applyOp`, with complex and LAMBDA operands caught first.
-fn op2(op: &str, a: &V, b: &V) -> V {
+fn op2(op: BinOp, a: &V, b: &V) -> V {
     if a.is_err() {
         return a.clone();
     }
@@ -594,7 +594,7 @@ impl Eval<'_> {
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg, env);
-                let neg = *op == '-';
+                let neg = *op == UnaryOp::Neg;
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
@@ -628,9 +628,9 @@ impl Eval<'_> {
             Ast::Bin { op, l, r } => {
                 let (l, r) = (self.eval(l, env), self.eval(r, env));
                 if is_arr(&l) || is_arr(&r) {
-                    return map_cells(&[l, r], &mut |x| op2(op, &x[0], &x[1]));
+                    return map_cells(&[l, r], &mut |x| op2(*op, &x[0], &x[1]));
                 }
-                op2(op, &l, &r)
+                op2(*op, &l, &r)
             }
             Ast::Apply { func, args } => {
                 let f = self.eval(func, env);
