@@ -274,8 +274,9 @@ export class ListIndexNode extends ClassicPreset.Node {
     if (want === this.indexAxes) return;
     const departing = ListIndexNode.axisKeys(this.indexAxes);
     const carried = this.literals[want === "position" ? "index" : "position"];
-    this.indexAxes = want;
     queueMicrotask(() => {
+      if (this.indexAxes === want) return;
+      this.indexAxes = want;
       void (async () => {
         await dropInputCables(this.id, departing);
         for (const k of departing) { if (this.inputs[k]) this.removeInput(k); delete this.literals[k]; }

@@ -1,7 +1,8 @@
 // [[C45]], [[C130]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { reconcileFrames } from "../../src/graph/frameVerbs";
-import { solError } from "../../src/graph/errorValue";
+import { solError, isSolError } from "../../src/graph/errorValue";
+import { ReconcileNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";
 
 // Regression tests for two audit findings in reconcileFrames (2026-07-05):
@@ -193,5 +194,55 @@ describe("reconcileFrames — (b) PVM excludes errored/missing price or qty (nev
     expect(p.delta).toBeCloseTo(12, 9);
     expect(p.mix).toBeCloseTo(12, 9); // whole new-row value lands in mix
     expect(p.price + p.volume + p.mix).toBeCloseTo(p.delta, 9);
+  });
+});
+
+describe("the Reconcile card", () => {
+  const mk = (rows: [string | null, number | null, number | null][], extra?: { name: string; values: (string | null)[] }): FrameValue => ({
+    __frame: true,
+    columns: [
+      { name: "id", type: "string", values: rows.map((r) => r[0]) },
+      { name: "price", type: "number", values: rows.map((r) => r[1]) },
+      { name: "qty", type: "number", values: rows.map((r) => r[2]) },
+      ...(extra ? [{ name: extra.name, type: "string" as const, values: extra.values }] : []),
+    ],
+  });
+  const card = (key: string, price = "", qty = "") => {
+    const n = new ReconcileNode();
+    n.stringLiterals = { key, priceColumn: price, qtyColumn: qty };
+    return n;
+  };
+
+  it("reconciles by its key and sums up the rows as text", () => {
+    const before = mk([["a", 10, 2], ["b", 5, 4], ["c", 1, 1]]);
+    const after = mk([["a", 12, 2], ["b", 5, 4], ["d", 3, 3]]);
+    const n = card("id");
+    const out = n.data({ left: [before], right: [after] });
+    expect(out.summary).toBe("**1** added · **1** removed · **1** changed · **1** unchanged");
+    expect(n.cachedResult).toBe(out.frame);
+  });
+
+  it("breaks the change into price, volume and mix when it names both columns", () => {
+    const before = mk([["a", 10, 2], ["b", 5, 4], ["x", 2.5, 3]]);
+    const after = mk([["a", 12.25, 2], ["b", 5, 5], ["y", 1234.5, 1000]]);
+    const out = card("id", "price", "qty").data({ left: [before], right: [after] });
+    expect(out.summary).toContain("**Δ +");
+    const blank = card(" id ", " price ", " qty ").data({ left: [mk([["a", 10, 2], ["b", null, 1]])], right: [mk([["a", 9, 3], ["b", 4, 1]])] });
+    expect(blank.summary).toContain("_PVM excludes 1 row with blank or errored price or qty._");
+  });
+
+  it("names the columns only one side has, and counts a keyless row as skipped", () => {
+    const before = mk([["a", 1, 1], [null, 2, 2]], { name: "old", values: ["p", "q"] });
+    const after = mk([["a", 1, 1]], { name: "new", values: ["r"] });
+    const out = card("id").data({ left: [before], right: [after] });
+    expect(out.summary).toContain("**1** skipped");
+    expect(out.summary).toContain("_Columns: +new · −old._");
+  });
+
+  it("answers an error for a key column the frames lack, and blank without a key or a frame", () => {
+    const f = mk([["a", 1, 1]]);
+    expect(isSolError(card("nope").data({ left: [f], right: [f] }).frame)).toBe(true);
+    expect(card("").data({ left: [f], right: [f] }).frame).toBeNull();
+    expect(card("id").data({ left: [f], right: [null] }).frame).toBeNull();
   });
 });

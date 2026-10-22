@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
 import { setting } from "../inputRoles";
-import { type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import { worldClockRows, worldClockFrame } from "../timeZone";
 import { callCore } from "../coreValues";
@@ -131,9 +131,17 @@ export class DateTimeValueNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
+    const fn = this.op === "date" ? "DATEVALUE" : "TIMEVALUE";
+    const raw = readInput<unknown>(inputs.text, this.stringLiterals.text ?? "");
+    if (Array.isArray(raw)) {
+      const e = solError("#VALUE!", `${fn} reads one text, not a list`);
+      this.cachedResult = e;
+      return { result: e };
+    }
+    if (isSolError(raw)) { this.cachedResult = raw; return { result: raw }; }
+    const text = String(raw ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
-    const result = callCore(this.op === "date" ? "DATEVALUE" : "TIMEVALUE", [text]) as number | SolError;
+    const result = callCore(fn, [text]) as number | SolError;
     this.cachedResult = result;
     return { result };
   }

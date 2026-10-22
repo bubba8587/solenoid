@@ -2166,6 +2166,15 @@ function summarizeReconcile(s: ReconcileSummary): string {
 
 // ─── BUILD FRAME ───────────────────────────────────────────────────────────────
 
+/** What a builder card's frame was last built from. Identity-stable memo: a fresh FrameValue each pass would
+ *  re-upload the frame to the backend. */
+const builtFrom = new WeakMap<object, readonly unknown[]>();
+
+function sameBuild(node: object, sig: readonly unknown[]): boolean {
+  const prev = builtFrom.get(node);
+  return !!prev && prev.length === sig.length && prev.every((v, i) => Object.is(v, sig[i]));
+}
+
 export class BuildFrameNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = {};
@@ -2180,19 +2189,13 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  // Identity-stable memo: a fresh FrameValue each pass would re-upload the frame to the backend.
-  private _builtFromMatrix: unknown;
-  private _builtFromHeaders: unknown;
-  private _builtFromType: unknown;
-
   data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
     const rawMatrix = inputs.matrix?.[0];
     const headers = inputs.headers?.[0];
     // Part of the memo key: a cable retyped between date and number must rebuild.
     const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
-    if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders && dt === this._builtFromType) {
-      return { frame: this.cachedResult };
-    }
+    const sig = [rawMatrix, headers, dt];
+    if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
     const m = toAnyMatrix(rawMatrix);
     if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
     const known = colTypeForSocket(dt);
@@ -2200,9 +2203,7 @@ export class BuildFrameNode extends ClassicPreset.Node {
     const typed = !(known === "number" || allNumeric);
     this.cachedResult = buildFrameOnCore(m, headers, typed, known)
       ?? (typed ? buildFrameTyped(m, headers, known) : buildFrame(m as number[][], headers));
-    this._builtFromMatrix = rawMatrix;
-    this._builtFromHeaders = headers;
-    this._builtFromType = dt;
+    builtFrom.set(this, sig);
     return { frame: this.cachedResult };
   }
 }
@@ -2234,9 +2235,6 @@ export class FrameFromListsNode extends ClassicPreset.Node {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Name", "Values"];
   width = 220; height = 240;
-
-  // Identity-stable memo: a fresh FrameValue each pass would re-upload the frame to the backend.
-  private _sig: unknown[] = [];
 
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("FrameFromLists");
@@ -2296,20 +2294,18 @@ export class FrameFromListsNode extends ClassicPreset.Node {
       if (wired === undefined || wired === null) continue;
       const cells = Array.isArray(wired) ? wired : [wired];
       const nameRaw = readInput(inputs[nameK] as string[] | undefined, this.stringLiterals[nameK] ?? "");
-      if (nameRaw === null) { this.cachedResult = null; this._sig = []; return { frame: null }; }
+      if (nameRaw === null) { this.cachedResult = null; builtFrom.delete(this); return { frame: null }; }
       const name = String(nameRaw).trim();
       const sock = this.inputs[valsK]?.socket;
       const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
       cols.push({ name, cells, known });
       sig.push(name, wired, known);
     }
-    if (cols.length === 0) { this.cachedResult = null; this._sig = []; return { frame: null }; }
-    if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
-      return { frame: this.cachedResult };
-    }
+    if (cols.length === 0) { this.cachedResult = null; builtFrom.delete(this); return { frame: null }; }
+    if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
     this.cachedResult = frameOnCore("frameFromLists", [], [cols.map((c) => c.name), cols.map((c) => c.cells), cols.map((c) => c.known)])
       ?? frameFromLists(cols);
-    this._sig = sig;
+    builtFrom.set(this, sig);
     return { frame: this.cachedResult };
   }
 }
