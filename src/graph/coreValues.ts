@@ -5,7 +5,7 @@
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
-import { isUnitCell, displayScale, displayOffset, type UnitCell } from "./unitValue";
+import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync } from "./engineWasm";
@@ -53,7 +53,8 @@ export function coreValue(v: unknown, units = false): unknown {
   if (v === undefined) return { __undef: 1 };
   if (typeof v === "string") return wellFormed(v) ? v : undefined;
   if (units && isUnitCell(v)) {
-    const shown = v.display ? { scale: wireCell(displayScale(v.display)), offset: wireCell(displayOffset(v.display)) } : {};
+    const udim = v.display ? displayDim(v.display) : null;
+    const shown = v.display ? { scale: wireCell(displayScale(v.display)), offset: wireCell(displayOffset(v.display)), udim: udim && Object.fromEntries(Object.entries(udim).map(([k, x]) => [k, wireCell(x)])) } : {};
     return { __unit: { value: wireCell(v.value), dim: v.dim, ...(v.display === undefined ? {} : { display: v.display }), ...(v.ratio ? { ratio: true } : {}), ...shown } };
   }
   if (Array.isArray(v)) {
@@ -150,6 +151,20 @@ export function evaluateOnCore(src: string, env: Record<string, unknown>): { val
   }
   syncExternalNames();
   return readReply(wasmInvokeSync<unknown>("engine_eval", { src, env: wire, clock: engineClock() }));
+}
+
+/** Expression's unit wrapper over its read inputs on the core ([[C25]] firstClassUnits, `unit_expression.rs`), or null
+ *  where the wasm engine is off, a value can't cross, or the core leaves it to the TS. */
+export function expressionUnitsOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
+  const wire: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(env)) {
+    const w = coreValue(v, true);
+    if (w === undefined) return null;
+    wire[k] = w;
+  }
+  syncExternalNames();
+  return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, clock: engineClock() }));
 }
 
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what

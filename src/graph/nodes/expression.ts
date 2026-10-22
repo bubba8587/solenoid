@@ -10,6 +10,7 @@ import { isCx } from "../cxValue";
 import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf, readInDeclaredUnit } from "../unitBridge";
 import { formulaDim, formulaAffineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { expressionUnitsOnCore } from "../coreValues";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
@@ -28,6 +29,8 @@ function tagResult(v: unknown): unknown {
   }
   return guard(v, true);
 }
+
+const hasUnitCell = (v: unknown): boolean => isUnitCell(v) || (Array.isArray(v) && v.some(hasUnitCell));
 
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
@@ -205,6 +208,12 @@ export class ExpressionNode extends ClassicPreset.Node {
           this.cachedResult = rawEnv[v]; this.cachedError = null;
           return { result: rawEnv[v] };
         }
+      }
+      const core = this.varNames.some((v) => hasUnitCell(rawEnv[v])) ? expressionUnitsOnCore(this.expr, rawEnv) : null;
+      if (core) {
+        this.cachedResult = core.value; this.cachedError = null;
+        reconcileResultRank(this, core.value);
+        return { result: core.value };
       }
       let dr: Dim | null = null;
       let shown: { id: string; unit: Unit; k: number | null; point: 0 | 1 | null } | null = null;
