@@ -31,6 +31,8 @@ import { amortizationFrame } from "../../src/graph/nodes/finance";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
+import { ReduceLambdaNode, ByAxisNode, resolveFn } from "../../src/graph/nodes/tableLambda";
+import { toAnyMatrix } from "../../src/graph/nodes/coerce";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 import { frozen, FREEZING, enc } from "./coreFixtures";
@@ -1250,9 +1252,94 @@ describe("Expression's unit wrapper answers as frozen", () => {
   });
 });
 
+type FoldCase = { kind: "reduce" | "row" | "col"; src: string; m: unknown; initial?: unknown; wrapped: boolean; want: unknown };
+
+/** REDUCE, BYROW and BYCOL over values with a unit ([[C25]] firstClassUnits, unit-flow § LAMBDA hosts): the cells strip
+ *  to the display unit they share (else base SI), the fold runs, and the result is tagged with the formula's dimension,
+ *  frozen from the nodes' `data()` over generated tables. */
+const foldUnits = frozen<FoldCase>("fold-units", () => {
+  const cases: FoldCase[] = [];
+  const rand = mulberry32(9595);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const extra = [unitCell(1000, { length: 1 }, "km"), unitCell(2000, { length: 1 }, "km"), unitCell(283.15, { temperature: 1 }, "degC"),
+    unitCell(303.15, { temperature: 1 }, "degC"), unitCell(10, { currency: 1 }, "eur"), unitCell(3600, { time: 1 }, "km"),
+    unitCell(0.5, { length: 1 }, "custom"), unitCell(4, { length: 1 }, ""), unitCell(1e-9, { length: 1 }, "km"), unitCell(0.1 + 0.2, { length: 1 }, "ft")];
+  const plain = [1, 2, -3, 0.5, 0, 10, null, "x", "", true, NaN, solError("#N/A", "gone")];
+  const family = () => pick([...UNIT_FAMILIES, extra, extra, [extra[0], extra[1]], [extra[2], extra[3]]]);
+  const REDUCE = ["acc + value", "MAX(acc, value)", "MIN(acc, value)", "acc * value", "acc + value * 2", "acc + 1", "acc - value",
+    "IF(value > acc, value, acc)", "acc + value^2", "SQRT(acc^2 + value^2)", "acc + step", "COUNT(value) + acc", "value", "acc",
+    "ROUND(acc + value, 1)", "(acc + value) / 2", "acc & value", "LET(s, acc + value, s * 2)", "acc / value", "ABS(value) + acc",
+    "MAX(acc, value) + 1", "value - acc", "AVERAGE(acc, value)", "acc + nope", "acc +", "acc * 0 + value", "LAMBDA(x, x)"];
+  const BY = ["SUM(values)", "AVERAGE(values)", "MAX(values)", "MIN(values)", "COUNT(values)", "SUM(values) + 1", "SUM(values)^2",
+    "MAX(values) - MIN(values)", "STDEV(values)", "SUM(values * values)", "INDEX(values, 1)", "PRODUCT(values)", "MEDIAN(values)",
+    "SQRT(SUMSQ(values))", "COUNTA(values)", "SUM(values) / COUNT(values)", "values", "MAP(values, LAMBDA(v, v * 2))", "ROWS(values)",
+    'SUM(values) & "x"', "SUM(values) * 2", "AVERAGE(values) + 5", "SUM(values) / 2", "1 / SUM(values)", "SUM(values) + bad", "SUM(",
+    "MAX(values) * MIN(values)", "IF(SUM(values) > 0, MAX(values), 0)"];
+  for (let i = 0; i < 5000; i++) {
+    const fam = family();
+    const mode = rand();
+    const cell = () => (mode < 0.08 ? pick(plain) : rand() < 0.85 ? pick(fam) : rand() < 0.85 ? pick(plain) : pick(family()));
+    const r = rand();
+    const w = 1 + Math.floor(rand() * 3);
+    const m: unknown = r < 0.05 ? cell() : r < 0.1 ? [] : r < 0.55 ? Array.from({ length: 1 + Math.floor(rand() * 5) }, cell)
+      : Array.from({ length: 1 + Math.floor(rand() * 4) }, () => Array.from({ length: w }, cell));
+    const kind = pick(["reduce", "reduce", "row", "col"] as const);
+    const src = kind === "reduce" ? pick(REDUCE) : pick(BY);
+    let initial: unknown;
+    let want: unknown;
+    let wrapped: boolean;
+    const mat = toAnyMatrix(m);
+    if (kind === "reduce") {
+      const rr = rand();
+      initial = rr < 0.4 ? undefined : rr < 0.7 ? pick(fam) : rr < 0.8 ? pick(family()) : pick([0, 1, -5, null, "a", 100, [1, 2]]);
+      const node = new ReduceLambdaNode({ expr: src });
+      wrapped = resolveFn(undefined, src, "acc + value", ["acc", "value", "step"], 3, true).fn !== null && mat !== null;
+      try { want = unitData(node.data({ table: [structuredClone(m)], ...(initial === undefined ? {} : { initial: [structuredClone(initial)] }) }).result); }
+      catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    } else {
+      const node = new ByAxisNode({ expr: src, op: kind });
+      wrapped = resolveFn(undefined, src, "SUM(values)", ["values"], 1, true).fn !== null && mat !== null && mat.length > 0;
+      try { want = unitData(node.data({ table: [structuredClone(m)] }).result); }
+      catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    }
+    cases.push({ kind, src, m, ...(initial === undefined ? {} : { initial }), wrapped, want });
+  }
+  return cases;
+});
+
+describe("REDUCE, BYROW and BYCOL over values with a unit answer as frozen", () => {
+  it(`${foldUnits.length} folds`, () => {
+    const bad: unknown[] = [];
+    let ran = 0;
+    for (const c of foldUnits) {
+      if (!c.wrapped) continue;
+      const r = readReply(wasmInvokeSync<unknown>("engine_fold_units", { kind: c.kind, src: c.src, m: coreValue(toAnyMatrix(c.m), true),
+        initial: c.initial === undefined ? 0 : coreValue(c.initial, true), clock: engineClock() }));
+      if (!r) continue;
+      ran++;
+      const got = unitData(r.value);
+      if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ kind: c.kind, src: c.src, m: c.m, initial: c.initial, got, want: c.want });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(enc(b))).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+    checkBails("fold units", foldUnits.filter((c) => c.wrapped).length - ran);
+  });
+  it("through the nodes' data()", () => {
+    const bad: unknown[] = [];
+    for (const c of foldUnits) {
+      const node = c.kind === "reduce" ? new ReduceLambdaNode({ expr: c.src }) : new ByAxisNode({ expr: c.src, op: c.kind });
+      const inputs = { table: [structuredClone(c.m)], ...(c.initial === undefined ? {} : { initial: [structuredClone(c.initial)] }) };
+      let got: unknown;
+      try { got = unitData(node.data(inputs).result); } catch (e) { got = { thrown: String((e as Error).message ?? e) }; }
+      if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ kind: c.kind, src: c.src, m: c.m, got, want: c.want });
+    }
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length + unitFilters.length + expressionUnits.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length + unitFilters.length + expressionUnits.length + foldUnits.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.
