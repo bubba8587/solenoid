@@ -1,5 +1,6 @@
 // [[B11]]
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { parseChartOptions, serializeChartOptions, chartBuilderKeys, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
@@ -7,10 +8,10 @@ import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
 export { histogram2d, type Histogram2d } from "./visualOps";
 import { isChartValue, recordNumberText } from "../chartValue";
-import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
+import { sourceAsXY } from "./xyPlot";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
+  ContourPayload, WaterfallPayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
   RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload, ChartRef,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
@@ -52,20 +53,8 @@ export class SparklineNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
-    const raw = inputs.values?.[0] ?? null;
-    this.cachedResult = raw;
-    const cells = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : null));
-    const signed = this.op === "winloss" ? cells.map((n) => (n === null ? null : Math.sign(n))) : cells;
-    const chart: ChartValue = {
-      __chart: true,
-      op: this.op === "winloss" ? "column" : this.op,
-      values: signed.filter((n): n is number => n !== null),
-      series: [{ name: this.label || "Sparkline", values: signed }],
-      options: this.chartOptions,
-      title: this.label || "Sparkline",
-    };
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
@@ -135,94 +124,9 @@ export class ChartNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: unknown[]; references?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
-    const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
-    const raw0 = inputs.values?.[0] ?? null;
-    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
-    const raw = isSolError(flat) ? null : flat;
-    this.cachedLabels = null;
-    this.cachedSeries = null;
-    this.cachedPayload = null;
-    this.cachedError = null;
-    const refs = readChartRefs(inputs.references?.[0]);
-    this.cachedRefs = refs.length ? refs : null;
-    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(optStr);
-    let v: number | number[] | null = null;
-    if (XY_CHART_OPS.has(this.op)) {
-      const xy = buildXY(this.op as XYOp, raw, this.chartOptions);
-      if (isSolError(xy)) {
-        this.cachedResult = null;
-        this.cachedError = xy;
-        return { chart: xy };
-      }
-      this.cachedPayload = xy;
-      v = xy ? (xy.series[0].points.map((p) => p?.y ?? null) as unknown as number[]) : null;
-      const explicit = this.op === "bubble" || this.chartOptions.x !== undefined;
-      if (xy && explicit && this.chartOptions.xlabel === undefined && xy.names.x) this.chartOptions.xlabel = xy.names.x;
-      if (xy && (explicit || this.chartOptions.y !== undefined) && this.chartOptions.ylabel === undefined && xy.names.y) this.chartOptions.ylabel = xy.names.y;
-    } else if (isFrameValue(raw) && raw.columns.length > 0) {
-      const cols = raw.columns;
-      const asNums = (col: FrameColumn) => col.values.map(num);
-      if (this.op === "radar" && cols.length >= 2) {
-        const labelCol = cols[0];
-        const numCols = cols.slice(1).filter((c) => c.type === "number");
-        this.cachedLabels = numCols.map((c) => c.name);
-        const series = labelCol.values.map((cell, r) => ({
-          name: String(formatFrameCell(labelCol.type, cell) ?? `Row ${r + 1}`),
-          values: numCols.map((c) => num(c.values[r])),
-        }));
-        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        this.cachedSeries = series.length >= 2 ? series : null;
-      } else if (cols.length >= 2) {
-        this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
-        const series = cols.slice(1).filter((c) => c.type === "number").map((c) => ({ name: c.name, values: asNums(c) }));
-        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        this.cachedSeries = series.length >= 2 ? series : null;
-      } else {
-        v = asNums(cols[0]) as unknown as number[];
-      }
-    } else if (Array.isArray(raw)) {
-      v = raw.map(num) as unknown as number[];
-    } else if (typeof raw === "number") {
-      v = num(raw);
-    }
-    this.cachedResult = v;
-    const chart: ChartValue = {
-      __chart: true,
-      op: this.op,
-      values: this.cachedResult,
-      series: this.cachedSeries ?? undefined,
-      labels: this.cachedLabels ?? undefined,
-      payload: this.cachedPayload ?? undefined,
-      options: this.chartOptions,
-      title: this.chartOptions.title || this.label || "Chart",
-      ...(this.cachedRefs ? { refs: this.cachedRefs } : {}),
-    };
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
-}
-
-/** A References table's rows as chart references, its columns found by name (`x`, `x2`, `y`, `y2`, `label`, `color`,
- *  any case). A row with neither an `x` nor a `y` is skipped; an `x` is a number, a date serial or a category label. */
-export function readChartRefs(f: unknown): ChartRef[] {
-  if (!isFrameValue(f)) return [];
-  const col = (name: string) => f.columns.find((c) => c.name.trim().toLowerCase() === name);
-  const cx = col("x"), cx2 = col("x2"), cy = col("y"), cy2 = col("y2"), cl = col("label"), cc = col("color");
-  const n = (c: unknown) => (typeof c === "number" && Number.isFinite(c) ? c : undefined);
-  const nx = (c: unknown) => n(c) ?? (typeof c === "string" && c.trim() !== "" ? c.trim() : undefined);
-  const t = (c: unknown) => (typeof c === "string" && c.trim() !== "" ? c.trim() : undefined);
-  const out: ChartRef[] = [];
-  for (let r = 0; r < (f.columns[0]?.values.length ?? 0); r++) {
-    const ref: ChartRef = {
-      x: cx && nx(cx.values[r]), x2: cx2 && nx(cx2.values[r]), y: cy && n(cy.values[r]), y2: cy2 && n(cy2.values[r]),
-      label: cl && t(cl.values[r]), color: cc && t(cc.values[r]),
-    };
-    if (ref.x === undefined && ref.x2 === undefined && ref.y === undefined && ref.y2 === undefined) continue;
-    out.push(Object.fromEntries(Object.entries(ref).filter(([, v]) => v !== undefined)) as ChartRef);
-  }
-  return out;
 }
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
@@ -513,15 +417,8 @@ export class MermaidNode extends ClassicPreset.Node {
     this.addOutput("diagram", chartOut("Diagram"));
   }
 
-  data(inputs: { source?: string[] }): { diagram: MermaidValue } {
-    const src = readInput(inputs.source, this.stringLiterals.source ?? "") ?? "";
-    this.cachedSource = src;
-    const diagram: MermaidValue = {
-      __mermaid: true,
-      source: src,
-      title: this.label || "Diagram",
-    };
-    return { diagram };
+  data(inputs: Record<string, unknown[] | undefined>): { diagram: MermaidValue } {
+    return nodeOnCore(this, inputs) as { diagram: MermaidValue };
   }
 }
 
@@ -578,29 +475,16 @@ export class GaugeNode extends ClassicPreset.Node {
     }
   }
 
-  data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = readInput(inputs.value, this.literals.value ?? null);
-    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
-    let payload: ScalePayload;
-    let title: string;
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
+    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
+    if (inputs.value?.[0] === undefined) this.literals.value ??= 0;
     if (this.mode === "bar") {
-      const target = readInput(inputs.target, this.literals.target ?? null);
-      const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
-      if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
-      if (inputs.max?.[0] === undefined) this.literals.max = max;
-      this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-      payload = { kind: "scale", style: "bar", value, target, min: 0, max };
-      title = this.chartOptions.title || this.label || "Gauge";
-    } else {
-      this.chartOptions = {};
-      payload = { kind: "scale", style: "dial", value, target: null, min: 0, max: 1 };
-      title = this.label || "Gauge";
+      if (inputs.target?.[0] === undefined) this.literals.target ??= 0;
+      if (inputs.max?.[0] === undefined) this.literals.max ??= 100;
     }
-    this.cachedPayload = payload;
-    return { chart: { __chart: true, op: "scale", values: value, payload, options: this.chartOptions, title } };
+    return out;
   }
 }
-
 
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 
@@ -1073,32 +957,8 @@ export class CandlestickNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError | null }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    if (cols.length === 0) { this.cachedChart = null; return { chart: null }; }
-    if (cols.length < 4) {
-      const err = solError("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
-      this.cachedChart = err;
-      return { chart: err };
-    }
-    const hasDates = cols.length >= 5;
-    const o = colAsNumbers(cols[hasDates ? 1 : 0]);
-    const labels = hasDates ? colAsStrings(cols[0]) : o.map((_, i) => String(i + 1));
-    const payload: CandlePayload = {
-      kind: "candle",
-      labels,
-      open:  o,
-      high:  colAsNumbers(cols[hasDates ? 2 : 1]),
-      low:   colAsNumbers(cols[hasDates ? 3 : 2]),
-      close: colAsNumbers(cols[hasDates ? 4 : 3]),
-    };
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const chart: ChartValue = {
-      __chart: true, op: "candle", values: knownOnly(payload.close), payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError | null };
   }
 }
 
