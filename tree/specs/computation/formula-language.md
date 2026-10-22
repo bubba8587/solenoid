@@ -510,7 +510,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[B16]] oneFormulaSurface) and `POWER(0, -1)` is `#DIV/0!`.
 - **LOG2** of x at or below 0 is `#DOMAIN!`, as LN's is ([[D70]] nullNotEnoughData). **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
-- **CONVERT** runs the unit system on the Convert node's unit keys ([[formulajs-divergences]]).
+- **CONVERT** runs the unit system on the Convert node's units, by Excel code or unit id ([[formulajs-divergences]]).
 
 ### Text
 
@@ -947,7 +947,7 @@ FITDIST and the Fit Distribution node share these, in the spirit of `scipy.stats
 
 ### Unit conversion (`nodes/convertUnits.ts`)
 
-`CONVERT_UNIT_DEFS` is the Convert node's unit table, keyed by the dropdown's unit key, with each unit's label, Excel code and category (angle, length, mass, temperature, time, area, volume, speed, energy, pressure). Every factor is relative to its category's local base unit (radian, meter, gram, second, square meter, liter, m/s, joule, pascal), and a unit's SI scale is that factor times the base's SI scale (`CATEGORY_DIM`: 0.001 for the gram and the liter, 1 otherwise). Temperature is affine: `toBase` and `fromBase` work in Celsius, while the `dim` unit, which the conversion actually runs through, works in kelvin with an offset. `convertValue(x, from, to)` converts through `dimension.convert`, and answers null for an unknown key or units of different dimensions, which CONVERT reports as `#N/A`.
+`CONVERT_UNIT_DEFS` is the Convert node's unit table, keyed by the dropdown's unit id (the Format Controller's id wherever the FC lists the same unit, so `kmh`, `degC`, `L`), with each unit's label, Excel code and category (angle, length, mass, temperature, time, area, volume, speed, energy, pressure). Every factor is relative to its category's local base unit (radian, meter, gram, second, square meter, liter, m/s, joule, pascal), and a unit's SI scale is that factor times the base's SI scale (`CATEGORY_DIM`: 0.001 for the gram and the liter, 1 otherwise). Temperature is affine: `toBase` and `fromBase` work in Celsius, while the `dim` unit, which the conversion actually runs through, works in kelvin with an offset. `convertValue(x, from, to)` converts through `dimension.convert`, and answers null for an unknown key or units of different dimensions, which CONVERT reports as `#N/A`.
 
 ### Index access (`nodes/indexAccess.ts`)
 

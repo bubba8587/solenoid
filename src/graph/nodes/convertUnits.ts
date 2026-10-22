@@ -72,14 +72,14 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   kg:    mkUnit("Kilograms",    "kg",    "mass",   1000),
   mg:    mkUnit("Milligrams",   "mg",    "mass",   0.001),
   lb:    mkUnit("Pounds",       "lbm",   "mass",   453.59237),
-  oz_m:  mkUnit("Ounces",       "ozm",   "mass",   28.349523125),
+  oz:    mkUnit("Ounces",       "ozm",   "mass",   28.349523125),
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
   // Temperature is affine: toBase and fromBase work in Celsius, while `dim` works in kelvin for dimConvert.
-  C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
-  F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
-  K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
+  degC: { label: "Celsius", excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
+  degF: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
+  K:    { label: "Kelvin", excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
 
   // Time (base: second)
   s:   mkUnit("Seconds", "sec", "time", 1),
@@ -98,11 +98,11 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   yd2:  mkUnit("Sq. yards",       "yd2",     "area", 0.83612736),
   mi2:  mkUnit("Sq. miles",       "mi2",     "area", 2589988.110336),
   ha:   mkUnit("Hectares",        "ha",      "area", 10000),
-  acre: mkUnit("Acres",           "uk_acre", "area", 4046.8564224),
+  ac:   mkUnit("Acres",           "uk_acre", "area", 4046.8564224),
 
   // Volume (base: liter)
-  l:    mkUnit("Liters",        "l",   "volume", 1),
-  ml:   mkUnit("Milliliters",   "ml",  "volume", 0.001),
+  L:    mkUnit("Liters",        "l",   "volume", 1),
+  mL:   mkUnit("Milliliters",   "ml",  "volume", 0.001),
   tsp:  mkUnit("Teaspoons",     "tsp", "volume", 0.00492892159375),
   tbs:  mkUnit("Tablespoons",   "tbs", "volume", 0.01478676478125),
   cup:  mkUnit("Cups",          "cup", "volume", 0.2365882365),
@@ -113,8 +113,8 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   m3:   mkUnit("Cubic meters",  "m3",  "volume", 1000),
 
   // Speed (base: m/s)
-  m_s:  mkUnit("m/s",    "m/s", "speed", 1),
-  km_h: mkUnit("km/h",   "m/h", "speed", 1 / 3.6),
+  ms1:  mkUnit("m/s",    "m/s", "speed", 1),
+  kmh:  mkUnit("km/h",   "km/h", "speed", 1 / 3.6),
   mph:  mkUnit("mph",    "mph", "speed", 0.44704),
   knot: mkUnit("Knots",  "kn",  "speed", 0.514444),
 
@@ -136,9 +136,17 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   mmHg: mkUnit("mmHg",          "mmHg", "pressure", 133.322387415),
 };
 
+// Own keys only: "toString" or "__proto__" would otherwise read Object.prototype's members as units.
+const own = (k: string) => (Object.prototype.hasOwnProperty.call(CONVERT_UNIT_DEFS, k) ? CONVERT_UNIT_DEFS[k] : undefined);
+
+const BY_EXCEL_CODE = new Map(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [d.excelCode, id]));
+
+/** The CONVERT formula's unit argument: an Excel code ("C", "lbm", "oz" the fluid ounce), or else one of Convert's ids. */
+export function convertUnitKey(code: string): string | null {
+  return BY_EXCEL_CODE.get(code) ?? (own(code) ? code : null);
+}
+
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
-  // Own keys only: "toString" or "__proto__" would otherwise read Object.prototype's members as units.
-  const own = (k: string) => (Object.prototype.hasOwnProperty.call(CONVERT_UNIT_DEFS, k) ? CONVERT_UNIT_DEFS[k] : undefined);
   const from = own(fromKey);
   const to   = own(toKey);
   if (!from || !to) return null;
