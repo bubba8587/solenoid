@@ -4,7 +4,7 @@
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
-use super::{err, list, Answer, Call};
+use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::excel_functions::V;
 use crate::unit_dims::{dim_equal, is_dimensionless};
 use crate::unit_value::unit_error;
@@ -22,6 +22,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "SwitchNode" => switch(c),
         "IfsNode" => ifs(c),
         "IsEvenOddNode" => is_even_odd(c),
+        "IFErrorNode" => if_error(c),
+        "IsTestNode" => is_test(c),
         _ => return None,
     })
 }
@@ -109,7 +111,7 @@ fn typed_literal(c: &Call, key: &str) -> V {
 }
 
 /// `pickSlot`: a connected cable wins even carrying null.
-fn pick_slot(c: &Call, key: &str) -> V {
+pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
     match c.wired(key) {
         Some([first, ..]) => first.clone(),
         _ => match typed_literal(c, key) {
@@ -360,4 +362,138 @@ fn is_even_odd(c: &mut Call) -> Answer {
         broadcast_el(&[input], |o| if matches!(o[0], V::Null) { V::Null } else { core_call(name, &[o[0].clone()]) })
     };
     answer(c, "result", result)
+}
+
+// ─── IFERROR, IS.TEST ([[B17]] typedValueModel) ──────────────────────────────────────────────────────────────────────
+
+fn is_na(v: &V) -> bool {
+    matches!(v, V::Err(e) if e.code == "#N/A")
+}
+
+fn if_error(c: &mut Call) -> Answer {
+    let lit = |c: &Call, k: &str, dflt: V| match c.literal(k) {
+        V::Undef => dflt,
+        v => v,
+    };
+    let value = wired_or(c, "value", lit(c, "value", V::Null));
+    let fallback = wired_or(c, "fallback", lit(c, "fallback", V::Num(0.0)));
+    let na_only = c.field_str("op", "iferror") == "ifna";
+    let caught = |v: &V| if na_only { is_na(v) } else { v.is_sol_error() };
+    let r = replace_caught(&value, &fallback, &caught, None);
+    c.show("cachedResult", r.clone());
+    Ok(vec![("result".into(), r)])
+}
+
+/// `fitsColumn`: whether a fallback can sit in a column of this type without blending families.
+fn fits_column(fallback: &V, ty: Option<&str>) -> bool {
+    let Some(ty) = ty else { return true };
+    match fallback {
+        V::Null | V::Undef => true,
+        f if f.is_sol_error() => true,
+        V::Num(_) | V::Unit(_) => ty == "number" || ty == "date",
+        V::Str(_) => ty == "string",
+        V::Bool(_) => ty == "logical",
+        _ => false,
+    }
+}
+
+/// `replaceCaught`: each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
+/// where a fallback that doesn't suit its column is that cell's `#TYPE!`.
+fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Option<&str>) -> V {
+    match value {
+        V::List(items) => list(
+            items
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    let f = match fallback {
+                        V::List(fs) => fs.get(i).cloned().unwrap_or(V::Undef),
+                        f => f.clone(),
+                    };
+                    replace_caught(v, &f, caught, ty)
+                })
+                .collect(),
+        ),
+        V::Frame(_) | V::Cube(_) => {
+            if matches!(fallback, V::List(_) | V::Frame(_) | V::Cube(_)) {
+                return err("#VALUE!", "Over a Frame or Cube the fallback is one value, used for every caught cell");
+            }
+            let cell_for = |cell: &V, name: &str, ty: Option<&str>| match cell {
+                V::Frame(_) | V::Cube(_) | V::List(_) => replace_caught(cell, fallback, caught, ty),
+                x if !caught(x) => x.clone(),
+                _ if fits_column(fallback, ty) => fallback.clone(),
+                _ => err("#TYPE!", format!("The fallback doesn't fit column \"{name}\", which holds {} values", ty.unwrap_or("undefined"))),
+            };
+            match value {
+                V::Frame(f) => V::Frame(Rc::new(Frame {
+                    columns: f
+                        .columns
+                        .iter()
+                        .map(|col| Column { raw: None, values: col.values.iter().map(|v| cell_for(v, &col.name, Some(&col.ty))).collect(), ..col.clone() })
+                        .collect(),
+                    total_rows: None,
+                    approx: None,
+                })),
+                V::Cube(q) => V::Cube(Rc::new(Cube {
+                    columns: q.columns.iter().map(|col| CubeColumn { cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty.as_deref())).collect(), ..col.clone() }).collect(),
+                })),
+                _ => unreachable!(),
+            }
+        }
+        v if !caught(v) => v.clone(),
+        _ if fits_column(fallback, ty) => fallback.clone(),
+        _ => err("#TYPE!", format!("The fallback doesn't fit this column, which holds {} values", ty.unwrap_or("undefined"))),
+    }
+}
+
+fn is_test(c: &mut Call) -> Answer {
+    let op = c.field_str("op", "isnumber").to_string();
+    let done = |c: &mut Call, seen: V, r: V| {
+        c.show("seenError", seen);
+        c.show("cachedResult", r.clone());
+        Ok(vec![("result".into(), r)])
+    };
+    let input = match c.wired("value") {
+        Some([first, ..]) if !matches!(first, V::Undef) => first.clone(),
+        _ => return done(c, V::Null, V::Null),
+    };
+    if input.is_sol_error() {
+        let hit = match op.as_str() {
+            "iserror" => true,
+            "iserr" => !is_na(&input),
+            "isna" => is_na(&input),
+            _ => false,
+        };
+        return done(c, input, V::Bool(hit));
+    }
+    // A Frame is read row by row, each row its cells across the columns.
+    let value = match &input {
+        V::Frame(f) => {
+            let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
+            list((0..rows).map(|i| list(f.columns.iter().map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef))).collect())).collect())
+        }
+        v => v.clone(),
+    };
+    if op == "isblank" {
+        return done(c, V::Null, V::Bool(matches!(input, V::Null)));
+    }
+    let test = |x: &V| match op.as_str() {
+        "isnull" => matches!(x, V::Null),
+        "istext" => matches!(x, V::Str(_)),
+        "isnontext" => !matches!(x, V::Str(_)),
+        "isnumber" => matches!(x, V::Num(n) if n.is_finite()),
+        "islogical" => matches!(x, V::Bool(_)),
+        "iserror" => x.is_sol_error(),
+        "iserr" => x.is_sol_error() && !is_na(x),
+        "isna" => is_na(x),
+        _ => false,
+    };
+    fn deep(v: &V, test: &dyn Fn(&V) -> bool) -> V {
+        match v {
+            V::List(items) => list(items.iter().map(|x| deep(x, test)).collect()),
+            x => V::Bool(test(x)),
+        }
+    }
+    let r = deep(&value, &test);
+    done(c, V::Null, r)
 }

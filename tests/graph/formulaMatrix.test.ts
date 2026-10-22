@@ -7,7 +7,7 @@ import {
 } from "../../src/graph/nodes/matrix";
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { InterpolateNode } from "../../src/graph/nodes/stats";
-import { setCells } from "../../src/graph/nodes/matrixOps";
+import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
@@ -366,9 +366,16 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   });
 });
 
-// Set Cell has no formula (a variadic matrix writer has no clean signature) — the kernel
-// is exercised directly. Node-level unit carry + wired-blank roles live in the node test.
-describe("setCells kernel (Set Cell)", () => {
+// Set Cell has no formula (a variadic matrix writer has no clean signature), so the card is driven with one
+// Value/Row/Column triple per write. Unit carry + wired-blank roles live in the node test.
+function setCells(m: unknown[][], writes: { r: unknown; c: unknown; v: unknown }[]): unknown {
+  const node = new SetCellNode({ valueKeys: writes.map((_, i) => `value${i}`) });
+  const inputs: Record<string, unknown[]> = { matrix: [m] };
+  writes.forEach((w, i) => { inputs[`value${i}`] = [w.v]; inputs[`row${i}`] = [w.r]; inputs[`col${i}`] = [w.c]; });
+  return node.data(inputs).result;
+}
+
+describe("Set Cell", () => {
   const m = (): (number | null)[][] => [[1, 2], [3, 4]];
 
   it("applies writes in row order — a later write wins on the same address", () => {
@@ -388,7 +395,7 @@ describe("setCells kernel (Set Cell)", () => {
     const badRow = setCells(m(), [{ r: Number("abc"), c: 1, v: 0 }]);
     expect((badRow as SolError).code).toBe("#VALUE!");
     expect((badRow as SolError).message).toBe("Row must be a number");
-    const badCol = setCells(m(), [{ r: 1, c: "x" as unknown as number, v: 0 }]);
+    const badCol = setCells(m(), [{ r: 1, c: "x", v: 0 }]);
     expect((badCol as SolError).code).toBe("#VALUE!");
     expect((badCol as SolError).message).toBe("Column must be a number");
   });

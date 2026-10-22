@@ -1,20 +1,17 @@
 // [[C58]], [[C48]], [[B11]]
 import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
-import { chooseAxis, setCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
-import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput, readRole } from "./shared";
+import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";
+import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn } from "./shared";
 import { rolesFrom } from "../inputRoles";
-import { pickSlot, pairIdsFromKeys } from "./logic";
+import { pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
-import { toAnyMatrix, type Cell } from "./coerce";
+import type { Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
-import { isSolError, type SolError } from "../errorValue";
-import { isFrameValue, frameRowCount, coerceFrameCell, type FrameValue } from "../frame";
+import type { SolError } from "../errorValue";
+import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 import { isFrameRef, collectPreview } from "../frameBackend";
-import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit, isUnitCell } from "../unitValue";
-import { applyFcUnit } from "../unitBridge";
-import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
 import { callCore } from "../coreValues";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -54,10 +51,6 @@ export function rawCellsToText(cells: string[][]): string {
   return lines.length > 0 && lines[lines.length - 1] === "" ? text + "\n" : text;
 }
 
-export function deriveTable(cells: string[][], dt: TableElemType): CellMat {
-  return cells.map((row) => row.map((c) => coerceFrameCell(dt, c) as Cell));
-}
-
 export class TableInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CellMat | null = null;
@@ -87,15 +80,8 @@ export class TableInputNode extends ClassicPreset.Node {
     return true;
   }
 
-  data() {
-    const cells = this.rawCells();
-    let result = cells.length ? deriveTable(cells, this.dataType) : null;
-    // applyFcUnit tags a copy of the outer array; the cells stay bare.
-    if (result && this.dataType === "number" && this.unit !== "none") {
-      result = applyFcUnit(result, this.unit) as CellMat;
-    }
-    this.cachedResult = result;
-    return { table: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { table: CellMat | null };
   }
 }
 
@@ -249,24 +235,12 @@ export class TableTransposeNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Transposed"));
   }
 
-  data(inputs: { matrix?: unknown[] }) {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    this.cachedResult = m ? carryMatrixUnit(callCore("TRANSPOSE", [m]) as CellMat, m) : null;
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
 // ─── HSTACK / VSTACK — the 2-D rungs of the append ladder ([[C48]] appendLadder) ───────────────
-
-/** A matrix carries one whole-grid unit tag, never per-cell UnitCells, so reduce a widened list row to bare magnitudes plus their shared unit. */
-function demoteUnitCells(m: CellMat): CellMat {
-  if (!m.some((row) => row.some(isUnitCell))) return m;
-  const { mags, unit } = matrixCellsFromList(m.flat());
-  const bare: CellMat = [];
-  let i = 0;
-  for (const row of m) { bare.push(mags.slice(i, i + row.length) as Cell[]); i += row.length; }
-  return withMatrixUnit(bare, unit);
-}
 
 export type StackOp = "vstack" | "hstack";
 
@@ -276,7 +250,7 @@ export const STACK_OP_META = {
 } satisfies Record<StackOp, { label: string; description: string }>;
 
 export class StackNode extends ClassicPreset.Node {
-  /** Receives UnitCell tags so demoteUnitCells can lift a dimensioned list row to a grid unit. */
+  /** Receives UnitCell tags, so a dimensioned list row lifts to a grid unit. */
   unitAware = true;
   label: string;
   op: StackOp;
@@ -317,20 +291,8 @@ export class StackNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
-  private matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
-    return this.valueInputKeys()
-      .map((k) => toAnyMatrix(inputs[k]?.[0]))
-      .filter((m): m is CellMat => !!m && m.length > 0)
-      .map(demoteUnitCells);
-  }
-
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
-    const mats = this.matsOf(inputs);
-    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const out = callCore(this.op === "vstack" ? "VSTACK" : "HSTACK", mats) as CellMat;
-    withMatrixUnit(out, sharedMatrixUnit(mats));
-    this.cachedResult = out;
-    return { result: out };
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
@@ -409,35 +371,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
     return { outputChanged: spec.socket !== before };
   }
 
-  data(inputs: { list?: unknown[]; wrapCount?: number[]; fill?: unknown[]; matrix?: unknown[] }) {
-    this.cachedList = null;
-    this.cachedMatrix = null;
-    if (this.op === "wraprows" || this.op === "wrapcols") {
-      const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const wRaw = readRole<number | SolError | null>(this, "wrapCount", inputs.wrapCount);
-      if (isSolError(wRaw)) return { result: wRaw };
-      if (!raw) return { result: null };
-      const { mags: list, unit } = matrixCellsFromList(raw);
-      // A blank count is no count, and Fill unwired or blank pads with Excel's #N/A.
-      const mat = callCore(this.op === "wraprows" ? "WRAPROWS" : "WRAPCOLS", [list, wRaw ?? 0, inputs.fill?.[0] ?? null]) as CellMat | SolError;
-      if (isSolError(mat)) return { result: mat };
-      withMatrixUnit(mat, unit);
-      this.cachedMatrix = mat;
-      return { result: mat };
-    } else if (this.op === "tocol") {
-      const m = toAnyMatrix(inputs.matrix?.[0]);
-      if (!m) return { result: null };
-      const col = callCore("TOCOL", [m, SKIP_BY_CODE.indexOf(this.skipCells), this.scanBy === "col"]) as CellMat;
-      withMatrixUnit(col, matrixUnitOf(m));
-      this.cachedMatrix = col;
-      return { result: col };
-    } else {
-      const m = toAnyMatrix(inputs.matrix?.[0]);
-      if (!m) return { result: null };
-      const row = callCore("TOROW", [m, SKIP_BY_CODE.indexOf(this.skipCells), this.scanBy === "col"]) as Cell[];
-      this.cachedList = taggedListFromMatrix(row, matrixUnitOf(m)) as Cell[];
-      return { result: this.cachedList };
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellMat | Cell[] | SolError | null };
   }
 }
 
@@ -471,18 +406,8 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Result"));
   }
 
-  data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m) { this.cachedResult = null; return { result: null }; }
-    const idx = readRole<number[] | number | SolError>(this, "indices", inputs.indices);
-    if (isSolError(idx)) { this.cachedResult = idx; return { result: idx }; }
-    const list = Array.isArray(idx) ? idx : [idx];
-    // The formula reads a blank index as 0 and an empty table as one empty row, each naming its error differently.
-    const picked = m.length > 0 && list.every((i) => typeof i === "number")
-      ? callCore(this.op === "chooserows" ? "CHOOSEROWS" : "CHOOSECOLS", [m, list]) as CellMat | SolError
-      : chooseAxis(m, list, this.op === "chooserows" ? "row" : "column");
-    this.cachedResult = isSolError(picked) ? picked : carryMatrixUnit(picked, m);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
@@ -519,21 +444,8 @@ export class TakeDropNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveDataOut("Result"));
   }
 
-  data(inputs: { data?: unknown[]; rows?: number[]; cols?: number[] }): { result: unknown } {
-    const raw = inputs.data?.[0];
-    if (raw == null) { this.cachedResult = null; return { result: null }; }
-    const rRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
-    const cRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
-    const nRows = Math.round(rRaw);
-    const nCols = Math.round(cRaw);
-    // [[D85]] columnsStayColumns: a list is one row, so its items are columns; a list comes back as a list.
-    const isTable = Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
-    // The card's 0 keeps the axis whole, which the formula says with a blank count.
-    const count = (n: number) => (this.op === "take" && n === 0 ? null : n);
-    const cut = callCore(this.op === "take" ? "TAKE" : "DROP", [raw, count(nRows), count(nCols)]);
-    const result = isTable && Array.isArray(cut) ? carryMatrixUnit(cut, raw) : cut;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -561,15 +473,8 @@ export class ExpandNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveTableOut("Expanded"));
   }
 
-  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const reqRRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
-    const reqCRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
-    const fill = (inputs.fill?.[0] ?? null) as Cell;
-    const result = callCore("EXPAND", [m, Math.round(reqRRaw), Math.round(reqCRaw), fill]) as CellMat | SolError;
-    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 
@@ -631,19 +536,7 @@ export class SetCellNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const writes: { r: number; c: number; v: Cell | Cell[] | Cell[][] }[] = [];
-    for (const [valueKey, rowKey, colKey] of this.valuePairKeys()) {
-      const r = readInput(inputs[rowKey], this.literals[rowKey] ?? null);
-      const c = readInput(inputs[colKey], this.literals[colKey] ?? null);
-      if (r === null || c === null) { this.cachedResult = null; return { result: null }; }
-      const v = pickSlot(this, inputs, valueKey) as Cell | Cell[] | Cell[][];
-      writes.push({ r: r as number, c: c as number, v });
-    }
-    const result = setCells(m, writes);
-    this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);
-    return { result: this.cachedResult };
+    return nodeOnCore(this, inputs) as { result: CellMat | SolError | null };
   }
 }
 

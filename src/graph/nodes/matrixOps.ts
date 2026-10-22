@@ -1,7 +1,5 @@
 // [[C17]], [[C48]] appendLadder
 import { solError, isSolError, type SolError } from "../errorValue";
-import { indexRefError } from "./indexAccess";
-import type { Cell } from "./coerce";
 import { MAX_GENERATED } from "./listOps";
 
 /** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
@@ -186,33 +184,6 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
     const row: T[] = [];
     for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
     out.push(row);
-  }
-  return out;
-}
-
-export function setCells(
-  m: Cell[][],
-  writes: ReadonlyArray<{ r: number; c: number; v: Cell | Cell[] | Cell[][] }>,
-): Cell[][] | SolError {
-  const rows = matRows(m), cols = matCols(m);
-  const out: Cell[][] = Array.from({ length: rows }, (_, i) =>
-    Array.from({ length: cols }, (_, j) => (j < (m[i]?.length ?? 0) ? m[i][j] : null)));
-  for (const w of writes) {
-    const r = Math.round(w.r), c = Math.round(w.c);
-    if (!Number.isFinite(r)) return solError("#VALUE!", "Row must be a number");
-    if (!Number.isFinite(c)) return solError("#VALUE!", "Column must be a number");
-    const block: Cell[][] = Array.isArray(w.v)
-      ? (w.v.length === 0 ? [] : Array.isArray(w.v[0]) ? (w.v as Cell[][]) : [w.v as Cell[]])
-      : [[w.v]];
-    const h = block.length;
-    const wdt = block.reduce((w, row) => Math.max(w, row.length), 0);
-    if (r < 1 || r > rows) return indexRefError(r, rows, "Row");
-    if (c < 1 || c > cols) return indexRefError(c, cols, "Column");
-    if (r + h - 1 > rows) return indexRefError(r + h - 1, rows, "Row");
-    if (c + wdt - 1 > cols) return indexRefError(c + wdt - 1, cols, "Column");
-    for (let i = 0; i < h; i++)
-      for (let j = 0; j < block[i].length; j++)
-        out[r - 1 + i][c - 1 + j] = block[i][j];
   }
   return out;
 }

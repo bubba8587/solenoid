@@ -573,6 +573,15 @@ fn literal_items(csv: &str) -> Vec<String> {
 /// `parseCsvLine`: the first row Papa Parse reads from the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
+    csv_rows(text).into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+}
+
+/// `parseCsvRows(text, { keepBlankLines: true })`: every row Papa Parse reads, a blank line among them, the final
+/// newline a terminator.
+pub(crate) fn csv_rows(text: &str) -> Vec<Vec<String>> {
+    if text.is_empty() {
+        return Vec::new();
+    }
     let t = text.replace("\r\n", "\n").replace('\r', "\n");
     let s: Vec<char> = t.chars().collect();
     let n = s.len();
@@ -631,7 +640,7 @@ fn csv_line(text: &str) -> Vec<String> {
             }
         }
     }
-    rows.into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+    rows
 }
 
 /// `coerceLogical` as a cell: a boolean, blank, or NaN.
@@ -644,7 +653,7 @@ fn logical_cell(v: &FrameCell) -> V {
 }
 
 /// `coerceFrameCell`: typed text read as a cell of the list's type ([[D93]] oneTextReading).
-fn frame_cell_of(ty: &str, raw: &str) -> V {
+pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
     }
@@ -1232,7 +1241,7 @@ fn tally(c: &mut Call) -> Answer {
 }
 
 /// `Number(v)`.
-fn js_number(v: &V) -> f64 {
+pub(crate) fn js_number(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Null => 0.0,
