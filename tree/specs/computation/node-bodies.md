@@ -53,7 +53,9 @@ The core is required: the app's first render waits for it with no deadline (`mai
 - `node scripts/freeze-nodes.mjs [Class …]` folds the calls into `fixtures/core/nodes/<Class>.json.gz`: deduplicated,
   at most 2,500 a class, a call holding a value that can't cross counted in `.dev/node-freeze-report.json` and not
   kept. A call whose answer differed between two identical calls (a random draw, the clock) is kept marked
-  `unstable` and not checked. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
+  `unstable` and not checked. A call whose body threw a JS exception freezes as its text (`thrownJs`) and is checked
+  as the error the error guard shows for it (`fromThrown`: `#SHAPE!` for a `ShapeError`, else `#ERROR!` "This node
+  failed to compute: …"), which is what the card answered. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
 - A class is frozen while its TypeScript body exists; once it is deleted, its fixture changes only on purpose, in the
   commit that changes the behaviour.
 
@@ -79,3 +81,4 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Finance | Bitwise, Depreciation, NPV, IRR, MIRR, FVSCHEDULE, ISPMT, DOLLAR, Discount Security, Coupon, Accrued Interest, Payment Breakdown, Duration, Bond Pricing, Returns | `nodes/finance.rs` |
 | Lists | 37 list cards, Aggregate, XMATCH and Series among them | `nodes/list.rs` |
 | Tables | MDETERM and kin, Table Mult, Table Unit, Diag, Outer, Solve, Eigen, MAP over a table, BYROW/BYCOL, REDUCE, MAKEARRAY | `nodes/matrix.rs` |
+| Figures | Sparkline, Chart, Mermaid, Gauge, Candlestick, Merge Plots, Histogram, KPI, Proportion, Sankey, Heatmap, Surface, Waterfall, Boxplot, Calendar Heatmap, Vector Field, Chart Builder | `nodes/visual.rs` |
