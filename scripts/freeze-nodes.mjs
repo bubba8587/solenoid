@@ -64,7 +64,8 @@ for (const [kind, k] of [...byKind].sort()) {
   fs.mkdirSync(OUT, { recursive: true });
   // Socket and input order is the card's (a row's place is its meaning), so they freeze as lists of pairs.
   const frozen = cases.map(({ kind: _k, unstable: u, sockets, outputs, inputs, ...c }) => ({
-    ...c, sockets: Object.entries(sockets).map(([k, [t, l]]) => [k, t, l]), outputs: Object.entries(outputs), inputs: Object.entries(inputs),
+    ...c, sockets: Object.entries(sockets).map(([k, row]) => [k, ...row]),
+    outputs: Object.entries(outputs).map(([k, row]) => [k, ...(Array.isArray(row) ? row : [row])]), inputs: Object.entries(inputs),
     ...(u ? { unstable: true } : {}),
   }));
   fs.writeFileSync(path.join(OUT, `${kind}.json.gz`), zlib.gzipSync(JSON.stringify(frozen), { level: 9 }));

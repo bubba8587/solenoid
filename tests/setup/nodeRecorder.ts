@@ -22,7 +22,7 @@ const app = process.env.FREEZE_NODES ? {
   ...(await import("../../src/graph/settingsStore")),
   ...(await import("../../src/graph/errorValue")),
 } : null;
-const { ClassicPreset: Classic, ctorRegistry, coreInit, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
+const { ClassicPreset: Classic, ctorRegistry, coreInit, adopted, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
 
 const DIR = path.resolve(__dirname, "../../.dev/node-calls");
 const ONLY = process.env.FREEZE_NODES === "1" ? null : new Set((process.env.FREEZE_NODES ?? "").split(","));
@@ -125,10 +125,10 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     }
     if (JSON.stringify(x).length <= 4000) prior[k] = x;
   }
-  const sockets: Record<string, [string | null, string]> = {};
-  for (const [k, input] of Object.entries(node.inputs)) sockets[k] = [declaredTypeOf(input?.socket) ?? null, input?.label ?? k];
-  const outputs: Record<string, string | null> = {};
-  for (const [k, output] of Object.entries(node.outputs)) outputs[k] = declaredTypeOf(output?.socket) ?? null;
+  const sockets: Record<string, (string | null)[]> = {};
+  for (const [k, input] of Object.entries(node.inputs)) sockets[k] = [declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)];
+  const outputs: Record<string, (string | null)[]> = {};
+  for (const [k, output] of Object.entries(node.outputs)) outputs[k] = [declaredTypeOf(output?.socket) ?? null, ...adopted(output?.socket)];
   // What a save holds: the init and the two literal maps.
   const json = (v: unknown): unknown => {
     try { return JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === "number" && !Number.isFinite(x) ? { __nf: Number.isNaN(x) ? "nan" : x > 0 ? "inf" : "-inf" } : x))); }
