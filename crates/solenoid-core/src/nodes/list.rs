@@ -54,6 +54,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "OutliersNode" => outliers(c),
         "TallyNode" => tally(c),
         "GroupListsNode" => group_lists(c),
+        "FindPeaksNode" => find_peaks(c),
         _ => return None,
     })
 }
@@ -573,6 +574,15 @@ fn literal_items(csv: &str) -> Vec<String> {
 /// `parseCsvLine`: the first row Papa Parse reads from the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
+    csv_rows(text).into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+}
+
+/// `parseCsvRows(text, { keepBlankLines: true })`: every row Papa Parse reads, a blank line among them, the final
+/// newline a terminator.
+pub(crate) fn csv_rows(text: &str) -> Vec<Vec<String>> {
+    if text.is_empty() {
+        return Vec::new();
+    }
     let t = text.replace("\r\n", "\n").replace('\r', "\n");
     let s: Vec<char> = t.chars().collect();
     let n = s.len();
@@ -631,7 +641,7 @@ fn csv_line(text: &str) -> Vec<String> {
             }
         }
     }
-    rows.into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+    rows
 }
 
 /// `coerceLogical` as a cell: a boolean, blank, or NaN.
@@ -644,7 +654,7 @@ fn logical_cell(v: &FrameCell) -> V {
 }
 
 /// `coerceFrameCell`: typed text read as a cell of the list's type ([[D93]] oneTextReading).
-fn frame_cell_of(ty: &str, raw: &str) -> V {
+pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
     }
@@ -1232,7 +1242,7 @@ fn tally(c: &mut Call) -> Answer {
 }
 
 /// `Number(v)`.
-fn js_number(v: &V) -> f64 {
+pub(crate) fn js_number(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Null => 0.0,
@@ -1287,5 +1297,31 @@ fn group_lists(c: &mut Call) -> Answer {
         })
         .collect();
     let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);
+    shown(c, "cachedResult", "result", frame)
+}
+
+/// FINDPEAKS's positions, beside each peak's own cell.
+fn find_peaks(c: &mut Call) -> Answer {
+    let arr = slot(c, "list");
+    if nullish(&arr) {
+        return shown(c, "cachedResult", "result", V::Null);
+    }
+    let opt = |c: &Call, k: &str| match super::text::setting(c, k, V::Undef) {
+        V::Num(n) if n.is_nan() => V::Undef,
+        v => v,
+    };
+    let args = [arr.clone(), opt(c, "height"), opt(c, "distance"), opt(c, "prominence")];
+    let V::List(positions) = core_call("FINDPEAKS", &args) else {
+        return Err(err("#ERROR!", "This node failed to compute: positions.map is not a function"));
+    };
+    let height = positions
+        .iter()
+        .map(|p| match (&arr, p) {
+            (V::List(items), V::Num(n)) if *n >= 1.0 && n.fract() == 0.0 => items.get(*n as usize - 1).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        })
+        .collect();
+    let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
+    let frame = V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     shown(c, "cachedResult", "result", frame)
 }

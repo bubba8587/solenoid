@@ -3,16 +3,9 @@ import { ClassicPreset } from "rete";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, keepInputLast } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
-import { isSolError, isNaError, solError, type SolError } from "../errorValue";
-import { isMissing, type Tri } from "../valueKinds";
-import { isUnitCell } from "../unitValue";
+import { solError, type SolError } from "../errorValue";
+import type { Tri } from "../valueKinds";
 import { nodeOnCore } from "../nodeOnCore";
-import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type FrameColType } from "../frame";
-
-function frameCells(f: FrameValue): unknown[][] {
-  const rows = frameRowCount(f);
-  return Array.from({ length: rows }, (_, i) => f.columns.map((c) => c.values[i] ?? null));
-}
 
 type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
 
@@ -288,56 +281,9 @@ export class IFErrorNode extends ClassicPreset.Node {
     this.addOutput("result",  trueAnyOut("Result"));
   }
 
-  data(inputs: { value?: unknown[]; fallback?: unknown[] }) {
-    // Test connection presence, not `?? literal`, which would hide a wired blank behind the literal.
-    const rawValue = inputs.value && inputs.value.length ? inputs.value[0] : (this.literals.value ?? null);
-    const fallback = inputs.fallback && inputs.fallback.length ? inputs.fallback[0] : (this.literals.fallback ?? 0);
-    // Errors reach this node raw because it is an error consumer.
-    const caught = (v: unknown): boolean =>
-      this.op === "iferror" ? isSolError(v) : isNaError(v);
-    const result = replaceCaught(rawValue, fallback, caught);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
-}
-
-/** Whether a fallback can sit in a column of this type without blending families ([[B17]] typedValueModel). */
-function fitsColumn(fallback: unknown, type: FrameColType | undefined): boolean {
-  if (fallback == null || isSolError(fallback) || type === undefined) return true;
-  if (typeof fallback === "number" || isUnitCell(fallback)) return type === "number" || type === "date";
-  if (typeof fallback === "string") return type === "string";
-  if (typeof fallback === "boolean") return type === "logical";
-  return false;
-}
-
-/** Each caught cell becomes the fallback: in a list item by item, in a Frame or Cube cell by cell, where a fallback
- *  that doesn't suit its column's type is that cell's #TYPE! instead. */
-function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) => boolean, type?: FrameColType): unknown {
-  if (Array.isArray(value)) {
-    return value.map((v, i) => replaceCaught(v, Array.isArray(fallback) ? fallback[i] : fallback, caught, type));
-  }
-  if (isFrameValue(value) || isCubeValue(value)) {
-    if (Array.isArray(fallback) || isFrameValue(fallback) || isCubeValue(fallback)) {
-      return solError("#VALUE!", "Over a Frame or Cube the fallback is one value, used for every caught cell");
-    }
-    const cellFor = (cell: unknown, colName: string, colType: FrameColType | undefined): unknown => {
-      if (isFrameValue(cell) || isCubeValue(cell) || Array.isArray(cell)) return replaceCaught(cell, fallback, caught, colType);
-      if (!caught(cell)) return cell;
-      return fitsColumn(fallback, colType)
-        ? fallback
-        : solError("#TYPE!", `The fallback doesn't fit column "${colName}", which holds ${colType} values`);
-    };
-    if (isFrameValue(value)) {
-      const frame: FrameValue = {
-        __frame: true,
-        columns: value.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: c.values.map((v) => cellFor(v, c.name, c.type)) as typeof c.values })),
-      };
-      return frame;
-    }
-    return { ...value, columns: value.columns.map((c) => ({ ...c, cells: c.cells.map((v) => cellFor(v, c.name, c.type)) as typeof c.cells })) };
-  }
-  if (!caught(value)) return value;
-  return fitsColumn(fallback, type) ? fallback : solError("#TYPE!", `The fallback doesn't fit this column, which holds ${type} values`);
 }
 
 // ─── IS.TEST ──────────────────────────────────────────────────────────────────
@@ -356,10 +302,6 @@ export const IS_TEST_OP_META = {
   istext:    { label: "ISTEXT",    description: "`TRUE` when the value is text. Excel: `ISTEXT`." },
   isnontext: { label: "ISNONTEXT", description: "`TRUE` when the value is anything but text. Excel: `ISNONTEXT`." },
 } satisfies Record<IsTestOp, { label: string; description: string }>;
-
-function toLogical(r: number | number[] | null): boolean | boolean[] | null {
-  return r === null ? null : Array.isArray(r) ? r.map((n) => n === 1) : r === 1;
-}
 
 export class IsTestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -383,50 +325,8 @@ export class IsTestNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { value?: unknown[] }) {
-    const raw = inputs.value?.[0];
-    if (raw === undefined) { this.seenError = null; this.cachedResult = null; return { result: null }; }
-    const input = raw;
-    let result: number | number[] | null = null;
-    this.seenError = isSolError(input) ? input : null;
-    if (isSolError(input)) {
-      result =
-        this.op === "iserror" ? 1 :
-        this.op === "iserr"   ? (isNaError(input) ? 0 : 1) :
-        this.op === "isna"    ? (isNaError(input) ? 1 : 0) :
-        0;
-      this.cachedResult = toLogical(result);
-      return { result: this.cachedResult };
-    }
-    // A Frame is not an array, so flatten it or the per-cell maps below test it as one cell.
-    const value = isFrameValue(input) ? frameCells(input) : input;
-    if (this.op === "isnull") {
-      const deepNull = (v: unknown): unknown => (Array.isArray(v) ? v.map(deepNull) : isMissing(v));
-      this.cachedResult = deepNull(value) as boolean | boolean[] | boolean[][] | null;
-      return { result: this.cachedResult };
-    }
-    if (this.op === "isblank") {
-      // ISBLANK tests the whole input as one cell; per-cell missing is ISNULL's job.
-      this.cachedResult = input === null;
-      return { result: this.cachedResult };
-    }
-    const test = (x: unknown): boolean => {
-      switch (this.op) {
-        case "istext":    return typeof x === "string";
-        case "isnontext": return typeof x !== "string";
-        case "isnumber":  return typeof x === "number" && Number.isFinite(x);
-        // A pure type test: only a real boolean passes, so the IS checks partition by type with no overlap.
-        case "islogical": return typeof x === "boolean";
-        case "iserror":   return isSolError(x);
-        case "iserr":     return isSolError(x) && !isNaError(x);
-        case "isna":      return isNaError(x);
-        default:          return false;
-      }
-    };
-    const deepTest = (v: unknown): boolean | boolean[] | boolean[][] =>
-      Array.isArray(v) ? (v.map(deepTest) as boolean[] | boolean[][]) : test(v);
-    this.cachedResult = deepTest(value);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: boolean | boolean[] | boolean[][] | null };
   }
 }
 
