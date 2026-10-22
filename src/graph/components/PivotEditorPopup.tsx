@@ -28,9 +28,10 @@ const REL_TO_OPTIONS = [
 const TYPE_GLYPH = (t: string | undefined): ReactNode =>
   t === "number" || t === "string" || t === "date" || t === "logical" ? <TypeIcon type={t} size={10} /> : "?";
 
-type Zone = "rows" | "cols" | "vals";
+type Zone = "rows" | "cols" | "vals" | "details";
 interface Cfg {
   rows: string[]; cols: string[]; vals: string[];
+  details: string[];
   funcs: Record<string, AggOp>;
   rowTotalDepth: number; colTotalDepth: number; rowSort: number; colSort: number; relativeTo: number;
   exclude: Record<string, string[]>; // field-value filter: field → hidden value keys
@@ -43,6 +44,7 @@ function cfgFromNode(node: PivotNode): Cfg {
     rows: splitNames(node.stringLiterals?.rowFields),
     cols: splitNames(node.stringLiterals?.colFields),
     vals: splitNames(node.stringLiterals?.values),
+    details: [...node.detailFields],
     funcs: { ...node.funcs },
     rowTotalDepth: node.rowTotalDepth, colTotalDepth: node.colTotalDepth,
     rowSort: node.rowSort, colSort: node.colSort, relativeTo: node.relativeTo,
@@ -53,6 +55,7 @@ function writeToNode(node: PivotNode, c: Cfg) {
   node.stringLiterals.rowFields = listLiteralText(c.rows);
   node.stringLiterals.colFields = listLiteralText(c.cols);
   node.stringLiterals.values = listLiteralText(c.vals);
+  node.detailFields = c.details;
   node.funcs = c.funcs;
   node.rowTotalDepth = c.rowTotalDepth; node.colTotalDepth = c.colTotalDepth;
   node.rowSort = c.rowSort; node.colSort = c.colSort; node.relativeTo = c.relativeTo;
@@ -73,7 +76,7 @@ function sortOptions(fields: string[], values: string[]): { value: string; label
 export function PivotEditorPopup() {
   const state = useSyncExternalStore(pivotEditor.subscribe, pivotEditor.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [cfg, setCfg] = useState<Cfg>({ rows: [], cols: [], vals: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: 0, colSort: 0, relativeTo: 0, exclude: {} });
+  const [cfg, setCfg] = useState<Cfg>({ rows: [], cols: [], vals: [], details: [], funcs: {}, rowTotalDepth: 0, colTotalDepth: 0, rowSort: 0, colSort: 0, relativeTo: 0, exclude: {} });
   const initedFor = useRef<typeof state>(null);
   const drag = useRef<{ from: Zone | "fields"; field: string } | null>(null);
   const [dropZone, setDropZone] = useState<Zone | "filters" | null>(null);
@@ -99,18 +102,19 @@ export function PivotEditorPopup() {
     void processGraph(node.id);
     setCfg(next);
   }
-  const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : c.vals);
+  const zoneArr = (c: Cfg, z: Zone) => (z === "rows" ? c.rows : z === "cols" ? c.cols : z === "details" ? c.details : c.vals);
+  const copyZones = (c: Cfg): Cfg => ({ ...c, rows: [...c.rows], cols: [...c.cols], vals: [...c.vals], details: [...c.details], funcs: { ...c.funcs } });
 
   function addField(z: Zone, field: string) {
     if (!field) return;
-    const next: Cfg = { ...cfg, rows: [...cfg.rows], cols: [...cfg.cols], vals: [...cfg.vals], funcs: { ...cfg.funcs } };
+    const next = copyZones(cfg);
     const arr = zoneArr(next, z);
     if (!arr.includes(field)) arr.push(field);
     if (z === "vals" && !(field in next.funcs)) next.funcs[field] = node.agg || "sum";
     commit(next);
   }
   function removeField(z: Zone, field: string) {
-    const next: Cfg = { ...cfg, rows: [...cfg.rows], cols: [...cfg.cols], vals: [...cfg.vals], funcs: { ...cfg.funcs } };
+    const next = copyZones(cfg);
     const arr = zoneArr(next, z);
     const i = arr.indexOf(field);
     if (i >= 0) arr.splice(i, 1);
@@ -152,7 +156,7 @@ export function PivotEditorPopup() {
     setDropZone(null);
     if (!payload) return;
     const { from, field } = payload;
-    const next: Cfg = { ...cfg, rows: [...cfg.rows], cols: [...cfg.cols], vals: [...cfg.vals], funcs: { ...cfg.funcs } };
+    const next = copyZones(cfg);
     if (from !== "fields") {
       const src = zoneArr(next, from);
       const i = src.indexOf(field);
@@ -163,12 +167,12 @@ export function PivotEditorPopup() {
     const without = dst.filter((f) => f !== field);
     const at = insertIdx == null ? without.length : Math.min(insertIdx, without.length);
     without.splice(at, 0, field);
-    if (toZone === "rows") next.rows = without; else if (toZone === "cols") next.cols = without; else next.vals = without;
+    if (toZone === "rows") next.rows = without; else if (toZone === "cols") next.cols = without; else if (toZone === "details") next.details = without; else next.vals = without;
     if (toZone === "vals" && !(next.funcs[field])) next.funcs[field] = node.agg || "sum";
     commit(next);
   }
 
-  const usedSet = new Set([...cfg.rows, ...cfg.cols, ...cfg.vals]);
+  const usedSet = new Set([...cfg.rows, ...cfg.cols, ...cfg.vals, ...cfg.details]);
   const anyPercent = cfg.vals.some((v) => (cfg.funcs[v] ?? node.agg) === "percentof");
 
   // Plain functions returning JSX, NOT inline components: an inline component type is
@@ -219,9 +223,9 @@ export function PivotEditorPopup() {
     </span>
   );
 
-  const renderZone = (z: Zone, title: string) => (
+  const renderZone = (z: Zone, title: string, hint?: string) => (
     <div
-      className={`pivot-zone${dropZone === z ? " pivot-zone--over" : ""}`}
+      className={`pivot-zone pivot-zone--${z}${dropZone === z ? " pivot-zone--over" : ""}`}
       onDragOver={(e) => { e.preventDefault(); if (dropZone !== z) setDropZone(z); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropZone((p) => (p === z ? null : p)); }}
       onDrop={(e) => { e.preventDefault(); applyDrop(z); }}
@@ -229,6 +233,7 @@ export function PivotEditorPopup() {
       <div className="pivot-zone__head"><span className="pivot-zone__title">{title}</span>{addPicker(z)}</div>
       <div className="pivot-zone__chips">
         {z === "vals" ? cfg.vals.map(valueChip) : zoneArr(cfg, z).map((field) => fieldChip(field, z))}
+        {hint && zoneArr(cfg, z).length === 0 && <span className="pivot-zone__hint">{hint}</span>}
       </div>
     </div>
   );
@@ -340,6 +345,8 @@ export function PivotEditorPopup() {
               </div>
             )}
           </div>
+
+          {renderZone("details", "Details", "Columns listed under each row group in the Pivot view. The output stays the same.")}
         </div>
       </div>
 

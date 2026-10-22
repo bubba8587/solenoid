@@ -1114,6 +1114,10 @@ pub struct PivotSpec {
     pub relative_to: Option<f64>,
     #[serde(default)]
     pub filter: Option<Vec<Option<bool>>>,
+    /// The columns the Pivot view lists under each row group ([[C128]] pivotDetails): the layout's leaf rows carry
+    /// their source rows; the output never changes with them.
+    #[serde(default)]
+    pub details: Option<Vec<String>>,
     /// Wire-only: each value field's reading and linear unit scales, as `withUnitScales` lowers an aggregate's.
     #[serde(rename = "valueScales", default)]
     pub value_scales: Option<Vec<ValueScale>>,
@@ -1413,6 +1417,16 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let mut denominators: Vec<FxHashMap<(usize, usize, usize, usize), FrameCell>> = vec![FxHashMap::default(); v_n];
 
     let row_out = expand_axis(&row_leaves, spec.row_total_depth.unwrap_or(0.0), row_cols.len());
+    let details = if row_cols.is_empty() { Vec::new() } else { keep(spec.details.as_deref().unwrap_or(&[])) };
+    for n in &details {
+        require_column(f, n)?;
+    }
+    let mut leaf_sources: FxHashMap<Vec<CellKey>, Vec<usize>> = FxHashMap::default();
+    if !details.is_empty() {
+        for &i in &rows {
+            leaf_sources.entry(row_cols.iter().map(|c| cell_key(c.cell_at(i))).collect()).or_default().push(i);
+        }
+    }
     let col_out = expand_axis(&col_leaves, spec.col_total_depth.unwrap_or(0.0), col_cols.len());
 
     let mut cell_value = |v: usize, rset: &Rc<Vec<usize>>, cset: &Rc<Vec<usize>>| -> Res<FrameCell> {
@@ -1528,16 +1542,35 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     }
 
     let tuple_json = |t: &[FrameCell]| Json::Array(t.iter().map(encode_cell).collect());
-    let layout = json!({
+    let detail_json: Vec<Json> = details
+        .iter()
+        .map(|n| {
+            let c = require_column(f, n)?;
+            Ok(json!({ "name": c.name, "type": c.ty.tag(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
+        })
+        .collect::<Res<_>>()?;
+    let mut layout = json!({
         "rowFields": row_fields,
         "rowTypes": row_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
         "colFields": col_fields,
         "colTypes": col_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
         "values": value_names,
         "funcs": funcs,
-        "rows": row_out.iter().map(|ro| json!({ "kind": ro.kind.tag(), "tuple": tuple_json(&ro.tuple), "fill": ro.fill })).collect::<Vec<_>>(),
+        "rows": row_out
+            .iter()
+            .map(|ro| {
+                let mut r = json!({ "kind": ro.kind.tag(), "tuple": tuple_json(&ro.tuple), "fill": ro.fill });
+                if !details.is_empty() && ro.kind == AxisKind::Leaf {
+                    r["sources"] = json!(leaf_sources.get(&tuple_key(&ro.tuple)).cloned().unwrap_or_default());
+                }
+                r
+            })
+            .collect::<Vec<_>>(),
         "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": v })).collect::<Vec<_>>(),
     });
+    if !detail_json.is_empty() {
+        layout["details"] = Json::Array(detail_json);
+    }
     Ok((frame(out_cols), layout))
 }
 

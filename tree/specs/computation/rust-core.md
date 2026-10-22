@@ -61,12 +61,10 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and the pass-throughs) follow the version
 `package.json` pins: a bump means re-reading them.
 
-Moved on develop since the pin (checked at `3a6a667`): PIVOTBY's `details` (a Details field lists each row group's
-source rows in the view's layout; develop `0a0e31d`, with its UI). Neither the feature nor its TS is on this branch;
-`pivotNeedsOracle` in `frameBackend.ts` already sends a pivot asking for details to the TS. Porting it means bringing
-the commit over and adding `sources` to the leaf rows and the detail columns to `engine_pivot_layout`. Everything else
-develop changed in the files above is mirrored, the finance functions' currency ([[D101]] financeCarriesMoney,
-`finance_units.rs`) last.
+Moved on develop since the pin (checked at `3a6a667`): nothing in the files above that isn't mirrored. The last were
+the finance functions' currency ([[D101]] financeCarriesMoney, `finance_units.rs`) and PIVOTBY's `details` ([[C128]]
+pivotDetails): the core's layout gives each leaf row its source rows and carries the Details columns, whose formats
+the TS lends from the frame the pivot read (`adoptPivot`).
 
 ## What runs on the core
 

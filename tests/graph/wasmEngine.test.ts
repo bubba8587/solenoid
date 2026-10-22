@@ -294,6 +294,7 @@ describe("random pivots: the Rust engine matches the oracle, layout and units in
         ...(rand() < 0.5 ? { colSort: g.int(-5, 5) } : {}),
         ...(rand() < 0.5 ? { relativeTo: g.int(0, 5) } : {}),
         ...(rand() < 0.3 ? { filter: f.columns[0]?.values.map(() => pick([true, false, null])) ?? [] } : {}),
+        ...(rand() < 0.4 ? { details: few().concat(rand() < 0.05 ? ["missing"] : [], rand() < 0.05 ? [" "] : []) } : {}),
       };
       // NaN in a field the pivot sorts by makes JS's comparator inconsistent, where JS engines themselves disagree.
       for (const c of f.columns) if ([...spec.rowFields, ...spec.colFields].includes(c.name)) c.values = c.values.map((v) => (Number.isNaN(v) ? null : v));

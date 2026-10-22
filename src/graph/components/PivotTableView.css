@@ -117,6 +117,31 @@ thead .pivot-view__label--sticky { z-index: 3; }
 }
 .pivot-view__blank { height: 12px; padding: 0; border-bottom-color: transparent; }
 
+/* A group's source rows: a small table that stays at the left edge while the pivot scrolls sideways. */
+.pivot-view__detail {
+  padding: 0;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.pivot-view__detailin {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  padding: 4px 8px 6px 6px;
+}
+.pivot-view__subtable { border-collapse: collapse; font-size: 11px; }
+.pivot-view__subtable th,
+.pivot-view__subtable td {
+  padding: 1px 10px 1px 0;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__subtable th { font-weight: 600; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.pivot-view__subtable .pivot-view__subnum { text-align: right; font-family: var(--font-mono); }
+.pivot-view__subtable th.pivot-view__subnum { font-family: inherit; }
+.pivot-view__subnote { padding-top: 3px; font-size: 11px; color: var(--text-muted); }
+
 .pivot-view__row--header > .pivot-view__label,
 .pivot-view__row--header > .pivot-view__value,
 .pivot-view__row--sub > *,
@@ -147,6 +172,7 @@ thead .pivot-view__label--sticky { z-index: 3; }
   cursor: pointer;
 }
 .pivot-view__fold:hover { color: var(--node-accent, var(--accent)); }
+.pivot-view__fold--detail { color: var(--text-dim); }
 
 @media (pointer: coarse) {
   .pivot-view__fold { width: 22px; height: 22px; }

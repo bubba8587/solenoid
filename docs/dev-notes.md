@@ -58,7 +58,8 @@ specific item.
   ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's
   dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the
   computed-column port and the core didn't; both now do, refrozen with finance calls in the generator. Develop's UI
-  work since the snapshot (charts, the Describe Dashboard, Pele, Pivot details) is not on this branch.
+  work since the snapshot (charts, the Describe Dashboard, Pele) is not on this branch. Pivot details ([[C128]]) came
+  over with their UI and run on the core: its layout gives each leaf row its source rows.
 - **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
   unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
   frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.

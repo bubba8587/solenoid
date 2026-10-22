@@ -406,7 +406,9 @@ function pivotUnits(schema: FrameValue, spec: PivotSpec): { scales: { readingSca
   };
 }
 
-interface PivotWire { layout: unknown; units: (ColumnUnit | undefined)[] }
+/** The engine's layout, the units its body columns take, and the frame it read, whose columns lend their formats to the
+ *  Details columns ([[C128]] pivotDetails). */
+interface PivotWire { layout: unknown; units: (ColumnUnit | undefined)[]; schema: FrameValue | null }
 
 /** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
 function adoptPivot(frame: FrameValue, p: PivotWire): void {
@@ -414,6 +416,12 @@ function adoptPivot(frame: FrameValue, p: PivotWire): void {
   if (!w) return;
   const cells = (items: { tuple: FrameCell[] }[]) => items.map((it) => ({ ...it, tuple: it.tuple.map((x) => decodeWireCell(x) as FrameCell) }));
   const layout: PivotLayout = { ...w, rows: cells(w.rows) as PivotLayout["rows"], cols: cells(w.cols) as PivotLayout["cols"] };
+  if (w.details) {
+    layout.details = w.details.map((d) => {
+      const format = p.schema?.columns.find((c) => c.name === d.name)?.format;
+      return { ...d, values: d.values.map((x) => decodeWireCell(x) as FrameCell), ...(format ? { format } : {}) };
+    });
+  }
   layout.cols.forEach((c, bi) => {
     const col = frame.columns[layout.rowFields.length + bi];
     const unit = p.units[c.value];
@@ -423,14 +431,9 @@ function adoptPivot(frame: FrameValue, p: PivotWire): void {
 }
 
 /** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
-/** A pivot whose layout lists detail columns (develop's `details`, past this branch's pin): the engine's layout
- *  doesn't carry them, so the TS answers. */
-const pivotNeedsOracle = (spec: object): boolean =>
-  ((spec as { details?: readonly string[] }).details ?? []).some((s) => s.trim() !== "");
-
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec) || !crossesWhole(f)) return null;
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !crossesWhole(f)) return null;
     const { scales, units } = pivotUnits(f, spec);
     const src = wasmSourceBin(encodeBinary(f));
     let out: string | undefined;
@@ -438,7 +441,7 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
       out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
       const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
       const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
-      adoptPivot(frame, { layout, units });
+      adoptPivot(frame, { layout, units, schema: f });
       return frame;
     } finally {
       wasmInvokeSync("engine_drop", { handle: src });
@@ -677,14 +680,14 @@ class EngineBackend implements FrameBackend {
   private async rememberPivot(h: FrameHandle, before: FrameValue | null, op: FrameOp | undefined): Promise<void> {
     if (op?.kind !== "pivot") return;
     const layout = await this.invoke<unknown>("engine_pivot_layout", { handle: h });
-    this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [] });
+    this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [], schema: before });
   }
   /** Frames holding an error cell the engine can't store compute here, on the oracle. */
   private oracle = new JsFrameBackend();
 
   /** An op this engine can't run: Polars has no pivot layout and none of the Rust core's cleaning verbs. */
   private needsOracle(op: FrameOp): boolean {
-    if (op.kind === "pivot") return !this.fullCells || pivotNeedsOracle(op);
+    if (op.kind === "pivot") return !this.fullCells;
     return !this.fullCells && RUST_CORE_ONLY.has(op.kind);
   }
 

@@ -12,7 +12,7 @@ import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
 import { frameFormatStore } from "./frameFormatStore";
-import { carryPivotLayout } from "./pivotLayout";
+import { carryFrameSidecars } from "./frameSidecar";
 import type { FrameValue } from "./frame";
 
 export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
@@ -202,7 +202,7 @@ function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {
   });
   if (!changed) return f;
   const out = { ...f, columns };
-  carryPivotLayout(f, out);
+  carryFrameSidecars(f, out);
   return out;
 }
 

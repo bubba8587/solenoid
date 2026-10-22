@@ -1,12 +1,23 @@
 // [[C127]] pivotView
 import { isSolError } from "./errorValue";
-import { frameRowCount, type FrameCell, type FrameColType, type FrameValue } from "./frame";
+import { frameRowCount, type FrameCell, type FrameColType } from "./frame";
 import type { AggOp } from "./frameVerbs";
+import { frameSidecar } from "./frameSidecar";
+import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 
 export type PivotItemKind = "leaf" | "sub" | "grand";
 
 /** One place on an axis: a leaf's whole tuple, a subtotal's prefix (`fill` long), or the grand total. */
-export interface PivotAxisItem { kind: PivotItemKind; tuple: FrameCell[]; fill: number }
+export interface PivotAxisItem {
+  kind: PivotItemKind;
+  tuple: FrameCell[];
+  fill: number;
+  /** A row leaf's source rows, in source order, kept only when the Pivot has Details ([[C128]] pivotDetails). */
+  sources?: number[];
+}
+
+/** A Details column: the source column's own values, which `sources` index. */
+export interface PivotDetailColumn { name: string; type: FrameColType; values: readonly FrameCell[]; format?: FormatAnnotation }
 
 /** How PIVOTBY laid its Frame out: one row item per output row, one column item per value column after the row keys. */
 export interface PivotLayout {
@@ -18,27 +29,14 @@ export interface PivotLayout {
   funcs: AggOp[];
   rows: PivotAxisItem[];
   cols: (PivotAxisItem & { value: number })[];
+  details?: PivotDetailColumn[];
 }
 
-const layouts = new WeakMap<FrameValue, PivotLayout>();
+const layouts = frameSidecar<PivotLayout>((f, l) => l.rows.length === frameRowCount(f) && l.rowFields.length + l.cols.length === f.columns.length);
 
-export function setPivotLayout(f: FrameValue, layout: PivotLayout): void {
-  layouts.set(f, layout);
-}
-
+export const setPivotLayout = layouts.set;
 /** The layout a frame was pivoted with, or null once it no longer has that shape. */
-export function pivotLayoutOf(f: FrameValue): PivotLayout | null {
-  const l = layouts.get(f);
-  if (!l) return null;
-  if (l.rows.length !== frameRowCount(f) || l.rowFields.length + l.cols.length !== f.columns.length) return null;
-  return l;
-}
-
-/** A copy of a pivoted frame (a format stamp) keeps its layout. */
-export function carryPivotLayout(from: FrameValue, to: FrameValue): void {
-  const l = layouts.get(from);
-  if (l && from !== to) layouts.set(to, l);
-}
+export const pivotLayoutOf = layouts.of;
 
 export type PivotForm = "compact" | "outline" | "tabular";
 export type PivotEmpty = "blank" | "zero" | "dash";
@@ -107,15 +105,17 @@ export function groupKey(prefix: readonly FrameCell[]): string {
 export interface PivotLabel { text: string; total?: boolean }
 
 export interface PivotBodyRow {
-  kind: "header" | "leaf" | "sub" | "grand" | "blank";
+  kind: "header" | "leaf" | "sub" | "grand" | "blank" | "detail";
   /** The row-field depth of the row's own label: the compact form's indent. */
   level: number;
   /** One per label column: one in Compact, one per row field otherwise. */
   labels: (PivotLabel | null)[];
   /** The frame row whose values the row shows, or null for empty value cells. */
   src: number | null;
-  /** Fold buttons, each beside the label in its `col`. */
-  folds?: { key: string; collapsed: boolean; col: number }[];
+  /** Fold buttons, each beside the label in its `col`; a `detail` one opens the leaf's source rows. */
+  folds?: { key: string; collapsed: boolean; col: number; detail?: true }[];
+  /** A detail row: the layout row of the leaf whose source rows it lists. */
+  detail?: number;
   /** Leaf-row parity, for banding. */
   band?: number;
   /** The label texts from the outermost field down to this row's own. */
@@ -135,14 +135,17 @@ export interface PivotModel {
   labelCols: number;
   head: PivotHeadCell[][];
   body: PivotBodyRow[];
-  /** Whether any group can fold: there is a subtotal to show in its place. */
+  /** Whether any row has a fold button, so labels leave room for one. */
   foldable: boolean;
 }
 
 type CellText = (field: number, cell: FrameCell) => string;
 
-/** The pivot table drawn from a layout and the view's options; values stay addressed by frame row and column. */
-export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, rowText: CellText, colText: CellText): PivotModel {
+/**
+ * The pivot table drawn from a layout and the view's options; values stay addressed by frame row and column.
+ * `openDetails` holds the leaf groups (`groupKey` of the whole tuple) whose source rows show under them.
+ */
+export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, rowText: CellText, colText: CellText, openDetails: ReadonlySet<string> = new Set()): PivotModel {
   const n = layout.rowFields.length;
   const compact = opts.form === "compact";
   const labelCols = n === 0 ? 0 : compact ? 1 : n;
@@ -158,8 +161,10 @@ export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, row
       subOf.set(k, { row: i, top: !seenLeaf.has(k) });
     }
   });
-  const foldable = n >= 2 && subOf.size > 0;
-  const canFold = (k: string) => foldable && subOf.has(k);
+  const groupsFold = n >= 2 && subOf.size > 0;
+  const details = labelCols > 0 && !!layout.details?.length;
+  const foldable = groupsFold || details;
+  const canFold = (k: string) => groupsFold && subOf.has(k);
   const isFolded = (k: string) => canFold(k) && collapsed.has(k);
   /** The shallowest folded group holding this prefix, as its level, or -1. */
   const foldedAbove = (t: readonly FrameCell[], upto: number): number => {
@@ -247,10 +252,15 @@ export function buildPivotModel(layout: PivotLayout, opts: PivotViewOptions, row
       }
     }
     // Tabular puts each group's fold on the group's first leaf row.
-    const folds = opts.form !== "tabular" ? [] : Array.from({ length: Math.max(0, n - 1 - d) }, (_, x) => d + x)
+    const folds: NonNullable<PivotBodyRow["folds"]> = opts.form !== "tabular" ? [] : Array.from({ length: Math.max(0, n - 1 - d) }, (_, x) => d + x)
       .filter((l) => canFold(groupKey(t.slice(0, l + 1))))
       .map((l) => ({ key: groupKey(t.slice(0, l + 1)), collapsed: false, col: l }));
-    body.push({ kind: "leaf", level: Math.max(0, n - 1), labels, src: i, ...(folds.length ? { folds } : {}), band: band++, path: pathOf(t, n) });
+    const leafKey = groupKey(t);
+    const open = details && openDetails.has(leafKey);
+    if (details) folds.push({ key: leafKey, collapsed: !open, col: compact ? 0 : n - 1, detail: true });
+    const path = pathOf(t, n);
+    body.push({ kind: "leaf", level: Math.max(0, n - 1), labels, src: i, ...(folds.length ? { folds } : {}), band: band++, path });
+    if (open) body.push({ kind: "detail", level: Math.max(0, n - 1), labels: labelCells(), src: null, detail: i, path });
   });
 
   return { labelCols, head: buildHead(layout, opts, labelCols, colText), body, foldable };
@@ -334,6 +344,26 @@ export function livePivotFolds(layout: PivotLayout, collapsed: readonly string[]
   if (!collapsed.length) return [];
   const live = new Set(layout.rows.filter((it) => it.kind === "sub").map((it) => groupKey(it.tuple.slice(0, it.fill))));
   return collapsed.filter((k) => live.has(k));
+}
+
+/** A Details cell as the Grid shows it by default, in its source column's format pick. */
+export function detailCellText(col: PivotDetailColumn, cell: FrameCell): string {
+  if (cell == null) return "";
+  if (isSolError(cell)) return cell.code;
+  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
+  if (typeof cell === "number" && (col.type === "number" || col.type === "date")) {
+    const ann: FormatAnnotation = col.format ?? { format: "auto", unit: "none" };
+    const format = col.type === "date" ? (isDateStyle(ann.format) ? ann.format : "date_dmy") : isDateStyle(ann.format) ? "auto" : ann.format;
+    return formatNumberWithAnnotation(cell, { ...ann, format, unit: "none" });
+  }
+  return String(cell);
+}
+
+/** The leaf groups still open after a field change: keys whose tuple no longer exists open nothing. */
+export function liveDetailKeys(layout: PivotLayout, open: ReadonlySet<string>): Set<string> {
+  if (!open.size || !layout.details?.length) return new Set();
+  const live = new Set(layout.rows.filter((it) => it.kind === "leaf").map((it) => groupKey(it.tuple)));
+  return new Set([...open].filter((k) => live.has(k)));
 }
 
 /** The empty-cell text the view's option asks for. */
