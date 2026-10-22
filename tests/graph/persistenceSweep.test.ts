@@ -199,11 +199,10 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     generated: "UUID's value for this recalculation; a load is a new one, and a saved value would make every compute an edit to undo",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
-    ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
+    varNames: "extracted from expr",
     captured: "derived from expr − params", compiled: "compiled from expr/params",
     lambdaSig: "derived from the host's lambda config",
-    equation: "parsed from expr", lhsEval: "compiled from expr", rhsEval: "compiled from expr",
-    solvers: "derived solver table from expr", nextCondId: "counter re-derived from live row keys",
+    nextCondId: "counter re-derived from live row keys",
     nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys", nextKeyId: "counter re-derived from live row keys",
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
@@ -212,7 +211,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",
-    shapeError: "per-pass validation state", seenError: "per-pass error latch",
+    seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
     solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",

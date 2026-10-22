@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[C47]] equationNode. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The card lives in `nodes/equation.ts` (`EquationNode`); the solving layers are in `equationSolve.ts`. TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver in `nodes/triangle.ts`.
+The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The card lives in `nodes/equation.ts` (`EquationNode`); the solving layers run on the core, in `crates/solenoid-core/src/nodes/formula.rs` ([[node-bodies]]). TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver in `nodes/triangle.ts`.
 
 ## Which cards are relations
 
@@ -36,18 +36,18 @@ A variable is **known** when its input is wired, even when the cable carries a b
 
 The layers run in this order.
 
-**1. Quadratic sniff** (scalar knowns only). `sniffQuadratic` probes the residual, `residual(x) = LHS(x) − RHS(x)`, at 0, 1 and −1 and fits a·x² + b·x + c exactly through those three points. It then checks the fit at 2.5, −3.75, 17 and −41.5; a miss beyond 10⁻⁹ of the local scale rejects it, which is what turns away square roots, trig and 1/x. When the fit holds, `solveQuadratic` returns the real roots:
+**1. Quadratic sniff** (scalar knowns only). `sniff_quadratic` probes the residual, `residual(x) = LHS(x) − RHS(x)`, at 0, 1 and −1 and fits a·x² + b·x + c exactly through those three points. It then checks the fit at 2.5, −3.75, 17 and −41.5; a miss beyond 10⁻⁹ of the local scale rejects it, which is what turns away square roots, trig and 1/x. When the fit holds, `solve_quadratic` returns the real roots:
 
 - both roots as an ascending list, computed in the numerically stable form;
 - one scalar for a double root (a discriminant within 10⁻¹² of zero, relative);
 - `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant, once numeric root-finding (layer 3) has also come up empty; a root it finds wins;
-- nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solveLinear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
+- nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solve_linear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
 
 Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`rootHolds`, 10⁻⁹ of the fit's term sizes at that root). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
 
 This runs before symbolic isolation because isolation would take the principal square root and lose a root: x² = 36 must give [−6, 6], not 6.
 
-**2. Symbolic isolation** (`compileSolver`, `isolate`). When the unknown appears exactly once in the whole relation, the solver walks down the side that holds it, inverting one step at a time and applying each inverse to the other side:
+**2. Symbolic isolation** (`isolate`). When the unknown appears exactly once in the whole relation, the solver walks down the side that holds it, inverting one step at a time and applying each inverse to the other side:
 
 - `+`, `−`, `×`, `÷` invert to their opposites, minding which operand holds the unknown;
 - `u^n = O` becomes `u = O^(1/n)`, and `b^u = O` becomes `u = LN(O)/LN(b)`; `POWER` inverts the same way;
@@ -57,7 +57,7 @@ This runs before symbolic isolation because isolation would take the principal s
 
 Any other step (`ABS`, a function of several arguments) has no clean inverse, and isolation gives up. The isolated expression is printed back to a fully parenthesized formula string and compiled by the ordinary evaluator, so list broadcasting, function dispatch and per-cell errors all come free, and the result is exact and deterministic. Inversion picks principal branches (the positive square root, the principal arcsine), so the value always satisfies the equation, but another branch's solution is left to the numeric layer. A throw while evaluating gives `#VALUE!` "Solving failed to evaluate".
 
-**3. Numeric root-finding** (`solveNumeric`), the fallback when the unknown appears more than once or behind a step with no inverse. It works on scalar knowns only; with a list among the knowns it gives `#SHAPE!` "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted". It uses no outside library: the residual is the compiled evaluator.
+**3. Numeric root-finding** (`solve_numeric`), the fallback when the unknown appears more than once or behind a step with no inverse. It works on scalar knowns only; with a list among the knowns it gives `#SHAPE!` "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted". It uses no outside library: the residual is the compiled evaluator.
 
 1. Build a symmetric log grid: 0 and ±10ᵏ for k from −6 to 12, sorted.
 2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² relative). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts as a root only when its residual is at most 10⁻⁶ times the largest of 1 and the two bracket ends' residuals: a true root drives the residual toward 0, while a pole's stays as large as the ends or larger. A non-finite residual during bisection abandons that bracket.
