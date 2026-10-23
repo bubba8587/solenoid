@@ -194,7 +194,14 @@ export class SliderInputNode extends ClassicPreset.Node {
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
 
+  /** The clamped value is saved, so it is written here; `body` clamps. */
   data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
+    const out = this.body(inputs);
+    this.value = out.value;
+    return out;
+  }
+
+  body(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
     const litMin  = this.literals.min  ?? 0;
     const litMax  = this.literals.max  ?? 100;
     const litStep = this.literals.step ?? 1;
@@ -207,8 +214,7 @@ export class SliderInputNode extends ClassicPreset.Node {
     this.effectiveMax  = hi;
     const step = finite(readInput(inputs.step, litStep), litStep);
     this.effectiveStep = step > 0 ? step : litStep;
-    this.value = Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax);
-    return { value: this.value };
+    return { value: Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax) };
   }
 }
 

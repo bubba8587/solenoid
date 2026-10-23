@@ -364,6 +364,10 @@ export class SvgPickerNode extends ClassicPreset.Node {
 
   private cleanSource = "";
 
+  /** The chart's height crosses under its own name: a frozen call leaves the card's layout fields out. */
+  static coreFields = ["chartHeight"];
+  get chartHeight(): number { return this.height; }
+
   /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
   get source(): string {
     const raw = this.stringLiterals.source ?? "";
