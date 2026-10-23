@@ -15,7 +15,8 @@ export class QrCodeNode extends ClassicPreset.Node {
   height = 200;
   width = 240;
   cachedResult: ImageValue | null = null;
-  private _cache: { key: string; value: ImageValue | null } | null = null;
+  /** The image is drawn at the card's height, a size the card's saved fields leave out. */
+  static coreFields = ["height"];
 
   constructor(init?: { label?: string; qrTemplate?: QrTemplate }) {
     super("QrCode");
@@ -39,13 +40,7 @@ export class QrCodeNode extends ClassicPreset.Node {
   async data(inputs: { text?: string[] }): Promise<{ chart: ImageValue | null }> {
     const wired = this.qrTemplate === "text" ? readInput(inputs.text, this.stringLiterals.text ?? "") : "";
     const payload = buildQrPayload(this.qrTemplate, this.fields(typeof wired === "string" ? wired : ""));
-    const key = JSON.stringify([payload, this.height, this.label]);
-    if (this._cache && this._cache.key === key) {
-      this.cachedResult = this._cache.value;
-      return { chart: this._cache.value };
-    }
     if (payload === "") {
-      this._cache = { key, value: null };
       this.cachedResult = null;
       return { chart: null };
     }
@@ -54,7 +49,6 @@ export class QrCodeNode extends ClassicPreset.Node {
     const qr = QRCode.create(payload, { errorCorrectionLevel: "M" });
     const svg = qrModulesToSvg(qr.modules.size, qr.modules.data);
     const value: ImageValue = { __image: true, src: svgDataUrl(svg), height: this.height, alt: this.label, title: this.label };
-    this._cache = { key, value };
     this.cachedResult = value;
     return { chart: value };
   }

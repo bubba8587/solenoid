@@ -222,12 +222,11 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
     adoptedUnit: "The unit the Format Controller's last compute settled on, which it writes to `unit`; re-derived on every compute",
-    lambdaCaptures: "Frame Input's wired λs' captured values with their units, for the core; re-read from the cables on every compute",
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
     // ── [[D46]] freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
-    rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
+    rolls: "freezeVolatilePerCalc frozen rolls", rollsNeeded: "RANDARRAY: the rolls its body asked the shell to draw, per call", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
     lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
     roll: "promo rotation draw (session flavor)",
     // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──

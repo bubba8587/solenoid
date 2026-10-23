@@ -93,7 +93,7 @@ fn randbetween(bottom: &V, top: &V) -> V {
 }
 
 /// `arrayCount`: a generated array's row or column count, truncated, and `#VALUE!` below 0 or unreadable.
-fn array_count(n: f64) -> Result<f64, V> {
+pub(crate) fn array_count(n: f64) -> Result<f64, V> {
     let k = n.trunc();
     if k >= 0.0 { Ok(k) } else { Err(err(ErrorCode::Value, "RANDARRAY needs a count of 0 or more")) }
 }

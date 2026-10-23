@@ -92,7 +92,24 @@ export class LambdaNode extends ClassicPreset.Node {
     return { added, removed };
   }
 
-  data(inputs: Record<string, unknown[]>): { result: LambdaValue | SolError | null } {
+  /** An unchanged recompute returns the same LambdaValue object: consumers and the backend upload cache memo on identity. */
+  data(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
+    const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
+    const descJson = JSON.stringify(this.varDescriptions);
+    const last = this._lastBuild;
+    if (
+      this.cachedValue && last && last.expr === this.expr && last.params === this.params &&
+      last.descJson === descJson && last.capturedVals.length === capturedVals.length &&
+      last.capturedVals.every((v, i) => Object.is(v, capturedVals[i]))
+    ) {
+      return { result: this.cachedValue };
+    }
+    const out = this.body(inputs);
+    this._lastBuild = this.cachedValue ? { expr: this.expr, params: this.params, descJson, capturedVals } : null;
+    return out;
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
     const params = this.paramList();
     if (!params.every((p) => IDENT.test(p))) {
       this.cachedValue = null;
@@ -120,16 +137,6 @@ export class LambdaNode extends ClassicPreset.Node {
     }
     const compiled = this.compiled;
     const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
-    // An unchanged recompute must return the same LambdaValue object: consumers and the backend upload cache memo on identity.
-    const descJson = JSON.stringify(this.varDescriptions);
-    const last = this._lastBuild;
-    if (
-      this.cachedValue && last && last.expr === this.expr && last.params === this.params &&
-      last.descJson === descJson && last.capturedVals.length === capturedVals.length &&
-      last.capturedVals.every((v, i) => Object.is(v, capturedVals[i]))
-    ) {
-      return { result: this.cachedValue };
-    }
     const captured = [...this.captured];
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
     const expr = this.expr;
@@ -147,7 +154,6 @@ export class LambdaNode extends ClassicPreset.Node {
     });
     // [[C25]] firstClassUnits: the body reads its captures unit-blind; a computed column reads their units ([[D100]] computedColumnInfersUnit).
     const value = build(capturedVals.map(stripUnitCells));
-    this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };

@@ -1535,8 +1535,11 @@ export class RandArrayNode extends ClassicPreset.Node {
   literals: Record<string, number> = { count: 10 };
   width = 180; height = 250;
   // Raw [0,1) rolls hold until a recalc; min and max apply live, so new bounds rescale the same draws.
-  private rolls: number[] = [];
+  rolls: number[] = [];
   private lastGen = -1;
+  /** How many rolls the body's last call needed and wasn't handed; the shell draws them and calls it again. */
+  rollsNeeded: number | null = null;
+  static coreFields = ["rolls"];
 
   constructor(init?: { label?: string; integer?: boolean }) {
     super("RandArray");
@@ -1548,7 +1551,20 @@ export class RandArrayNode extends ClassicPreset.Node {
     this.addOutput("list", listOut("List"));
   }
 
+  /** The rolls are drawn here, once a recalculation, as many as `body` asks for; `body` reads the count and scales them. */
   data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
+    const gen = getRecalcGen();
+    if (this.lastGen !== gen) {
+      this.rolls = [];
+      this.lastGen = gen;
+    }
+    const out = this.body(inputs);
+    if (this.rollsNeeded === null) return out;
+    this.rolls = Array.from({ length: this.rollsNeeded }, () => Math.random());
+    return this.body(inputs);
+  }
+
+  body(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
     // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
     const countRaw = readRole<number | undefined>(this, "count", inputs.count) ?? 1;
     const lo    = readRole<number | undefined>(this, "min", inputs.min) ?? 0;
@@ -1559,14 +1575,14 @@ export class RandArrayNode extends ClassicPreset.Node {
       : count > MAX_GENERATED ? solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`)
       : randArrayRange(lo, hi, this.integer);
     if (bad) {
-      this.cachedList = bad; this.rolls = []; this.lastGen = -1;
+      this.cachedList = bad; this.rolls = []; this.rollsNeeded = null;
       return { list: bad };
     }
-    const gen = getRecalcGen();
-    if (this.lastGen !== gen || this.rolls.length !== count) {
-      this.rolls = Array.from({ length: count }, () => Math.random());
-      this.lastGen = gen;
+    if (this.rolls.length !== count) {
+      this.rollsNeeded = count;
+      return { list: null };
     }
+    this.rollsNeeded = null;
     const list = this.rolls.map((r) => randArrayDraw(r, lo, hi, this.integer));
     this.cachedList = list;
     return { list };
