@@ -1,6 +1,6 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { ipcInvoke, enginePing } from "../../src/graph/ipcBridge";
+import { ipcInvoke } from "../../src/graph/ipcBridge";
 import { toSolError } from "../../src/graph/errorValue";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
@@ -51,14 +51,10 @@ describe("toSolError — IPC failure → tagged SolError", () => {
 });
 
 describe("desktop-only guards (node env → no Tauri runtime)", () => {
-  it("enginePing resolves null off-desktop", async () => {
-    await expect(enginePing()).resolves.toBeNull();
-  });
-
   it("ipcInvoke rejects with a tagged #ERROR! off-desktop", async () => {
-    const err = await ipcInvoke("engine_ping").catch((e) => e);
+    const err = await ipcInvoke("read_parquet").catch((e) => e);
     if (!isSolError(err)) throw new Error("expected a SolError rejection");
     expect(err.code).toBe("#ERROR!");
-    expect(err.message).toContain("without the desktop engine");
+    expect(err.message).toContain("outside the desktop app");
   });
 });

@@ -4,20 +4,18 @@ import {
   frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type AggOp, type FrameOp, type JoinOpts, type PivotSpec } from "./frameOps";
+import type { AggOp, FrameOp, JoinOpts, PivotSpec } from "./frameOps";
 import { withUnitScales, joinKeyTransform, pivotUnits, opMeta, joinMeta, appendMeta, bindMeta, withMeta, type ColumnMeta } from "./frameSchema";
-import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
+import type { ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
 import { coreValue, errorRef, errorFromCore, toWellFormed, engineClock, readReply } from "./coreValues";
 export { engineClock, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
-import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
+import { guardFinite } from "./valueKinds";
+import { ipcInvoke } from "./ipcBridge";
 import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, wasmCsvFrame, onCore, onWasmEngineReset, type BinaryCells } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
-import { pushNotice } from "./noticeStore";
-import { settingsStore } from "./settingsStore";
 
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
@@ -208,7 +206,7 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
   };
 }
 
-// IPC argument names must match the Rust command parameters in engine.rs.
+// Cells as the core reads them off JSON (`crates/solenoid-core/src/wire.rs`).
 type WireCell = unknown;
 
 
@@ -220,32 +218,18 @@ function encodeWireCell(v: unknown): WireCell {
   return v;
 }
 
-/** The engine names why a cell is an error (`why`, engine.rs `num_to_json`); the message is the core's. */
-const ENGINE_ERROR_WHY: Readonly<Record<string, string>> = {
-  domain: DOMAIN_MESSAGE,
-  overflow: OVERFLOW_MESSAGE,
-  pct_change_from_zero: PCT_CHANGE_FROM_ZERO,
-  zero_total: ZERO_GROUP_TOTAL,
-  readings_add: READINGS_ADD,
-  readings_scale: READINGS_SCALE,
-};
-
 function decodeWireCell(v: WireCell): unknown {
   if (v && typeof v === "object") {
-    const o = v as { __nf?: string; __err?: string; why?: string; msg?: string; ref?: number };
+    const o = v as { __nf?: string; __err?: string; msg?: string; ref?: number };
     if (o.__nf === "inf") return Infinity;
     if (o.__nf === "-inf") return -Infinity;
     if (o.__nf === "nan") return NaN;
     // The code came from this module's encoder, so the cast keeps solError's union closed.
     if (typeof o.__err === "string") {
-      return errorFromCore(o.__err, o.msg || (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine", o.ref);
+      return errorFromCore(o.__err, o.msg || "from the engine", o.ref);
     }
   }
   return v;
-}
-
-function decodeWireColumns(columns: FrameColumn[]): FrameColumn[] {
-  return columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }));
 }
 
 // The columnar hand-off's tags (crates/solenoid-core/src/binary.rs).
@@ -289,7 +273,7 @@ function decodeBinary(b: BinaryCells): FrameColumn[] {
         case TAG_TRUE: values[i] = true; break;
         case TAG_ERR: {
           const code = text(), message = text(), ref = b.nums[k];
-          values[i] = errorFromCore(code, message || "from the native engine", ref);
+          values[i] = errorFromCore(code, message || "from the engine", ref);
           break;
         }
         default: values[i] = null;
@@ -309,19 +293,15 @@ export function csvToFrame(text: string): FrameValue {
   return { __frame: true, columns };
 }
 
-/** Frames crossing in bulk without JSON: the wasm engine shares memory with JS, so cells move as buffers. */
-interface BulkTransport {
-  source(frame: FrameValue): FrameHandle;
-  read(handle: FrameHandle, column?: string, limit?: number): { columns: FrameColumn[]; rowCount: number } | null;
-}
-
-const wasmBulk: BulkTransport = {
-  source: (frame) => wasmSourceBin(encodeBinary(frame)) as FrameHandle,
-  read: (handle, column, limit) => {
+/** Frames cross in bulk without JSON: the wasm engine shares memory with JS, so cells move as buffers. */
+const wasmBulk = {
+  source: (frame: FrameValue) => wasmSourceBin(encodeBinary(frame)) as FrameHandle,
+  read: (handle: FrameHandle, column?: string, limit?: number): { columns: FrameColumn[]; rowCount: number } | null => {
     const b = wasmReadBin(handle, column, limit);
     return b && { columns: decodeBinary(b), rowCount: b.rowCount };
   },
 };
+const readBulk = (handle: FrameHandle, column?: string, limit?: number) => wasmBulk.read(handle, column, limit)!;
 
 function schemaOnly(frame: FrameValue): FrameValue {
   return { __frame: true, columns: frame.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: [] })) };
@@ -540,11 +520,10 @@ export async function computeColumnOnRef(
   opts: { sideValue?: SideValue; reserved?: readonly string[] } = {},
 ): Promise<{ cells: FrameCell[]; sideVars: string[]; base: FrameHandle; col: FrameHandle } | SolError | null> {
   const be = frameBackend();
-  if (!(be instanceof EngineBackend) || !be.resident) return null;
+  if (!(be instanceof EngineBackend)) return null;
   const inputs = columnInputs(expr, columns, opts);
   if (!inputs) return null;
   const base = await flushRef(ref);
-  if (isOracleHandle(base)) return null;
   const r = await be.computeColumn(base, inputs.args);
   if (r.bail) return null;
   if (r.error) return solError(r.error.code as SolErrorCode, r.error.message);
@@ -595,27 +574,6 @@ function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[
   });
 }
 
-/** The native engine keeps error cells only in number and date columns. */
-const holdsTextOrLogicalError = (f: FrameValue): boolean =>
-  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some(isSolError));
-
-/** A logical column has no NaN on the engine, which reads one as blank; said once a session. */
-let toldLogicalNaN = false;
-function noteLogicalNaN(f: FrameValue): void {
-  if (toldLogicalNaN || !f.columns.some((c) => c.type === "logical" && c.values.some((v) => typeof v === "number"))) return;
-  toldLogicalNaN = true;
-  pushNotice("Polars reads a logical cell that isn't TRUE or FALSE as blank, where the web app shows NaN. Results that count blanks can differ.", "info");
-}
-
-// Polars' frames that hold what it can't, and the verbs it doesn't have, go to the core in wasm; those handles wear this.
-const ORACLE = "wasm:";
-const isOracleHandle = (h: FrameHandle): boolean => h.startsWith(ORACLE);
-const toOracle = (h: FrameHandle) => h.slice(ORACLE.length) as FrameHandle;
-const fromOracle = (h: FrameHandle) => (ORACLE + h) as FrameHandle;
-
-/** Verbs the Rust core runs and Polars doesn't ([[C130]] rustCore). */
-const RUST_CORE_ONLY: ReadonlySet<FrameOp["kind"]> = new Set(["dropBlankRows", "addIndex", "splitColumn", "mergeColumns"]);
-
 /** An op's own cells (a filter's value) in wire form, so an error, NaN or infinity crosses as itself. */
 export function encodeOpCells(op: FrameOp): FrameOp {
   if (op.kind === "filter") return { ...op, value: encodeWireCell(op.value) as FrameCell };
@@ -623,27 +581,16 @@ export function encodeOpCells(op: FrameOp): FrameOp {
   return op;
 }
 
-type EngineInvoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
-
-/** An engine behind handles: Polars over IPC on desktop, or the Rust engine in WebAssembly. `fullCells` says the
- *  engine stores every cell kind, so no frame needs the core's fallback (Polars keeps an error cell only in a number or
- *  date column, and has no pivot layout or cleaning verbs). */
+/** The Rust core in wasm behind handles, on the web and desktop alike ([[C130]] rustCore). */
 class EngineBackend implements FrameBackend {
-  constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean, private readonly bulk?: BulkTransport) {}
-
-  /** Row formulas and frame assembly run in this engine itself (the wasm one). */
-  get resident(): boolean {
-    return this.bulk !== undefined;
-  }
-
   async computeColumn(handle: FrameHandle, args: Record<string, unknown>): Promise<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }> {
-    const r = await this.invoke<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>("engine_compute_column", { handle, ...args });
+    const r = await wasmInvoke<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>("engine_compute_column", { handle, ...args });
     if (r.handle) this.remember(r.handle as FrameHandle, null);
     return r;
   }
 
   async assemble(parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue): Promise<FrameHandle> {
-    const h = await (this.invoke<string>("engine_assemble", { parts }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_assemble", { parts }) as Promise<FrameHandle>);
     return this.remember(h, schema);
   }
 
@@ -653,35 +600,8 @@ class EngineBackend implements FrameBackend {
   /** After a chain ending in a pivot, the engine's layout for the result. */
   private async rememberPivot(h: FrameHandle, before: FrameValue | null, op: FrameOp | undefined): Promise<void> {
     if (op?.kind !== "pivot") return;
-    const layout = await this.invoke<unknown>("engine_pivot_layout", { handle: h });
+    const layout = await wasmInvoke<unknown>("engine_pivot_layout", { handle: h });
     this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [], schema: before });
-  }
-  /** Frames holding an error cell Polars can't store, and the verbs it lacks, compute on the core in wasm. */
-  private _oracle: EngineBackend | null = null;
-  private get oracle(): EngineBackend {
-    return (this._oracle ??= new EngineBackend(wasmInvoke, true, wasmBulk));
-  }
-
-  /** An op this engine can't run: Polars has no pivot layout and none of the Rust core's cleaning verbs. */
-  private needsOracle(op: FrameOp): boolean {
-    if (op.kind === "pivot") return !this.fullCells;
-    return !this.fullCells && RUST_CORE_ONLY.has(op.kind);
-  }
-
-  private async onOracle(handles: readonly FrameHandle[], run: (hs: FrameHandle[]) => Promise<FrameHandle>): Promise<FrameHandle> {
-    const temps: FrameHandle[] = [];
-    try {
-      const hs: FrameHandle[] = [];
-      for (const h of handles) {
-        if (isOracleHandle(h)) { hs.push(toOracle(h)); continue; }
-        const t = await this.oracle.source(await this.collect(h));
-        temps.push(t);
-        hs.push(t);
-      }
-      return fromOracle(await run(hs));
-    } finally {
-      for (const t of temps) this.oracle.drop(t);
-    }
   }
 
   private remember(handle: FrameHandle, schema: FrameValue | null): FrameHandle {
@@ -694,31 +614,20 @@ class EngineBackend implements FrameBackend {
   }
 
   async source(frame: FrameValue): Promise<FrameHandle> {
-    if (!this.fullCells) {
-      if (holdsTextOrLogicalError(frame)) return fromOracle(await this.oracle.source(frame));
-      noteLogicalNaN(frame);
-    }
-    if (this.bulk) return this.remember(this.bulk.source(frame), schemaOnly(frame));
-    const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
-    const h = await (this.invoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
-    return this.remember(h, schemaOnly(frame));
+    return this.remember(wasmBulk.source(frame), schemaOnly(frame));
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    if (isOracleHandle(handle)) return fromOracle(await this.oracle.apply(toOracle(handle), op));
-    if (this.needsOracle(op)) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
     if (op.kind === "formats") return this.applyMany(handle, [op]);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
-    const h = await (this.invoke<string>("engine_apply", { handle, op: this.fullCells ? encodeOpCells(wire[0]) : wire[0] }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_apply", { handle, op: encodeOpCells(wire[0]) }) as Promise<FrameHandle>);
     await this.rememberPivot(h, this.schemaOf(handle), op);
     return this.remember(h, schema);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    if (isOracleHandle(handle)) return fromOracle(await this.oracle.applyMany(toOracle(handle), ops));
-    if (ops.some((op) => this.needsOracle(op))) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
-    const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_apply_many", { handle, ops: wire.map(encodeOpCells) }) as Promise<FrameHandle>);
     let last = ops.length - 1;
     while (last >= 0 && ops[last].kind === "formats") last--;
     if (ops[last]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, last)).schema, ops[last]);
@@ -726,88 +635,59 @@ class EngineBackend implements FrameBackend {
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
-    if (isOracleHandle(left) || isOracleHandle(right)) return this.onOracle([left, right], ([l, r]) => this.oracle.join(l, r, opts));
     const l = this.schemaOf(left), r = this.schemaOf(right);
     let wireOpts = opts;
     if (l && r && opts.how !== "cross" && opts.rightKeyScale === undefined && opts.rightKeyOffset === undefined) {
       const t = joinKeyTransform(l.columns.find((c) => c.name === opts.leftKey), r.columns.find((c) => c.name === opts.rightKey));
       if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
     }
-    const h = await (this.invoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
     return this.remember(h, l && r ? joinShadow(l, r, wireOpts) : null);
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.append(hs));
-    const h = await (this.invoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? appendShadow(ss as FrameValue[]) : null);
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.bindColumns(hs));
-    const h = await (this.invoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
+    const h = await (wasmInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? bindShadow(ss as FrameValue[]) : null);
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
-    if (isOracleHandle(handle)) return this.oracle.preview(toOracle(handle), n);
-    if (this.bulk) {
-      const r = this.bulk.read(handle, undefined, n)!;
-      const take = Math.max(0, Math.min(n, r.rowCount));
-      const rows: FrameCell[][] = [];
-      for (let i = 0; i < take; i++) rows.push(r.columns.map((c) => (i < c.values.length ? c.values[i] : null)));
-      return {
-        schema: withSchemaMeta(r.columns.map((c) => ({ name: c.name, type: c.type })), this.schemaOf(handle)),
-        rows, rowCount: r.rowCount, truncated: r.rowCount > take,
-      };
-    }
-    const p = await this.invoke<FramePreview>("engine_preview", { handle, n });
+    const r = readBulk(handle, undefined, n);
+    const take = Math.max(0, Math.min(n, r.rowCount));
+    const rows: FrameCell[][] = [];
+    for (let i = 0; i < take; i++) rows.push(r.columns.map((c) => (i < c.values.length ? c.values[i] : null)));
     return {
-      ...p,
-      schema: withSchemaMeta(p.schema, this.schemaOf(handle)),
-      rows: p.rows.map((r) => r.map(decodeWireCell)) as FramePreview["rows"],
+      schema: withSchemaMeta(r.columns.map((c) => ({ name: c.name, type: c.type })), this.schemaOf(handle)),
+      rows, rowCount: r.rowCount, truncated: r.rowCount > take,
     };
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
-    if (isOracleHandle(handle)) return this.oracle.collect(toOracle(handle));
-    if (this.bulk) {
-      const frame: FrameValue = { __frame: true, columns: withSchemaMeta(this.bulk.read(handle)!.columns, this.schemaOf(handle)) };
-      const pivot = this.pivots.get(handle);
-      if (pivot) adoptPivot(frame, pivot);
-      return frame;
-    }
-    const columns = await this.invoke<FrameColumn[]>("engine_collect", { handle });
-    return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
+    const frame: FrameValue = { __frame: true, columns: withSchemaMeta(readBulk(handle).columns, this.schemaOf(handle)) };
+    const pivot = this.pivots.get(handle);
+    if (pivot) adoptPivot(frame, pivot);
+    return frame;
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
-    if (isOracleHandle(handle)) return this.oracle.column(toOracle(handle), name);
-    if (this.bulk) {
-      const r = this.bulk.read(handle, name);
-      return r ? withSchemaMeta(r.columns, this.schemaOf(handle))[0] : null;
-    }
-    const c = await this.invoke<FrameColumn | null>("engine_column", { handle, name });
-    if (!c) return null;
-    const [out] = withSchemaMeta([{ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }], this.schemaOf(handle));
-    return out;
+    const r = wasmBulk.read(handle, name);
+    return r ? withSchemaMeta(r.columns, this.schemaOf(handle))[0] : null;
   }
 
   drop(handle: FrameHandle): void {
-    if (isOracleHandle(handle)) { this.oracle.drop(toOracle(handle)); return; }
     this.schemas.delete(handle);
     this.pivots.delete(handle);
-    void this.invoke("engine_drop", { handle }).catch(() => {});
+    void wasmInvoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
-    if (isOracleHandle(handle)) {
-      const r = await this.oracle.sample(toOracle(handle), n);
-      return { handle: fromOracle(r.handle), factor: r.factor };
-    }
-    const r = await (this.invoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
+    const r = await (wasmInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
     if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
     return r;
   }
@@ -815,9 +695,8 @@ class EngineBackend implements FrameBackend {
 
 let _backend: FrameBackend | null = null;
 
-/** The Rust core in wasm until `initFrameBackend` picks Polars. */
 export function frameBackend(): FrameBackend {
-  if (!_backend) _backend = new EngineBackend(wasmInvoke, true, wasmBulk);
+  if (!_backend) _backend = new EngineBackend();
   return _backend;
 }
 
@@ -837,53 +716,22 @@ export function setFrameBackend(backend: FrameBackend): void {
   clearHandleKeyedCaches();
 }
 
-/** The native engine runs frame verbs: the desktop app, unless Settings turns it off to compare with the web's engine. */
-export function nativeEngineOn(): boolean {
-  return engineAvailable() && settingsStore.get("nativeEngine") !== false;
-}
-
-
-/** Polars where the desktop has it on, else the Rust engine in WebAssembly. */
+/** Loads the core and starts it empty: a webview reload would otherwise orphan every stored frame. */
 export async function initFrameBackend(): Promise<void> {
-  if (nativeEngineOn()) {
-    try {
-      const info = await enginePing();
-      if (info?.backend === "polars") {
-        await ipcInvoke("engine_clear", {}).catch(() => {});
-        setFrameBackend(new EngineBackend(ipcInvoke, false));
-        // Pivots, formulas and what Polars can't hold run on the Rust core beside it.
-        await loadWasmEngine();
-        return;
-      }
-    } catch {
-    }
-  }
   if (await loadWasmEngine()) await wasmInvoke("engine_clear", {});
-  setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
-}
-
-/** Flipping the Polars switch swaps the backend and hands back so the caller reloads the document: no frame may keep
- *  a handle from the engine it left. */
-export function watchEngineSetting(onSwitched: () => void): void {
-  const engines = () => String(settingsStore.get("nativeEngine"));
-  let last = engines();
-  settingsStore.subscribe(() => {
-    const now = engines();
-    if (now === last) return;
-    last = now;
-    void initFrameBackend().then(onSwitched);
-  });
+  setFrameBackend(new EngineBackend());
 }
 
 /** The Rust engine in WebAssembly as the backend, for tests and scripts that loaded its bytes themselves. */
 export function useWasmBackend(): void {
-  setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
+  setFrameBackend(new EngineBackend());
 }
 
-export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {
+/** A Parquet file in `folder`, read by the desktop shell (`src-tauri/src/parquet.rs`); its cells cross in wire form. */
+export async function readParquetFrame(folder: string, name: string): Promise<FrameValue | SolError> {
   try {
-    const columns = await ipcInvoke<FrameColumn[]>("engine_read_csv", { folder, name });
-    return { __frame: true, columns };
+    const columns = await ipcInvoke<FrameColumn[]>("read_parquet", { folder, name });
+    return { __frame: true, columns: columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] })) };
   } catch (e) {
     return asErrorValue(e);
   }

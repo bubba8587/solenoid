@@ -31,25 +31,11 @@ tauri-plugin-http = "2"
 # the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
 tauri-plugin-decorum = "1"
 serde = { version = "1", features = ["derive"] }
-# float_roundtrip: serde_json's DEFAULT float parse is lossy (fast path, can
-# land one ulp off) — a JS cell crossing the IPC then differs from the value
-# the oracle computed with, which the parity corpus catches as byte drift.
-# The wire must round-trip doubles exactly.
+# float_roundtrip: serde_json's default float parse can land one ulp off; a cell crossing IPC must arrive exact.
 serde_json = { version = "1", features = ["float_roundtrip"] }
-# WS2 — the native relational engine. Lazy frames behind opaque handles; only a
-# preview/column materializes. Lean feature set: lazy plans + string predicates +
-# asof_join (the Join node's "as-of" `how`, nearest-match on a sorted key) + csv
-# (the native CSV reader — desktop CSV import bypasses the JS Papa Parse +
-# inference entirely, reading straight off disk into a DataFrame) + parquet
-# (the native Parquet source, same file->engine principle). `dtype-date` +
-# `dtype-datetime` ride along with parquet: a Parquet file's own Date/Datetime
-# logical columns need those to read as such at all (without them Polars can't
-# even represent a Date-typed column, `AnyValue::Date` doesn't exist in the
-# build) — needed for "typed columns arrive intact, no inference step" to hold
-# for date columns too, not just numeric/string ones. `product` (the group-by
-# PRODUCT aggregate — gated off by default, panics at runtime without it:
-# "activate 'product' feature").
-polars = { version = "0.55", default-features = false, features = ["lazy", "strings", "asof_join", "semi_anti_join", "csv", "parquet", "dtype-date", "dtype-datetime", "product", "cum_agg", "rank", "rolling_window", "diff", "regex", "cross_join"] }
+# Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
+solenoid-core = { path = "../crates/solenoid-core" }
+solenoid-parquet = { path = "../crates/solenoid-parquet" }
 
 # linux_webview.rs; already in the dep tree via wry.
 [target.'cfg(target_os = "linux")'.dependencies]

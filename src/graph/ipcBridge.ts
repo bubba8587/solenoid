@@ -10,17 +10,13 @@ function estimateCells(args?: Record<string, unknown>): number {
   return 0;
 }
 
-export function engineAvailable(): boolean {
-  return isDesktop();
-}
-
 // One lazy dynamic import per session, so this module stays Tauri-free at load.
 let _core: Promise<typeof import("@tauri-apps/api/core")> | null = null;
 const tauriCore = () => (_core ??= import("@tauri-apps/api/core"));
 
 export async function ipcInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (!engineAvailable()) {
-    throw solError("#ERROR!", `IPC '${command}' called without the desktop engine`);
+  if (!isDesktop()) {
+    throw solError("#ERROR!", `IPC '${command}' called outside the desktop app`);
   }
   const probe = perfEnabled();
   const t0 = probe ? performance.now() : 0;
@@ -32,15 +28,4 @@ export async function ipcInvoke<T>(command: string, args?: Record<string, unknow
   } finally {
     if (probe) recordIpc(command, performance.now() - t0, estimateCells(args));
   }
-}
-
-interface EngineInfo {
-  name: string;
-  version: string;
-  backend: string;
-}
-
-export async function enginePing(): Promise<EngineInfo | null> {
-  if (!engineAvailable()) return null;
-  return ipcInvoke<EngineInfo>("engine_ping");
 }

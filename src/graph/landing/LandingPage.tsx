@@ -99,8 +99,8 @@ export default function LandingPage() {
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
-              Filter, Sort, Join, GROUPBY, Append, Distinct, Pivot and Unpivot. The desktop
-              build runs them on Rust and Polars, fast enough for million-row tables.
+              Filter, Sort, Join, GROUPBY, Append, Distinct, Pivot and Unpivot, on Solenoid&apos;s own
+              Rust engine in the browser and on desktop alike.
             </p>
           </Feature>
 

@@ -5,14 +5,10 @@ import * as path from "node:path";
 import { FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
 import { applyVerb, joinFrames, appendFrames, bindColumns } from "./coreVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "../../src/graph/frame";
-import { isSolError, solError, ERROR_EXPLANATIONS, type SolErrorCode } from "../../src/graph/errorValue";
+import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
 
-// ─── The backend parity corpus, JS side ───────────────────────────────────────
-// One fixture set, both engines: every case here also runs through the Polars
-// engine (src-tauri/src/engine/tests.rs `corpus_cases`), reading the SAME files
-// with the PRODUCTION wire deserializers — the corpus format IS the wire format,
-// so there is no third representation to drift. A case that passes here and
-// fails in cargo (or vice versa) is a parity break by definition.
+// ─── The frame-verb corpus, through the core in wasm ───────────────────────────
+// The same files run natively in `crates/solenoid-core/tests/corpus.rs`; the corpus format is the wire format.
 
 const CORPUS_DIR = path.resolve(__dirname, "../../fixtures/frame-verbs");
 
@@ -38,12 +34,7 @@ interface CorpusFile { verb: string; cases: CorpusCase[] }
  *  richer half.) */
 const BINARY_VERBS = ["join", "append", "bindColumns"] as const;
 
-/** The fusion corpus verb: `op: { kind: "pipeline", ops: [FrameOp…] }` over the
- *  "in" frame. The oracle applies the ops SEQUENTIALLY (each materialized); the
- *  cargo runner hands the whole list to `apply_ops`, which fuses them into ONE
- *  lazy Polars plan — so these cases pin the fusion seam itself (predicate
- *  pushdown, projection reordering, a group-by mid-chain), which no single-op
- *  case can see. Sequential-vs-fused is the parity claim. */
+/** A chain of verbs: `op: { kind: "pipeline", ops: [FrameOp…] }` over the "in" frame, applied one after another. */
 const PIPELINE_VERB = "pipeline";
 
 /** Non-finite cells ride the wire's OWN tagged form — `{"__nf": "inf"|"-inf"|
@@ -164,14 +155,5 @@ describe("corpus completeness — every verb has a fixture file", () => {
       const names = file.cases.map((c) => c.name);
       expect(new Set(names).size, `${file.verb}.json has duplicate case names`).toBe(names.length);
     }
-  });
-});
-
-describe("error codes on the wire", () => {
-  it("the engine's ERR_CODES lists every SolError code, so an uploaded error keeps its code", () => {
-    const src = fs.readFileSync(path.resolve(__dirname, "../../src-tauri/src/engine.rs"), "utf8");
-    const list = /const ERR_CODES: &\[&str\] = &\[([^\]]*)\]/.exec(src)?.[1] ?? "";
-    const engineCodes = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    expect(engineCodes.sort()).toEqual(Object.keys(ERROR_EXPLANATIONS).sort());
   });
 });

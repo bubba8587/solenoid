@@ -76,13 +76,13 @@ describe("the frame backend — handle lifecycle + materialization", () => {
 
   it("an unknown handle materializes to #REF!", async () => {
     const be = frameBackend();
-    const err = await be.column("jsf:does-not-exist" as FrameHandle, "n").catch((e) => e);
+    const err = await be.column("rs:does-not-exist" as FrameHandle, "n").catch((e) => e);
     if (!isSolError(err)) throw new Error("expected a SolError for an unknown handle");
     expect(err.code).toBe("#REF!");
   });
 
   it("drop is a safe no-op on an unknown handle", () => {
-    expect(() => frameBackend().drop("jsf:nope" as FrameHandle)).not.toThrow();
+    expect(() => frameBackend().drop("rs:nope" as FrameHandle)).not.toThrow();
   });
 
   it("apply composes a verb into a NEW handle, leaving the source intact", async () => {

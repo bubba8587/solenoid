@@ -1,6 +1,8 @@
 // [[C130]] rustCore
 use serde::Serialize;
+use serde_json::Value as Json;
 
+/// A failed command, shaped as the app's own tagged `SolError` so it renders as a value.
 #[derive(Debug, Serialize)]
 pub struct IpcError {
     #[serde(rename = "__solError")]
@@ -9,30 +11,20 @@ pub struct IpcError {
     message: String,
 }
 
-impl IpcError {
-    #[allow(dead_code)] // used by WS2's engine commands
-    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
-        IpcError { sol_error: true, code: code.into(), message: message.into() }
-    }
-
-    #[allow(dead_code)] // used by WS2's engine commands
-    pub fn internal(message: impl Into<String>) -> Self {
-        IpcError::new("#ERROR!", message)
+impl From<solenoid_core::error_value::SolError> for IpcError {
+    fn from(e: solenoid_core::error_value::SolError) -> Self {
+        IpcError {
+            sol_error: true,
+            code: e.code.as_str().to_string(),
+            message: e.message,
+        }
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct EngineInfo {
-    name: String,
-    version: String,
-    backend: String,
-}
-
+/// Local File's Parquet read: the file's columns in wire form (`crates/solenoid-parquet`).
 #[tauri::command]
-pub fn engine_ping() -> Result<EngineInfo, IpcError> {
-    Ok(EngineInfo {
-        name: "solenoid-engine".to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        backend: "polars".to_string(),
-    })
+pub fn read_parquet(folder: String, name: String) -> Result<Vec<Json>, IpcError> {
+    Ok(solenoid_parquet::read_wire(
+        &std::path::Path::new(&folder).join(&name),
+    )?)
 }

@@ -818,7 +818,7 @@ fn raw_aggregate(nums: &[f64], op: AggOp) -> Option<f64> {
 
 // ─── Units through an aggregate ([[C25]] firstClassUnits) ───
 // The engine sees no units: the TS lowers an op over readings to name its reading scale, and a
-// variance over a scaled linear unit its scale (`withUnitScales`), as it does for Polars.
+// variance over a scaled linear unit its scale (`withUnitScales`).
 
 fn agg_readings_refused(op: AggOp) -> Option<&'static str> {
     match op {

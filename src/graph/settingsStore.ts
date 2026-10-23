@@ -28,8 +28,6 @@ export interface Settings {
   obsidianAssetSubfolder: string;
   /** Empty means http://localhost:8080. The bearer token lives in apiKeyStore, never here. */
   taskNotesUrl: string;
-  /** Desktop: frame verbs run on the native Polars engine; off runs them on the Rust engine in WebAssembly, as the web does. */
-  nativeEngine: boolean;
 
   minimapPosition: "bottom" | "top" | "hide";
   hideGridDots: boolean;
@@ -59,7 +57,6 @@ export const DEFAULT_SETTINGS: Settings = {
   csvFolder: "",
   docsFolder: "",
   alwaysAllowNetwork: false,
-  nativeEngine: true,
   useDemoVault: true,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
@@ -93,8 +90,6 @@ export interface SettingField {
   accordion?: string;
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
   disabledOnMobile?: boolean;
-  /** Desktop app only: grayed on the web, where the behavior doesn't exist. */
-  desktopOnly?: boolean;
 }
 export interface SettingsSection {
   title: string;
@@ -244,12 +239,6 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "relativeDates",
         label: "Relative dates",
         help: "A date Value Input can parse \"next Tuesday\". WARNING: this adds volatility!",
-      },
-      {
-        key: "nativeEngine",
-        label: "Polars engine",
-        help: "Runs table operations on Polars. Turn it off to compare results with the web app's engine. Changing it reloads the document.",
-        desktopOnly: true,
       },
       {
         key: "alwaysAllowNetwork",

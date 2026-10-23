@@ -6,8 +6,7 @@ import type { FrameValue } from "../../src/graph/frame";
 
 // Task 4 (Stream D): string ordering is BYTE order (JS `<`/`>`), not locale.
 // This PINS that choice — the point is that it must NOT behave like
-// `localeCompare`, so the core matches the Polars backend and stays
-// deterministic across machines. See stringOrder.ts for the rationale.
+// `localeCompare`, so it stays deterministic across machines. See stringOrder.ts for the rationale.
 
 describe("compareStrings — byte order, not locale", () => {
   it("is a sign-returning comparator", () => {

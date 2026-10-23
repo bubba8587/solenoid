@@ -21,9 +21,8 @@ import { connectionStore, requestNetwork, fetchInBackground } from "../connectio
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
-import { engineAvailable, ipcInvoke } from "../ipcBridge";
-import { readCsvFrame, csvToFrame, dropFrameRef, collectPreview, nativeEngineOn, type FrameRef, type FrameHandle } from "../frameBackend";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
+import { readParquetFrame, csvToFrame } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
@@ -272,9 +271,7 @@ export class LocalFileNode extends ClassicPreset.Node {
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
-  private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> | undefined;
-  /** Owned by this node: drop it with `dropFrameRef` before replacing or clearing it. */
-  private ref: FrameRef | null = null;
+  private inflight: Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> | undefined;
 
   constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
     super("LocalFile");
@@ -293,12 +290,12 @@ export class LocalFileNode extends ClassicPreset.Node {
     return /\.(xml|gan|xer)$/i.test(name);
   }
 
-  async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
+  async data(): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult, plan: this.cachedPlan };
+    if (key === this.lastKey) return { frame: this.cachedResult, plan: this.cachedPlan };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
@@ -306,7 +303,7 @@ export class LocalFileNode extends ClassicPreset.Node {
     return this.inflight;
   }
 
-  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
+  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | SolError | null; plan: CubeValue | null }> {
     const parquet = LocalFileNode.isParquet(name);
     const stale = () => this.inflightKey !== key;
     const superseded = { frame: null, plan: null };
@@ -314,55 +311,34 @@ export class LocalFileNode extends ClassicPreset.Node {
     this.planNotes = [];
     const fail = (message: string, status: "idle" | "error" = "error") => {
       if (stale()) return superseded;
-      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
       const out = status === "error" && parquet ? solError("#REF!", message) : null;
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    const adopt = (ref: FrameRef | null) => {
-      if (this.ref && this.ref !== ref) dropFrameRef(this.ref);
-      this.ref = ref;
-      this.lastKey = key;
-    };
-    if (parquet ? (!isDesktop() || !engineAvailable()) : (!isDesktop() && !isDemoVaultPath(folder))) {
-      return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
+    if (parquet ? !isDesktop() : (!isDesktop() && !isDemoVaultPath(folder))) {
+      return fail("Desktop app only");
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
     if (name === "") return fail("Pick a file", "idle");
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      if (parquet && !nativeEngineOn()) {
-        // The native engine reads the file, and its rows come over to the app's own engine.
-        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
-        const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle }).finally(() => { void ipcInvoke("engine_drop", { handle }).catch(() => {}); });
-        if (stale()) return superseded;
-        const frame: FrameValue = { __frame: true, columns };
-        adopt(null);
-        this.cachedResult = frame;
-        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: columns.length, fetchedAt: Date.now() });
-        return { frame, plan: null };
-      }
       if (parquet) {
-        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
-        const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
-        if (stale()) { dropFrameRef(ref); return superseded; }
-        const preview = await collectPreview(ref);
-        if (stale()) { dropFrameRef(ref); return superseded; }
-        adopt(ref);
-        this.cachedResult = preview;
-        const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
-        const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
-        connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
-        return { frame: ref, plan: null };
+        const frame = await readParquetFrame(folder, name);
+        if (isSolError(frame)) throw new Error(frame.message);
+        if (stale()) return superseded;
+        this.lastKey = key;
+        this.cachedResult = frame;
+        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: frame.columns.length, fetchedAt: Date.now() });
+        return { frame, plan: null };
       }
       if (LocalFileNode.isPlanFile(name)) {
         const text = await readFileText(folder, name);
         if (stale()) return superseded;
         const plan = planFileToPlan(text);
         if (!plan) throw new Error("Not a Project XML, GanttProject or Primavera file");
-        adopt(null);
+        this.lastKey = key;
         this.cachedResult = null;
         this.cachedPlan = plan.cube;
         this.planNotes = plan.unsupported;
@@ -372,15 +348,9 @@ export class LocalFileNode extends ClassicPreset.Node {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = nativeEngineOn() && !isDemoVaultPath(folder)
-        ? await (async () => {
-            const r = await readCsvFrame(folder, name);
-            if (isSolError(r)) throw new Error(r.message);
-            return r;
-          })()
-        : csvToFrame(await readFileText(folder, name));
+      const frame = csvToFrame(await readFileText(folder, name));
       if (stale()) return superseded;
-      adopt(null);
+      this.lastKey = key;
       this.cachedResult = frame;
       this.cachedPlan = csvPlanToCube(frame);
       connectionStore.setState(this.id, {

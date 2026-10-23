@@ -320,7 +320,7 @@ export const SCENES = {
   },
 
   tables: {
-    caption: ["Relational verbs", "Filter, Sort, Join, GROUPBY and Pivot. The desktop build runs them on Rust and Polars, fast enough for million-row tables."],
+    caption: ["Relational verbs", "Filter, Sort, Join, GROUPBY and Pivot, on Solenoid's own Rust engine in the browser and on desktop alike."],
     async setup(c) {
       await c.legend(false);
       await c.doc({

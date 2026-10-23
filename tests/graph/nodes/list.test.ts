@@ -678,8 +678,7 @@ describe("SUMIFS — conditional aggregation over one frame ([[C49]] filterOneJo
   });
 
   it("MINIFS/MAXIFS over a large matched set don't RangeError (iterMin/iterMax, not spread)", () => {
-    // A frame this big is ordinary once verbs run in Polars; Math.min(...nums)
-    // throws past ~125k args, so the spread form would black out on a real table.
+    // Math.min(...nums) throws past ~125k args, so the spread form would black out on a real table.
     const N = 200_000;
     const regs = new Array(N).fill("North");
     const vals = Array.from({ length: N }, (_, i) => i);

@@ -24,7 +24,6 @@ const ISOLATED = [
   "tests/graph/noteMarkdown.test.ts",
   "tests/graph/nodes/sink.test.ts",
   "tests/graph/obsidianWriteBatch.test.ts",
-  "tests/graph/polarsBackend.test.ts",
   "tests/graph/saveTimeStore.test.ts",
   "tests/graph/sketchExport.test.ts",
 ];

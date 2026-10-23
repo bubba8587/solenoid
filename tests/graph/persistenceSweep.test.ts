@@ -236,7 +236,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
     // ── async fetch/session state ──
     inflight: "in-flight fetch handle", inflightKey: "fetch dedupe key", lastKey: "fetch dedupe key",
-    ref: "native FrameRef handle (desktop engine)",
     dataUrl: "image bytes stay OUT of the save (base64 bloat); assetPath persists and re-hydrates",
     // ── drill-in markers re-stamped by the host composite from ITS persisted config ──
     externallyWired: "re-stamped by the host composite", goalDriver: "re-stamped by the host composite",
