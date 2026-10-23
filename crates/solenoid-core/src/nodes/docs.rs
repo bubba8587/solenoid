@@ -1,9 +1,9 @@
-//! The value-watching and documenting cards: Display (`nodes/display.ts`), whose Alert twin's status check is here
-//! too, Expect (`nodes/quality.ts`, [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons),
-//! the Format Controller (`nodes/formatController.ts`, [[D41]] formatFlowsDownstream, [[C118]]
-//! formatTravelsWithValue), Template (`nodes/text.ts`), Frame Input and Cube Input (`nodes/frame.ts`, `nodes/cube.ts`,
-//! [[C22]] rowFormulaRefs, [[D90]] cubeTypesAtDepth) and Record (`nodes/visual.ts`, [[C114]] cardsView). Raising an
-//! alert, a card's memo and its socket reconcile stay with the TS around these bodies.
+//! The cards that watch, format and write up values: Display and Alert (`nodes/display.ts`), Expect
+//! (`nodes/quality.ts`, [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format
+//! Controller (`nodes/formatController.ts`, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue), Template
+//! (`nodes/text.ts`), Frame Input (`nodes/frame.ts`, [[B17]] typedValueModel, [[D100]] computedColumnInfersUnit) and
+//! Record (`nodes/visual.ts`, [[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
+//! reconcile and a frame ref's read stay with the TS around these bodies.
 
 use super::kit::{each, guard_finite};
 use super::{err, list, Answer, Call, Column, Frame};
