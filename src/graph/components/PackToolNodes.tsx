@@ -5,7 +5,7 @@ import {
   HrZonesNode as HrZonesNodeType,
   PipeRoughnessNode as PipeRoughnessNodeType,
   TriangleSolverNode as TriangleSolverNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { PIPE_ROUGHNESS } from "../nodes/fluidsOps";
 import type { TriangleSolved } from "../nodes/triangleOps";
 import { isUnitCell } from "../unitValue";

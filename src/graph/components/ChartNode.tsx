@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { CHART_OP_META } from "../rete-nodes";
+import type { ChartNode as ChartNodeType, ChartOp } from "../nodeClasses";
+import { CHART_OP_META } from "../nodeClasses";
 import { NodeShell, OpSelect, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";

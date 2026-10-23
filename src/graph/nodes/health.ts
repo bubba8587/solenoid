@@ -1,6 +1,6 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, frameOut } from "./shared";
 import type { FrameValue } from "../frame";
@@ -20,7 +20,7 @@ export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValu
   };
 }
 
-export class HrZonesNode extends ClassicPreset.Node {
+export class HrZonesNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { age: 30 };
   cachedFrame: FrameValue | SolError | null = null;

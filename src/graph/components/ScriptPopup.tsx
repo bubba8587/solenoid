@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { scriptPopup } from "../scriptPopupStore";
 import { getOwningEditor } from "../activeGraph";
-import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
-import type { ScriptNode } from "../rete-nodes";
+import { nodeKindOf, NODE_KIND_ACCENTS } from "../nodeClasses";
+import type { ScriptNode } from "../nodeClasses";
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { themeAccent, contrastInk, darkenAccent } from "../palette";

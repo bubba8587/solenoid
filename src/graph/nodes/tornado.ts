@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut } from "./shared";
 
@@ -14,7 +14,7 @@ export interface TornadoResult {
   diverged: boolean;
 }
 
-export class TornadoNode extends ClassicPreset.Node {
+export class TornadoNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "A run perturbs every Number and Slider upstream of this input and ranks them by how far this value swings.",
   };

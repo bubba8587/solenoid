@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
+import type { ScheduleNode as ScheduleNodeType } from "../nodeClasses";
 import { SCHEDULE_DEFAULT_LITERALS, SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

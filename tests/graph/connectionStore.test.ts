@@ -1,6 +1,7 @@
 // [[C23]] calcModes
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import { WebSourceNode } from "../../src/graph/nodes/connection";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
@@ -49,7 +50,7 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
     let call = 0;
     globalThis.fetch = vi.fn(async () => mockCsvResponse(call++ === 0 ? "v\n50" : "v\n150"));
 
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     installInputCoercion(editor);
     editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
     const engine = new DataflowEngine<Schemes>();
@@ -64,10 +65,10 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
     await editor.addNode(col as unknown as Schemes["Node"]);
     await editor.addNode(alert as unknown as Schemes["Node"]);
     await editor.addConnection(
-      new ClassicPreset.Connection(source, "frame", col, "frame") as Schemes["Connection"],
+      new GraphConnection(source, "frame", col, "frame") as Schemes["Connection"],
     );
     await editor.addConnection(
-      new ClassicPreset.Connection(col, "values", alert, "value") as Schemes["Connection"],
+      new GraphConnection(col, "values", alert, "value") as Schemes["Connection"],
     );
 
     // Drive the source's first fetch directly (deterministic — bypasses the

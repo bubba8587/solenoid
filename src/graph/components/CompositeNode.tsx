@@ -1,6 +1,6 @@
 // [[C77]] compositeIsSubgraph. Mechanics: tree/specs/canvas/composite-drill-in-mount-lifecycle.md.
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
+import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../nodeClasses";
 import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
 import { isSolError } from "../errorValue";
 import { formatScalar } from "./format";

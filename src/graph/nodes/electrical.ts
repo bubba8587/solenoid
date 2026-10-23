@@ -1,12 +1,12 @@
 // [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { listIn, numIn, numOut } from "./shared";
 import { type SolError } from "../errorValue";
 import { type ESeriesOp } from "./electricalOps";
 
-export class ParallelCombineNode extends ClassicPreset.Node {
+export class ParallelCombineNode extends GraphNode {
   label: string;
   cachedResult: number | SolError | null = null;
   width = 180;
@@ -23,7 +23,7 @@ export class ParallelCombineNode extends ClassicPreset.Node {
     return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
-export class ESeriesNode extends ClassicPreset.Node {
+export class ESeriesNode extends GraphNode {
   label: string;
   op: ESeriesOp;
   literals: Record<string, number> = { value: 4600 };
@@ -45,7 +45,7 @@ export class ESeriesNode extends ClassicPreset.Node {
     return nodeOnCore(this, inputs) as { nearest: number | SolError | null; errpct: number | SolError | null };
   }
 }
-export class AwgNode extends ClassicPreset.Node {
+export class AwgNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { gauge: 12 };
   cachedDiameter: number | SolError | null = null;
@@ -69,7 +69,7 @@ export class AwgNode extends ClassicPreset.Node {
     return nodeOnCore(this, inputs) as { diameter: number | SolError | null; area: number | SolError | null; resistance: number | SolError | null; ampacity: number | SolError | null };
   }
 }
-export class ResistorCodeNode extends ClassicPreset.Node {
+export class ResistorCodeNode extends GraphNode {
   label: string;
   bands: "4" | "5";
   stringLiterals: Record<string, string> = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "gold" };

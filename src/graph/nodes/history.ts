@@ -1,6 +1,6 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 
-export class SessionHistoryNode extends ClassicPreset.Node {
+export class SessionHistoryNode extends GraphNode {
   color: string;
   width: number;
   height: number;

@@ -3,7 +3,7 @@ import { FieldResizeGrip } from "./FieldResizeGrip";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { SolenoidSocket } from "../sockets";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
@@ -466,7 +466,7 @@ export function InlineCsvField({
 }
 
 
-type InputPort = { socket: ClassicPreset.Socket; label?: string };
+type InputPort = { socket: GraphSocket; label?: string };
 export type InlineNode = {
   id: string;
   inputs: Record<string, InputPort | undefined>;

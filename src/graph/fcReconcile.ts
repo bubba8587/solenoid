@@ -1,13 +1,13 @@
 // [[B11]] maximalMerge
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
+import { FormatControllerNode, ConvertNode, ConduitNode } from "./nodeClasses";
 import { SolenoidSocket, canConnect, declaredTypeOf } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 
 export async function retypeOutputCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
   nodeId: string,
   outKey: string,
@@ -26,7 +26,7 @@ export async function retypeOutputCables(
 
 /** The input-side twin of `retypeOutputCables`: after an in-place input retype, drop only the cables the new type refuses. */
 export async function retypeInputCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
   nodeId: string,
   inKey: string,
@@ -42,7 +42,7 @@ export async function retypeInputCables(
 
 /** `view` is null for a graph nobody is looking at (a closed composite): the model still settles, nothing re-renders. */
 export function reconcileFcTypes(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
 ): void {
   const settled = settleWildcardTypes(editor);
@@ -78,7 +78,7 @@ export function reconcileFcTypes(
 }
 
 export function reconcileTypesAfterEdit(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View | null,
 ): void {
   const settled = settleWildcardTypes(editor);

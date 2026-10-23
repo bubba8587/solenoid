@@ -1,5 +1,5 @@
 // [[C42]], [[B14]] oneDesignSystem
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphSocket } from "../graphModel";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { themeAccent, socketVarHex, socketVarSlot, type PaletteSlot } from "../palette";
@@ -81,11 +81,11 @@ import {
 
 // Runs at call time, so forward references are safe; never relies on constructor.name, which minification breaks.
 
-export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
+export function nodeKindOf(node: GraphNode): NodeKind {
   return explicitKindOf(node) ?? "math";
 }
 
-export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
+export function explicitKindOf(node: GraphNode): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof ReportNode) return "document";
   if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
@@ -238,14 +238,14 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
 }
 
 // These recolor with their output socket, so every accent consumer (card, minimap, canvas snapshot) must read nodeAccent, never nodeKindOf.
-const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
+const SOCKET_DRIVEN_ACCENT = (node: GraphNode): boolean =>
   node instanceof ListInputNode || node instanceof TableInputNode || node instanceof ValueInputNode || node instanceof FormatControllerNode ||
   // Set's output swaps between list and logical per op.
   node instanceof SetsNode;
 
 const NO_FAMILY_OUTPUTS = new Set(["number", "list", "numlist", "table", "any", "anylist", "anycombo", "anydata", "anytable", "trueany"]);
 
-function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
+function unfiledOutput(node: GraphNode): SolenoidSocket | null {
   if (explicitKindOf(node) !== null) return null;
   const outs = Object.values(node.outputs ?? {});
   if (outs.length !== 1) return null;
@@ -254,7 +254,7 @@ function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
 }
 
 /** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
-export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
+export function nodeAccent(node: GraphNode, mode: "dark" | "light"): string {
   const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
   const unfiled = unfiledOutput(node);
   if (unfiled) return socketVarHex(SOCKET_COLORS[unfiled.dataType], mode);
@@ -267,7 +267,7 @@ export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): st
 }
 
 /** The palette slot of the color `nodeAccent` paints, for a surface that stores a slot (a group's color). */
-export function nodeAccentSlot(node: ClassicPreset.Node): PaletteSlot {
+export function nodeAccentSlot(node: GraphNode): PaletteSlot {
   const kindSlot = NODE_KIND_SLOTS[nodeKindOf(node)];
   const unfiled = unfiledOutput(node);
   if (unfiled) return socketVarSlot(SOCKET_COLORS[unfiled.dataType]) ?? kindSlot;
@@ -279,7 +279,7 @@ export function nodeAccentSlot(node: ClassicPreset.Node): PaletteSlot {
   return kindSlot;
 }
 
-export function nodeDomWeight(node: ClassicPreset.Node): number {
+export function nodeDomWeight(node: GraphNode): number {
   // An idle SVG Picker is one <img>; its inline SVG mounts only on hover, never during a pan or zoom.
   if (node instanceof SvgPickerNode) return 2;
   if (
@@ -293,32 +293,32 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
     node instanceof ChartBuilderNode
   ) return 3;
   const grid = Object.values(node.outputs ?? {}).some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
   });
   if (grid) return 2;
   return 1;
 }
 
-export function nodeResizable(node: ClassicPreset.Node): boolean {
+export function nodeResizable(node: GraphNode): boolean {
   return node instanceof DisplayNode;
 }
 
-export function nodeWide(node: ClassicPreset.Node): boolean {
+export function nodeWide(node: GraphNode): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube" || s.dataType === "lambda");
   });
 }
 
-export function nodeMedium(node: ClassicPreset.Node): boolean {
+export function nodeMedium(node: GraphNode): boolean {
   return Object.values(node.outputs ?? {}).some((p) => {
-    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    const s = (p as { socket?: GraphSocket } | undefined)?.socket;
     return s instanceof SolenoidSocket &&
       (s.dataType === "date" || s.dataType === "datelist" || s.dataType === "datecombo");
   });

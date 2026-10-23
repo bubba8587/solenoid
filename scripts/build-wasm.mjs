@@ -10,7 +10,7 @@ const run = (cmd, args) => execFileSync(cmd, args, { stdio: "inherit" });
 const has = (cmd) => { try { execFileSync(cmd, ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
 
 /** A trap leaves the instance corrupt, and wasm-bindgen's init returns early once it holds one: `__wbg_reset` lets
- *  `engineWasm.ts` and `dataflowEngine.ts` drop it and instantiate the compiled module afresh. What the dead instance
+ *  `engineWasm.ts` and `graphEditor.ts` drop it and instantiate the compiled module afresh. What the dead instance
  *  left in JS must then never reach the new one: its closures (a promise settling late) do nothing, its finalizers
  *  free nothing, and the object heap starts empty. Each piece is checked, so a wasm-bindgen whose glue reads
  *  differently fails the build instead of shipping unguarded. */

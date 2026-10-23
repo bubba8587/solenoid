@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
+import type { CableSwitchNode as CableSwitchNodeType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView, getOwningEditor } from "../activeGraph";

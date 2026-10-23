@@ -1,7 +1,7 @@
 // [[C51]] formulaNaming
 // Lab units throughout: grams, moles, liters, kelvin where absolute.
 
-import { ElementNode, MolarMassNode } from "../rete-nodes";
+import { ElementNode, MolarMassNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { CHEMISTRY_PACK_FORMULAS } from "./chemistryFormulas";
 

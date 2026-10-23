@@ -1,7 +1,8 @@
 // [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -15,13 +16,13 @@ import { pinStore } from "../../src/graph/pinStore";
 import { unpackComposite } from "../../src/graph/compositeLogic";
 import { getDrillStack, recordNow, type DrillStack } from "../../src/graph/flow/drillStack";
 
-let editor: NodeEditor<Schemes>;
+let editor: GraphEditor<Schemes>;
 let view: View;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal("document", { createElement: () => ({}), querySelector: () => null });
-  editor = new NodeEditor<Schemes>();
+  editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
@@ -58,7 +59,7 @@ async function setup() {
   const s = getDrillStack(comp);
   const syncTopology = vi.fn();
   s.handlers.syncTopology = syncTopology;
-  const connect = () => comp.internalEditor.addConnection(new ClassicPreset.Connection(a, "value", b, "in") as SolenoidConnection);
+  const connect = () => comp.internalEditor.addConnection(new GraphConnection(a, "value", b, "in") as SolenoidConnection);
   return { comp, a, b, s, syncTopology, connect };
 }
 

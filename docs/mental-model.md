@@ -9,12 +9,13 @@ summaries; the docs they point to are authoritative.
 
 The app is one React tree. **React Flow** (`@xyflow/react`) is the view. It renders every
 card, cable, the minimap and the viewport. `flow/FlowSurface.tsx` is the one surface,
-shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). **rete
-core** (`NodeEditor` + `ClassicPreset`) is the headless model, kept on purpose; no rete
-render package exists ([[A1]] visualGraphCalculator). The compute spine, `DataflowEngine`,
-runs in Rust on Ruggine and mirrors that model (`dataflowEngine.ts`, [[D102]] graphOnCore).
+shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). The
+headless model is the graph core's Ruggine editor, in Rust: which nodes and cables exist and
+each node's ports. TypeScript holds it through `GraphEditor` (`graphEditor.ts`), node classes
+are `GraphNode`s (`graphModel.ts`), and the compute spine, `DataflowEngine`, runs on that same
+editor (`dataflowEngine.ts`, [[D102]] graphOnCore, `tree/specs/computation/graph-core.md`).
 
-- `flow/SolNodeAdapter.tsx` binds a rete node instance to its registered card component.
+- `flow/SolNodeAdapter.tsx` binds a node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the
   model's camera, move and re-render verbs into React Flow state.
 - `graphCompute.ts` is the model-level compute pass, one definition shared by the app, the
@@ -39,7 +40,7 @@ The compute path, in order (the full mechanics, including every coercion rung, a
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
    node's `literals` / `stringLiterals` map (values edited on the card) or its init fields,
    then calls `processGraph()`.
-2. **processGraph** (`process.ts`) resets or targets the rete `DataflowEngine` and pulls
+2. **processGraph** (`process.ts`) resets or targets the `DataflowEngine` and pulls
    outputs. Manual calc mode stops here unless F9 forces a pass. Cycles are found up front
    (Tarjan SCC) and pre-seeded as `#CIRC!`, so the engine never deadlocks. A topology change
    recomputes only the target's downstream closure.
@@ -114,7 +115,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
 
 ## Save, load, and the text form
 
-Every node has a stable, user-editable `name`. Rete `id`s are random and regenerated on
+Every node has a stable, user-editable `name`. Node `id`s are random and regenerated on
 load, so never save or compare ids across loads ([[B16]] oneFormulaSurface). The text form
 (`textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
 writes) is the canonical projection, and the JSON save derives from it (`../tree/specs/documents/save-format.md` § Every save passes through the text form

@@ -1,7 +1,7 @@
 // [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { DisplayNode } from "../../src/graph/nodes/display";
@@ -94,7 +94,7 @@ function groupView(g: GroupNode) {
 
 describe("expand-push records survive a Tidy only with a fresh restore target", () => {
   it("a second push after a programmatic move does NOT re-arm the pre-move restore", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
 
     // Two collapsed groups and a loose, unwired neighbor.
@@ -134,7 +134,7 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
   });
 
   it("the classic single-group cycle still restores exactly", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();
@@ -172,7 +172,7 @@ function expectNoOverlaps(views: Record<string, { position: Pos; element: { offs
 
 describe("no layout op leaves an overlap", () => {
   it("expand separates an overlap the user made, even far from the group", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const a = new DisplayNode();
@@ -189,7 +189,7 @@ describe("no layout op leaves an overlap", () => {
   });
 
   it("expand never moves a position-locked group; the neighbor yields", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const locked = new GroupNode({ width: 300, height: 200 });
@@ -205,7 +205,7 @@ describe("no layout op leaves an overlap", () => {
   });
 
   it("collapse separates a restore that lands on a card placed while expanded", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();
@@ -228,7 +228,7 @@ describe("no layout op leaves an overlap", () => {
 
 describe("autofit and group creation", () => {
   it("autofit keeps a locked group's corner and brings the members to it", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const a = new DisplayNode();
     for (const node of [a]) await editor.addNode(node as never);
@@ -244,7 +244,7 @@ describe("autofit and group creation", () => {
   });
 
   it("autofit that grows the box pushes a neighbor off it", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const a = new DisplayNode();
     const n = new DisplayNode();
@@ -260,7 +260,7 @@ describe("autofit and group creation", () => {
   });
 
   it("grouping takes a node out of its old group and pushes a bystander off the new box", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView((id) => groupView(editor.getNode(id) as GroupNode)());
     const a = new DisplayNode();
     const b = new DisplayNode();
@@ -288,7 +288,7 @@ describe("autofit and group creation", () => {
 
 describe("collapse and the selection ([[C52]] visibleSelection)", () => {
   it("a member hidden by the collapse leaves the selection; a visible card stays", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const m = new DisplayNode();
     const loose = new DisplayNode();
@@ -319,7 +319,7 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
 // on another; expanding slides the partner back.
 describe("standoffs across a collapse round trip", () => {
   async function setup() {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const { view, addView } = makeFakeView();
     const g = new GroupNode({ width: 600, height: 300 });
     const n = new DisplayNode();

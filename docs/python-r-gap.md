@@ -6,12 +6,12 @@ retaining a user", especially where the thing is impossible or impractical to co
 what exists. Every candidate below was checked ABSENT from `nodeCatalog.ts` (the 2026-08-23
 build: 493 leaves) and against the composition that does exist. Each line: what it is, the
 closest current composition (so we don't duplicate), a build-cost call. Node + formula on a
-shared rete-free kernel, per capabilityParity, is assumed for everything numeric.
+shared graph-free kernel, per capabilityParity, is assumed for everything numeric.
 
 Ranking = (how often the function appears in real notebooks / Excel-refugee workflows) ×
 (how painful the current workaround is) ÷ cost. Tier 1 is the "build next" list.
 
-## Tier 1 — LANDED 2026-08-23 (all sixteen; each a node + formula on a rete-free kernel, pinned)
+## Tier 1 — LANDED 2026-08-23 (all sixteen; each a node + formula on a graph-free kernel, pinned)
 
 Shipped in the order built: Aggregate one-liners (PTP/IQR/MAD/SEM/CV/RMS) + SPEARMAN/KENDALL;
 quantile Bin (NTILE), Outliers, Epoch ↔ Date, Truncate Date, Haversine; Describe, Correlation
@@ -90,7 +90,7 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 - Decision trees / random forests / neural nets: not this app (out-of-scope.md spirit).
 
 ## How to run it
-Each Tier-1 item is one backlog line when picked up: kernel in a rete-free `*Ops.ts`, node +
+Each Tier-1 item is one backlog line when picked up: kernel in a graph-free `*Ops.ts`, node +
 formula on it, parity pin, catalog keywords carrying the numpy/pandas/R names (search is how
 a refugee finds it: type `cumsum`, land on Running). Node-combining rule applies — ops on the
 existing family card (Aggregate, Correl, Hypothesis Test, Distribution, Bin, List Sort)

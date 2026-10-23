@@ -2,7 +2,7 @@
 import { getEditor } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { getActiveEditor } from "./activeGraph";
-import { GroupNode, FormatControllerNode } from "./rete-nodes";
+import { GroupNode, FormatControllerNode } from "./nodeClasses";
 import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
 import { unselectAllNodes, selectNode } from "./canvasCommands";

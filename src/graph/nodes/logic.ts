@@ -1,6 +1,6 @@
 // [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
-import { ClassicPreset } from "rete";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, keepInputLast } from "./shared";
+import { GraphNode } from "../graphModel";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { solError, type SolError } from "../errorValue";
@@ -47,7 +47,7 @@ export const COMPARISON_OP_META = {
   neq: { symbol: "≠", label: "Not equal",        description: "`TRUE` when A differs from B. Excel: `A<>B`." },
 } satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
 
-export class ComparisonNode extends ClassicPreset.Node {
+export class ComparisonNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
   };
@@ -76,7 +76,7 @@ export class ComparisonNode extends ClassicPreset.Node {
 }
 
 // ─── BETWEEN / IS CLOSE ───────────────────────────────────────────────────────
-export class BetweenNode extends ClassicPreset.Node {
+export class BetweenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "TRUE when Low ≤ Value ≤ High (inclusive). Broadcasts over a list of Values. R between / pandas Series.between.",
   };
@@ -100,7 +100,7 @@ export class BetweenNode extends ClassicPreset.Node {
   }
 }
 
-export class IsCloseNode extends ClassicPreset.Node {
+export class IsCloseNode extends GraphNode {
   static inputRoles = rolesFrom("ISCLOSE", { tol: 2 });
   static socketDocs: Record<string, string> = {
     result: "TRUE when |A − B| ≤ tolerance: approximate equality for floats. Broadcasts element-wise. math.isclose.",
@@ -127,7 +127,7 @@ export class IsCloseNode extends ClassicPreset.Node {
 
 // ─── IF ───────────────────────────────────────────────────────────────────────
 
-export class IfNode extends ClassicPreset.Node {
+export class IfNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     cond: "A list condition picks element by element from the two branches. A blank condition gives a blank result.",
   };
@@ -173,7 +173,7 @@ export const BOOLEAN_OP_META = {
   xnor: { label: "XNOR", description: "`TRUE` if an even number of inputs are true. The negation of `XOR`." },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
 
-export class BooleanOpNode extends ClassicPreset.Node {
+export class BooleanOpNode extends GraphNode {
   label: string;
   op: BooleanOp;
   cachedResult: Tri | Tri[] = null;
@@ -220,7 +220,7 @@ export class BooleanOpNode extends ClassicPreset.Node {
 
 // ─── NOT ──────────────────────────────────────────────────────────────────────
 
-export class NotNode extends ClassicPreset.Node {
+export class NotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "A wired blank is unknown, so the result is blank rather than TRUE.",
   };
@@ -247,7 +247,7 @@ export class NotNode extends ClassicPreset.Node {
 
 export type IFErrorMode = "iferror" | "ifna";
 
-export class IFErrorNode extends ClassicPreset.Node {
+export class IFErrorNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "A blank is not an error and passes through untouched. A Frame or Cube is caught cell by cell.",
     fallback: "Replaces each caught cell. A list fallback pairs with the value by position; over a Frame or Cube it is one value that must suit each column's type.",
@@ -292,7 +292,7 @@ export const IS_TEST_OP_META = {
   isnontext: { label: "ISNONTEXT", description: "`TRUE` when the value is anything but text. Excel: `ISNONTEXT`." },
 } satisfies Record<IsTestOp, { label: string; description: string }>;
 
-export class IsTestNode extends ClassicPreset.Node {
+export class IsTestNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "With nothing wired there is nothing to test, so the result is blank. ISBLANK answers TRUE only for a wired blank.",
   };
@@ -321,7 +321,7 @@ export class IsTestNode extends ClassicPreset.Node {
 
 // ─── NA ───────────────────────────────────────────────────────────────────────
 
-export class NaNode extends ClassicPreset.Node {
+export class NaNode extends GraphNode {
   label: string;
   cachedResult: SolError;
   /** Abstains in a selector's `agree` vote instead of vetoing, so `IFERROR(aDate, NA())` keeps the date's type. */
@@ -344,7 +344,7 @@ export class NaNode extends ClassicPreset.Node {
 
 // ─── Choose ───────────────────────────────────────────────────────────────────
 
-export class ChooseNode extends ClassicPreset.Node {
+export class ChooseNode extends GraphNode {
   static inputRoles = rolesFrom("CHOOSE", { index: 0 });
   static socketDocs: Record<string, string> = {
     index: "A fractional index drops its fraction, like Excel, and an out-of-range one is #VALUE! rather than blank.",
@@ -403,7 +403,7 @@ export class ChooseNode extends ClassicPreset.Node {
 
 // ─── Switch ───────────────────────────────────────────────────────────────────
 
-export class SwitchNode extends ClassicPreset.Node {
+export class SwitchNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     expr: "Cases match by exact equality, with no numeric tolerance. A blank expression gives a blank result rather than matching a blank case.",
     default: "Left unset, an unmatched expression is #N/A. Any typed or wired value, even blank or zero, returns instead.",
@@ -454,7 +454,7 @@ export class SwitchNode extends ClassicPreset.Node {
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
-    keepInputLast(this, "default");
+    this.moveInputLast("default");
   }
 
   removeValuePair(aKey: string): void {
@@ -474,7 +474,7 @@ export class SwitchNode extends ClassicPreset.Node {
 
 // ─── IFS ──────────────────────────────────────────────────────────────────────
 
-export class IfsNode extends ClassicPreset.Node {
+export class IfsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     otherwise: "Left unset, falling through every condition is #N/A. Any typed or wired value, even blank or zero, returns instead.",
   };
@@ -522,7 +522,7 @@ export class IfsNode extends ClassicPreset.Node {
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
-    keepInputLast(this, "otherwise");
+    this.moveInputLast("otherwise");
   }
 
   removeValuePair(aKey: string): void {
@@ -549,7 +549,7 @@ export const PARITY_OP_META = {
   isodd:  { label: "ISODD",  description: "`TRUE` if the integer part is odd. Excel: `ISODD`." },
 } satisfies Record<ParityOp, { label: string; description: string }>;
 
-export class IsEvenOddNode extends ClassicPreset.Node {
+export class IsEvenOddNode extends GraphNode {
   label: string;
   op: ParityOp;
   cachedResult: Tri | Tri[] = null;

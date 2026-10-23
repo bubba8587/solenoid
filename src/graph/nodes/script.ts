@@ -1,5 +1,5 @@
 // [[C66]] scriptNode, [[D35]] errorInErrorOut
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, compileScript } from "./scriptRun";
@@ -25,7 +25,7 @@ function firstCellError(v: unknown): SolError | null {
   return null;
 }
 
-export class ScriptNode extends ClassicPreset.Node {
+export class ScriptNode extends GraphNode {
   label: string;
   expr: string;
   cachedResult: unknown = null;

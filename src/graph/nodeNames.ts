@@ -1,18 +1,18 @@
 // [[B16]] oneFormulaSurface
 // Node names and connectable endpoints for the connection dialog, derived live: the header title plus a 1-based index
 // when shared; an untitled node falls back to its type.
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "./graphModel";
 
 import { SolenoidSocket, type SocketDataType } from "./sockets";
-import { GroupNode, FormatControllerNode } from "./rete-nodes";
+import { GroupNode, FormatControllerNode } from "./nodeClasses";
 import { nodeDisplayName } from "./catalogUtils";
 import { getActiveEditor } from "./activeGraph";
 
 type AnyNode = {
   id: string;
   label?: string;
-  inputs: Record<string, { socket?: ClassicPreset.Socket; label?: string } | undefined>;
-  outputs: Record<string, { socket?: ClassicPreset.Socket; label?: string } | undefined>;
+  inputs: Record<string, { socket?: GraphSocket; label?: string } | undefined>;
+  outputs: Record<string, { socket?: GraphSocket; label?: string } | undefined>;
   constructor: { name: string };
 };
 

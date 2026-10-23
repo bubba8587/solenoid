@@ -6,7 +6,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../graphEditor";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
@@ -39,7 +39,7 @@ export type StaticStack = FlowModel & {
 };
 
 export function makeStaticStack(): StaticStack {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);

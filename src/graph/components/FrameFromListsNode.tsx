@@ -1,4 +1,4 @@
-import type { FrameFromListsNode as FrameFromListsNodeType } from "../rete-nodes";
+import type { FrameFromListsNode as FrameFromListsNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";

@@ -1,7 +1,7 @@
 // [[C51]] formulaNaming
 // SI units throughout; g = 9.80665 m/s² baked in where gravity appears.
 
-import { ColebrookNode, PipeRoughnessNode } from "../rete-nodes";
+import { ColebrookNode, PipeRoughnessNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { FLUIDS_PACK_FORMULAS } from "./fluidsFormulas";
 

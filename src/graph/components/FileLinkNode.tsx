@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter, [[B2]] webTryDesktopFull
 import { useEffect, useRef, useState } from "react";
-import type { FileLinkNode as FileLinkNodeType } from "../rete-nodes";
+import type { FileLinkNode as FileLinkNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { isDesktop, pickFileLinkDialog, openFilePath, baseNameOf } from "../fileBridge";
 import type { NodeProps } from "./nodeKit";

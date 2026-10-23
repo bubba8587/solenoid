@@ -1,5 +1,5 @@
-import type { DepreciationNode as DepreciationNodeType, DepreciationOp } from "../rete-nodes";
-import { DEPRECIATION_OP_META } from "../rete-nodes";
+import type { DepreciationNode as DepreciationNodeType, DepreciationOp } from "../nodeClasses";
+import { DEPRECIATION_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

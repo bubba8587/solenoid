@@ -1,5 +1,5 @@
 // [[C25]] firstClassUnits
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut } from "./shared";
 import { type FrameValue, type FrameCell } from "../frame";
 import { type SolError } from "../errorValue";
@@ -12,7 +12,7 @@ const SUMMARY_COLS = ["BCWS", "BCWP", "ACWP", "SV", "CV", "SPI", "CPI", "EAC", "
 
 export const EARNED_VALUE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
 
-export class EarnedValueNode extends ClassicPreset.Node {
+export class EarnedValueNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     schedule: "A scheduled project with a Cost column and Complete from 0 to 100. An Actual cost column is the real spend; without one it equals the earned value.",
     baseline: "The plan as it started: its Cost is the budget, its Start and Finish the planned pace. Rows match by task name. Unwired, the schedule is its own baseline.",

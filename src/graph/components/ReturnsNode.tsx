@@ -1,5 +1,5 @@
-import { RETURNS_OP_META } from "../rete-nodes";
-import type { ReturnsNode as ReturnsNodeType, ReturnsOp } from "../rete-nodes";
+import { RETURNS_OP_META } from "../nodeClasses";
+import type { ReturnsNode as ReturnsNodeType, ReturnsOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

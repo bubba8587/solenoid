@@ -1,9 +1,10 @@
 // [[C25]]
 import { describe, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards, solError } from "../../src/graph/errorValue";
@@ -31,7 +32,7 @@ type SavedNode = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   outputs: Record<string, unknown>;
   cachedResult?: unknown;
   lastKey?: string;
@@ -55,7 +56,7 @@ const NodeCtors = Nodes as unknown as Record<string, new (i?: Record<string, unk
  *  islands. WebSource nodes are pre-seeded from the local CSV so data() returns the
  *  real frame synchronously (no network in a headless run). */
 async function buildGraph(copies: number) {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -84,7 +85,7 @@ async function buildGraph(copies: number) {
       const s = byId.get(cn.source), t = byId.get(cn.target);
       if (!s || !t) continue;
       await editor.addConnection(
-        new ClassicPreset.Connection(s, cn.sourceOutput, t, cn.targetInput) as Schemes["Connection"],
+        new GraphConnection(s, cn.sourceOutput, t, cn.targetInput) as Schemes["Connection"],
       );
     }
   }
@@ -122,9 +123,12 @@ describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
     const WARMUP = 3;
     const ITERS = 30;
     const rows: string[] = [];
+    const builds: string[] = [];
     rows.push("scale  nodes  conns   min    median   mean    p95     max    ms/node");
     for (const copies of [1, 2, 4, 8]) {
+      const b0 = performance.now();
       const { editor, engine } = await buildGraph(copies);
+      builds.push(`${copies}x build ${(performance.now() - b0).toFixed(1)} ms`);
       const nodes = editor.getNodes().length;
       const conns = editor.getConnections().length;
       for (let i = 0; i < WARMUP; i++) await computeTick(engine);
@@ -145,6 +149,6 @@ describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
     }
     // eslint-disable-next-line no-console
     console.log("\n[perf] compute phase (engine.reset + fetch-all), ms over " +
-      `${ITERS} iters after ${WARMUP} warmup:\n` + rows.join("\n") + "\n");
-  });
+      `${ITERS} iters after ${WARMUP} warmup:\n` + rows.join("\n") + "\n" + builds.join("\n") + "\n");
+  }, 120_000);
 });

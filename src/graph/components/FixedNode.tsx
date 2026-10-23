@@ -1,5 +1,5 @@
-import { FIXED_NO_COMMAS_META } from "../rete-nodes";
-import type { FixedNode as FixedNodeType, FixedNoCommas } from "../rete-nodes";
+import { FIXED_NO_COMMAS_META } from "../nodeClasses";
+import type { FixedNode as FixedNodeType, FixedNoCommas } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

@@ -1,11 +1,12 @@
 // [[D41]] formatFlowsDownstream: the one compute-time unit read. Mechanics: tree/specs/values/unit-flow.md.
-import type { NodeEditor, ClassicPreset } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphConnection, GraphNode } from "./graphModel";
 import { MathFXNode, isTrigOp } from "./nodes/scalar";
 import { makeAnnotationResolver } from "./unitFlow";
 
-type AnyEditor = NodeEditor<{
-  Node: ClassicPreset.Node;
-  Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
+type AnyEditor = GraphEditor<{
+  Node: GraphNode;
+  Connection: GraphConnection<GraphNode, GraphNode>;
 }>;
 
 function isDegreeUnit(unit: string): boolean {

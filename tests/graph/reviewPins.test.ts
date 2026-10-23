@@ -46,7 +46,7 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
     expect(isSolError(drop([[1, 2], [3, 4]], 0, 2))).toBe(true);
   });
   it("an exponential fit over a y at or below zero is #NUM! on both cards", async () => {
-    const { ForecastNode, LinestNode } = await import("../../src/graph/rete-nodes") as unknown as Record<string, new (i: { op: string }) => { data: (i: Record<string, unknown[]>) => Record<string, unknown> }>;
+    const { ForecastNode, LinestNode } = await import("../../src/graph/nodeClasses") as unknown as Record<string, new (i: { op: string }) => { data: (i: Record<string, unknown[]>) => Record<string, unknown> }>;
     const f = new ForecastNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]], x: [4] });
     expect(isSolError(f.result) && (f.result as { code: string }).code).toBe("#DOMAIN!");
     const l = new LinestNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]] });

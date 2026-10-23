@@ -1,6 +1,6 @@
 // [[D93]] oneTextReading, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState, type ReactNode } from "react";
-import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
+import type { ListInputNode as ListInputNodeType, ListElemType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";

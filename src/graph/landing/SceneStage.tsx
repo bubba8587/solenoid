@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere
 import { useEffect, useId, useMemo, useState } from "react";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../graphEditor";
 import { DataflowEngine } from "../dataflowEngine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes } from "../schemes";
@@ -20,7 +20,7 @@ const ensureElk = makeEnsureElk(() => false);
 
 
 function makeSceneStack(): SurfaceStack {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);

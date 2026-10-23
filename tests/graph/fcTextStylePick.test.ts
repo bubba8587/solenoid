@@ -1,6 +1,6 @@
 // [[D41]] formatFlowsDownstream
 import { describe, it, expect } from "vitest";
-import { FormatControllerNode } from "../../src/graph/rete-nodes";
+import { FormatControllerNode } from "../../src/graph/nodeClasses";
 
 describe("FormatControllerNode.pickTextStyle", () => {
   it("picking Chip clears a letter case, so no hidden UPPER rides the annotation", () => {

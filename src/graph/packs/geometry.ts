@@ -2,7 +2,7 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode } from "../rete-nodes";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 

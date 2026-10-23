@@ -1,11 +1,11 @@
 // [[C76]] formulaPackDefault, [[C44]] dateSerials
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut, dateIn, dateOut } from "./shared";
 import type { SolError } from "../errorValue";
 
-export class SolarPositionNode extends ClassicPreset.Node {
+export class SolarPositionNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { lat: 0, lon: 0 };
   cachedElevation: number | SolError | null = null;
@@ -30,7 +30,7 @@ export class SolarPositionNode extends ClassicPreset.Node {
   }
 }
 
-export class SunriseSunsetNode extends ClassicPreset.Node {
+export class SunriseSunsetNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { lat: 0, lon: 0 };
   cachedSunrise: number | SolError | null = null;
@@ -55,7 +55,7 @@ export class SunriseSunsetNode extends ClassicPreset.Node {
   }
 }
 
-export class MoonPhaseNode extends ClassicPreset.Node {
+export class MoonPhaseNode extends GraphNode {
   label: string;
   cachedPhase: number | SolError | null = null;
   cachedAge: number | SolError | null = null;

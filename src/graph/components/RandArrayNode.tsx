@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RandArrayNode as RandArrayNodeType } from "../rete-nodes";
+import type { RandArrayNode as RandArrayNodeType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

@@ -1,7 +1,7 @@
 // [[A1]], [[B3]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { setActiveGraph } from "../../src/graph/activeGraph";
@@ -16,13 +16,13 @@ import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 
 type FakeNode = { id: string; selected?: boolean };
 
-function fakeEditor(nodes: FakeNode[]): NodeEditor<Schemes> {
+function fakeEditor(nodes: FakeNode[]): GraphEditor<Schemes> {
   const map = new Map(nodes.map((n) => [n.id, n]));
   return {
     getNode: (id: string) => map.get(id),
     getNodes: () => nodes,
     getConnections: () => [],
-  } as unknown as NodeEditor<Schemes>;
+  } as unknown as GraphEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 

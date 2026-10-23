@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import type { SparklineNode as SparklineNodeType, SparklineOp } from "../rete-nodes";
-import { SPARKLINE_OP_META } from "../rete-nodes";
+import type { SparklineNode as SparklineNodeType, SparklineOp } from "../nodeClasses";
+import { SPARKLINE_OP_META } from "../nodeClasses";
 import { NodeShell, PortSockets, useNodeField, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
 import { ChartView, toSeries, type ChartShape } from "./chartView";

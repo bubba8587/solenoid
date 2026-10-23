@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { anyDataIn, resultOut, resultSocket, type ResultType } from "./shared";
 import { frameSocket, cubeSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -9,7 +9,7 @@ import { nodeOnCore } from "../nodeOnCore";
 
 export type ProducedFamily = ResultType | "frame" | "cube";
 
-type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
+type RankedProducer = GraphNode & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
 
 export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ProducedFamily): void {
   if (isSolError(result)) return;
@@ -40,7 +40,7 @@ function retypeResult(node: RankedProducer, family: ProducedFamily): void {
   });
 }
 
-export class ExpressionNode extends ClassicPreset.Node {
+export class ExpressionNode extends GraphNode {
   unitAware = true;
   label: string;
   expr: string;

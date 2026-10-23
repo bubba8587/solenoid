@@ -1,6 +1,6 @@
 // [[D35]] errorInErrorOut, [[C25]] firstClassUnits
 // Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { trueAnySocket, MutableSocket } from "../sockets";
 
 export const CONDUIT_MAX_LANES = 8;
@@ -72,7 +72,7 @@ export function conduitSeqTaken(nodes: Iterable<object>, self: object, n: number
   return false;
 }
 
-export class ConduitNode extends ClassicPreset.Node {
+export class ConduitNode extends GraphNode {
   /** Lanes forward tags untouched ([[C25]] firstClassUnits). */
   unitAware = true;
   label: string;
@@ -92,8 +92,8 @@ export class ConduitNode extends ClassicPreset.Node {
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
       // `trueany` in, the supremum; a fresh MutableSocket out per
       // lane so the lane carries its adopted type on.
-      this.addInput(conduitInKey(i), new ClassicPreset.Input(trueAnySocket));
-      this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
+      this.addInput(conduitInKey(i), new GraphInput(trueAnySocket));
+      this.addOutput(conduitOutKey(i), new GraphOutput(new MutableSocket("trueany")));
     }
   }
 

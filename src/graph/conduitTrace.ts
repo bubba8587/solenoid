@@ -1,18 +1,19 @@
 // [[C10]] socketLattice
-import type { ClassicPreset, NodeEditor } from "rete";
-import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./rete-nodes";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphSocket } from "./graphModel";
+import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./nodeClasses";
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "./sockets";
 import type { Schemes } from "./schemes";
 
 
 export type TypedSource = {
-  socket: ClassicPreset.Socket | undefined;
+  socket: GraphSocket | undefined;
   source: string;
   sourceOutput: string;
 };
 
 interface TraceEditor {
-  getNode(id: string): { outputs?: Record<string, { socket?: ClassicPreset.Socket } | undefined> } | undefined;
+  getNode(id: string): { outputs?: Record<string, { socket?: GraphSocket } | undefined> } | undefined;
   getConnections(): ReadonlyArray<{ source: string; sourceOutput: string; target: string; targetInput: string }>;
 }
 
@@ -36,7 +37,7 @@ export function resolveTypedSource(
 }
 
 /** Mutates each lane's MutableSocket in place and returns true if any type changed, so the caller loops to a fixpoint; the caller owns re-render, recompute and downstream re-validation. */
-function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
+function reconcileConduitTypesOnce(editor: GraphEditor<Schemes>): boolean {
   let changed = false;
   const conns = editor.getConnections();
   for (const node of editor.getNodes()) {
@@ -131,7 +132,7 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
   return { connIds, origin: { nodeId: head.source, key: head.sourceOutput }, terminals, conduits };
 }
 
-export function reconcileConduitTypes(editor: NodeEditor<Schemes>): boolean {
+export function reconcileConduitTypes(editor: GraphEditor<Schemes>): boolean {
   let anyChanged = false;
   for (let pass = 0; pass < 32; pass++) {
     if (!reconcileConduitTypesOnce(editor)) break;

@@ -2,22 +2,24 @@
 // A panic in the graph core rejects what was waiting on it, and a fresh instance takes over with every live
 // engine's editor mirrored into it (tree/specs/computation/graph-core.md § Traps).
 import { it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine, GraphTrap } from "../../src/graph/dataflowEngine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import { GraphTrap } from "../../src/graph/graphEditor";
 import { graphTrap } from "../../src/graph/graphWasm/solenoid_graph.js";
 import type { Schemes } from "../../src/graph/schemes";
 
-class N extends ClassicPreset.Node {
+class N extends GraphNode {
   constructor(public run: (inputs: Record<string, unknown[]>) => unknown, input = false) {
     super("n");
-    if (input) this.addInput("x", new ClassicPreset.Input(new ClassicPreset.Socket("s")));
-    this.addOutput("out", new ClassicPreset.Output(new ClassicPreset.Socket("s")));
+    if (input) this.addInput("x", new GraphInput(new GraphSocket("s")));
+    this.addOutput("out", new GraphOutput(new GraphSocket("s")));
   }
   data(inputs: Record<string, unknown[]>) { return this.run(inputs); }
 }
 
 it("a trap rejects the fetch in flight, and the engine computes again on a fresh instance", async () => {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   let release!: () => void;
@@ -26,7 +28,7 @@ it("a trap rejects the fetch in flight, and the engine computes again on a fresh
   const b = new N((i) => ({ out: (i.x?.[0] as number) * 10 }), true);
   await editor.addNode(a as unknown as Schemes["Node"]);
   await editor.addNode(b as unknown as Schemes["Node"]);
-  await editor.addConnection(new ClassicPreset.Connection(a, "out", b, "x") as unknown as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(a, "out", b, "x") as unknown as Schemes["Connection"]);
 
   const pending = engine.fetch(b.id);
   expect(() => graphTrap()).toThrow();

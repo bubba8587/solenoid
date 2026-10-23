@@ -1,11 +1,11 @@
 // [[B15]] leanCore, [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
-// A pack file may import only this module, its <id>Formulas.ts, ../rete-nodes and type-only app seams, never core internals;
-// <id>Formulas.ts imports only rete-free kernels ([[C17]] shareImpl).
+// A pack file may import only this module, its <id>Formulas.ts, ../nodeClasses and type-only app seams, never core internals;
+// <id>Formulas.ts imports only graph-free kernels ([[C17]] shareImpl).
 
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
-import { ExpressionNode, EquationNode } from "../rete-nodes";
+import { ExpressionNode, EquationNode } from "../nodeClasses";
 
 /** A pack's formula function: the core carries its body (`fns_packs.rs`); the pack declares how the editor shows it. */
 export interface PackFormula {

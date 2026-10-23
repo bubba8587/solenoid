@@ -1,11 +1,11 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../../src/graph/graphModel";
 import { extractInit } from "../../src/graph/nodeInit";
 import { FilterNode } from "../../src/graph/nodes/list";
 import { FilterFrameNode } from "../../src/graph/nodes/frame";
 
-const asNode = (n: unknown) => n as ClassicPreset.Node;
+const asNode = (n: unknown) => n as GraphNode;
 
 describe("List Filter op config persists (the reload-reset bug)", () => {
   it("multiple rows each keep their op + matchCase", () => {

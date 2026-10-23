@@ -1,6 +1,7 @@
 // [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphNode } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
@@ -18,7 +19,7 @@ import { SurfaceNode, ChartNode } from "../nodes/visual";
 import { FrameInputNode, GroupByFrameNode, JoinNode } from "../nodes/frame";
 
 
-const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
+const asNode = (n: GraphNode) => n as unknown as SolenoidNode;
 
 const SURVEY_GRID = [
   "2,   , 6,   , 2",
@@ -29,7 +30,7 @@ const SURVEY_GRID = [
 ].join("\n");
 
 function makeLandingStack(): SurfaceStack {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -74,7 +75,7 @@ async function buildDemoGraph(s: SurfaceStack) {
   const surface = new SurfaceNode({ label: "Area" });
   const contour = new SurfaceNode({ op: "contour", label: "Contour" });
 
-  const at: [ClassicPreset.Node, number, number][] = [
+  const at: [GraphNode, number, number][] = [
     [survey, 20, 130],
     [interp, 380, 90],
     [surface, 740, 50],
@@ -86,14 +87,14 @@ async function buildDemoGraph(s: SurfaceStack) {
   }
   for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
 
-  const wire = (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
-    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
+  const wire = (src: GraphNode, out: string, tgt: GraphNode, inp: string) =>
+    s.editor.addConnection(new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
   await wire(survey, "table", interp, "z");
   await wire(interp, "result", surface, "z");
   await wire(interp, "result", contour, "z");
 }
 
-async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]) {
+async function place(s: SurfaceStack, at: [GraphNode, number, number][]) {
   for (const [node] of at) {
     await s.editor.addNode(asNode(node));
     nodeNameStore.ensure(node.id, node.constructor.name);
@@ -101,8 +102,8 @@ async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]
   for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
 }
 const connect = (s: SurfaceStack) =>
-  (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
-    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
+  (src: GraphNode, out: string, tgt: GraphNode, inp: string) =>
+    s.editor.addConnection(new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
 
 function makeRng(seed: number): () => number {
   let s = seed >>> 0;

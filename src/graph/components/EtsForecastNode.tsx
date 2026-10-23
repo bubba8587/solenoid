@@ -1,4 +1,4 @@
-import type { EtsForecastNode as EtsForecastNodeType } from "../rete-nodes";
+import type { EtsForecastNode as EtsForecastNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";

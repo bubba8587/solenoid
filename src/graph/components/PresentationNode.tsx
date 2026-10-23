@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { PresentationNode as PresentationNodeType } from "../rete-nodes";
+import type { PresentationNode as PresentationNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";

@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // Metric inputs throughout (kg, cm, years); a sex-specific equation ships as two presets, never a hidden ±sign input.
 
-import { HrZonesNode } from "../rete-nodes";
+import { HrZonesNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { HEALTH_PACK_FORMULAS } from "./healthFormulas";
 

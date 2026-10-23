@@ -1,6 +1,6 @@
 // [[C50]] lambdaBindsByName, [[C95]] commitOnEnter, [[C22]] rowFormulaRefs
 import { useState, useEffect } from "react";
-import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
+import type { LambdaNode as LambdaNodeType } from "../nodeClasses";
 import { formatLambda, perRowParamClashes } from "../nodes/lambda";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

@@ -1,5 +1,5 @@
 // [[C68]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { trueAnyIn, documentOut, documentIn, cubeIn } from "./shared";
 import { NoteNode } from "./annotation";
 import { isDocumentValue, makeDocument, PAGE_SEPARATOR, type DocumentValue, type DocumentPage } from "../documentValue";
@@ -18,7 +18,7 @@ const BATCH_LOCALS = new Set(["record", "index"]);
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 
-export class ReportNode extends ClassicPreset.Node {
+export class ReportNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     document: "The rendered report as markdown, every embedded value resolved. In a mail merge, one page per record.",
     template: "A Note used as the template: its tags become the inputs and its frontmatter fills the ones left blank. The report's own text waits while it is in use.",

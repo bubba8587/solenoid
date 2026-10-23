@@ -1,6 +1,6 @@
 // [[C28]] literalsIffEditable
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import type { SliderInputNode as SliderInputNodeType } from "../rete-nodes";
+import type { SliderInputNode as SliderInputNodeType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";

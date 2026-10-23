@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves
 // What a save holds of a card: its init fields, captured as plain JSON. Free of the editor, so a card's body on the
 // core (nodeOnCore.ts) and the Obsidian plugin can read it.
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "./graphModel";
 import { readPivotView, savedPivotView } from "./pivotLayout";
 
 // textForm.ts's writer shares this order: appending is safe, reordering rewrites every existing save.
@@ -39,7 +39,7 @@ export const INIT_EXTRA_FIELD_ORDER = [
   "keyOrder", "pivotView", "detailFields",
 ] as const;
 
-export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
+export function extractInit(src: GraphNode): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
   for (const key of INIT_FIELD_ORDER) {

@@ -10,7 +10,7 @@ Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, 
 
 The formulas and the nodes share one set of functions ([[B16]] oneFormulaSurface). A new function lands on both surfaces in one change, or on neither. Nodes that no formula can express (Frame verbs, figures, inputs) aren't functions and sit outside that set. A surface that offers fewer functions, such as a simple mode, would be a filter over the one set, never a second set.
 
-The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is a body on the core ([[rust-core]]), which usually shares its kernel with the matching card. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared rete-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
+The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is a body on the core ([[rust-core]]), which usually shares its kernel with the matching card. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared graph-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
 
 The per-name reasons Solenoid answers otherwise than Formula.js did are [[formulajs-divergences]]; this spec does not repeat them. The mechanics below name the TypeScript functions the core was ported from: `crates/solenoid-core` keeps them in snake_case (`mapCells` is `map_cells`), and the TypeScript copies are gone ([[D99]] rustIsSpec). Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
 
@@ -40,7 +40,7 @@ The per-name reasons Solenoid answers otherwise than Formula.js did are [[formul
 | `src/graph/nodes/*Ops.ts` | What the components and the cards' shells still read of the kernels; the kernels themselves are the core's (see *Shared kernels*). |
 | `src/graph/packs/*Formulas.ts` | A pack's `formulas`: each one's name, arity and argument hint. |
 
-Every module the formula path imports is rete-free, each pack's `*Formulas.ts` included ([[engineering#The formula path is rete-free]]). `formulaPathIsReteFree.test.ts` pins it.
+Every module the formula path imports is graph-free, each pack's `*Formulas.ts` included ([[engineering#The formula path is graph-free]]). `formulaPathIsGraphFree.test.ts` pins it.
 
 ## Lexical grammar
 
@@ -641,7 +641,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 
 ## Shared kernels
 
-The kernels are the core's, which a card's body and a formula both call; the names below are the TypeScript ones they were ported from, under the `src/graph/nodes/` modules that held them, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[engineering#The formula path is rete-free]]). They never import rete; a kernel that would need something from a rete-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
+The kernels are the core's, which a card's body and a formula both call; the names below are the TypeScript ones they were ported from, under the `src/graph/nodes/` modules that held them, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[engineering#The formula path is graph-free]]). They never import the graph model; a kernel that would need something from a graph-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
 
 ### List kernels (`nodes/listOps.ts`)
 
@@ -878,7 +878,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 ### Text kernels (`nodes/textOps.ts`)
 
-Each kernel works on one string; the text nodes and the text formulas broadcast it. `textOps.ts` must not import `text.ts`, which imports `excelFunctions` and would pull rete into the formula path through the cycle ([[engineering#The formula path is rete-free]]). Lengths and positions count code points, not UTF-16 units.
+Each kernel works on one string; the text nodes and the text formulas broadcast it. `textOps.ts` must not import `text.ts`, which imports `excelFunctions` and would pull the graph model into the formula path through the cycle ([[engineering#The formula path is graph-free]]). Lengths and positions count code points, not UTF-16 units.
 
 - `splitText` (TEXTSPLIT(text, [col_delimiter], [row_delimiter], [ignore_empty], [match_mode], [pad_with])): an empty delimiter splits into characters. Without a row delimiter the answer is a list (one row); with one it splits into rows first and answers a table, short rows padded with `pad_with` or `#N/A`. A row delimiter alone answers one column, as Excel does (`TEXTSPLIT("a;b", , ";")`); neither is `#SYNTAX!`. `ignore_empty` drops empty parts; match_mode 1 matches case-insensitively.
 - `textAfterBefore` (TEXTAFTER, TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])): the text after or before the `instance_num`-th occurrence of the delimiter, counted from the end when negative; 0 is `#VALUE!`. `match_end` 1 counts the end of the text (the start, from the end) as one more occurrence. An empty delimiter, or an occurrence the text does not have, answers `if_not_found` when given and otherwise null rather than Excel's `#N/A`. The formula's settings are declared roles ([[input-roles]]).
@@ -958,7 +958,7 @@ FITDIST and the Fit Distribution node share these, in the spirit of `scipy.stats
 
 ### Index access (`nodes/indexAccess.ts`)
 
-The INDEX node and the INDEX formula share `indexInto(value, row, col, tagUnit?)` over a scalar, a list or a matrix, everything both surfaces can hold. Frame and cube slicing stay in the node, because `frame.ts` imports the socket lattice; for the same reason the node passes `tagFrameCellUnit` in as `tagUnit` rather than the kernel importing `unitColumn.ts`, which reaches rete through `unitBridge`.
+The INDEX node and the INDEX formula share `indexInto(value, row, col, tagUnit?)` over a scalar, a list or a matrix, everything both surfaces can hold. Frame and cube slicing stay in the node, because `frame.ts` imports the socket lattice; for the same reason the node passes `tagFrameCellUnit` in as `tagUnit` rather than the kernel importing `unitColumn.ts`, which reaches the graph model through `unitBridge`.
 
 - An axis (`IndexAxis`) is a 1-based position, `undefined` for an axis never given, or null for one given as blank. `resolveAxes` truncates a fractional position (`INDEX(x, 1.9)` reads row 1), reads 0 or `undefined` as the whole axis (Excel's omitted `row_num`), and makes the answer blank when either axis is blank; a card or formula has already read a blank setting as left out ([[D86]]), so only a kernel called directly sees a blank position. A blank container answers blank.
 - A scalar is a 1 × 1: position 1, or the whole axis, returns it, and anything else is `#REF!`.
@@ -1006,7 +1006,7 @@ The measurement reports:
 | Node and formula give one answer | `tests/graph/formulaNodeParity.test.ts`, `nodeFormulaArgParity.test.ts`, `formulaTier1.test.ts`, `formulaTier3.test.ts` |
 | Where Formula.js was wrong | `tests/graph/formulaDivergence.test.ts` |
 | Pack registration | `tests/graph/formulaExtensions.test.ts` |
-| The formula path stays rete-free | `tests/graph/formulaPathIsReteFree.test.ts` |
+| The formula path stays graph-free | `tests/graph/formulaPathIsGraphFree.test.ts` |
 | The criteria grammar | `tests/graph/criteriaFamily.test.ts` |
 | Signatures and the parameter bar | `tests/graph/formulaSignatures.test.ts` |
 | The parity measurement and its ratchet | `tests/graph/formulaNodeParity.test.ts` |

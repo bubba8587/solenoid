@@ -1,8 +1,9 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
-import * as Nodes from "../../src/graph/rete-nodes";
+import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards, isSolError, type SolError } from "../../src/graph/errorValue";
@@ -22,7 +23,7 @@ type SavedNode = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
 };
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   outputs: Record<string, unknown>;
   seenError?: SolError | null;
   cachedValue?: unknown;
@@ -36,7 +37,7 @@ const EXPECTED: Record<string, string> = {
 
 describe("errors-null-logic seed (error-codes tour)", () => {
   it("every ISERROR cluster reports the code its row demonstrates", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     installInputCoercion(editor);
     editor.addPipe((ctx) => {
       if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -58,7 +59,7 @@ describe("errors-null-logic seed (error-codes tour)", () => {
     for (const c of seed.connections) {
       const src = byId.get(c.source)!, tgt = byId.get(c.target)!;
       await editor.addConnection(
-        new ClassicPreset.Connection(src, c.sourceOutput, tgt, c.targetInput) as Schemes["Connection"],
+        new GraphConnection(src, c.sourceOutput, tgt, c.targetInput) as Schemes["Connection"],
       );
     }
 

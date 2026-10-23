@@ -1,8 +1,9 @@
 // [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits
 import type { View } from "./view";
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import { GraphConnection } from "./graphModel";
 import type { Schemes } from "./schemes";
-import { FormatControllerNode } from "./rete-nodes";
+import { FormatControllerNode } from "./nodeClasses";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { dockedNodeStore } from "./dockedNodeStore";
 
@@ -53,7 +54,7 @@ export function dockedRenderedDims(
 }
 
 export function repositionDockedFor(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   container: HTMLElement | null,
   hostId: string,
@@ -73,7 +74,7 @@ const DOCK_SNAP_CANVAS_PX = 34;
 
 export function findDockTarget(
   view: View,
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   fc: FormatControllerNode,
 ): { hostNodeId: string; socketKey: string; side: "input" | "output" } | null {
   const fcIn  = getSocketScreenCenter(view, fc.id, "in",  "input");
@@ -104,7 +105,7 @@ export function findDockTarget(
 
 
 
-export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerNode): Promise<void> {
+export async function insertFcInline(editor: GraphEditor<Schemes>, fc: FormatControllerNode): Promise<void> {
   if (!fc.hostNodeId) return;
   const host = editor.getNode(fc.hostNodeId);
   if (!host) return;
@@ -119,12 +120,12 @@ export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const targetInput = c.targetInput;
       await editor.removeConnection(c.id);
       try {
-        await editor.addConnection(new ClassicPreset.Connection(fc, "out", tgt, targetInput) as SolenoidConnection);
+        await editor.addConnection(new GraphConnection(fc, "out", tgt, targetInput) as SolenoidConnection);
       } catch { /* incompatible — leave disconnected */ }
     }
     if (!editor.getConnections().some((c) => c.target === fc.id && c.targetInput === "in")) {
       try {
-        await editor.addConnection(new ClassicPreset.Connection(host, fc.socketKey, fc, "in") as SolenoidConnection);
+        await editor.addConnection(new GraphConnection(host, fc.socketKey, fc, "in") as SolenoidConnection);
       } catch { /* incompatible — skip */ }
     }
   } else {
@@ -138,19 +139,19 @@ export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const sourceOutput = c.sourceOutput;
       await editor.removeConnection(c.id);
       try {
-        await editor.addConnection(new ClassicPreset.Connection(src, sourceOutput, fc, "in") as SolenoidConnection);
+        await editor.addConnection(new GraphConnection(src, sourceOutput, fc, "in") as SolenoidConnection);
       } catch { /* incompatible — leave disconnected */ }
     }
     if (!editor.getConnections().some((c) => c.source === fc.id && c.sourceOutput === "out" && c.target === fc.hostNodeId)) {
       try {
-        await editor.addConnection(new ClassicPreset.Connection(fc, "out", host, fc.socketKey) as SolenoidConnection);
+        await editor.addConnection(new GraphConnection(fc, "out", host, fc.socketKey) as SolenoidConnection);
       } catch { /* incompatible — skip */ }
     }
   }
 }
 
 // Call before undock() or any change to fc.hostNodeId: it reads hostNodeId, socketKey and side.
-export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerNode): Promise<void> {
+export async function removeFcInline(editor: GraphEditor<Schemes>, fc: FormatControllerNode): Promise<void> {
   const host = fc.hostNodeId ? editor.getNode(fc.hostNodeId) : undefined;
   const hostKey = fc.socketKey;
   const hostSocket = fc.side === "output" ? host?.outputs[hostKey] : host?.inputs[hostKey];
@@ -163,7 +164,7 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const targetInput = c.targetInput;
       await editor.removeConnection(c.id);
       if (src && tgt && inConn) {
-        try { await editor.addConnection(new ClassicPreset.Connection(src, inConn.sourceOutput, tgt, targetInput) as SolenoidConnection); } catch { /* incompatible — leave disconnected */ }
+        try { await editor.addConnection(new GraphConnection(src, inConn.sourceOutput, tgt, targetInput) as SolenoidConnection); } catch { /* incompatible — leave disconnected */ }
       }
     }
     if (inConn) { try { await editor.removeConnection(inConn.id); } catch { /* already gone */ } }
@@ -176,7 +177,7 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const targetInput = c.targetInput;
       await editor.removeConnection(c.id);
       if (tgt) {
-        try { await editor.addConnection(new ClassicPreset.Connection(host, hostKey, tgt, targetInput) as SolenoidConnection); } catch { /* ignore */ }
+        try { await editor.addConnection(new GraphConnection(host, hostKey, tgt, targetInput) as SolenoidConnection); } catch { /* ignore */ }
       }
     }
     for (const c of editor.getConnections()) {
@@ -188,7 +189,7 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const sourceOutput = c.sourceOutput;
       await editor.removeConnection(c.id);
       if (src) {
-        try { await editor.addConnection(new ClassicPreset.Connection(src, sourceOutput, host, hostKey) as SolenoidConnection); } catch { /* ignore */ }
+        try { await editor.addConnection(new GraphConnection(src, sourceOutput, host, hostKey) as SolenoidConnection); } catch { /* ignore */ }
       }
     }
     for (const c of editor.getConnections()) {

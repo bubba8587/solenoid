@@ -1,5 +1,5 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../graphEditor";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { boundZoom, clampZoom } from "../viewPresets";
@@ -18,7 +18,7 @@ export type FlowView = View & {
   setSize(id: string, size: { w: number; h: number }): void;
 };
 
-export function makeFlowView(editor: NodeEditor<Schemes>, cb: FlowViewCallbacks): FlowView {
+export function makeFlowView(editor: GraphEditor<Schemes>, cb: FlowViewCallbacks): FlowView {
   const sizes = new Map<string, { w: number; h: number }>();
   const transform = { x: 0, y: 0, k: 1 };
   const pointer = { x: 0, y: 0 };

@@ -1,5 +1,5 @@
 // [[B11]], [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
@@ -37,7 +37,7 @@ function todaySerial(): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
 }
 
-export class TaskNotesNode extends ClassicPreset.Node {
+export class TaskNotesNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task. Projects, contexts, tags and blocked-by are lists; time entries and completed instances are nested tables.",
     from: "First day of the calendar window. Unwired, a year back.",
@@ -185,7 +185,7 @@ const DEMO_REFUSAL = "TaskNotes is showing the demo. Set a TaskNotes URL in Sett
 
 export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
 
-export class WriteTasksNode extends ClassicPreset.Node {
+export class WriteTasksNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "A row with a path updates that task; a row without one creates a task from its title. Only Run writes; the node loads disarmed.",
     plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",

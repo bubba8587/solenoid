@@ -1,7 +1,8 @@
 // [[B11]] maximalMerge, [[C77]] compositeIsSubgraph
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
@@ -13,7 +14,7 @@ import { dropInputCables } from "../../src/graph/components/cablePrune";
 
 describe("a node inside a closed composite", () => {
   it("resolves to the composite's internal editor, nested too, so its prune reaches its cables", async () => {
-    const main = new NodeEditor<Schemes>();
+    const main = new GraphEditor<Schemes>();
     main.use(new DataflowEngine<Schemes>());
     setEditorRefs(main, new DataflowEngine<Schemes>(), {} as View);
     const outer = new CompositeNode();
@@ -24,7 +25,7 @@ describe("a node inside a closed composite", () => {
     const sink = new DisplayNode();
     await inner.internalEditor.addNode(src);
     await inner.internalEditor.addNode(sink);
-    await inner.internalEditor.addConnection(new ClassicPreset.Connection(src, "value", sink, "in") as SolenoidConnection);
+    await inner.internalEditor.addConnection(new GraphConnection(src, "value", sink, "in") as SolenoidConnection);
 
     expect(getOwningEditor(sink.id)).toBe(inner.internalEditor);
     await dropInputCables(sink.id, ["in"]);

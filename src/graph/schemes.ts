@@ -1,12 +1,12 @@
 // [[A1]] visualGraphCalculator, [[B12]] losslessSaves
-import type { ClassicPreset, GetSchemes } from "rete";
 import type { DataflowNode } from "./dataflowEngine";
+import type { GraphConnection, GraphNode } from "./graphModel";
 
-export type SolenoidNode = ClassicPreset.Node & DataflowNode & {
+export type SolenoidNode = GraphNode & DataflowNode & {
   width: number;
   height: number;
   position?: { x: number; y: number };
 };
-export type SolenoidConnection = ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
+export type SolenoidConnection = GraphConnection;
 
-export type Schemes = GetSchemes<SolenoidNode, SolenoidConnection>;
+export type Schemes = { Node: SolenoidNode; Connection: SolenoidConnection };

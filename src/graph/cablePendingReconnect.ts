@@ -1,11 +1,12 @@
 // [[B11]] maximalMerge
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import { GraphConnection } from "./graphModel";
 import type { Schemes, SolenoidConnection } from "./schemes";
 import type { View } from "./view";
 import { canConnect, SolenoidSocket, type SocketDataType } from "./sockets";
 import { cablePendingStore } from "./cableState";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 interface Endpoint { target: string; targetInput: string; label: string }
 
@@ -59,7 +60,7 @@ export async function reattachPending(editor: Editor, view: View | null, nodeId:
     const multi = (tgt.inputs[key] as { multipleConnections?: boolean } | undefined)?.multipleConnections;
     if (!already && occupants.length > 0 && !multi) { cablePendingStore.drop(p.id); changed = true; continue; }
     if (!already) {
-      const conn = new ClassicPreset.Connection(src, outKey, tgt, key) as SolenoidConnection;
+      const conn = new GraphConnection(src, outKey, tgt, key) as SolenoidConnection;
       await editor.addConnection(conn);
     }
     cablePendingStore.drop(p.id);

@@ -1,5 +1,5 @@
 // Model fuzzing: valid-shaped samples per leaf source; findings go to the Problems panel (origin "fuzz").
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "./graphModel";
 import { getEditor, getView, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
@@ -265,8 +265,8 @@ export async function insertClampBefore(
   await view.moveNode(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
 
   await editor.removeConnection(conn.id);
-  await editor.addConnection(new ClassicPreset.Connection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);
-  await editor.addConnection(new ClassicPreset.Connection(clamp, "result", target, socketKey) as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(clamp, "result", target, socketKey) as SolenoidConnection);
   await processGraph();
   return true;
 }

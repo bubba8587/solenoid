@@ -84,7 +84,7 @@ import {
   type BesselOp, type RegressionOp,
   type TodayNowOp, type DateTimeValueOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
   ExpectNode, TornadoNode,
-} from "./rete-nodes";
+} from "./nodeClasses";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
 

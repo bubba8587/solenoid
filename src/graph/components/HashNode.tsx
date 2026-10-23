@@ -1,5 +1,5 @@
-import { HASH_ALGORITHM_META } from "../rete-nodes";
-import type { HashNode as HashNodeType, HashAlgorithm } from "../rete-nodes";
+import { HASH_ALGORITHM_META } from "../nodeClasses";
+import type { HashNode as HashNodeType, HashAlgorithm } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

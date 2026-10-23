@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import { useSyncExternalStore, type ReactNode } from "react";
 import { collapseStore } from "../collapseStore";
-import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
+import type { ChartBuilderNode as ChartBuilderNodeType } from "../nodeClasses";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
 import { COLORMAP_LIST } from "../colormaps";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";

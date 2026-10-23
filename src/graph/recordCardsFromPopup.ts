@@ -1,5 +1,5 @@
 // [[C114]] cardsView, [[B11]] maximalMerge
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "./graphModel";
 import { getOwningEditor, getOwningView } from "./activeGraph";
 import { cableValueStore } from "./cableValueStore";
 import { isFrameValue } from "./frame";
@@ -8,7 +8,7 @@ import { nodeNameStore } from "./nodeNameStore";
 import { processGraph } from "./process";
 import { scheduleAutosave } from "./persistence";
 import { flyToNodeAndFlash } from "./flyToNode";
-import { RecordNode } from "./rete-nodes";
+import { RecordNode } from "./nodeClasses";
 import type { SolenoidConnection } from "./schemes";
 import { setRecordCardsAction } from "./tablePopupStore";
 
@@ -61,7 +61,7 @@ export async function addRecordCards(hostId: string): Promise<string | null> {
   const from = boxOf(hostId) ?? { x: 0, y: 0, w: 240, h: 160 };
   const taken = editor.getNodes().flatMap((n) => (n.id === rec.id ? [] : [boxOf(n.id)].filter((b): b is Box => b !== null)));
   await view.moveNode(rec.id, freeSpotRightOf(from, taken));
-  await editor.addConnection(new ClassicPreset.Connection(host, out, rec, "frame") as unknown as SolenoidConnection);
+  await editor.addConnection(new GraphConnection(host, out, rec, "frame") as unknown as SolenoidConnection);
   scheduleAutosave();
   await processGraph(rec.id);
   flyToNodeAndFlash(rec.id);

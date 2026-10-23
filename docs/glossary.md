@@ -186,6 +186,10 @@ area. When you coin a new load-bearing term, add it here.
 - **DataflowEngine**: the PULL-based execution engine (inputs resolve recursively
   before `data()` runs; async ones awaited), rete-engine's, ported to Rust in Ruggine.
   (`dataflowEngine.ts`, `crates/solenoid-graph`)
+- **GraphEditor**: the model's TypeScript handle over the graph core's Ruggine editor: add and
+  remove nodes and cables, read them, and `addPipe` to hear their signals. (`graphEditor.ts`)
+- **GraphNode / GraphSocket / GraphInput / GraphOutput / GraphConnection**: what node classes
+  are built from, Solenoid's own in place of rete's classic preset. (`graphModel.ts`)
 - **Calc mode**: manual vs. automatic recompute; F9 forces a recompute in manual mode.
   (`calcModeStore.ts`; see [[C23]] calcModes)
 - **Compute overlay**: the deferred "Computing…" curtain that blocks interaction during a

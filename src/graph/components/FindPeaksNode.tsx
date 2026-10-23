@@ -1,4 +1,4 @@
-import type { FindPeaksNode as FindPeaksNodeType } from "../rete-nodes";
+import type { FindPeaksNode as FindPeaksNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

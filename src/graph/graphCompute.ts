@@ -1,12 +1,12 @@
 // [[C23]] calcModes
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import { engineOf, type DataflowEngine, type NodeOutputs } from "./dataflowEngine";
 import { solError } from "./errorValue";
 import { resolveTrigModes } from "./trigMode";
 import { clearCollectMemo } from "./frameBackend";
 import type { Schemes } from "./schemes";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 type Engine = DataflowEngine<Schemes>;
 
 export type { NodeOutputs };

@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge, [[C26]] opArgDistinct (`mode` is an argument), [[C100]] chartIsAValue
 import { useState, useSyncExternalStore } from "react";
-import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../rete-nodes";
-import { GAUGE_STYLE_OPTIONS } from "../rete-nodes";
+import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../nodeClasses";
+import { GAUGE_STYLE_OPTIONS } from "../nodeClasses";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { getOwningView } from "../activeGraph";

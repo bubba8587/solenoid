@@ -1,5 +1,6 @@
 // [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphNode } from "../graphModel";
 import { numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
 import { registerDisplayUnits } from "../unitBridge";
@@ -13,7 +14,7 @@ import { type UnitCell } from "../unitValue";
 registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
 
-export class ConvertNode extends ClassicPreset.Node {
+export class ConvertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "From applies only to plain numbers. A value with a unit keeps its magnitude and is relabeled when the dimensions match, #UNIT! when they differ.",
   };
@@ -47,7 +48,7 @@ export class ConvertNode extends ClassicPreset.Node {
   }
 
   syncUnitArrows(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
+    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
   ): void {
     let up = false, down = false;
     for (const c of editor.getConnections()) {

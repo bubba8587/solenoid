@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
-import { ClassicPreset } from "rete";
+import { GraphConnection, GraphNode } from "../graphModel";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
 import { nodeNameStore } from "../nodeNameStore";
 import { ArithmeticNode } from "../nodes/scalar";
@@ -22,19 +22,19 @@ import { ReportNode } from "../nodes/report";
 import { type SurfaceStack } from "../flow/FlowSurface";
 import { SceneStage } from "./SceneStage";
 
-const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
+const asNode = (n: GraphNode) => n as unknown as SolenoidNode;
 
 // ── Scene build helpers ──
-async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<void> {
+async function addNodes(s: SurfaceStack, nodes: GraphNode[]): Promise<void> {
   for (const n of nodes) {
     await s.editor.addNode(asNode(n));
     nodeNameStore.ensure(n.id, n.constructor.name);
   }
 }
 
-function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) {
+function wire(s: SurfaceStack, src: GraphNode, out: string, tgt: GraphNode, inp: string) {
   return s.editor.addConnection(
-    new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
+    new GraphConnection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
   );
 }
 
@@ -210,7 +210,7 @@ export function CableBoardScene() {
         const date = new ValueInputNode({ label: "Date", op: "date" });
         const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
         const SPAN = 240;
-        const pairs: [ClassicPreset.Node, string, number, number][] = [
+        const pairs: [GraphNode, string, number, number][] = [
           [num, "value", 0, 0],
           [list, "list", 0, 260],
           [date, "value", 660, 0],
@@ -452,7 +452,7 @@ export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
   });
   const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
   write.stringLiterals.path = "Weekly review";
-  const at: [ClassicPreset.Node, number, number][] = [
+  const at: [GraphNode, number, number][] = [
     [focus, 20, 40],
     [tasks, 20, 230],
     [report, 360, 110],

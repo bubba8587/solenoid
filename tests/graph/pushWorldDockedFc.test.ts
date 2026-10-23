@@ -1,7 +1,7 @@
 // [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, afterEach } from "vitest";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
@@ -12,7 +12,7 @@ import { settleOverlaps } from "../../src/graph/groupPush";
 afterEach(() => dockedNodeStore.clear());
 
 async function scene(side: "input" | "output") {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const host: SolenoidNode = new DisplayNode();
   const fc: SolenoidNode = new FormatControllerNode();
   const neighbor: SolenoidNode = new DisplayNode();
@@ -47,7 +47,7 @@ describe("the push world counts a docked FC on either side", () => {
 
 describe("an open group's box reaches over a member's docked FC", () => {
   it("separates a neighbor from an FC that hangs past the group's edge", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const host: SolenoidNode = new DisplayNode();
     const fc: SolenoidNode = new FormatControllerNode();
     const neighbor: SolenoidNode = new DisplayNode();

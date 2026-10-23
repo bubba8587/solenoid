@@ -4,7 +4,7 @@ import {
   SpectrumNode, SmoothNode, FindPeaksNode, ConvolveNode,
   OdeIntegrateNode, MatSolveNode, MatEigenNode, PolyRootsNode,
   FitDistributionNode, DecomposeNode,
-} from "../rete-nodes";
+} from "../nodeClasses";
 
 // Catalog type strings must not change: saves and formula names key on them.
 const PATH = ["Packs", "Scientific Computing"];

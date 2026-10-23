@@ -6,25 +6,26 @@
 // NaN-coercing object or the base-SI `5000`. Unit-aware nodes and pure
 // passthroughs keep the tags (the algebra + display propagation live there).
 import { describe, it, expect, beforeAll } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
-import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/rete-nodes";
+import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { stripUnitCells, displayMagnitudeOf } from "../../src/graph/unitBridge";
 
-type AnyNode = ClassicPreset.Node;
+type AnyNode = GraphNode;
 
 function makeGraph() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   installInputCoercion(editor as never);
   installErrorGuards(editor as never);
   const conn = (a: AnyNode, ao: string, b: AnyNode, bi: string) =>
-    editor.addConnection(new ClassicPreset.Connection(a as never, ao, b as never, bi) as never);
+    editor.addConnection(new GraphConnection(a as never, ao, b as never, bi) as never);
   const fetch = async (n: AnyNode) => engine.fetch(n.id) as Promise<Record<string, unknown>>;
   return { editor, engine, conn, fetch };
 }

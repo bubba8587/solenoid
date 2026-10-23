@@ -1,5 +1,5 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
@@ -53,7 +53,7 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
-export class WebSourceNode extends ClassicPreset.Node {
+export class WebSourceNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Rows are never saved into the project file. Reopening the document fetches from the URL again.",
   };
@@ -172,7 +172,7 @@ export function xpathToList(html: string, query: string): string[] {
 
 // ─── IMPORT HTML (Nth table on a page → Frame) ──────────────────────────────────
 
-export class ImportHtmlNode extends ClassicPreset.Node {
+export class ImportHtmlNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The first row becomes headers only when the page marks it as a header row.",
   };
@@ -216,7 +216,7 @@ export class ImportHtmlNode extends ClassicPreset.Node {
 
 // ─── IMPORT XML (XPath on a page → text list) ───────────────────────────────────
 
-export class ImportXmlNode extends ClassicPreset.Node {
+export class ImportXmlNode extends GraphNode {
   label: string;
   url: string;
   query: string;
@@ -256,7 +256,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 }
 
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
-export class LocalFileNode extends ClassicPreset.Node {
+export class LocalFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file. Empty for a Project XML, GanttProject or Primavera file, which reads as a Plan.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
@@ -367,7 +367,7 @@ export class LocalFileNode extends ClassicPreset.Node {
 }
 
 // ─── GEOCODE (place name → lat / lon / timezone) ────────────────────────────────
-export class GeocodeNode extends ClassicPreset.Node {
+export class GeocodeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     place: "A place name, for example Boise or Paris.",
     timezone: "The IANA time zone name, for example America/Boise.",
@@ -428,7 +428,7 @@ export class GeocodeNode extends ClassicPreset.Node {
 }
 
 // ─── WEATHER (Open-Meteo forecast: a Daily frame + Now scalars) ─────────────────
-export class WeatherNode extends ClassicPreset.Node {
+export class WeatherNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     lat: "Latitude.",
     lon: "Longitude.",
@@ -509,7 +509,7 @@ export class WeatherNode extends ClassicPreset.Node {
 }
 
 // ─── HOLIDAYS (Nager.Date: a year's public holidays as a frame + a date list) ────
-export class HolidaysNode extends ClassicPreset.Node {
+export class HolidaysNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "One row per holiday: date, English name, local name.",
     dates: "Every holiday's date. Skipped by NETWORKDAYS and WORKDAY.",
@@ -625,7 +625,7 @@ function convertAmount(amount: unknown, from: string, to: string, rate: number |
   return rate == null ? null : applyFcUnit(n * rate, to);
 }
 
-export class FxNode extends ClassicPreset.Node {
+export class FxNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     amount: "How much, in the From currency: one amount or a list.",
     from: "The currency to convert out of.",
@@ -659,7 +659,7 @@ export class FxNode extends ClassicPreset.Node {
     if (this.mode === "history") this.seedDefaultRange();
   }
 
-  private makeInput(key: string): ClassicPreset.Input<ClassicPreset.Socket> {
+  private makeInput(key: string): GraphInput<GraphSocket> {
     switch (key) {
       case "amount":    return numListIn("Amount");
       case "from":      return strIn("From");
@@ -668,7 +668,7 @@ export class FxNode extends ClassicPreset.Node {
       default:          return dateIn("To date");
     }
   }
-  private makeOutput(key: string): ClassicPreset.Output<ClassicPreset.Socket> {
+  private makeOutput(key: string): GraphOutput<GraphSocket> {
     switch (key) {
       case "converted": return numListOut("Converted");
       case "rate":      return numOut("Rate");
@@ -839,7 +839,7 @@ function mdbaseHintFor(collections: Map<string, MdbaseCollection>, folder: strin
   return mdbaseTypeFor(best.coll, collRel);
 }
 
-export class VaultFolderNode extends ClassicPreset.Node {
+export class VaultFolderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     folder: "The vault subfolder to read. Blank reads the whole vault.",
     glob: "A file-name filter such as 2026-*. Blank keeps every note.",

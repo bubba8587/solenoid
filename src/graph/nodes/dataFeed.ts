@@ -1,5 +1,5 @@
 // [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { fetchText } from "../httpBridge";
@@ -8,7 +8,7 @@ import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
 
-export class DataFeedNode extends ClassicPreset.Node {
+export class DataFeedNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The project file stores the series id, not the data. Refresh to re-pull.",
   };

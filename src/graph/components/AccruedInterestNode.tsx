@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ACCRUED_INTEREST_OP_OPTIONS, type AccruedInterestNode as AccruedInterestNodeType, type AccruedInterestOp } from "../rete-nodes";
+import { ACCRUED_INTEREST_OP_OPTIONS, type AccruedInterestNode as AccruedInterestNodeType, type AccruedInterestOp } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";

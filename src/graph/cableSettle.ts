@@ -1,8 +1,8 @@
 // [[B3]] sameNodeEverywhere, [[B11]] maximalMerge, [[D41]] formatFlowsDownstream
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import type { View } from "./view";
-import { FormatControllerNode } from "./rete-nodes";
+import { FormatControllerNode } from "./nodeClasses";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "./formatAnnotationStore";
 import { reconcileFcTypes } from "./fcReconcile";
 import { bumpConnectionVersion } from "./graphSignals";
@@ -10,7 +10,7 @@ import { recomputeGroupCollapse } from "./groupCollapse";
 import { isGraphRebuilding, markBulkTopoDirty } from "./process";
 
 /** Badges every FC in `editor` whose unit disagrees with an annotated socket at the other end of a cable on its annotated socket. */
-export function rescanUnitMismatches(editor: NodeEditor<Schemes>): void {
+export function rescanUnitMismatches(editor: GraphEditor<Schemes>): void {
   for (const n of editor.getNodes()) {
     if (!(n instanceof FormatControllerNode)) continue;
     const mine = n.annotatedSocket();
@@ -32,7 +32,7 @@ export function rescanUnitMismatches(editor: NodeEditor<Schemes>): void {
 }
 
 /** The settle every surface runs after a cable change, before its own recompute. */
-export function settleCableChange(editor: NodeEditor<Schemes>, view: View | null): void {
+export function settleCableChange(editor: GraphEditor<Schemes>, view: View | null): void {
   reconcileFcTypes(editor, view);
   bumpConnectionVersion();
   rescanUnitMismatches(editor);
@@ -42,7 +42,7 @@ export function settleCableChange(editor: NodeEditor<Schemes>, view: View | null
 export type CableEnds = { source?: string; target?: string };
 
 export type CableSettleStack = {
-  editor: NodeEditor<Schemes>;
+  editor: GraphEditor<Schemes>;
   view: View;
   isRebuilding?: () => boolean;
   /** The host's recompute after a live cable change has settled. A stack field, not a hook, because the pipe outlives a mount; a stack without it gets no cable pipe. */
@@ -50,7 +50,7 @@ export type CableSettleStack = {
   cablePipeInstalled?: boolean;
 };
 
-/** Every live cable change on the stack settles here, the ones components make included ([[B11]] maximalMerge). Once per stack: rete can't remove a pipe. */
+/** Every live cable change on the stack settles here, the ones components make included ([[B11]] maximalMerge). Once per stack. */
 export function installCableSettlePipe(s: CableSettleStack): void {
   if (s.cablePipeInstalled || !s.afterCableChange) return;
   s.cablePipeInstalled = true;

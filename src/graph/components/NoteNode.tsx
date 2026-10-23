@@ -3,7 +3,7 @@ import { usePendingDraft } from "../draftFlush";
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
-import type { NoteNode as NoteNodeType } from "../rete-nodes";
+import type { NoteNode as NoteNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
@@ -27,7 +27,7 @@ import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, ty
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import type { NodeProps, Emit } from "./nodeKit";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
@@ -364,7 +364,7 @@ export function FieldRow({
   fieldKey: string;
   type: FrontmatterFieldType;
   value: FieldValue;
-  socket: ClassicPreset.Socket;
+  socket: GraphSocket;
   onPickType: (t: FrontmatterFieldType) => void;
 }) {
   const [open, setOpen] = useState(false);

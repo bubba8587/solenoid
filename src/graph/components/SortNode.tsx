@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SortNode as SortNodeType, SortDir } from "../rete-nodes";
+import type { SortNode as SortNodeType, SortDir } from "../nodeClasses";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";

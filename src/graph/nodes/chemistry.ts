@@ -1,6 +1,6 @@
 // [[C76]] formulaPackDefault, [[C25]] firstClassUnits
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numOut, strIn } from "./shared";
 import { type SolError } from "../errorValue";
@@ -43,7 +43,7 @@ export function searchElements(query: string): ElementMeta[] {
   return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
 }
 
-export class ElementNode extends ClassicPreset.Node {
+export class ElementNode extends GraphNode {
   label: string;
   symbol: string;
   width = 220;
@@ -66,7 +66,7 @@ export class ElementNode extends ClassicPreset.Node {
   }
 }
 
-export class MolarMassNode extends ClassicPreset.Node {
+export class MolarMassNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = { formula: "H2O" };
   cachedResult: number | SolError | null = null;

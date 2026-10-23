@@ -2,12 +2,12 @@
 // RF Handles and resize controls work only inside a ReactFlow tree, so the context gates them. Registered, not
 // imported: a direct import would be a NodeSocket ↔ FlowSocketHandle cycle.
 import { createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "./graphModel";
 
 export type FlowSocketProps = {
   side: "input" | "output";
   socketKey: string;
-  payload: ClassicPreset.Socket;
+  payload: GraphSocket;
   shape: "circle" | "square" | "cube";
   /** Already lit by the app's own highlight store (no second ring). */
   lit: boolean;

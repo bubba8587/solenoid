@@ -1,7 +1,7 @@
 // [[C52]] visibleSelection, [[C92]] pinchUnvetoable
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
 import { groupCollapseStore } from "./groupCollapse";
@@ -16,7 +16,7 @@ export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;
 
 export interface LassoDeps {
   container: HTMLElement;
-  editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
+  editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
   viewRef: MutableRefObject<View | null>;
   setLasso: (l: LassoState) => void;
 }

@@ -1,5 +1,6 @@
 // [[B12]] losslessSaves, [[C86]] membershipByGesture
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import { GraphConnection, GraphNode } from "./graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
@@ -12,7 +13,7 @@ import { PlaceholderNode, placeholderFor } from "./nodes/placeholder";
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
   id: string;
-  Ctor: new (init?: Record<string, unknown>) => ClassicPreset.Node;
+  Ctor: new (init?: Record<string, unknown>) => GraphNode;
   body: SavedNodeBody;
   /** Set on a placeholder: the socket keys a paste rebuilds it with. */
   sockets?: { inputs: string[]; outputs: string[] };
@@ -38,7 +39,7 @@ const isMarker = (n: { constructor: { name: string } }) =>
   n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
 
 /** The nodes a copy takes: the selection, a group's members and every docked FC riding a copied node, never a boundary marker. */
-export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
+export function copySet(editor: GraphEditor<Schemes>): SolenoidNode[] {
   const ids = new Set<string>();
   for (const n of editor.getNodes()) {
     if (!n.selected) continue;
@@ -50,7 +51,7 @@ export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
   return editor.getNodes().filter((n) => ids.has(n.id) && !isMarker(n)) as SolenoidNode[];
 }
 
-function snapshotEntry(n: ClassicPreset.Node, x: number, y: number): ClipboardEntry {
+function snapshotEntry(n: GraphNode, x: number, y: number): ClipboardEntry {
   const body = savedNodeBody(n);
   const sockets = n instanceof PlaceholderNode ? { inputs: Object.keys(n.inputs), outputs: Object.keys(n.outputs) } : undefined;
   return { id: n.id, Ctor: n.constructor as ClipboardEntry["Ctor"], body: { ...body, init: structuredClone(body.init) }, ...(sockets ? { sockets } : {}), x, y };
@@ -96,7 +97,7 @@ export function copySelected() {
 }
 
 
-function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {
+function cloneEntry(e: ClipboardEntry): GraphNode | null {
   if (e.sockets) return placeholderFor({ ...e.body, init: structuredClone(e.body.init) }, e.sockets);
   try {
     const clone = new e.Ctor(structuredClone(e.body.init));
@@ -179,7 +180,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       if (!src || !tgt) continue;
       try {
         await editor.addConnection(
-          new ClassicPreset.Connection(
+          new GraphConnection(
             src,
             conn.srcOutput,
             tgt,

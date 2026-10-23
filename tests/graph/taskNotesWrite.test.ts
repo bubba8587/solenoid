@@ -1,7 +1,7 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import { cellToTaskField, planTaskRow, planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl, parseWrittenTaskPath } from "../../src/graph/taskNotesApi";
-import { WriteTasksNode } from "../../src/graph/rete-nodes";
+import { WriteTasksNode } from "../../src/graph/nodeClasses";
 import { cubeFromColumns, isFrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { solError } from "../../src/graph/errorValue";

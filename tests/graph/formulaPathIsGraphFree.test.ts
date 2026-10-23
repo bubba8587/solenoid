@@ -3,27 +3,16 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── [[C17]] shareImpl: the formula path must not pull in rete or the socket lattice ──────
-// The headless evaluator (run-graph, the Expression host) loads excelFormula →
-// excelFunctions → the shared op modules. None of that may reach rete or
-// sockets.ts: the shared-impl modules exist precisely so both surfaces call one
-// implementation WITHOUT the formula surface loading the editor ([[C17]] shareImpl —
-// previously UNENFORCED, and violated twice: excelFunctions reached rete through
-// nodes/date.ts and nodes/convert.ts until the serial layer and the unit table
-// were extracted to dateSerial.ts / convertUnits.ts).
-//
-// Walk the RELATIVE import graph from the formula roots (every pack's
-// packs/*Formulas.ts included) and assert no visited
-// module imports rete or sockets. The walk is static (import statements only),
-// which is exactly the property that matters — a type-only import still loads
-// the module at runtime under Vite unless marked `import type`, so plain
-// `import ... from "rete"` anywhere in the closure fails here.
+// ─── [[C17]] shareImpl: the formula path never pulls in the graph model or the socket lattice ──────
+// The headless evaluator (run-graph, the Expression host) loads excelFormula → excelFunctions → the shared op
+// modules. Walk the relative import graph from those roots (every pack's packs/*Formulas.ts included) and fail on
+// any module that imports the graph model or sockets.ts. `import type` is skipped: only a value import loads the
+// module at run time (tree/specs/floors/engineering.md § The formula path is graph-free).
 
 const SRC = path.resolve(__dirname, "../../src/graph");
 const PACK_FORMULAS = fs.readdirSync(path.join(SRC, "packs")).filter((f) => f.endsWith("Formulas.ts")).map((f) => `packs/${f}`);
 const ROOTS = ["excelFormula.ts", "excelFunctions.ts", ...PACK_FORMULAS];
-const BANNED = /^rete($|-)/;
-const BANNED_LOCAL = new Set(["sockets"]); // the lattice — nodes/shared.ts imports it, so shared is transitively banned too
+const BANNED_LOCAL = new Set(["sockets", "graphModel", "graphEditor", "dataflowEngine"]);
 
 function importsOf(file: string): string[] {
   const src = fs.readFileSync(file, "utf8");
@@ -45,8 +34,8 @@ function resolveLocal(fromFile: string, spec: string): string | null {
   return null;
 }
 
-describe("[[C17]] shareImpl — the formula path is rete-free", () => {
-  it("no module reachable from excelFormula/excelFunctions/packs/*Formulas imports rete or sockets", () => {
+describe("[[C17]] shareImpl — the formula path is graph-free", () => {
+  it("no module reachable from excelFormula/excelFunctions/packs/*Formulas imports the graph model or sockets", () => {
     const offenders: string[] = [];
     const seen = new Set<string>();
     const queue: Array<{ file: string; via: string }> = ROOTS.map((r) => ({ file: path.join(SRC, r), via: r }));
@@ -56,11 +45,10 @@ describe("[[C17]] shareImpl — the formula path is rete-free", () => {
       seen.add(file);
       for (const spec of importsOf(file)) {
         const short = path.relative(SRC, file);
-        if (BANNED.test(spec)) offenders.push(`${via} → ${short} imports "${spec}"`);
         const local = resolveLocal(file, spec);
         if (!local) continue;
         const stem = path.basename(local).replace(/\.tsx?$/, "");
-        if (BANNED_LOCAL.has(stem)) offenders.push(`${via} → ${short} imports "${spec}" (the socket lattice)`);
+        if (BANNED_LOCAL.has(stem)) offenders.push(`${via} → ${short} imports "${spec}"`);
         queue.push({ file: local, via: `${via} → ${short}` });
       }
     }

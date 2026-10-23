@@ -1,5 +1,6 @@
 // [[D52]], [[C77]]
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
@@ -139,7 +140,7 @@ export interface CompositeScenario {
 
 export type CompositeDataTableValues = Record<string, unknown[]>;
 
-export class CompositeInputNode extends ClassicPreset.Node {
+export class CompositeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "When the composite's outer input is connected, the outside value is used and the seed value here is ignored.",
   };
@@ -162,14 +163,14 @@ export class CompositeInputNode extends ClassicPreset.Node {
     this.uncertainty = init?.uncertainty ?? null;
     this.distribution = init?.distribution === "uniform" ? "uniform" : "normal";
     // Per-instance, not the shared trueAnySocket, so the container can retype it outside the adoption fixpoint.
-    this.addOutput("value", new ClassicPreset.Output(new MutableSocket("trueany"), this.label));
+    this.addOutput("value", new GraphOutput(new MutableSocket("trueany"), this.label));
   }
   data(): { value: unknown } {
     return { value: this.value };
   }
 }
 
-export class CompositeOutputNode extends ClassicPreset.Node {
+export class CompositeOutputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Whatever arrives here becomes the composite's matching outer output. A multi-run mode collects one entry per run.",
   };
@@ -183,7 +184,7 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Composite Output");
     this.label = init?.label ?? "Output";
-    this.addInput("value", new ClassicPreset.Input(new MutableSocket("trueany"), this.label));
+    this.addInput("value", new GraphInput(new MutableSocket("trueany"), this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
     const v = inputs.value?.[0] ?? null;
@@ -194,22 +195,22 @@ export class CompositeOutputNode extends ClassicPreset.Node {
 
 const SOLVE_FETCH_ROUNDS = 4;
 
-function nestedNodeIds(editor: NodeEditor<Schemes>, out: string[] = []): string[] {
+function nestedNodeIds(editor: GraphEditor<Schemes>, out: string[] = []): string[] {
   for (const n of editor.getNodes()) {
     out.push(n.id);
-    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
     if (inner) nestedNodeIds(inner, out);
   }
   return out;
 }
 
-export class CompositeNode extends ClassicPreset.Node {
+export class CompositeNode extends GraphNode {
   label: string;
   width: number;
   height: number;
   inputPorts: CompositeInputPort[];
   outputPorts: CompositeOutputPort[];
-  internalEditor: NodeEditor<Schemes>;
+  internalEditor: GraphEditor<Schemes>;
   internalEngine: DataflowEngine<Schemes>;
   private _hydrating = false;
   cachedOutputs: Record<string, unknown> = {};
@@ -278,7 +279,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.byRowPortId = init?.byRowPortId ?? "";
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
-    this.internalEditor = new NodeEditor<Schemes>();
+    this.internalEditor = new GraphEditor<Schemes>();
     // Coercion installs first, so it is the inner wrapper, as on the main canvas.
     installInputCoercion(this.internalEditor);
     this.internalEditor.addPipe((ctx) => {
@@ -296,10 +297,10 @@ export class CompositeNode extends ClassicPreset.Node {
     this._pending = init?.internal ? { ...init.internal, nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
 
     for (const p of this.inputPorts) {
-      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
+      if (p.exposure === "exposed") this.addInput(p.id, new GraphInput(new AdoptiveSocket(), p.label));
     }
     for (const p of this.outputPorts) {
-      this.addOutput(p.id, new ClassicPreset.Output(new AdoptiveSocket(), p.label));
+      this.addOutput(p.id, new GraphOutput(new AdoptiveSocket(), p.label));
     }
   }
 
@@ -313,12 +314,12 @@ export class CompositeNode extends ClassicPreset.Node {
     if (!pending) return;
     this._pending = null;
     this._hydrating = true;
-    const built = new Map<string, ClassicPreset.Node>();
+    const built = new Map<string, GraphNode>();
     const unknownIds = new Set(pending.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
     const phSockets = deriveMissingNodeSockets(unknownIds, pending.connections);
     for (const sn of pending.nodes) {
       const Ctor = reg.get(sn.type);
-      let node: ClassicPreset.Node;
+      let node: GraphNode;
       if (!Ctor) {
         node = placeholderFor(sn, phSockets.get(sn.id));
       } else {
@@ -346,7 +347,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!s || !t) continue;
       try {
         await this.internalEditor.addConnection(
-          new ClassicPreset.Connection(s, sc.sourceOutput, t, sc.targetInput) as SolenoidConnection,
+          new GraphConnection(s, sc.sourceOutput, t, sc.targetInput) as SolenoidConnection,
         );
       } catch {
         // Skip incompatible/duplicate connections.
@@ -417,7 +418,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addInputPort(spec: Omit<CompositeInputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `in_${this.inputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.inputPorts.push({ ...spec, id });
-    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(new AdoptiveSocket(), spec.label));
+    if (spec.exposure === "exposed") this.addInput(id, new GraphInput(new AdoptiveSocket(), spec.label));
     return id;
   }
 
@@ -440,7 +441,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   private syncMarkerSocketTypes(): void {
-    const typeOf = (s: ClassicPreset.Socket | undefined): SocketDataType =>
+    const typeOf = (s: GraphSocket | undefined): SocketDataType =>
       (s as { dataType?: SocketDataType } | undefined)?.dataType ?? "trueany";
     for (const port of this.inputPorts) {
       const sock = this.internalEditor.getNode(port.internalNodeId)?.outputs?.value?.socket;
@@ -476,7 +477,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.outputPorts.push({ ...spec, id });
-    this.addOutput(id, new ClassicPreset.Output(new AdoptiveSocket(), spec.label));
+    this.addOutput(id, new GraphOutput(new AdoptiveSocket(), spec.label));
     return id;
   }
 
@@ -682,7 +683,7 @@ export class CompositeNode extends ClassicPreset.Node {
     return outputs;
   }
 
-  private resolveStopFeed(conns: ReturnType<NodeEditor<Schemes>["getConnections"]>) {
+  private resolveStopFeed(conns: ReturnType<GraphEditor<Schemes>["getConnections"]>) {
     if (!this.stopWhenPortId) return null;
     const port = this.outputPorts.find((p) => p.id === this.stopWhenPortId);
     if (!port) return null;

@@ -1,5 +1,5 @@
 // [[B11]] maximalMerge
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { type SocketDataType } from "../sockets";
 import { trueAnyIn, strIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
 import { type Cx } from "./complex";
@@ -42,7 +42,7 @@ const CAST_TARGET_INPUTS: Record<CastTarget, readonly { key: string; label: stri
   logical: [],
 };
 
-export class CastNode extends ClassicPreset.Node {
+export class CastNode extends GraphNode {
   /** What an empty separator field reads as, shown as its placeholder ([[D96]] emptySlotShowsItsValue). */
   static fieldPlaceholders: Record<string, string> = { decimal_sep: ".", group_sep: "," };
   static socketDocs: Record<string, string> = {

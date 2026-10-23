@@ -1,4 +1,4 @@
-import type { CubeInputNode as CubeInputNodeType } from "../rete-nodes";
+import type { CubeInputNode as CubeInputNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { CubeDisplay } from "./CubeDisplay";
 import { processGraph } from "../process";

@@ -1,9 +1,9 @@
 // [[C35]] unknownViaPlaceholder
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { solError } from "../errorValue";
 
-export class PlaceholderNode extends ClassicPreset.Node {
+export class PlaceholderNode extends GraphNode {
   label: string;
   readonly missingType: string;
   readonly savedInit: Record<string, unknown>;
@@ -27,8 +27,8 @@ export class PlaceholderNode extends ClassicPreset.Node {
     this.savedInit = init.savedInit ?? {};
     this.savedLiterals = init.savedLiterals;
     this.savedStringLiterals = init.savedStringLiterals;
-    for (const k of init.inputKeys ?? []) this.addInput(k, new ClassicPreset.Input(new AdoptiveSocket(), k));
-    for (const k of init.outputKeys ?? []) this.addOutput(k, new ClassicPreset.Output(trueAnySocket, k));
+    for (const k of init.inputKeys ?? []) this.addInput(k, new GraphInput(new AdoptiveSocket(), k));
+    for (const k of init.outputKeys ?? []) this.addOutput(k, new GraphOutput(trueAnySocket, k));
     const rows = Math.max(init.inputKeys?.length ?? 0, init.outputKeys?.length ?? 0);
     this.height = 104 + rows * 24;
   }

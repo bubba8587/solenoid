@@ -1,14 +1,15 @@
 // [[C88]] collapsedGroupCard
 import { describe, it, expect, afterEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import { GroupNode, FormatControllerNode, DisplayNode, ValueInputNode } from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { GroupNode, FormatControllerNode, DisplayNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { presentSocketStore } from "../../src/graph/presentSocketStore";
 import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 // v1.1 A3 audit fix: a node DOCKED to a member (an FC never absorbed as a
 // member itself) is a VIRTUAL member for collapse — it hides with its host.
@@ -24,7 +25,7 @@ function dock(fcId: string, hostId: string) {
 }
 
 async function build() {
-  const editor = new NodeEditor<Schemes>() as Editor;
+  const editor = new GraphEditor<Schemes>() as Editor;
   const host = new ValueInputNode();
   const fc = new FormatControllerNode();
   const outside = new ValueInputNode();
@@ -61,12 +62,12 @@ describe("group collapse — docked satellites are virtual members", () => {
   });
 
   it("the Display→FC hop resolves through an UNABSORBED docked FC (readouts)", async () => {
-    const editor = new NodeEditor<Schemes>() as Editor;
+    const editor = new GraphEditor<Schemes>() as Editor;
     const disp = new DisplayNode();
     const fc = new FormatControllerNode();
     await editor.addNode(disp as never);
     await editor.addNode(fc as never);
-    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+    await editor.addConnection(new GraphConnection(disp as never, "out", fc as never, "in") as never);
     dock(fc.id, disp.id);
     const group = new GroupNode({ members: [disp.id], collapsed: true });
     await editor.addNode(group as never);
@@ -79,15 +80,15 @@ describe("group collapse — docked satellites are virtual members", () => {
   });
 
   it("a Display read through a member FC still gets a pill for its own cable leaving the group", async () => {
-    const editor = new NodeEditor<Schemes>() as Editor;
+    const editor = new GraphEditor<Schemes>() as Editor;
     const disp = new DisplayNode();
     const fc = new FormatControllerNode();
     const outA = new DisplayNode();
     const outB = new DisplayNode();
     for (const n of [disp, fc, outA, outB]) await editor.addNode(n as never);
-    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
-    await editor.addConnection(new ClassicPreset.Connection(fc as never, "out", outA as never, "in") as never);
-    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", outB as never, "in") as never);
+    await editor.addConnection(new GraphConnection(disp as never, "out", fc as never, "in") as never);
+    await editor.addConnection(new GraphConnection(fc as never, "out", outA as never, "in") as never);
+    await editor.addConnection(new GraphConnection(disp as never, "out", outB as never, "in") as never);
     const group = new GroupNode({ members: [disp.id, fc.id], collapsed: true });
     await editor.addNode(group as never);
     recomputeGroupCollapse(editor);
@@ -114,10 +115,10 @@ describe("collapse state is per editor", () => {
 
 describe("group collapse — a member's row uses an output its card shows", () => {
   it("an unwired member exposes its first shown output, not its first declared one", async () => {
-    const editor = new NodeEditor<Schemes>() as Editor;
-    const member = new ClassicPreset.Node("Two outs");
-    member.addOutput("hidden", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
-    member.addOutput("shown", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
+    const editor = new GraphEditor<Schemes>() as Editor;
+    const member = new GraphNode("Two outs");
+    member.addOutput("hidden", new GraphOutput(new GraphSocket("number")));
+    member.addOutput("shown", new GraphOutput(new GraphSocket("number")));
     await editor.addNode(member as never);
     const group = new GroupNode({ members: [member.id], collapsed: true });
     await editor.addNode(group as never);

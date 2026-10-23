@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { QrCodeNode as QrCodeNodeType } from "../rete-nodes";
+import type { QrCodeNode as QrCodeNodeType } from "../nodeClasses";
 import type { QrTemplate } from "../nodes/qr";
 import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";

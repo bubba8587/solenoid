@@ -3,7 +3,7 @@ import { getOwningEditor } from "./activeGraph";
 import { resolveValueOrigin } from "./unitFlow";
 import { isFrameValue, type FrameValue } from "./frame";
 import { notifyGraphChanged, processGraph } from "./process";
-import { PivotNode } from "./rete-nodes";
+import { PivotNode } from "./nodeClasses";
 import { pivotEditor } from "./pivotEditorStore";
 import { nodeDisplayName } from "./catalogUtils";
 import { setPivotHostAction, type PivotHost } from "./tablePopupStore";

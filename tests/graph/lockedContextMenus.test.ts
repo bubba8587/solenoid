@@ -1,6 +1,7 @@
 // [[B3]] sameNodeEverywhere: a locked canvas is view-only, from the right-click menus too
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../../src/graph/schemes";
 import { socketMenuFor, cableTargetFor, nodeTargetFor } from "../../src/graph/canvasContextMenu";
 import { cableSelectionStore } from "../../src/graph/cableState";
@@ -11,12 +12,12 @@ import { DisplayNode } from "../../src/graph/nodes/display";
 const at = { clientX: 10, clientY: 20, target: null };
 
 async function graph() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const num = new ValueInputNode({ value: "1" });
   const disp = new DisplayNode();
   const comp = new CompositeNode();
   for (const n of [num, disp, comp]) await editor.addNode(n as SolenoidNode);
-  const cable = new ClassicPreset.Connection(num, "value", disp, "in") as SolenoidConnection;
+  const cable = new GraphConnection(num, "value", disp, "in") as SolenoidConnection;
   await editor.addConnection(cable);
   return { editor, num, comp, cable };
 }

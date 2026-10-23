@@ -1,4 +1,4 @@
-import type { CombinationsNode } from "../rete-nodes";
+import type { CombinationsNode } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const CombinationsComponent = makeToggleNodeComponent<CombinationsNode, CombinationsNode["mode"]>(

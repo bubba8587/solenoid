@@ -8,9 +8,10 @@ import { readFileSync } from "node:fs";
 import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
-import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine, graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../src/graph/dataflowEngine";
-import * as Nodes from "../src/graph/rete-nodes";
+import { GraphConnection, GraphNode } from "../src/graph/graphModel";
+import { DataflowEngine } from "../src/graph/dataflowEngine";
+import { GraphEditor, graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../src/graph/graphEditor";
+import * as Nodes from "../src/graph/nodeClasses";
 import type { Schemes } from "../src/graph/schemes";
 import { installInputCoercion } from "../src/graph/coerceInputs";
 import { installErrorGuards } from "../src/graph/errorValue";
@@ -31,7 +32,7 @@ type SavedNode = {
 type SavedConnection = { source: string; sourceOutput: string; target: string; targetInput: string };
 type SavedGraph = { nodes: SavedNode[]; connections: SavedConnection[] };
 
-type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
+type NodeCtor = new (init?: Record<string, unknown>) => GraphNode;
 
 async function resolveFrameRefs(v: unknown): Promise<unknown> {
   if (isFrameRef(v)) return readFrame(v);
@@ -68,7 +69,7 @@ export interface RunOptions {
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -77,7 +78,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
-  const byId = new Map<string, ClassicPreset.Node>();
+  const byId = new Map<string, GraphNode>();
   for (const sn of g.nodes) {
     const Ctor = (Nodes as unknown as Record<string, NodeCtor>)[sn.type];
     if (typeof Ctor !== "function") {
@@ -97,7 +98,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
       throw new Error(`Connection references an unknown node (${c.source} → ${c.target}).`);
     }
     await editor.addConnection(
-      new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
+      new GraphConnection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
     );
   }
 
@@ -109,7 +110,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   if (opts.run) {
     const want = opts.run.trim().toLowerCase();
     const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
-      (ClassicPreset.Node & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
+      (GraphNode & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
     if (!sink || typeof sink.run !== "function") throw new Error(`--run: no sink named "${opts.run}" in the graph.`);
     sink.enabled = true; // [[C38]] sinkRunButtonOnly: this explicit flag is the Run button
     await sink.run();

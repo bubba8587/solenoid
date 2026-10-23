@@ -1,13 +1,13 @@
 // [[B1]] obsidianBet, [[B11]] maximalMerge
 
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { getOwningEditor } from "./activeGraph";
 import { canConnect, declaredTypeOf, type SocketDataType } from "./sockets";
 
 /** `dropStrandedFrontmatterCables` against an explicit editor. */
 export async function pruneFrontmatterCables(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   nodeId: string,
   removed: string[],
   retyped: { key: string; type: SocketDataType }[],

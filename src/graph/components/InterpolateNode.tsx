@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../rete-nodes";
-import { INTERPOLATE_MODE_META } from "../rete-nodes";
+import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../nodeClasses";
+import { INTERPOLATE_MODE_META } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";

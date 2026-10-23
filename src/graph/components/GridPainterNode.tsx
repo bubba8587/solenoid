@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter
 import { useRef, useState, type CSSProperties } from "react";
-import type { GridPainterNode as GridPainterNodeType } from "../rete-nodes";
+import type { GridPainterNode as GridPainterNodeType } from "../nodeClasses";
 import { gridPainterDim, parsePaintGrid, paintGridToText } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";

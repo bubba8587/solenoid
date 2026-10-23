@@ -1,5 +1,5 @@
 // [[B16]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { rolesFrom, required } from "../inputRoles";
 import { nodeOnCore } from "../nodeOnCore";
@@ -22,7 +22,7 @@ export const ARITHMETIC_OP_META = {
   pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
 } satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
-export class ArithmeticNode extends ClassicPreset.Node {
+export class ArithmeticNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
@@ -114,7 +114,7 @@ export type AngleMode = "auto" | "rad" | "deg";
 
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
 
-export class MathFXNode extends ClassicPreset.Node {
+export class MathFXNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
@@ -164,7 +164,7 @@ export const BASE_CONVERT_META = {
   description: "Bases 2–36, digits 0–9 only: a digit outside the source base or a result needing letters is `null`. Excel: `DEC2BIN`, `BIN2DEC`, `BASE`, `DECIMAL`.",
 };
 
-export class BaseConvertNode extends ClassicPreset.Node {
+export class BaseConvertNode extends GraphNode {
   static inputRoles = { from: required, to: required };
   label: string;
   cachedResult: number | null = null;
@@ -187,7 +187,7 @@ export class BaseConvertNode extends ClassicPreset.Node {
 
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 
-export class ClampNode extends ClassicPreset.Node {
+export class ClampNode extends GraphNode {
   static inputRoles = rolesFrom("CLAMP", { min: 1, max: 2 });
   static socketDocs: Record<string, string> = {
     min: "Empty, there is no floor; a blank item in a list of bounds is no floor for that item.",
@@ -228,7 +228,7 @@ export const MROUND_OP_META = {
   down:    { label: "FLOOR",   description: "Round down to a multiple (toward −∞). Excel: `FLOOR.MATH`." },
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
-export class MRoundNode extends ClassicPreset.Node {
+export class MRoundNode extends GraphNode {
   static inputRoles = rolesFrom("MROUND", { multiple: 1 });
   static socketDocs: Record<string, string> = {
     multiple: "A multiple of zero gives zero rather than an error.",
@@ -269,7 +269,7 @@ export const ROUNDN_OP_META = {
   rounddown: { label: "ROUNDDOWN", description: "Rounds toward zero to N decimal places. Excel: `ROUNDDOWN`." },
 } satisfies Record<RoundNOp, { label: string; description: string }>;
 
-export class RoundNNode extends ClassicPreset.Node {
+export class RoundNNode extends GraphNode {
   static inputRoles = rolesFrom("ROUND", { digits: 1 });
   label: string;
   op: RoundNOp;
@@ -305,7 +305,7 @@ export const GCD_OP_META = {
   lcm: { label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`." },
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
-export class GCDNode extends ClassicPreset.Node {
+export class GCDNode extends GraphNode {
   label: string;
   op: GcdOp;
   cachedResult: BroadcastResult = null;
@@ -340,7 +340,7 @@ export const COMBINATORICS_OP_META = {
   permutationa: { label: "PERMUTATIONA", description: "`nᵏ`: ordered arrangements with repetition. Excel: `PERMUTATIONA`." },
 } satisfies Record<CombinatoricsOp, { label: string; description: string }>;
 
-export class CombinatoricsNode extends ClassicPreset.Node {
+export class CombinatoricsNode extends GraphNode {
   label: string;
   op: CombinatoricsOp;
   cachedResult: number | SolError | null = null;
@@ -374,7 +374,7 @@ export const TWO_INPUT_MATH_OP_META = {
   gestep:  { label: "GESTEP",  description: "`1` if `A ≥ B`, else `0`. Excel: `GESTEP`." },
 } satisfies Record<TwoInputMathOp, { label: string; description: string }>;
 
-export class TwoInputMathNode extends ClassicPreset.Node {
+export class TwoInputMathNode extends GraphNode {
   label: string;
   op: TwoInputMathOp;
   cachedResult: number | (number | SolError | null)[] | SolError | null = null;
@@ -407,7 +407,7 @@ export const SUM_PRODUCT_OP_META = {
   sumproduct: { label: "SUMPRODUCT", description: "Dot product `Σ(xi × yi)`. Excel: `SUMPRODUCT`." },
 } satisfies Record<SumProductOp, { label: string; description: string }>;
 
-export class SumProductNode extends ClassicPreset.Node {
+export class SumProductNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Lists of unequal length pair to the shorter one, and the extra values are ignored.",
   };
@@ -434,7 +434,7 @@ export class SumProductNode extends ClassicPreset.Node {
 
 // ─── SERIESSUM ────────────────────────────────────────────────────────────────
 
-export class SeriesSumNode extends ClassicPreset.Node {
+export class SeriesSumNode extends GraphNode {
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { x: 1, n: 0, m: 1 };
@@ -458,7 +458,7 @@ export class SeriesSumNode extends ClassicPreset.Node {
 
 // ─── MULTINOMIAL ──────────────────────────────────────────────────────────────
 
-export class MultinomialNode extends ClassicPreset.Node {
+export class MultinomialNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "The category counts n₁, n₂, …: the multinomial coefficient of their sum.",
   };
@@ -490,7 +490,7 @@ export const BESSEL_OP_META = {
   besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n. x must be `> 0`. Excel: `BESSELK`." },
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
-export class BesselNode extends ClassicPreset.Node {
+export class BesselNode extends GraphNode {
   static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
     n: "Order, 0 or greater; a fraction is truncated.",

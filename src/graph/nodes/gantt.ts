@@ -1,5 +1,5 @@
 // [[C69]], [[C70]], [[C71]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut } from "./shared";
 import { type ChartOptions } from "./chartOptions";
 import { type SolError } from "../errorValue";
@@ -9,7 +9,7 @@ import { nodeOnCore } from "../nodeOnCore";
 
 export const GANTT_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
 
-export class GanttNode extends ClassicPreset.Node {
+export class GanttNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     schedule: "A scheduled project, the rows a Schedule node worked out. A Project column becomes the section bands.",
     baseline: "A second scheduled project, drawn as ghost bars behind the bars. Rows match by task name.",

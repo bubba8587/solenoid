@@ -1,5 +1,5 @@
 // [[B14]], [[C50]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType, type ResultDim } from "./shared";
 import { compilePositional, formulaSyntaxHint, extractVariables } from "../excelFormula";
@@ -55,7 +55,7 @@ export function resolveFn(
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
 
-export class MapTableNode extends ClassicPreset.Node {
+export class MapTableNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
@@ -90,7 +90,7 @@ export type ByAxis = "row" | "col";
 export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
 /** BYROW answers a one-column table beside the rows it came from, BYCOL a list ([[D85]] columnsStayColumns). */
-export class ByAxisNode extends ClassicPreset.Node {
+export class ByAxisNode extends GraphNode {
   static dimFor(op: ByAxis): ResultDim { return op === "row" ? "matrix" : "combo"; }
   static labelFor(op: ByAxis): string { return op === "row" ? "Per row" : "Per column"; }
   get resultDim(): ResultDim { return ByAxisNode.dimFor(this.op); }
@@ -135,7 +135,7 @@ export class ByAxisNode extends ClassicPreset.Node {
 
 // ─── REDUCE ───────────────────────────────────────────────────────────────────────
 
-export class ReduceLambdaNode extends ClassicPreset.Node {
+export class ReduceLambdaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
@@ -171,7 +171,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 
 // ─── SCAN ───────────────────────────────────────────────────────────────────────
 
-export class ScanLambdaNode extends ClassicPreset.Node {
+export class ScanLambdaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
@@ -208,7 +208,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
 
 
-export class MakeArrayNode extends ClassicPreset.Node {
+export class MakeArrayNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;

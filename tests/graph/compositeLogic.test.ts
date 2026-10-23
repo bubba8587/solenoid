@@ -1,7 +1,8 @@
 // [[A1]], [[B3]], [[C25]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -15,11 +16,11 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { insertFcInline } from "../../src/graph/fcDocking";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
-// A bare NodeEditor + DataflowEngine, wrapped exactly like Canvas wraps the
+// A bare GraphEditor + DataflowEngine, wrapped exactly like Canvas wraps the
 // real one (coercion inner, error guards outer) — mirrors errorIntegration.
 // test.ts's makeEditor(). No AreaPlugin/ReactPlugin: this env has no DOM.
 function makeEditor() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -50,11 +51,11 @@ function makeFakeView(positions: Map<string, { x: number; y: number }>) {
 }
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 

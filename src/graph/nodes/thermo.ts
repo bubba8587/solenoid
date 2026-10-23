@@ -1,12 +1,12 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut } from "./shared";
 import { type SolError } from "../errorValue";
 import { type AntoineOp } from "./thermoOps";
 
-export class IsaAtmosphereNode extends ClassicPreset.Node {
+export class IsaAtmosphereNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { alt: 0 };
   cachedT: number | SolError | null = null;
@@ -31,7 +31,7 @@ export class IsaAtmosphereNode extends ClassicPreset.Node {
   }
 }
 
-export class AntoineNode extends ClassicPreset.Node {
+export class AntoineNode extends GraphNode {
   label: string;
   substance: AntoineOp;
   literals: Record<string, number> = { t: 25 };

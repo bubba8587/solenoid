@@ -1,7 +1,8 @@
 // [[A1]] visualGraphCalculator
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { makeArrangeFn, makeEnsureElk } from "../../src/graph/tidyArrange";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -131,14 +132,14 @@ afterEach(() => {
 });
 
 async function buildScene() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const { view, add } = makeFakeView();
 
   const num = new ArithmeticNode({ op: "add" });
   const disp = new DisplayNode();
   for (const n of [num, disp]) await editor.addNode(n as never);
   await editor.addConnection(
-    new ClassicPreset.Connection(num, "result", disp, "in") as Schemes["Connection"],
+    new GraphConnection(num, "result", disp, "in") as Schemes["Connection"],
   );
 
   // An FC docked to the Display's output — the footprint-restore path is what

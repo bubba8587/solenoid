@@ -1,9 +1,9 @@
 // [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
 import { computeExpandPush, separateAll, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
@@ -16,7 +16,7 @@ import { unselectAllNodes, selectNode } from "./canvasCommands";
 import { measuredBox } from "./nodeSize";
 
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 interface PushRecord {
   pushed: string;

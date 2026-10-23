@@ -1,6 +1,6 @@
 // [[B14]] oneDesignSystem
 import { useId, type CSSProperties } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { SOCKET_COLORS } from "../sockets";
 import type { SolenoidSocket } from "../sockets";
 import { CubeGlyphFaces } from "./cubeGlyph";
@@ -28,7 +28,7 @@ export function socketRingVar(color: string): string | undefined {
 }
 export const socketRingColor = (color: string): string => socketRingVar(color) ?? "var(--socket-ring)";
 
-export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
+export function SocketComponent({ data }: { data: GraphSocket }) {
   // Unique per instance: duplicate SVG ids make the clip resolve to nothing.
   const clipId = `sq-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const dataType =

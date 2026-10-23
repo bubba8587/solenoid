@@ -1,6 +1,6 @@
 // [[B12]] losslessSaves, [[C38]] sinkRunButtonOnly
 import { describe, it, expect } from "vitest";
-import { WriteFileNode } from "../../../src/graph/rete-nodes";
+import { WriteFileNode } from "../../../src/graph/nodeClasses";
 
 const dt = (n: WriteFileNode) => (n.inputs.in?.socket as unknown as { dataType: string }).dataType;
 

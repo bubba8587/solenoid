@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import type { TornadoNode as TornadoNodeType } from "../rete-nodes";
+import type { TornadoNode as TornadoNodeType } from "../nodeClasses";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { useChartColors, TornadoBars } from "./chartView";

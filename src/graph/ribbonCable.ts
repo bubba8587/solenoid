@@ -1,5 +1,5 @@
 // [[C10]] socketLattice
-import { ConduitNode, conduitLaneOf } from "./rete-nodes";
+import { ConduitNode, conduitLaneOf } from "./nodeClasses";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 

@@ -1,5 +1,5 @@
 // [[C38]] sinkRunButtonOnly, [[C103]] untrustedContentSeams, [[B11]] maximalMerge, [[C26]] opArgDistinct, [[B2]] webTryDesktopFull
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { unparseCsv } from "../csv";
 import { neutralizeFormulaCell } from "../csvSafety";
 import { frameIn, strIn } from "./shared";
@@ -45,7 +45,7 @@ export function frameToJsonText(f: FrameValue): string {
 
 export type WriteFormat = "csv" | "json" | "text";
 
-export class WriteFileNode extends ClassicPreset.Node {
+export class WriteFileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "A frame, written as CSV or JSON, or in Text mode the text as-is. Only Run writes; the node loads disarmed.",
   };

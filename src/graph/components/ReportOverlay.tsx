@@ -2,14 +2,14 @@
 import { usePendingDraft } from "../draftFlush";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "../graphModel";
 import { reportStore } from "../reportStore";
 import { siteChrome } from "../siteChrome";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { documentSourceNode } from "../documentSource";
 import { scheduleAutosave } from "../persistence";
-import { NoteNode, ReportNode } from "../rete-nodes";
+import { NoteNode, ReportNode } from "../nodeClasses";
 import type { SolenoidConnection } from "../schemes";
 import { nodeDisplayNames } from "../nodeNames";
 import { nodeNameStore } from "../nodeNameStore";
@@ -235,7 +235,7 @@ export function ReportOverlay() {
     node!.syncRefs(); // mint the input now so the wire has a socket
     const ed = editor;
     if (ed && !ed.getConnections().some((c) => c.target === node!.id && c.targetInput === refName)) {
-      await ed.addConnection(new ClassicPreset.Connection(note, "document", node!, refName) as SolenoidConnection);
+      await ed.addConnection(new GraphConnection(note, "document", node!, refName) as SolenoidConnection);
     }
     lastSyncRef.current = node!.body;
     scheduleAutosave();

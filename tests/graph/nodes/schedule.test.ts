@@ -1,6 +1,6 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
-import { ScheduleNode } from "../../../src/graph/rete-nodes";
+import { ScheduleNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";

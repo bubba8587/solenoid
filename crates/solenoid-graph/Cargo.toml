@@ -9,8 +9,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "0c4ed9bda0470e9d4c713281ec70fe22bcc12f75" }
-ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "0c4ed9bda0470e9d4c713281ec70fe22bcc12f75" }
+ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
+ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.100"

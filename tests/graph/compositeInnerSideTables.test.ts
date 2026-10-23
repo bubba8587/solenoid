@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves, [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -23,12 +23,12 @@ import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 
 const ANN = { format: "percent" } as FormatAnnotation;
 
-let editor: NodeEditor<Schemes>;
+let editor: GraphEditor<Schemes>;
 let view: View;
 
 beforeEach(() => {
   forgetAllNodes();
-  editor = new NodeEditor<Schemes>();
+  editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);

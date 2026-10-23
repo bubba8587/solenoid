@@ -1,5 +1,5 @@
-import { OUTLIER_METHOD_META } from "../rete-nodes";
-import type { OutliersNode as OutliersNodeType, OutlierMethod } from "../rete-nodes";
+import { OUTLIER_METHOD_META } from "../nodeClasses";
+import type { OutliersNode as OutliersNodeType, OutlierMethod } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

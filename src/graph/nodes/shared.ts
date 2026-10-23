@@ -1,5 +1,5 @@
 // [[D51]], [[D36]] nullSkippedNotZero (aggregators skip null)
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
@@ -9,72 +9,72 @@ import { dimOf } from "../unitValue";
 
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
-export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
-export const listIn     = (label: string) => new ClassicPreset.Input(listSocket, label);
-export const numListIn  = (label: string) => new ClassicPreset.Input(numListSocket, label);
-export const tableIn    = (label: string) => new ClassicPreset.Input(tableSocket, label);
-export const strTableIn = (label: string) => new ClassicPreset.Input(strTableSocket, label);
-export const dateTableIn= (label: string) => new ClassicPreset.Input(dateTableSocket, label);
-export const strIn      = (label: string) => new ClassicPreset.Input(stringSocket,  label);
-export const strListIn  = (label: string) => new ClassicPreset.Input(strListSocket, label);
-export const dateIn     = (label: string) => new ClassicPreset.Input(dateSocket,    label);
-export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSocket,label);
-export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label);
-export const trueAnyIn        = (label: string) => new ClassicPreset.Input(new AdoptiveSocket(), label);
-export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new AdoptiveSocket(), label);
-export const adoptiveTableIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
-export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
-export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
-export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anydata"), label);
+export const numIn      = (label: string) => new GraphInput(numberSocket, label);
+export const listIn     = (label: string) => new GraphInput(listSocket, label);
+export const numListIn  = (label: string) => new GraphInput(numListSocket, label);
+export const tableIn    = (label: string) => new GraphInput(tableSocket, label);
+export const strTableIn = (label: string) => new GraphInput(strTableSocket, label);
+export const dateTableIn= (label: string) => new GraphInput(dateTableSocket, label);
+export const strIn      = (label: string) => new GraphInput(stringSocket,  label);
+export const strListIn  = (label: string) => new GraphInput(strListSocket, label);
+export const dateIn     = (label: string) => new GraphInput(dateSocket,    label);
+export const dateListIn = (label: string) => new GraphInput(dateListSocket,label);
+export const anyIn      = (label: string) => new GraphInput(new AdoptiveSocket("any"), label);
+export const trueAnyIn        = (label: string) => new GraphInput(new AdoptiveSocket(), label);
+export const trueAnyOut       = (label: string) => new GraphOutput(new AdoptiveSocket(), label);
+export const adoptiveTableIn  = (label: string) => new GraphInput(new AdoptiveSocket("anytable"), label);
+export const adoptiveListIn   = (label: string) => new GraphInput(new AdoptiveSocket("anylist"), label);
+export const adoptiveTableOut = (label: string) => new GraphOutput(new AdoptiveSocket("anytable"), label);
+export const adoptiveListOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anylist"), label);
+export const adoptiveDataOut  = (label: string) => new GraphOutput(new AdoptiveSocket("anydata"), label);
 /** Never adopts: only for a generative result no input types; an extraction uses `trueAnyOut` plus `passthrough()`. */
-export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
-export const cubeAdoptIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("cube"), label);
-export const tableAdoptOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("frame"), label);
-export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
-export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
-export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
-export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
-export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
-export const numListOut = (label: string) => new ClassicPreset.Output(numListSocket, label);
-export const tableOut   = (label: string) => new ClassicPreset.Output(tableSocket,   label);
-export const strTableOut = (label: string) => new ClassicPreset.Output(strTableSocket, label);
-export const dateTableOut= (label: string) => new ClassicPreset.Output(dateTableSocket,label);
-export const strOut     = (label: string) => new ClassicPreset.Output(stringSocket,  label);
-export const strListOut = (label: string) => new ClassicPreset.Output(strListSocket, label);
-export const dateOut      = (label: string) => new ClassicPreset.Output(dateSocket,    label);
-export const dateListOut  = (label: string) => new ClassicPreset.Output(dateListSocket,label);
-export const strComboIn   = (label: string) => new ClassicPreset.Input(strComboSocket,   label);
-export const strComboOut  = (label: string) => new ClassicPreset.Output(strComboSocket,  label);
-export const dateComboIn  = (label: string) => new ClassicPreset.Input(dateComboSocket,  label);
-export const dateComboOut = (label: string) => new ClassicPreset.Output(dateComboSocket, label);
-export const complexIn    = (label: string) => new ClassicPreset.Input(complexSocket,  label);
-export const complexOut   = (label: string) => new ClassicPreset.Output(complexSocket, label);
-export const complexListIn  = (label: string) => new ClassicPreset.Input(complexListSocket,  label);
-export const complexListOut = (label: string) => new ClassicPreset.Output(complexListSocket, label);
-export const complexComboIn  = (label: string) => new ClassicPreset.Input(complexComboSocket,  label);
-export const complexComboOut = (label: string) => new ClassicPreset.Output(complexComboSocket, label);
-export const complexTableIn  = (label: string) => new ClassicPreset.Input(complexTableSocket,  label);
-export const complexTableOut = (label: string) => new ClassicPreset.Output(complexTableSocket, label);
-export const logicalIn       = (label: string) => new ClassicPreset.Input(logicalSocket,  label);
-export const logicalOut      = (label: string) => new ClassicPreset.Output(logicalSocket, label);
-export const logicalListIn   = (label: string) => new ClassicPreset.Input(logicalListSocket,  label);
-export const logicalListOut  = (label: string) => new ClassicPreset.Output(logicalListSocket, label);
-export const logicalComboIn  = (label: string) => new ClassicPreset.Input(logicalComboSocket,  label);
-export const logicalComboOut = (label: string) => new ClassicPreset.Output(logicalComboSocket, label);
-export const logicalTableOut = (label: string) => new ClassicPreset.Output(logicalTableSocket, label);
-export const frameIn      = (label: string) => new ClassicPreset.Input(frameSocket,   label);
-export const frameOut     = (label: string) => new ClassicPreset.Output(frameSocket,  label);
-export const cubeIn       = (label: string) => new ClassicPreset.Input(cubeSocket,    label);
-export const cubeOut      = (label: string) => new ClassicPreset.Output(cubeSocket,   label);
-export const lambdaIn     = (label: string) => new ClassicPreset.Input(lambdaSocket,  label);
-export const lambdaOut    = (label: string) => new ClassicPreset.Output(lambdaSocket, label);
-export const chartIn      = (label: string) => new ClassicPreset.Input(chartSocket,   label);
-export const chartOut     = (label: string) => new ClassicPreset.Output(chartSocket,  label);
-export const documentIn   = (label: string) => new ClassicPreset.Input(documentSocket, label);
-export const documentOut  = (label: string) => new ClassicPreset.Output(documentSocket, label);
+export const staticTrueAnyOut = (label: string) => new GraphOutput(trueAnySocket, label);
+export const cubeAdoptIn  = (label: string) => new GraphInput(new AdoptiveSocket("cube"), label);
+export const tableAdoptOut = (label: string) => new GraphOutput(new AdoptiveSocket("frame"), label);
+export const anyTableIn = (label: string) => new GraphInput(new AdoptiveSocket("anytable"), label);
+export const anyListIn  = (label: string) => new GraphInput(new AdoptiveSocket("anylist"), label);
+export const anyComboIn  = (label: string) => new GraphInput(new AdoptiveSocket("anycombo"), label);
+export const anyDataIn   = (label: string) => new GraphInput(new AdoptiveSocket("anydata"), label);
+export const anyComboOut = (label: string) => new GraphOutput(anyComboSocket, label);
+export const numOut     = (label: string) => new GraphOutput(numberSocket,  label);
+export const listOut    = (label: string) => new GraphOutput(listSocket,    label);
+export const numListOut = (label: string) => new GraphOutput(numListSocket, label);
+export const tableOut   = (label: string) => new GraphOutput(tableSocket,   label);
+export const strTableOut = (label: string) => new GraphOutput(strTableSocket, label);
+export const dateTableOut= (label: string) => new GraphOutput(dateTableSocket,label);
+export const strOut     = (label: string) => new GraphOutput(stringSocket,  label);
+export const strListOut = (label: string) => new GraphOutput(strListSocket, label);
+export const dateOut      = (label: string) => new GraphOutput(dateSocket,    label);
+export const dateListOut  = (label: string) => new GraphOutput(dateListSocket,label);
+export const strComboIn   = (label: string) => new GraphInput(strComboSocket,   label);
+export const strComboOut  = (label: string) => new GraphOutput(strComboSocket,  label);
+export const dateComboIn  = (label: string) => new GraphInput(dateComboSocket,  label);
+export const dateComboOut = (label: string) => new GraphOutput(dateComboSocket, label);
+export const complexIn    = (label: string) => new GraphInput(complexSocket,  label);
+export const complexOut   = (label: string) => new GraphOutput(complexSocket, label);
+export const complexListIn  = (label: string) => new GraphInput(complexListSocket,  label);
+export const complexListOut = (label: string) => new GraphOutput(complexListSocket, label);
+export const complexComboIn  = (label: string) => new GraphInput(complexComboSocket,  label);
+export const complexComboOut = (label: string) => new GraphOutput(complexComboSocket, label);
+export const complexTableIn  = (label: string) => new GraphInput(complexTableSocket,  label);
+export const complexTableOut = (label: string) => new GraphOutput(complexTableSocket, label);
+export const logicalIn       = (label: string) => new GraphInput(logicalSocket,  label);
+export const logicalOut      = (label: string) => new GraphOutput(logicalSocket, label);
+export const logicalListIn   = (label: string) => new GraphInput(logicalListSocket,  label);
+export const logicalListOut  = (label: string) => new GraphOutput(logicalListSocket, label);
+export const logicalComboIn  = (label: string) => new GraphInput(logicalComboSocket,  label);
+export const logicalComboOut = (label: string) => new GraphOutput(logicalComboSocket, label);
+export const logicalTableOut = (label: string) => new GraphOutput(logicalTableSocket, label);
+export const frameIn      = (label: string) => new GraphInput(frameSocket,   label);
+export const frameOut     = (label: string) => new GraphOutput(frameSocket,  label);
+export const cubeIn       = (label: string) => new GraphInput(cubeSocket,    label);
+export const cubeOut      = (label: string) => new GraphOutput(cubeSocket,   label);
+export const lambdaIn     = (label: string) => new GraphInput(lambdaSocket,  label);
+export const lambdaOut    = (label: string) => new GraphOutput(lambdaSocket, label);
+export const chartIn      = (label: string) => new GraphInput(chartSocket,   label);
+export const chartOut     = (label: string) => new GraphOutput(chartSocket,  label);
+export const documentIn   = (label: string) => new GraphInput(documentSocket, label);
+export const documentOut  = (label: string) => new GraphOutput(documentSocket, label);
 
 export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
@@ -86,26 +86,18 @@ export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string
   auto:   { label: "Auto",   title: "The result takes whatever type the formula returns" },
 };
 
-const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {
+const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, GraphSocket>> = {
   scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
   combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
   matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
 };
 
-export function resultSocket(dim: ResultDim, t: ResultType): ClassicPreset.Socket {
+export function resultSocket(dim: ResultDim, t: ResultType): GraphSocket {
   return RESULT_SOCKETS[dim][t];
 }
 
-export function resultOut(label: string, dim: ResultDim, t: ResultType): ClassicPreset.Output<ClassicPreset.Socket> {
-  return new ClassicPreset.Output(resultSocket(dim, t), label);
-}
-
-/** Re-seats a fixed input after a grown row, so the live key order is the one a reload rebuilds. */
-export function keepInputLast(node: ClassicPreset.Node, key: string): void {
-  const input = node.inputs[key];
-  if (!input) return;
-  delete node.inputs[key];
-  node.inputs[key] = input;
+export function resultOut(label: string, dim: ResultDim, t: ResultType): GraphOutput<GraphSocket> {
+  return new GraphOutput(resultSocket(dim, t), label);
 }
 
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
@@ -113,13 +105,13 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
 }
 
 /** A card's input roles: its class's, or for a card whose roles change with its op (Series), the current op's. */
-export function rolesOf(node: ClassicPreset.Node): Record<string, InputRole> | undefined {
+export function rolesOf(node: GraphNode): Record<string, InputRole> | undefined {
   return (node as { currentInputRoles?: () => Record<string, InputRole> }).currentInputRoles?.()
     ?? (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles;
 }
 
 /** A declared input read by its role ([[D86]] blankRoles): unwired, the typed value; wired, the cable's; a blank as the role reads it. */
-export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined): T {
+export function readRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined): T {
   const role = rolesOf(node)?.[key];
   if (!role) throw new Error(`${node.constructor.name}: no input role declared for "${key}"`);
   return readAsRole<T>(node, key, wired, role);
@@ -133,7 +125,7 @@ export function leftOutAs<T>(v: T | readonly (T | undefined)[] | undefined, dflt
 }
 
 /** `readRole` with the role given, for a card whose roles change with its op (Series). */
-export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+export function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
   const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
   const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];

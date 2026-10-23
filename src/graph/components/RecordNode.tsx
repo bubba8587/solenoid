@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { RecordNode as RecordNodeType, RecordOp } from "../rete-nodes";
-import { RECORD_OP_META } from "../rete-nodes";
+import type { RecordNode as RecordNodeType, RecordOp } from "../nodeClasses";
+import { RECORD_OP_META } from "../nodeClasses";
 import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";

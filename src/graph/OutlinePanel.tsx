@@ -13,7 +13,7 @@ import { nodeConnections } from "./nodeNames";
 import {
   GroupNode, FormatControllerNode, DisplayNode,
   nodeAccent,
-} from "./rete-nodes";
+} from "./nodeClasses";
 import { setGroupsCollapsed } from "./groupPush";
 import { measuredBox } from "./nodeSize";
 import { appThemeStore } from "./appTheme";

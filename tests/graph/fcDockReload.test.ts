@@ -1,6 +1,7 @@
 // [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { FrameInputNode } from "../../src/graph/nodes/frame";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
@@ -20,10 +21,10 @@ import type { Schemes } from "../../src/graph/schemes";
 // fix: persistence settles wildcard types BEFORE the dock loop. This test
 // replays that exact load order.
 
-type AnyEditor = NodeEditor<Schemes>;
+type AnyEditor = GraphEditor<Schemes>;
 
 async function buildChain() {
-  const editor = new NodeEditor() as unknown as AnyEditor;
+  const editor = new GraphEditor() as unknown as AnyEditor;
   const fi = new FrameInputNode({
     frameText: frameSourceToText([
       { name: "price", type: "number", cells: ["10", "20"] },
@@ -38,8 +39,8 @@ async function buildChain() {
   fc.hostNodeId = idx.id;
   fc.socketKey = "result";
   fc.side = "output";
-  await editor.addConnection(new ClassicPreset.Connection(idx as never, "result", fc as never, "in") as never);
-  await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
+  await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
+  await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
   return { editor, fi, idx, fc };
 }
 
@@ -51,14 +52,14 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
   // and then into the FIRST date style. The pick is never rewritten now; a pick outside
   // the socket's family is inert (`effectiveFormat()`) until the family comes back.
   it("resolving through trueany leaves the pick alone; the real date type keeps it", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const disp = new DisplayNode();
     const fc = new FormatControllerNode({ format: "date_dow", socketDataType: "datelist" });
     for (const n of [disp, fc]) await editor.addNode(n as never);
     fc.hostNodeId = disp.id;
     fc.socketKey = "out";
     fc.side = "output";
-    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+    await editor.addConnection(new GraphConnection(disp as never, "out", fc as never, "in") as never);
 
     // Load order with an unfed host: the type resolves to the wildcard.
     settleWildcardTypes(editor as never);
@@ -69,7 +70,7 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
     // The value's type arrives (here statically, a date source) — the pick stands.
     const today = new TodayNowNode();
     await editor.addNode(today as never);
-    await editor.addConnection(new ClassicPreset.Connection(today as never, "result", disp as never, "in") as never);
+    await editor.addConnection(new GraphConnection(today as never, "result", disp as never, "in") as never);
     settleWildcardTypes(editor as never);
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("date");
@@ -77,7 +78,7 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
   });
 
   it("a date pick on a number socket is INERT (effective auto), not rewritten — it returns with the family", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const fi = new FrameInputNode({ frameText: frameSourceToText([{ name: "n", type: "number", cells: ["1", "2"] }]) });
     const idx = new ListIndexNode();
     idx.literals.index = 1;
@@ -87,8 +88,8 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
     fc.hostNodeId = idx.id;
     fc.socketKey = "result";
     fc.side = "output";
-    await editor.addConnection(new ClassicPreset.Connection(idx as never, "result", fc as never, "in") as never);
-    await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
+    await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
+    await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
     settleWildcardTypes(editor as never);
     fc.dockSelf(editor as never);
     expect(fc.socketDataType).toBe("numlist");
@@ -110,7 +111,7 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
   });
 
   it("load order settles wildcard types before dockSelf — the FC adopts the cell's family", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     // "Reload": nodes constructed from persisted state, cables restored, no
     // per-cable settle (the rebuild gate suppresses it).
     const fi = new FrameInputNode({
@@ -127,8 +128,8 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
     fc.hostNodeId = idx.id;
     fc.socketKey = "result";
     fc.side = "output";
-    await editor.addConnection(new ClassicPreset.Connection(idx as never, "result", fc as never, "in") as never);
-    await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
+    await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
+    await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
 
     // The FIXED load order: settle wildcard types, THEN register docks.
     settleWildcardTypes(editor as never);

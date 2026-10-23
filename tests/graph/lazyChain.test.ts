@@ -2,7 +2,8 @@
 // What a verb CHAIN costs the frame backend when driven through real node data() calls (editor + DataflowEngine +
 // input coercion), not raw runners: how often it uploads, flushes, previews and collects.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 
@@ -45,8 +46,8 @@ beforeEach(() => {
 });
 afterEach(() => useWasmBackend());
 
-async function chain(nodes: ClassicPreset.Node[], lastKey = "frame") {
-  const editor = new NodeEditor<Schemes>();
+async function chain(nodes: GraphNode[], lastKey = "frame") {
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
@@ -54,7 +55,7 @@ async function chain(nodes: ClassicPreset.Node[], lastKey = "frame") {
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);
   for (let i = 1; i < nodes.length; i++) {
     const key = i === nodes.length - 1 ? lastKey : "frame";
-    await editor.addConnection(new ClassicPreset.Connection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
   }
   return engine.fetch(nodes[nodes.length - 1].id);
 }
@@ -87,7 +88,7 @@ import { LAZY_FRAME_NODES } from "../../src/graph/coerceInputs";
 describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
   it("frame.ts: a class calling runFrame* is lazy", () => {
     const src = readFileSync(new URL("../../src/graph/nodes/frame.ts", import.meta.url), "utf-8");
-    const classes = [...src.matchAll(/^export class (\w+) extends ClassicPreset\.Node[\s\S]*?(?=^export class |\Z)/gm)];
+    const classes = [...src.matchAll(/^export class (\w+) extends GraphNode[\s\S]*?(?=^export class |\Z)/gm)];
     const emitters = classes.filter((m) => /\b(runFrame(Unary|Join|Append|BindColumns)|lazyPass|lazyFramePass|planOnBody)\(/.test(m[0])).map((m) => m[1]);
     expect(emitters.length).toBeGreaterThan(10);
     const missing = emitters.filter((c) => !LAZY_FRAME_NODES.has(c));

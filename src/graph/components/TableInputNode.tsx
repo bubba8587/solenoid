@@ -1,6 +1,6 @@
 // [[C58]] tableInputRawText, [[B11]] maximalMerge
 import { useEffect, useState, type ReactNode } from "react";
-import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
+import type { TableInputNode as TableInputNodeType, TableElemType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";

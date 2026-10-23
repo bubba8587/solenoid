@@ -29,7 +29,7 @@ const upper = name.toUpperCase();
 
 const cachedField = template === "list" ? "cachedList" : "cachedResult";
 
-const componentSrc = `import type { ${Klass} } from "../rete-nodes";
+const componentSrc = `import type { ${Klass} } from "../nodeClasses";
 import { makeNodeComponent } from "./standardNode";
 
 export const ${Comp} = makeNodeComponent<${Klass}>((n) => n.${cachedField});
@@ -44,7 +44,7 @@ mkdirSync(dirname(compPath), { recursive: true });
 writeFileSync(compPath, componentSrc);
 
 const classByTemplate = {
-  element: `export class ${Klass} extends ClassicPreset.Node {
+  element: `export class ${Klass} extends GraphNode {
   label: string;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = {};
@@ -65,7 +65,7 @@ const classByTemplate = {
     return { result };
   }
 }`,
-  list: `export class ${Klass} extends ClassicPreset.Node {
+  list: `export class ${Klass} extends GraphNode {
   label: string;
   cachedList: number[] = [];
   width = 180;
@@ -85,7 +85,7 @@ const classByTemplate = {
     return { result };
   }
 }`,
-  reduce: `export class ${Klass} extends ClassicPreset.Node {
+  reduce: `export class ${Klass} extends GraphNode {
   label: string;
   cachedResult: number | null = null;
   width = 180;
@@ -117,7 +117,7 @@ Now wire it up (paste points):
 
 ${classByTemplate[template] ?? classByTemplate.element}
 
-   (rete-nodes.ts already re-exports each domain file, so no change needed there.)
+   (nodeClasses.ts already re-exports each domain file, so no change needed there.)
 
 2) src/graph/nodes/kind.ts — add instanceof branch in nodeKindOf():
 
@@ -131,7 +131,7 @@ ${classByTemplate[template] ?? classByTemplate.element}
 
 4) src/graph/nodeRegistry.ts — registry row (two edits in this one file):
 
-   import { ${Klass} } from "./rete-nodes";      // add to the rete-nodes import block
+   import { ${Klass} } from "./nodeClasses";      // add to the nodeClasses import block
    import { ${Comp} } from "./components";       // add to the components import block
 
    // in NODE_COMPONENTS:

@@ -1,5 +1,5 @@
 // [[B11]], [[C48]], [[C49]]
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { is2DType, numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -33,7 +33,7 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
   logical: logicalListSocket,
 };
 
-export class ListInputNode extends ClassicPreset.Node {
+export class ListInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Rows concatenate in order.",
   };
@@ -61,11 +61,11 @@ export class ListInputNode extends ClassicPreset.Node {
     } else {
       this.addValueInput();
     }
-    this.addOutput("list", new ClassicPreset.Output(this.valueSocket, "List"));
+    this.addOutput("list", new GraphOutput(this.valueSocket, "List"));
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(this.valueSocket));
+    this.addInput(key, new GraphInput(this.valueSocket));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -122,7 +122,7 @@ const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string;
   repeat:    [{ key: "value", label: "Value", def: 0 }, { key: "count", label: "Count", def: 5 }],
 };
 
-export class SeriesNode extends ClassicPreset.Node {
+export class SeriesNode extends GraphNode {
   /** Each op reads its settings as its formula twin declares them ([[D86]] blankRoles); Stop, End, Ratio and Value are data. */
   static rolesByOp: Record<SeriesOp, Record<string, InputRole>> = {
     range: rolesFrom("RANGE", { start: 0, step: 2 }),
@@ -216,7 +216,7 @@ export class SeriesNode extends ClassicPreset.Node {
 
 // ─── List ops: Length / Index / Sort / Reverse / Slice ─────────────────────────
 
-export class ListLengthNode extends ClassicPreset.Node {
+export class ListLengthNode extends GraphNode {
   label: string;
   cachedResult: number | null = null;
   width = 180;
@@ -234,7 +234,7 @@ export class ListLengthNode extends ClassicPreset.Node {
   }
 }
 
-export class ListIndexNode extends ClassicPreset.Node {
+export class ListIndexNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     index: "Rows count from 1. 0, unset or blank takes every row. A wired list of rows picks each one, skipping blanks.",
     column: "Columns count from 1. 0, unset or blank takes every column. A wired list of columns picks each one, skipping blanks.",
@@ -337,7 +337,7 @@ export type SortDir = "asc" | "desc";
  * leaves it as it is, as in Excel; Columns sorts its items). With no sort key it sorts by its own values at `index`;
  * each added key row is one of SORTBY's by_arrays with its own order.
  */
-export class SortNode extends ClassicPreset.Node {
+export class SortNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "A list is one row, so sorting rows leaves it as it is, as in Excel. Switch to Columns to sort a list's items.",
     index: "Which column the rows sort by, or which row the columns sort by. Counts from 1; blank is 1. Sort keys, once added, decide instead.",
@@ -405,7 +405,7 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
-export class ReverseNode extends ClassicPreset.Node {
+export class ReverseNode extends GraphNode {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
@@ -424,7 +424,7 @@ export class ReverseNode extends ClassicPreset.Node {
   }
 }
 
-export class ShiftNode extends ClassicPreset.Node {
+export class ShiftNode extends GraphNode {
   static inputRoles = rolesFrom("SHIFT", { by: 1 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -453,7 +453,7 @@ export const BIN_MODE_OPTIONS: ReadonlyArray<{ value: BinMode; label: string; ti
   { value: "quantiles", label: "quantiles", title: "Bin into n equal-count buckets 1..n (dplyr ntile, pandas qcut)" },
 ];
 
-export class BinNode extends ClassicPreset.Node {
+export class BinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     breaks: "The bin edges. A value is placed by how many edges it clears: 0 below the first edge, up to n above the last.",
     n: "How many equal-count buckets; the result is the bucket number, 1 to n.",
@@ -495,7 +495,7 @@ export const OUTLIER_METHOD_META = {
   mad: { label: "MAD",     description: "Modified z-score `0.6745·(x − median)/MAD` above the threshold (default 3.5): the robust Iglewicz–Hoaglin rule." },
 } satisfies Record<OutlierMethod, { label: string; description: string }>;
 
-export class OutliersNode extends ClassicPreset.Node {
+export class OutliersNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "A row per input value: Value (outliers blanked so aggregates skip them, positions hold) and Outlier, TRUE where flagged; blank stays blank.",
     threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
@@ -520,7 +520,7 @@ export class OutliersNode extends ClassicPreset.Node {
   }
 }
 
-export class CombinationsNode extends ClassicPreset.Node {
+export class CombinationsNode extends GraphNode {
   static inputRoles = rolesFrom("COMBINATIONS", { k: 1 });
   static socketDocs: Record<string, string> = {
     result: "One row per combination (or permutation). Empty when k is larger than the list.",
@@ -545,7 +545,7 @@ export class CombinationsNode extends ClassicPreset.Node {
   }
 }
 
-export class EwmaNode extends ClassicPreset.Node {
+export class EwmaNode extends GraphNode {
   static inputRoles = rolesFrom("EWMA", { alpha: 1 });
   static socketDocs: Record<string, string> = {
     alpha: "Smoothing factor 0–1: higher tracks recent values closely, lower smooths harder.",
@@ -572,7 +572,7 @@ export class EwmaNode extends ClassicPreset.Node {
   }
 }
 
-export class ConvolveNode extends ClassicPreset.Node {
+export class ConvolveNode extends GraphNode {
   label: string;
   cachedList: ListCell[] | SolError = [];
   width = 180; height = 150;
@@ -590,7 +590,7 @@ export class ConvolveNode extends ClassicPreset.Node {
   }
 }
 
-export class CrossNode extends ClassicPreset.Node {
+export class CrossNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "The vector perpendicular to both inputs. Each operand must be three numbers.",
   };
@@ -611,7 +611,7 @@ export class CrossNode extends ClassicPreset.Node {
   }
 }
 
-export class PolyfitNode extends ClassicPreset.Node {
+export class PolyfitNode extends GraphNode {
   static inputRoles = rolesFrom("POLYFIT", { degree: 2 });
   static socketDocs: Record<string, string> = {
     result: "The fitted y value at each input x: the least-squares polynomial of the chosen degree, evaluated back over the data.",
@@ -635,7 +635,7 @@ export class PolyfitNode extends ClassicPreset.Node {
   }
 }
 
-export class TrapzNode extends ClassicPreset.Node {
+export class TrapzNode extends GraphNode {
   static inputRoles = rolesFrom("TRAPZ", { dx: 1 });
   static socketDocs: Record<string, string> = {
     result: "The area under the piecewise-linear curve through the points, at uniform spacing dx.",
@@ -658,7 +658,7 @@ export class TrapzNode extends ClassicPreset.Node {
   }
 }
 
-export class RleNode extends ClassicPreset.Node {
+export class RleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Two columns: each consecutive run's value and its length. R rle.",
   };
@@ -678,7 +678,7 @@ export class RleNode extends ClassicPreset.Node {
   }
 }
 
-export class SliceNode extends ClassicPreset.Node {
+export class SliceNode extends GraphNode {
   static inputRoles = rolesFrom("SLICE", { start: 1, end: 2 });
   static socketDocs: Record<string, string> = {
     end: "The element at End is included. Left unset, the slice runs to the end of the list.",
@@ -722,7 +722,7 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
 export const readConditionValue = (wired: unknown[] | undefined, literal: string | undefined): string =>
   readFilterValue(wired, literal) ?? "";
 
-export class FilterNode extends ClassicPreset.Node {
+export class FilterNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "A list keeps or drops its items. A table keeps or drops its rows, tested on one column.",
     column: "Which column of the table the conditions test. Counts from 1; blank is 1.",
@@ -829,7 +829,7 @@ export const COND_AGG_OP_META = {
   maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes. Nothing matching is `0` like Excel. Excel: `MAXIFS`." },
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
-export class SumIfsNode extends ClassicPreset.Node {
+export class SumIfsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Names the column to aggregate. COUNTIFS counts rows and ignores it.",
   };
@@ -927,7 +927,7 @@ export class SumIfsNode extends ClassicPreset.Node {
 // ─── Array operation nodes ────────────────────────────────────────────────────
 
 /** UNIQUE on a list or a table ([[D85]] columnsStayColumns: a list is one row, so its rows are already unique; Columns dedupes its items). */
-export class UniqueNode extends ClassicPreset.Node {
+export class UniqueNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "A list is one row, so its rows are already unique, as in Excel. Switch to Columns to remove a list's repeated items.",
   };
@@ -965,7 +965,7 @@ export const SET_OP_META: Record<SetOp, { label: string; description: string; fx
 };
 
 // ─── Is In ────────────────────────────────────────────────────────────────────
-export class IsInNode extends ClassicPreset.Node {
+export class IsInNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "A blank cell in Values yields a blank entry rather than FALSE. Blank cells in Set are never members.",
   };
@@ -989,7 +989,7 @@ export class IsInNode extends ClassicPreset.Node {
 }
 
 // ─── Tally ────────────────────────────────────────────────────────────────────
-export class TallyNode extends ClassicPreset.Node {
+export class TallyNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Distinct values appear in first-seen order. Blank and error cells are not counted.",
   };
@@ -1030,7 +1030,7 @@ export const SET_META: Record<SetOpAll, { label: string; description: string; fx
   ...(Object.fromEntries((Object.keys(SET_RELATION_META) as SetRelation[]).map((op) => [op, { ...SET_RELATION_META[op], group: "Relation" }]))),
 } as Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }>;
 
-export class SetsNode extends ClassicPreset.Node {
+export class SetsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "An operation gives a list where duplicates collapse to the first occurrence; a relation gives TRUE or FALSE. Blank cells are never members.",
   };
@@ -1058,7 +1058,7 @@ export class SetsNode extends ClassicPreset.Node {
   }
 }
 
-export class ConcatListsNode extends ClassicPreset.Node {
+export class ConcatListsNode extends GraphNode {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: this.valueInputKeys(), combine: "agree" }];
   label: string;
   cachedList: unknown[] = [];
@@ -1113,7 +1113,7 @@ export const RUNNING_OP_META = {
   stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by `n−1`." },
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
-export class RunningNode extends ClassicPreset.Node {
+export class RunningNode extends GraphNode {
   static inputRoles = rolesFrom("RUNNING", { window: 2 });
   static socketDocs: Record<string, string> = {
     window: "0 (the default) is cumulative from the start through this element. 1 or more slides: the last N elements ending here, running short at the start.",
@@ -1149,7 +1149,7 @@ export class RunningNode extends ClassicPreset.Node {
 export type DiffMode = "delta" | "percent" | "gradient";
 const DIFF_OUTPUT_LABEL: Record<DiffMode, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
 
-export class DiffNode extends ClassicPreset.Node {
+export class DiffNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point.",
   };
@@ -1190,7 +1190,7 @@ export const ARG_MIN_MAX_OP_META = {
   which:        { label: "WHICH",        description: "1-based positions of the `TRUE` cells of a logical list. R `which`, `numpy.flatnonzero`. Excel: `FILTER(SEQUENCE(n), cond)`." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
-export class ArgMinMaxNode extends ClassicPreset.Node {
+export class ArgMinMaxNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "1-based, like MATCH. Blank and error cells never win and sort to the end.",
   };
@@ -1228,7 +1228,7 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
   }
 }
 
-export class ContainsNode extends ClassicPreset.Node {
+export class ContainsNode extends GraphNode {
   label: string;
   cachedResult: boolean | null = null;
   literals: Record<string, number> = { value: 0 };
@@ -1252,7 +1252,7 @@ export class ContainsNode extends ClassicPreset.Node {
 export type NormalizeMode = "minmax" | "zscore";
 const NORMALIZE_OUTPUT_LABEL: Record<NormalizeMode, string> = { minmax: "0–1", zscore: "z-scores" };
 
-export class NormalizeNode extends ClassicPreset.Node {
+export class NormalizeNode extends GraphNode {
   label: string;
   mode: NormalizeMode = "minmax";
   cachedList: ListCell[] | SolError = [];
@@ -1278,7 +1278,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 }
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
-export class ShuffleNode extends ClassicPreset.Node {
+export class ShuffleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
     weights: "Optional, at least as long as the list. Higher weight tends to land earlier: a weighted draw without replacement. Otherwise a uniform shuffle.",
@@ -1319,7 +1319,7 @@ export class ShuffleNode extends ClassicPreset.Node {
 }
 
 // ─── NthElement ───────────────────────────────────────────────────────────────
-export class NthElementNode extends ClassicPreset.Node {
+export class NthElementNode extends GraphNode {
   static inputRoles = rolesFrom("NTHELEMENT", { n: 1 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -1341,7 +1341,7 @@ export class NthElementNode extends ClassicPreset.Node {
 }
 
 // ─── Interleave ───────────────────────────────────────────────────────────────
-export class InterleaveNode extends ClassicPreset.Node {
+export class InterleaveNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "A shorter side contributes blanks so the alternation stays aligned.",
   };
@@ -1372,7 +1372,7 @@ export const PAD_OP_META = {
   left:  { label: "PADLEFT",  description: "Prepend Fill until list reaches N elements" },
 } satisfies Record<PadDir, { label: string; description: string }>;
 
-export class PadNode extends ClassicPreset.Node {
+export class PadNode extends GraphNode {
   static inputRoles = rolesFrom("PADRIGHT", { n: 1 });
   static socketDocs: Record<string, string> = {
     n: "A target at or below the list's length leaves it unchanged. Nothing is trimmed.",
@@ -1410,7 +1410,7 @@ export const WEIGHTED_OP_META = {
   wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: `√WVAR`" },
 } satisfies Record<WeightedOp, { label: string; description: string }>;
 
-export class WeightedNode extends ClassicPreset.Node {
+export class WeightedNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     weights: "Pairs with Values by position, and a pair with a blank on either side is dropped. Fewer weights than values blanks the result.",
   };
@@ -1491,7 +1491,7 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
 const DATE_READING_OPS: ReadonlySet<ReduceOp | RunningOp> = new Set(["avg", "min", "max", "median"]);
 
 
-export class AggregateNode extends ClassicPreset.Node {
+export class AggregateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Blank cells are skipped, not counted as zero. One error cell makes the whole result that error.",
   };
@@ -1525,7 +1525,7 @@ export class AggregateNode extends ClassicPreset.Node {
 
 // ─── RANDARRAY ────────────────────────────────────────────────────────────────
 
-export class RandArrayNode extends ClassicPreset.Node {
+export class RandArrayNode extends GraphNode {
   static inputRoles = rolesFrom("RANDARRAY", { count: 0, min: 2, max: 3 });
   static socketDocs: Record<string, string> = {
     list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
@@ -1586,7 +1586,7 @@ export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; 
   last:  { label: "Last",  title: "On duplicate values, return the last match, scanning bottom to top" },
 };
 
-export class XMatchNode extends ClassicPreset.Node {
+export class XMatchNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Text matches ignore case, like Excel's lookups. The approximate modes compare numbers and dates only.",
     result: "1-based. #N/A when not found.",
@@ -1630,7 +1630,7 @@ export const GROUP_BY_OP_META: Record<GroupByOp, { label: string; description: s
   count: { label: "COUNT", description: "Count of items in each group" },
 };
 
-export class GroupListsNode extends ClassicPreset.Node {
+export class GroupListsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Pairs with Keys by position. Rows beyond the shorter list are ignored.",
     result: "One row per unique key: Key (adopting the keys input's element type) and the aggregated Value.",
@@ -1677,7 +1677,7 @@ export const FILL_OP_META = {
 
 type Cell = number | null | SolError;
 
-export class FillNode extends ClassicPreset.Node {
+export class FillNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Only the Fill with value operation reads it.",
   };
@@ -1734,7 +1734,7 @@ export class FillNode extends ClassicPreset.Node {
 }
 
 // ─── SPECTRUM (FFT) ──────────────────────────────────────────────────────────
-export class SpectrumNode extends ClassicPreset.Node {
+export class SpectrumNode extends GraphNode {
   static inputRoles = { rate: setting(1) };
   static socketDocs: Record<string, string> = {
     rate: "Samples per unit time (Hz if per second); the frequency column is in those units. Leave at 1 for frequency in cycles per sample.",
@@ -1766,7 +1766,7 @@ export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; param
   gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy `gaussian_filter1d`." },
 };
 
-export class SmoothNode extends ClassicPreset.Node {
+export class SmoothNode extends GraphNode {
   static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1") };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
@@ -1804,7 +1804,7 @@ export class SmoothNode extends ClassicPreset.Node {
 }
 
 // ─── FIND PEAKS ───────────────────────────────────────────────────────────────
-export class FindPeaksNode extends ClassicPreset.Node {
+export class FindPeaksNode extends GraphNode {
   static inputRoles = { height: setting(LEFT_OUT, "none"), distance: setting(LEFT_OUT, "none"), prominence: setting(LEFT_OUT, "none") };
   static socketDocs: Record<string, string> = {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height.",

@@ -1,5 +1,5 @@
 // [[C28]] literalsIffEditable
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket } from "../sockets";
 import { numIn, strIn, strOut, dateOut } from "./shared";
@@ -11,7 +11,7 @@ export type ColorMode = "rgb" | "hsv" | "hex";
 // Output formats stay CSS-valid; CSS has no hsv().
 export type ColorFormat = "hex" | "rgb";
 
-export class ColorPickerNode extends ClassicPreset.Node {
+export class ColorPickerNode extends GraphNode {
   label: string;
   mode: ColorMode;
   format: ColorFormat;
@@ -57,7 +57,7 @@ export const BLEND_MODE_META: Record<BlendMode, { label: string }> = {
   burn:         { label: "Color Burn" },
 };
 
-export class ColorBlendNode extends ClassicPreset.Node {
+export class ColorBlendNode extends GraphNode {
   label: string;
   mode: BlendMode;
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
@@ -100,7 +100,7 @@ export const CONSTANTS: Record<ConstantOp, { symbol: string; label: string; valu
   "false":   { symbol: "false", label: "False",         value: 0 },
 };
 
-export class ConstantNode extends ClassicPreset.Node {
+export class ConstantNode extends GraphNode {
   label: string;
   op: ConstantOp;
   width = 160;
@@ -110,7 +110,7 @@ export class ConstantNode extends ClassicPreset.Node {
     super("Constant");
     this.op = init?.op ?? "pi";
     this.label = init?.label ?? "";
-    this.addOutput("value", new ClassicPreset.Output(numberSocket));
+    this.addOutput("value", new GraphOutput(numberSocket));
   }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
@@ -118,7 +118,7 @@ export class ConstantNode extends ClassicPreset.Node {
   }
 }
 
-export class SliderInputNode extends ClassicPreset.Node {
+export class SliderInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     min: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
     max: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
@@ -143,7 +143,7 @@ export class SliderInputNode extends ClassicPreset.Node {
     this.addInput("min",  numIn("Min"));
     this.addInput("max",  numIn("Max"));
     this.addInput("step", numIn("Step"));
-    this.addOutput("value", new ClassicPreset.Output(numberSocket));
+    this.addOutput("value", new GraphOutput(numberSocket));
   }
 
   /** The clamped value is saved, so it is written here; `body` clamps. */
@@ -159,7 +159,7 @@ export class SliderInputNode extends ClassicPreset.Node {
 }
 
 /** Reads saveTimeStore, so both serials refresh on any recompute and the card's Refresh is just requestRecalc(). */
-export class SaveTimesNode extends ClassicPreset.Node {
+export class SaveTimesNode extends GraphNode {
   label: string;
   cachedAutosave: number | null = null;
   cachedFileSave: number | null = null;

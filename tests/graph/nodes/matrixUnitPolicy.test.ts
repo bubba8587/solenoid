@@ -1,6 +1,6 @@
 // [[D43]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../../../src/graph/graphModel";
 import * as M from "../../../src/graph/nodes/matrix";
 import { ListIndexNode } from "../../../src/graph/nodes/list";
 import { InterpolateNode } from "../../../src/graph/nodes/stats";
@@ -67,7 +67,7 @@ const plainGrid = () => [[1, 2], [3, 4]];
 // Matrix-family socket types (declared or adoptive-base) — a node with one of these
 // on an input takes a matrix and therefore needs a policy.
 const MATRIX_INPUT = new Set(["table", "strtable", "datetable", "logicaltable", "anytable"]);
-function takesMatrix(node: ClassicPreset.Node): boolean {
+function takesMatrix(node: GraphNode): boolean {
   for (const inp of Object.values(node.inputs ?? {})) {
     const s = inp?.socket as { dataType?: string; base?: string } | undefined;
     if (s && (MATRIX_INPUT.has(s.dataType ?? "") || MATRIX_INPUT.has(s.base ?? ""))) return true;
@@ -86,8 +86,8 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
     const missing = new Set<string>();
     let found = 0;
     for (const [ctor] of NODE_COMPONENTS) {
-      let node: ClassicPreset.Node;
-      try { node = new (ctor as unknown as new () => ClassicPreset.Node)(); } catch { continue; }
+      let node: GraphNode;
+      try { node = new (ctor as unknown as new () => GraphNode)(); } catch { continue; }
       if (!takesMatrix(node)) continue;
       found++;
       if (!(node.constructor.name in POLICY)) missing.add(node.constructor.name);

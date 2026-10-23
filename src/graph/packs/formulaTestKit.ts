@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
 // Test-only.
 
-import { ExpressionNode, EquationNode } from "../rete-nodes";
+import { ExpressionNode, EquationNode } from "../nodeClasses";
 import { parseEquation } from "../equationSolve";
 import { initPackFormulas } from "../formulaExtensions";
 import { compileEvaluator, parseFormula } from "../excelFormula";

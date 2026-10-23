@@ -9,7 +9,8 @@ vi.mock("../../src/graph/fileBridge", async (orig) => ({
   writeTextFilePath: async (_path: string, content: string) => { written.push(content); },
 }));
 
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
@@ -26,20 +27,20 @@ const big: FrameValue = {
   columns: [{ name: "n", type: "number", values: Array.from({ length: rows }, (_, i) => i) }],
 };
 
-class Src extends ClassicPreset.Node {
-  constructor() { super("Src"); this.addOutput("frame", new ClassicPreset.Output(new ClassicPreset.Socket("s"))); }
+class Src extends GraphNode {
+  constructor() { super("Src"); this.addOutput("frame", new GraphOutput(new GraphSocket("s"))); }
   data() { return { frame: big }; }
 }
 
 /** Source → Distinct → `sink`, computed once in the current mode. */
-async function wire(sink: ClassicPreset.Node, input: string) {
-  const editor = new NodeEditor<Schemes>();
+async function wire(sink: GraphNode, input: string) {
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const src = new Src(), distinct = new DistinctNode();
   for (const n of [src, distinct, sink]) await editor.addNode(n as unknown as Schemes["Node"]);
-  await editor.addConnection(new ClassicPreset.Connection(src, "frame", distinct, "frame") as unknown as Schemes["Connection"]);
-  await editor.addConnection(new ClassicPreset.Connection(distinct, "frame", sink, input) as unknown as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(src, "frame", distinct, "frame") as unknown as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(distinct, "frame", sink, input) as unknown as Schemes["Connection"]);
   setEditorRefs(editor, engine, { rerenderNode: async () => {} } as unknown as View);
   await processGraph();
 }

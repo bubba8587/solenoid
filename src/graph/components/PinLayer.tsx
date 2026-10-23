@@ -7,7 +7,7 @@ import { cableValueStore } from "../cableValueStore";
 import { connectionVersionStore } from "../graphSignals";
 import { flyToNode } from "../flyToNode";
 import { nodeDisplayName } from "../catalogUtils";
-import { GroupNode } from "../rete-nodes";
+import { GroupNode } from "../nodeClasses";
 import { groupReadouts, type RetainedTerminal } from "../groupCollapse";
 import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase } from "../formatAnnotationStore";

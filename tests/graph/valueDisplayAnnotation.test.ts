@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import type { NodeEditor as Ed } from "rete";
+import { GraphEditor, type GraphEditor as Ed } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { formatAnnotationStore, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
@@ -19,17 +19,17 @@ import { formatScalar } from "../../src/graph/components/format";
 // inspector, collapsed group readouts). Its three steps are pinned here; the walk
 // itself belongs to unitFlowAnnotation.test.ts.
 
-type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
-const sock = new (class extends ClassicPreset.Socket {})("any");
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
+const sock = new (class extends GraphSocket {})("any");
 
 const usd: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "usd" };
 const eur: FormatAnnotation = { ...usd, unit: "eur" };
 const deg: FormatAnnotation = { format: "auto", unit: "deg" };
 
 function node(label: string, extra: Record<string, unknown> = {}) {
-  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
-  n.addInput("in", new ClassicPreset.Input(sock, "In"));
-  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  const n = new GraphNode(label) as GraphNode & Record<string, unknown>;
+  n.addInput("in", new GraphInput(sock, "In"));
+  n.addOutput("out", new GraphOutput(sock, "Out"));
   Object.assign(n, extra);
   return n;
 }
@@ -38,12 +38,12 @@ function passthrough(label: string) {
   n.passthrough = () => [{ output: "out", inputs: ["in"], combine: "single", pure: true }];
   return n;
 }
-const connect = (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node) =>
-  e.addConnection(new ClassicPreset.Connection(s as never, "out", t as never, "in") as never);
+const connect = (e: AnyEditor, s: GraphNode, t: GraphNode) =>
+  e.addConnection(new GraphConnection(s as never, "out", t as never, "in") as never);
 
 /** A fresh editor registered as the MAIN graph, which getOwningEditor resolves to. */
 function newEditor(): AnyEditor {
-  const editor = new NodeEditor() as unknown as AnyEditor;
+  const editor = new GraphEditor() as unknown as AnyEditor;
   setEditorRefs(editor as unknown as Ed<Schemes>, {} as never, {} as never);
   return editor;
 }
@@ -95,8 +95,8 @@ describe("resolveDisplayAnnotation — direct, then carried, then downstream", (
 
   it("`socketKey` keeps a multi-output card's boxes apart", async () => {
     const editor = newEditor();
-    const tri = new ClassicPreset.Node("Tri") as ClassicPreset.Node & Record<string, unknown>;
-    for (const k of ["a", "A"]) tri.addOutput(k, new ClassicPreset.Output(sock, k));
+    const tri = new GraphNode("Tri") as GraphNode & Record<string, unknown>;
+    for (const k of ["a", "A"]) tri.addOutput(k, new GraphOutput(sock, k));
     tri.annotationFor = (outKey: string) => (outKey === "A" ? deg : undefined);
     await editor.addNode(tri as never);
     expect(resolveDisplayAnnotation(tri.id, "A")?.unit).toBe("deg");

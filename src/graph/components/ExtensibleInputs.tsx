@@ -1,7 +1,7 @@
 // [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
@@ -24,7 +24,7 @@ import { dropInputCables } from "./cablePrune";
 
 export interface ExtensibleNode {
   id: string;
-  inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
+  inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;
   // Number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;

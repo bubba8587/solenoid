@@ -50,7 +50,7 @@ import {
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
   TodayNowNode, UrlEncodeNode, WeekInfoNode, 
   WeightedNode,
-} from "./rete-nodes";
+} from "./nodeClasses";
 
 
 export type OpExposure = "collapsed" | "leaves";

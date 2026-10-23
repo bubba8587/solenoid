@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { SURFACE_VIEW_OP_META } from "../rete-nodes";
-import type { SurfaceNode as SurfaceNodeType, SurfaceViewOp } from "../rete-nodes";
+import { SURFACE_VIEW_OP_META } from "../nodeClasses";
+import type { SurfaceNode as SurfaceNodeType, SurfaceViewOp } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";

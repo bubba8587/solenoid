@@ -2,7 +2,7 @@
 // A docked FC is part of its host's entity, so deleting a host takes the FCs docked on it.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -16,7 +16,7 @@ import { deleteSelection } from "../../src/graph/canvasActions";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
 function makeGraph() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
@@ -27,7 +27,7 @@ function makeGraph() {
 }
 
 // attachFormatController's model half (canvasActions.ts), minus the DOM placement.
-async function attach(editor: NodeEditor<Schemes>, hostNodeId: string, socketKey: string) {
+async function attach(editor: GraphEditor<Schemes>, hostNodeId: string, socketKey: string) {
   const fc = new FormatControllerNode({ hostNodeId, socketKey, side: "output" });
   await editor.addNode(fc);
   fc.dockSelf(editor);

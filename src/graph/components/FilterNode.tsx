@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import type { FilterNode as FilterNodeType } from "../rete-nodes";
+import type { FilterNode as FilterNodeType } from "../nodeClasses";
 import type { FilterCondConfig } from "../frameOps";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";

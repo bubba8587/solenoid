@@ -1,5 +1,5 @@
-import type { BesselNode as BesselNodeType, BesselOp } from "../rete-nodes";
-import { BESSEL_OP_META } from "../rete-nodes";
+import type { BesselNode as BesselNodeType, BesselOp } from "../nodeClasses";
+import { BESSEL_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

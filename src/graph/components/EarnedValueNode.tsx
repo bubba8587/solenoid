@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { EarnedValueNode as EarnedValueNodeType } from "../rete-nodes";
+import type { EarnedValueNode as EarnedValueNodeType } from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { FrameDisplay } from "./FrameDisplay";

@@ -10,7 +10,7 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 1. **`../CLAUDE.md`** — standing orders (branch, verification, doc duty) and the
    pointer map; every mechanism lives in the docs below.
 2. **`mental-model.md`** — how the system RUNS, end to end (the React Flow view over
-   the headless rete model, the compute path, types, frames, display, save/load).
+   the headless graph model, the compute path, types, frames, display, save/load).
    The story the reference docs assume you know.
 3. **`glossary.md`** — the invented vocabulary (Conduit, Standoff, FrameRef, unit
    flow…) plus the author's names for the on-screen chrome. Read before the
@@ -49,7 +49,7 @@ is parked there.
   reason the override exists.
 - **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
   the declaration, generated name lists, one implementation per gating metric, `every` for
-  completeness, the rete-free formula path, lazy heavy libraries.
+  completeness, the graph-free formula path, lazy heavy libraries.
 - **`upstream-formulajs.md`** — the subset of those divergences that are genuine
   Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
 - **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled
@@ -177,7 +177,7 @@ results get retried and settled rulings relapse.
 | Cube Input's typed columns (`cubeSourceColumns`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
 | `SPARKLINE` (`sparklineImage` in `nodes/visualOps.ts`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
-| `crates/solenoid-graph/`, `dataflowEngine.ts`, `graphWasm/` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
+| `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts`, `graphWasm/` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
 | `frameOps.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |

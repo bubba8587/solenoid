@@ -1,4 +1,4 @@
-// [[C17]] shareImpl (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[C24]] arraySemantics
+// [[C17]] shareImpl (graph-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[C24]] arraySemantics
 
 export interface LambdaValue {
   __lambda: true;

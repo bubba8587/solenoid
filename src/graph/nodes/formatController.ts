@@ -1,5 +1,6 @@
 // [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue
-import { ClassicPreset, type NodeEditor } from "rete";
+import type { GraphEditor } from "../graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { isPurePassthroughNode } from "./passthrough";
@@ -16,7 +17,7 @@ class MutableSocket extends SolenoidSocket {
   }
 }
 
-type FcEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
+type FcEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
 function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, seen = new Set<string>()): SocketDataType {
   const key = `${nodeId}::${outKey}`;
@@ -33,7 +34,7 @@ function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, 
   return "trueany";
 }
 
-export class FormatControllerNode extends ClassicPreset.Node {
+export class FormatControllerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "The format applies to the box feeding this input, and clears when it's disconnected.",
     out: "The unit rides the value out, and the display format follows it across downstream passthrough boxes.",
@@ -143,12 +144,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
       this._outSock.setType(init.socketDataType);
     }
 
-    this.addInput("in",  new ClassicPreset.Input(this._inSock, "In"));
-    this.addOutput("out", new ClassicPreset.Output(this._outSock, "Out"));
+    this.addInput("in",  new GraphInput(this._inSock, "In"));
+    this.addOutput("out", new GraphOutput(this._outSock, "Out"));
   }
 
-  /** Call once after editor.addNode: registration needs the id Rete assigns there. */
-  dockSelf(editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>): void {
+  /** Call once after editor.addNode: registration needs the node in the editor. */
+  dockSelf(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): void {
     // [[B12]] losslessSaves: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
     if (this.hostNodeId && !editor.getNode(this.hostNodeId)) this.releaseDock();
     if (!this.hostNodeId) return;
@@ -177,7 +178,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   }
 
   adaptTypeFromConnections(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
+    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
   ): boolean {
     let resolved: SocketDataType = "trueany";
     if (this.hostNodeId) {
@@ -205,7 +206,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   }
 
   refreshAnnotation(
-    editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
+    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
   ): void {
     let inSrcId = "", inSrcSock = "";
     for (const c of editor.getConnections()) {

@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createValueStore } from "./storeKit";
-import type { PivotNode } from "./rete-nodes";
+import type { PivotNode } from "./nodeClasses";
 
 export interface PivotEditorState {
   node: PivotNode;

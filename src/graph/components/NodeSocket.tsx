@@ -1,7 +1,7 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import { presentSocketStore } from "../presentSocketStore";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { socketFlipStore } from "../socketFlipStore";
 import { useFlowSocket } from "../flowSurface";
@@ -37,7 +37,7 @@ type Props = {
   socketKey: string;
   nodeId: string;
   emit?: Emit;
-  payload: ClassicPreset.Socket;
+  payload: GraphSocket;
   top?: number;
   className?: string;
 };
@@ -68,7 +68,7 @@ export function MeasuredSocketRow({
   socketKey: string;
   nodeId: string;
   emit?: Emit;
-  payload: ClassicPreset.Socket;
+  payload: GraphSocket;
   children: ReactNode;
   /** A tall box: drops the fixed 22px row height so it can't overlap its neighbors. */
   hero?: boolean;

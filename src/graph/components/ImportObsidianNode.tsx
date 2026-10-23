@@ -2,7 +2,7 @@
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
-import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes";
+import type { ImportObsidianNode as ImportObsidianNodeType } from "../nodeClasses";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { settingsStore } from "../settingsStore";

@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter
 import { useMemo, useRef, useState, type CSSProperties } from "react";
-import type { CurveNode as CurveNodeType } from "../rete-nodes";
+import type { CurveNode as CurveNodeType } from "../nodeClasses";
 import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

@@ -1,6 +1,6 @@
 // [[C47]]
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables } from "../excelFormula";
 import { type SolError } from "../errorValue";
@@ -9,7 +9,7 @@ import { nodeOnCore } from "../nodeOnCore";
 
 type Val = number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
 
-export class EquationNode extends ClassicPreset.Node {
+export class EquationNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     holds: "Equality is judged within a small relative tolerance, cell by cell for lists.",
   };

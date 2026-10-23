@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge
-import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../rete-nodes";
-import type { GetColumnReadAs, AddColumnAddAs, SplitColType } from "../rete-nodes";
+import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../nodeClasses";
+import type { GetColumnReadAs, AddColumnAddAs, SplitColType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables, retypeInputCables } from "../fcReconcile";

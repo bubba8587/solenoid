@@ -1,4 +1,4 @@
-import type { SwitchNode } from "../rete-nodes";
+import type { SwitchNode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";

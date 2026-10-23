@@ -1,6 +1,6 @@
 // [[D86]] blankRoles
 import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
-import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
+import type { DisplayNode as DisplayNodeType } from "../nodeClasses";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { collapseStore } from "../collapseStore";

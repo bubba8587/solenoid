@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // Angles are in degrees at every socket (each formula converts to radians itself); distances in meters.
 
-import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../rete-nodes";
+import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { EARTHSKY_PACK_FORMULAS } from "./earthskyFormulas";
 

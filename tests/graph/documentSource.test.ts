@@ -1,15 +1,15 @@
 // [[B3]] sameNodeEverywhere
 import { describe, it, expect, afterEach } from "vitest";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { setActiveGraph } from "../../src/graph/activeGraph";
-import { NoteNode, ReportNode } from "../../src/graph/rete-nodes";
+import { NoteNode, ReportNode } from "../../src/graph/nodeClasses";
 import { documentSourceNode } from "../../src/graph/documentSource";
 
-function fakeEditor(nodes: { id: string }[]): NodeEditor<Schemes> {
+function fakeEditor(nodes: { id: string }[]): GraphEditor<Schemes> {
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  return { getNode: (id: string) => byId.get(id), getNodes: () => [...byId.values()] } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => byId.get(id), getNodes: () => [...byId.values()] } as unknown as GraphEditor<Schemes>;
 }
 
 afterEach(() => setActiveGraph(null));

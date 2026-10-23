@@ -83,7 +83,7 @@ checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 [[package]]
 name = "ruggine"
 version = "0.1.0"
-source = "git+https://github.com/bubba8587/ruggine?rev=0c4ed9bda0470e9d4c713281ec70fe22bcc12f75#0c4ed9bda0470e9d4c713281ec70fe22bcc12f75"
+source = "git+https://github.com/bubba8587/ruggine?rev=2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482#2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482"
 dependencies = [
  "getrandom",
 ]
@@ -91,7 +91,7 @@ dependencies = [
 [[package]]
 name = "ruggine-engine"
 version = "0.1.0"
-source = "git+https://github.com/bubba8587/ruggine?rev=0c4ed9bda0470e9d4c713281ec70fe22bcc12f75#0c4ed9bda0470e9d4c713281ec70fe22bcc12f75"
+source = "git+https://github.com/bubba8587/ruggine?rev=2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482#2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482"
 dependencies = [
  "ruggine",
 ]

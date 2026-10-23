@@ -2,7 +2,7 @@
 import type { View } from "../view";
 import { makeFlowView, type FlowView } from "./flowView";
 import { idleHandlers, type SurfaceHandlers } from "./FlowSurface";
-import type { CompositeNode } from "../rete-nodes";
+import type { CompositeNode } from "../nodeClasses";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { processGraph } from "../process";

@@ -26,10 +26,6 @@ function handleError(f, args) {
     }
 }
 
-const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
-
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
-
 let cachedUint8ArrayMemory0 = null;
 
 function getUint8ArrayMemory0() {
@@ -38,6 +34,15 @@ function getUint8ArrayMemory0() {
     }
     return cachedUint8ArrayMemory0;
 }
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
+}
+
+const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
 
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
@@ -247,11 +252,21 @@ function getArrayJsValueFromWasm0(ptr, len) {
     }
     return result;
 }
-function __wbg_adapter_22(arg0, arg1, arg2) {
+
+function passArrayJsValueToWasm0(array, malloc) {
+    const ptr = malloc(array.length * 4, 4) >>> 0;
+    const mem = getDataViewMemory0();
+    for (let i = 0; i < array.length; i++) {
+        mem.setUint32(ptr + 4 * i, addHeapObject(array[i]), true);
+    }
+    WASM_VECTOR_LEN = array.length;
+    return ptr;
+}
+function __wbg_adapter_24(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_70(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_83(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -259,7 +274,7 @@ const GraphCoreFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(({ ptr, epoch }) => epoch === __wbg_epoch && wasm.__wbg_graphcore_free(ptr >>> 0, 1));
 /**
- * One editor's mirror and its dataflow engine.
+ * One editor's graph and its dataflow engine.
  */
 export class GraphCore {
 
@@ -299,7 +314,25 @@ export class GraphCore {
         }
     }
     /**
+     * Attaches the engine here in the chain, registering the nodes already in the editor.
+     */
+    useEngine() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.graphcore_useEngine(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * `false` when a `noderemove` pipe cancelled it.
      * @param {string} id
+     * @returns {boolean}
      */
     removeNode(id) {
         try {
@@ -309,9 +342,72 @@ export class GraphCore {
             wasm.graphcore_removeNode(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            if (r1) {
-                throw takeObject(r0);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
             }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * @param {number} handle
+     * @returns {boolean}
+     */
+    removePipe(handle) {
+        const ret = wasm.graphcore_removePipe(this.__wbg_ptr, handle);
+        return ret !== 0;
+    }
+    /**
+     * @param {string} id
+     * @param {boolean} output
+     * @param {string} key
+     * @returns {boolean}
+     */
+    removePort(id, output, key) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.graphcore_removePort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * @param {string} id
+     * @param {boolean} output
+     * @param {string} key
+     * @param {string} ty
+     * @returns {boolean}
+     */
+    retypePort(id, output, key, ty) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passStringToWasm0(ty, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.graphcore_retypePort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1, ptr2, len2);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
@@ -344,13 +440,27 @@ export class GraphCore {
         }
     }
     /**
+     * Puts the nodes in `order`, which must name every node once; `false` when it doesn't.
+     * @param {string[]} order
+     * @returns {boolean}
+     */
+    reorderNodes(order) {
+        const ptr0 = passArrayJsValueToWasm0(order, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_reorderNodes(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * `false` when a `connectioncreate` pipe cancelled it.
+     * @param {any} object
      * @param {string} id
      * @param {string} source
      * @param {string} source_output
      * @param {string} target
      * @param {string} target_input
+     * @returns {boolean}
      */
-    addConnection(id, source, source_output, target, target_input) {
+    addConnection(object, id, source, source_output, target, target_input) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
@@ -363,18 +473,38 @@ export class GraphCore {
             const len3 = WASM_VECTOR_LEN;
             const ptr4 = passStringToWasm0(target_input, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
             const len4 = WASM_VECTOR_LEN;
-            wasm.graphcore_addConnection(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+            wasm.graphcore_addConnection(retptr, this.__wbg_ptr, addHeapObject(object), ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            if (r1) {
-                throw takeObject(r0);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
             }
+            return r0 !== 0;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
     /**
+     * @returns {string[]}
+     */
+    connectionIds() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.graphcore_connectionIds(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * `false` when a `connectionremove` pipe cancelled it.
      * @param {string} id
+     * @returns {boolean}
      */
     removeConnection(id) {
         try {
@@ -384,9 +514,11 @@ export class GraphCore {
             wasm.graphcore_removeConnection(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            if (r1) {
-                throw takeObject(r0);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
             }
+            return r0 !== 0;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
@@ -431,6 +563,25 @@ export class GraphCore {
         wasm.graphcore_seed(this.__wbg_ptr, ptr0, len0, addHeapObject(outputs));
     }
     /**
+     * Every cable, then every node; `false` when a `clear` pipe cancelled it.
+     * @returns {boolean}
+     */
+    clear() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.graphcore_clear(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * The node's outputs, from the cache when present.
      * @param {string} id
      * @returns {Promise<any>}
@@ -439,6 +590,19 @@ export class GraphCore {
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_fetch(this.__wbg_ptr, ptr0, len0);
+        return takeObject(ret);
+    }
+    /**
+     * The node's ports on one side as `[key, type]` pairs, in order; `undefined` for a node not
+     * here.
+     * @param {string} id
+     * @param {boolean} output
+     * @returns {Array<any> | undefined}
+     */
+    ports(id, output) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_ports(this.__wbg_ptr, ptr0, len0, output);
         return takeObject(ret);
     }
     /**
@@ -471,20 +635,88 @@ export class GraphCore {
         wasm.graphcore_forget(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * `false` when a `nodecreate` pipe cancelled it.
      * @param {string} id
      * @param {object} object
+     * @param {string[]} input_keys
+     * @param {string[]} input_types
+     * @param {string[]} output_keys
+     * @param {string[]} output_types
+     * @returns {boolean}
      */
-    addNode(id, object) {
+    addNode(id, object, input_keys, input_types, output_keys, output_types) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
             const len0 = WASM_VECTOR_LEN;
-            wasm.graphcore_addNode(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(object));
+            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_2);
+            const len2 = WASM_VECTOR_LEN;
+            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_2);
+            const len3 = WASM_VECTOR_LEN;
+            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_2);
+            const len4 = WASM_VECTOR_LEN;
+            wasm.graphcore_addNode(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(object), ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return r0 !== 0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Adds `pipe(type, data)` after every pipe already here: it answers truthy to go on, falsy to
+     * stop the chain (cancelling the change a present-tense signal announces), and what it
+     * throws stops the chain and fails the edit. Returns the handle `removePipe` takes.
+     * @param {Function} pipe
+     * @returns {number}
+     */
+    addPipe(pipe) {
+        const ret = wasm.graphcore_addPipe(this.__wbg_ptr, addHeapObject(pipe));
+        return ret >>> 0;
+    }
+    /**
+     * @param {string} id
+     * @param {boolean} output
+     * @param {string} key
+     * @param {string} ty
+     */
+    addPort(id, output, key, ty) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passStringToWasm0(ty, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.graphcore_addPort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1, ptr2, len2);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             if (r1) {
                 throw takeObject(r0);
             }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * @returns {string[]}
+     */
+    nodeIds() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.graphcore_nodeIds(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+            return v1;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
@@ -562,6 +794,9 @@ function __wbg_get_imports() {
         const ret = Reflect.construct(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
     }, arguments) };
+    imports.wbg.__wbg_getRandomValues_1c61fac11405ffdc = function() { return handleError(function (arg0, arg1) {
+        globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
+    }, arguments) };
     imports.wbg.__wbg_get_67b2ba62fc30de12 = function() { return handleError(function (arg0, arg1) {
         const ret = Reflect.get(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
@@ -609,7 +844,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_70(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_83(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -642,6 +877,10 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
         const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_of_66b3ee656cbd962b = function(arg0, arg1) {
+        const ret = Array.of(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
     };
     imports.wbg.__wbg_push_737cfc8c1432c2c6 = function(arg0, arg1) {
@@ -700,8 +939,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper258 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_22);
+    imports.wbg.__wbindgen_closure_wrapper308 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_24);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {
@@ -710,6 +949,10 @@ function __wbg_get_imports() {
         const len1 = WASM_VECTOR_LEN;
         getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
         getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+    };
+    imports.wbg.__wbindgen_is_falsy = function(arg0) {
+        const ret = !getObject(arg0);
+        return ret;
     };
     imports.wbg.__wbindgen_is_function = function(arg0) {
         const ret = typeof(getObject(arg0)) === 'function';

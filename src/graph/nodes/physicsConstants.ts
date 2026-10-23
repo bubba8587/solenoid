@@ -1,12 +1,12 @@
 // [[C76]] formulaPackDefault, [[C25]] firstClassUnits
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numOut } from "./shared";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { PHYS_CONSTANTS, type PhysConstOp } from "./physicsConstantsOps";
 
-export class PhysicsConstantNode extends ClassicPreset.Node {
+export class PhysicsConstantNode extends GraphNode {
   label: string;
   op: PhysConstOp;
   width = 240;

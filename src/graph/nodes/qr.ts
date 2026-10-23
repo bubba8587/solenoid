@@ -1,12 +1,12 @@
 // [[C100]] chartIsAValue
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { chartOut, strIn } from "./shared";
 import { type ImageValue } from "../imageValue";
 import { nodeOnCore } from "../nodeOnCore";
 
 export type QrTemplate = "text" | "wifi" | "vcard";
 
-export class QrCodeNode extends ClassicPreset.Node {
+export class QrCodeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     text: "The text or URL to encode.",
     chart: "The QR image.",

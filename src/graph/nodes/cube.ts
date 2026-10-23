@@ -1,5 +1,5 @@
 // [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
@@ -8,7 +8,7 @@ import type { AggOp } from "../frameOps";
 import { solError, type SolError } from "../errorValue";
 import { volatileStamp } from "../volatileDates";
 
-export class BuildCubeNode extends ClassicPreset.Node {
+export class BuildCubeNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
@@ -55,7 +55,7 @@ export class BuildCubeNode extends ClassicPreset.Node {
   }
 }
 
-export class NestJoinNode extends ClassicPreset.Node {
+export class NestJoinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     key: "A blank key cell never matches. A parent row without matches keeps an empty nested table, and a child row matching no parent is dropped.",
   };
@@ -81,7 +81,7 @@ export class NestJoinNode extends ClassicPreset.Node {
   }
 }
 
-export class CubeColumnsNode extends ClassicPreset.Node {
+export class CubeColumnsNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | null = null;
   literals: Record<string, number> = {};
@@ -128,7 +128,7 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 }
 
-export class CubeRollupNode extends ClassicPreset.Node {
+export class CubeRollupNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "A row without a nested table rolls up to blank, and a nested table missing the column yields a #REF! cell.",
   };
@@ -170,7 +170,7 @@ export function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs:
   return { cube: makeCube(cols), exprs: source.columns.map((c) => c.expr ?? null) };
 }
 
-export class CubeInputNode extends ClassicPreset.Node {
+export class CubeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     cube: "One row per record. A list value is a list cell; a list of records nests a table or a cube.",
   };

@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter
 import { useRef, useState, type CSSProperties } from "react";
-import type { PointPlotterNode as PointPlotterNodeType } from "../rete-nodes";
+import type { PointPlotterNode as PointPlotterNodeType } from "../nodeClasses";
 import { parsePoints, pointsToText, pointsToFrame } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

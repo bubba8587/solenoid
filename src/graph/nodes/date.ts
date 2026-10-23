@@ -1,5 +1,5 @@
 // [[C44]], [[B11]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, BASIS_DOC, type BroadcastResult } from "./shared";
 import { setting } from "../inputRoles";
 import { type SolError } from "../errorValue";
@@ -21,7 +21,7 @@ export const TODAY_NOW_OP_META = {
   now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: `NOW`." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
-export class TodayNowNode extends ClassicPreset.Node {
+export class TodayNowNode extends GraphNode {
   label: string;
   op: TodayNowOp;
   cachedResult: number | null = null;
@@ -41,7 +41,7 @@ export class TodayNowNode extends ClassicPreset.Node {
 
 // ─── DATE ─────────────────────────────────────────────────────────────────────
 
-export class DateConstructNode extends ClassicPreset.Node {
+export class DateConstructNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     year: "The year is taken as written: 26 means the year 26, not 1926.",
   };
@@ -67,7 +67,7 @@ export class DateConstructNode extends ClassicPreset.Node {
 
 // ─── TIME ─────────────────────────────────────────────────────────────────────
 
-export class TimeConstructNode extends ClassicPreset.Node {
+export class TimeConstructNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { hour: 12, minute: 0, second: 0 };
   cachedResult: BroadcastResult = null;
@@ -96,7 +96,7 @@ export const DATE_TIME_VALUE_OP_META = {
   time: { label: "TIMEVALUE", description: "Parses a time string such as `\"14:30:00\"` into a fraction of a day, 0 to 1. Excel: `TIMEVALUE`." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
 
-export class DateTimeValueNode extends ClassicPreset.Node {
+export class DateTimeValueNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     text: "A date with a four-digit year: ISO, day-first numeric, an ordinal, or a month name. A numeric date that reads both ways, 3/4/2026, is #AMBIGUOUS!; write the month as a name.",
   };
@@ -143,7 +143,7 @@ export const DATE_PART_OP_META = {
   second: { label: "SECOND", description: "Second 0–59 from a date+time serial. Excel: `SECOND`." },
 } satisfies Record<DatePartOp, { label: string; description: string }>;
 
-export class DatePartNode extends ClassicPreset.Node {
+export class DatePartNode extends GraphNode {
   label: string;
   op: DatePartOp;
   cachedResult: BroadcastResult = null;
@@ -170,7 +170,7 @@ export const WEEK_INFO_OP_META = {
   isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number: the week containing the first Thursday, Monday start. `return_type` is ignored. Excel: `ISOWEEKNUM`." },
 } satisfies Record<WeekInfoOp, { label: string; description: string }>;
 
-export class WeekInfoNode extends ClassicPreset.Node {
+export class WeekInfoNode extends GraphNode {
   static inputRoles = { return_type: setting(1) };
   label: string;
   op: WeekInfoOp;
@@ -205,7 +205,7 @@ export const DATE_DIFF_OP_META = {
   yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: `DATEDIF \"YD\"`." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
 
-export class DateDiffNode extends ClassicPreset.Node {
+export class DateDiffNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     basis: BASIS_DOC,
   };
@@ -249,7 +249,7 @@ export const DATE_ADD_OP_META = {
   eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start. Excel: `EOMONTH`." },
 } satisfies Record<DateAddOp, { label: string; description: string }>;
 
-export class DateAddNode extends ClassicPreset.Node {
+export class DateAddNode extends GraphNode {
   label: string;
   op: DateAddOp;
   literals: Record<string, number> = { months: 1 };
@@ -283,7 +283,7 @@ export const WORKDAYS_OP_META = {
   networkdays: { label: "NETWORKDAYS", description: "Counts the working days between Start and End, skipping weekends and an optional Holidays list. `weekend_code` uses Excel's numbers (1 is Sat+Sun, then 2–7 and 11–17); the 7-character weekend string isn't supported. Excel: `NETWORKDAYS`, `NETWORKDAYS.INTL`." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
-export class WorkdaysNode extends ClassicPreset.Node {
+export class WorkdaysNode extends GraphNode {
   static inputRoles = { weekend_code: setting(1) };
   static socketDocs: Record<string, string> = {
     holidays: "Each holiday covers its whole calendar day. Any time of day in the entry is ignored.",
@@ -363,7 +363,7 @@ export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string
   { value: "ms", label: "ms", title: "Milliseconds since 1970-01-01 UTC (JavaScript's Date.now(); 13 digits today)" },
 ];
 
-export class EpochNode extends ClassicPreset.Node {
+export class EpochNode extends GraphNode {
   label: string;
   op: EpochOp;
   unit: EpochUnit = "s";
@@ -395,7 +395,7 @@ export const DATE_TRUNC_UNIT_META = {
   year:     { label: "Year",        description: "January 1st." },
 } satisfies Record<DateTruncUnit, { label: string; description: string }>;
 
-export class DateTruncNode extends ClassicPreset.Node {
+export class DateTruncNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Floor: the start of the period the date falls in. Ceiling: the start of the next period, though a date already on the boundary stays put.",
   };
@@ -421,7 +421,7 @@ export class DateTruncNode extends ClassicPreset.Node {
 
 // ─── TIME ZONE CONVERT ────────────────────────────────────────────────────────
 
-export class TimeZoneConvertNode extends ClassicPreset.Node {
+export class TimeZoneConvertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     datetime: "The date and time to convert.",
     from: "The zone the date/time is in now, an IANA name like America/New_York.",
@@ -453,7 +453,7 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
 
 // ─── WORLD CLOCK ──────────────────────────────────────────────────────────────
 
-export class WorldClockNode extends ClassicPreset.Node {
+export class WorldClockNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     zones: "One IANA zone per entry, like America/New_York or Asia/Tokyo.",
     clock: "A row per zone: the place and its current local time.",

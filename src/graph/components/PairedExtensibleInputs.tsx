@@ -1,7 +1,7 @@
 // [[C95]] commitOnEnter, [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";
@@ -16,7 +16,7 @@ import {
   type AutoLiteral,
 } from "./inlineInput";
 
-const dataTypeOf = (s: ClassicPreset.Socket): string | undefined => (s as { dataType?: string }).dataType;
+const dataTypeOf = (s: GraphSocket): string | undefined => (s as { dataType?: string }).dataType;
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
@@ -25,7 +25,7 @@ import { dropInputCables } from "./cablePrune";
 /** N sockets per tuple sharing one remove button: a pair is the two-element case (Filter, SUMIFS, IFS), and Set Cell uses triplets. */
 export interface PairedExtensibleNode {
   id: string;
-  inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
+  inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;
   literals?: Record<string, number>;
   valuePairKeys: () => string[][];
   addValuePair: () => void;

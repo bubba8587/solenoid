@@ -1,6 +1,7 @@
 // [[D41]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -29,15 +30,15 @@ const col = (f: FrameValue, name: string): FrameColumn => f.columns.find((c) => 
 
 /** The real pipeline: the coercion wrapper (where the OUTPUT stamp lives) plus the
  *  engine, so a frame arrives at the last node exactly as it does on the canvas. */
-async function chain(nodes: ClassicPreset.Node[], lastKey = "frame"): Promise<Record<string, unknown>> {
-  const editor = new NodeEditor<Schemes>();
+async function chain(nodes: GraphNode[], lastKey = "frame"): Promise<Record<string, unknown>> {
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);
   for (let i = 1; i < nodes.length; i++) {
     const key = i === nodes.length - 1 ? lastKey : "frame";
-    await editor.addConnection(new ClassicPreset.Connection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
   }
   return engine.fetch(nodes[nodes.length - 1].id) as Promise<Record<string, unknown>>;
 }

@@ -1,5 +1,5 @@
 // [[C68]]
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { sanitizeSvg } from "../svgSanitize";
 import {
@@ -124,7 +124,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateCo
   return one(items.flat()[0] ?? null);
 }
 
-export class NoteNode extends ClassicPreset.Node {
+export class NoteNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
@@ -210,12 +210,12 @@ export class NoteNode extends ClassicPreset.Node {
         removed.push(key);
       } else if (FIELD_SOCKETS[w.type] !== cur) {
         this.removeOutput(key);
-        this.addOutput(key, new ClassicPreset.Output(FIELD_SOCKETS[w.type], key));
+        this.addOutput(key, new GraphOutput(FIELD_SOCKETS[w.type], key));
         retyped.push({ key, type: w.type });
       }
     }
     for (const [key, w] of wanted) {
-      if (!this.outputs[key]) this.addOutput(key, new ClassicPreset.Output(FIELD_SOCKETS[w.type], key));
+      if (!this.outputs[key]) this.addOutput(key, new GraphOutput(FIELD_SOCKETS[w.type], key));
     }
 
     this._fieldKeys = [...wanted.keys()];
@@ -281,7 +281,7 @@ export class NoteNode extends ClassicPreset.Node {
   }
 }
 
-export class ImageNode extends ClassicPreset.Node {
+export class ImageNode extends GraphNode {
   url: string;
   dataUrl: string;
   fileName: string;
@@ -313,7 +313,7 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
-export class FileLinkNode extends ClassicPreset.Node {
+export class FileLinkNode extends GraphNode {
   path: string;
   fileName: string;
   collapsed: boolean;
@@ -334,7 +334,7 @@ export class FileLinkNode extends ClassicPreset.Node {
 
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
-export class SvgPickerNode extends ClassicPreset.Node {
+export class SvgPickerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     layer: "Carries the clicked layer's name and stays blank until a shape is picked.",
   };

@@ -1,5 +1,5 @@
 // [[C58]], [[C48]], [[B11]]
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn } from "./shared";
@@ -50,7 +50,7 @@ export function rawCellsToText(cells: string[][]): string {
   return lines.length > 0 && lines[lines.length - 1] === "" ? text + "\n" : text;
 }
 
-export class TableInputNode extends ClassicPreset.Node {
+export class TableInputNode extends GraphNode {
   label: string;
   cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
@@ -65,7 +65,7 @@ export class TableInputNode extends ClassicPreset.Node {
     if (init?.tableText != null) this.tableText = init.tableText;
     this.dataType = init?.dataType ?? "number";
     if (init?.unit != null) this.unit = init.unit;
-    this.addOutput("table", new ClassicPreset.Output(TABLE_ELEM_SOCKET[this.dataType], "Table"));
+    this.addOutput("table", new GraphOutput(TABLE_ELEM_SOCKET[this.dataType], "Table"));
   }
 
   rawCells(): string[][] { return tableRawCells(this.tableText); }
@@ -97,7 +97,7 @@ export const MAT_DET_OP_META = {
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
 
-export class MatDetNode extends ClassicPreset.Node {
+export class MatDetNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     matrix: "The matrix must be square, with every cell filled.",
   };
@@ -134,7 +134,7 @@ export class MatDetNode extends ClassicPreset.Node {
 
 // ─── MMULT ────────────────────────────────────────────────────────────────────
 
-export class TableMultNode extends ClassicPreset.Node {
+export class TableMultNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     b: "Its row count must equal A's column count.",
   };
@@ -158,7 +158,7 @@ export class TableMultNode extends ClassicPreset.Node {
 
 // ─── MUNIT ────────────────────────────────────────────────────────────────────
 
-export class TableUnitNode extends ClassicPreset.Node {
+export class TableUnitNode extends GraphNode {
   static inputRoles = rolesFrom("MUNIT", { n: 0 });
   label: string;
   cachedResult: Mat | SolError | null = null;
@@ -181,7 +181,7 @@ export class TableUnitNode extends ClassicPreset.Node {
 }
 
 // ─── DIAGONAL ───────────────────────────────────────────────────────────────
-export class TableDiagNode extends ClassicPreset.Node {
+export class TableDiagNode extends GraphNode {
   label: string;
   cachedResult: Mat | SolError | null = null;
   offDiag: "zero" | "blank" = "zero";
@@ -201,7 +201,7 @@ export class TableDiagNode extends ClassicPreset.Node {
 }
 
 // ─── OUTER ────────────────────────────────────────────────────────────────────
-export class TableOuterNode extends ClassicPreset.Node {
+export class TableOuterNode extends GraphNode {
   label: string;
   cachedResult: Mat | SolError | null = null;
   width = 180; height = 200;
@@ -221,7 +221,7 @@ export class TableOuterNode extends ClassicPreset.Node {
 
 // ─── TRANSPOSE ────────────────────────────────────────────────────────────────
 
-export class TableTransposeNode extends ClassicPreset.Node {
+export class TableTransposeNode extends GraphNode {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   cachedResult: CellMat | null = null;
@@ -248,7 +248,7 @@ export const STACK_OP_META = {
   hstack: { label: "HSTACK", description: "Concatenates tables side by side. A list counts as one row, so two lists make one long row. A shorter table pads down with `#N/A`. Excel: `HSTACK`." },
 } satisfies Record<StackOp, { label: string; description: string }>;
 
-export class StackNode extends ClassicPreset.Node {
+export class StackNode extends GraphNode {
   /** Receives UnitCell tags, so a dimensioned list row lifts to a grid unit. */
   unitAware = true;
   label: string;
@@ -306,7 +306,7 @@ export const TABLE_RESHAPE_OP_META = {
   torow:    { label: "TOROW",    description: "Lines a table's values up in one list, reading row by row. Excel: `TOROW`." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
-export class TableReshapeNode extends ClassicPreset.Node {
+export class TableReshapeNode extends GraphNode {
   static inputRoles = rolesFrom("WRAPROWS", { wrapCount: 1 });
   static socketDocs: Record<string, string> = {
     fill: "Pads the leftover cells. Unwired or blank pads with #N/A, like Excel's default.",
@@ -384,7 +384,7 @@ export const TABLE_SELECT_OP_META = {
   choosecols: { label: "CHOOSECOLS", description: "Selects columns from a table by 1-based index list. Excel: `CHOOSECOLS`." },
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
-export class TableSelectNode extends ClassicPreset.Node {
+export class TableSelectNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     indices: "1-based. Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index is skipped.",
   };
@@ -419,7 +419,7 @@ export const TAKEDROP_OP_META = {
   drop: { label: "DROP", description: "Removes rows or columns from the edges of a table or list: positive counts from the start, negative from the end, `0` removes none. A list is one row, so its items are columns. Excel: `DROP`." },
 } satisfies Record<TakeDropOp, { label: string; description: string }>;
 
-export class TakeDropNode extends ClassicPreset.Node {
+export class TakeDropNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Positive counts from the start, negative from the end, 0 keeps all. A list is one row, so this keeps it whole.",
     cols: "Positive counts from the start, negative from the end, 0 keeps all. A list's items count as columns.",
@@ -450,7 +450,7 @@ export class TakeDropNode extends ClassicPreset.Node {
 
 // ─── EXPAND ───────────────────────────────────────────────────────────────────
 
-export class ExpandNode extends ClassicPreset.Node {
+export class ExpandNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     rows: "Target row count. 0 keeps the current count.",
     cols: "Target column count. 0 keeps the current count.",
@@ -479,7 +479,7 @@ export class ExpandNode extends ClassicPreset.Node {
 
 // ─── SET CELL ─────────────────────────────────────────────────────────────────
 
-export class SetCellNode extends ClassicPreset.Node {
+export class SetCellNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     row: "1-based.",
     col: "1-based.",
@@ -541,7 +541,7 @@ export class SetCellNode extends ClassicPreset.Node {
 
 // ─── ROWS / COLUMNS ───────────────────────────────────────────────────────────
 
-export class TableInfoNode extends ClassicPreset.Node {
+export class TableInfoNode extends GraphNode {
   label: string;
   cachedRows: number | null = null;
   cachedCols: number | null = null;
@@ -576,7 +576,7 @@ function rowless(f: FrameValue): FrameValue {
 }
 
 // ─── SOLVE (A·x = b) ──────────────────────────────────────────────────────────
-export class MatSolveNode extends ClassicPreset.Node {
+export class MatSolveNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     matrix: "Square, every cell filled; singular is #DIV/0!.",
     b: "One value per row of A.",
@@ -599,7 +599,7 @@ export class MatSolveNode extends ClassicPreset.Node {
 }
 
 // ─── EIGEN (symmetric) ────────────────────────────────────────────────────────
-export class MatEigenNode extends ClassicPreset.Node {
+export class MatEigenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     matrix: "Square and SYMMETRIC (a covariance or correlation matrix, a Laplacian…); a non-symmetric matrix is #SHAPE!.",
     values: "Eigenvalues, largest first.",

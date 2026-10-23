@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // CODATA 2018 constants baked into each formula; SI units; angles in radians.
 
-import { PhysicsConstantNode, EmSpectrumNode } from "../rete-nodes";
+import { PhysicsConstantNode, EmSpectrumNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { ELECTROMAGNETISM_PACK_FORMULAS } from "./electromagnetismFormulas";
 

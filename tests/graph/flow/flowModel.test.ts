@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition, nodeClassName } from "../../../src/graph/flow/flowModel";
 import { isolateStore } from "../../../src/graph/isolateStore";
-import { DisplayNode } from "../../../src/graph/rete-nodes";
+import { DisplayNode } from "../../../src/graph/nodeClasses";
 import { computeAll } from "../../../src/graph/graphCompute";
 import { SEEDS as FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/seeds";
 import { isSolError } from "../../../src/graph/errorValue";

@@ -1,6 +1,6 @@
 // [[B12]] losslessSaves
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { getEditor, getView, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
 // Chrome acts on this graph; getEditor()/getView() stay main-only, or autosave would save a substituted surface.
@@ -21,7 +21,7 @@ export const MAIN_EDIT_SCOPE: EditScope = {
 };
 
 export interface ActiveGraph {
-  editor: NodeEditor<Schemes>;
+  editor: GraphEditor<Schemes>;
   view: View;
   /** Absent means the main canvas's gate and settle. */
   scope?: EditScope;
@@ -53,16 +53,16 @@ export function isSubgraphActive(): boolean {
 }
 
 /** The scope a bulk edit of `editor` runs under: the open drill-in's own, or the main canvas's. */
-export function editScopeFor(editor: NodeEditor<Schemes>): EditScope {
+export function editScopeFor(editor: GraphEditor<Schemes>): EditScope {
   return (_override?.editor === editor ? _override.scope : undefined) ?? MAIN_EDIT_SCOPE;
 }
 
-export function getActiveEditor(): NodeEditor<Schemes> | null {
+export function getActiveEditor(): GraphEditor<Schemes> | null {
   return _override?.editor ?? getEditor();
 }
 
 /** Render-time resolvers key on this: `getEditor()` finds nothing for a node in a drill-in or a locked scene canvas. */
-export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
+export function getOwningEditor(nodeId: string): GraphEditor<Schemes> | null {
   if (_override && _override.editor.getNode(nodeId)) return _override.editor;
   const main = getEditor();
   if (main?.getNode(nodeId)) return main;
@@ -71,10 +71,10 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   return main;
 }
 
-type Subgraphed = { internalEditor?: NodeEditor<Schemes> };
+type Subgraphed = { internalEditor?: GraphEditor<Schemes> };
 
 /** A node inside a composite that isn't open: its editor is only reachable through the composite, at any depth. */
-function closedSubgraphOf(editor: NodeEditor<Schemes>, nodeId: string, depth = 0): NodeEditor<Schemes> | null {
+function closedSubgraphOf(editor: GraphEditor<Schemes>, nodeId: string, depth = 0): GraphEditor<Schemes> | null {
   if (depth > 16) return null;
   for (const n of editor.getNodes()) {
     const inner = (n as Subgraphed).internalEditor;
@@ -87,8 +87,8 @@ function closedSubgraphOf(editor: NodeEditor<Schemes>, nodeId: string, depth = 0
 }
 
 /** Every live graph's top editor: the main one, a drill-in, each owned canvas. */
-export function allTopEditors(): NodeEditor<Schemes>[] {
-  const out = new Set<NodeEditor<Schemes>>();
+export function allTopEditors(): GraphEditor<Schemes>[] {
+  const out = new Set<GraphEditor<Schemes>>();
   const main = getEditor();
   if (main) out.add(main);
   if (_override) out.add(_override.editor);

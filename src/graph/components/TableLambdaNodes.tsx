@@ -6,7 +6,7 @@ import type {
   MakeArrayNode as MakeArrayNodeType,
   ReduceLambdaNode as ReduceLambdaNodeType,
   ScanLambdaNode as ScanLambdaNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";

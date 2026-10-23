@@ -1,7 +1,7 @@
 // [[B17]]
 import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, decisionCube } from "./coreVerbs";
-import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/rete-nodes";
+import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/nodeClasses";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isFrameValue, isCubeValue, relateFramesToCube, relateCubeToFrame, cubeFromColumns, type FrameValue, type FrameColumn, type CubeValue } from "../../src/graph/frame";
 

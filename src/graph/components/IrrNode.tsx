@@ -1,5 +1,5 @@
-import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
-import type { IRRNode as IRRNodeType, CashflowOp } from "../rete-nodes";
+import { CASHFLOW_OP_OPTIONS } from "../nodeClasses";
+import type { IRRNode as IRRNodeType, CashflowOp } from "../nodeClasses";
 import { useState } from "react";
 import { processGraph } from "../process";
 import { getOwningView } from "../activeGraph";

@@ -4,7 +4,7 @@ import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
-import type { ClassicPreset } from "rete";
+import type { GraphNode, GraphSocket } from "../graphModel";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -26,7 +26,7 @@ import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
 import { nodeSizeStore } from "../nodeSizeStore";
-import { nodeResizable } from "../rete-nodes";
+import { nodeResizable } from "../nodeClasses";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import type { TablePopupState } from "../tablePopupStore";
@@ -60,7 +60,7 @@ export function renderTextMarkdownHtml(s: string): string {
   return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 }
 
-type Port = { socket: ClassicPreset.Socket; label?: string };
+type Port = { socket: GraphSocket; label?: string };
 
 export type ShellNode = {
   id: string;
@@ -357,7 +357,7 @@ export function NodeShell({
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
           <div className={sized && !nonScrollingBody ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
-          {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
+          {nodeResizable(node as unknown as GraphNode) && <ResizeHandle nodeId={node.id} />}
         </div>
         {semanticZoomSetting && (
           <div className="solenoid-node__semantic" aria-hidden="true">

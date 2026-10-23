@@ -1,5 +1,5 @@
 // [[B17]], [[C48]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
@@ -160,7 +160,7 @@ async function lazyFramePass(node: FrameVerbNode & { body(inputs: Inputs): { fra
 
 export const lambdaSocketName = (key: string): string => `λ${key.replace(/^fn/, "")}`;
 
-export class FrameInputNode extends ClassicPreset.Node {
+export class FrameInputNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
@@ -235,7 +235,7 @@ export class FrameInputNode extends ClassicPreset.Node {
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────
 
-export class DistinctNode extends ClassicPreset.Node {
+export class DistinctNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | CubeValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -270,7 +270,7 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
   range: { label: "Rows M–N",     description: "Keep rows M through N, 1-based inclusive." },
 };
 
-export class HeadNode extends ClassicPreset.Node {
+export class HeadNode extends GraphNode {
   static inputRoles = { rows: setting(10), to: setting(LEFT_OUT, "end") };
   static socketDocs: Record<string, string> = {
     rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
@@ -309,7 +309,7 @@ export class HeadNode extends ClassicPreset.Node {
 
 export type FrameSortDir = "asc" | "desc";
 
-export class SortFrameNode extends ClassicPreset.Node {
+export class SortFrameNode extends GraphNode {
   label: string;
   dir: FrameSortDir;
   cachedResult: FrameValue | CubeValue | SolError | null = null;
@@ -343,7 +343,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 
 export type { FilterCondConfig } from "../frameOps";
 
-export class FilterFrameNode extends ClassicPreset.Node {
+export class FilterFrameNode extends GraphNode {
   label: string;
   combine: FilterCombine;
   /** Keyed by the pair id, the suffix of `column${id}`. */
@@ -440,7 +440,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
 
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 
-export class JoinNode extends ClassicPreset.Node {
+export class JoinNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     leftKey: "A blank or error key never matches any row, and the two key columns must share one type.",
     rightKey: "An empty name reuses the left key's name for the right frame.",
@@ -517,7 +517,7 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
   drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
 };
 
-export class ColumnsNode extends ClassicPreset.Node {
+export class ColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
   };
@@ -574,7 +574,7 @@ export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> 
   percentof: { label: "PERCENTOF", pivotOnly: true },
 };
 
-export class GroupByFrameNode extends ClassicPreset.Node {
+export class GroupByFrameNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     keys: "Groups keep first-seen row order, and blank key cells group together as their own group.",
   };
@@ -649,7 +649,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
 
-export class PivotNode extends ClassicPreset.Node {
+export class PivotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
   };
@@ -778,7 +778,7 @@ export class PivotNode extends ClassicPreset.Node {
  *  prunes the saved fields; or the columns of a ref it reads first. */
 type PivotAnswer = { frame?: FrameRef | FrameValue | SolError | null; read?: string[]; fieldNames?: string[] };
 
-export class UnpivotNode extends ClassicPreset.Node {
+export class UnpivotNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | SolError | null = null;
@@ -812,7 +812,7 @@ export class UnpivotNode extends ClassicPreset.Node {
 
 // ─── NEST / UNNEST (the flat ⟷ cube bridge) ───────────────────────────────────
 
-export class NestNode extends ClassicPreset.Node {
+export class NestNode extends GraphNode {
   label: string;
   cachedResult: CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { nestedName: "items" };
@@ -832,7 +832,7 @@ export class NestNode extends ClassicPreset.Node {
   }
 }
 
-export class UnnestNode extends ClassicPreset.Node {
+export class UnnestNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "A parent row with an empty or missing nested table disappears from the output.",
   };
@@ -857,7 +857,7 @@ export class UnnestNode extends ClassicPreset.Node {
 
 // ─── APPEND ────────────────────────────────────────────────────────────────────
 
-export class AppendNode extends ClassicPreset.Node {
+export class AppendNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   nextInputId = 0;
@@ -920,7 +920,7 @@ export class AppendNode extends ClassicPreset.Node {
 
 // ─── BIND COLUMNS ──────────────────────────────────────────────────────────────
 
-export class BindColumnsNode extends ClassicPreset.Node {
+export class BindColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Every column of every frame, left to right; a repeated name gets a 2, 3… suffix; a shorter frame pads down with blanks.",
   };
@@ -987,7 +987,7 @@ export class BindColumnsNode extends ClassicPreset.Node {
 
 // ─── RENAME COLUMNS ────────────────────────────────────────────────────────────
 
-export class RenameNode extends ClassicPreset.Node {
+export class RenameNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | SolError | null = null;
@@ -1023,7 +1023,7 @@ export class RenameNode extends ClassicPreset.Node {
 
 // ─── SPLIT COLUMN / ADD INDEX (Power Query column ops) ──────────────────────────
 
-export class SplitColumnNode extends ClassicPreset.Node {
+export class SplitColumnNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     into: "Names for the split-out columns.",
   };
@@ -1060,7 +1060,7 @@ export class SplitColumnNode extends ClassicPreset.Node {
   }
 }
 
-export class AddIndexNode extends ClassicPreset.Node {
+export class AddIndexNode extends GraphNode {
   static inputRoles = { start: setting(1) };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
@@ -1094,7 +1094,7 @@ export class AddIndexNode extends ClassicPreset.Node {
 
 export type FillDir = "down" | "up";
 
-export class FillBlanksNode extends ClassicPreset.Node {
+export class FillBlanksNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     columns: "Leave blank to fill every column.",
   };
@@ -1131,7 +1131,7 @@ export class FillBlanksNode extends ClassicPreset.Node {
 
 export type ReplaceMode = "cell" | "substring";
 
-export class ReplaceValuesNode extends ClassicPreset.Node {
+export class ReplaceValuesNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     column: "Leave blank to replace across every column.",
   };
@@ -1171,7 +1171,7 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
   }
 }
 
-export class MergeColumnsNode extends ClassicPreset.Node {
+export class MergeColumnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     name: "The merged column's name. Defaults to Merged.",
   };
@@ -1214,7 +1214,7 @@ export const HEADER_OP_META: Record<HeaderOp, { label: string; description: stri
   demote:  { label: "Demote headers", description: "Column names drop into a first row of text. Columns auto-name `Col1`, `Col2`…" },
 };
 
-export class HeadersNode extends ClassicPreset.Node {
+export class HeadersNode extends GraphNode {
   label: string;
   action: HeaderOp;
   cachedResult: FrameValue | SolError | null = null;
@@ -1247,7 +1247,7 @@ export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; descriptio
   any: { label: "Any cell blank",  description: "Keep only complete rows." },
 };
 
-export class DropBlankRowsNode extends ClassicPreset.Node {
+export class DropBlankRowsNode extends GraphNode {
   label: string;
   mode: BlankRowMode;
   cachedResult: FrameValue | SolError | null = null;
@@ -1278,7 +1278,7 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
 
 export type DecisionDetail = "summary" | "breakdown";
 
-export class DecisionMatrixNode extends ClassicPreset.Node {
+export class DecisionMatrixNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped. A Cube's nested tables are further choices under each row, ranked with the same Weights; each row counts the best one inside as a criterion named after the nested column.",
     weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Range, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
@@ -1341,7 +1341,7 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 
 export type SensitivityMode = "scenarios" | "flips";
 
-export class DecisionSensitivityNode extends ClassicPreset.Node {
+export class DecisionSensitivityNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
     scenarios: "Scenarios: the Decision Matrix weights frame widened, one row per Criterion and a number column per scenario (its header names it) carrying that scenario's weight; an optional Norm column and At least / At most apply across every scenario, and a criterion a scenario omits weighs 1. Flip points: the Decision Matrix's own Weights table.",
@@ -1405,7 +1405,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 // ─── CHOICE LADDER ──────────────────────────────────────────────────────────────
 
 // [[C122]] choiceLadder
-export class ChoiceLadderNode extends ClassicPreset.Node {
+export class ChoiceLadderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name; optional Must and Never logical columns force an option in or out; options sharing a One of value exclude each other.",
     limits: "A row per resource naming an Options column (a logical one counts TRUE as 1). At most caps it and At least sets a floor, like at least two vegetarian; with neither it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
@@ -1473,7 +1473,7 @@ export const ALLOCATE_MODE_META = {
   minProportional: { label: "Min proportional", description: "The least spend that keeps each category in proportion to its weight while covering its floor." },
 } satisfies Record<AllocateMode, { label: string; description: string }>;
 
-export class AllocatorNode extends ClassicPreset.Node {
+export class AllocatorNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     categories: "Rows are categories: the first text column names them, min and max columns set the range, Weight or Value ranks them. Without one, equal weights.",
     amount: "The budget to spend under Fit budget, or the value target to reach under Min for target. Ignored by Min proportional.",
@@ -1521,7 +1521,7 @@ export const PAYOFF_ORDER_META = {
   snowball:  { label: "Snowball",  description: "Extra goes to the smallest balance first: the quickest first win." },
 } satisfies Record<PayoffOrder, { label: string; description: string }>;
 
-export class PayoffPlannerNode extends ClassicPreset.Node {
+export class PayoffPlannerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     debts: "Rows are debts: a name, Balance, APR as 0.24 or 24, and Min, the minimum monthly payment. Balance's currency rides onto the result.",
     extra: "The extra paid every month on top of the minimums; it moves to the next debt as each one clears.",
@@ -1627,7 +1627,7 @@ export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, vi
 export type SettleSplit = "equal" | "weighted";
 export type SettleMode = "totals" | "transactions";
 
-export class SettleNode extends ClassicPreset.Node {
+export class SettleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "Totals: a row per person, Paid and optional Share (blank is 1). Transactions: a row per expense, Amount, Paid by and For; blank For is everyone.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
@@ -1821,7 +1821,7 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
 
-export class ReconcileNode extends ClassicPreset.Node {
+export class ReconcileNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     key: "Duplicate keys pair up in order. A row whose key is blank or an error cannot match and comes out as skipped.",
   };
@@ -1869,7 +1869,7 @@ function sameBuild(node: object, sig: readonly unknown[]): boolean {
   return !!prev && prev.length === sig.length && prev.every((v, i) => Object.is(v, sig[i]));
 }
 
-export class BuildFrameNode extends ClassicPreset.Node {
+export class BuildFrameNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedResult: FrameValue | null = null;
@@ -1896,7 +1896,7 @@ export class BuildFrameNode extends ClassicPreset.Node {
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
 
-export class FrameFromListsNode extends ClassicPreset.Node {
+export class FrameFromListsNode extends GraphNode {
   label: string;
   cachedResult: FrameValue | null = null;
   stringLiterals: Record<string, string> = {};
@@ -1978,7 +1978,7 @@ export function splitMatrixOutput(colType: SplitColType) {
     : tableOut("Matrix");
 }
 
-export class SplitFrameNode extends ClassicPreset.Node {
+export class SplitFrameNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     matrix: "Under All, one text column blanks the whole matrix. Date cells ride as serials and booleans as 1 and 0.",
   };
@@ -2029,7 +2029,7 @@ type GetColumnValues =
   | SolError
   | null;
 
-export class GetColumnNode extends ClassicPreset.Node {
+export class GetColumnNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Number and Date reads coerce rather than filter: a text cell parses or becomes NaN, a boolean becomes 1 or 0, and blanks stay blank.",
   };
@@ -2093,7 +2093,7 @@ export function addColumnInput(addAs: AddColumnAddAs) {
     : listIn("Values");
 }
 
-export class AddColumnNode extends ClassicPreset.Node {
+export class AddColumnNode extends GraphNode {
   label: string;
   addAs: AddColumnAddAs;
   cachedResult: FrameValue | CubeValue | null = null;
@@ -2139,7 +2139,7 @@ const COMPUTED_RESERVED = ["frame", "name", "fn", "after"];
 
 type ComputedColumnInputs = { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>;
 
-export class ComputedColumnNode extends ClassicPreset.Node {
+export class ComputedColumnNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     after: "Empty appends the new column at the end. A column name inserts it immediately after that column. A replaced column keeps its place.",
@@ -2312,7 +2312,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
 
-export class GetRowNode extends ClassicPreset.Node {
+export class GetRowNode extends GraphNode {
   static inputRoles = { index: required };
   label: string;
   cachedResult: FrameValue | CubeValue | null = null;
@@ -2338,7 +2338,7 @@ export class GetRowNode extends ClassicPreset.Node {
 
 // ─── XLOOKUP ───────────────────────────────────────────────────────────────────
 
-export class XLookupNode extends ClassicPreset.Node {
+export class XLookupNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
   };
@@ -2371,7 +2371,7 @@ export class XLookupNode extends ClassicPreset.Node {
 }
 
 // ─── DESCRIBE ──────────────────────────────────────────────────────────────────
-export class DescribeNode extends ClassicPreset.Node {
+export class DescribeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns, with min and max for dates.",
   };
@@ -2403,7 +2403,7 @@ export const CORR_METHOD_META = {
   covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns. `df.cov`, R `cov`." },
 } satisfies Record<CorrMethod, { label: string; description: string }>;
 
-export class CorrMatrixNode extends ClassicPreset.Node {
+export class CorrMatrixNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Each pair uses the rows where BOTH columns are present (pairwise complete), so a patchy frame still answers; a pair with no variance is a blank cell.",
   };
@@ -2459,7 +2459,7 @@ export function kmeansOutputs({ names, rows, kept, total }: ReturnType<typeof nu
   ] } };
 }
 
-export class KMeansNode extends ClassicPreset.Node {
+export class KMeansNode extends GraphNode {
   static inputRoles = { k: required };
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ, with Normalize.",
@@ -2507,7 +2507,7 @@ export function pcaOutputs({ names, rows, kept, total }: ReturnType<typeof numer
   };
 }
 
-export class PcaNode extends ClassicPreset.Node {
+export class PcaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
     scores: "The rows in the new axes: PC1, PC2, …, one column per feature, highest variance first.",
@@ -2561,7 +2561,7 @@ export function logisticOutputs(f: FrameValue, tcol: FrameColumn, features: Fram
   ] }, probabilities };
 }
 
-export class LogisticNode extends ClassicPreset.Node {
+export class LogisticNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The target column is 0/1 (or TRUE/FALSE); every other number column is a feature. Rows with a blank are left out.",
     target: "Name of the 0/1 column to predict.",
@@ -2618,7 +2618,7 @@ export const WINDOW_FN_META = {
   last:         { label: "Last in group",     description: "The group's last Value on every row. SQL `LAST_VALUE`." },
 } satisfies Record<WindowFn, { label: string; description: string }>;
 
-export class WindowNode extends ClassicPreset.Node {
+export class WindowNode extends GraphNode {
   static inputRoles = { n: setting(3) };
   static socketDocs: Record<string, string> = {
     keys: "The partition: rows sharing these keys form a group. Leave it empty to treat the whole frame as one group.",

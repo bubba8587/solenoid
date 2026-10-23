@@ -1,7 +1,7 @@
 // [[C118]] formatTravelsWithValue (the popup lights controls off the model), [[C25]] firstClassUnits.
 import { useState, useEffect, useSyncExternalStore } from "react";
-import { FormatControllerNode } from "../rete-nodes";
-import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
+import { FormatControllerNode } from "../nodeClasses";
+import type { FormatControllerNode as FormatControllerNodeType } from "../nodeClasses";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
   LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,

@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge: the result-type toggle is an in-place socket retype, so it must reconcile.
 import { useEffect, useState } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphSocket } from "../graphModel";
 import { resultSocket, RESULT_TYPE_META, type ResultType, type ResultDim } from "../nodes/shared";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -11,7 +11,7 @@ import { TypeIcon } from "./TypeIcon";
 type Producer = {
   id: string;
   resultAs: ResultType;
-  outputs: { result?: { socket: ClassicPreset.Socket } };
+  outputs: { result?: { socket: GraphSocket } };
 };
 
 const RESULT_TYPE_OPTIONS = (Object.keys(RESULT_TYPE_META) as ResultType[]).map((value) => ({

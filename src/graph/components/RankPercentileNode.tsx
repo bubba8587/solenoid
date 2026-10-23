@@ -1,5 +1,5 @@
-import { RANK_PERCENTILE_OP_META } from "../rete-nodes";
-import type { RankPercentileNode as RankPercentileNodeType, RankPercentileOp } from "../rete-nodes";
+import { RANK_PERCENTILE_OP_META } from "../nodeClasses";
+import type { RankPercentileNode as RankPercentileNodeType, RankPercentileOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

@@ -1,6 +1,6 @@
 // [[C25]]
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import type { SolError } from "../errorValue";
@@ -11,7 +11,7 @@ import type { UnitCell } from "../unitValue";
 type PartCell = number | SolError | null;
 type PartOut = PartCell | UnitCell | (PartCell | UnitCell)[];
 
-export class TriangleSolverNode extends ClassicPreset.Node {
+export class TriangleSolverNode extends GraphNode {
   label: string;
   cachedValues: Record<string, PartOut> = {};
   cachedArea: PartOut = null;

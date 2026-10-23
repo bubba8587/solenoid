@@ -2,7 +2,7 @@
 // A card's body on the Rust core (`crates/solenoid-core/src/nodes/`): `data()` sends the class, what a save holds,
 // its sockets and its inputs, and takes back the outputs and the fields the body sets for the card's component.
 // The mechanism is tree/specs/computation/node-bodies.md.
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
 import { declaredTypeOf, AdoptiveSocket } from "./sockets";
 import { engineClock } from "./coreValues";
@@ -32,7 +32,7 @@ export function adopted(socket: unknown): string[] {
 }
 
 /** What a save holds, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
-export function coreInit(node: ClassicPreset.Node): Record<string, unknown> {
+export function coreInit(node: GraphNode): Record<string, unknown> {
   const init = extractInit(node);
   const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
   for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
@@ -40,7 +40,7 @@ export function coreInit(node: ClassicPreset.Node): Record<string, unknown> {
 }
 
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
-export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown } & Record<string, unknown>;
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {

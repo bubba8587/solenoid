@@ -1,9 +1,9 @@
 // [[C86]] membershipByGesture, [[C112]] noOverlapsEver, [[A1]] visualGraphCalculator, [[C52]] visibleSelection
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
-import type { ClassicPreset } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphNode } from "./graphModel";
 import type { Schemes } from "./schemes";
-import { GroupNode, nodeAccentSlot } from "./rete-nodes";
+import { GroupNode, nodeAccentSlot } from "./nodeClasses";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -17,7 +17,7 @@ import { settleOverlaps } from "./groupPush";
 
 export const GROUP_DEFAULT_COLOR = "gray";
 
-export function majorityColor(nodes: ClassicPreset.Node[]): string {
+export function majorityColor(nodes: GraphNode[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
     const c = nodeAccentSlot(n);
@@ -31,7 +31,7 @@ export function majorityColor(nodes: ClassicPreset.Node[]): string {
   return bestN > 0 && !tie ? best : GROUP_DEFAULT_COLOR;
 }
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 // Creation, within-group Tidy and autofit must share these, or Cleanup's tidy-then-autofit cycle drifts the box each run.
 export const GROUP_PAD = 24;

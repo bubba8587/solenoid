@@ -14,11 +14,11 @@ import type {
   TimeZoneConvertNode as TimeZoneConvertNodeType,
   WorldClockNode as WorldClockNodeType,
   TodayNowOp, DateTimeValueOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import {
   TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";

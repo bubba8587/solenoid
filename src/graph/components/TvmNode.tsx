@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { PAYMENT_TIMING_META } from "../rete-nodes";
-import type { TvmNode as TvmNodeType, PaymentTiming } from "../rete-nodes";
+import { PAYMENT_TIMING_META } from "../nodeClasses";
+import type { TvmNode as TvmNodeType, PaymentTiming } from "../nodeClasses";
 import { ArgSelect, type NodeProps } from "./nodeKit";
 import { EquationComponent } from "./EquationNode";
 import { processGraph } from "../process";
