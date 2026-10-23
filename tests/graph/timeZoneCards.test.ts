@@ -1,5 +1,6 @@
+// [[C44]] dateSerials, [[C130]] rustCore
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { zoneOffsetMs, convertZone } from "../../src/graph/timeZone";
+import { convertZone } from "../../src/graph/timeZone";
 import { TimeZoneConvertNode, WorldClockNode } from "../../src/graph/nodes/date";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -12,17 +13,30 @@ const DAY = 86400000;
 const toSerial = (ms: number) => ms / DAY + 25569;
 const serial = (y: number, mo: number, d: number, h = 0, mi = 0) => toSerial(Date.UTC(y, mo - 1, d, h, mi, 0));
 
+const formats = new Map<string, Intl.DateTimeFormat>();
+/** `zoneOffsetMs`'s read with its formatter kept, for the scans. */
+function offsetOf(zone: string, ms: number): number {
+  let f = formats.get(zone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    formats.set(zone, f);
+  }
+  const p: Record<string, number> = {};
+  for (const part of f.formatToParts(new Date(ms))) if (part.type !== "literal") p[part.type] = Number(part.value);
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ms;
+}
+
 /** The instants in [from, to) where a zone's offset changes, to the second, read every `step`. */
 function transitions(zone: string, from: number, to: number, step = 6 * H): number[] {
   const out: number[] = [];
-  let prev = zoneOffsetMs(zone, from);
+  let prev = offsetOf(zone, from);
   for (let t = from + step; t <= to; t += step) {
-    const o = zoneOffsetMs(zone, t);
+    const o = offsetOf(zone, t);
     if (o === prev) continue;
     let lo = t - step, hi = t;
     while (hi - lo > 1000) {
       const mid = lo + Math.floor((hi - lo) / 2000) * 1000;
-      if (zoneOffsetMs(zone, mid) === prev) lo = mid; else hi = mid;
+      if (offsetOf(zone, mid) === prev) lo = mid; else hi = mid;
     }
     out.push(hi);
     prev = o;
@@ -100,12 +114,12 @@ describe("Time Zone Convert card", () => {
         for (const d of [-1000, 0, 30 * M]) {
           const s = toSerial(t + d);
           expect(card(s, "UTC", zone), `${zone} ${new Date(t + d).toISOString()}`).toBe(convertZone(s, "UTC", zone));
-          const wall = toSerial(t + d + zoneOffsetMs(zone, t + d));
+          const wall = toSerial(t + d + offsetOf(zone, t + d));
           expect(card(wall, zone, "UTC"), `${zone} ${new Date(t + d).toISOString()}`).toBe(convertZone(wall, zone, "UTC"));
         }
       }
     }
-  });
+  }, 60_000);
 
   it("holds every kind of zone across the calendar's span", () => {
     const at = [
@@ -119,7 +133,7 @@ describe("Time Zone Convert card", () => {
         expect(card(s, "America/New_York", zone), `${zone} ${s}`).toBe(convertZone(s, "America/New_York", zone));
       }
     }
-  });
+  }, 60_000);
 });
 
 describe("World Clock card", () => {

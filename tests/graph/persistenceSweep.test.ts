@@ -230,6 +230,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
     lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
     roll: "promo rotation draw (session flavor)",
+    nowMs: "World Clock's instant, read from the clock on every compute; a load is a new now",
     // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──
     enabled: "sinkRunButtonOnly arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
