@@ -481,6 +481,11 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   );
 }
 
+function formatRunTime(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  return `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)} s`;
+}
+
 // An SVG circle: a small CSS box reads as an oval in the flex row.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
   const color = state === "stale" ? "var(--sol-warn)" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
@@ -527,6 +532,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
   const gated = heavy && node.gatedInside();
   const stale = compositeStaleStore.isStale(node.id);
   const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
+  const lastRunMs = compositeStaleStore.lastRunMs(node.id);
   return (
     <>
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
@@ -546,6 +552,11 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
             {runMode === "manual" ? "Refresh" : "Solve"}
           </button>
           <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
+        </div>
+      )}
+      {heavy && lastRunMs !== null && (
+        <div style={{ marginTop: 3, color: "var(--text-muted)", fontSize: 10, fontVariantNumeric: "tabular-nums" }}>
+          last run {formatRunTime(lastRunMs)}
         </div>
       )}
       {gated && (

@@ -84,17 +84,33 @@ fn column(c: &Json) -> Column {
     }
 }
 
-/// A frame's or a cube's cell: a finite number other than -0 as a bare JSON number, which reads back exact (ryu's
-/// shortest form), text and logicals bare too, so a big frame's reply stays small and the TS takes its cells as they
-/// parse; the rest as `Out` writes it.
-struct Cell<'a>(&'a V);
+/// A value in a card's reply: a finite number other than -0 as a bare JSON number, which reads back exact (ryu's
+/// shortest form), text and logicals bare too, a list's items the same way, so a big list's or frame's reply stays
+/// small and the TS takes its values as they parse; the rest as `Out` writes it.
+pub(crate) struct Cell<'a>(pub(crate) &'a V);
 
 impl serde::Serialize for Cell<'_> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::{SerializeMap, SerializeSeq};
+        struct Items<'a>(&'a [V]);
+        impl serde::Serialize for Items<'_> {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                let mut q = s.serialize_seq(Some(self.0.len()))?;
+                for v in self.0 {
+                    q.serialize_element(&Cell(v))?;
+                }
+                q.end()
+            }
+        }
         match self.0 {
             V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
             V::Str(t) => s.serialize_str(t),
             V::Bool(b) => s.serialize_bool(*b),
+            V::List(items) => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("list", &Items(items))?;
+                m.end()
+            }
             v => crate::frame_backend::Out(v).serialize(s),
         }
     }

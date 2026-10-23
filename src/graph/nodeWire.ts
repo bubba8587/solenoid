@@ -85,7 +85,7 @@ export function nodeWire(v: unknown): unknown {
 
 type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[] };
 
-/** A frame's or a cube's cells: a bare number, text or logical is itself (`nodes/values.rs` `Cell`). */
+/** A list's items or a frame's or a cube's cells: a bare number, text or logical is itself (`nodes/values.rs` `Cell`). */
 function cells(vs: unknown[]): { value: unknown[] } | null {
   // The parsed array is the reply's own, so where every cell is plain it is the column as it stands. (A preallocated
   // array of a million holes would be V8's slow dictionary kind.)
@@ -107,18 +107,10 @@ function cells(vs: unknown[]): { value: unknown[] } | null {
 
 /** A card body's answer back as a JS value; `{ none }` where it holds something JS can't take (a LAMBDA). */
 export function readNodeReply(r: unknown): { value: unknown } | null {
-  if (typeof r === "number") return { value: r };
+  if (typeof r === "number" || typeof r === "string" || typeof r === "boolean") return { value: r };
   const o = r as Wire | null;
   if (!o || typeof o !== "object" || Array.isArray(o)) return readReply(r);
-  if (o.list) {
-    const items: unknown[] = [];
-    for (const x of o.list) {
-      const v = readNodeReply(x);
-      if (!v) return null;
-      items.push(v.value);
-    }
-    return { value: items };
-  }
+  if (o.list) return cells(o.list);
   if ("json" in o) return { value: jsonDec(o.json) };
   if (o.frame) {
     const columns: FrameColumn[] = [];

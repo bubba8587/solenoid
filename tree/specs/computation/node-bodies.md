@@ -40,8 +40,8 @@ non-finite numbers, -0 and `undefined` are tagged (`V::Json`); a frame ref (a la
 ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend (Polars on
 desktop, the core in wasm) runs it later; and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
-`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A frame's and a cube's cells cross bare where
-they can (a finite number, text, a logical), and a field the body shows that is one of its outputs crosses as that
+`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A reply's values (an output, a list's items, a frame's and a
+cube's cells) cross bare where they can (a finite number other than -0, text, a logical), and a field the body shows that is one of its outputs crosses as that
 output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as
 where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush
 and collect by its ref. Uploading a frame to the backend for a handle is async I/O and stays in the card's TS before

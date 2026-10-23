@@ -115,6 +115,7 @@ Markers cannot be copied (copy skips them) or deleted from the drill-in (its del
 3. The run controls (`CompositeRunControls`), shared with the drill-in:
    - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
    - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
+   - when heavy and it has solved since it was made or loaded, "last run" and the last solve's wall time beneath (`340 ms`, `1.24 s`), so the same work can be timed with Settings ▸ Rust engine on and off (the "Rust engine speed test" seed);
    - the mode's editor (below).
 4. One output box per output port: the label, then the value in a socket row that anchors that port's output socket, with a sparkline above a numeric series of two or more. Under goal-seek these boxes are suppressed; the goal-seek editor's Solution box carries the target port's socket instead.
 5. `no ports` when the composite has no ports.
@@ -285,7 +286,7 @@ Every `data(inputs)`:
 6. Heavy otherwise: `stale = unsettled || solveKey(inputs) !== lastSolveKey`; return `cachedOutputs` unchanged.
 7. Not heavy: run the mode on `inputs`, store and return; not stale.
 
-Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids with a notifier; forgetting a node clears it). The run controls subscribe to it, because a held card's outputs do not change and the pass's changed-output render pruning would otherwise skip it.
+Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids with a notifier; forgetting a node clears it), and step 4 the wall time of its rounds (`ran`, read by `lastRunMs`; not saved). The run controls subscribe to it, because a held card's outputs do not change and the pass's changed-output render pruning would otherwise skip it.
 
 `solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
 

@@ -4,6 +4,7 @@ import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 const stale = new Set<string>();
+const runMs = new Map<string, number>();
 const { notify, subscribe, version } = createNotifier();
 
 export const compositeStaleStore = {
@@ -16,9 +17,20 @@ export const compositeStaleStore = {
   isStale(id: string): boolean {
     return stale.has(id);
   },
+  /** How long a held composite's last solve took, so its card can show it. */
+  ran(id: string, ms: number): void {
+    runMs.set(id, ms);
+    notify();
+  },
+  lastRunMs(id: string): number | null {
+    return runMs.get(id) ?? null;
+  },
   subscribe,
   getVersion: version,
 };
 
-registerNodeForget((id) => compositeStaleStore.set(id, false));
-registerNodeForgetAll(() => { if (stale.size > 0) { stale.clear(); notify(); } });
+registerNodeForget((id) => { runMs.delete(id); compositeStaleStore.set(id, false); });
+registerNodeForgetAll(() => {
+  runMs.clear();
+  if (stale.size > 0) { stale.clear(); notify(); }
+});

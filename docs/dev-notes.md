@@ -84,6 +84,10 @@ specific item.
 - **The Amortization card filled the memory on a huge period count** (1e9 or Infinity; develop too): it built a row
   per period. Past a million it answers #DOMAIN! at once. Found by a second sweep feeding every card extreme scalars,
   which found nothing else unbounded (ODE Integrate's 100,000-step cap costs a few seconds at worst, by design).
+- **The "Rust engine speed test" seed** times one manual composite (build N rows, two computed columns, group,
+  sort) under Settings ▸ Rust engine on and off; a held composite's card shows "last run" and its solve time. Its
+  first profile found card replies spelling every list number as bits decoded through a BigInt (1.1 s of a 4 s run
+  at a million rows); a reply's values now cross bare like frame cells. What's left is the per-row formula work.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.

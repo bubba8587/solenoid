@@ -259,6 +259,7 @@ pub fn reply(args: &Json) -> NodeReply {
 impl serde::Serialize for NodeReply {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use crate::frame_backend::Out;
+        use values::Cell;
         use serde::ser::SerializeMap;
         // An output that is one of the inputs as it came (a frame ref passed through) crosses as where it came from,
         // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
@@ -275,7 +276,7 @@ impl serde::Serialize for NodeReply {
                     };
                     match from {
                         Some((key, at)) => m.serialize_entry(k, &serde_json::json!({ "input": [key, at] }))?,
-                        None => m.serialize_entry(k, &Out(v))?,
+                        None => m.serialize_entry(k, &Cell(v))?,
                     }
                 }
                 m.end()
@@ -299,7 +300,7 @@ impl serde::Serialize for NodeReply {
                 for (k, v) in self.0 {
                     match v {
                         Shown::V(v) if same(v).is_some() => m.serialize_entry(k, &serde_json::json!({ "output": same(v) }))?,
-                        Shown::V(v) => m.serialize_entry(k, &Out(v))?,
+                        Shown::V(v) => m.serialize_entry(k, &Cell(v))?,
                         Shown::Undef => m.serialize_entry(k, &serde_json::json!({ "undef": true }))?,
                     }
                 }

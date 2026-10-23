@@ -741,7 +741,9 @@ export class CompositeNode extends ClassicPreset.Node {
       const key = this.solveKey(inputs);
       if (this.solveRequested) {
         const solveInputs = this.solveInsideOnly ? {} : inputs;
+        const started = performance.now();
         const { outputs, settled } = await this.solveSettled(solveInputs);
+        compositeStaleStore.ran(this.id, performance.now() - started);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);

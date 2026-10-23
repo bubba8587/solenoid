@@ -16,6 +16,7 @@
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
+// --setting key=value opens with that app setting (Settings' key, JSON value): --setting wasmEngine=false.
 // --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
@@ -40,13 +41,14 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
+  else if (a === "--setting") { const [k, v] = argv[++i].split("="); (opt.settings ??= {})[k] = JSON.parse(v); }
   else if (a === "--full") opt.full = true;
   else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
   else if (a === "--scale") opt.scale = Number(argv[++i]);
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--setting key=value] [--full] [--size WxH] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -71,7 +73,7 @@ try {
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
-  await page.evaluateOnNewDocument((doc, palette, light) => {
+  await page.evaluateOnNewDocument((doc, palette, light, settings) => {
     if (sessionStorage.getItem("shot-seeded")) return;
     sessionStorage.setItem("shot-seeded", "1");
     localStorage.clear();
@@ -79,7 +81,8 @@ try {
     localStorage.setItem(`solenoid.docs.doc.${doc.id}.a`, JSON.stringify({ seq: 2, doc }));
     if (palette) localStorage.setItem("solenoid.palette", palette);
     if (light) localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: "light" }));
-  }, doc, opt.palette ?? null, !!opt.light);
+    if (settings) localStorage.setItem("solenoid.settings", JSON.stringify(settings));
+  }, doc, opt.palette ?? null, !!opt.light, opt.settings ?? null);
   await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
   await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
   await page.click(".solenoid-nav__btn--fit").catch(() => {});

@@ -26,6 +26,8 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__input '<formula>' --press Escape`
   (the popup commits on close). An Fx column: `--popup --type .table-popup__exprinput '<formula>' --press Enter`.
 - **`--palette <name>`** opens under a built-in palette (`Neon`, `Orchard`…) and **`--light`** in light mode.
+- **`--setting key=value`** opens with an app setting (its `settingsStore` key, a JSON value), e.g. `--setting wasmEngine=false`
+  for the JavaScript engine. A button by its text: `--click "button::-p-text(Refresh)"`.
 - Read the printed text before the PNG: it often answers the question without an image.
 - Save a graph worth reusing into `scripts/shot-graphs/`; keep scratch graphs and PNGs in the
   scratchpad.
