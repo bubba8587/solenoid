@@ -3,6 +3,14 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "port-*": false,
+      "claude/*": false,
+      "ccr-*": false,
+      "worktree-*": false
+    }
+  },
   "redirects": [
     {
       "source": "/:path*",

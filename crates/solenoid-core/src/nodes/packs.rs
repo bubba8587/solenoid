@@ -438,7 +438,7 @@ fn physics_constant(c: &mut Call) -> Answer {
         "rgas" => 8.314462618,
         "sigma" => 5.670374419e-8,
         "wien" => 2.897771955e-3,
-        _ => return Err(super::frames::thrown("Cannot read properties of undefined (reading 'value')")),
+        op => return Ok(vec![("value".into(), super::err(crate::error_value::ErrorCode::Value, format!("Unknown constant \"{op}\"")))]),
     };
     Ok(vec![("value".into(), V::Num(v))])
 }

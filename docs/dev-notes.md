@@ -88,6 +88,14 @@ specific item.
   sort) under Settings ▸ Rust engine on and off; a held composite's card shows "last run" and its solve time. Its
   first profile found card replies spelling every list number as bits decoded through a BigInt (1.1 s of a 4 s run
   at a million rows); a reply's values now cross bare like frame cells. What's left is the per-row formula work.
+- **Card bodies on the core: 275 classes** after four parallel ports (widgets and draws, plans and the schedule
+  engine, documents and number text, the lazy frame verbs), about 94% of the cards in scope. Still in TS:
+  Join, Append, Bind Columns, Table Info, Slicer, Pivot, Computed Column, Cube Input, LAMBDA, RANDARRAY, QR Code,
+  Time Zone Convert, World Clock, Note, Report. A third round on all but Note and Report was cut off by the session
+  end; its branches are named in the backlog. Bugs the port had copied are fixed (RAND and Color Blend pass errors,
+  an unknown constant is #VALUE!, 0 decimals no longer strip a whole number's zeros); SCAN folds a unit initial.
+- **Decimal places is a 0 to 10 slider** (Settings' new slider row), on rust-port only.
+- **vitest's fsModuleCache hid a new seed from the local suite** while CI failed on it; CLAUDE.md says to clear it.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.
