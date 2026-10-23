@@ -94,7 +94,7 @@ export class GraphNode {
   id = getUID();
   readonly inputs: GraphInputs = {};
   readonly outputs: GraphOutputs = {};
-  selected?: boolean;
+  declare selected?: boolean;
 
   constructor(public label: string) {}
 
