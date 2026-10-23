@@ -1,6 +1,7 @@
 // [[D102]] graphOnCore
-//! The WebAssembly entry: one `GraphCore` per editor, mirroring its nodes and cables, the nodes
-//! staying the app's JavaScript objects (`src/graph/dataflowEngine.ts` drives it).
+//! The WebAssembly entry: one `GraphCore` per editor, holding its graph (`model.rs`) with the nodes'
+//! and cables' JavaScript objects, the pipes `src/graph/graphEditor.ts` adds, and the dataflow
+//! engine `src/graph/dataflowEngine.ts` drives.
 
 use std::cell::RefCell;
 use std::fmt;
@@ -8,22 +9,57 @@ use std::rc::Rc;
 
 use js_sys::{Array, Function, Map, Object, Promise, Reflect};
 use ruggine::classic::Connection;
-use ruggine::future::{now_or_never, ready, LocalBoxFuture};
-use ruggine::{GetSchemes, NodeBase, NodeEditor};
-use ruggine_engine::{DataflowEngine, DataflowNode, Error, Inputs, Outputs, PortSelection};
+use ruggine::future::{ready, LocalBoxFuture};
+use ruggine::Root;
+use ruggine_engine::{Error, Inputs, Outputs};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
 
+use crate::model::{Failure, Graph, Host, Port, Side, Signal};
 use crate::pass;
 
-/// A canvas node: its id and the JavaScript object whose `data()` computes it.
-struct HostNode {
-    id: String,
+/// A canvas node's JavaScript object, whose `data()` computes it.
+struct JsNode {
     object: Object,
     cancelled: Function,
 }
 
-type Host = GetSchemes<HostNode, Connection>;
+struct Js;
+
+impl Host for Js {
+    type Node = JsNode;
+    type Connection = JsValue;
+    type Value = JsValue;
+    type Thrown = JsValue;
+
+    fn data(
+        node: &JsNode,
+        inputs: Inputs<JsValue>,
+    ) -> LocalBoxFuture<'_, Result<Outputs<JsValue>, Error>> {
+        let data = match Reflect::get(&node.object, &JsValue::from_str("data")) {
+            Ok(f) if f.is_function() => f.unchecked_into::<Function>(),
+            _ => {
+                return ready(Err(thrown(
+                    js_sys::TypeError::new("node.data is not a function").into(),
+                )))
+            }
+        };
+        match data.call1(&node.object, &inputs_to_js(&inputs)) {
+            Err(e) => ready(Err(rejected(&node.cancelled, e))),
+            Ok(result) if result.is_instance_of::<Promise>() => {
+                let pending = JsFuture::from(result.unchecked_into::<Promise>());
+                let cancelled = node.cancelled.clone();
+                Box::pin(async move {
+                    pending
+                        .await
+                        .map(outputs_from_js)
+                        .map_err(|e| rejected(&cancelled, e))
+                })
+            }
+            Ok(result) => ready(Ok(outputs_from_js(result))),
+        }
+    }
+}
 
 /// What a node's `data()` threw, carried through the engine to the fetch that awaits it.
 struct Thrown(JsValue);
@@ -60,16 +96,10 @@ fn rejected(cancelled: &Function, value: JsValue) -> Error {
     }
 }
 
-impl NodeBase for HostNode {
-    fn id(&self) -> &str {
-        &self.id
-    }
-}
-
 /// The object's own keys, as `Object.keys`; nothing for a missing or non-object value.
-fn keys_of(value: &JsValue) -> Rc<[String]> {
+fn keys_of(value: &JsValue) -> Vec<String> {
     if !value.is_object() {
-        return Rc::from([]);
+        return Vec::new();
     }
     Object::keys(value.unchecked_ref())
         .iter()
@@ -77,16 +107,12 @@ fn keys_of(value: &JsValue) -> Rc<[String]> {
         .collect()
 }
 
-fn port_keys(object: &Object, side: &str) -> Rc<[String]> {
-    keys_of(&Reflect::get(object, &JsValue::from_str(side)).unwrap_or(JsValue::UNDEFINED))
-}
-
 fn outputs_from_js(value: JsValue) -> Outputs<JsValue> {
     let mut out = Outputs::new();
     if value.is_object() {
-        for key in keys_of(&value).iter() {
-            let v = Reflect::get(&value, &JsValue::from_str(key)).unwrap_or(JsValue::UNDEFINED);
-            out.insert(key.as_str(), v);
+        for key in keys_of(&value) {
+            let v = Reflect::get(&value, &JsValue::from_str(&key)).unwrap_or(JsValue::UNDEFINED);
+            out.insert(key, v);
         }
     }
     out
@@ -107,33 +133,6 @@ fn inputs_to_js(inputs: &Inputs<JsValue>) -> Object {
         let _ = Reflect::set(&object, &JsValue::from_str(key), &list);
     }
     object
-}
-
-impl DataflowNode<JsValue> for HostNode {
-    fn data(&self, inputs: Inputs<JsValue>) -> LocalBoxFuture<'_, Result<Outputs<JsValue>, Error>> {
-        let data = match Reflect::get(&self.object, &JsValue::from_str("data")) {
-            Ok(f) if f.is_function() => f.unchecked_into::<Function>(),
-            _ => {
-                return ready(Err(thrown(
-                    js_sys::TypeError::new("node.data is not a function").into(),
-                )))
-            }
-        };
-        match data.call1(&self.object, &inputs_to_js(&inputs)) {
-            Err(e) => ready(Err(rejected(&self.cancelled, e))),
-            Ok(result) if result.is_instance_of::<Promise>() => {
-                let pending = JsFuture::from(result.unchecked_into::<Promise>());
-                let cancelled = self.cancelled.clone();
-                Box::pin(async move {
-                    pending
-                        .await
-                        .map(outputs_from_js)
-                        .map_err(|e| rejected(&cancelled, e))
-                })
-            }
-            Ok(result) => ready(Ok(outputs_from_js(result))),
-        }
-    }
 }
 
 thread_local! {
@@ -161,11 +160,10 @@ pub fn graph_trap() {
     panic!("graph_trap");
 }
 
-/// One editor's mirror and its dataflow engine.
+/// One editor's graph and its dataflow engine.
 #[wasm_bindgen]
 pub struct GraphCore {
-    editor: NodeEditor<Host>,
-    engine: DataflowEngine<Host, JsValue>,
+    graph: Graph<Js>,
     cancelled: Function,
 }
 
@@ -180,16 +178,64 @@ fn to_js(cancelled: &Function, error: Error) -> JsValue {
     }
 }
 
-fn settled<T>(
-    f: impl std::future::Future<Output = Result<T, ruggine::Error>>,
-) -> Result<T, JsValue> {
-    match now_or_never(f) {
-        Some(r) => r.map_err(|e| js_sys::Error::new(&e.to_string()).into()),
-        None => Err(js_sys::Error::new(
-            "the mirror has no async pipes, so its edits finish at once",
-        )
-        .into()),
+fn failed(failure: Failure<JsValue>) -> JsValue {
+    match failure {
+        Failure::Thrown(value) => value,
+        Failure::Graph(e) => graph_error(e),
     }
+}
+
+fn graph_error(e: ruggine::Error) -> JsValue {
+    js_sys::Error::new(&e.to_string()).into()
+}
+
+fn side(output: bool) -> Side {
+    if output {
+        Side::Output
+    } else {
+        Side::Input
+    }
+}
+
+fn ports(keys: Vec<String>, types: Vec<String>) -> Vec<Port> {
+    keys.into_iter().zip(types).collect()
+}
+
+const SIGNALS: [&str; 11] = [
+    "nodecreate",
+    "nodecreated",
+    "noderemove",
+    "noderemoved",
+    "connectioncreate",
+    "connectioncreated",
+    "connectionremove",
+    "connectionremoved",
+    "clear",
+    "clearcancelled",
+    "cleared",
+];
+
+thread_local! {
+    static SIGNAL_NAMES: Vec<JsValue> = SIGNALS.iter().map(|s| JsValue::from_str(s)).collect();
+}
+
+/// The signal's `type` and `data`, as the host's pipes take them.
+fn signal_to_js(signal: &Signal<Js>) -> (JsValue, JsValue) {
+    let at = SIGNALS
+        .iter()
+        .position(|s| *s == signal.type_name())
+        .expect("every signal is named");
+    let data = match signal {
+        Root::NodeCreate(n) | Root::NodeCreated(n) | Root::NodeRemove(n) | Root::NodeRemoved(n) => {
+            n.object.object.clone().into()
+        }
+        Root::ConnectionCreate(c)
+        | Root::ConnectionCreated(c)
+        | Root::ConnectionRemove(c)
+        | Root::ConnectionRemoved(c) => c.object.clone(),
+        Root::Clear | Root::ClearCancelled | Root::Cleared => JsValue::UNDEFINED,
+    };
+    (SIGNAL_NAMES.with(|names| names[at].clone()), data)
 }
 
 #[wasm_bindgen]
@@ -197,49 +243,77 @@ impl GraphCore {
     /// `cancelled` is the class of error a fetch cut short by a reset rejects with.
     #[wasm_bindgen(constructor)]
     pub fn new(cancelled: Function) -> GraphCore {
-        let editor = NodeEditor::<Host>::new();
-        let engine = DataflowEngine::with_configure(|node: &Rc<HostNode>| {
-            let (a, b) = (node.clone(), node.clone());
-            PortSelection {
-                inputs: Box::new(move || port_keys(&a.object, "inputs")),
-                outputs: Box::new(move || port_keys(&b.object, "outputs")),
-            }
-        });
-        editor
-            .use_scope(&engine)
-            .expect("a fresh editor takes an engine");
         GraphCore {
-            editor,
-            engine,
+            graph: Graph::new(),
             cancelled,
         }
     }
 
+    /// Adds `pipe(type, data)` after every pipe already here: it answers truthy to go on, falsy to
+    /// stop the chain (cancelling the change a present-tense signal announces), and what it
+    /// throws stops the chain and fails the edit. Returns the handle `removePipe` takes.
+    #[wasm_bindgen(js_name = addPipe)]
+    pub fn add_pipe(&self, pipe: Function) -> usize {
+        self.graph.add_pipe(move |signal| {
+            let (kind, data) = signal_to_js(signal);
+            pipe.call2(&JsValue::NULL, &kind, &data)
+                .map(|go| go.is_truthy())
+        })
+    }
+
+    #[wasm_bindgen(js_name = removePipe)]
+    pub fn remove_pipe(&self, handle: usize) -> bool {
+        self.graph.remove_pipe(handle)
+    }
+
+    /// Attaches the engine here in the chain, registering the nodes already in the editor.
+    #[wasm_bindgen(js_name = useEngine)]
+    pub fn use_engine(&self) -> Result<(), JsValue> {
+        self.graph.use_engine().map_err(failed)
+    }
+
+    /// `false` when a `nodecreate` pipe cancelled it.
     #[wasm_bindgen(js_name = addNode)]
-    pub fn add_node(&self, id: String, object: Object) -> Result<(), JsValue> {
-        let cancelled = self.cancelled.clone();
-        settled(self.editor.add_node(Rc::new(HostNode {
-            id,
+    pub fn add_node(
+        &self,
+        id: String,
+        object: Object,
+        input_keys: Vec<String>,
+        input_types: Vec<String>,
+        output_keys: Vec<String>,
+        output_types: Vec<String>,
+    ) -> Result<bool, JsValue> {
+        let node = JsNode {
             object,
-            cancelled,
-        })))
-        .map(drop)
+            cancelled: self.cancelled.clone(),
+        };
+        self.graph
+            .add_node(
+                id,
+                node,
+                &ports(input_keys, input_types),
+                &ports(output_keys, output_types),
+            )
+            .map_err(failed)
     }
 
+    /// `false` when a `noderemove` pipe cancelled it.
     #[wasm_bindgen(js_name = removeNode)]
-    pub fn remove_node(&self, id: &str) -> Result<(), JsValue> {
-        settled(self.editor.remove_node(id)).map(drop)
+    pub fn remove_node(&self, id: &str) -> Result<bool, JsValue> {
+        self.graph.remove_node(id).map_err(failed)
     }
 
+    /// `false` when a `connectioncreate` pipe cancelled it.
     #[wasm_bindgen(js_name = addConnection)]
     pub fn add_connection(
         &self,
+        object: JsValue,
         id: String,
         source: String,
         source_output: String,
         target: String,
         target_input: String,
-    ) -> Result<(), JsValue> {
+    ) -> Result<bool, JsValue> {
         let c = Connection {
             id,
             source,
@@ -247,17 +321,77 @@ impl GraphCore {
             source_output,
             target_input,
         };
-        settled(self.editor.add_connection(Rc::new(c))).map(drop)
+        self.graph.add_connection(c, object).map_err(failed)
     }
 
+    /// `false` when a `connectionremove` pipe cancelled it.
     #[wasm_bindgen(js_name = removeConnection)]
-    pub fn remove_connection(&self, id: &str) -> Result<(), JsValue> {
-        settled(self.editor.remove_connection(id)).map(drop)
+    pub fn remove_connection(&self, id: &str) -> Result<bool, JsValue> {
+        self.graph.remove_connection(id).map_err(failed)
+    }
+
+    /// Every cable, then every node; `false` when a `clear` pipe cancelled it.
+    pub fn clear(&self) -> Result<bool, JsValue> {
+        self.graph.clear().map_err(failed)
+    }
+
+    #[wasm_bindgen(js_name = addPort)]
+    pub fn add_port(&self, id: &str, output: bool, key: &str, ty: &str) -> Result<(), JsValue> {
+        self.graph
+            .add_port(id, side(output), key, ty)
+            .map_err(graph_error)
+    }
+
+    #[wasm_bindgen(js_name = removePort)]
+    pub fn remove_port(&self, id: &str, output: bool, key: &str) -> Result<bool, JsValue> {
+        self.graph
+            .remove_port(id, side(output), key)
+            .map_err(graph_error)
+    }
+
+    #[wasm_bindgen(js_name = retypePort)]
+    pub fn retype_port(
+        &self,
+        id: &str,
+        output: bool,
+        key: &str,
+        ty: &str,
+    ) -> Result<bool, JsValue> {
+        self.graph
+            .retype_port(id, side(output), key, ty)
+            .map_err(graph_error)
+    }
+
+    /// The node's ports on one side as `[key, type]` pairs, in order; `undefined` for a node not
+    /// here.
+    pub fn ports(&self, id: &str, output: bool) -> Option<Array> {
+        self.graph.ports(id, side(output)).map(|ports| {
+            ports
+                .into_iter()
+                .map(|(k, t)| Array::of2(&JsValue::from_str(&k), &JsValue::from_str(&t)))
+                .collect()
+        })
+    }
+
+    /// Puts the nodes in `order`, which must name every node once; `false` when it doesn't.
+    #[wasm_bindgen(js_name = reorderNodes)]
+    pub fn reorder_nodes(&self, order: Vec<String>) -> bool {
+        self.graph.reorder_nodes(&order)
+    }
+
+    #[wasm_bindgen(js_name = nodeIds)]
+    pub fn node_ids(&self) -> Vec<String> {
+        self.graph.node_ids()
+    }
+
+    #[wasm_bindgen(js_name = connectionIds)]
+    pub fn connection_ids(&self) -> Vec<String> {
+        self.graph.connection_ids()
     }
 
     /// The node's outputs, from the cache when present.
     pub fn fetch(&self, id: &str) -> Promise {
-        let pending = self.engine.fetch(id);
+        let pending = self.graph.engine().fetch(id);
         let cancelled = self.cancelled.clone();
         future_to_promise(async move {
             match pending.await {
@@ -270,7 +404,7 @@ impl GraphCore {
     /// The node's inputs, fetching every predecessor.
     #[wasm_bindgen(js_name = fetchInputs)]
     pub fn fetch_inputs(&self, id: &str) -> Promise {
-        let pending = self.engine.fetch_inputs(id);
+        let pending = self.graph.engine().fetch_inputs(id);
         let cancelled = self.cancelled.clone();
         future_to_promise(async move {
             match pending.await {
@@ -283,7 +417,8 @@ impl GraphCore {
     /// Clears the node's cache and everything downstream through the outputs it computes;
     /// without a node, every cache.
     pub fn reset(&self, id: Option<String>) -> Result<(), JsValue> {
-        self.engine
+        self.graph
+            .engine()
             .reset(id.as_deref())
             .map_err(|e| to_js(&self.cancelled, e))
     }
@@ -291,32 +426,37 @@ impl GraphCore {
     /// Gives the node `outputs` without running it, until something clears its cache.
     pub fn seed(&self, id: String, outputs: JsValue) {
         let seeded = ruggine_engine::Cancellable::resolved(Ok(Rc::new(outputs_from_js(outputs))));
-        self.engine.cache().patch(id, seeded);
+        self.graph.engine().cache().patch(id, seeded);
     }
 
     /// Clears the node's cache alone, cancelling a run in flight.
     pub fn forget(&self, id: &str) {
-        self.engine.cache().delete(id);
+        self.graph.engine().cache().delete(id);
     }
 
     #[wasm_bindgen(js_name = isCached)]
     pub fn is_cached(&self, id: &str) -> bool {
-        self.engine.cache().get(id).is_some()
+        self.graph.engine().cache().get(id).is_some()
     }
 
     #[wasm_bindgen(js_name = loopMembers)]
     pub fn loop_members(&self) -> Vec<String> {
-        pass::loop_members(&self.editor)
+        pass::loop_members(self.graph.editor())
     }
 
     #[wasm_bindgen(js_name = downstreamClosure)]
     pub fn downstream_closure(&self, id: &str) -> Vec<String> {
-        pass::downstream_closure(&self.editor, id)
+        pass::downstream_closure(self.graph.editor(), id)
     }
 
     /// What a change to `id` reaches, its caches cleared; `undefined` without a node.
     pub fn invalidate(&self, id: Option<String>, keep_caches: bool) -> Option<Vec<String>> {
-        pass::invalidate(&self.editor, &self.engine, id.as_deref(), keep_caches)
+        pass::invalidate(
+            self.graph.editor(),
+            self.graph.engine(),
+            id.as_deref(),
+            keep_caches,
+        )
     }
 
     /// Every node's outputs in the editor's order, as a `Map`; `null` when `stop_on_cancel` and
@@ -324,8 +464,8 @@ impl GraphCore {
     #[wasm_bindgen(js_name = fetchAll)]
     pub fn fetch_all(&self, on_node: Option<Function>, stop_on_cancel: bool) -> Promise {
         let (editor, engine, cancelled) = (
-            self.editor.clone(),
-            self.engine.clone(),
+            self.graph.editor().clone(),
+            self.graph.engine().clone(),
             self.cancelled.clone(),
         );
         future_to_promise(async move {
