@@ -6,7 +6,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { ClassicPreset } from "rete";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { resetFrameBackendToJs, readFrame, uploadFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
-import { frameToCube, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
+import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
+import { solError } from "../../src/graph/errorValue";
+import { applyFcUnit } from "../../src/graph/unitBridge";
 import {
   DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, ColumnsNode, GroupByFrameNode, UnpivotNode, RenameNode,
   SplitColumnNode, AddIndexNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, DropBlankRowsNode, WindowNode,
@@ -26,6 +28,26 @@ const sales: FrameValue = {
 const cube: CubeValue = cubeFromColumns([
   ...frameToCube(sales).columns,
   { name: "Tags", cells: [["x", "y"], [], ["x"], null, ["z"], ["y"]] },
+]);
+
+// Readings, a linear unit, mixed and error cells, logicals, nested tables and lists, for the cube verbs.
+const sub0 = frameFromRows([[1], [2]], ["x"]);
+const sub1 = frameFromRows([[9]], ["x"]);
+const odd: CubeValue = cubeFromColumns([
+  { name: "Rep", cells: ["Ada", "bo", "Ada", "Cy", "ada", null], type: "string" },
+  { name: "t", cells: [20, 26, 20, null, 31, 15].map((v) => (v === null ? null : applyFcUnit(v, "degC"))) as never },
+  { name: "d", cells: [1, 2, 1, 3, 2.5, 4].map((v) => applyFcUnit(v, "km")) as never },
+  { name: "Mixed", cells: [1, "x", true, solError("#N/A", "gone"), NaN, -0] },
+  { name: "Flag", cells: [true, false, true, null, false, true], type: "logical" },
+  { name: "sub", cells: [sub0, sub1, sub0, null, sub1, sub0] },
+  { name: "Tags", cells: [["Work", "home"], ["home"], ["Work", "home"], [], null, ["x"]] },
+]);
+
+// Rows equal cell by cell, a NaN apart from a blank, -0 as 0, a unit by its display: what Distinct keys on.
+const dupes: CubeValue = cubeFromColumns([
+  { name: "k", cells: [NaN, null, NaN, 0, -0, applyFcUnit(1, "km"), applyFcUnit(1, "km"), applyFcUnit(1000, "m")] as never },
+  { name: "sub", cells: [sub0, sub0, sub0, sub1, sub1, null, null, null] },
+  { name: "tags", cells: [["a"], ["a"], ["a"], [], [], ["b", "c"], ["b", "c"], ["b", "c"]] },
 ]);
 
 type Card = ClassicPreset.Node & {
@@ -128,9 +150,9 @@ const SPECS: Record<string, Spec> = {
   Window: { make: () => new WindowNode(), cubes: true, fields: { agg: Object.keys(WINDOW_FN_META) }, lists: ["keys"], strs: ["orderBy", "column", "name"], nums: ["n"] },
 };
 
-const NAMES = ["Rep", "Region", "Amount", "When", "Code", "", "  Amount ", "Nope", "Tags", "2"];
+const NAMES = ["Rep", "Region", "Amount", "When", "Code", "", "  Amount ", "Nope", "Tags", "2", "t", "d", "Mixed", "Flag", "sub"];
 const FILTER_OPS = ["gt", "gte", "lt", "lte", "eq", "neq", "contains", "startsWith", "endsWith", "isblank", "notblank", "iserror", "noterror", "listContains", "listContainsAny", "listContainsAll", "listEmpty"];
-const VALUES: unknown[] = ["60", "Ada", "a", "", " ", "-", "x,y", 100, 0, true, null];
+const VALUES: unknown[] = ["60", "Ada", "a", "", " ", "-", "x,y", "home", "work, home", "20", 100, 0, true, null];
 const NUMS: unknown[] = [0, 1, 2, 3, 10, -1, 2.5, 1e9, null];
 
 describe("every lazy verb over its ops and settings", () => {
@@ -141,8 +163,8 @@ describe("every lazy verb over its ops and settings", () => {
       const names = () => NAMES.filter(() => r() < 0.3);
       const ref = await uploadFrame(sales) as FrameRef;
       const planned = (await card(new DistinctNode()).data({ frame: [sales] })).frame;
-      const sources: unknown[] = [sales, ref, planned, null, ...(spec.cubes ? [cube, cube] : [])];
-      for (let i = 0; i < 80; i++) {
+      const sources: unknown[] = [sales, ref, planned, null, ...(spec.cubes ? [cube, cube, odd, odd, odd, dupes] : [])];
+      for (let i = 0; i < (spec.cubes ? 160 : 80); i++) {
         const n = spec.make() as Card & Record<string, unknown>;
         for (const [k, vs] of Object.entries(spec.fields ?? {})) n[k] = pick(vs);
         const inputs: Record<string, unknown[]> = {};
