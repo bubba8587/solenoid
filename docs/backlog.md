@@ -26,6 +26,8 @@ the production minify, and its "esbuild options ignored" warning is expected.
 ## Formula library
 - [ ] **Own the formula library instead of leaning on Formula.js** (author 2026-10-21, to weigh): the rust-port sweep found Formula.js recursing to stack overflows (FACT, COMBIN), dividing factorials (`COMBIN(30, 15)` off), looping once per period or order (DB, DDB, BESSEL*), throwing on plain arguments (CLEAN(5)) and mutating its first list argument; each is now an override in `tree/specs/computation/formulajs-divergences.md`. Options: fork it, publish Solenoid's own JS function set, or export one package from Solenoid (the TS kernels, the divergence tripwires as its tests, and the Rust core's ports as a sibling crate). Weigh against [[C17]] shareImpl and what a public package must keep stable.
 
+- [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
+
 ## Rust core (rust-port, [[D99]] rustIsSpec)
 - [ ] **Card bodies still on the TS:** Note and Report (knap templating, async frame reads); `tree/specs/computation/node-bodies.md` lists what moved.
 - [ ] **The TS schedule engine** (`packages/schedule-engine`'s cpm, graph, calendar, diagnostics, mermaid, `writeMspdi`) is unused by the app now that Schedule, Gantt and Earned Value run on the core's port; only its own tests use it. Deleting it touches [[C69]] ganttPackages (an MIT package meant to publish on its own): the author's call. The MSPDI round trip and DCMA corpus tests would move onto the card first.

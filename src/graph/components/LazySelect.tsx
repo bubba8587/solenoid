@@ -2,6 +2,7 @@ import {
   Children, isValidElement, useLayoutEffect, useRef, useState,
   type ReactNode, type SelectHTMLAttributes,
 } from "react";
+import { measureThenWrite } from "./layoutBatch";
 
 /** Options stay out of the DOM until hover or focus, which both precede the native picker, and never unmount while focused; the first render mounts them all to lock a min-width, since a max-content card is held wide by its widest option. */
 export function LazySelect({
@@ -16,13 +17,20 @@ export function LazySelect({
   const needMeasure = measuredSig !== sig;
   useLayoutEffect(() => {
     if (!needMeasure) return;
-    const el = ref.current;
-    // The used width, rounded up, not offsetWidth: an integer-rounded fractional width re-grows on every hover swap; 0 means not laid out, so stay armed.
-    const w = el ? Math.ceil(parseFloat(getComputedStyle(el).width) || 0) : 0;
-    if (w > 0) {
-      setMeasuredSig(sig);
-      setMinWidth(w);
-    }
+    measureThenWrite(
+      ref,
+      () => {
+        const el = ref.current;
+        // The used width, rounded up, not offsetWidth: an integer-rounded fractional width re-grows on every hover swap; 0 means not laid out, so stay armed.
+        return el ? Math.ceil(parseFloat(getComputedStyle(el).width) || 0) : 0;
+      },
+      (w) => {
+        if (w > 0) {
+          setMeasuredSig(sig);
+          setMinWidth(w);
+        }
+      },
+    );
   }, [sig, needMeasure]);
 
   const armed = needMeasure || hot;

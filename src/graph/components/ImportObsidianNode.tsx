@@ -29,6 +29,7 @@ import "./NoteNode.css";
 import "./ImportObsidianNode.css";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
+import { measureThenWrite } from "./layoutBatch";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -123,9 +124,15 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useLayoutEffect(() => {
     const bodyEl = bodyRef.current, rootEl = rootRef.current;
     if (!bodyEl || !rootEl) { setDocDotTop(undefined); return; }
-    let y = 0;
-    for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
-    setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
+    measureThenWrite(
+      bodyRef,
+      () => {
+        let y = 0;
+        for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+        return y + bodyEl.offsetHeight / 2 - 6;
+      },
+      setDocDotTop,
+    );
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
   const templateVars = useMemo(() => data.templateVariables(), [data, body]);

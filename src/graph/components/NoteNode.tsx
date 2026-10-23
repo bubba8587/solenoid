@@ -33,6 +33,7 @@ import "./Markdown.css";
 import "./NoteNode.css";
 import { renderNoteMarkdown, toggleTaskMarker } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
+import { measureThenWrite } from "./layoutBatch";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
@@ -162,9 +163,15 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useLayoutEffect(() => {
     const bodyEl = noteBodyRef.current, rootEl = noteRootRef.current;
     if (!bodyEl || !rootEl) { setDocDotTop(undefined); return; }
-    let y = 0;
-    for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
-    setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
+    measureThenWrite(
+      noteBodyRef,
+      () => {
+        let y = 0;
+        for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+        return y + bodyEl.offsetHeight / 2 - 6;
+      },
+      setDocDotTop,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed, fieldKeys.length, data.height, data.width, body]);
 

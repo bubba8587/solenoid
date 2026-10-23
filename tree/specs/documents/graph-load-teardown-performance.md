@@ -25,6 +25,25 @@ The composite drill-in (`flow/FlowCompositeOverlay.tsx`) has the same pipe with 
 
 Adding or removing one node then re-renders one card, not the whole canvas. Both halves are needed: without the single commit and the reused objects, restoring a full snapshot on a big undo costs time quadratic in the node count.
 
+## Re-renders during a rebuild
+
+While a rebuild runs (`isGraphRebuilding()`), a card's re-render request (`bumpNode`) waits in the surface and every
+waiting card re-renders in one commit when the outermost rebuild ends (`onGraphRebuildEnd`), so a load's compute pass
+costs one commit, not one per card. A position or re-render for a card React Flow doesn't hold yet does nothing: the
+topology sync builds it from the editor. The curtain's progress notifies only when its shown percent moves, since
+each notify renders it synchronously.
+
+## Layout reads come in one batch
+
+A card measures its socket rows, output socket, header and Note dot after it renders. Each read is queued with the
+write it feeds (`measureThenWrite`, `components/layoutBatch.ts`) and a commit's reads all run before its writes, before
+paint, so the browser lays out once per commit instead of once per card. Cards share one `ResizeObserver`
+(`observeResize`), so a frame's size changes reach the cards in one callback and one commit. Measured on
+personal-finance (154 cards, production build, desktop CPU): forced layouts 860 to 306, React commits 1,070 to 645,
+load 6.9 s to 6.0 s. **Reopen if:** a card reads layout in an effect outside the batch (the forced-layout count
+climbs again), or React Flow's own per-card measuring (`updateNodeInternals`, about 0.7 s of a 241-card load) gets a
+batched path.
+
 ## Teardown
 
 1. Remove every connection, then every node, one at a time.

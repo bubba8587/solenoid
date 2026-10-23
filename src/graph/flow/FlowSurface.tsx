@@ -87,7 +87,7 @@ import { socketFlipStore } from "../socketFlipStore";
 import { modalOwnsKeyboard, keyUnderModal } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
-import { isGraphRebuilding } from "../process";
+import { isGraphRebuilding, onGraphRebuildEnd } from "../process";
 import { installCableSettlePipe, rescanUnitMismatches, type CableSettleStack } from "../cableSettle";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { canvasLockStore } from "../canvasLock";
@@ -187,6 +187,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   hooksRef.current = hooks;
   const [nodes, setNodes] = useState<SolFlowNode[]>([]);
   const [edges, setEdges] = useState<SolFlowEdge[]>([]);
+  const heldIds = useRef(new Set<string>());
+  heldIds.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   const [menu, setMenu] = useState<{
@@ -248,16 +250,28 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, []);
 
   useEffect(() => {
-    s.handlers.bumpNode = (id) =>
-      setNodes((ns) =>
-        ns.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n,
-        ),
-      );
+    // A card React Flow doesn't hold yet (a load's, before its one topology sync, which reads every position and
+    // version from the editor) has nothing to update, and the update would still cost a commit. While a rebuild
+    // runs, re-renders wait and land in one commit when it ends: a load's compute pass re-renders every card.
+    const held = (id: string) => heldIds.current.has(id);
+    const bumpAll = (ids: Set<string>) =>
+      setNodes((ns) => ns.map((n) => (ids.has(n.id) ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n)));
+    const pendingBumps = new Set<string>();
+    const offRebuildEnd = onGraphRebuildEnd(() => {
+      if (pendingBumps.size === 0) return;
+      const ids = new Set(pendingBumps);
+      pendingBumps.clear();
+      bumpAll(ids);
+    });
+    s.handlers.bumpNode = (id) => {
+      if (isGraphRebuilding()) { pendingBumps.add(id); return; }
+      if (held(id)) bumpAll(new Set([id]));
+    };
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
       setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
     s.handlers.moveNode = (id, pos) => {
+      if (!held(id)) return;
       const isGroup = s.editor.getNode(id) instanceof GroupNode;
       setNodes((ns) => {
         let changed = false;
@@ -291,7 +305,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       );
     syncTopology();
     // A drill stack outlives its surface; unmounted, its view must not drive dead React state.
-    return () => { Object.assign(s.handlers, idleHandlers()); };
+    return () => { offRebuildEnd(); Object.assign(s.handlers, idleHandlers()); };
   }, [s, setViewport, syncTopology]);
 
   // editor.addPipe cannot be removed, so this pipe installs once per stack.

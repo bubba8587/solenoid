@@ -10,6 +10,7 @@ import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent, contrastInk } from "../palette";
+import { measureThenWrite, observeResize } from "./layoutBatch";
 
 // Under this many px a header pointer is a tap, not a drag; shared with the title label.
 export const HEADER_TAP_SLOP = 4;
@@ -83,23 +84,32 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     };
   }, []);
 
-  function syncOutputSocketTop() {
+  /** The output socket's top: the first visible value box's middle, or null for none. */
+  function readOutputSocketTop(): number | null | undefined {
     const el = ref.current;
-    if (!el) return;
+    if (!el) return undefined;
     // First visible box: a collapsed node hides its figure (offsetParent null). A result box outranks an input field above it (Value Input).
     const firstVisible = (sel: string) => {
       for (const b of el.querySelectorAll<HTMLElement>(sel)) if (b.offsetParent !== null) return b;
       return null;
     };
     const box = firstVisible(".solenoid-node__figure, .solenoid-node__display-value") ?? firstVisible(".solenoid-node__value-input");
-    if (!box) { el.style.removeProperty("--out-socket-top"); return; }
+    if (!box) return null;
     // Sum offsetTop up to the content wrapper: a box inside an intermediate positioned element (Date Input's picker row) would otherwise measure about 0.
     const content = el.querySelector<HTMLElement>(".solenoid-node__content");
     let top = box.offsetHeight / 2;
     // Walk only when content is a real ancestor, so a missing wrapper can't over-sum up to the card root.
     if (content) for (let n: HTMLElement | null = box; n && n !== content; n = n.offsetParent as HTMLElement | null) top += n.offsetTop;
     else top += box.offsetTop;
-    el.style.setProperty("--out-socket-top", `${top}px`);
+    return top;
+  }
+  function syncOutputSocketTop() {
+    measureThenWrite(ref, readOutputSocketTop, (top) => {
+      const el = ref.current;
+      if (!el || top === undefined) return;
+      if (top === null) el.style.removeProperty("--out-socket-top");
+      else el.style.setProperty("--out-socket-top", `${top}px`);
+    });
   }
   // After every commit, which also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
@@ -112,9 +122,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   useEffect(() => {
     const el = ref.current;
     if (!el || !node) return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
+    return observeResize(el, (entry) => {
       syncOutputSocketTop();
       const w = Math.round(entry.contentRect.width);
       const h = Math.round(entry.contentRect.height);
@@ -128,8 +136,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       const hostId = (node as { hostNodeId?: string }).hostNodeId;
       if (hostId) repositionDockedNodes(hostId);
     });
-    observer.observe(el);
-    return () => observer.disconnect();
   }, [node]);
 
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);

@@ -39,8 +39,17 @@ export function getEngine() {
 }
 
 let _rebuilding = 0;
+const rebuildEndListeners = new Set<() => void>();
 export function beginGraphRebuild() { _rebuilding++; }
-export function endGraphRebuild() { _rebuilding = Math.max(0, _rebuilding - 1); }
+export function endGraphRebuild() {
+  _rebuilding = Math.max(0, _rebuilding - 1);
+  if (_rebuilding === 0) for (const fn of [...rebuildEndListeners]) fn();
+}
+/** Runs when the outermost rebuild ends, so a surface can apply what it held back during one. */
+export function onGraphRebuildEnd(fn: () => void): () => void {
+  rebuildEndListeners.add(fn);
+  return () => { rebuildEndListeners.delete(fn); };
+}
 export function isGraphRebuilding() { return _rebuilding > 0; }
 
 let _recalcGen = 0;

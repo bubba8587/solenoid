@@ -12,6 +12,7 @@ import { cableValueStore } from "../cableValueStore";
 import { getOwningEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
+import { measureThenWrite } from "./layoutBatch";
 
 // Hover intent, so a cable drag crossing sockets never flashes hints.
 const HINT_DELAY_MS = 300;
@@ -41,15 +42,21 @@ type Props = {
   className?: string;
 };
 
-/** A socket top centered on `ref`'s row, re-measured after every render. */
+/** A socket top centered on `ref`'s row, re-measured after every render, in the commit's one batch of reads. */
 export function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const t = el.offsetTop + el.offsetHeight / 2 - 6;
-    if (prev.current !== t) { prev.current = t; setTop(t); }
+    measureThenWrite(
+      prev,
+      () => {
+        const el = ref.current;
+        return el ? el.offsetTop + el.offsetHeight / 2 - 6 : undefined;
+      },
+      (t) => {
+        if (t !== undefined && prev.current !== t) { prev.current = t; setTop(t); }
+      },
+    );
   });
   return top;
 }
