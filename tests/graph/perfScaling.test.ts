@@ -8,7 +8,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards, solError } from "../../src/graph/errorValue";
 import { loopMembers } from "../../src/graph/graphCompute";
-import { csvToFrame } from "../../src/graph/nodes/connection";
+import { csvToFrame } from "../../src/graph/frameBackend";
 import { connectionStore } from "../../src/graph/connectionStore";
 import seed from "../../src/graph/seedGraphs/personal-finance.json";
 

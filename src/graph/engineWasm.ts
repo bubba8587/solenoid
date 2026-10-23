@@ -1,7 +1,7 @@
 // [[C130]] rustCore
 // The Rust frame engine (`crates/solenoid-core`) compiled to WebAssembly: the same commands the desktop
 // engine takes over IPC, answered in-process. `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, engine_invoke, engine_source_bin, engine_read_bin, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_core.js";
+import init, { initSync, __wbg_reset, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_core.js";
 const wasmUrl = new URL("./engineWasm/solenoid_core_bg.wasm", import.meta.url);
 import { toSolError } from "./errorValue";
 
@@ -99,7 +99,8 @@ export async function wasmInvoke<T>(command: string, args?: Record<string, unkno
 
 /** A frame's cells in the engine's columnar hand-off (crates/solenoid-core/src/binary.rs). */
 export interface BinaryCells {
-  schema: { name: string; type: string; len: number }[];
+  /** A `raw` entry is the source text of the column before it. */
+  schema: { name: string; type: string; len: number; raw?: boolean }[];
   tags: Uint8Array;
   nums: Float64Array;
   strs: string;
@@ -120,4 +121,28 @@ export function wasmReadBin(handle: string, column?: string, limit?: number): (B
   if (!reply.ok) return null;
   const ok = reply.ok;
   return guarded(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
+}
+
+/** A CSV file's text as typed columns (`csv::frame_columnar`): its delimiter guessed, each column's type read off its
+ *  cells. */
+export function wasmCsvFrame(text: string): BinaryCells & { rowCount: number } {
+  const reply = JSON.parse(guarded(() => engine_csv_frame(text))) as { ok?: { columns: BinaryCells["schema"]; rowCount: number }; err?: unknown };
+  if ("err" in reply) throw toSolError(reply.err);
+  const ok = reply.ok!;
+  return guarded(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
+}
+
+/** The rows CSV text reads as (`csv::rows_columnar`). */
+export function wasmCsvRows(text: string, detect: boolean, keepBlank: boolean): string[][] {
+  const reply = JSON.parse(guarded(() => engine_csv_rows(text, detect, keepBlank))) as { ok?: number; err?: unknown };
+  if ("err" in reply) throw toSolError(reply.err);
+  const { strs, lens, widths } = guarded(() => ({ widths: take_nums(), lens: take_lens(), strs: take_strs() }));
+  const rows = new Array<string[]>(widths.length);
+  let off = 0, li = 0;
+  for (let i = 0; i < widths.length; i++) {
+    const row = new Array<string>(widths[i]);
+    for (let j = 0; j < row.length; j++) { const n = lens[li++]; row[j] = strs.slice(off, off + n); off += n; }
+    rows[i] = row;
+  }
+  return rows;
 }

@@ -652,21 +652,7 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
                 .collect();
         }
     }
-    // Papa Parse's `skipEmptyLines: "greedy"`: a row of blank fields is no row.
-    let rows: Vec<Vec<String>> = super::list::csv_rows(trimmed).into_iter().filter(|r| !js_trim(&r.concat()).is_empty()).collect();
-    let headers: Vec<String> = rows.first().map(|r| r.iter().map(|h| js_trim(h).to_string()).collect()).unwrap_or_default();
-    let body = rows.get(1..).unwrap_or(&[]);
-    let ncols = body.iter().map(Vec::len).max().unwrap_or(0).max(headers.len());
-    crate::frame::make_headers(&headers, ncols)
-        .into_iter()
-        .enumerate()
-        .map(|(j, name)| {
-            let cells: Vec<String> = body.iter().map(|r| js_trim(r.get(j).map_or("", String::as_str)).to_string()).collect();
-            let as_values: Vec<V> = cells.iter().map(|s| V::str(s)).collect();
-            let ty = super::list::infer_column("", &as_values).ty;
-            SourceColumn { name, ty, cells, unit: None, expr: None }
-        })
-        .collect()
+    crate::csv::source_columns(trimmed).into_iter().map(|(name, ty, cells)| SourceColumn { name, ty, cells, unit: None, expr: None }).collect()
 }
 
 /// `deriveFrame`: each column's cells read as its type, the text kept as typed.

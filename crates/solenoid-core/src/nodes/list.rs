@@ -581,74 +581,12 @@ pub(crate) fn literal_items(csv: &str) -> Vec<String> {
 /// `parseCsvLine`: the first row Papa Parse reads from the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
-    csv_rows(text).into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+    crate::csv::parse_rows(text, crate::csv::CsvOptions::default()).into_iter().next().unwrap_or_else(|| vec![String::new()])
 }
 
-/// `parseCsvRows(text, { keepBlankLines: true })`: every row Papa Parse reads, a blank line among them, the final
-/// newline a terminator.
+/// `parseCsvRows(text, { keepBlankLines: true })`.
 pub(crate) fn csv_rows(text: &str) -> Vec<Vec<String>> {
-    if text.is_empty() {
-        return Vec::new();
-    }
-    let t = text.replace("\r\n", "\n").replace('\r', "\n");
-    let s: Vec<char> = t.chars().collect();
-    let n = s.len();
-    let unquote = |a: usize, b: usize| s[a..b].iter().collect::<String>().replace("\"\"", "\"");
-    let mut rows: Vec<Vec<String>> = Vec::new();
-    let mut row: Vec<String> = Vec::new();
-    let mut i = 0;
-    loop {
-        if i < n && s[i] == '"' {
-            let start = i + 1;
-            let mut q = i;
-            let field;
-            loop {
-                match (q + 1..n).find(|&k| s[k] == '"') {
-                    None => {
-                        field = unquote(start, n);
-                        i = n;
-                        break;
-                    }
-                    Some(k) if k == n - 1 => {
-                        field = unquote(start, k);
-                        i = n;
-                        break;
-                    }
-                    Some(k) if s[k + 1] == '"' => q = k + 1,
-                    Some(k) => {
-                        let mut j = k + 1;
-                        while j < n && s[j] == ' ' {
-                            j += 1;
-                        }
-                        if j < n && (s[j] == ',' || s[j] == '\n') {
-                            field = unquote(start, k);
-                            i = j;
-                            break;
-                        }
-                        q = k;
-                    }
-                }
-            }
-            row.push(field);
-        } else {
-            let end = (i..n).find(|&k| s[k] == ',' || s[k] == '\n').unwrap_or(n);
-            row.push(s[i.min(n)..end].iter().collect());
-            i = end;
-        }
-        if i >= n {
-            rows.push(std::mem::take(&mut row));
-            break;
-        }
-        let newline = s[i] == '\n';
-        i += 1;
-        if newline {
-            rows.push(std::mem::take(&mut row));
-            if i >= n {
-                break;
-            }
-        }
-    }
-    rows
+    crate::csv::parse_rows(text, crate::csv::CsvOptions { detect_delimiter: false, keep_blank_lines: true })
 }
 
 /// `coerceLogical` as a cell: a boolean, blank, or NaN.
@@ -1069,51 +1007,10 @@ fn cell_number(v: &V) -> Option<f64> {
     }
 }
 
-/// `ISO_DATE`: `\d{4}-\d{2}-\d{2}`, then optionally a time, fraction and zone.
-fn iso_date_text(t: &str) -> bool {
-    let b = t.as_bytes();
-    let digits = |r: std::ops::Range<usize>| b.len() >= r.end && b[r].iter().all(u8::is_ascii_digit);
-    if !(digits(0..4) && b.get(4) == Some(&b'-') && digits(5..7) && b.get(7) == Some(&b'-') && digits(8..10)) {
-        return false;
-    }
-    let mut i = 10;
-    if i == b.len() {
-        return true;
-    }
-    if !matches!(b[i], b' ' | b'T') || !(digits(i + 1..i + 3) && b.get(i + 3) == Some(&b':') && digits(i + 4..i + 6)) {
-        return false;
-    }
-    i += 6;
-    if b.get(i) == Some(&b':') && digits(i + 1..i + 3) {
-        i += 3;
-    }
-    if b.get(i) == Some(&b'.') {
-        let n = b[i + 1..].iter().take_while(|c| c.is_ascii_digit()).count();
-        if n > 0 {
-            i += 1 + n;
-        }
-    }
-    match b.get(i) {
-        None => true,
-        Some(b'Z') => i + 1 == b.len(),
-        Some(b'+' | b'-') => {
-            let j = i + 1;
-            digits(j..j + 2) && ((b.len() == j + 4 && digits(j + 2..j + 4)) || (b.len() == j + 5 && b[j + 2] == b':' && digits(j + 3..j + 5)))
-        }
-        _ => false,
-    }
-}
-
 /// `dateCellSerial`: ISO date text as its serial.
 fn date_serial(v: &V) -> Option<f64> {
     let V::Str(s) = v else { return None };
-    if !iso_date_text(js_trim(s)) {
-        return None;
-    }
-    match crate::excel_criteria::parse_date(s) {
-        DateReading::Serial(r) if r.is_finite() => Some(r),
-        _ => None,
-    }
+    crate::csv::date_text_serial(s)
 }
 
 /// `inferColumn`: a column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.

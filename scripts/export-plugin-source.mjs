@@ -61,10 +61,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "obsidian-plugin/man
 const pin = (names) => Object.fromEntries(names.map((n) => [n, installed(n)]));
 const dependencies = pin([
   "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
-  "chrono-node", "knap", "papaparse", "react", "react-dom", "rete", "yaml",
+  "chrono-node", "knap", "react", "react-dom", "rete", "yaml",
 ]);
 const devDependencies = pin([
-  "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
+  "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
   "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
 ]);
 // A package a copied file imports but the lists above leave out fails the snapshot's `tsc` in its release workflow.

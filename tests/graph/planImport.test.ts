@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { planToCube, mspdiToPlan, isMspdiText, csvPlanToCube } from "../../src/graph/planImport";
-import { csvToFrame } from "../../src/graph/nodes/connection";
+import { csvToFrame } from "../../src/graph/frameBackend";
 import { scheduleTasks } from "./scheduleOnCard";
 import { formatDateSerial, parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import type { CubeValue } from "../../src/graph/frame";

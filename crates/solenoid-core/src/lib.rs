@@ -8,6 +8,7 @@
 pub mod binary;
 pub mod card_helpers;
 pub mod convert_units;
+pub mod csv;
 pub mod date_ops;
 pub mod date_parse;
 pub mod date_serial;
