@@ -408,14 +408,13 @@ export function renderTemplate(
 
 export interface TemplateFormatters {
   number: (v: number, spec: string | undefined) => string;
-  date?: (v: number, spec: string | undefined) => string;
 }
-export function templateFormat(value: unknown, spec: string | undefined, f: TemplateFormatters, isDate = false): string {
+export function templateFormat(value: unknown, spec: string | undefined, f: TemplateFormatters): string {
   if (value === null || value === undefined) return "";
   if (isSolError(value)) return value.code;
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
-  if (typeof value === "number") return isDate && f.date ? f.date(value, spec) : f.number(value, spec);
-  if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f, isDate)).join(", ");
+  if (typeof value === "number") return f.number(value, spec);
+  if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f)).join(", ");
   return String(value);
 }
 

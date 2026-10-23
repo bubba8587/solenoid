@@ -3,9 +3,11 @@ import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { PassthroughSpec } from "./passthrough";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
-import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast, readInput } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, readInput } from "./shared";
+import { nodeOnCore } from "../nodeOnCore";
+import { nodeWire } from "../nodeWire";
 import { isLambdaValue, type LambdaValue } from "./lambda";
-import { isSolError, type SolError } from "../errorValue";
+import { type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { formatScalar } from "../components/format";
 
@@ -26,34 +28,21 @@ export class DisplayNode extends ClassicPreset.Node {
     this.addOutput("out", trueAnyOut("Out"));
   }
 
-  data(inputs: { in?: unknown[] }) {
+  data(inputs: Record<string, unknown[] | undefined>) {
     const raw = inputs.in?.[0] ?? null;
-    // A LAMBDA can't come back from the core; the card keeps it whole, so the FC's lambdaView still reads it.
-    if (isLambdaValue(raw)) {
-      this.cachedValue = raw;
+    if (staysOffCore(raw)) {
+      this.cachedValue = raw as DisplayNode["cachedValue"];
       return { out: raw };
     }
-    return this.body(inputs);
+    return nodeOnCore(this, inputs) as { out: unknown };
   }
+}
 
-  body(inputs: { in?: unknown[] }) {
-    const raw = inputs.in?.[0] ?? null;
-    // Display sees errors (SEES_ERRORS): it badges the error and still forwards it.
-    if (isSolError(raw)) {
-      this.cachedValue = raw;
-      return { out: raw };
-    }
-    if (isFrameValue(raw) || isCubeValue(raw)) {
-      this.cachedValue = raw;
-    } else if (Array.isArray(raw)) {
-      if (Array.isArray(raw[0])) this.cachedValue = raw as number[][];
-      else if (typeof raw[0] === "string") this.cachedValue = raw as string[];
-      else this.cachedValue = raw as number[];
-    } else {
-      this.cachedValue = raw as number | string | null;
-    }
-    return { out: raw };
-  }
+/** A value a pass-through card hands on in TS: a LAMBDA can't come back from the core, and an object the card wire
+ *  doesn't carry can't reach it. A pass-through has nothing to compute on either. */
+export function staysOffCore(v: unknown): boolean {
+  if (isLambdaValue(v)) return true;
+  return v !== null && typeof v === "object" && !Array.isArray(v) && !isFrameValue(v) && !isCubeValue(v) && nodeWire(v) === undefined;
 }
 
 export type AlertMode = "range" | "equals" | "boolean" | "text";
@@ -105,46 +94,9 @@ export class AlertNode extends ClassicPreset.Node {
   }
 
   data(inputs: AlertInputs) {
-    const out = this.body(inputs);
+    const out = nodeOnCore(this, inputs as Record<string, unknown[] | undefined>) as { result: number | number[] | null };
     this.detectAndFire(out.result, inputs);
     return out;
-  }
-
-  /** The status; firing the alert when it changes stays with the card. */
-  body(inputs: AlertInputs): { result: number | number[] | null } {
-    const result = this.evaluate(inputs);
-    this.cachedResult = result;
-    return { result };
-  }
-
-  private evaluate(inputs: AlertInputs): number | number[] | null {
-    switch (this.condition) {
-      case "range": {
-        const v = scalarish(inputs.value, this.literals.value);
-        const lo = scalarish(inputs.low, this.literals.low);
-        const hi = scalarish(inputs.high, this.literals.high);
-        if (v === null || lo === null || hi === null) return null;
-        return broadcast((x, l, h) => (x < l ? 1 : x > h ? 2 : 0), v, lo, hi) as number | number[] | null;
-      }
-      case "equals": {
-        const v = scalarish(inputs.value, this.literals.value);
-        const t = scalarish(inputs.target, this.literals.target);
-        if (v === null || t === null) return null;
-        return broadcast((x, y) => (x === y ? 1 : 0), v, t) as number | number[] | null;
-      }
-      case "boolean": {
-        const v = scalarish(inputs.value, this.literals.value);
-        if (v === null) return null;
-        return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v) as number | number[] | null;
-      }
-      case "text": {
-        const text = readInput(inputs.text, this.stringLiterals.text ?? "");
-        const match = readInput(inputs.match, this.stringLiterals.match ?? "");
-        if (text === null || match === null) return null;
-        if (match === "") return 0;
-        return text.includes(match) ? 1 : 0;
-      }
-    }
   }
 
   private detectAndFire(result: number | number[] | null, inputs: AlertInputs) {
