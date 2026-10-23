@@ -5,7 +5,7 @@ import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame, coerceFrameCell } from "../frame";
+import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
@@ -20,12 +20,11 @@ import { cableGhostStore } from "../cableState";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
-import { logicalOrTypeError } from "../valueKinds";
 import {
   colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
+  isCubeValue, isFrameValue, inferColumn, frameToCube,
   cubeRowCount, frameFromRows, cubeFromColumns,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
@@ -55,7 +54,7 @@ import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
-import { tagFrameCellUnit, tagCubeCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
+import { tagCubeCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -2373,76 +2372,9 @@ export class GetColumnNode extends ClassicPreset.Node {
   }
 
   body(inputs: Record<string, unknown[] | undefined>): { values: GetColumnValues } {
-    const f = inputs.frame?.[0] ?? null;
-    const name = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
-    if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
-    if (isCubeValue(f)) {
-      const cc = f.columns.find((c) => c.name === name);
-      if (!cc) { this.cachedResult = null; return { values: null }; }
-      for (const cell of cc.cells) {
-        if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
-          this.cachedResult = null;
-          return { values: solError("#SHAPE!", `"${name}" has list or table cells; Get Column reads a scalar column`) };
-        }
-      }
-      return { values: this.readColumn(inferColumn(name, cc.cells)) };
-    }
-    if (isFrameRef(f)) {
-      const col = (inputs.column?.[0] ?? null) as FrameValue | SolError | null;
-      if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
-      if (!col) { this.cachedResult = null; return { values: null }; }
-      return { values: this.readColumn(col.columns[0]) };
-    }
-    const col = columnOnCore(isFrameValue(f) ? f : widenToFrame(f), name);
-    if (!col) { this.cachedResult = null; return { values: null }; }
-    return { values: this.readColumn(col) };
-  }
-
-  private readColumn(col: FrameColumn): GetColumnValues {
-    if (this.readAs === "text") {
-      // Format, don't String(): a date column must read as date text, not serials.
-      const out = col.values.map((v) => {
-        const c = formatFrameCell(col.type, v);
-        return c == null ? "" : String(c);
-      });
-      this.cachedResult = out;
-      return out;
-    }
-    if (this.readAs === "logical") {
-      // Shares coerceLogical with Cast to Boolean so the two parse identically.
-      const out = col.values.map((v) =>
-        v === null ? null : isSolError(v) ? v : logicalOrTypeError(v, `Get Column "${col.name}"`),
-      );
-      this.cachedResult = out;
-      return out;
-    }
-    const colUnit = this.readAs === "number" && col.unit ? col.unit : undefined;
-    const out = col.values.map((v) => {
-      if (v === null) return null; // blank stays null, not NaN
-      if (typeof v === "number") return colUnit ? (tagFrameCellUnit(v, colUnit) as number | UnitCell) : v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      if (isSolError(v)) return v;
-      if (typeof v === "string") {
-        // Text reads as a Frame cell of the read type does ([[D93]] oneTextReading).
-        const n = coerceFrameCell(this.readAs === "date" ? "date" : "number", v) as number | SolError | null;
-        if (n === null || isSolError(n)) return n;
-        return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
-      }
-      return NaN;
-    });
-    this.cachedResult = out;
-    return out;
+    return nodeOnCore(this, inputs) as { values: GetColumnValues };
   }
 }
-
-/** `getColumn` with the name resolved on the core, which reads the names alone. */
-function columnOnCore(f: FrameValue, name: string): FrameColumn | null {
-  const r = frameFnOnCore("getColumn", [namesOnly(f)], [name]);
-  if (!r || "frame" in r) return getColumn(f, name);
-  return typeof r.value === "number" ? f.columns[r.value] : null;
-}
-
-const namesOnly = (f: FrameValue): FrameValue => ({ __frame: true, columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) });
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
 

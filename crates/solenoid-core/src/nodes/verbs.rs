@@ -4,14 +4,14 @@
 //! and names it in `uploaded`, so a verb passing that frame through answers the ref it was given. A Cube runs its
 //! verb on its cells here, as `frameVerbs.ts`' cube verbs do, the scalar columns through the core's frame verbs.
 
-use super::frames::{core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, thrown, to_json, trimmed};
-use super::list::truthy;
+use super::frames::{core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame};
+use super::list::{frame_cell_of, infer_column, truthy};
 use super::scalar::{read_role, Role};
-use super::{err, Answer, Call, Cube, CubeColumn};
+use super::{err, list, Answer, Call, Column, Cube, CubeColumn};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::{js_string_of, V};
+use crate::excel_functions::{js_string_of, logical_or_type_error, V};
 use crate::frame::{FrameCell, FrameColumn, FrameValue};
-use crate::frame_verbs::{apply_verb, compile_filter, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp};
+use crate::frame_verbs::{apply_verb, compile_filter, format_frame_cell, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp};
 use crate::jsnum::{js_lower, js_trim};
 use serde_json::{json, Map, Value as Json};
 use std::rc::Rc;
@@ -33,6 +33,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "MergeColumnsNode" => merge_columns(c),
         "DropBlankRowsNode" => drop_blank_rows(c),
         "WindowNode" => window(c),
+        "GetColumnNode" => get_column(c),
         _ => return None,
     })
 }
@@ -459,6 +460,107 @@ fn window(c: &mut Call) -> Answer {
             "column": blank_undef(&column), "as": out_name, "n": to_json(&n.unwrap_or(V::Undef)),
         }),
     ))
+}
+
+// ─── Get Column ─────────────────────────────────────────────────────────────────
+
+/// `getColumn`: by name, else by a 1-based position.
+fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a Column> {
+    let key = js_trim(name);
+    if let Some(c) = columns.iter().find(|c| c.name == key) {
+        return Some(c);
+    }
+    if key.is_empty() || !key.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let idx: usize = key.parse().ok()?;
+    (1..=columns.len()).contains(&idx).then(|| &columns[idx - 1])
+}
+
+/// Get Column's answer, beside what the card shows.
+fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
+    c.show("cachedResult", shown);
+    Ok(vec![("values".into(), values)])
+}
+
+/// A column read as the card's Read as: text as it shows, logicals as Cast reads them, numbers and dates coerced
+/// (text read as a Frame cell of the type, [[D93]] oneTextReading), a number column keeping its unit.
+fn read_column(c: &mut Call, col: &Column) -> Answer {
+    let read_as = c.field_str("readAs", "number").to_string();
+    let out: Vec<V> = match read_as.as_str() {
+        "text" => col.values.iter().map(|v| if matches!(v, V::Null | V::Undef) { V::str("") } else { V::str(&format_frame_cell(col.ty, &core_cell(v))) }).collect(),
+        "logical" => {
+            let place = format!("Get Column \"{}\"", col.name);
+            col.values
+                .iter()
+                .map(|v| match v {
+                    V::Null | V::Undef => V::Null,
+                    V::Err(_) => v.clone(),
+                    v => match logical_or_type_error(v, &place) {
+                        Ok(Some(b)) => V::Bool(b),
+                        Ok(None) => V::Null,
+                        Err(e) => e,
+                    },
+                })
+                .collect()
+        }
+        _ => {
+            let unit = col.unit.as_ref().filter(|_| read_as == "number");
+            let tag = |v: V| if let Some(u) = unit { tag_cell_unit(&v, u) } else { v };
+            col.values
+                .iter()
+                .map(|v| match v {
+                    V::Null | V::Undef => V::Null,
+                    V::Num(_) => tag(v.clone()),
+                    V::Bool(b) => V::Num(if *b { 1.0 } else { 0.0 }),
+                    V::Err(_) => v.clone(),
+                    V::Str(s) => match frame_cell_of(if read_as == "date" { "date" } else { "number" }, s) {
+                        n @ (V::Null | V::Err(_)) => n,
+                        n => tag(n),
+                    },
+                    _ => V::Num(f64::NAN),
+                })
+                .collect()
+        }
+    };
+    let out = list(out);
+    values_answer(c, out.clone(), out)
+}
+
+fn get_column(c: &mut Call) -> Answer {
+    let f = first(c, "frame");
+    let name = str_input(c, "name", "");
+    if !truthy(&f) || matches!(name, V::Null) || trimmed(&name, "name")?.is_empty() {
+        return values_answer(c, V::Null, V::Null);
+    }
+    let V::Str(name) = name else { return values_answer(c, V::Null, V::Null) };
+    match &f {
+        V::Cube(k) => {
+            let Some(cc) = k.columns.iter().find(|col| *col.name == *name) else { return values_answer(c, V::Null, V::Null) };
+            if cc.cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))) {
+                let e = err(ErrorCode::Shape, format!("\"{name}\" has list or table cells; Get Column reads a scalar column"));
+                return values_answer(c, V::Null, e);
+            }
+            read_column(c, &infer_column(&name, &cc.cells))
+        }
+        // A ref's column, which the shell read from the backend.
+        V::Json(_) => match first(c, "column") {
+            V::Frame(col) if !col.columns.is_empty() => read_column(c, &col.columns[0]),
+            e @ V::Err(_) => values_answer(c, V::Null, e),
+            _ => values_answer(c, V::Null, V::Null),
+        },
+        V::Frame(fr) => match column_named(&fr.columns, &name) {
+            Some(col) => read_column(c, &col.clone()),
+            None => values_answer(c, V::Null, V::Null),
+        },
+        other => {
+            let fr = widen_to_frame(other);
+            match column_named(&fr.columns, &name) {
+                Some(col) => read_column(c, &col.clone()),
+                None => values_answer(c, V::Null, V::Null),
+            }
+        }
+    }
 }
 
 // ─── Cube verbs (frameVerbs.ts) ──────────────────────────────────────────────────
