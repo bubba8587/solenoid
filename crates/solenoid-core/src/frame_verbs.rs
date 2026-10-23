@@ -14,7 +14,7 @@ use serde_json::{json, Value as Json};
 
 use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::spelled::{spelled, Wire};
-use crate::fxhash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::js_sort::js_sort_by;
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};

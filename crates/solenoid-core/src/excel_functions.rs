@@ -2640,8 +2640,8 @@ pub enum Route {
 /// `name`'s route, resolved once per name and kept.
 pub fn route(name: &str) -> Route {
     thread_local! {
-        static ARMS: crate::fxhash::FxHashMap<&'static str, F> = F::ALL.iter().map(|&f| (f.name(), f)).collect();
-        static ROUTES: std::cell::RefCell<crate::fxhash::FxHashMap<String, Route>> = std::cell::RefCell::new(Default::default());
+        static ARMS: rustc_hash::FxHashMap<&'static str, F> = F::ALL.iter().map(|&f| (f.name(), f)).collect();
+        static ROUTES: std::cell::RefCell<rustc_hash::FxHashMap<String, Route>> = std::cell::RefCell::new(Default::default());
     }
     if let Some(r) = ROUTES.with(|r| r.borrow().get(name).copied()) {
         return r;
@@ -3553,7 +3553,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Fx(FxError),
                 Other(usize),
             }
-            let mut seen: crate::fxhash::FxHashSet<Key> = Default::default();
+            let mut seen: rustc_hash::FxHashSet<Key> = Default::default();
             for (i, v) in arr.iter().enumerate() {
                 seen.insert(match v {
                     V::Null | V::Undef => continue,

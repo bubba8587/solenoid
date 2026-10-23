@@ -262,7 +262,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
-            let values = |key: &str| -> Result<crate::fxhash::FxHashMap<String, crate::excel_functions::V>, SolError> {
+            let values = |key: &str| -> Result<rustc_hash::FxHashMap<String, crate::excel_functions::V>, SolError> {
                 Ok(map_arg(args, key)?.into_iter().flatten().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
             };
             let inputs = crate::eval::ColumnInputs {
@@ -270,7 +270,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 sides: values("sides")?,
                 row_sides: values("rowSides")?,
                 reserved: parse::<Option<Vec<String>>>(args, "reserved")?.unwrap_or_default(),
-                alias: parse::<Option<crate::fxhash::FxHashMap<String, String>>>(args, "alias")?.unwrap_or_default(),
+                alias: parse::<Option<rustc_hash::FxHashMap<String, String>>>(args, "alias")?.unwrap_or_default(),
                 rows: parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f)),
             };
             let lambdas = parse::<Option<Vec<String>>>(args, "lambdas")?.unwrap_or_default();

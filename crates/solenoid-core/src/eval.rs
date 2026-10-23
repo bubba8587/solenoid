@@ -11,7 +11,7 @@ use crate::frame::FrameColumn;
 use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
-use crate::fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use crate::excel_formula::{Ast, BinOp, UnaryOp};
 
 pub type Env = FxHashMap<String, V>;
@@ -142,7 +142,7 @@ thread_local! {
 thread_local! {
     /// None until the TS first says: a fresh instance (after a trap) reads every name it doesn't know as possibly a
     /// pack's, so the TS answers it rather than the core answering #NAME?.
-    static EXTERNAL: RefCell<Option<crate::fxhash::FxHashSet<String>>> = RefCell::default();
+    static EXTERNAL: RefCell<Option<rustc_hash::FxHashSet<String>>> = RefCell::default();
 }
 
 /// The names the TS registry holds (packs register theirs at run time), which a formula may call back into.
