@@ -1,37 +1,14 @@
 // [[C25]] firstClassUnits
 import { ClassicPreset } from "rete";
-import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut, readInput } from "./shared";
-import { isCubeValue, isFrameValue, frameToCube, type CubeValue, type FrameValue, type CubeColumn, type CubeCell, type FrameCell } from "../frame";
-import { isUnitCell, type ColumnUnit } from "../unitValue";
-import { displayMagnitudeOf } from "../unitBridge";
-import { tagFrameCellUnit } from "../unitColumn";
-import { isSolError, solError, type SolError } from "../errorValue";
-import { earnedValue, type EvTaskInput } from "./earnedValueOps";
-import { todaySerial } from "./schedule";
-import { Calendar } from "@solenoid/schedule-engine";
+import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut } from "./shared";
+import { type FrameValue, type FrameCell } from "../frame";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
 
-const norm = (s: string) => s.trim().toLowerCase();
-const isText = (v: unknown): v is string => typeof v === "string";
-
-function byName(c: CubeValue, ...names: string[]): CubeColumn | undefined {
-  const set = new Set(names.map(norm));
-  return c.columns.find((col) => set.has(norm(col.name)));
-}
-function magnitude(cell: CubeCell | undefined): number {
-  if (isUnitCell(cell)) return displayMagnitudeOf(cell);
-  return typeof cell === "number" && Number.isFinite(cell) ? cell : 0;
-}
-const dateOf = (cell: CubeCell | undefined): number | null => (typeof cell === "number" && Number.isFinite(cell) ? cell : null);
-function unitOf(col: CubeColumn | undefined): ColumnUnit | undefined {
-  const uc = col?.cells.find(isUnitCell);
-  return uc ? { dim: uc.dim, ...(uc.display ? { display: uc.display } : {}) } : undefined;
-}
-
 const SUMMARY_COLS = ["BCWS", "BCWP", "ACWP", "SV", "CV", "SPI", "CPI", "EAC", "VAC", "TCPI"] as const;
-const RATIO_COLS = new Set(["SPI", "CPI", "TCPI"]);
 
 export const EARNED_VALUE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
 
@@ -88,83 +65,9 @@ export class EarnedValueNode extends ClassicPreset.Node {
     this.addOutput("eac", numOut("EAC"));
   }
 
-  private empty(v: FrameValue | SolError | null) {
-    this.cachedResult = v; this.cachedSpi = isSolError(v) ? v : null; this.cachedCpi = isSolError(v) ? v : null; this.cachedEac = isSolError(v) ? v : null;
-    return { frame: v, spi: this.cachedSpi, cpi: this.cachedCpi, eac: this.cachedEac };
-  }
-
-  data(inputs: {
-    schedule?: (CubeValue | FrameValue | SolError | null)[];
-    baseline?: (CubeValue | FrameValue | SolError | null)[];
-    status?: (number | null)[];
-    holidays?: (number | null)[][];
-    weekend_code?: number[];
-    cost?: string[];
-  }) {
-    const sched = inputs.schedule?.[0] ?? null;
-    if (isSolError(sched)) return this.empty(sched);
-    const scube = isCubeValue(sched) ? sched : isFrameValue(sched) ? frameToCube(sched) : null;
-    if (!scube) return this.empty(null);
-    const status = inputs.status ? inputs.status[0] : todaySerial();
-    if (status == null || !Number.isFinite(status)) return this.empty(null);
-
-    const baseRaw = inputs.baseline?.[0] ?? null;
-    const bcube = isCubeValue(baseRaw) ? baseRaw : isFrameValue(baseRaw) ? frameToCube(baseRaw) : null;
-    const costName = (readInput(inputs.cost, this.stringLiterals.cost ?? "") ?? "").trim();
-
-    const taskCol = byName(scube, "task", "name", "title") ?? scube.columns.find((c) => c.cells.some(isText));
-    if (!taskCol) return this.empty(solError("#VALUE!", "Earned Value needs a Task column naming each task"));
-    const completeCol = byName(scube, "complete", "% complete", "percent complete", "done", "progress");
-    const costCol = (costName ? byName(scube, costName) : undefined) ?? byName(scube, "cost", "budget", "bac");
-    const actualCol = byName(scube, "actual cost", "actual", "acwp", "spent");
-    const sStart = byName(scube, "start"), sFinish = byName(scube, "finish", "end");
-
-    const bTask = bcube ? (byName(bcube, "task", "name", "title") ?? bcube.columns.find((c) => c.cells.some(isText))) : undefined;
-    const bCost = bcube ? ((costName ? byName(bcube, costName) : undefined) ?? byName(bcube, "cost", "budget", "bac")) : undefined;
-    const bStart = bcube ? byName(bcube, "start") : undefined, bFinish = bcube ? byName(bcube, "finish", "end") : undefined;
-    const baseIdx = new Map<string, number>();
-    bTask?.cells.forEach((v, i) => { const n = norm(String(v ?? "")); if (n && !baseIdx.has(n)) baseIdx.set(n, i); });
-
-    const costUnit = unitOf(costCol) ?? unitOf(bCost);
-    const rows = scube.columns.reduce((m, c) => Math.max(m, c.cells.length), 0);
-    const tasks: EvTaskInput[] = [];
-    for (let i = 0; i < rows; i++) {
-      const name = String(taskCol.cells[i] ?? "").trim();
-      if (!name) continue;
-      const bi = baseIdx.get(norm(name));
-  
-      const baseCost = bi != null && bCost ? magnitude(bCost.cells[bi]) : null;
-      const cost = baseCost != null ? baseCost : (costCol ? magnitude(costCol.cells[i]) : 0);
-      const complete = Math.max(0, Math.min(100, completeCol ? magnitude(completeCol.cells[i]) : 0));
-      const plannedStart = bi != null && bStart ? dateOf(bStart.cells[bi]) : dateOf(sStart?.cells[i]);
-      const plannedFinish = bi != null && bFinish ? dateOf(bFinish.cells[bi]) : dateOf(sFinish?.cells[i]);
-      const actualCost = actualCol && actualCol.cells[i] != null ? magnitude(actualCol.cells[i]) : null;
-      tasks.push({ name, cost, complete, plannedStart, plannedFinish, actualCost });
-    }
-
-    const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
-    const calendar = new Calendar(status, { workingDays: true, weekendCode, holidays: inputs.holidays?.[0] ?? undefined, precision: "days" });
-    const { tasks: rowsM, totals } = earnedValue(tasks, status, (a, b) => calendar.countBetween(a, b));
-    const money = costUnit ? { unit: costUnit } : {};
-    const col = (name: string, values: FrameCell[]) => ({ name, type: "number" as const, values, ...(RATIO_COLS.has(name) ? {} : money) });
-    const frame: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "Task", type: "string", values: rowsM.map((r) => r.name) },
-        col("BCWS", rowsM.map((r) => r.bcws)),
-        col("BCWP", rowsM.map((r) => r.bcwp)),
-        col("ACWP", rowsM.map((r) => r.acwp)),
-        col("SV", rowsM.map((r) => r.sv)),
-        col("CV", rowsM.map((r) => r.cv)),
-        col("SPI", rowsM.map((r) => r.spi)),
-        col("CPI", rowsM.map((r) => r.cpi)),
-        col("EAC", rowsM.map((r) => r.eac)),
-        col("VAC", rowsM.map((r) => r.vac)),
-        col("TCPI", rowsM.map((r) => r.tcpi)),
-      ],
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as {
+      frame: FrameValue | SolError | null; spi: FrameCell | SolError | null; cpi: FrameCell | SolError | null; eac: FrameCell | SolError | null;
     };
-    const eacOut: FrameCell = costUnit ? (tagFrameCellUnit(totals.eac, costUnit) as FrameCell) : totals.eac;
-    this.cachedResult = frame; this.cachedSpi = totals.spi; this.cachedCpi = totals.cpi; this.cachedEac = eacOut;
-    return { frame, spi: totals.spi, cpi: totals.cpi, eac: eacOut };
   }
 }

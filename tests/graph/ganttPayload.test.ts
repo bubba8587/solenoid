@@ -1,7 +1,6 @@
 // [[C69]], [[C70]], [[C71]]
 import { describe, it, expect } from "vitest";
-import { ganttPayloadFromSchedule } from "../../src/graph/ganttPayload";
-import { scheduleTasks } from "../../src/graph/scheduleCpm";
+import { ganttPayload, scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
 import { cubeFromColumns, type CubeValue } from "../../src/graph/frame";
@@ -21,10 +20,10 @@ const plan: CubeValue = cubeFromColumns([
   { name: "Project", cells: ["Build", "Close"], type: "string" },
 ]);
 
-describe("ganttPayloadFromSchedule", () => {
+describe("the Gantt card's payload", () => {
   it("flattens the WBS, carries flags and links, computes shading from the calendar, parses the view keys", () => {
     const r = scheduleTasks(plan, { start: MON, workingDays: true, holidays: [d("2026-01-07")] });
-    const p = ganttPayloadFromSchedule(r.cube, { today: MON, options: "zoom=week;critical=off;title=Plan;window=2026-01-01,2026-02-01", calendar: { holidays: [d("2026-01-07")] } });
+    const p = ganttPayload(r.cube, { options: "zoom=week;critical=off;title=Plan;window=2026-01-01,2026-02-01", holidays: [d("2026-01-07")] });
     if (isSolError(p)) throw new Error(p.message);
     expect(p.kind).toBe("gantt");
     expect(p.tasks.map((t) => [t.name, t.level, t.summary, t.milestone])).toEqual([
@@ -49,11 +48,10 @@ describe("ganttPayloadFromSchedule", () => {
   it("a baseline joins by name; a table without dates is a #VALUE! naming the row", () => {
     const r = scheduleTasks(plan, { start: MON, workingDays: true });
     const later = scheduleTasks(plan, { start: d("2026-01-12"), workingDays: true });
-    const p = ganttPayloadFromSchedule(later.cube, { today: null, baseline: r.cube });
+    const p = ganttPayload(later.cube, { baseline: r.cube });
     if (isSolError(p)) throw new Error(p.message);
     expect(p.tasks[1].baselineStart).toBe(MON);
-    expect(p.today).toBeNull();
-    const bad = ganttPayloadFromSchedule(cubeFromColumns([{ name: "Task", cells: ["X"], type: "string" }]), { today: null });
+    const bad = ganttPayload(cubeFromColumns([{ name: "Task", cells: ["X"], type: "string" }]));
     expect(isSolError(bad) && bad.message).toMatch(/"X"/);
   });
 });
@@ -83,7 +81,7 @@ describe("Schedule rows with a Repeat column", () => {
       { name: "Predecessors", cells: [[], [], ["A"]] },
     ]);
     const r = scheduleTasks(c, { start: MON, workingDays: true });
-    const p = ganttPayloadFromSchedule(r.cube, { today: MON });
+    const p = ganttPayload(r.cube);
     if (isSolError(p)) throw new Error(p.message);
     expect(p.tasks.map((t) => t.name)).toEqual(["A", "B"]);
   });
@@ -96,7 +94,7 @@ describe("Schedule rows with a Repeat column", () => {
       { name: "Critical", cells: ["Y", "on", 2, "no"] },
       { name: "Manual", cells: ["on", "y", -1, 0] },
     ]);
-    const p = ganttPayloadFromSchedule(c, { today: MON });
+    const p = ganttPayload(c);
     if (isSolError(p)) throw new Error(p.message);
     expect(p.tasks.map((t) => [t.critical, !!t.manual])).toEqual([[true, true], [true, true], [true, true], [false, false]]);
   });

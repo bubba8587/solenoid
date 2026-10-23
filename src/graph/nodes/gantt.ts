@@ -1,12 +1,10 @@
 // [[C69]], [[C70]], [[C71]]
 import { ClassicPreset } from "rete";
-import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut, readInput } from "./shared";
-import { parseChartOptions, type ChartOptions } from "./chartOptions";
-import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
-import { isSolError, type SolError } from "../errorValue";
+import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut } from "./shared";
+import { type ChartOptions } from "./chartOptions";
+import { type SolError } from "../errorValue";
 import type { ChartValue } from "../chartValue";
-import { ganttPayloadFromSchedule } from "../ganttPayload";
-import { todaySerial } from "./schedule";
+import { nodeOnCore } from "../nodeOnCore";
 
 
 export const GANTT_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
@@ -42,42 +40,7 @@ export class GanttNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: {
-    schedule?: (CubeValue | FrameValue | SolError | null)[];
-    baseline?: (CubeValue | FrameValue | SolError | null)[];
-    holidays?: (number | null)[][];
-    weekend_code?: number[];
-    status?: (number | null)[];
-    options?: string[];
-  }): { chart: ChartValue | SolError | null } {
-    const schedule = inputs.schedule?.[0] ?? null;
-    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(optStr);
-
-    if (isSolError(schedule)) { this.cachedChart = schedule; return { chart: schedule }; }
-    if (!isCubeValue(schedule) && !isFrameValue(schedule)) { this.cachedChart = null; return { chart: null }; }
-
-    const baseIn = inputs.baseline?.[0] ?? null;
-    const baseline = isCubeValue(baseIn) || isFrameValue(baseIn) ? baseIn : null;
-    const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
-    const statusIn = inputs.status ? inputs.status[0] : null;
-    const statusDate = statusIn != null && Number.isFinite(statusIn) ? statusIn : null;
-
-    const payload = ganttPayloadFromSchedule(schedule, {
-      baseline,
-      today: todaySerial(),
-      statusDate,
-      options: optStr,
-      calendar: { holidays: inputs.holidays?.[0], weekendCode },
-    });
-    if (isSolError(payload)) { this.cachedChart = payload; return { chart: payload }; }
-
-    const chart: ChartValue = {
-      __chart: true, op: "gantt", values: null, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Gantt",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError | null };
   }
 }

@@ -1,12 +1,10 @@
 // [[B14]], [[C50]]
 import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType, type ResultDim } from "./shared";
-import { toAnyMatrix } from "./coerce";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType, type ResultDim } from "./shared";
 import { compilePositional, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue } from "./lambda";
-import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
-import { guardFinite } from "../valueKinds";
+import { type SolError, type SolErrorCode } from "../errorValue";
 import type { UnitCell } from "../unitValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
@@ -53,18 +51,6 @@ export function resolveFn(
     };
   }
   return { fn, err: null, code: "#SYNTAX!" };
-}
-
-/** Returns the tagged error downstream while cachedResult stays null, so the card keeps the richer inline message. */
-function fnError(err: string, code: SolErrorCode): { result: SolError } {
-  return { result: solError(code, err) };
-}
-
-function cell(v: unknown): Cell {
-  if (isSolError(v)) return v;
-  if (typeof v === "string") return v;
-  if (typeof v === "boolean") return v;
-  return typeof v === "number" ? guardFinite(v, [v]) : null;
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
@@ -214,27 +200,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     this.addOutput("result", resultOut("Scanned", "matrix", this.resultAs));
   }
 
-  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const initial = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + value", ["acc", "value", "step"], 3, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    try {
-      let acc: unknown = initial;
-      let i = 0;
-      // The carried accumulator stays raw: normalizing it would flatten a valid intermediate to null.
-      const out: Mat = m.map((row) => row.map((x) => { acc = fn(acc, x, ++i); return cell(acc); }));
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 

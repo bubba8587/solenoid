@@ -268,7 +268,7 @@ fn mat_eigen(c: &mut Call) -> Answer {
 // ─── tableLambda.ts: MAP, BYROW / BYCOL, REDUCE, MAKEARRAY ───────────────────────────────────────────────────────
 
 /// `toAnyMatrix`: a list is one row, a lone value one cell, and a later item that isn't a row a one-cell row.
-fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
+pub(crate) fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
     match v {
         V::Null | V::Undef => None,
         V::List(items) if items.is_empty() => Some(Vec::new()),
@@ -278,7 +278,7 @@ fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
     }
 }
 
-fn matrix_v(m: &[Vec<V>]) -> V {
+pub(crate) fn matrix_v(m: &[Vec<V>]) -> V {
     grid(m.iter().cloned())
 }
 
@@ -362,13 +362,13 @@ pub(crate) fn syntax_hint(expr: &str) -> Option<String> {
 
 /// A card's formula: a wired LAMBDA with its parameters matched to the card's variables by name, or the typed formula
 /// over them.
-enum Body {
+pub(crate) enum Body {
     Lambda(Rc<LambdaV>, Vec<Option<usize>>),
     Inline(Ast, Vec<String>),
 }
 
 /// `resolveFn`: the body, or the message the card shows and the code its error carries.
-fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
+pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
     if let V::Lambda(lam) = slot(c, "lambda") {
         let unknown: Vec<&str> = lam.params.iter().map(String::as_str).filter(|p| !vars.contains(p)).collect();
         if !unknown.is_empty() {
@@ -401,7 +401,7 @@ fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
 
 impl Body {
     /// The fold's unit wrapper (`unit_fold.rs`) over a table holding a unit cell; None where it has no reading.
-    fn fold(&self, kind: FoldKind, m: &[Vec<V>], initial: &V) -> Option<V> {
+    pub(crate) fn fold(&self, kind: FoldKind, m: &[Vec<V>], initial: &V) -> Option<V> {
         match self {
             Body::Inline(ast, _) => fold_units_over(kind, ast, &Env::default(), &matrix_v(m), initial),
             Body::Lambda(lam, _) => lam.body.as_ref().filter(|_| lam.eta.is_none()).and_then(|b| fold_units_over(kind, b, &lam.env, &matrix_v(m), initial)),
@@ -409,7 +409,7 @@ impl Body {
     }
 
     /// `fn(...args)`, its answer as `compileEvaluator` hands it back.
-    fn call(&self, ev: &Eval, args: &[V]) -> V {
+    pub(crate) fn call(&self, ev: &Eval, args: &[V]) -> V {
         let r = match self {
             Body::Lambda(lam, order) => {
                 let argv: Vec<V> = order.iter().map(|i| i.and_then(|i| args.get(i).cloned()).unwrap_or(V::Undef)).collect();
@@ -429,7 +429,7 @@ impl Body {
 }
 
 /// `cell`: what a result cell may hold, a non-finite number through the guard, anything else blank.
-fn result_cell(v: &V) -> V {
+pub(crate) fn result_cell(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) => v.clone(),
         V::Num(n) => match guard_cells(*n, &[*n]) {
@@ -442,18 +442,18 @@ fn result_cell(v: &V) -> V {
 }
 
 /// The card's answer and the two fields its component shows.
-fn lambda_done(c: &mut Call, result: V, error: Option<String>) -> Answer {
+pub(crate) fn lambda_done(c: &mut Call, result: V, error: Option<String>) -> Answer {
     c.show("cachedResult", if result.is_sol_error() && error.is_some() { V::Null } else { result.clone() });
     c.show("cachedError", error.map_or(V::Null, |e| V::str(&e)));
     Ok(vec![("result".into(), result)])
 }
 
-fn fn_error(c: &mut Call, e: SolError) -> Answer {
+pub(crate) fn fn_error(c: &mut Call, e: SolError) -> Answer {
     let msg = e.message.clone();
     lambda_done(c, V::err(e), Some(msg))
 }
 
-fn holds_unit_cell(m: &[Vec<V>]) -> bool {
+pub(crate) fn holds_unit_cell(m: &[Vec<V>]) -> bool {
     m.iter().flatten().any(|v| matches!(v, V::Unit(_)))
 }
 

@@ -1,12 +1,10 @@
 // [[B11]], [[C17]] shareImpl
 import { ClassicPreset } from "rete";
-import { listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, readRole, tableIn, tableOut, frameOut, strOut } from "./shared";
+import { listIn, listOut, numIn, numOut, numListIn, numListOut, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rolesFrom, required, setting } from "../inputRoles";
-import { rk4 } from "./odeOps";
 import type { Shape } from "../frameShape";
-import { resolveFn } from "./tableLambda";
 import { lambdaIn } from "./shared";
-import { solError, type SolError } from "../errorValue";
+import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import type { DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
@@ -855,26 +853,7 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     return { columns: [{ name: "t", type: "number" }, { name: "y", type: "number" }] };
   }
 
-  data(inputs: { lambda?: unknown[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }): { solution: FrameValue | SolError | null } {
-    const { fn, err, code } = resolveFn(inputs.lambda?.[0], this.stringLiterals.formula, "y", ["t", "y"], 2, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return { solution: solError(code, err!) }; }
-    this.cachedError = null;
-    const y0 = readInput(inputs.y0, this.literals.y0 ?? 1);
-    const t0 = readInput(inputs.t0, this.literals.t0 ?? 0);
-    const t1 = readInput(inputs.t1, this.literals.t1 ?? 1);
-    const steps = readRole<number>(this, "steps", inputs.steps);
-    if (y0 === null || t0 === null || t1 === null) { this.cachedResult = null; return { solution: null }; }
-    const f = (t: number, y: number): number | null => {
-      const r = fn(t, y);
-      return typeof r === "number" && Number.isFinite(r) ? r : null;
-    };
-    const sol = rk4(f, y0, t0, t1, steps);
-    if (!sol) { const e = solError("#DOMAIN!", "The integration diverged or the derivative was undefined on the interval"); this.cachedResult = e; return { solution: e }; }
-    const solution: FrameValue = { __frame: true, columns: [
-      { name: "t", type: "number", values: sol.t },
-      { name: "y", type: "number", values: sol.y },
-    ] };
-    this.cachedResult = solution;
-    return { solution };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { solution: FrameValue | SolError | null };
   }
 }
