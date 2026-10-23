@@ -15,8 +15,9 @@ export class QrCodeNode extends ClassicPreset.Node {
   height = 200;
   width = 240;
   cachedResult: ImageValue | null = null;
-  /** The image is drawn at the card's height, a size the card's saved fields leave out. */
-  static coreFields = ["height"];
+  /** The image is drawn at the card's height, a layout field the call's saved fields leave out. */
+  static coreFields = ["imageHeight"];
+  get imageHeight(): number { return this.height; }
 
   constructor(init?: { label?: string; qrTemplate?: QrTemplate }) {
     super("QrCode");

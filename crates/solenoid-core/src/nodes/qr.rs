@@ -109,7 +109,7 @@ fn qr_code(c: &mut Call) -> Answer {
     }
     let symbol = encode(&payload, Level::M).map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
     let label = c.field_str("label", "QR Code").to_string();
-    let height = c.field("height").cloned().unwrap_or(Json::from(200));
+    let height = c.field("imageHeight").cloned().unwrap_or(Json::from(200));
     let image = V::Json(Rc::new(json!({ "__image": true, "src": svg_src(symbol.size, &symbol.modules), "height": height, "alt": label, "title": label })));
     c.show("cachedResult", image.clone());
     Ok(vec![("chart".into(), image)])
