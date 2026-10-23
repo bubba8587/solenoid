@@ -2,14 +2,14 @@
 // the frame and cube verbs answer as a formula does. Both engines are held to the values by
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
 import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
-import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
+import { cubeFromColumns, frameToCube, frameSourceToText, type CubeValue, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
-import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
+import { GetColumnNode, ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";
 import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
 import { compileLambda } from "../../src/graph/nodes/tableLambda";
 
@@ -105,8 +105,11 @@ describe("Window over readings", () => {
     expect(w("rolling_avg").unit?.display).toBe("degC");
   });
 
-  it("a cube's window reads its cells' unit the same way", () => {
-    const out = windowCube(frameToCube(temps("degC")), { partitionBy: [], fn: "diff", column: "t", as: "d" });
+  it("a cube's window reads its cells' unit the same way", async () => {
+    const n = new WindowNode({ agg: "diff" });
+    n.stringLiterals.column = "t";
+    n.stringLiterals.name = "d";
+    const out = (await n.data({ frame: [frameToCube(temps("degC"))] })).frame as CubeValue;
     const d = out.columns.find((c) => c.name === "d")!.cells[1] as UnitCell;
     expect(isUnitCell(d) && d.value).toBe(6);
     expect(d.display).toBeUndefined();

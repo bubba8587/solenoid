@@ -5,12 +5,12 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, joinFrames, appendFrames, bindColumns, pivotFrame, sortCube, filterCube, distinctCube, windowCube, encodeCubeCell, type FrameOp, type JoinOpts, type PivotSpec, type AggOp, type VerbOnCore } from "../../src/graph/frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, pivotFrame, type FrameOp, type JoinOpts, type PivotSpec, type AggOp } from "../../src/graph/frameVerbs";
 import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
-import { frameToCube, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeValue, type CubeCell } from "../../src/graph/frame";
+import { type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, verbOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock, clearCollectMemo } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock, clearCollectMemo } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
@@ -303,43 +303,6 @@ describe("random pivots: the Rust engine matches the oracle, layout and units in
       try { got = { ok: full(pivotOnEngine(f, spec)) }; } catch (e) { got = caught(e); }
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         expect({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got }).toEqual({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got: want });
-      }
-    }
-  });
-});
-
-describe("random cubes: the cube verbs on the core match the TS", () => {
-  const view = (c: CubeValue) => c.columns.map((col) => [col.name, col.type ?? null, col.cells.map(encodeCubeCell)]);
-  it(`${FUZZ_RUNS} cube verbs`, { timeout: 600_000 }, () => {
-    const rand = mulberry32(919 + FUZZ_SEED);
-    const g = gen(rand);
-    let ran = 0;
-    for (let i = 0; ran < FUZZ_RUNS && i < FUZZ_RUNS * 20; i++) {
-      const f = g.frame();
-      // A card hands a cube verb its own spec; the reading and unit scales are the wire's, lowered from units.
-      const { readingScale: _r, unitScale: _u, ...op } = g.op(f) as FrameOp & { readingScale?: number; unitScale?: number };
-      if (!["sort", "filter", "filterMulti", "distinct", "window"].includes(op.kind)) continue;
-      ran++;
-      const rows = Math.max(0, ...f.columns.map((c) => c.values.length));
-      const nested: CubeCell[] = Array.from({ length: rows }, (_, r) => (r % 3 === 0 ? null : r % 3 === 1 ? [r, "x"] : { __frame: true, columns: [{ name: "n", type: "number", values: [r] }] }));
-      const base = frameToCube(f);
-      const cube = cubeFromColumns([...base.columns, { name: "nest", cells: nested }]);
-      const run = (onCore?: VerbOnCore): unknown => {
-        try {
-          const out = op.kind === "sort" ? sortCube(cube, op.by, op.dir, onCore)
-            : op.kind === "filter" ? filterCube(cube, "and", [{ column: op.column, op: op.op, value: op.value, ...(op.matchCase ? { matchCase: true } : {}) }], false, onCore)
-            : op.kind === "filterMulti" ? filterCube(cube, op.combine, op.conditions, op.complement ?? false, onCore)
-            : op.kind === "distinct" ? distinctCube(cube, onCore)
-            : windowCube(cube, op as never, onCore);
-          return { ok: view(out) };
-        } catch (e) {
-          return isSolError(e) ? { err: e.code, msg: e.message } : { thrown: String(e) };
-        }
-      };
-      const want = run();
-      const got = run(verbOnEngine);
-      if (JSON.stringify(got) !== JSON.stringify(want)) {
-        expect({ run: i, op: JSON.stringify(op), got }).toEqual({ run: i, op: JSON.stringify(op), got: want });
       }
     }
   });

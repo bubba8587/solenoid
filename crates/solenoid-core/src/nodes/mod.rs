@@ -25,6 +25,7 @@ mod stats;
 mod text;
 mod units;
 mod values;
+mod verbs;
 mod visual;
 
 pub use values::{decode, serialize_cube, serialize_frame, Column, Cube, CubeColumn, Frame};
@@ -222,6 +223,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| visual::run(kind, c))
         .or_else(|| frames::run(kind, c))
         .or_else(|| formula::run(kind, c))
+        .or_else(|| verbs::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
