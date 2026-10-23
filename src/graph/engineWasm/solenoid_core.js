@@ -26,9 +26,7 @@ function handleError(f, args) {
     }
 }
 
-const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
-
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+let WASM_VECTOR_LEN = 0;
 
 let cachedUint8ArrayMemory0 = null;
 
@@ -38,13 +36,6 @@ function getUint8ArrayMemory0() {
     }
     return cachedUint8ArrayMemory0;
 }
-
-function getStringFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
-}
-
-let WASM_VECTOR_LEN = 0;
 
 const cachedTextEncoder = (typeof TextEncoder !== 'undefined' ? new TextEncoder('utf-8') : { encode: () => { throw Error('TextEncoder not available') } } );
 
@@ -100,10 +91,6 @@ function passStringToWasm0(arg, malloc, realloc) {
     return ptr;
 }
 
-function isLikeNone(x) {
-    return x === undefined || x === null;
-}
-
 let cachedDataViewMemory0 = null;
 
 function getDataViewMemory0() {
@@ -111,6 +98,19 @@ function getDataViewMemory0() {
         cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
     }
     return cachedDataViewMemory0;
+}
+
+const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+
+function getStringFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
+function isLikeNone(x) {
+    return x === undefined || x === null;
 }
 
 function dropObject(idx) {
@@ -377,6 +377,13 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_formatToParts_eaf78fdffce01b9c = function() { return handleError(function (arg0, arg1) {
         const ret = getObject(arg0).formatToParts(getObject(arg1));
         return addHeapObject(ret);
+    }, arguments) };
+    imports.wbg.__wbg_format_8d46053cee19298f = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = getObject(arg1).format(getObject(arg2));
+        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+        getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
     }, arguments) };
     imports.wbg.__wbg_getDate_80248a8173b8f15d = function(arg0) {
         const ret = getObject(arg0).getDate();
