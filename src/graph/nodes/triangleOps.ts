@@ -1,6 +1,6 @@
 // [[C17]] shareImpl
 
-import { isSolError, solError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";
 
 export interface TriangleGiven {
@@ -106,10 +106,6 @@ function fillBySines(t: TriangleGiven, knownSide: "a" | "b" | "c", knownAngle: "
 export const PART_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 export type PartKey = (typeof PART_KEYS)[number];
 
-function agrees(got: number, given: number): boolean {
-  return Math.abs(got - given) <= 1e-6 * Math.max(1, Math.abs(given));
-}
-
 export interface TriangleResult {
   values: Record<PartKey, number | SolError | null>;
   area: number | SolError | null;
@@ -118,53 +114,3 @@ export interface TriangleResult {
   solved: Set<PartKey>;
 }
 
-export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): TriangleResult {
-  const values = {} as Record<PartKey, number | SolError | null>;
-  for (const k of PART_KEYS) values[k] = null;
-  const done = (area: number | SolError | null, perimeter: number | SolError | null,
-                valid: boolean | SolError | null, solved: Set<PartKey> = new Set()): TriangleResult =>
-    ({ values, area, perimeter, valid, solved });
-
-  if (cellErr) {
-    for (const k of PART_KEYS) values[k] = cellErr;
-    return done(cellErr, cellErr, cellErr);
-  }
-
-  const givenKeys = PART_KEYS.filter((k) => given[k] !== undefined);
-  for (const k of givenKeys) values[k] = given[k]!;
-
-  if (givenKeys.length < 3) return done(null, null, null);
-
-  if (givenKeys.length === 3) {
-    const r = solveTriangle(given);
-    if (isSolError(r)) {
-      for (const k of PART_KEYS) values[k] = r;
-      return done(r, r, false);
-    }
-    for (const k of PART_KEYS) values[k] = r[k];
-    return done(r.area, r.perimeter, true, new Set(PART_KEYS.filter((k) => given[k] === undefined)));
-  }
-
-  const subsets: PartKey[][] = [];
-  for (let i = 0; i < givenKeys.length; i++)
-    for (let j = i + 1; j < givenKeys.length; j++)
-      for (let k = j + 1; k < givenKeys.length; k++)
-        subsets.push([givenKeys[i], givenKeys[j], givenKeys[k]]);
-  const sideCount = (sub: PartKey[]) => sub.filter((k) => k === k.toLowerCase()).length;
-  subsets.sort((x, y) => sideCount(y) - sideCount(x));
-
-  let solvedTri: TriangleSolved | null = null;
-  for (const sub of subsets) {
-    if (sideCount(sub) === 0) continue;
-    const r = solveTriangle(Object.fromEntries(sub.map((k) => [k, given[k]!])));
-    if (!isSolError(r)) { solvedTri = r; break; }
-  }
-  if (!solvedTri) {
-    const err = solError("#SOLVE!", "No three of those parts pin down a triangle");
-    for (const k of PART_KEYS) values[k] = k in given ? given[k]! : err;
-    return done(err, err, false);
-  }
-  for (const k of PART_KEYS) values[k] = given[k] ?? solvedTri[k];
-  const valid = givenKeys.every((k) => agrees(solvedTri![k], given[k]!));
-  return done(solvedTri.area, solvedTri.perimeter, valid, new Set(PART_KEYS.filter((k) => given[k] === undefined)));
-}

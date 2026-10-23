@@ -1,6 +1,6 @@
 // [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
 import { describe, it, expect } from "vitest";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { emptySlotReading, fieldPlaceholder } from "../../src/graph/emptySlots";
 import { rolesFrom, setting, required, LEFT_OUT } from "../../src/graph/inputRoles";
@@ -16,9 +16,8 @@ const typed = (v: unknown): string | null =>
 describe("an empty slot reads as its parameter's Excel blank", () => {
   it("in every function and position, the same as typing the reading out", () => {
     const drift: string[] = [];
-    for (const [name, meta] of Object.entries(EXCEL_IMPL_META as Record<string, { arity?: [number, number] }>)) {
-      if (!meta.arity) continue;
-      const n = Math.min(Math.max(meta.arity[0], 2), meta.arity[1], 4);
+    for (const [name, arity] of Object.entries(FUNCTION_ARITY)) {
+      const n = Math.min(Math.max(arity[0], 2), arity[1], 4);
       if (n < 2) continue; // F() is no argument, not an empty slot
       for (let i = 0; i < n; i++) {
         const lit = typed(emptySlotReading(name, i).value);

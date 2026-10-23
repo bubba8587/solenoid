@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { callTraits } from "./callTraits";
 import {
   MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableOuterNode, TableReshapeNode, TableInfoNode,
   StackNode, TableSelectNode, ExpandNode,
@@ -193,8 +193,8 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
 
   it("every tranche registration declares the [[C15]] matricesInFormulas gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
-      expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
-      expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
+      expect(callTraits(name)?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
+      expect(callTraits(name)?.kind, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe("whole");
     }
   });
 });

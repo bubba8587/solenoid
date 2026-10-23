@@ -1,7 +1,6 @@
 // [[C10]] socketLattice, [[C17]] shareImpl
 // Keep this import type-only, so no runtime cycle with errorValue can form.
 import type { SolError } from "../errorValue";
-import { matRows, matCols } from "./matrixOps";
 
 export type Mat = number[][];
 
@@ -64,7 +63,3 @@ export function toAnyMatrix(v: unknown): Cell[][] | null {
   return [[v as Cell]];
 }
 
-export function matrixShape(v: unknown): { rows: number | null; cols: number | null } {
-  const m = toAnyMatrix(v);
-  return { rows: m ? matRows(m) : null, cols: m ? matCols(m) : null };
-}

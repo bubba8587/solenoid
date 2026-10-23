@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  isValidZone, zoneOffsetMs, convertZone,
-} from "../../src/graph/timeZone";
+import { isValidZone, zoneOffsetMs } from "../../src/graph/timeZone";
+import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
+
+const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(serial, from, to);
 
 // C1 Time Zone Convert — the Intl reinterpretation is pure + fixture-tested
 // (widget rule 5). Serials are wall-clock-as-UTC, so a serial is built the same way.

@@ -333,6 +333,12 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         }
         "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
+        // The formula language's function names, and which of them the built-in packs own.
+        "engine_function_names" => Ok(json!({
+            "names": crate::eval::function_names(true),
+            "resolving": crate::eval::function_names(false),
+            "packs": crate::fns_packs::NAMES,
+        })),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => crate::csv::invoke(other, args).ok_or_else(|| sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
     }

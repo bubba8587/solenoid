@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. Each column has an X coordinate and each row a Y coordinate, and a cell's value is treated as a height at that (X, Y) point. The code is `gridAxes` and `fillGrid` in `nodes/mathUtils.ts`, with the forecast surface in `nodes/surfaceFit.ts`; `stats.test.ts` pins the behavior.
+Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. Each column has an X coordinate and each row a Y coordinate, and a cell's value is treated as a height at that (X, Y) point. The code is `fill_grid` and `fit_surface` in `crates/solenoid-core/src/fns_lists.rs`, with the card's axes read by `grid_axis` in `nodes/stats.rs`; the frozen fixtures and `stats.test.ts` pin the behavior.
 
 ## Inputs and coordinates
 

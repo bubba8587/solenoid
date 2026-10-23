@@ -1,35 +1,30 @@
 // [[C79]], [[B11]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
+import { coreFunction } from "../coreFunction";
 import { nodeDisplayName } from "../../../src/graph/catalogUtils";
 import { BinNode, OutliersNode } from "../../../src/graph/nodes/list";
 import { EpochNode, DateTruncNode } from "../../../src/graph/nodes/date";
-import { ntileList, outlierFlags } from "../../../src/graph/nodes/listOps";
-import { epochToSerial, serialToEpoch, dateTrunc } from "../../../src/graph/nodes/dateOps";
+import { dateTrunc } from "../../../src/graph/nodes/dateOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { describeFrame, describeColumn, correlationMatrix, windowFrame } from "../../../src/graph/frameVerbs";
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
-import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "../../../src/graph/nodes/statsOps";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
-import { matTrace, matRank, matNorm, matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
+import { matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
 import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
-import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "../../../src/graph/nodes/textOps";
+import { levenshtein, damerauLevenshtein, jaroWinkler } from "../../../src/graph/nodes/textOps";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
-import { templatePlaceholders, renderTemplate } from "../../../src/graph/nodes/textOps";
+import { templatePlaceholders } from "../../../src/graph/nodes/textOps";
 import { requestRecalc } from "../../../src/graph/process";
-import { unaccent, slugify, padText, truncateText } from "../../../src/graph/nodes/textOps";
-import { argsortList, whichPositions } from "../../../src/graph/nodes/listOps";
+import { unaccent, slugify } from "../../../src/graph/nodes/textOps";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
-import { fitEts, etsForecast, etsInterval, detectSeason } from "../../../src/graph/nodes/forecastOps";
 import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
-import { seasonalDecompose } from "../../../src/graph/nodes/forecastOps";
-import { polyRoots } from "../../../src/graph/nodes/mathUtils";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
 import { fitDistribution, fitAll } from "../../../src/graph/nodes/fitOps";
 import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
@@ -42,6 +37,39 @@ import { isFrameValue } from "../../../src/graph/frame";
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const d = (s: string) => parseDateToSerial(s);
+const core = (name: string) => coreFunction(name)!;
+const ntileList = core("NTILE");
+const outlierFlags = (x: unknown[], method: string, threshold: number) => core("ISOUTLIER")(x, method, threshold) as unknown[];
+const epochToSerial = (epoch: number, unit: string) => core("FROMEPOCH")(epoch, unit) as number;
+const serialToEpoch = (serial: number, unit: string) => core("TOEPOCH")(serial, unit) as number;
+const anovaP = (groups: number[][]) => core("ANOVA")(...groups);
+const kruskalP = (groups: number[][]) => core("KRUSKAL")(...groups);
+const mannWhitneyP = core("MANNWHITNEY");
+const wilcoxonSignedRankP = core("WILCOXON");
+const ksTwoSampleP = core("KSTEST");
+const fisherExactP = core("FISHEREXACT");
+const twoProportionP = core("PROPTEST");
+const binomTestP = core("BINOMTEST");
+const matTrace = core("TRACE");
+const matRank = core("MATRIXRANK");
+const matNorm = core("NORM");
+const textSimilarity = core("SIMILARITY");
+const padText = (...a: unknown[]) => core("PADTEXT")(...a);
+const truncateText = (...a: unknown[]) => core("TRUNCATETEXT")(...a);
+const argsortList = (...a: unknown[]) => core("ARGSORT")(...a);
+const whichPositions = core("WHICH");
+/** DECOMPOSE's three components, or null where it answers blank. */
+function seasonalDecompose(y: (number | null)[], period: number, model = "additive") {
+  const part = (c: string) => core("DECOMPOSE")(y, period, c, model) as (number | null)[];
+  const trend = part("trend");
+  return Array.isArray(trend) ? { trend, seasonal: part("seasonal"), residual: part("residual") } : null;
+}
+/** POLYROOTS as [re, im] pairs, or null where it refuses. */
+function polyRoots(coefficients: number[]): [number, number][] | null {
+  const r = core("POLYROOTS")(coefficients);
+  if (isSolError(r)) return null;
+  return (r as unknown[]).map((z) => (typeof z === "number" ? [z, 0] : [(z as { re: number }).re, (z as { im: number }).im]));
+}
 
 describe("NTILE / Bin quantiles mode (dplyr ntile, pandas qcut)", () => {
   it("splits into equal-count buckets 1..n, blanks stay blank, errors ride", () => {
@@ -388,8 +416,7 @@ describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist
   });
   it("Fuzzy Match picks the closest candidate above the threshold, #N/A below it; a list of needles spills", () => {
     const cands = ["New York", "Los Angeles", "Chicago", "Houston"];
-    expect(fuzzyBest("Chicgo", cands, "ratio", 0.6)).toMatchObject({ text: "Chicago", index: 2 });
-    expect(fuzzyBest("Zurich", cands, "ratio", 0.6)).toBeNull();
+    expect(ev("FUZZYMATCH(\"Chicgo\", c, 0.6, \"ratio\")", { c: cands })).toBe("Chicago");
     expect(ev("FUZZYMATCH(\"New Yrok\", c)", { c: cands })).toBe("New York");
     expect(isSolError(ev("FUZZYMATCH(\"Zurich\", c)", { c: cands }))).toBe(true);
     const n = new FuzzyMatchNode(); n.literals.threshold = 0.6;
@@ -404,23 +431,8 @@ describe("string distance / fuzzy match (textbook values; rapidfuzz / stringdist
 describe("Forecast (ETS) — Holt–Winters", () => {
   // A clean series: level 100, slope 2 per step, additive season of length 12 and amplitude 10.
   const y = Array.from({ length: 36 }, (_, t) => 100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12));
-  it("detects the 12-step season and forecasts the continuation of trend + season", () => {
-    expect(detectSeason(y)).toBe(12);
-    const fit = fitEts(y, 12)!;
-    expect(fit.season).toBe(12);
-    const fc = etsForecast(fit, 12);
-    for (let k = 1; k <= 12; k++) {
-      const t = 35 + k;
-      expect(fc[k - 1]).toBeCloseTo(100 + 2 * t + 10 * Math.sin((2 * Math.PI * t) / 12), 0); // within ±0.5 on a noiseless series
-    }
-    expect(etsInterval(fit, 4)).toBeGreaterThan(etsInterval(fit, 1)); // the band grows with √h
-  });
-  it("trend-only (Holt) on a straight line extrapolates it; too short is blank", () => {
-    const line = [3, 5, 7, 9, 11, 13, 15, 17];
-    const fit = fitEts(line, 1)!;
-    expect(etsForecast(fit, 3).map((v) => Math.round(v * 1000) / 1000)).toEqual([19, 21, 23]);
-    expect(fitEts([1, 2], 1)).toBeNull();
-    expect(fitEts(line, 12)).toBeNull(); // fewer than two seasons
+  it("detects the 12-step season", () => {
+    expect(ev("FORECAST.ETS.SEASONALITY(y)", { y })).toBe(12);
   });
   it("node and FORECAST.ETS family agree; the formula reads Excel's timeline / target convention", () => {
     const node = new EtsForecastNode(); node.literals = { horizon: 3, season: 1 };
@@ -709,10 +721,8 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
 
 describe("Template — str_glue / f-string placeholders", () => {
   const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
-  it("the kernel finds distinct names in order, honours {{ }} and a :spec", () => {
+  it("the placeholders are the distinct names in order, past {{ }} and a :spec", () => {
     expect(templatePlaceholders("Hi {name}, {total:0.00} for {name} — {{literal}} {0}")).toEqual(["name", "total", "0"]);
-    const out = renderTemplate("{a}+{b:x}={{}}", (n) => ({ a: 1, b: 2 } as Record<string, number>)[n], (v, _n, spec) => `${v}${spec ? "[" + spec + "]" : ""}`);
-    expect(out).toBe("1+2[x]={}");
   });
   it("the node grows a socket per name, formats numbers through TEXT, broadcasts a list", async () => {
     const n = new TemplateNode();

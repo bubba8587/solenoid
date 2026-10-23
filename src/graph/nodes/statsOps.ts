@@ -2,7 +2,7 @@
 // Inputs are prepared numbers (errors propagated, blanks skipped by the caller); null means not enough data and shows as a blank, a SolError is a real domain failure.
 import { solError, type SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
-import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUtils";
+import { iterMin, iterMax } from "./mathUtils";
 
 export type AggregateOp =
   | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
@@ -111,17 +111,6 @@ export function quartile(arr: readonly number[], q: number, exc: boolean): numbe
     return solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
   }
   return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
-}
-
-/** A fractional k counts as Excel does (checked in Excel): its position in ascending order is truncated, so SMALL's
- *  k = 2.5 is the 2nd smallest and LARGE's is the 3rd largest. */
-export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | SolError | null {
-  if (Number.isNaN(k)) return solError("#VALUE!", "k must be a number");
-  if (k < 1) return solError("#DOMAIN!", "k starts at 1, the largest or smallest value");
-  const n = arr.length;
-  if (n === 0 || k > n) return null;
-  const sorted = [...arr].sort((a, b) => a - b);
-  return sorted[Math.floor(largest ? n - k + 1 : k) - 1];
 }
 
 /** The first `n` items, without a copy when that is all of them. */
@@ -254,17 +243,6 @@ export function fisher(x: number, inverse: boolean): number | SolError {
   return x <= -1 || x >= 1 ? solError("#DOMAIN!", "FISHER requires −1 < x < 1") : Math.atanh(x);
 }
 
-export function modeSingle(arr: readonly number[]): number | SolError | null {
-  if (arr.length === 0) return null;
-  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
-  const counts = new Map<number, number>();
-  for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
-  const maxCount = iterMax(counts.values());
-  if (maxCount < 2) return noMode();
-  for (const v of arr) if (counts.get(v) === maxCount) return v;
-  return null;
-}
-
 export function regression(xs: readonly number[], ys: readonly number[], op: "slope" | "intercept" | "steyx"): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
@@ -283,140 +261,3 @@ export function regression(xs: readonly number[], ys: readonly number[], op: "sl
 
 // ─── Hypothesis tests beyond Excel's four ──────────
 
-const twoSidedZ = (z: number): number => 2 * (1 - stdNormCDF(Math.abs(z)));
-function tieTerm(values: readonly number[]): number {
-  const counts = new Map<number, number>();
-  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
-  let t = 0;
-  for (const c of counts.values()) if (c > 1) t += c ** 3 - c;
-  return t;
-}
-
-export function anovaP(groups: readonly (readonly number[])[]): number | null {
-  const gs = groups.filter((g) => g.length > 0);
-  const k = gs.length, N = gs.reduce((a, g) => a + g.length, 0);
-  if (k < 2 || N <= k) return null;
-  const grand = gs.reduce((a, g) => a + sum(g), 0) / N;
-  let ssb = 0, ssw = 0;
-  for (const g of gs) { const m = mean(g); ssb += g.length * (m - grand) ** 2; ssw += ssd(g, m); }
-  if (ssw === 0) return ssb === 0 ? null : 0;
-  const F = (ssb / (k - 1)) / (ssw / (N - k));
-  return Math.min(1, Math.max(0, 1 - fCDF(F, k - 1, N - k)));
-}
-
-export function mannWhitneyP(a: readonly number[], b: readonly number[]): number | null {
-  const n1 = a.length, n2 = b.length, N = n1 + n2;
-  if (n1 === 0 || n2 === 0) return null;
-  const ranks = averageRanks([...a, ...b]);
-  const r1 = ranks.slice(0, n1).reduce((x, y) => x + y, 0);
-  const u1 = r1 - (n1 * (n1 + 1)) / 2, u = Math.min(u1, n1 * n2 - u1);
-  const meanU = (n1 * n2) / 2;
-  const varU = ((n1 * n2) / 12) * ((N + 1) - tieTerm([...a, ...b]) / (N * (N - 1)));
-  if (varU <= 0) return null;
-  const z = (Math.abs(u - meanU) - 0.5) / Math.sqrt(varU);
-  return Math.min(1, twoSidedZ(Math.max(0, z)));
-}
-
-export function wilcoxonSignedRankP(a: readonly number[], b: readonly number[]): number | null {
-  const n0 = Math.min(a.length, b.length);
-  const d: number[] = [];
-  for (let i = 0; i < n0; i++) { const v = a[i] - b[i]; if (v !== 0) d.push(v); }
-  const n = d.length;
-  if (n === 0) return null;
-  const ranks = averageRanks(d.map(Math.abs));
-  const wPlus = d.reduce((acc, v, i) => acc + (v > 0 ? ranks[i] : 0), 0);
-  const t = Math.min(wPlus, (n * (n + 1)) / 2 - wPlus);
-  const meanT = (n * (n + 1)) / 4;
-  const varT = (n * (n + 1) * (2 * n + 1)) / 24 - tieTerm(d.map(Math.abs)) / 48;
-  if (varT <= 0) return null;
-  const z = (Math.abs(t - meanT) - 0.5) / Math.sqrt(varT);
-  return Math.min(1, twoSidedZ(Math.max(0, z)));
-}
-
-export function kruskalP(groups: readonly (readonly number[])[]): number | null {
-  const gs = groups.filter((g) => g.length > 0);
-  const k = gs.length, N = gs.reduce((a, g) => a + g.length, 0);
-  if (k < 2 || N < 3) return null;
-  const all = gs.flat();
-  const ranks = averageRanks(all);
-  let h = 0, off = 0;
-  for (const g of gs) { const r = ranks.slice(off, off + g.length).reduce((x, y) => x + y, 0); h += (r * r) / g.length; off += g.length; }
-  h = (12 / (N * (N + 1))) * h - 3 * (N + 1);
-  const corr = 1 - tieTerm(all) / (N ** 3 - N);
-  if (corr <= 0) return null;
-  h /= corr;
-  return Math.min(1, Math.max(0, 1 - chiSqCDF(h, k - 1)));
-}
-
-/** The outcomes an exact test may sum; each costs a pmf, so a count past it would hang ([[C120]] linearWork). */
-const EXACT_TEST_OUTCOMES = 1_000_000;
-const exactTestTooLarge = (): SolError => solError("#DOMAIN!", "An exact test sums at most 1,000,000 outcomes");
-
-export function fisherExactP(a: number, b: number, c: number, d: number): number | SolError | null {
-  const cells = [a, b, c, d].map((v) => Math.round(v));
-  if (cells.some((v) => v < 0 || !Number.isFinite(v))) return null;
-  const [A, B, C, D] = cells;
-  const row1 = A + B, col1 = A + C, N = A + B + C + D;
-  if (N === 0) return null;
-  const pmf = (x: number): number => Math.exp(lnCombin(col1, x) + lnCombin(N - col1, row1 - x) - lnCombin(N, row1));
-  const lo = Math.max(0, row1 - (N - col1)), hi = Math.min(row1, col1);
-  if (hi - lo + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
-  const pObs = pmf(A);
-  let p = 0;
-  for (let x = lo; x <= hi; x++) { const px = pmf(x); if (px <= pObs * (1 + 1e-7)) p += px; }
-  return Math.min(1, p);
-}
-
-export function ksTwoSampleP(a: readonly number[], b: readonly number[]): number | null {
-  const n1 = a.length, n2 = b.length;
-  // A NaN never compares, so the merge below would never pass it.
-  if (n1 === 0 || n2 === 0 || a.some(Number.isNaN) || b.some(Number.isNaN)) return null;
-  const sa = [...a].sort((x, y) => x - y), sb = [...b].sort((x, y) => x - y);
-  // D as the integer |i·n2 − j·n1| (the ECDF gap scaled by n1·n2), walked over the merge.
-  let i = 0, j = 0, dInt = 0;
-  while (i < n1 && j < n2) {
-    const v = Math.min(sa[i], sb[j]);
-    while (i < n1 && sa[i] <= v) i++;
-    while (j < n2 && sb[j] <= v) j++;
-    dInt = Math.max(dInt, Math.abs(i * n2 - j * n1));
-  }
-  if (dInt === 0) return 1;
-  // prob[j] = P(a random path reaches (i, j) without ever touching |i·n2 − j·n1| ≥ dInt).
-  let prob = new Array<number>(n2 + 1).fill(0);
-  prob[0] = 1;
-  for (let ii = 0; ii <= n1; ii++) {
-    const next = new Array<number>(n2 + 1).fill(0);
-    for (let jj = 0; jj <= n2; jj++) {
-      if (ii === 0 && jj === 0) { next[0] = 1; continue; }
-      if (Math.abs(ii * n2 - jj * n1) >= dInt) { next[jj] = 0; continue; }
-      const remaining = n1 + n2 - ii - jj + 1;
-      let v = 0;
-      if (ii > 0) v += prob[jj] * ((n1 - ii + 1) / remaining);
-      if (jj > 0) v += next[jj - 1] * ((n2 - jj + 1) / remaining);
-      next[jj] = v;
-    }
-    prob = next;
-  }
-  return Math.min(1, Math.max(0, 1 - prob[n2]));
-}
-
-export function twoProportionP(x1: number, n1: number, x2: number, n2: number): number | null {
-  if (!(n1 > 0 && n2 > 0) || x1 < 0 || x2 < 0 || x1 > n1 || x2 > n2) return null;
-  const p1 = x1 / n1, p2 = x2 / n2, pool = (x1 + x2) / (n1 + n2);
-  const se = Math.sqrt(pool * (1 - pool) * (1 / n1 + 1 / n2));
-  if (se === 0) return p1 === p2 ? null : 0;
-  return twoSidedZ((p1 - p2) / se);
-}
-
-export function binomTestP(k: number, n: number, p0: number): number | SolError | null {
-  const K = Math.round(k), N = Math.round(n);
-  if (!(N >= 1) || K < 0 || K > N || !(p0 >= 0 && p0 <= 1)) return null;
-  if (p0 === 0) return K === 0 ? 1 : 0;
-  if (p0 === 1) return K === N ? 1 : 0;
-  if (N + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
-  const pmf = (x: number): number => Math.exp(lnCombin(N, x) + x * Math.log(p0) + (N - x) * Math.log(1 - p0));
-  const pObs = pmf(K);
-  let p = 0;
-  for (let x = 0; x <= N; x++) { const px = pmf(x); if (px <= pObs * (1 + 1e-7)) p += px; }
-  return Math.min(1, p);
-}

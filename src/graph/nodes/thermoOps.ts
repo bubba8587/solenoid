@@ -1,8 +1,6 @@
 // [[C17]] shareImpl
 // Compute from the formulation, never a transcribed table.
 
-import { solError, type SolError } from "../errorValue";
-
 // US Standard Atmosphere 1976, 0–86 km; base pressures derive from the layer table.
 // ISA's own constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
 
@@ -15,8 +13,6 @@ const ISA_LAYERS: Array<[number, number]> = [
   [0, -0.0065], [11000, 0], [20000, 0.001], [32000, 0.0028],
   [47000, 0], [51000, -0.0028], [71000, -0.002],
 ];
-const ISA_TOP = 84852; // m geopotential (86 km geometric)
-
 const ISA_BASES: Array<{ h: number; L: number; T: number; p: number }> = (() => {
   const out = [{ h: 0, L: ISA_LAYERS[0][1], T: 288.15, p: 101325 }];
   for (let i = 1; i < ISA_LAYERS.length; i++) {
@@ -53,15 +49,6 @@ export function isaAtGeometric(z: number): IsaPoint {
   return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
 }
 
-/** The −5…86 km domain (the 1976 tables start at −5 km) is checked on the geopotential altitude. */
-export function standardAtmosphere(z: number): IsaPoint | SolError {
-  const h = (EARTH_R * z) / (EARTH_R + z);
-  if (h < -5000 || h > ISA_TOP) {
-    return solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −5 to 86 km");
-  }
-  return isaAtGeopotential(h);
-}
-
 // log₁₀(p/mmHg) = A − B/(C + T°C), Lange's-handbook coefficient form; `bp` is the normal boiling point each triple must reproduce.
 
 export type AntoineOp =
@@ -82,10 +69,3 @@ export const ANTOINE: Record<AntoineOp, AntoineMeta> = {
   ammonia:     { label: "Ammonia",     A: 7.3605,  B: 926.132,  C: 240.17,  bp: -33.34 },
 };
 
-const MMHG_TO_PA = 133.322387415;
-
-/** Vapor pressure in Pa at t °C. */
-export function antoinePressure(op: AntoineOp, t: number): number {
-  const { A, B, C } = ANTOINE[op];
-  return MMHG_TO_PA * 10 ** (A - B / (C + t));
-}

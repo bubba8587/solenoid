@@ -131,12 +131,6 @@ export function divUncertain(a: number | UncertainNumber, b: number | UncertainN
 export const COMPUTE = Symbol("compute");
 export type CellShort = SolError | Missing | typeof COMPUTE;
 
-export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
-  for (const a of args) if (isSolError(a)) return a;
-  for (const a of args) if (isMissing(a)) return null;
-  return COMPUTE;
-}
-
 export const DOMAIN_MESSAGE = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
 export const OVERFLOW_MESSAGE = "The result is too large to represent. The true value exceeds the numeric range.";
 
@@ -153,22 +147,6 @@ export function powerOf(x: number, y: number): number | SolError {
 }
 
 export type Tri = boolean | Missing;
-
-export function kleeneNot(a: Tri): Tri {
-  return isMissing(a) ? null : !a;
-}
-
-export function kleeneOr(a: Tri, b: Tri): Tri {
-  if (a === true || b === true) return true;
-  if (isMissing(a) || isMissing(b)) return null;
-  return false;
-}
-
-export function kleeneAnd(a: Tri, b: Tri): Tri {
-  if (a === false || b === false) return false;
-  if (isMissing(a) || isMissing(b)) return null;
-  return true;
-}
 
 export type AggregatePrep =
   | { error: SolError }

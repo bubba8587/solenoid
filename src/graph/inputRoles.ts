@@ -260,21 +260,3 @@ export function applyRole(role: InputRole, v: unknown, label: string): unknown {
   }
 }
 
-/**
- * A formula's arguments read by their roles. `settled[i]` marks a slot the null rule must not blank the answer on:
- * a slot left empty, or one with a role. A variadic `required` picks group errors only when every one is left out.
- */
-export function applyArgRoles(name: string, emptySlots: readonly boolean[], argv: unknown[]): { argv: unknown[]; settled: readonly boolean[] } {
-  if (!ARG_ROLES[name]) return { argv, settled: emptySlots };
-  const settled = [...emptySlots];
-  const label = (i: number) => `${name}: argument ${i + 1}`;
-  const out = argv.map((v, i) => {
-    const role = argRole(name, i);
-    if (!role) return v;
-    settled[i] = true;
-    return role.kind === "picks" ? applyRole({ ...role, required: false }, v, label(i)) : applyRole(role, v, label(i));
-  });
-  const group = out.map((_, i) => i).filter((i) => { const r = argRole(name, i); return r?.kind === "picks" && r.required; });
-  if (group.length && group.every((i) => out[i] === LEFT_OUT)) out[group[0]] = solError("#SYNTAX!", `${name}: no positions given, and they have no default`);
-  return { argv: out, settled };
-}

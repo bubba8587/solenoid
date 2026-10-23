@@ -1,6 +1,9 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
-import { weightedShuffleKey, shuffleList } from "../../src/graph/nodes/listOps";
+import { weightedShuffleKey } from "../../src/graph/nodes/listOps";
+
+/** The list in ascending key order, as Shuffle draws it. */
+const shuffleList = <T,>(list: T[], keys: number[]): T[] => list.map((v, i) => [keys[i], v] as const).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
 import { ShuffleNode } from "../../src/graph/nodes/list";
 import type { SolError } from "../../src/graph/errorValue";
 

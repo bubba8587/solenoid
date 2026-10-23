@@ -2,7 +2,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
-import { tTestP, fTestP } from "../../src/graph/nodes/mathUtils";
 
 // ─── Pins from the 2026-07-28 adversarial review of the [[C51]] formulaNaming formula work ─────
 // Each block pins a defect the review confirmed live. The common theme: the
@@ -31,10 +30,13 @@ describe("Formula.js may not mutate the graph's own arrays", () => {
 describe("the statistical tests answer what the NODE answers", () => {
   const a = [1, 2, 3, 4, 5];
   const b = [2, 4, 6, 8, 10];
+  // F = 0.25 on (4, 4) degrees of freedom: 2 · I₀.₂(2, 2) = 2 · (3·0.2² − 2·0.2³).
+  const F_TEST_P = 0.208;
+  const T_TEST_P = { paired: 0.01323559956368281, pooled: 0.09434977284242141, welch: 0.10753119493061636 };
 
   it("F.TEST returns the two-tailed p-value, not the variance ratio", () => {
     const p = ev("F.TEST(a, b)", { a, b }) as number;
-    expect(p).toBeCloseTo(fTestP(a, b)!, 12);
+    expect(p).toBeCloseTo(F_TEST_P, 12);
     // The old FX passthrough returned v1/v2 = 0.25 here; the p-value is not that.
     expect(p).not.toBeCloseTo(0.25, 6);
   });
@@ -43,9 +45,9 @@ describe("the statistical tests answer what the NODE answers", () => {
     const p1 = ev("T.TEST(a, b, 2, 1)", { a, b }) as number;
     const p2 = ev("T.TEST(a, b, 2, 2)", { a, b }) as number;
     const p3 = ev("T.TEST(a, b, 2, 3)", { a, b }) as number;
-    expect(p1).toBeCloseTo(tTestP("paired", a, b)!, 12);
-    expect(p2).toBeCloseTo(tTestP("equal-var", a, b)!, 12);
-    expect(p3).toBeCloseTo(tTestP("unequal-var", a, b)!, 12);
+    expect(p1).toBeCloseTo(T_TEST_P.paired, 12);
+    expect(p2).toBeCloseTo(T_TEST_P.pooled, 12);
+    expect(p3).toBeCloseTo(T_TEST_P.welch, 12);
     // The three kinds genuinely differ on this data — the old FX impl returned
     // one number for all of them.
     expect(p1).not.toBeCloseTo(p2, 6);

@@ -1,8 +1,6 @@
 // [[C17]] shareImpl
 // Masses are IUPAC abridged/conventional values; an element with no stable isotope carries its bracketed mass number.
 
-import { solError, type SolError } from "../errorValue";
-
 export interface ElementMeta {
   n: number;       // atomic number
   symbol: string;
@@ -79,75 +77,3 @@ export const ELEMENTS: ElementMeta[] = [
 export const ELEMENT_BY_SYMBOL: Map<string, ElementMeta> =
   new Map(ELEMENTS.map((e) => [e.symbol, e]));
 
-export function molarMass(input: string): number | SolError {
-  const s = input.replace(/\s+/g, "");
-  if (!s) return solError("#VALUE!", "Type a chemical formula, such as H2O");
-  let total = 0;
-  for (const segRaw of hydrateSegments(s)) {
-    const m = /^(\d+(?:\.\d+)?)?(.*)$/.exec(segRaw)!;
-    const mult = m[1] ? Number(m[1]) : 1;
-    const seg = m[2];
-    if (!seg) return solError("#VALUE!", "A formula segment is empty");
-    const r = parseGroup(seg, 0, "");
-    if (typeof r === "object" && "code" in r) return r as SolError;
-    const [mass, end] = r as [number, number];
-    if (end !== seg.length) return solError("#VALUE!", `Unexpected "${seg[end]}" in formula`);
-    total += mult * mass;
-  }
-  return total;
-}
-
-/** Splits at `·`, `•`, `*`, and at a `.` that starts a hydrate (CuSO4.5H2O). A `.` inside a segment's
- *  leading multiplier is a decimal point, so CaSO4·0.5H2O and CaSO4.0.5H2O are half a water. */
-function hydrateSegments(s: string): string[] {
-  const out: string[] = [];
-  let start = 0;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    const inMultiplier = /^\d+$/.test(s.slice(start, i));
-    const hydrateDot = ch === "." && !inMultiplier && /[)\]\d]/.test(s[i - 1] ?? "") && /^\d*(?:\.\d+)?[A-Z]/.test(s.slice(i + 1));
-    if (ch === "·" || ch === "•" || ch === "*" || hydrateDot) {
-      out.push(s.slice(start, i));
-      start = i + 1;
-    }
-  }
-  out.push(s.slice(start));
-  return out;
-}
-
-function parseGroup(s: string, i: number, close: string): [number, number] | SolError {
-  let mass = 0;
-  while (i < s.length) {
-    const ch = s[i];
-    if (ch === close) return [mass, i];
-    if (ch === "(" || ch === "[") {
-      const r = parseGroup(s, i + 1, ch === "(" ? ")" : "]");
-      if (!Array.isArray(r)) return r;
-      const [inner, at] = r;
-      if (s[at] !== (ch === "(" ? ")" : "]")) return solError("#VALUE!", "Unbalanced brackets in formula");
-      const cm = /^(\d+(?:\.\d+)?)?/.exec(s.slice(at + 1))!;
-      mass += inner * (cm[1] ? Number(cm[1]) : 1);
-      i = at + 1 + (cm[1]?.length ?? 0);
-      continue;
-    }
-    const em = /^([A-Z][a-z]?)(\d+(?:\.\d+)?)?/.exec(s.slice(i));
-    if (!em) return solError("#VALUE!", `Unexpected "${ch}" in formula`);
-    let sym = em[1];
-    let el = ELEMENT_BY_SYMBOL.get(sym);
-    if (!el && sym.length === 2) {
-      sym = sym[0];
-      el = ELEMENT_BY_SYMBOL.get(sym);
-      if (el) {
-        const cm2 = /^(\d+(?:\.\d+)?)?/.exec(s.slice(i + 1))!;
-        mass += el.mass * (cm2[1] ? Number(cm2[1]) : 1);
-        i += 1 + (cm2[1]?.length ?? 0);
-        continue;
-      }
-    }
-    if (!el) return solError("#NAME?", `Unknown element "${em[1]}"`);
-    mass += el.mass * (em[2] ? Number(em[2]) : 1);
-    i += em[0].length;
-  }
-  if (close) return solError("#VALUE!", "Unbalanced brackets in formula");
-  return [mass, i];
-}

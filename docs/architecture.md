@@ -378,7 +378,7 @@ Knap template body whose root variables mint inputs and whose bare `{{ name }}`
 embeds by kind, with a fixed Template input (a wired Note as the text) and Records
 input (a mail merge, one page per row); the mirror-image counterpart to Note — both render
 through `knapTemplate.ts`, async only when a tag is left for the engine), `visual`
-(the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
+(the figure family incl. Mermaid), `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write
 CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `coerce`, `connection`, `passthrough` (the appendLadder passthrough declarations),

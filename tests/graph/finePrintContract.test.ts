@@ -5,9 +5,8 @@ import { XMatchNode } from "../../src/graph/nodes/list";
 import { TakeDropNode } from "../../src/graph/nodes/matrix";
 import { BaseConvertNode } from "../../src/graph/nodes/scalar";
 import { GetRowNode } from "../../src/graph/nodes/frame";
-import { sliceList } from "../../src/graph/nodes/listOps";
 import { dropBlankRows, mergeColumns } from "../../src/graph/frameVerbs";
-import { isNaError, isSolError, solError } from "../../src/graph/errorValue";
+import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 
 // Round 2 of the description fine-print sweep (2026-08-08): claims that lived
@@ -84,7 +83,8 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
     expect(run(8, [5, 7, 9], "next_smaller")).toBe(2);
   });
   it("no candidate on a wired array is #N/A", () => {
-    expect(isNaError(run(10, [5, 7], "next_larger"))).toBe(true);
+    const r = run(10, [5, 7], "next_larger");
+    expect(isSolError(r) && r.code).toBe("#N/A");
   });
   // The sockets are wildcard because the kernel is type-agnostic: text was locked
   // out only by the old numeric plugs while =XMATCH("a", …) already worked.
@@ -113,12 +113,6 @@ describe("Get Row — 1-based row pick", () => {
   it("out-of-range (0 or past the end) is blank", () => {
     expect(new GetRowNode().data({ frame: [f], index: [0] }).frame).toBeNull();
     expect(new GetRowNode().data({ frame: [f], index: [4] }).frame).toBeNull();
-  });
-});
-
-describe("Slice — 1-based INCLUSIVE end", () => {
-  it("start 2 to end 3 keeps two elements", () => {
-    expect(sliceList([10, 20, 30, 40], 2, 3)).toEqual([20, 30]);
   });
 });
 

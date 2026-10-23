@@ -12,6 +12,8 @@ if (!script) {
 }
 process.argv = [process.argv[0], resolve(script), ...args];
 const server = await createServer({ server: { middlewareMode: true, hmr: false, watch: null }, appType: "custom", logLevel: "error" });
+// Nothing computes without the graph engine and the core, so a script gets both, as every test file does.
+await server.ssrLoadModule(resolve("tests/setup/graphEngine.ts"));
 await server.ssrLoadModule(resolve(script));
 await server.close();
 process.exit(process.exitCode ?? 0);

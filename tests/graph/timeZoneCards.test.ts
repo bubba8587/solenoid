@@ -1,8 +1,10 @@
 // [[C44]] dateSerials, [[C130]] rustCore
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { convertZone } from "../../src/graph/timeZone";
+import { coreFunction } from "./coreFunction";
 import { TimeZoneConvertNode, WorldClockNode } from "../../src/graph/nodes/date";
 import { isSolError } from "../../src/graph/errorValue";
+
+const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(serial, from, to);
 
 // The two zone cards over real zones: each side of DST transitions, offset zones, aliases, case variants and bad
 // names. These calls are also the cases the cards' bodies on the core are held to (fixtures/core/nodes/), which is

@@ -1,7 +1,5 @@
 // [[C17]] shareImpl
 
-import { solError, type SolError } from "../errorValue";
-
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
 
@@ -50,29 +48,6 @@ export interface SolarPosition {
   eqOfTime: number;   // minutes
 }
 
-/** Sun position for a UTC date+time serial at lat/lon (degrees, east +). */
-export function solarPosition(serial: number, lat: number, lon: number): SolarPosition {
-  const { declination, eqOfTime } = solarBasis(serialToJulianDay(serial));
-  const minutesUtc = ((serial % 1) + 1) % 1 * 1440;
-  const trueSolarTime = (((minutesUtc + eqOfTime + 4 * lon) % 1440) + 1440) % 1440;
-  const hourAngle = trueSolarTime / 4 < 0 ? trueSolarTime / 4 + 180 : trueSolarTime / 4 - 180;
-  const zenith = DEG * Math.acos(
-    Math.sin(RAD * lat) * Math.sin(RAD * declination) +
-    Math.cos(RAD * lat) * Math.cos(RAD * declination) * Math.cos(RAD * hourAngle),
-  );
-  const elevation = 90 - zenith;
-  const azDenom = Math.cos(RAD * lat) * Math.sin(RAD * zenith);
-  let azimuth: number;
-  if (Math.abs(azDenom) < 1e-9) {
-    azimuth = lat > 0 ? 180 : 0; // sun due south/north at the poles' degenerate case
-  } else {
-    const azRad = (Math.sin(RAD * lat) * Math.cos(RAD * zenith) - Math.sin(RAD * declination)) / azDenom;
-    const acos = DEG * Math.acos(Math.min(1, Math.max(-1, azRad)));
-    azimuth = hourAngle > 0 ? (acos + 180) % 360 : (540 - acos) % 360;
-  }
-  return { elevation, azimuth, declination, eqOfTime };
-}
-
 export interface SunTimes {
   /** UTC serials; null when the sun never rises/sets (polar day/night). */
   sunrise: number | null;
@@ -80,26 +55,6 @@ export interface SunTimes {
   /** Hours of daylight: 24 in polar day, 0 in polar night. */
   dayLength: number;
 }
-
-/** Sunrise/sunset (UTC serials) for the DAY of `serial` at lat/lon — NOAA's
- *  zenith 90.833° (refraction + solar radius). */
-export function sunTimes(serial: number, lat: number, lon: number): SunTimes {
-  const day = Math.floor(serial);
-  const { declination, eqOfTime } = solarBasis(serialToJulianDay(day + 0.5));
-  const cosHa =
-    Math.cos(RAD * 90.833) / (Math.cos(RAD * lat) * Math.cos(RAD * declination)) -
-    Math.tan(RAD * lat) * Math.tan(RAD * declination);
-  if (cosHa > 1) return { sunrise: null, sunset: null, dayLength: 0 };   // polar night
-  if (cosHa < -1) return { sunrise: null, sunset: null, dayLength: 24 }; // polar day
-  const haSunrise = DEG * Math.acos(cosHa);
-  const solarNoon = (720 - 4 * lon - eqOfTime) / 1440;
-  const sunrise = day + solarNoon - (haSunrise * 4) / 1440;
-  const sunset = day + solarNoon + (haSunrise * 4) / 1440;
-  return { sunrise, sunset, dayLength: (haSunrise * 8) / 60 };
-}
-
-const SYNODIC_MONTH = 29.530588853;
-const NEW_MOON_EPOCH_SERIAL = 36531.7597; // 2000-01-06 18:14 UTC as an Excel serial
 
 export interface MoonPhase {
   /** 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter. */
@@ -110,18 +65,3 @@ export interface MoonPhase {
   illumination: number;
 }
 
-export function moonPhase(serial: number): MoonPhase {
-  const days = serial - NEW_MOON_EPOCH_SERIAL;
-  const phase = ((days / SYNODIC_MONTH) % 1 + 1) % 1;
-  return {
-    phase,
-    age: phase * SYNODIC_MONTH,
-    illumination: (1 - Math.cos(2 * Math.PI * phase)) / 2,
-  };
-}
-
-export function latLonError(lat: number, lon: number): SolError | null {
-  if (lat < -90 || lat > 90) return solError("#DOMAIN!", "Latitude runs −90 to 90");
-  if (lon < -180 || lon > 180) return solError("#DOMAIN!", "Longitude runs −180 to 180 (east positive)");
-  return null;
-}

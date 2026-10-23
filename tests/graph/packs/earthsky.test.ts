@@ -2,8 +2,17 @@ import { describe, it, expect } from "vitest";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
-import { solarBasis, solarPosition, sunTimes, moonPhase, serialToJulianDay } from "../../../src/graph/nodes/astroOps";
+import { solarBasis, serialToJulianDay } from "../../../src/graph/nodes/astroOps";
+import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
+
+const call = (name: string, ...a: unknown[]) => coreFunction(name)!(...a) as number;
+const solarPosition = (w: number, lat: number, lon: number) =>
+  ({ elevation: call("SUNPOSITION", w, lat, lon, "elevation"), azimuth: call("SUNPOSITION", w, lat, lon, "azimuth") });
+const sunTimes = (w: number, lat: number, lon: number) =>
+  ({ sunrise: call("SUNRISE", w, lat, lon) as number | null, sunset: call("SUNSET", w, lat, lon) as number | null, dayLength: call("DAYLENGTH", w, lat, lon) });
+const moonPhase = (w: number) =>
+  ({ phase: call("MOONPHASE", w, "phase"), age: call("MOONPHASE", w, "age"), illumination: call("MOONPHASE", w, "illumination") });
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(EARTHSKY_FORMULAS, type), inputs);
@@ -122,8 +131,9 @@ describe("moon phase", () => {
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
-  it("SUNRISE / SUNSET / DAYLENGTH agree with the node core at the equator", () => {
-    const t = sunTimes(46000, 0, 0);
+  it("SUNRISE / SUNSET / DAYLENGTH agree with the card at the equator", () => {
+    const c = new SunriseSunsetNode().data({ when: [46000], lat: [0], lon: [0] });
+    const t = { sunrise: c.sunrise, sunset: c.sunset, dayLength: c.daylength };
     expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);
     expect(evalPackFormula("SUNSET(46000, 0, 0)")).toBe(t.sunset);
     expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);

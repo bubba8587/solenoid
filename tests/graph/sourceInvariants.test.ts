@@ -116,7 +116,6 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
     "frame.ts": "isDateCell is ISO_DATE-gated and boolean; the typing pass runs only after every cell passed it",
     "nodes/dateSerial.ts": "noteDateSerial is gated on the ISO day and day-time shapes a note holds, never ambiguous",
     "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
-    "nodes/dateOps.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
     "frameVerbs.ts": "lookupNeedle parses a lookup value; a bad date lookup just fails to match — no error channel (backlogged)",
     "components/TablePopup.tsx": "date-picker seed + CSV import, both best-effort UI with no error channel",
     "weatherProvider.ts": "Open-Meteo daily.time is machine ISO YYYY-MM-DD — never ambiguous; a bad row is a blank date cell",

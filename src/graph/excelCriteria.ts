@@ -1,5 +1,5 @@
 // [[C45]] excelComparisons
-import { solError, isSolError, type SolError } from "./errorValue";
+import { isSolError, type SolError } from "./errorValue";
 import { parseDate } from "./nodes/dateSerial";
 import { compareStrings } from "./stringOrder";
 import { decimalFromText } from "./valueKinds";
@@ -86,36 +86,3 @@ export function criterionMatches(cell: unknown, crit: Criterion): boolean {
 
 export type CriteriaKind = "sum" | "count" | "average" | "min" | "max";
 
-export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[] | null, pairs: ReadonlyArray<[readonly unknown[], unknown]>): number | SolError | null {
-  if (pairs.length === 0) return solError("#VALUE!", "At least one criteria range and criterion is needed");
-  const crits: Criterion[] = [];
-  for (const [range, raw] of pairs) {
-    const numeric = range.some((v) => typeof v === "number") && !range.some((v) => typeof v === "string" && v !== "");
-    const c = parseCriterion(raw, numeric);
-    if (isSolError(c)) return c;
-    if (!numeric && c.op !== "eq" && c.op !== "neq" && typeof c.value === "string" && Number.isFinite(decimalFromText(c.value))
-      && range.some((v) => typeof v === "string" && v !== "")) {
-      return solError("#TYPE!", `"${String(raw)}" compares numbers, but its range holds text. Cast the range to numbers first.`);
-    }
-    crits.push(c);
-  }
-  let n = pairs.reduce((m, [r]) => Math.min(m, r.length), Infinity);
-  if (values) n = Math.min(n, values.length);
-  const kept: number[] = [];
-  let count = 0;
-  for (let i = 0; i < n; i++) {
-    if (!pairs.every(([r], k) => criterionMatches(r[i], crits[k]))) continue;
-    count++;
-    if (!values) continue;
-    const v = values[i];
-    if (isSolError(v)) return v;
-    if (typeof v === "number" && Number.isFinite(v)) kept.push(v);
-  }
-  switch (kind) {
-    case "count": return count;
-    case "sum": return kept.reduce((a, b) => a + b, 0);
-    case "average": return kept.length ? kept.reduce((a, b) => a + b, 0) / kept.length : solError("#DIV/0!", "No rows matched the criteria");
-    case "min": return kept.length ? kept.reduce((a, b) => Math.min(a, b)) : 0;
-    case "max": return kept.length ? kept.reduce((a, b) => Math.max(a, b)) : 0;
-  }
-}

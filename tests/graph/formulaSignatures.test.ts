@@ -1,8 +1,8 @@
 // [[C51]] formulaNaming
 import { describe, it, expect } from "vitest";
 import { FORMULA_SIGNATURES, signatureFor, signatureParams, genericSignature } from "../../src/graph/formulaSignatures";
-import { formulaFunctionNames, formulaSyntaxHint } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { formulaSyntaxHint } from "../../src/graph/excelFormula";
+import { FUNCTION_ARITY, FRAME_SURFACE_NAMES, formulaFunctionNames } from "../../src/graph/excelFunctions";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 describe("formula signatures (display hints)", () => {
@@ -21,7 +21,7 @@ describe("formula signatures (display hints)", () => {
   it("NO registered impl ever hints a bare argument count — every one names its args", () => {
     // The rule: a function's autocomplete hint is a named parameter list (optional
     // args in [brackets], variadic tail as `…`), never "3 args" / "2–255 args".
-    for (const name of Object.keys(EXCEL_IMPL_META)) {
+    for (const name of Object.keys(FUNCTION_ARITY)) {
       if (FRAME_SURFACE_NAMES[name]) continue; // a refused frame verb redirects, no arg list
       const sig = signatureFor(name);
       expect(sig, `${name} has no hint`).not.toBeNull();
@@ -41,12 +41,12 @@ describe("formula signatures (display hints)", () => {
     // its mid-signature ellipsis doesn't parse as a variadic tail.
     const SPECIAL_FORMS = new Set(["LAMBDA"]);
     const bad: string[] = [];
-    for (const [name, meta] of Object.entries(EXCEL_IMPL_META)) {
+    for (const [name, arity] of Object.entries(FUNCTION_ARITY)) {
       if (FRAME_SURFACE_NAMES[name] || SPECIAL_FORMS.has(name)) continue;
       const sig = signatureFor(name);
       const params = sig === null ? null : signatureParams(sig);
       if (params === null) continue; // prose redirect
-      const [min, max] = meta.arity;
+      const [min, max] = arity;
       const variadic = params.length > 0 && params[params.length - 1].includes("…");
       const named = variadic ? params.slice(0, -1) : params;
       const required = named.filter((p) => !p.startsWith("[")).length;

@@ -1,6 +1,5 @@
 // [[C17]] shareImpl, [[C24]] arraySemantics
-import { stdNormCDF, normSInv } from "./mathUtils";
-import { lowess } from "./signalOps";
+import { stdNormCDF } from "./mathUtils";
 
 export interface EtsFit {
   alpha: number; beta: number; gamma: number;
@@ -48,128 +47,8 @@ export function runHW(y: readonly number[], m: number, alpha: number, beta: numb
   return { sse, fit: { alpha, beta, gamma, season: m, level, trend, seasonal: [...seasonal], fitted, sigma } };
 }
 
-export function fitEts(y: readonly number[], season = 1): EtsFit | null {
-  const n = y.length, m = Math.max(1, Math.round(season));
-  if (n < 3 || (m > 1 && n < 2 * m)) return null;
-  let best: { sse: number; fit: EtsFit } | null = null;
-  const grid = [0.05, 0.15, 0.3, 0.5, 0.7, 0.9];
-  for (const a of grid) for (const b of [0, 0.05, 0.15, 0.3, 0.6]) for (const g of m > 1 ? grid : [0]) {
-    const r = runHW(y, m, a, b, g);
-    if (!best || r.sse < best.sse) best = r;
-  }
-  let { alpha, beta, gamma } = best!.fit;
-  for (let step = 0.05; step > 1e-4; step /= 2) {
-    let improved = true;
-    while (improved) {
-      improved = false;
-      for (const [da, db, dg] of [[step, 0, 0], [-step, 0, 0], [0, step, 0], [0, -step, 0], [0, 0, step], [0, 0, -step]]) {
-        const a = Math.min(1, Math.max(0, alpha + da)), b = Math.min(1, Math.max(0, beta + db)), g = Math.min(1, Math.max(0, gamma + dg));
-        if (m === 1 && dg !== 0) continue;
-        const r = runHW(y, m, a, b, g);
-        if (r.sse < best!.sse - 1e-12) { best = r; alpha = a; beta = b; gamma = g; improved = true; }
-      }
-    }
-  }
-  return best!.fit;
-}
-
-export function etsForecast(fit: EtsFit, h: number): number[] {
-  const out: number[] = [];
-  const m = fit.season;
-  for (let k = 1; k <= h; k++) out.push(fit.level + k * fit.trend + (m > 1 ? fit.seasonal[(fit.fitted.length + k - 1) % m] : 0));
-  return out;
-}
-
-export function etsInterval(fit: EtsFit, h: number, confidence = 0.95): number {
-  const z = normSInv(0.5 + confidence / 2);
-  return z * fit.sigma * Math.sqrt(h);
-}
-
-export function detectSeason(y: readonly number[]): number {
-  const n = y.length;
-  if (n < 6) return 1;
-  const d = y.slice(1).map((v, i) => v - y[i]);
-  const mean = d.reduce((a, b) => a + b, 0) / d.length;
-  const denom = d.reduce((a, v) => a + (v - mean) ** 2, 0);
-  if (denom === 0) return 1;
-  const maxLag = Math.min(Math.floor(n / 2), 24);
-  const acf: number[] = [0, 0];
-  for (let lag = 2; lag <= maxLag; lag++) {
-    let s = 0;
-    for (let t = lag; t < d.length; t++) s += (d[t] - mean) * (d[t - lag] - mean);
-    acf.push(s / denom);
-  }
-  let bestLag = 1, bestVal = 0.3;
-  for (let lag = 2; lag <= maxLag; lag++) {
-    const v = acf[lag];
-    const left = acf[lag - 1] ?? -1, right = acf[lag + 1] ?? -1;
-    if (v > bestVal && v >= left && v >= right) { bestVal = v; bestLag = lag; }
-  }
-  return bestLag;
-}
-
 export const confidenceOk = (c: number): boolean => c > 0 && c < 1 && Number.isFinite(stdNormCDF(c));
 
 export type DecomposeModel = "additive" | "multiplicative" | "stl";
 export interface Decomposition { trend: (number | null)[]; seasonal: (number | null)[]; residual: (number | null)[] }
 
-export function seasonalDecompose(y: readonly (number | null)[], period: number, model: DecomposeModel = "additive"): Decomposition | null {
-  const n = y.length;
-  const m = Math.round(period);
-  if (m < 2 || n < 2 * m) return null;
-  const even = m % 2 === 0;
-  const filt = even ? [0.5, ...new Array<number>(m - 1).fill(1), 0.5].map((w) => w / m) : new Array<number>(m).fill(1 / m);
-  const trim = (filt.length - 1) >> 1;
-  const trend: (number | null)[] = new Array(n).fill(null);
-  for (let i = trim; i < n - trim; i++) {
-    let acc = 0, ok = true;
-    for (let k = 0; k < filt.length; k++) { const v = y[i - trim + k]; if (v === null || !Number.isFinite(v)) { ok = false; break; } acc += v * filt[k]; }
-    trend[i] = ok ? acc : null;
-  }
-  const det = y.map((v, i) => (v === null || trend[i] === null ? null : model === "additive" ? v - trend[i]! : trend[i] === 0 ? null : v / trend[i]!));
-  const pa: number[] = [];
-  for (let r = 0; r < m; r++) {
-    let s = 0, c = 0;
-    for (let i = r; i < n; i += m) { const v = det[i]; if (v !== null) { s += v; c++; } }
-    pa.push(c ? s / c : NaN);
-  }
-  if (pa.some((v) => Number.isNaN(v))) return null;
-  const mean = pa.reduce((a, b) => a + b, 0) / m;
-  const centred = model === "additive" ? pa.map((v) => v - mean) : pa.map((v) => (mean === 0 ? NaN : v / mean));
-  const seasonal = Array.from({ length: n }, (_, i) => centred[i % m]);
-  const residual = det.map((v, i) => (v === null ? null : model === "additive" ? v - seasonal[i] : seasonal[i] === 0 ? null : v / seasonal[i]));
-  return { trend, seasonal, residual };
-}
-
-export function stlDecompose(
-  y: readonly (number | null)[], period: number,
-  opts?: { trendFrac?: number; inner?: number },
-): Decomposition | null {
-  const n = y.length;
-  const m = Math.round(period);
-  if (m < 2 || n < 2 * m) return null;
-  if (y.some((v) => v === null || !Number.isFinite(v as number))) return null;
-  const data = y as readonly number[];
-  const trendFrac = opts?.trendFrac ?? Math.min(1, (1.5 * m) / n);
-  // The seasonal-mean and loess-trend iteration converges geometrically; 15 passes put a clean signal's residual well below 1e-4.
-  const inner = opts?.inner ?? 15;
-  let trend = new Array<number>(n).fill(0);
-  let seasonal = new Array<number>(n).fill(0);
-  for (let it = 0; it < inner; it++) {
-    const detrended = data.map((v, i) => v - trend[i]);
-    const pa: number[] = [];
-    for (let r = 0; r < m; r++) {
-      let s = 0, c = 0;
-      for (let i = r; i < n; i += m) { s += detrended[i]; c++; }
-      pa.push(s / c);
-    }
-    const mean = pa.reduce((a, b) => a + b, 0) / m;
-    const centred = pa.map((v) => v - mean);
-    seasonal = Array.from({ length: n }, (_, i) => centred[i % m]);
-    const deseason = data.map((v, i) => v - seasonal[i]);
-    const sm = lowess(deseason, trendFrac);
-    trend = sm.map((v, i) => (typeof v === "number" && Number.isFinite(v) ? v : deseason[i]));
-  }
-  const residual = data.map((v, i) => v - trend[i] - seasonal[i]);
-  return { trend, seasonal, residual };
-}

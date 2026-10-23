@@ -1,7 +1,9 @@
 // [[C76]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ParallelCombineNode, ESeriesNode, AwgNode } from "../../../src/graph/nodes/electrical";
-import { nearestESeries, E_SERIES } from "../../../src/graph/nodes/electricalOps";
+import { coreFunction } from "../coreFunction";
+
+const nearestESeries = (v: number, series: string) => coreFunction("ESERIESVALUE")!(v, series);
 import { solError, isSolError } from "../../../src/graph/errorValue";
 
 describe("ParallelCombineNode", () => {
@@ -36,14 +38,12 @@ describe("ParallelCombineNode", () => {
 
 describe("E-series", () => {
   it("published table values (E12/E24 deviate from the pure geometric series)", () => {
-    expect(E_SERIES.E12).toEqual([1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]);
-    expect(E_SERIES.E24).toContain(2.7); // the historic-rounding case (calc gives 2.66)
-    expect(E_SERIES.E48).toHaveLength(48);
-    expect(E_SERIES.E96).toHaveLength(96);
+    for (const v of [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]) expect(nearestESeries(v, "E12")).toBe(v);
+    expect(nearestESeries(2.7, "E24")).toBe(2.7); // the historic-rounding case (calc gives 2.66)
     // E96 spot-checks against the published table.
-    expect(E_SERIES.E96).toContain(3.32);
-    expect(E_SERIES.E96).toContain(9.76);
-    expect(E_SERIES.E48).toContain(3.16);
+    expect(nearestESeries(3.32, "E96")).toBe(3.32);
+    expect(nearestESeries(9.76, "E96")).toBe(9.76);
+    expect(nearestESeries(3.16, "E48")).toBe(3.16);
   });
 
   it("nearest snaps across decades and by log distance", () => {

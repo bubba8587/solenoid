@@ -283,12 +283,12 @@ describe("histogram2d (numpy histogram2d)", () => {
   });
 
   it("0, negative or non-numeric bins are #DOMAIN!, as in 1-D mode", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const { coreFunction } = await import("../coreFunction");
     for (const [kx, ky] of [[0, 2], [2, -1], [NaN, 2]]) {
       const h = histogram2d([0, 1], [0, 1], kx, ky);
       expect(isSolError(h) && h.code).toBe("#DOMAIN!");
     }
-    const f = resolveExcelFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
+    const f = coreFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
     expect(isSolError(f) && f.code).toBe("#DOMAIN!");
     const n = new HistogramNode();
     n.setMode("2d");
@@ -306,9 +306,9 @@ describe("histogram2d (numpy histogram2d)", () => {
   });
 
   it("HISTOGRAM2D answers the grid the node draws: a row per y bin", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const { coreFunction } = await import("../coreFunction");
     const xs = [0, 1, 2, 0, 2], ys = [0, 0, 0, 3, 3];
-    const f = resolveExcelFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
+    const f = coreFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
     expect(f).toEqual([[1, 1, 1], [1, 0, 1]]);
     const n = new HistogramNode();
     n.setMode("2d");

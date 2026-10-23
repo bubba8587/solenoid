@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 
 // ─── [[C17]] shareImpl — a node must not offer LESS than the formula surface it dispatches to ──
 //
@@ -150,9 +150,9 @@ describe("[[D73]] nodeCoversFormula — a node dispatching to a formula function
     }
     const offenders: string[] = [];
     for (const [name, passed] of maxPassed) {
-      const meta = EXCEL_IMPL_META[name];
-      if (!meta) continue; // not in the arity table (a native-only pass-through)
-      const max = meta.arity[1];
+      const arity = FUNCTION_ARITY[name];
+      if (!arity) continue; // not in the arity table (a native-only pass-through)
+      const max = arity[1];
       if (passed >= max || name in SANCTIONED) continue;
       offenders.push(`${name}: passes ${passed} arg(s), formula accepts up to ${max}`);
     }

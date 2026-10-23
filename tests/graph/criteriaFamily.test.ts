@@ -1,7 +1,7 @@
 // [[C45]] excelComparisons, [[C24]], [[B11]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { criteriaAggregate, parseCriterion } from "../../src/graph/excelCriteria";
+import { parseCriterion } from "../../src/graph/excelCriteria";
 import { isSolError } from "../../src/graph/errorValue";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { buildFrame } from "../../src/graph/frame";
@@ -34,11 +34,11 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
     expect(ev("AVERAGEIF(n, \"ap*\", a)", { a, n })).toBe(7.5);
   });
   it("a blank criterion matches blank cells; a number matches only numbers; errors never match", () => {
-    expect(criteriaAggregate("count", null, [[["x", null, ""], null]])).toBe(2);
-    expect(criteriaAggregate("count", null, [[["x", null, ""], "<>"]])).toBe(1);
-    expect(criteriaAggregate("sum", [1, 2, 3], [[[5, "5", 5], 5]])).toBe(4); // text "5" is text, never the number 5 ([[B17]] typedValueModel)
-    expect(criteriaAggregate("sum", [1, 2, 3], [[[5, "five", true], 5]])).toBe(1);
-    expect(criteriaAggregate("count", null, [[[{ __solError: true, code: "#N/A", message: "" }, 1], 1]])).toBe(1);
+    expect(ev("COUNTIFS(r, c)", { r: ["x", null, ""], c: null })).toBe(2);
+    expect(ev("COUNTIFS(r, c)", { r: ["x", null, ""], c: "<>" })).toBe(1);
+    expect(ev("SUMIFS(s, r, 5)", { s: [1, 2, 3], r: [5, "5", 5] })).toBe(4); // text "5" is text, never the number 5 ([[B17]] typedValueModel)
+    expect(ev("SUMIFS(s, r, 5)", { s: [1, 2, 3], r: [5, "five", true] })).toBe(1);
+    expect(ev("COUNTIFS(r, 1)", { r: [{ __solError: true, code: "#N/A", message: "" }, 1] })).toBe(1);
     const amb = parseCriterion(">1/2/2026", true);
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });

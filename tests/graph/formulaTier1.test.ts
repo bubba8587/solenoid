@@ -1,7 +1,7 @@
 // [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
-import { resolveExcelFunction, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
+import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
+import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isRange } from "./callTraits";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
@@ -28,7 +28,7 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
   // The redirect hint is the whole value of blocking: pointing a user at a name
   // that also fails would be worse than leaving the legacy one callable.
   it("every LEGACY_ALIASES target actually dispatches", () => {
-    const dead = [...new Set(Object.values(LEGACY_ALIASES))].filter((t) => !resolveExcelFunction(t));
+    const dead = [...new Set(Object.values(LEGACY_ALIASES))].filter((t) => !isFunctionName(t));
     expect(dead, `blocked names redirect to targets that do not dispatch: ${dead.join(", ")}`).toEqual([]);
   });
 
@@ -71,7 +71,7 @@ describe("current-Excel names the fxLookup walk used to advertise but not dispat
   // of CEILING.MATH); the old object-only walk couldn't reach them.
   it.each(["GAMMALN.PRECISE", "SKEW.P", "NETWORKDAYS.INTL", "WORKDAY.INTL",
            "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
-    expect(resolveExcelFunction(name)).not.toBeNull();
+    expect(isFunctionName(name)).toBe(true);
   });
 
   it("computes, not just resolves", () => {
@@ -249,7 +249,6 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
         const r = ev(expr, { x: [1, 2, 3] });
         expect(isSolError(r) && r.code, expr).toBe("#NAME?");
         expect(isSolError(r) && r.message, expr).toBe(message);
-        expect(isSolError(resolveExcelFunction(name)!()), name).toBe(true);
       }
     }
   });

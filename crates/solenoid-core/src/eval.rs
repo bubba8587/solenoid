@@ -139,6 +139,15 @@ thread_local! {
         .collect();
 }
 
+/// The names the call table resolves, sorted: with `callable`, only those no refusal blocks (a retired spelling
+/// resolves, so a bare one is that function, but answers its #NAME? when called).
+pub fn function_names(callable: bool) -> Vec<String> {
+    let mut names: Vec<String> =
+        TRAITS.with(|t| t.iter().filter(|(_, v)| v.resolves && (!callable || v.refusal.is_none())).map(|(k, _)| k.clone()).collect());
+    names.sort();
+    names
+}
+
 /// The facts of an uppercased function name, if it is one.
 pub fn traits(name: &str) -> Option<Rc<Traits>> {
     TRAITS.with(|t| t.get(name).cloned())

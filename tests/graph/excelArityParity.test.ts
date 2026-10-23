@@ -1,6 +1,6 @@
 // [[A5]] excelParity
 import { describe, it, expect } from "vitest";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_ARITY, MANY } from "./fixtures/excelArity";
 import { TextAfterBeforeNode } from "../../src/graph/nodes/text";
@@ -23,9 +23,9 @@ const KNOWN_SHORT: Record<string, string> = {
 const gaps = (): string[] => {
   const out: string[] = [];
   for (const [name, [min, max]] of Object.entries(EXCEL_ARITY)) {
-    const meta = EXCEL_IMPL_META[name];
-    if (!meta) continue;
-    const [ourMin, ourMax] = meta.arity;
+    const arity = FUNCTION_ARITY[name];
+    if (!arity) continue;
+    const [ourMin, ourMax] = arity;
     const maxOk = max === MANY ? ourMax >= 250 : ourMax >= max;
     if (ourMin > min || !maxOk) out.push(`${name}: ours [${ourMin}, ${ourMax}], Excel's [${min}, ${max === MANY ? "many" : max}]`);
   }
@@ -34,7 +34,7 @@ const gaps = (): string[] => {
 
 describe("[[A5]] excelParity: every registration accepts every argument Excel's does", () => {
   it("the reference covers every registered Excel name it lists", () => {
-    const missing = Object.keys(EXCEL_ARITY).filter((n) => !EXCEL_IMPL_META[n]);
+    const missing = Object.keys(EXCEL_ARITY).filter((n) => !FUNCTION_ARITY[n]);
     expect(missing, "a name in the reference that nothing registers: drop it or register the function").toEqual([]);
   });
 

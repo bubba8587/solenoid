@@ -1,7 +1,8 @@
 // [[D82]] sparklineCell
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { sparklineSeries, sparklineImage, repaintSparkline, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
+import { sparklineSeries, repaintSparkline, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
+import { coreFunction } from "./coreFunction";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { parse } from "yaml";
 import { csvField } from "../../src/graph/csvSafety";
@@ -9,6 +10,7 @@ import { parseCsvRows } from "../../src/graph/csv";
 import { patchFrontmatter } from "../../src/graph/frontmatterPatch";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+const sparklineImage = (series: unknown[], type: string) => coreFunction("SPARKLINE")!(series, type) as string | null;
 const svgOf = (url: unknown) => decodeURIComponent(String(url).replace(/^data:image\/svg\+xml,/, ""));
 
 describe("SPARKLINE", () => {

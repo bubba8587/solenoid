@@ -1,5 +1,5 @@
 // [[C25]] firstClassUnits, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
-//! Port of `dimEval` (`src/graph/unitDimExpr.ts`): the dimension a formula's result carries, never its value.
+//! The dimension a formula's result carries, never its value.
 
 use std::collections::BTreeMap;
 

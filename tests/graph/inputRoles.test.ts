@@ -4,7 +4,7 @@ import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { readFileSync, readdirSync } from "fs";
 import { ARG_ROLES, applyRole, setting, required, picks, LEFT_OUT } from "../../src/graph/inputRoles";
-import { resolveExcelFunction, EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { isFunctionName, FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { TakeDropNode, ExpandNode, TableSelectNode } from "../../src/graph/nodes/matrix";
 import { RoundNNode } from "../../src/graph/nodes/scalar";
@@ -18,8 +18,8 @@ const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 describe("[[D86]] blankRoles — data stays blank, a setting left blank is its default, a blank pick is dropped", () => {
   it("every declared function exists, and each declared argument is within its arity", () => {
     for (const [name, roles] of Object.entries(ARG_ROLES)) {
-      expect(resolveExcelFunction(name), name).not.toBeNull();
-      const max = EXCEL_IMPL_META[name]?.arity?.[1];
+      expect(isFunctionName(name), name).toBe(true);
+      const max = FUNCTION_ARITY[name]?.[1];
       for (const k of Object.keys(roles)) if (k !== "rest" && max !== undefined) expect(Number(k), name).toBeLessThan(max);
     }
   });

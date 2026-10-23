@@ -2210,7 +2210,7 @@ fn bracket(axis: &[V], x: f64) -> (usize, usize, f64) {
     (lo, hi, if lo == hi || strict_eq(x1, x0) { 0.0 } else { (x - number(x0)) / (number(x1) - number(x0)) })
 }
 
-/// Grid mode: `gridAxes`, the forecast reading and `fillGrid` (mathUtils.ts).
+/// Grid mode: the axes, the forecast reading and `fill_grid`.
 fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
     if z.is_empty() {
         return V::Null;
@@ -2344,7 +2344,7 @@ fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: b
     out
 }
 
-/// `solveLinear` (surfaceFit.ts): Gauss-Jordan with partial pivoting; None on a pivot under 1e-12.
+/// Gauss-Jordan with partial pivoting; None on a pivot under 1e-12.
 fn surface_solve(a: Vec<Vec<f64>>, b: &[f64]) -> Option<Vec<f64>> {
     let n = b.len();
     let mut m: Vec<Vec<f64>> = a.into_iter().zip(b).map(|(mut r, &x)| { r.push(x); r }).collect();
@@ -2383,7 +2383,7 @@ fn tps_phi(r2: f64) -> f64 {
     if r2 <= 1e-12 { 0.0 } else { 0.5 * r2 * log(r2) }
 }
 
-/// `fitSurface` (surfaceFit.ts): a thin-plate spline through 3 to 220 points, else a ridge plane.
+/// A thin-plate spline through 3 to 220 points, else a ridge plane.
 fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64>> {
     let n = points.len();
     if n == 0 {

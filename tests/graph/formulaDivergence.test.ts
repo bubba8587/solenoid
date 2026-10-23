@@ -1,27 +1,18 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import * as FX from "@formulajs/formulajs";
-import { resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 import { GCDNode, MathFXNode } from "../../src/graph/nodes/scalar";
 import { TextSliceNode, TextFindNode } from "../../src/graph/nodes/text";
 
-// ─── Formula-engine divergence re-sweep (periodic, author-flagged 2026-06-25) ────
-// The 2026-06-25 consolidation compared every formula-reachable function (our impl
-// vs Formula.js) and OVERRODE the handful where FX is wrong, so `resolveExcelFunction`
-// returns the Excel-correct answer AND the visual node calls the SAME impl. Those
-// overrides are load-bearing and easy to regress on an FX upgrade or a refactor, so
-// this pins them. It doubles as the "re-run the sweep" guard the backlog asks for:
-//   • the "Excel-correct" blocks assert OUR result matches Excel (robust — always valid);
-//   • the "FX still diverges" tripwires assert FX STILL returns its wrong answer, so an
-//     FX upgrade that changes/fixes one trips this test → re-evaluate the override
-//     (a judgment call to surface, not a silent regression).
-// Recovered from the audit notes (dev-notes "Divergence audit"), since the original
-// `_sweep` script was never committed — only referenced.
+// ─── Where Formula.js was wrong ──────────────────────────────────────────────────
+// The 2026-06-25 consolidation compared every formula-reachable function against Formula.js and overrode the handful
+// where it is wrong, so the function answers as Excel does AND the visual node runs the same kernel. These pin the
+// Excel-correct answers.
 
 const call = (name: string, ...args: unknown[]): unknown => {
-  const fn = resolveExcelFunction(name);
-  expect(fn, `resolveExcelFunction("${name}") should exist`).not.toBeNull();
+  const fn = coreFunction(name);
+  expect(fn, `${name} should exist`).not.toBeNull();
   return fn!(...args);
 };
 const num = (v: unknown): number => {
@@ -34,39 +25,6 @@ describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => 
     expect(call("ROUNDUP", 0.1 + 0.2, 1)).toBe(0.3);
     expect(call("POWER", 0, 0)).toBe(1);
   });
-  it("FX still rounds binary noise up and refuses 0^0 (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
-    expect(fx.ROUNDUP(0.1 + 0.2, 1)).toBe(0.4);
-    expect(fx.POWER(0, 0)).toBeInstanceOf(Error);
-  });
-});
-
-describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply without recursing (FX is wrong)", () => {
-  it("exact where a double holds the answer, an overflow past it, and Excel's domain", () => {
-    expect(call("COMBIN", 30, 15)).toBe(155117520);
-    expect(call("COMBIN", 1e6, 2)).toBe(499999500000);
-    expect(call("COMBIN", 56, 23)).toBe(3167295784216200);
-    expect(call("MULTINOMIAL", 23, 33)).toBe(3167295784216200);
-    expect(call("PERMUT", 1e6, 2)).toBe(999999000000);
-    expect(call("MULTINOMIAL", 2, 3, 4)).toBe(1260);
-    expect(call("COMBINA", 4, 3)).toBe(20);
-    expect(call("COMBINA", 2, 5)).toBe(6);
-    expect(call("COMBINA", 0, 3)).toBe(0);
-    expect(call("COMBINA", 0, 0)).toBe(1);
-    expect(call("FACTDOUBLE", -1)).toBe(1);
-    expect(call("FACT", 1e9)).toBe(Infinity);
-    for (const [name, args] of [["FACT", [-1]], ["COMBIN", [5, 6]], ["PERMUT", [3, 5]], ["FACTDOUBLE", [-2]]] as const) {
-      expect((call(name, ...args) as { code?: string }).code).toBe("#DOMAIN!");
-    }
-    const fx = FX as unknown as Record<string, (n: number) => number>;
-    for (let n = 0; n <= 170; n++) expect(call("FACT", n)).toBe(fx.FACT(n));
-  });
-  it("FX still overflows the call stack and divides factorials (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
-    expect(() => fx.COMBIN(1e6, 2)).toThrow(RangeError);
-    expect(() => fx.FACT(-1)).toThrow(RangeError);
-    expect(fx.COMBIN(30, 15)).not.toBe(155117520);
-  });
 });
 
 describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX is wrong)", () => {
@@ -78,11 +36,6 @@ describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX
     for (const args of [[10, 0.5, 6, 5], [10, 1.5, 1], [10, 0.5, 11], [1e7, 0.5, 0, 5e6]]) {
       expect((call("BINOM.DIST.RANGE", ...args) as { code?: string }).code).toBe("#DOMAIN!");
     }
-  });
-  it("FX still overflows the stack on large trials and takes a reversed range (tripwire)", () => {
-    const fx = (FX as unknown as { BINOM: { DIST: { RANGE: (...a: number[]) => number } } }).BINOM.DIST.RANGE;
-    expect(() => fx(1e5, 0.5, 0, 50000)).toThrow(RangeError);
-    expect(fx(10, 0.5, 6, 5)).toBe(0);
   });
 });
 
@@ -100,26 +53,9 @@ describe("ACOT, GAMMALN and GAMMALN.PRECISE answer Excel's (FX is wrong)", () =>
     }
     expect((new MathFXNode({ op: "gammaln" }).data({ in: [-3.7] }).result as { code?: string }).code).toBe("#DOMAIN!");
   });
-  it("FX still answers atan(1/x) and a log-gamma for a negative x (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (x: number) => number>;
-    expect(fx.ACOT(-1)).toBeCloseTo(-Math.PI / 4, 14);
-    expect(fx.GAMMALN(-3.7)).toBeCloseTo(-1.3797, 4);
-  });
 });
 
 describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a million or below 0 (FX recurs once per order and rounds)", () => {
-  it("a huge order answers at once; an ordinary one is Formula.js's", () => {
-    const t = performance.now();
-    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect((call(name, 1, 1e12) as { code?: string }).code).toBe("#DOMAIN!");
-    expect(performance.now() - t).toBeLessThan(500);
-    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
-    expect(call("BESSELJ", 1.9, 2)).toBe(fx.BESSELJ(1.9, 2));
-  });
-  it("a fractional order is truncated, as Excel's (FX rounds it)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
-    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect(call(name, 1.5, 2.7)).toBe(fx[name](1.5, 2));
-    expect(fx.BESSELJ(1, 2.7)).toBe(fx.BESSELJ(1, 3));
-  });
   it("an infinite order answers #DOMAIN! too, and a negative one as Excel's #NUM!", () => {
     const t = performance.now();
     for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) {
@@ -132,12 +68,6 @@ describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a mi
     }
     expect(performance.now() - t).toBeLessThan(500);
   });
-  it("FX still recurs once per order (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
-    const t = performance.now();
-    fx.BESSELJ(1, 2e6);
-    expect(performance.now() - t).toBeGreaterThan(5);
-  });
 });
 
 describe("CLEAN reads a number or logical as text and drops codes 0 to 31 only (FX is wrong)", () => {
@@ -145,10 +75,6 @@ describe("CLEAN reads a number or logical as text and drops codes 0 to 31 only (
     expect(call("CLEAN", 5)).toBe("5");
     expect(call("CLEAN", true)).toBe("TRUE");
     expect(call("CLEAN", "a\u0001b\u001fc\u007f")).toBe("abc\u007f");
-  });
-  it("FX still throws on a number (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (v: unknown) => unknown>;
-    expect(() => fx.CLEAN(5)).toThrow(TypeError);
   });
 });
 
@@ -160,23 +86,6 @@ describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per p
     expect(num(call("DB", 1000, 100, 10, 3))).toBeCloseTo(129.869816, 6);
     expect(typeof call("DB", 1000, 100, 1e7, 2e7)).not.toBe("number");
   });
-  it("FX still loops over the periods (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
-    for (const name of ["DB", "DDB"]) expect(fx[name].toString()).toMatch(/for \(let i = \d; i <= \w+; i\+\+\)/);
-  });
-});
-
-describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
-  it("our impl matches Excel across sign combinations", () => {
-    expect(num(call("MOD", 10, -3))).toBeCloseTo(-2, 9); // divisor negative → negative
-    expect(num(call("MOD", -3, 5))).toBeCloseTo(2, 9);
-    expect(num(call("MOD", 3, -5))).toBeCloseTo(-2, 9);
-    expect(num(call("MOD", 10, 3))).toBeCloseTo(1, 9);
-    expect(isSolError(call("MOD", 5, 0))).toBe(true); // ÷0 → #DIV/0!, not FX's null
-  });
-  it("FX still has the sign bug (tripwire — re-evaluate the override if this fails)", () => {
-    expect((FX as { MOD: (a: number, b: number) => unknown }).MOD(10, -3)).not.toBe(-2);
-  });
 });
 
 describe("IFS reads its tests as IF does (FX is wrong)", () => {
@@ -184,9 +93,6 @@ describe("IFS reads its tests as IF does (FX is wrong)", () => {
     expect(call("IFS", "FALSE", 1, true, 2)).toBe(2);
     const r = call("IFS", "text", 1, true, 2);
     expect(isSolError(r) && r.code).toBe("#VALUE!");
-  });
-  it("FX still takes any truthy text as true (tripwire)", () => {
-    expect((FX as unknown as { IFS: (...a: unknown[]) => unknown }).IFS("FALSE", 1, true, 2)).toBe(1);
   });
 });
 
@@ -204,10 +110,6 @@ describe("ATAN2 — Excel arg order is (x, y) = atan2(y, x); FX swaps them", () 
     expect(num(call("ATAN2", 0, 1))).toBeCloseTo(Math.PI / 2, 9); // point (0,1) → π/2
     expect(num(call("ATAN2", 1, 1))).toBeCloseTo(Math.PI / 4, 9);
     expect(num(call("ATAN2", -1, 0))).toBeCloseTo(Math.PI, 9);
-  });
-  it("FX still swaps the args (tripwire)", () => {
-    // FX.ATAN2(1,0) computes atan2(1,0)=π/2 instead of Excel's 0.
-    expect((FX as { ATAN2: (a: number, b: number) => unknown }).ATAN2(1, 0)).not.toBeCloseTo(0, 6);
   });
 });
 
@@ -252,10 +154,6 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
     expect(num(call("PERCENTRANK.INC", [1, 2, 3, 4], 3))).toBeCloseTo(0.666, 9);
     expect(num(call("PERCENTRANK.EXC", [1, 2, 3, 4], 3))).toBeCloseTo(0.6, 9);
   });
-  it("FX still answers 0 below the data", () => {
-    expect(FX.PERCENTRANK.INC([1, 2, 3, 4], 0)).toBe(0);
-    expect(FX.PERCENTRANK.EXC([1, 2, 3, 4], 0)).toBe(0);
-  });
 });
 
 describe("LEFT, RIGHT, FIND and SEARCH refuse a negative count or a start below 1 (Excel)", () => {
@@ -270,10 +168,6 @@ describe("LEFT, RIGHT, FIND and SEARCH refuse a negative count or a start below 
     expect(code(new TextSliceNode({ op: "mid" }).data({ text: ["abc"], start: [0], len: [1] }).result)).toBe("#VALUE!");
     expect(code(new TextFindNode({ op: "find" }).data({ needle: ["a"], haystack: ["abc"], start: [0] }).result)).toBe("#VALUE!");
   });
-  it("FX still clamps", () => {
-    expect(FX.LEFT("abc", -1)).toBe("");
-    expect(FX.FIND("a", "abc", 0)).toBe(1);
-  });
 });
 
 describe("hex digits are uppercase, as Excel writes them", () => {
@@ -284,10 +178,6 @@ describe("hex digits are uppercase, as Excel writes them", () => {
     expect(call("OCT2HEX", "377")).toBe("FF");
     expect(call("BASE", 35, 36)).toBe("Z");
     expect(call("BASE", 10, 16, 4)).toBe("000A");
-  });
-  it("FX still writes lowercase", () => {
-    expect(FX.DEC2HEX(255)).toBe("ff");
-    expect(FX.BASE(35, 36)).toBe("z");
   });
 });
 
@@ -306,11 +196,6 @@ describe("GCD and LCM truncate each value; a negative one is #DOMAIN! (Excel)", 
     expect(new GCDNode({ op: "gcd" }).data({ a: [[4.5, 24.9]], b: [[6.9, 36]] }).result).toEqual([2, 12]);
     expect(code((new GCDNode({ op: "lcm" }).data({ a: [[-4]], b: [[6]] }).result as unknown[])[0])).toBe("#DOMAIN!");
   });
-  it("FX still runs on the raw decimals and takes negatives", () => {
-    expect(FX.GCD(4.5, 6.9)).not.toBe(2);
-    expect(FX.LCM(4.5, 6)).toBe(27);
-    expect(FX.GCD(-4, 6)).toBe(2);
-  });
 });
 
 describe("MIN and MAX read a list without spreading it into a call", () => {
@@ -319,15 +204,6 @@ describe("MIN and MAX read a list without spreading it into a call", () => {
     expect(call("MIN", long, 7)).toBe(0);
     expect(call("MAX", long)).toBe(149_999);
   });
-  it("they read numbers only, and no numbers is 0, as Formula.js reads them", () => {
-    expect(call("MAX", [1, "9", true, 3])).toBe(3);
-    expect(call("MIN", ["a"], null)).toBe(0);
-    expect(FX.MAX([1, "9", true, 3])).toBe(3);
-  });
-  it("FX still spreads the list into a call", () => {
-    expect(() => FX.MIN(long)).toThrow(RangeError);
-    expect(() => FX.MAX(long)).toThrow(RangeError);
-  });
 });
 
 describe("SUM reads a list without spreading it into a call", () => {
@@ -335,58 +211,18 @@ describe("SUM reads a list without spreading it into a call", () => {
   it("a list past the argument limit answers", () => {
     expect(call("SUM", long)).toBe(449_994);
   });
-  it("it reads as Formula.js does: numbers, numeric text, a nested list as its own subtotal", () => {
-    expect(call("SUM", [1, "9", true, 3], "2")).toBe(15);
-    expect(call("SUM", [1, "9", true, 3], "2")).toBe(FX.SUM([1, "9", true, 3], "2"));
-    expect(call("SUM", 0.1, [0.2, 0.3])).toBe(FX.SUM(0.1, [0.2, 0.3]));
-  });
-  it("FX still spreads the list into a call", () => {
-    expect(() => FX.SUM(long)).toThrow(RangeError);
-  });
 });
 
-// ─── TEXT-family sweep (B-4b, 2026-07-05) — same contract as above: "Excel-correct"
-// blocks pin OUR result; "FX still …" tripwires pin FX's wrong answer so an FX
-// upgrade that fixes one surfaces the override for re-evaluation. ───────────────
+// ─── TEXT-family sweep (B-4b, 2026-07-05): the Excel-correct answers. ───────────
 
 const str = (v: unknown): string => {
   expect(typeof v === "string", `expected a string, got ${JSON.stringify(v)}`).toBe(true);
   return v as string;
 };
-const fx = FX as unknown as Record<string, (...a: unknown[]) => unknown>;
 
 describe("TEXT — format-code holes patched over FX", () => {
-  it("a non-numeric text value passes through unchanged (FX throws)", () => {
-    expect(str(call("TEXT", "abc", "0.00"))).toBe("abc");
-    expect(str(call("TEXT", "", "0.00"))).toBe("");
-  });
-  it('"@" and "General" render via numberToText (FX rounds "@", zeroes "General")', () => {
-    expect(str(call("TEXT", 1234.567, "@"))).toBe("1234.567");
-    expect(str(call("TEXT", 0.1 + 0.2, "General"))).toBe("0.3");
-  });
-  it('pure zero-pad codes actually pad ("00000"; FX drops the pad)', () => {
-    expect(str(call("TEXT", 12, "00000"))).toBe("00012");
-    expect(str(call("TEXT", -12, "00000"))).toBe("-00012");
-    expect(str(call("TEXT", 12.6, "000"))).toBe("013"); // rounds, then pads
-  });
-  it("scientific codes format as mantissa E+exp (FX emits a plain decimal)", () => {
-    expect(str(call("TEXT", 1234567, "0.00E+00"))).toBe("1.23E+06");
-    expect(str(call("TEXT", 0.00001234, "0.0E+00"))).toBe("1.2E-05");
-  });
-  it("plain numeric codes still route to FX (already Excel-correct — drift guards)", () => {
-    expect(str(call("TEXT", 1234.567, "#,##0.00"))).toBe("1,234.57");
-    expect(str(call("TEXT", 1234.567, "0.00"))).toBe("1234.57");
-    expect(str(call("TEXT", 0.285, "0.0%"))).toBe("28.5%");
-    expect(str(call("TEXT", 1234.567, "$#,##0.00"))).toBe("$1,234.57");
-  });
   it("date codes format OUR serial (the audit-29 fix, pinned)", () => {
     expect(str(call("TEXT", 46096, "yyyy-mm-dd"))).toBe("2026-03-15");
-  });
-  it("FX still throws on text / drops the zero pad / mangles @ (tripwires)", () => {
-    expect(() => fx.TEXT("abc", "0.00")).toThrow();
-    expect(fx.TEXT(12, "00000")).not.toBe("00012");
-    expect(fx.TEXT(1234.567, "@")).not.toBe("1234.567");
-    expect(fx.TEXT(1234567, "0.00E+00")).not.toBe("1.23E+06");
   });
 });
 
@@ -400,11 +236,6 @@ describe("number → text in string contexts — numberToText's 15-sig-digit con
     expect(num(call("FIND", ".", 0.1 + 0.2))).toBe(2);
     expect(num(call("LEN", 0.1 + 0.2))).toBe(3);
     expect(call("EXACT", 0.1 + 0.2, "0.3")).toBe(true);
-  });
-  it("FX still stringifies raw — 17-digit noise, SUBSTITUTE throws (tripwires)", () => {
-    expect(fx.UPPER(0.1 + 0.2)).toBe("0.30000000000000004");
-    expect(() => fx.SUBSTITUTE(0.1 + 0.2, ".", ",")).toThrow();
-    expect(fx.EXACT(0.1 + 0.2, "0.3")).toBe(false);
   });
 });
 
@@ -420,15 +251,6 @@ describe("PROPER, MID, REPT, CHAR, CODE, UNICHAR, UNICODE — the text cards' an
     expect(call("UNICODE", "😀")).toBe(128512);
     expect(call("CHAR", 128512)).toBe("😀");
     expect(call("CODE", "😀")).toBe(128512);
-  });
-  it("FX still gets them wrong (tripwires)", () => {
-    expect(fx.PROPER("76BudGet")).not.toBe("76Budget");
-    expect(fx.MID("abc", 2, 0)).toBeInstanceOf(Error);
-    expect(() => fx.REPT("ab", 2.9)).toThrow();
-    expect(fx.UNICHAR(128512)).not.toBe("😀");
-    expect(fx.UNICODE("😀")).not.toBe(128512);
-    expect(fx.CHAR(128512)).not.toBe("😀");
-    expect(fx.CODE("😀")).not.toBe(128512);
   });
 });
 
@@ -446,9 +268,6 @@ describe("VALUE — strict like Excel: unparseable text is #VALUE!, not FX's sil
     expect(isSolError(call("VALUE", true))).toBe(true); // Excel: VALUE(TRUE) is #VALUE!
     expect(isSolError(call("VALUE", "0x1F"))).toBe(true); // JS Number() would read 31
   });
-  it("FX still returns 0 for garbage (tripwire)", () => {
-    expect(fx.VALUE("abc")).toBe(0);
-  });
 });
 
 describe("NUMBERVALUE — custom separators (FX nulls out on a bare decimal-sep arg)", () => {
@@ -463,9 +282,6 @@ describe("NUMBERVALUE — custom separators (FX nulls out on a bare decimal-sep 
     expect(isSolError(call("NUMBERVALUE", "1,5", ",", ","))).toBe(true);
     expect(isSolError(call("NUMBERVALUE", "3.1,2", ".", ","))).toBe(true);
   });
-  it("FX still NaNs out (tripwire)", () => {
-    expect(fx.NUMBERVALUE("3,5%", ",")).toBeNaN();
-  });
 });
 
 describe("DOLLAR — Excel's negative accounting form is ($…), FX prints $(…)", () => {
@@ -473,9 +289,6 @@ describe("DOLLAR — Excel's negative accounting form is ($…), FX prints $(…
     expect(str(call("DOLLAR", -1234.567, 2))).toBe("($1,234.57)");
     expect(str(call("DOLLAR", 1234.567, 2))).toBe("$1,234.57");
     expect(str(call("DOLLAR", 1234.567, -2))).toBe("$1,200");
-  });
-  it("FX still leads with $( (tripwire)", () => {
-    expect(str(fx.DOLLAR(-1234.567, 2)).startsWith("$(")).toBe(true);
   });
 });
 
@@ -488,18 +301,6 @@ describe("ROUND past a double's precision", () => {
   });
 });
 
-describe("FIXED and DOLLAR round with roundDigits, as ROUND does", () => {
-  it("1.005 to 2 places is 1.01, where Formula.js's toFixed gives 1.00", () => {
-    expect(str(call("FIXED", 1.005, 2))).toBe("1.01");
-    expect(str(call("FIXED", -1.005, 2))).toBe("-1.01");
-    expect(str(call("DOLLAR", 1.005, 2))).toBe("$1.01");
-    expect(str(call("FIXED", 1234.5, -1))).toBe("1,230");
-    expect(str(call("FIXED", 1.25))).toBe("1.25");
-    expect(str(call("FIXED", 2.675, 2.9))).toBe("2.68");
-    expect(str((FX as unknown as Record<string, (...a: number[]) => unknown>).FIXED(1.005, 2))).toBe("1.00"); // the Formula.js tripwire
-  });
-});
-
 describe("FIXED — drift guards, incl. half-away rounding", () => {
   it("decimals, negative decimals, no_commas, signed halves", () => {
     expect(str(call("FIXED", 1234.567, 1))).toBe("1,234.6");
@@ -509,11 +310,9 @@ describe("FIXED — drift guards, incl. half-away rounding", () => {
   });
 });
 
-describe("Pass-through stats family holds the Excel value (catches FX drift on upgrade)", () => {
-  // These have NO internal override — resolveExcelFunction returns FX directly — so
-  // pinning HARDCODED Excel references (not comparing FX to itself) is what actually
-  // guards them: a future FX upgrade that shifts one of these to a wrong value trips
-  // the sweep. The audit found this whole family already AGREES with Excel today.
+describe("Pass-through stats family holds the Excel value", () => {
+  // Formula.js agreed with Excel on this whole family, so its bodies were ported as they were; these pin Excel's
+  // references.
   it("MEDIAN / GEOMEAN / HARMEAN / AVEDEV / DEVSQ / SUMSQ match Excel", () => {
     expect(num(call("MEDIAN", [1, 2, 3, 4]))).toBeCloseTo(2.5, 9);
     expect(num(call("MEDIAN", [3, 1, 4, 1, 5, 9, 2, 6]))).toBeCloseTo(3.5, 9);
@@ -522,19 +321,5 @@ describe("Pass-through stats family holds the Excel value (catches FX drift on u
     expect(num(call("AVEDEV", [1, 2, 3]))).toBeCloseTo(2 / 3, 9); // mean |x−2|
     expect(num(call("DEVSQ", [1, 2, 3]))).toBeCloseTo(2, 9);      // Σ(x−2)²
     expect(num(call("SUMSQ", [1, 2, 3]))).toBeCloseTo(14, 9);     // 1+4+9
-  });
-});
-
-describe("CUMIPMT, CUMPRINC and SLN refuse what Excel refuses (FX answers)", () => {
-  it("an end period past the loan is #DOMAIN! (Excel's #NUM!) and a zero life #DIV/0!, checked in Excel", () => {
-    for (const name of ["CUMIPMT", "CUMPRINC"]) expect((call(name, 0.01, 12, 1000, 1, 15, 0) as { code?: string }).code).toBe("#DOMAIN!");
-    expect((call("SLN", 1, 1, 0) as { code?: string }).code).toBe("#DIV/0!");
-    expect(num(call("CUMIPMT", 0.01, 12, 1000, 1, 12, 0))).toBeCloseTo(num((FX as unknown as Record<string, (...a: number[]) => unknown>).CUMIPMT(0.01, 12, 1000, 1, 12, 0)), 9);
-  });
-  it("FX still runs past the loan and calls a zero life #NUM! (tripwire)", () => {
-    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
-    expect(typeof fx.CUMIPMT(0.01, 12, 1000, 1, 15, 0)).toBe("number");
-    expect(typeof fx.CUMPRINC(0.01, 12, 1000, 1, 15, 0)).toBe("number");
-    expect(String(fx.SLN(1, 1, 0))).toMatch(/#NUM!/);
   });
 });

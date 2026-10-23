@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { FUNCTION_FAMILY, FAMILY_BACKING, internalFunctionNames } from "../../../src/graph/excelFunctions";
 import { AggregateNode } from "../../../src/graph/nodes/list";
 import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -193,21 +192,3 @@ describe("CHOOSE formula == Choose node", () => {
 // backing reads `internal` must register every overlap name internally — or name the
 // stragglers here, and that list must stay honest (an entry that got registered is
 // deleted, so the gap ratchets shut rather than being quietly carried).
-describe("FAMILY_BACKING 'internal' ⇒ registered internally (the flip ratchet)", () => {
-  const STILL_ON_FORMULAJS = new Set<string>([
-    // finance-iterative: RATE has no shared kernel — the TVM node solves it as an Equation
-    // (acausal), so there is no node-side function to register; FX's Newton stands.
-    "RATE",
-  ]);
-  const internal = new Set(internalFunctionNames());
-  it("every internal-backed overlap name is registered, or is a listed straggler", () => {
-    const missing = Object.entries(FUNCTION_FAMILY)
-      .filter(([n, f]) => FAMILY_BACKING[f].backing === "internal" && !internal.has(n) && !STILL_ON_FORMULAJS.has(n))
-      .map(([n]) => n);
-    expect(missing).toEqual([]);
-  });
-  it("the straggler list stays honest — a flipped name is removed from it", () => {
-    const stale = [...STILL_ON_FORMULAJS].filter((n) => internal.has(n) || !(n in FUNCTION_FAMILY));
-    expect(stale).toEqual([]);
-  });
-});

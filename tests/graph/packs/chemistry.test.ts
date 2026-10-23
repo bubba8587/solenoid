@@ -2,8 +2,11 @@ import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "../../../src/graph/packs/chemistry";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { ElementNode, MolarMassNode, elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
-import { ELEMENTS, molarMass } from "../../../src/graph/nodes/chemistryOps";
+import { ELEMENTS } from "../../../src/graph/nodes/chemistryOps";
+import { coreFunction } from "../coreFunction";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
+
+const molarMass = (formula: string) => coreFunction("MOLARMASS")!(formula);
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(CHEMISTRY_FORMULAS, type), inputs);

@@ -607,12 +607,19 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                 } else if ki < lo {
                     Some(0.0)
                 } else {
-                    let top = math_min(ki, hi);
-                    if top - lo > LOOP_CAP {
+                    // Hoeffding bounds each pmf by exp(-2(j - mean)^2 / n): past sqrt(400n) from the mean it is below
+                    // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[C120]] linearWork).
+                    let (mut from, mut top) = (lo, math_min(ki, hi));
+                    if top - from > 10_000.0 {
+                        let (mean, reach) = (ni * mi / big, (400.0 * ni).sqrt().ceil() + 1.0);
+                        from = math_max(lo, mean.floor() - reach);
+                        top = math_min(top, mean.ceil() + reach);
+                    }
+                    if top - from > LOOP_CAP {
                         return Err(TooLong);
                     }
                     let mut sum = 0.0;
-                    let mut j = lo;
+                    let mut j = from;
                     let mut bad = false;
                     while j <= top {
                         match hypgeom_pmf(j, ni, mi, big) {

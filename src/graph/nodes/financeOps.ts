@@ -47,7 +47,6 @@ export function basisDays(basis: number): number {
 }
 
 const use30 = (basis: number) => basis === 0 || basis === 4;
-const dayCount = (basis: number, a: Date, b: Date) => (use30(basis) ? days30_360(a, b) : actualDays(a, b));
 
 export function coupPeriodDays(
   prev: Date, next: Date, settle: Date, freq: number, basis: number,
@@ -210,49 +209,6 @@ export function vdb(
 
 export type CouponOp = "coupdaybs" | "coupdays" | "coupdaysnc" | "coupncd" | "couppcd" | "coupnum";
 
-export function couponValue(
-  op: CouponOp, settleSerial: number, maturitySerial: number, freq = 2, basis = 0,
-): number | SolError | null {
-  const f = Math.round(freq), b = Math.round(basis);
-  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  const bad = argsError(op, settleSerial, maturitySerial, f, b);
-  if (bad) return bad;
-  const settle = serialToJsDate(settleSerial);
-  const maturity = serialToJsDate(maturitySerial);
-  const { prev, next } = coupDates(settle, maturity, f);
-  const { e, dsc, dsbs } = coupPeriodDays(prev, next, settle, f, b);
-  switch (op) {
-    case "coupdaybs":  return dsbs;
-    case "coupdays":   return e;
-    case "coupdaysnc": return dsc;
-    case "coupncd":    return jsDateToSerial(next);
-    case "couppcd":    return jsDateToSerial(prev);
-    case "coupnum": {
-      return bondCouponCount(next, maturity, f);
-    }
-  }
-}
-
-function accrualError(op: string, issueSerial: number, settleSerial: number, rate: number, par: number, basis: number): SolError | null {
-  if (!(basis >= 0 && basis <= 4)) return domain(op, "a basis from 0 to 4");
-  if (!(issueSerial < settleSerial)) return domain(op, "the issue date before the settlement date");
-  if (rate <= 0 || par <= 0) return domain(op, "a rate and par above 0");
-  return null;
-}
-
-export function accrintM(
-  issueSerial: number, settleSerial: number, rate: number, par = 1000, basis = 0,
-): number | SolError | null {
-  if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
-  const b = Math.round(basis);
-  const bad = accrualError("accrintm", issueSerial, settleSerial, rate, par, b);
-  if (bad) return bad;
-  const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
-  const a = dayCount(b, issue, settle);
-  const d = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
-  return par * rate * a / d;
-}
-
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
 export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | SolError | null {
@@ -279,183 +235,17 @@ export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number,
 
 export type SecurityDiscOp = "disc" | "intrate" | "received";
 
-const SECURITY_DISC_POSITIVE: Record<SecurityDiscOp, string> = {
-  disc: "a price and redemption above 0",
-  intrate: "an investment and redemption above 0",
-  received: "an investment and discount above 0",
-};
-
-export function securityDisc(
-  op: SecurityDiscOp, settleSerial: number, maturitySerial: number, a: number, b: number, basis = 0,
-): number | SolError | null {
-  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  const basisCode = Math.round(basis);
-  const bad = argsError(op, settleSerial, maturitySerial, undefined, basisCode);
-  if (bad) return bad;
-  if (a <= 0 || b <= 0) return domain(op, SECURITY_DISC_POSITIVE[op]);
-  const dsm = dayCount(basisCode, serialToJsDate(settleSerial), serialToJsDate(maturitySerial));
-  const bd = basisDays(basisCode);
-  switch (op) {
-    case "disc":    return ((b - a) / b) * (bd / dsm);
-    case "intrate": return ((b - a) / a) * (bd / dsm);
-    case "received": {
-      const denom = 1 - b * dsm / bd;
-      return denom <= 0 ? domain(op, "a discount below 100% over the term") : a / denom;
-    }
-  }
-}
-
 export type PriceDiscOp = "pricedisc" | "yielddisc";
-
-export function priceDisc(
-  op: PriceDiscOp, settleSerial: number, maturitySerial: number, rateOrPrice: number,
-  redemption = 100, basis = 0,
-): number | SolError | null {
-  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  const b = Math.round(basis);
-  const bad = argsError(op, settleSerial, maturitySerial, undefined, b);
-  if (bad) return bad;
-  if (rateOrPrice <= 0 || redemption <= 0) return domain(op, op === "pricedisc" ? "a discount and redemption above 0" : "a price and redemption above 0");
-  const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
-  const dsm = dayCount(b, settle, maturity);
-  const B = b === 3 ? 365 : 360;
-  return op === "pricedisc"
-    ? redemption * (1 - rateOrPrice * dsm / B)
-    : (redemption - rateOrPrice) / rateOrPrice * B / dsm;
-}
 
 export type PriceMatOp = "pricemat" | "yieldmat";
 
-export function priceMat(
-  op: PriceMatOp, settleSerial: number, maturitySerial: number, issueSerial: number,
-  rate: number, yldOrPrice: number, basis = 0,
-): number | SolError | null {
-  if (![settleSerial, maturitySerial, issueSerial].every(Number.isFinite)) return null;
-  const b = Math.round(basis);
-  const bad = argsError(op, settleSerial, maturitySerial, undefined, b);
-  if (bad) return bad;
-  if (rate < 0) return domain(op, "a rate of 0 or more");
-  if (op === "pricemat" ? yldOrPrice < 0 : yldOrPrice <= 0) return domain(op, op === "pricemat" ? "a yield of 0 or more" : "a price above 0");
-  const settle = serialToJsDate(settleSerial);
-  const maturity = serialToJsDate(maturitySerial);
-  const issue = serialToJsDate(issueSerial);
-  const dim = dayCount(b, issue, maturity);
-  const dsm = dayCount(b, settle, maturity);
-  const a = dayCount(b, issue, settle);
-  const B = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
-  const totalInterest = 100 * (1 + dim / B * rate);
-  const accrued = a / B * rate * 100;
-  return op === "pricemat"
-    ? totalInterest / (1 + dsm / B * yldOrPrice) - accrued
-    : (totalInterest / (yldOrPrice + accrued) - 1) * B / dsm;
-}
-
 export type DurationOp = "duration" | "mduration";
-
-export function durationValue(
-  op: DurationOp, settleSerial: number, maturitySerial: number,
-  coupon: number, yld: number, freq = 2, basis = 0,
-): number | SolError | null {
-  const f = Math.round(freq), b = Math.round(basis);
-  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  const bad = argsError(op, settleSerial, maturitySerial, f, b);
-  if (bad) return bad;
-  if (coupon < 0 || yld < 0) return domain(op, "a coupon and yield of 0 or more");
-  const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
-  const { prev, next } = coupDates(settle, maturity, f);
-  const period = coupPeriodDays(prev, next, settle, f, b);
-  const dsc = period.dsc / period.e;
-  const N = bondCouponCount(next, maturity, f);
-  const C = coupon / f * 100;
-  const y = yld / f;
-  let price = 0, durNum = 0;
-  for (let k = 1; k <= N; k++) {
-    const t = k - 1 + dsc;
-    const cf = k === N ? C + 100 : C;
-    const pv = cf / Math.pow(1 + y, t);
-    price += pv;
-    durNum += t * pv;
-  }
-  const durYears = durNum / price / f;
-  return op === "duration" ? durYears : durYears / (1 + y);
-}
 
 export type BondPriceOp = "price" | "yield";
 
-function priceArgsError(op: string, isPrice: boolean, rate: number, yldOrPrice: number, redemption: number): SolError | null {
-  if (rate < 0) return domain(op, "a coupon rate of 0 or more");
-  if (isPrice ? yldOrPrice < 0 : yldOrPrice <= 0) return domain(op, isPrice ? "a yield of 0 or more" : "a price above 0");
-  if (redemption <= 0) return domain(op, "a redemption above 0");
-  return null;
-}
-
-export function bondPriceYield(
-  op: BondPriceOp, settleSerial: number, maturitySerial: number,
-  rate: number, yldOrPrice: number, redemption = 100, freq = 2,
-): number | SolError | null {
-  const f = Math.round(freq);
-  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  const bad = argsError(op, settleSerial, maturitySerial, f) ?? priceArgsError(op, op === "price", rate, yldOrPrice, redemption);
-  if (bad) return bad;
-  const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
-  const r = op === "price"
-    ? bondPrice(settle, maturity, rate, yldOrPrice, redemption, f)
-    : bondYield(settle, maturity, rate, yldOrPrice, redemption, f);
-  return Number.isFinite(r) ? r : null;
-}
-
 export type OddCouponOp = "oddfprice" | "oddfyield" | "oddlprice" | "oddlyield";
 
-export function oddCoupon(
-  op: OddCouponOp, settleSerial: number, maturitySerial: number, issueSerial: number,
-  flSerial: number, rate: number, yldOrPrice: number, redemption = 100, freq = 2,
-): number | SolError | null {
-  const f = Math.round(freq);
-  if (![settleSerial, maturitySerial, flSerial].every(Number.isFinite)) return null;
-  if (!VALID_FREQ.includes(f)) return domain(op, "a frequency of 1, 2 or 4");
-  const settle = serialToJsDate(settleSerial);
-  const maturity = serialToJsDate(maturitySerial);
-  const fl = serialToJsDate(flSerial);
-  const isFirst = op === "oddfprice" || op === "oddfyield";
-  const issueAt = Number.isFinite(issueSerial) ? issueSerial : settleSerial;
-  const ordered = isFirst
-    ? maturitySerial > flSerial && flSerial > settleSerial && settleSerial >= issueAt
-    : maturitySerial > settleSerial && settleSerial > flSerial;
-  if (!ordered) return domain(op, isFirst
-    ? "maturity after the first coupon, the first coupon after settlement, and settlement on or after issue"
-    : "maturity after settlement, and settlement after the last interest date");
-  const bad = priceArgsError(op, op === "oddfprice" || op === "oddlprice", rate, yldOrPrice, redemption);
-  if (bad) return bad;
-  const issue = isFirst ? serialToJsDate(issueAt) : settle;
-  const priceAt = (y: number) => isFirst
-    ? oddfPrice(settle, maturity, issue, fl, rate, y, redemption, f)
-    : oddlPrice(settle, maturity, fl, rate, y, redemption, f);
-  const r = op === "oddfprice" || op === "oddlprice"
-    ? priceAt(yldOrPrice)
-    : solveYield(priceAt, yldOrPrice, rate);
-  return Number.isFinite(r) ? r : null;
-}
-
 // ─── Cash-flow prep + the IRR / XIRR solver ──────────────────────────────────
-
-export function fvSchedule(pv: number, rates: readonly number[]): number {
-  return rates.reduce((fv, r) => fv * (1 + r), pv);
-}
-
-export function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
-  if (!raw) return { nums: [] };
-  for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };
-  return { nums: raw.map((v) => (typeof v === "number" ? v : 0)) };
-}
-
-export function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (number | null | SolError)[]):
-  { error?: SolError; blank?: boolean; values: number[]; dates: number[] } {
-  const { error, nums: values } = cashPrep(valuesRaw);
-  if (error) return { error, values: [], dates: [] };
-  for (const d of datesRaw) if (isSolError(d)) return { error: d, values: [], dates: [] };
-  if (datesRaw.some((d) => d == null)) return { blank: true, values: [], dates: [] };
-  return { values, dates: datesRaw as number[] };
-}
 
 // Below r = −1 the discount turns NaN or flips sign every period, so Newton clamps here, and a clamped step never counts as convergence.
 const RATE_FLOOR = -0.9999;
@@ -667,43 +457,3 @@ export function sortinoRatio(returns: readonly RCell[], rf = 0, periodsPerYear =
   return s.downside === 0 ? solError("#DIV/0!", "Sortino: no return fell below the target") : (s.mean / s.downside) * Math.sqrt(periodsPerYear);
 }
 
-export function returnsOp(op: ReturnsOp, series: readonly RCell[], rf = 0, periodsPerYear = 1): RCell[] | number | SolError | null {
-  switch (op) {
-    case "log":         return periodReturns(series, true);
-    case "simple":      return periodReturns(series, false);
-    case "cumulative":  return cumulativeReturns(series);
-    case "drawdown":    return drawdowns(series);
-    case "maxdrawdown": return maxDrawdown(series);
-    case "cagr":        return cagr(series, periodsPerYear);
-    case "volatility":  return volatility(series, periodsPerYear);
-    case "sharpe":      return sharpeRatio(series, rf, periodsPerYear);
-    case "sortino":     return sortinoRatio(series, rf, periodsPerYear);
-  }
-}
-
-/** CUMIPMT and CUMPRINC: the interest or principal paid over periods start…end of a level-payment loan. Excel's
- *  refusals are #DOMAIN! (its #NUM!), an end past the loan's last period among them. */
-export function cumulativePayment(
-  op: "cumipmt" | "cumprinc", rate: number, nper: number, pv: number, startRaw: number, endRaw: number, type: 0 | 1,
-): number | SolError | null {
-  const start = Math.round(startRaw);
-  const end = Math.round(endRaw);
-  if (!(rate > 0 && nper > 0 && pv > 0 && start >= 1 && end >= start && end <= nper)) {
-    return solError("#DOMAIN!", "Rate, periods and PV must be above 0, and the range must run from period 1 or later to the loan's last period at most");
-  }
-  // Each period is a step of the loop below, and past 2^53 a step no longer moves.
-  if (end - start >= MAX_PERIODS || end > Number.MAX_SAFE_INTEGER) {
-    return solError("#DOMAIN!", `${op.toUpperCase()} sums at most 1,000,000 periods`);
-  }
-  const rN = Math.pow(1 + rate, nper);
-  const pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
-  if (!Number.isFinite(pmt)) return null;
-  let sum = 0;
-  for (let per = start; per <= end; per++) {
-    const rPer1 = Math.pow(1 + rate, per - 1);
-    const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
-    const ipmt = -(type === 0 ? B * rate : (B - pmt) * rate);
-    sum += op === "cumipmt" ? ipmt : pmt - ipmt;
-  }
-  return Number.isFinite(sum) ? sum : null;
-}

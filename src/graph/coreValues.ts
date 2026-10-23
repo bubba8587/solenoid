@@ -143,7 +143,7 @@ const FX_CODE: Record<string, SolErrorCode> = {
   "#REF!": "#REF!", "#VALUE!": "#VALUE!", "#NULL!": "#VALUE!", "#NUM!": "#DOMAIN!",
 };
 
-/** A Formula.js error answer (`{fx}`) as the error a formula shows. */
+/** An Excel error answer (`{fx}`, `#NUM!`) as the error a formula shows. */
 export function fxErrorToSol(e: Error): SolError {
   const code = /#[A-Z0-9/?!.]+/.exec(e.message || String(e))?.[0] ?? "";
   return solError(FX_CODE[code] ?? "#VALUE!", "The formula produced an error");

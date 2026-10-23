@@ -1,84 +1,28 @@
 // [[B16]] oneFormulaSurface, [[C17]] shareImpl
-import { describe, it, expect, afterEach } from "vitest";
-import * as FX from "@formulajs/formulajs";
-import {
-  FAMILY_BACKING,
-  excelFunctionInfo,
-  resolveExcelFunction,
-  registerInternal,
-  internalFunctionNames,
-  ELIMINATED_FUNCTIONS,
-  EXCEL_IMPL_META,
-  numberToText,
-  unregisterInternal,
-} from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
+import { describe, it, expect } from "vitest";
+import { formulaFunctionNames } from "../../src/graph/excelFunctions";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { coreFunction } from "./coreFunction";
+import { EXCEL_NAMES } from "./fixtures/excelNames";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { jsDateToSerial, serialToJsDate } from "../../src/graph/nodes/date";
 
-describe("numberToText — 15 significant digits, trailing zeros stripped", () => {
+describe("a number as text — 15 significant digits, trailing zeros stripped", () => {
+  const text = (x: number) => compileEvaluator('x & ""')!({ x });
   it("strips IEEE representation noise", () => {
-    expect(numberToText(0.1 + 0.2)).toBe("0.3");
-    expect(numberToText(1 / 3)).toBe("0.333333333333333"); // 15 sig digits
+    expect(text(0.1 + 0.2)).toBe("0.3");
+    expect(text(1 / 3)).toBe("0.333333333333333"); // 15 sig digits
   });
   it("leaves clean values alone", () => {
-    expect(numberToText(42)).toBe("42");
-    expect(numberToText(-0)).toBe("0");
-    expect(numberToText(1234567.5)).toBe("1234567.5");
-    expect(numberToText(0)).toBe("0");
-  });
-  it("falls back to String for non-finite (guardFinite normally tags these first)", () => {
-    expect(numberToText(Infinity)).toBe("Infinity");
-    expect(numberToText(NaN)).toBe("NaN");
-  });
-});
-
-describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
-  it("gives every family a non-empty reason", () => {
-    for (const v of Object.values(FAMILY_BACKING)) expect(v.why.length).toBeGreaterThan(0);
-  });
-});
-
-describe("excelFunctionInfo", () => {
-  it("routes representative functions to the right family + backing", () => {
-    expect(excelFunctionInfo("abs")).toMatchObject({ family: "scalar-math", backing: "formulajs" }); // case-insensitive
-  });
-
-  it("returns null for a Formula.js-only name (not part of the overlap surface)", () => {
-    expect(excelFunctionInfo("NONEXISTENTFN")).toBeNull();
-  });
-});
-
-describe("resolveExcelFunction (the resolution seam)", () => {
-  afterEach(() => {
-    // registerInternal mutates module state — WITHDRAW what tests added. (The old
-    // cleanup registered `undefined` as the impl, which the duplicate-registration
-    // guard now correctly refuses — registering a hole is not unregistering.)
-    unregisterInternal("ABS");
-  });
-
-  it("falls through to the Formula.js impl today (no internals registered)", () => {
-    const abs = resolveExcelFunction("ABS");
-    expect(abs?.(-3)).toBe(FX.ABS(-3));
-  });
-
-  it("is case-insensitive on the name (a non-registered fn still falls through)", () => {
-    expect(resolveExcelFunction("cos")?.(0)).toBe(FX.COS(0)); // COS isn't in the first wave
-  });
-
-  it("returns null when neither an internal nor a Formula.js impl exists", () => {
-    expect(resolveExcelFunction("DEFINITELYNOTAFUNCTION")).toBeNull();
-  });
-
-  it("prefers a registered internal impl over Formula.js", () => {
-    const sentinel = (...a: unknown[]) => `internal:${String(a[0])}`;
-    registerInternal("ABS", sentinel);
-    expect(resolveExcelFunction("ABS")?.(-3)).toBe("internal:-3");
+    expect(text(42)).toBe("42");
+    expect(text(-0)).toBe("0");
+    expect(text(1234567.5)).toBe("1234567.5");
+    expect(text(0)).toBe("0");
   });
 });
 
 describe("first wave of native impls (registered through the seam)", () => {
-  const fn = (name: string) => resolveExcelFunction(name)!;
+  const fn = (name: string) => coreFunction(name)!;
 
   it("ROUND rounds half AWAY from zero (Excel), unlike JS Math.round", () => {
     expect(fn("ROUND")(2.5, 0)).toBe(3);
@@ -118,11 +62,11 @@ describe("first wave of native impls (registered through the seam)", () => {
 });
 
 describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", () => {
-  const fn = (name: string) => resolveExcelFunction(name)!;
+  const fn = (name: string) => coreFunction(name)!;
 
   it("CLAMP / ORDINAL / BETWEEN don't exist in Formula.js but ARE in the autocomplete list", () => {
     for (const name of ["CLAMP", "ORDINAL", "BETWEEN"]) {
-      expect((FX as Record<string, unknown>)[name]).toBeUndefined();   // not from Formula.js
+      expect(EXCEL_NAMES.has(name)).toBe(false);                       // not an Excel name
       expect(formulaFunctionNames()).toContain(name);                  // but offered + highlighted
     }
   });
@@ -138,15 +82,6 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("BETWEEN is a real boolean (covers the logical output type)", () => {
     expect(fn("BETWEEN")(5, 0, 10)).toBe(true);
     expect(fn("BETWEEN")(11, 0, 10)).toBe(false);
-  });
-  it("every registered internal declares its meta ([[C17]] shareImpl, the registered→declared direction)", () => {
-    // The reverse direction (declared→dispatches) lives in formulaTier3; without
-    // THIS one, 28 registrations had no entry and the rule was fiction.
-    const meta = new Set(Object.keys(EXCEL_IMPL_META));
-    // The [[C14]] currentExcelParity redirect stubs are the GATE, not implementations — their whole
-    // contract is answering #NAME? — so the blocklist is out of scope here.
-    const undeclared = internalFunctionNames().filter((n) => !meta.has(n) && !ELIMINATED_FUNCTIONS.has(n));
-    expect(undeclared, `registerInternal names with no EXCEL_IMPL_META entry: ${undeclared.join(", ")}`).toEqual([]);
   });
 });
 
@@ -177,7 +112,7 @@ describe("statistics flat names — registered so a formula can call them at all
   const X = { x: [2, 4, 4, 4, 5, 5, 7, 9] };
 
   it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve (were Unknown function)", () => {
-    expect(resolveExcelFunction("COVAR")).toBeTypeOf("function");
+    expect(coreFunction("COVAR")).toBeTypeOf("function");
   });
 
   it("STDEV defaults to sample, VAR to sample, MODE to single", () => {
@@ -296,7 +231,7 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
 
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {
     // Previously these THREW: the tokenizer split on '.', and Formula.js hides them
-    // behind namespaced objects. Now both the parser and resolveExcelFunction handle dots.
+    // behind namespaced objects. Now the parser and the core both read dotted names.
     expect(ev("STDEV.S(x)", { x: [2, 4, 4, 4, 5, 5, 7, 9] })).toBeCloseTo(2.13809, 4);
     expect(ev("PERCENTILE.INC(x, 0.5)", { x: [1, 2, 3, 4, 5] })).toBe(3);
     expect(ev("RANK.EQ(4, x)", { x: [1, 2, 3, 4, 5] })).toBe(2);
@@ -308,16 +243,5 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(serial).toBe(46096);
     expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
     expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");
-  });
-});
-
-describe("the duplicate-registration guard ([[B16]] oneFormulaSurface's registry half)", () => {
-  it("a second claim on a live name throws instead of silently overwriting", () => {
-    registerInternal("GUARDTESTNAME", () => 1);
-    expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);
-    unregisterInternal("GUARDTESTNAME");
-    // A REVOCABLE name may return after withdrawal — the pack-rebuild path.
-    expect(() => registerInternal("GUARDTESTNAME", () => 3)).not.toThrow();
-    unregisterInternal("GUARDTESTNAME");
   });
 });

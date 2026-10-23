@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS, ELECTRICITY_PACK } from "../../../src/graph/packs/electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { ResistorCodeNode, AwgNode } from "../../../src/graph/nodes/electrical";
-import { decodeResistor } from "../../../src/graph/nodes/electricalOps";
+import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -108,11 +108,11 @@ describe("Electricity & Circuits formulas", () => {
 
 describe("Resistor color code", () => {
   it("decodes the classics", () => {
-    expect(decodeResistor("yellow", "violet", "", "orange", "gold", false)).toEqual({ ohms: 47000, tolerance: 5 });
-    expect(decodeResistor("orange", "orange", "", "brown", "silver", false)).toEqual({ ohms: 330, tolerance: 10 });
+    const ohms = coreFunction("RESISTORCOLORCODE")!;
+    expect(ohms("yellow", "violet", "orange", "gold")).toBe(47000);
+    expect(ohms("orange", "orange", "brown", "silver")).toBe(330);
     // Gold multiplier divides: 4.7 Ω.
-    const r = decodeResistor("yellow", "violet", "", "gold", "gold", false);
-    expect((r as { ohms: number }).ohms).toBeCloseTo(4.7, 9);
+    expect(ohms("yellow", "violet", "gold", "gold") as number).toBeCloseTo(4.7, 9);
   });
 
   it("the node wires band picks to its outputs", () => {

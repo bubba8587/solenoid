@@ -206,7 +206,7 @@
   color: var(--text-dim);
 }
 
-/* Engine-disclosure note: the formula runs on Formula.js, not Solenoid's own nodes. */
+/* The note under the editor: what the formula surface reads. */
 .formula-popup__engine-note {
   margin-top: 10px;
   padding: 6px 8px;

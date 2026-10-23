@@ -3,9 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   isMissing, isLogical,
   logicalToNumber, numberToLogical, coerceLogical, logicalOrTypeError,
-  kleeneNot, kleeneOr, kleeneAnd,
   forAggregate,
-  cellShortCircuit, COMPUTE,
 } from "../../src/graph/valueKinds";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
@@ -36,35 +34,6 @@ describe("logical ↔ number coercion", () => {
   });
 });
 
-describe("Kleene three-valued logic", () => {
-  // Truth tables verified against ANSI SQL / Polars / pandas pd.NA.
-  it("NOT", () => {
-    expect(kleeneNot(true)).toBe(false);
-    expect(kleeneNot(false)).toBe(true);
-    expect(kleeneNot(null)).toBe(null);
-  });
-
-  it("OR — T if any T, else N if any N, else F", () => {
-    expect(kleeneOr(true, false)).toBe(true);
-    expect(kleeneOr(true, null)).toBe(true);   // T wins
-    expect(kleeneOr(null, true)).toBe(true);
-    expect(kleeneOr(false, null)).toBe(null);  // could be either
-    expect(kleeneOr(null, false)).toBe(null);
-    expect(kleeneOr(null, null)).toBe(null);
-    expect(kleeneOr(false, false)).toBe(false);
-  });
-
-  it("AND — F if any F, else N if any N, else T", () => {
-    expect(kleeneAnd(true, true)).toBe(true);
-    expect(kleeneAnd(false, null)).toBe(false); // F wins
-    expect(kleeneAnd(null, false)).toBe(false);
-    expect(kleeneAnd(true, null)).toBe(null);   // could be either
-    expect(kleeneAnd(null, true)).toBe(null);
-    expect(kleeneAnd(null, null)).toBe(null);
-    expect(kleeneAnd(true, false)).toBe(false);
-  });
-});
-
 describe("forAggregate", () => {
   it("passes plain number lists through unchanged (NaN preserved)", () => {
     const r = forAggregate([1, 2, 3]);
@@ -83,30 +52,6 @@ describe("forAggregate", () => {
     const err = solError("#DIV/0!", "boom");
     const r = forAggregate([1, null, err, 3]);
     expect(r.error).toBe(err);
-  });
-});
-
-describe("per-element broadcast contract", () => {
-  const e1 = solError("#DIV/0!", "one");
-  const e2 = solError("#N/A", "two");
-
-  it("cellShortCircuit: first error wins, unmorphed", () => {
-    expect(cellShortCircuit([1, e1, 2])).toBe(e1);
-    expect(cellShortCircuit([e1, e2])).toBe(e1);   // arg order, not any later error
-    expect(cellShortCircuit([e2, e1])).toBe(e2);
-  });
-
-  it("cellShortCircuit: error beats missing (error is checked first)", () => {
-    expect(cellShortCircuit([null, e1])).toBe(e1);
-  });
-
-  it("cellShortCircuit: missing propagates when there's no error", () => {
-    expect(cellShortCircuit([1, null, 2])).toBe(null);
-  });
-
-  it("cellShortCircuit: COMPUTE when every operand is present", () => {
-    expect(cellShortCircuit([1, 2, 3])).toBe(COMPUTE);
-    expect(cellShortCircuit([0, -1])).toBe(COMPUTE); // 0 is present, not missing
   });
 });
 

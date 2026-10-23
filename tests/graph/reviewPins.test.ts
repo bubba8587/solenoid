@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { bondPrice, bondYield } from "../../src/graph/nodes/financeOps";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
-import { resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 
 const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m - 1, day));
@@ -21,7 +21,7 @@ describe("review pins", () => {
   });
 
   it("XLOOKUP refuses a return list shorter than the lookup list, like a grid", () => {
-    const r = resolveExcelFunction("XLOOKUP")!(2, [1, 2], ["a"]);
+    const r = coreFunction("XLOOKUP")!(2, [1, 2], ["a"]);
     expect(isSolError(r) && r.code).toBe("#VALUE!");
   });
 });
@@ -37,7 +37,7 @@ describe("File Link: which paths run rather than open", () => {
 
 describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
   it("DROP of everything is #CALC!, not an empty list", () => {
-    const drop = resolveExcelFunction("DROP")!;
+    const drop = coreFunction("DROP")!;
     expect(isSolError(drop([1, 2, 3], 5)) && (drop([1, 2, 3], 5) as { code: string }).code).toBe("#DOMAIN!");
     expect(isSolError(drop([1, 2, 3], -3))).toBe(true);
     // A list is one row ([[D85]] columnsStayColumns): dropping its row leaves nothing, and its items are columns.
@@ -55,38 +55,37 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
 });
 
 describe("review pins: analytics batch", () => {
-  it("POLYROOTS reports a double root as two reals", async () => {
-    const { polyRoots } = await import("../../src/graph/nodes/mathUtils");
-    const r = polyRoots([1, -2, 1])!;
-    expect(r.map((x) => x[1])).toEqual([0, 0]);
-    expect(r.map((x) => Math.round(x[0] * 1e6) / 1e6)).toEqual([1, 1]);
+  it("POLYROOTS reports a double root as two reals", () => {
+    const r = coreFunction("POLYROOTS")!([1, -2, 1]) as { re: number; im: number }[];
+    expect(r.map((x) => x.im)).toEqual([0, 0]);
+    expect(r.map((x) => Math.round(x.re * 1e6) / 1e6)).toEqual([1, 1]);
   });
   it("SAVGOL with an even window is #DOMAIN!, not a blank list", () => {
-    const r = resolveExcelFunction("SAVGOL")!([1, 2, 3, 4, 5], 4, 2);
+    const r = coreFunction("SAVGOL")!([1, 2, 3, 4, 5], 4, 2);
     expect(isSolError(r) && r.code).toBe("#DOMAIN!");
   });
   it("CHOOSE truncates a fractional index like Excel", () => {
-    expect(resolveExcelFunction("CHOOSE")!(2.7, "a", "b", "c")).toBe("b");
+    expect(coreFunction("CHOOSE")!(2.7, "a", "b", "c")).toBe("b");
   });
   it("XIRR names a date before the first date", () => {
-    const r = resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
+    const r = coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
     expect(isSolError(r) && r.message).toMatch(/before the first/);
   });
   it("the XIRR node refuses a date before the first date, as =XIRR does", async () => {
     const { IRRNode } = await import("../../src/graph/nodes/finance");
     const r = new IRRNode({ op: "dates" }).data({ list: [[-100, 60, 60]], dates: [[45444, 45292, 45658]] }).result;
     expect(isSolError(r) && r.code).toBe("#DOMAIN!");
-    expect(r).toEqual(resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]));
+    expect(r).toEqual(coreFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]));
   });
   it("DIAGONAL of a matrix is its diagonal", () => {
-    expect(resolveExcelFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
+    expect(coreFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
   });
   it("EWMA refuses alpha outside (0, 1]", () => {
-    expect(isSolError(resolveExcelFunction("EWMA")!([1, 2, 3], 5))).toBe(true);
-    expect(resolveExcelFunction("EWMA")!([1, 2, 3], 1)).toEqual([1, 2, 3]);
+    expect(isSolError(coreFunction("EWMA")!([1, 2, 3], 5))).toBe(true);
+    expect(coreFunction("EWMA")!([1, 2, 3], 1)).toEqual([1, 2, 3]);
   });
-  it("Quantile Bin keeps a value on a cut in the bucket below (pandas qcut)", async () => {
-    const { ntileList } = await import("../../src/graph/nodes/listOps");
+  it("Quantile Bin keeps a value on a cut in the bucket below (pandas qcut)", () => {
+    const ntileList = coreFunction("NTILE")!;
     expect(ntileList([1, 2, 3, 4, 5], 2)).toEqual([1, 1, 1, 2, 2]);
     expect(ntileList([1, 1, 1, 1, 2, 2], 2)).toEqual([1, 1, 1, 1, 2, 2]);
   });
@@ -112,32 +111,32 @@ describe("review pins: Record layout", () => {
 describe("review pins: formula surface parity", () => {
   it("the T-bill formulas run the actual/360 kernel (Microsoft's worked examples)", () => {
     const s = 45382, m = 45444; // 2024-03-31, 2024-06-01
-    expect(resolveExcelFunction("TBILLYIELD")!(s, m, 98.45) as number).toBeCloseTo(0.09141696, 6);
-    expect(resolveExcelFunction("TBILLEQ")!(s, m, 0.0914) as number).toBeCloseTo(0.09415149, 6);
-    expect(resolveExcelFunction("TBILLPRICE")!(s, m, 0.09) as number).toBeCloseTo(98.45, 2);
+    expect(coreFunction("TBILLYIELD")!(s, m, 98.45) as number).toBeCloseTo(0.09141696, 6);
+    expect(coreFunction("TBILLEQ")!(s, m, 0.0914) as number).toBeCloseTo(0.09415149, 6);
+    expect(coreFunction("TBILLPRICE")!(s, m, 0.09) as number).toBeCloseTo(98.45, 2);
   });
   it("WORKDAY.INTL takes the seven-character weekend mask", () => {
     const mon = 46027; // 2026-01-05
-    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011")).toBe(mon + 7);
-    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
-    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
+    expect(coreFunction("WORKDAY.INTL")!(mon, 5, "0000011")).toBe(mon + 7);
+    expect(coreFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
+    expect(coreFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
   });
   it("RANK with a text order is #VALUE!, not an ascending rank", () => {
     for (const fn of ["RANK", "RANK.EQ", "RANK.AVG"]) {
-      const r = resolveExcelFunction(fn)!(3, [1, 3, 5], "x");
+      const r = coreFunction(fn)!(3, [1, 3, 5], "x");
       expect(isSolError(r) && r.code).toBe("#VALUE!");
-      expect(resolveExcelFunction(fn)!(3, [1, 3, 5], 1)).toBe(2);
+      expect(coreFunction(fn)!(3, [1, 3, 5], 1)).toBe(2);
     }
   });
   it("RANDARRAY with a text Min or Max is #VALUE!, not NaN cells", () => {
     for (const [lo, hi] of [["a", 5], [0, "b"]]) {
-      const r = resolveExcelFunction("RANDARRAY")!(2, 1, lo, hi);
+      const r = coreFunction("RANDARRAY")!(2, 1, lo, hi);
       expect(isSolError(r) && r.code).toBe("#VALUE!");
     }
   });
   it("SUBSTITUTE truncates its instance like Excel", () => {
-    expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
-    expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
+    expect(coreFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
+    expect(coreFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
   });
 });
 
@@ -147,12 +146,12 @@ describe("review pins: INDEX, RUNNING, VDB", () => {
     expect((resolveAxes(1.9, undefined) as { r?: number }).r).toBe(0);
   });
   it("RUNNING with a negative window is #DOMAIN! on the formula, like the card", () => {
-    expect(isSolError(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
-    expect(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], 0)).toEqual([1, 3, 6]);
+    expect(isSolError(coreFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
+    expect(coreFunction("RUNNING")!("SUM", [1, 2, 3], 0)).toEqual([1, 3, 6]);
   });
   it("VDB honors no_switch = TRUE instead of ignoring it", () => {
-    expect(resolveExcelFunction("VDB")!(1000, 0, 5, 4, 5, 2, true)).toBeCloseTo(51.84, 6);
-    expect(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
+    expect(coreFunction("VDB")!(1000, 0, 5, 4, 5, 2, true)).toBeCloseTo(51.84, 6);
+    expect(coreFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
   });
 });
 
@@ -169,18 +168,18 @@ describe("review pins: Nest Join blank keys", () => {
 
 describe("review pins: STDEV.S of one value, DATEDIF order, CONTAINS rank", () => {
   it("a sample spread of one value is #DIV/0!, of none is blank", () => {
-    expect(isSolError(resolveExcelFunction("STDEV.S")!([5]))).toBe(true);
-    expect(isSolError(resolveExcelFunction("VAR.S")!([5]))).toBe(true);
-    expect(resolveExcelFunction("STDEV.S")!([])).toBeNull();
-    expect(resolveExcelFunction("STDEV.S")!([1, 3]) as number).toBeCloseTo(Math.SQRT2, 10);
+    expect(isSolError(coreFunction("STDEV.S")!([5]))).toBe(true);
+    expect(isSolError(coreFunction("VAR.S")!([5]))).toBe(true);
+    expect(coreFunction("STDEV.S")!([])).toBeNull();
+    expect(coreFunction("STDEV.S")!([1, 3]) as number).toBeCloseTo(Math.SQRT2, 10);
   });
   it("DATEDIF refuses a start after the end for every unit", () => {
-    expect(isSolError(resolveExcelFunction("DATEDIF")!(46030, 46027, "D"))).toBe(true);
-    expect(resolveExcelFunction("DATEDIF")!(46027, 46030, "D")).toBe(3);
+    expect(isSolError(coreFunction("DATEDIF")!(46030, 46027, "D"))).toBe(true);
+    expect(coreFunction("DATEDIF")!(46027, 46030, "D")).toBe(3);
   });
   it("CONTAINS over a matrix is #SHAPE!, never a silent FALSE", () => {
-    expect(isSolError(resolveExcelFunction("CONTAINS")!([[1, 2], [3, 4]], 2))).toBe(true);
-    expect(resolveExcelFunction("CONTAINS")!([1, 2, 3], 2)).toBe(true);
+    expect(isSolError(coreFunction("CONTAINS")!([[1, 2], [3, 4]], 2))).toBe(true);
+    expect(coreFunction("CONTAINS")!([1, 2, 3], 2)).toBe(true);
   });
 });
 
@@ -260,9 +259,9 @@ describe("review pins: Slider bounds", () => {
 
 describe("review pins: a blank optional numeric argument is Excel's 0", () => {
   it("ROUND / MOD / DATE read a blank slot like their siblings do", () => {
-    expect(resolveExcelFunction("ROUND")!(2.567, null)).toBe(3);
-    expect(isSolError(resolveExcelFunction("MOD")!(5, null)) && (resolveExcelFunction("MOD")!(5, null) as { code: string }).code).toBe("#DIV/0!");
-    expect(resolveExcelFunction("DATE")!(2026, 1, null)).toBe(resolveExcelFunction("DATE")!(2025, 12, 31));
+    expect(coreFunction("ROUND")!(2.567, null)).toBe(3);
+    expect(isSolError(coreFunction("MOD")!(5, null)) && (coreFunction("MOD")!(5, null) as { code: string }).code).toBe("#DIV/0!");
+    expect(coreFunction("DATE")!(2026, 1, null)).toBe(coreFunction("DATE")!(2025, 12, 31));
   });
 });
 
@@ -298,8 +297,8 @@ describe("review pins: frontmatter keys", () => {
 
 describe("review pins: SORTBY length, COMBINA at zero", () => {
   it("SORTBY refuses a key list of another length", () => {
-    expect(isSolError(resolveExcelFunction("SORTBY")!(["a", "b", "c"], [2, 1]))).toBe(true);
-    expect(resolveExcelFunction("SORTBY")!(["a", "b", "c"], [2, 1, 3])).toEqual(["b", "a", "c"]);
+    expect(isSolError(coreFunction("SORTBY")!(["a", "b", "c"], [2, 1]))).toBe(true);
+    expect(coreFunction("SORTBY")!(["a", "b", "c"], [2, 1, 3])).toEqual(["b", "a", "c"]);
   });
   it("COMBINA(0,0) is 1 on the card; COMBINA(4,2) is 10", async () => {
     const { CombinatoricsNode } = await import("../../src/graph/nodes/scalar");
@@ -325,8 +324,9 @@ describe("review pins: pivot totals", () => {
 });
 
 describe("review pins: number-to-text scientific form", () => {
-  it("numberToText writes Excel's General scientific form", async () => {
-    const { numberToText } = await import("../../src/graph/excelFunctions");
+  it("a number as text takes Excel's General scientific form", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const numberToText = (x: number) => compileEvaluator('x & ""')!({ x });
     expect(numberToText(1e21)).toBe("1E+21");
     expect(numberToText(0.0000001)).toBe("1E-07");
     expect(numberToText(0.00001)).toBe("1E-05");

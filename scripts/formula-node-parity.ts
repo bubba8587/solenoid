@@ -4,7 +4,7 @@
 //   node scripts/vite-run.mjs scripts/formula-node-parity.ts
 
 import { measureParity, excelNamedGapNames } from "../src/graph/formulaNodeParity";
-import { EXCEL_IMPL_META } from "../src/graph/excelFunctions";
+import { FUNCTION_ARITY } from "../src/graph/excelFunctions";
 import { initPackFormulas } from "../src/graph/formulaExtensions";
 
 // Register pack formulas first, as main.tsx does, or pack nodes report as false gaps.
@@ -33,4 +33,4 @@ console.log(`\n=== Formula → node: dispatchable names with ${m.noNode.length} 
 console.log(`  in EXCEL_GAP (deliberate): ${m.noNode.length - m.untracked.length}`);
 console.log(`\nC. Untracked — dispatchable, no node, not in the gap list (${m.untracked.length}):`);
 console.log(`  ${m.untracked.join(" · ")}`);
-console.log(`\nnative impls registered (EXCEL_IMPL_META): ${Object.keys(EXCEL_IMPL_META).length}\n`);
+console.log(`\nfunctions with a declared arity (FUNCTION_ARITY): ${Object.keys(FUNCTION_ARITY).length}\n`);

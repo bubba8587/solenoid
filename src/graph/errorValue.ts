@@ -53,10 +53,6 @@ export function isSolError(v: unknown): v is SolError {
   return typeof v === "object" && v !== null && (v as Record<string, unknown>)[TAG] === true;
 }
 
-export function isNaError(v: unknown): v is SolError {
-  return isSolError(v) && v.code === "#N/A";
-}
-
 function fromThrown(e: unknown): SolError {
   if (isSolError(e)) return e;
   // Matched by name, not instanceof, so this module never imports the coercion layer.

@@ -2,12 +2,12 @@
 import { describe, it, expect } from "vitest";
 import { SeriesNode } from "../../../src/graph/nodes/list";
 import { TableReshapeNode } from "../../../src/graph/nodes/matrix";
-import { resolveExcelFunction } from "../../../src/graph/excelFunctions";
+import { coreFunction } from "../coreFunction";
 
 // ─── BEHAVIOURAL node↔formula parity — the SHAPE-PARAMETRIC family ──────────────
 //
 // The arity guard (nodeFormulaArgParity.test.ts) only sees nodes that dispatch THROUGH
-// resolveExcelFunction; a node on its OWN kernel is invisible to it, and its own header
+// coreFunction; a node on its OWN kernel is invisible to it, and its own header
 // says those "are guarded by per-function BEHAVIOURAL node↔formula agreement tests
 // instead." This is that backstop for the class where the two surfaces most easily drift
 // on CAPABILITY: functions whose result SHAPE (rank, dimensions) is an argument —
@@ -15,7 +15,7 @@ import { resolveExcelFunction } from "../../../src/graph/excelFunctions";
 // list while the formula produced 2-D (a real, shipped divergence). Each case runs the
 // NODE's data() and the =FORMULA on the SAME arguments and asserts identical output.
 
-const fx = (name: string) => resolveExcelFunction(name)!;
+const fx = (name: string) => coreFunction(name)!;
 
 /** Run a Series node's data() for a given op with wired inputs. */
 function series(op: "sequence", inputs: Record<string, number[]>): unknown {

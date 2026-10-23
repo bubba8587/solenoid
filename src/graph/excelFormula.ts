@@ -1,5 +1,5 @@
 // [[C22]], [[C80]], [[D99]] rustIsSpec
-import { resolveExcelFunction, EXCEL_IMPL_META, FX_FUNCTION_NAMES, internalFunctionNames, ELIMINATED_FUNCTIONS, registryGeneration } from "./excelFunctions";
+import { isFunctionName } from "./excelFunctions";
 import { formatScalar } from "./components/format";
 import { emptySlotReading } from "./emptySlots";
 import { evaluateOnCore, callOnCore } from "./coreValues";
@@ -262,25 +262,11 @@ function constantValue(name: string): number | undefined {
 }
 export const isFormulaConstant = (name: string): boolean => constantValue(name) !== undefined;
 
-let _names: string[] = [];
-let _namesGen = -1;
-export function formulaFunctionNames(): string[] {
-  const gen = registryGeneration();
-  if (gen === _namesGen) return _names;
-  _names = Array.from(new Set([
-    ...FX_FUNCTION_NAMES,
-    ...Object.keys(EXCEL_IMPL_META),
-    ...internalFunctionNames(),
-  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort();
-  _namesGen = gen;
-  return _names;
-}
-
 // ─── Variable extraction ──────────────────────────────────────────────────────
 /** The LAMBDA hosts, whose bare function-name argument is that function as a LAMBDA, not a variable. */
 const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 const isEtaName = (a: Ast): boolean =>
-  a.t === "name" && constantValue(a.name) === undefined && !!resolveExcelFunction(a.name);
+  a.t === "name" && constantValue(a.name) === undefined && isFunctionName(a.name);
 
 function collectNames(n: Ast, out: string[], seen: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {

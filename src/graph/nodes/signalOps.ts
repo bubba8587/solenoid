@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero
-import { solError, isSolError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { matSolve } from "./matrixOps";
 
 export type Cell = number | null | SolError;
@@ -53,35 +53,6 @@ export function savgol(values: readonly Cell[], window: number, order: number): 
   });
 }
 
-export function gaussianSmooth(values: readonly Cell[], sigma: number): Cell[] | SolError {
-  const n = values.length;
-  if (!(sigma > 0)) return values.map((v) => (isSolError(v) ? v : finite(v) ? v : null));
-  const r = Math.ceil(4 * sigma);
-  // Each value weighs 2r + 1 neighbours ([[C120]] linearWork).
-  if ((2 * r + 1) * n > 1e8) return solError("#DOMAIN!", "Sigma is too wide for this list: keep 8 × sigma × its length under 100 million");
-  const k: number[] = [];
-  for (let d = -r; d <= r; d++) k.push(Math.exp(-(d * d) / (2 * sigma * sigma)));
-  const reflect = (j: number): number => {
-    // scipy "reflect": (d c b a | a b c d | d c b a)
-    const period = 2 * n;
-    let t = ((j % period) + period) % period;
-    if (t >= n) t = period - 1 - t;
-    return t;
-  };
-  return values.map((v, i) => {
-    if (isSolError(v)) return v;
-    if (!finite(v)) return null;
-    let num = 0, den = 0;
-    for (let d = -r; d <= r; d++) {
-      const y = values[reflect(i + d)];
-      if (!finite(y)) continue;
-      const w = k[d + r];
-      num += w * y; den += w;
-    }
-    return den > 0 ? num / den : null;
-  });
-}
-
 export function lowess(values: readonly Cell[], frac = 2 / 3, iterations = 3): Cell[] {
   const idx: number[] = [], ys: number[] = [];
   values.forEach((v, i) => { if (finite(v)) { idx.push(i); ys.push(v); } });
@@ -120,40 +91,3 @@ export function lowess(values: readonly Cell[], frac = 2 / 3, iterations = 3): C
 export interface PeakOptions { height?: number; distance?: number; prominence?: number }
 export interface Peak { position: number; value: number; prominence: number }
 
-export function findPeaks(values: readonly Cell[], opts: PeakOptions = {}): Peak[] {
-  const n = values.length;
-  const y = (i: number) => { const v = values[i]; return finite(v) ? v : NaN; };
-  const peaks: number[] = [];
-  for (let i = 1; i < n - 1; ) {
-    const yi = y(i);
-    if (Number.isNaN(yi) || !(yi > y(i - 1))) { i++; continue; }
-    let j = i;
-    while (j + 1 < n && y(j + 1) === yi) j++;
-    if (j + 1 < n && yi > y(j + 1)) peaks.push((i + j) >> 1);
-    i = j + 1;
-  }
-  let keep = peaks.filter((p) => opts.height === undefined || y(p) >= opts.height);
-  const prominenceOf = (p: number): number => {
-    const yp = y(p);
-    let leftMin = yp;
-    for (let i = p - 1; i >= 0; i--) { const v = y(i); if (Number.isNaN(v) || v > yp) break; if (v < leftMin) leftMin = v; }
-    let rightMin = yp;
-    for (let i = p + 1; i < n; i++) { const v = y(i); if (Number.isNaN(v) || v > yp) break; if (v < rightMin) rightMin = v; }
-    return yp - Math.max(leftMin, rightMin);
-  };
-  let out: Peak[] = keep.map((p) => ({ position: p + 1, value: y(p), prominence: prominenceOf(p) }));
-  if (opts.prominence !== undefined) out = out.filter((pk) => pk.prominence >= opts.prominence!);
-  if (opts.distance !== undefined && opts.distance > 1) {
-    const d = opts.distance;
-    const byHeight = [...out].sort((a, b) => b.value - a.value || a.position - b.position);
-    const removed = new Set<number>();
-    for (const pk of byHeight) {
-      if (removed.has(pk.position)) continue;
-      for (const other of out) {
-        if (other.position !== pk.position && !removed.has(other.position) && Math.abs(other.position - pk.position) < d) removed.add(other.position);
-      }
-    }
-    out = out.filter((pk) => !removed.has(pk.position));
-  }
-  return out;
-}

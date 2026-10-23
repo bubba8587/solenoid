@@ -359,48 +359,6 @@ export function formAfterSwitch(form: DistForm, next: DistKey): DistForm {
   return forms[0];
 }
 
-/** `sampleQuantile` over many draws, answers in draw order; a discrete family sweeps its CDF once over the sorted draws. */
-export function sampleQuantiles(key: DistKey, us: readonly number[], params: number[]): (number | null)[] {
-  const spec = DIST_SPECS[key];
-  const finite = (v: number | null) => (v !== null && Number.isFinite(v) ? v : null);
-  if (key === "binom") return binomSampleWalk(us, params);
-  if (spec.forms.includes("inv") || spec.group === "Continuous") return us.map((u) => finite(sampleQuantile(key, u, params)));
-  const uu = us.map((u) => Math.min(1 - 1e-12, Math.max(1e-12, u)));
-  const order = uu.map((_, i) => i).sort((a, b) => uu[a] - uu[b]);
-  const out: (number | null)[] = new Array(us.length).fill(null);
-  let k = 0, F = spec.compute("cdf", 0, params);
-  for (const i of order) {
-    while (F !== null && !(F >= uu[i])) {
-      if (++k >= 1_000_000) { F = null; break; }
-      F = spec.compute("cdf", k, params);
-    }
-    if (F === null) break;
-    out[i] = k;
-  }
-  return out;
-}
-
-/** BINOM.INV for every draw in one ascending walk, summing the same pmf terms in the same order as the per-draw inverse. */
-function binomSampleWalk(us: readonly number[], [nv, pv]: number[]): (number | null)[] {
-  const out: (number | null)[] = new Array(us.length).fill(null);
-  const n = Math.floor(nv);
-  if (n < 0 || pv < 0 || pv > 1) return out;
-  const uu = us.map((u) => Math.min(1 - 1e-12, Math.max(1e-12, u)));
-  const order = uu.map((_, i) => i).sort((a, b) => uu[a] - uu[b]);
-  let k = 0;
-  let pmf = binomPmf(0, n, pv);
-  let cumP = pmf ?? 0;
-  for (const i of order) {
-    while (pmf !== null && cumP < uu[i] && k < n) {
-      pmf = binomPmf(++k, n, pv);
-      if (pmf !== null) cumP += pmf;
-    }
-    if (pmf === null) break;
-    out[i] = cumP >= uu[i] ? k : n;
-  }
-  return out;
-}
-
 export function sampleQuantile(key: DistKey, u: number, params: number[]): number | null {
   const spec = DIST_SPECS[key];
   const uu = Math.min(1 - 1e-12, Math.max(1e-12, u));

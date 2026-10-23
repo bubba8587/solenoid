@@ -1,8 +1,10 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { wrapText } from "../../../src/graph/nodes/textOps";
+import { coreFunction } from "../coreFunction";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
+
+const wrapText = (text: string, width: number) => coreFunction("WRAPTEXT")!(text, width);
 
 // R stringr::str_wrap / Python textwrap.wrap references, worked by hand (greedy,
 // whitespace-collapsing, long words unbroken on their own line).
@@ -19,8 +21,9 @@ describe("wrapText (str_wrap / textwrap.wrap)", () => {
     expect(wrapText("a supercalifragilistic b", 5)).toEqual(["a", "supercalifragilistic", "b"]);
   });
 
-  it("clamps a sub-1 width to 1 (one word per line)", () => {
-    expect(wrapText("one two three", 0)).toEqual(["one", "two", "three"]);
+  it("refuses a width under 1", () => {
+    const r = wrapText("one two three", 0);
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
   });
 
   it("empty or blank text is no lines", () => {

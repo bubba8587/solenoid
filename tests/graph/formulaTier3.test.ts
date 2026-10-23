@@ -1,7 +1,7 @@
 // [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { isFunctionName } from "../../src/graph/excelFunctions";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 // The declarations are checked with pack formulas registered, as the app runs.
@@ -97,7 +97,7 @@ describe("every Tier 3 name computes what its node computes", () => {
   it("RUNNING* per-op names are NOT functions — the op is an argument, not seven names", () => {
     for (const name of ["RUNNINGSUM", "RUNNINGAVERAGE", "RUNNINGMIN", "RUNNINGMAX",
       "RUNNINGMEDIAN", "RUNNINGPRODUCT", "RUNNINGSTDEV"]) {
-      expect(resolveExcelFunction(name), `${name} is dispatchable`).toBeNull();
+      expect(isFunctionName(name), `${name} is dispatchable`).toBe(false);
     }
   });
 
@@ -170,33 +170,6 @@ describe("the whole-list routing, which is the half that isn't the function", ()
   it("a generator is capped at the formula boundary (the node's Count is a spinner)", () => {
     const r = ev("LINSPACE(0, 1, 2000000)");
     expect((r as { code?: string }).code).toBe("#OVERFLOW!");
-  });
-});
-
-describe("the declarations stay honest", () => {
-  it("every listArgs / list-rank name actually resolves", () => {
-    for (const name of new Set([...listReturningNames(), ...wholeArgNames()])) {
-      expect(resolveExcelFunction(name), `${name} declares a list contract but does not dispatch`).toBeTruthy();
-    }
-  });
-
-  it("a list-RETURNING function also takes its args whole", () => {
-    // The converse isn't true (LENGTH takes a list, returns a scalar), but a function
-    // returning a list must never be broadcast — that is how a 2-D result gets built
-    // behind noFramesInFormulas's back.
-    for (const name of listReturningNames()) {
-      expect(EXCEL_IMPL_META[name].listArgs, `${name} returns a list but would be broadcast`).toBe(true);
-    }
-  });
-
-  it("declared arity matches what the registration accepts", () => {
-    for (const name of wholeArgNames()) {
-      const [min, max] = EXCEL_IMPL_META[name].arity;
-      // RANDARRAY is Excel's one fully-optional-args generator: RANDARRAY() is a
-      // legal call (one random number), so min 0 is its honest arity.
-      expect(min, name).toBeGreaterThanOrEqual(name === "RANDARRAY" ? 0 : 1);
-      expect(max, name).toBeGreaterThanOrEqual(min);
-    }
   });
 });
 

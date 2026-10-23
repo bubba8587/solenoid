@@ -11,7 +11,10 @@ import {
   DepreciationNode,
   FvScheduleNode,
 } from "../../../src/graph/nodes/finance";
-import { securityDisc, priceMat } from "../../../src/graph/nodes/financeOps";
+import { coreFunction } from "../coreFunction";
+
+const securityDisc = (op: string, ...a: number[]) => coreFunction(op)!(...a) as number;
+const priceMat = (op: string, ...a: number[]) => coreFunction(op)!(...a);
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { EquationNode } from "../../../src/graph/nodes/equation";
 import { compileEvaluator } from "../../../src/graph/excelFormula";

@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
-import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { FUNCTION_ARITY, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
 import { initPackFormulas, packFormulaNames } from "../../src/graph/formulaExtensions";
 
 // Pack formulas register at startup, as in the app; their node coverage is each pack's
@@ -16,7 +16,7 @@ const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 
 // formulaNodeParity (the invariant the author demanded: node and formula surfaces MUST
 // carry the same CAPABILITY). Every CURATED formula function — one with declared meta in
-// EXCEL_IMPL_META — must be reachable as a node. Most match a catalog leaf's label or Excel
+// FUNCTION_ARITY — must be reachable as a node. Most match a catalog leaf's label or Excel
 // alias directly; the rest are the SAME capability under a different node label or a node
 // MODE (which the author explicitly blessed), enumerated here with where they live. A new
 // declared function that has no node fails this until it gets one (or an entry below with a
@@ -81,7 +81,7 @@ function nodeNames(): Set<string> {
 describe("formula ↔ node capability parity (curated surface)", () => {
   it("every declared-meta function is reachable as a node (name, alias, or blessed mode)", () => {
     const nodes = nodeNames();
-    const uncovered = Object.keys(EXCEL_IMPL_META)
+    const uncovered = Object.keys(FUNCTION_ARITY)
       .map((n) => n.toUpperCase())
       .filter((n) => !PACK_NAMES.has(n) && !nodes.has(n) && !(n in FRAME_SURFACE_NAMES) && !(n in FORMULA_NODE_ALIAS));
     expect(

@@ -1,7 +1,7 @@
 // [[C15]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { callTraits } from "./callTraits";
 
 // ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
 // The table IS this test:
@@ -150,7 +150,7 @@ describe("the [[C15]] matricesInFormulas containment rule", () => {
   });
 
   it("an undeclared FX name refuses a matrix with ONE clean #SHAPE!, never a broadcast array of #VALUE!s", () => {
-    expect(EXCEL_IMPL_META["ROMAN"]).toBeUndefined();
+    expect(callTraits("ROMAN")!.known).toBe(false);
     const r = ev("ROMAN(x)", { x: M22 });
     expect((r as { code: string }).code).toBe("#SHAPE!");
   });

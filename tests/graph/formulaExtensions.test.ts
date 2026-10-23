@@ -1,8 +1,8 @@
 // [[C76]]
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { initPackFormulas, advertisedFunctionNames, packFormulaNames, packFormulaSignature } from "../../src/graph/formulaExtensions";
-import { packsStore, BUILTIN_PACKS } from "../../src/graph/packs";
-import { resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { packsStore, BUILTIN_PACKS, allPacks } from "../../src/graph/packs";
+import { packFunctionNames, isFunctionName } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { signatureFor } from "../../src/graph/formulaSignatures";
 import type { Pack } from "../../src/graph/packs/packShared";
@@ -16,61 +16,56 @@ import type { Pack } from "../../src/graph/packs/packShared";
 // be data loss. Autocomplete, on the other hand, shouldn't teach a name whose
 // pack is off.
 
+/** Runs `f` with the chemistry pack (ELEMENT, MOLARMASS) on or off, then puts it back. */
+function withChemistry(on: boolean, f: () => void): void {
+  const was = packsStore.isActive("chemistry");
+  packsStore.setActive("chemistry", on);
+  try { f(); } finally { packsStore.setActive("chemistry", was); }
+}
+
+describe("pack-contributed formula functions", () => {
+  it("COMPUTES while the pack is OFF — a saved graph must not break", () => {
+    initPackFormulas();
+    withChemistry(false, () => expect(compileEvaluator('ELEMENT("Fe", "number")')!({})).toBe(26));
+  });
+
+  it("is NOT advertised while the pack is off, and IS once it is on", () => {
+    initPackFormulas();
+    withChemistry(false, () => expect(advertisedFunctionNames()).not.toContain("MOLARMASS"));
+    withChemistry(true, () => expect(advertisedFunctionNames()).toContain("MOLARMASS"));
+  });
+
+  it("never hides a CORE function when a pack toggles", () => {
+    initPackFormulas();
+    withChemistry(false, () => {
+      for (const core of ["SUM", "XLOOKUP", "TEXTSPLIT", "PRICE"]) expect(advertisedFunctionNames(), core).toContain(core);
+    });
+  });
+
+  it("surfaces the pack's argument hint through the editor's signature lookup", () => {
+    initPackFormulas();
+    expect(packFormulaSignature("MOLARMASS")).toBe("chemical formula — H2O, CuSO4·5H2O");
+    expect(signatureFor("molarmass")).toBe("chemical formula — H2O, CuSO4·5H2O");
+  });
+});
+
+describe("a pack's formulas are the core's pack functions, one to one", () => {
+  it("every declared formula is one the core carries as a pack's, and every pack function is declared", () => {
+    const declared = allPacks().flatMap((p) => (p.formulas ?? []).map((f) => f.name.toUpperCase()));
+    expect(new Set(declared).size).toBe(declared.length);
+    expect([...declared].sort()).toEqual([...packFunctionNames()].sort());
+    for (const name of declared) expect(isFunctionName(name), name).toBe(true);
+  });
+});
+
 const FIXTURE: Pack = {
   id: "test-formula-pack",
   name: "Test Formula Pack",
   description: "Fixture for the formula seam.",
   builtin: true,
   defaultActive: false,
-  formulas: [
-    { name: "TESTPACKDOUBLE", impl: (x) => Number(x) * 2, returns: "number", arity: [1, 1], signature: "x" },
-  ],
+  formulas: [{ name: "TESTPACKDOUBLE", arity: [1, 1], signature: "x" }],
 };
-
-describe("pack-contributed formula functions", () => {
-  beforeEach(() => {
-    BUILTIN_PACKS.push(FIXTURE);
-    initPackFormulas();
-  });
-  afterEach(() => {
-    BUILTIN_PACKS.splice(BUILTIN_PACKS.indexOf(FIXTURE), 1);
-    packsStore.setActive(FIXTURE.id, false);
-    initPackFormulas();
-  });
-
-  it("COMPUTES while the pack is OFF — a saved graph must not break", () => {
-    const was = packsStore.isActive("chemistry");
-    packsStore.setActive("chemistry", false);
-    try {
-      expect(compileEvaluator('ELEMENT("Fe", "number")')!({})).toBe(26);
-    } finally {
-      packsStore.setActive("chemistry", was);
-    }
-  });
-
-  it("is NOT advertised while the pack is off, and IS once it is on", () => {
-    packsStore.setActive(FIXTURE.id, false);
-    expect(advertisedFunctionNames()).not.toContain("TESTPACKDOUBLE");
-
-    packsStore.setActive(FIXTURE.id, true);
-    expect(advertisedFunctionNames()).toContain("TESTPACKDOUBLE");
-
-    packsStore.setActive(FIXTURE.id, false);
-    expect(advertisedFunctionNames()).not.toContain("TESTPACKDOUBLE");
-  });
-
-  it("never hides a CORE function when a pack toggles", () => {
-    packsStore.setActive(FIXTURE.id, false);
-    for (const core of ["SUM", "XLOOKUP", "TEXTSPLIT", "PRICE"]) {
-      expect(advertisedFunctionNames(), core).toContain(core);
-    }
-  });
-
-  it("surfaces the pack's argument hint through the editor's signature lookup", () => {
-    expect(packFormulaSignature("TESTPACKDOUBLE")).toBe("x");
-    expect(signatureFor("testpackdouble")).toBe("x");
-  });
-});
 
 describe("name collisions fail loudly at startup", () => {
   const added: Pack[] = [];
@@ -79,19 +74,6 @@ describe("name collisions fail loudly at startup", () => {
     for (const p of added) BUILTIN_PACKS.splice(BUILTIN_PACKS.indexOf(p), 1);
     added.length = 0;
     initPackFormulas();
-  });
-
-  it("rejects a pack claiming a name the core already dispatches", () => {
-    // Silently shadowing SUM is exactly the drift [[C51]] formulaNaming exists to stop.
-    add({ ...FIXTURE, id: "test-collide-core",
-      formulas: [{ name: "SUM", impl: () => 0, returns: "number", arity: [1, 1] }] });
-    expect(() => initPackFormulas()).toThrow(/already exists in the core/);
-  });
-
-  it("rejects a pack reviving a BLOCKED legacy spelling", () => {
-    add({ ...FIXTURE, id: "test-collide-legacy",
-      formulas: [{ name: "NORMDIST", impl: () => 0, returns: "number", arity: [1, 1] }] });
-    expect(() => initPackFormulas()).toThrow(/already exists in the core/);
   });
 
   it("rejects two packs claiming the same name", () => {
@@ -113,11 +95,11 @@ describe("re-running init is safe", () => {
     }
   });
 
-  it("a pack that is no longer present stops answering", () => {
+  it("a pack that is no longer present stops being declared", () => {
     BUILTIN_PACKS.push(FIXTURE);
     initPackFormulas();
     BUILTIN_PACKS.splice(BUILTIN_PACKS.indexOf(FIXTURE), 1);
     initPackFormulas();
-    expect(resolveExcelFunction("TESTPACKDOUBLE")).toBeNull();
+    expect(packFormulaNames()).not.toContain("TESTPACKDOUBLE");
   });
 });

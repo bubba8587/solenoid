@@ -1,13 +1,18 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
-import { shiftList, pctChangeList, zscoreList, binIndex } from "../../../src/graph/nodes/listOps";
 import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, SpectrumNode } from "../../../src/graph/nodes/list";
 import { BetweenNode, IsCloseNode } from "../../../src/graph/nodes/logic";
-import { combinationsOf, crossProduct, polyfitEval } from "../../../src/graph/nodes/listOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+const shiftList = (x: unknown[], by: number, wrap: boolean) => ev("SHIFT(x, by, wrap)", { x, by, wrap });
+const pctChangeList = (x: unknown[]) => ev("PCTCHANGE(x)", { x }) as unknown[];
+const zscoreList = (x: unknown[]) => ev("ZSCORE(x)", { x });
+const binIndex = (x: unknown[], b: unknown[]) => ev("BIN(x, b)", { x, b });
+const combinationsOf = (x: unknown[], k: number, mode: "combinations" | "permutations") => ev(`${mode.toUpperCase()}(x, k)`, { x, k });
+const crossProduct = (a: unknown[], b: unknown[]) => ev("CROSSPRODUCT(a, b)", { a, b });
+const polyfitEval = (x: unknown[], y: unknown[], d: number) => ev("POLYFIT(x, y, d)", { x, y, d });
 
 describe("shiftList (Shift / lag-lead / roll)", () => {
   it("shifts right, vacated slots blank", () => {

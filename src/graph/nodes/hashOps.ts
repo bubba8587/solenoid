@@ -147,17 +147,6 @@ export function fnv1a64Hex(text: string): string {
   return h.toString(16).padStart(16, "0");
 }
 
-export function hashText(text: string, algorithm: HashAlgorithm = "sha256"): string {
-  switch (algorithm) {
-    case "sha256":  return sha256Hex(text);
-    case "sha1":    return sha1Hex(text);
-    case "md5":     return md5Hex(text);
-    case "crc32":   return crc32Hex(text);
-    case "fnv1a32": return fnv1a32Hex(text);
-    case "fnv1a64": return fnv1a64Hex(text);
-  }
-}
-
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 export function base64Encode(text: string): string {
   const bytes = utf8.encode(text);

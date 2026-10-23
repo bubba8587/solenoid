@@ -60,8 +60,8 @@ describe("WORKDAY jumps whole weeks and stays inside the calendar", () => {
     return d;
   };
   it("agrees with a day-by-day walk, holidays included", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
-    const intl = resolveExcelFunction("WORKDAY.INTL")!;
+    const { coreFunction } = await import("../coreFunction");
+    const intl = coreFunction("WORKDAY.INTL")!;
     const hol = [MON + 3, MON + 10, MON + 11, MON + 40, MON - 9, MON - 30];
     for (const days of [1, 4, 5, 6, 13, 50, 101, -1, -5, -6, -37, -120]) {
       expect(intl(MON, days, "0000011", hol)).toBe(walk(MON, days, new Set([6, 0]), new Set(hol)));
@@ -71,8 +71,8 @@ describe("WORKDAY jumps whole weeks and stays inside the calendar", () => {
     }
   });
   it("a count past year 9999 is an error at once, not a frozen walk", async () => {
-    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
-    for (const f of [() => resolveExcelFunction("WORKDAY.INTL")!(MON, 1e9, "0000011"), () => resolveExcelFunction("WORKDAY")!(MON, -1e9),
+    const { coreFunction } = await import("../coreFunction");
+    for (const f of [() => coreFunction("WORKDAY.INTL")!(MON, 1e9, "0000011"), () => coreFunction("WORKDAY")!(MON, -1e9),
       () => new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1e9] }).result]) {
       const t = Date.now();
       const r = f();

@@ -1,9 +1,9 @@
 // [[C120]] linearWork
 import { it, expect } from "vitest";
-import { resolveExcelFunction } from "../../../src/graph/excelFunctions";
+import { coreFunction } from "../coreFunction";
 import { DIST_SPECS as DISTRIBUTIONS } from "../../../src/graph/nodes/distributionOps";
 it("the cumulative hypergeometric sums only the window where terms are nonzero: the full loop's answer, fast", () => {
-  const f = resolveExcelFunction("HYPGEOM.DIST")!;
+  const f = coreFunction("HYPGEOM.DIST")!;
   // Against the full loop on mid-size cases where the window applies.
   let seed = 9; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const full = (k: number, n: number, M: number, N: number) => {

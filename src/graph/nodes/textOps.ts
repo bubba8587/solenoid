@@ -2,46 +2,10 @@
 // Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag rete into the formula path).
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { decimalFromText } from "../valueKinds";
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
-
-/** VALUE's reading, and Cast to Number's ([[B16]] oneFormulaSurface): `$`, `(5)` for negatives and trailing `%`, with the decimal and group separators a caller names (blank: the US form, [[C117]] usNumberText, with no group when the decimal is `,`, as NUMBERVALUE's). */
-export function parseValueText(text: string, decimalSep = "", groupSep = ""): number {
-  const d = (decimalSep || ".")[0];
-  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
-  if (g === d) return NaN;
-  let t = text.trim(), pct = 0, neg = false;
-  while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
-  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
-  t = t.replace(/^([+-]?)\$/, "$1");
-  const di = t.indexOf(d);
-  const intPart = di === -1 ? t : t.slice(0, di);
-  const frac = di === -1 ? null : t.slice(di + 1);
-  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return NaN;
-  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
-  return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
-}
-
-/** NUMBERVALUE, shared by the formula and the card: whitespace ignored, empty text is 0, each trailing `%` divides by 100. A blank separator takes its default (`.` decimal; `,` group unless the decimal is `,`). */
-export function numberValue(text: string, decimalSep: string, groupSep: string): number | SolError {
-  const bad = solError("#VALUE!", "NUMBERVALUE needs a number");
-  const d = (decimalSep || ".")[0];
-  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
-  if (g === d) return bad;
-  let s = text.replace(/\s/g, "");
-  if (s === "") return 0;
-  let pct = 0;
-  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
-  const di = s.indexOf(d);
-  const intPart = di === -1 ? s : s.slice(0, di);
-  const frac = di === -1 ? null : s.slice(di + 1);
-  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return bad;
-  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
-  return Number.isNaN(n) ? bad : n / Math.pow(100, pct);
-}
 
 /** Where `delimiter` occurs, left to right and not overlapping; `caseless` is Excel's match_mode 1. */
 function occurrences(text: string, delimiter: string, caseless: boolean): number[] {
@@ -137,50 +101,6 @@ export function regexGroups(text: string, pattern: string, flags = ""): string[]
   return m ? m.slice(1).map((g) => g ?? "") : [];
 }
 
-/** REGEXREPLACE's occurrence: blank is 0 (every match), a fraction truncates, a negative counts from the end; null when non-finite. */
-export function regexOccurrence(raw: unknown): number | null {
-  if (raw == null || raw === "") return 0;
-  const n = Math.trunc(Number(raw));
-  return Number.isFinite(n) ? n : null;
-}
-
-/** JavaScript's replacement-pattern tokens, expanded from one match's own groups. */
-function expandReplacement(
-  replacement: string, match: string, groups: (string | undefined)[], named: Record<string, string | undefined> | undefined,
-  offset: number, text: string,
-): string {
-  return replacement.replace(/\$(\$|&|`|'|<([^>]*)>|(\d\d?))/g, (token, kind: string, name: string | undefined, digits: string | undefined) => {
-    if (kind === "$") return "$";
-    if (kind === "&") return match;
-    if (kind === "`") return text.slice(0, offset);
-    if (kind === "'") return text.slice(offset + match.length);
-    if (name !== undefined) return named ? (named[name] ?? "") : token;
-    const two = Number(digits);
-    if (two >= 1 && two <= groups.length) return groups[two - 1] ?? "";
-    const one = Number(digits![0]);
-    if (digits!.length === 2 && one >= 1 && one <= groups.length) return (groups[one - 1] ?? "") + digits![1];
-    return token;
-  });
-}
-
-/** Replaces only the nth match (1-based; negative counts from the end); fewer matches leave the text unchanged. */
-export function replaceNth(text: string, pattern: string, replacement: string, n: number, flags = ""): string | null {
-  if (!pattern) return null;
-  const re = safeRegex(pattern, flags);
-  if (!re) return null;
-  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-  const target = n < 0 ? [...text.matchAll(g)].length + n + 1 : n;
-  if (target < 1) return text;
-  let i = 0;
-  return text.replace(g, (match: string, ...rest: unknown[]) => {
-    i++;
-    if (i !== target) return match;
-    const named = typeof rest[rest.length - 1] === "object" ? rest.pop() as Record<string, string | undefined> : undefined;
-    const offset = rest[rest.length - 2] as number;
-    return expandReplacement(replacement, match, rest.slice(0, -2) as (string | undefined)[], named, offset, text);
-  });
-}
-
 const SPELL_ONES = [
   "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
   "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
@@ -199,12 +119,6 @@ function spellUnder1000(n: number): string {
     parts.push(SPELL_ONES[n]);
   }
   return parts.join(" ");
-}
-
-export function ordinalText(n: number): string {
-  const i = Math.trunc(n), v = Math.abs(i) % 100;
-  const suffix = ["th", "st", "nd", "rd"];
-  return `${i}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`;
 }
 
 export function spellNumber(n: number): string | SolError {
@@ -234,22 +148,6 @@ export function spellNumber(n: number): string | SolError {
   if (fracText) words += ` point ${[...fracText].map((d) => SPELL_ONES[Number(d)]).join(" ")}`;
 
   return neg ? `negative ${words}` : words;
-}
-
-/** Excel's PROPER: a letter after any non-letter (digit, underscore, apostrophe) is capitalized, every other letter lowercased. */
-export function properCase(t: string): string {
-  let out = "";
-  let afterLetter = false;
-  for (const ch of t) {
-    const letter = /\p{L}/u.test(ch);
-    out += letter ? (afterLetter ? ch.toLowerCase() : ch.toUpperCase()) : ch;
-    afterLetter = letter;
-  }
-  return out;
-}
-
-export function reverseText(t: string): string {
-  return [...t].reverse().join("");
 }
 
 export type SimilarityMethod = "ratio" | "levenshtein" | "damerau" | "jaro_winkler";
@@ -307,25 +205,6 @@ export function jaroWinkler(a: string, b: string): number {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
-export function textSimilarity(a: string, b: string, method: SimilarityMethod = "ratio"): number {
-  if (method === "levenshtein") return levenshtein(a, b);
-  if (method === "jaro_winkler") return jaroWinkler(a, b);
-  const maxLen = Math.max([...a].length, [...b].length);
-  if (maxLen === 0) return 1;
-  const dist = method === "damerau" ? damerauLevenshtein(a, b) : levenshtein(a, b);
-  return 1 - dist / maxLen;
-}
-
-export function fuzzyBest(needle: string, candidates: readonly string[], method: SimilarityMethod = "ratio", threshold = 0):
-  { index: number; text: string; score: number } | null {
-  let best: { index: number; text: string; score: number } | null = null;
-  for (let i = 0; i < candidates.length; i++) {
-    const score = textSimilarity(needle, candidates[i], method === "levenshtein" ? "ratio" : method);
-    if (score >= threshold && (best === null || score > best.score)) best = { index: i, text: candidates[i], score };
-  }
-  return best;
-}
-
 const TRANSLIT: Record<string, string> = {
   "ß": "ss", "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "œ": "oe", "Œ": "OE", "đ": "d", "Đ": "D",
   "ł": "l", "Ł": "L", "ð": "d", "Ð": "D", "þ": "th", "Þ": "TH", "ı": "i", "ŋ": "ng", "Ŋ": "NG",
@@ -342,46 +221,6 @@ export function slugify(t: string, sep = "-"): string {
 }
 
 export type PadSide = "left" | "right" | "center";
-export function padText(t: string, width: number, side: PadSide, fill = " "): string | SolError {
-  const chars = [...t];
-  const w = Math.max(0, Math.floor(width));
-  const f = [...(fill === "" ? " " : fill)];
-  if (chars.length >= w) return t;
-  // A width typed huge would build the text a character at a time ([[C120]] linearWork); REPT stops at the same limit.
-  if (w > 32767) return solError("#VALUE!", "PADTEXT's result would pass 32,767 characters, Excel's text limit");
-  const need = w - chars.length;
-  const run = (n: number) => Array.from({ length: n }, (_, i) => f[i % f.length]).join("");
-  if (side === "left") return run(need) + t;
-  if (side === "right") return t + run(need);
-  const left = Math.floor(need / 2);
-  return run(left) + t + run(need - left);
-}
-
-export function truncateText(t: string, width: number, ellipsis = "…"): string {
-  const chars = [...t];
-  const w = Math.max(0, Math.floor(width));
-  if (chars.length <= w) return t;
-  const e = [...ellipsis];
-  const keep = Math.max(0, w - e.length);
-  return chars.slice(0, keep).join("") + (keep === 0 ? e.slice(0, w).join("") : ellipsis);
-}
-
-export function wrapText(t: string, width: number): string[] {
-  const w = Math.max(1, Math.floor(width));
-  const words = t.split(/\s+/).filter((s) => s !== "");
-  if (words.length === 0) return [];
-  const lines: string[] = [];
-  let line = "";
-  let lineLen = 0;
-  for (const word of words) {
-    const wordLen = [...word].length;
-    if (line === "") { line = word; lineLen = wordLen; continue; }
-    if (lineLen + 1 + wordLen <= w) { line += " " + word; lineLen += 1 + wordLen; }
-    else { lines.push(line); line = word; lineLen = wordLen; }
-  }
-  lines.push(line);
-  return lines;
-}
 
 const TEMPLATE_TOKEN = /\{\{|\}\}|\{\s*([A-Za-z_][\w .-]*?|\d+)\s*(?::([^{}]*))?\}/g;
 
@@ -392,18 +231,6 @@ export function templatePlaceholders(template: string): string[] {
     if (name !== undefined && !out.includes(name)) out.push(name);
   }
   return out;
-}
-
-export function renderTemplate(
-  template: string,
-  lookup: (name: string) => unknown,
-  fmt: (value: unknown, name: string, spec: string | undefined) => string,
-): string {
-  return template.replace(TEMPLATE_TOKEN, (tok, name: string | undefined, spec: string | undefined) => {
-    if (tok === "{{") return "{";
-    if (tok === "}}") return "}";
-    return fmt(lookup(name!), name!, spec === undefined ? undefined : spec.trim() || undefined);
-  });
 }
 
 export interface TemplateFormatters {
@@ -418,15 +245,3 @@ export function templateFormat(value: unknown, spec: string | undefined, f: Temp
   return String(value);
 }
 
-/** CHAR and UNICHAR, the CHAR / CODE card's char op: a truncated Unicode code point from 1 to 1114111, surrogates refused. */
-export function charFromCode(code: number): string | SolError {
-  const c = Math.trunc(code);
-  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "A character code is a code point from 1 to 1114111");
-  return String.fromCodePoint(c);
-}
-
-/** CODE and UNICODE, the card's code op: the first character's Unicode code point. */
-export function codeOfText(text: string): number | SolError {
-  const c = text.codePointAt(0);
-  return c === undefined ? solError("#VALUE!", "Empty text has no character code") : c;
-}

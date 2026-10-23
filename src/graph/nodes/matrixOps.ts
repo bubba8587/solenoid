@@ -1,5 +1,5 @@
 // [[C17]], [[C48]] appendLadder
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { MAX_GENERATED } from "./listOps";
 
 /** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
@@ -15,102 +15,12 @@ export type NumMat = number[][];
 export function matRows(m: readonly unknown[][]): number { return m.length; }
 export function matCols(m: readonly unknown[][]): number { return m[0]?.length ?? 0; }
 
-export function matTranspose<T>(m: T[][]): T[][] {
-  const rows = matRows(m), cols = matCols(m);
-  return Array.from({ length: cols }, (_, j) =>
-    Array.from({ length: rows }, (_, i) => m[i][j]));
-}
-
 export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] | SolError {
   const k = Math.round(n);
   if (k < 1) return [];
   const cap = cellCap("MUNIT", k, k); if (cap) return cap;
   return Array.from({ length: k }, (_, i) =>
     Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
-}
-
-export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] | SolError {
-  const n = values.length;
-  const cap = cellCap("DIAGONAL", n, n); if (cap) return cap;
-  return Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) => (i === j ? values[i] : offDiag)));
-}
-
-export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] | SolError {
-  const cap = cellCap("OUTER", a.length, b.length); if (cap) return cap;
-  return a.map((ai) => b.map((bj) => (ai == null || bj == null ? null : ai * bj)));
-}
-
-export function asNumericMatrix(m: unknown[][]): NumMat | SolError {
-  for (const row of m)
-    for (const cell of row) {
-      if (cell === null || cell === undefined || cell === "")
-        return solError("#VALUE!", "This matrix operation needs complete data. A cell is missing");
-      if (typeof cell !== "number" || !Number.isFinite(cell))
-        return solError("#TYPE!", "This matrix operation needs numbers, but got text");
-    }
-  return m as NumMat;
-}
-
-export function matMul(a: NumMat, b: NumMat): NumMat | null {
-  const m = matRows(a), n = matCols(a), p = matCols(b);
-  if (n !== matRows(b) || n === 0) return null;
-  const r: NumMat = Array.from({ length: m }, () => Array(p).fill(0));
-  for (let i = 0; i < m; i++)
-    for (let j = 0; j < p; j++)
-      for (let k = 0; k < n; k++)
-        r[i][j] += a[i][k] * b[k][j];
-  return r;
-}
-
-function matLU(m: NumMat): { U: NumMat; sign: number } | null {
-  const n = matRows(m);
-  if (n !== matCols(m)) return null;
-  const a = m.map((row) => [...row]);
-  let sign = 1;
-  for (let i = 0; i < n; i++) {
-    let maxVal = Math.abs(a[i][i]), maxR = i;
-    for (let r = i + 1; r < n; r++)
-      if (Math.abs(a[r][i]) > maxVal) { maxVal = Math.abs(a[r][i]); maxR = r; }
-    if (maxVal < 1e-14) return null;
-    if (maxR !== i) { [a[i], a[maxR]] = [a[maxR], a[i]]; sign *= -1; }
-    for (let r = i + 1; r < n; r++) {
-      a[r][i] /= a[i][i];
-      for (let c = i + 1; c < n; c++) a[r][c] -= a[r][i] * a[i][c];
-    }
-  }
-  const U: NumMat = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) => (j >= i ? a[i][j] : 0)));
-  return { U, sign };
-}
-
-export function matDet(m: NumMat): number | null {
-  const lu = matLU(m);
-  if (!lu) return null;
-  let d = lu.sign;
-  for (let i = 0; i < lu.U.length; i++) d *= lu.U[i][i];
-  return d;
-}
-
-export function matInverse(m: NumMat): NumMat | null {
-  const n = matRows(m);
-  if (n !== matCols(m)) return null;
-  const aug = m.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
-  for (let i = 0; i < n; i++) {
-    let max = Math.abs(aug[i][i]), maxR = i;
-    for (let r = i + 1; r < n; r++)
-      if (Math.abs(aug[r][i]) > max) { max = Math.abs(aug[r][i]); maxR = r; }
-    if (max < 1e-14) return null;
-    if (maxR !== i) [aug[i], aug[maxR]] = [aug[maxR], aug[i]];
-    const pivot = aug[i][i];
-    for (let c = 0; c < 2 * n; c++) aug[i][c] /= pivot;
-    for (let r = 0; r < n; r++) {
-      if (r === i) continue;
-      const f = aug[r][i];
-      for (let c = 0; c < 2 * n; c++) aug[r][c] -= f * aug[i][c];
-    }
-  }
-  return aug.map((row) => row.slice(n));
 }
 
 /** WRAPROWS and WRAPCOLS read their count as Excel does: truncated, and below 1 is Excel's `#NUM!`. */
@@ -121,106 +31,7 @@ export function wrapCount(w: number, fn: "WRAPROWS" | "WRAPCOLS"): number | SolE
   return n > MAX_GENERATED ? solError("#OVERFLOW!", `${fn} count ${n} exceeds the ${MAX_GENERATED} element limit`) : n;
 }
 
-export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
-  if (dir === "rows") {
-    const rows: T[][] = [];
-    for (let i = 0; i < list.length; i += w) {
-      const row = list.slice(i, i + w);
-      while (row.length < w) row.push(pad());
-      rows.push(row as T[]);
-    }
-    return rows;
-  }
-  const nCols = Math.ceil(list.length / w);
-  const mat: T[][] = Array.from({ length: w }, () => Array.from({ length: nCols }, pad));
-  for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i] as T;
-  return mat;
-}
-
-
-export function stackH(mats: readonly unknown[][][]): unknown[][] {
-  const height = Math.max(...mats.map(matRows));
-  const na = solError("#N/A", "Padded: this input is shorter than the largest one");
-  const out: unknown[][] = Array.from({ length: height }, () => []);
-  for (const m of mats) {
-    const w = matCols(m);
-    for (let i = 0; i < height; i++) out[i] = out[i].concat(i < m.length ? m[i] : Array<unknown>(w).fill(na));
-  }
-  return out;
-}
-
-export function stackV(mats: readonly unknown[][][]): unknown[][] {
-  const width = Math.max(...mats.map(matCols));
-  const na = solError("#N/A", "Padded: this input is narrower than the largest one");
-  const out: unknown[][] = [];
-  for (const m of mats)
-    for (const r of m) out.push(r.length < width ? [...r, ...Array<unknown>(width - r.length).fill(na)] : [...r]);
-  return out;
-}
-
-export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" | "column"): T[][] | SolError {
-  const size = kind === "row" ? matRows(m) : matCols(m);
-  const label = kind === "row" ? "CHOOSEROWS" : "CHOOSECOLS";
-  const resolved: number[] = [];
-  for (const i of indices) {
-    const p = i < 0 ? size + Math.trunc(i) : Math.trunc(i) - 1;
-    if (!(p >= 0 && p < size))
-      return solError("#VALUE!", `${label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
-    resolved.push(p);
-  }
-  return kind === "row" ? resolved.map((r) => [...m[r]]) : m.map((row) => resolved.map((c) => row[c]));
-}
-
-export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[][] | SolError {
-  const curR = matRows(m), curC = matCols(m);
-  const R = reqR > 0 ? reqR : curR;
-  const C = reqC > 0 ? reqC : curC;
-  if (R < curR || C < curC)
-    return solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
-  const cap = cellCap("EXPAND", R, C); if (cap) return cap;
-  const out: T[][] = [];
-  for (let i = 0; i < R; i++) {
-    const src = i < curR ? m[i] : [];
-    const row: T[] = [];
-    for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
-    out.push(row);
-  }
-  return out;
-}
-
-export function matTrace(m: NumMat): number {
-  const n = Math.min(matRows(m), matCols(m));
-  let t = 0;
-  for (let i = 0; i < n; i++) t += m[i][i];
-  return t;
-}
-
-export function matRank(m: NumMat, tol = 1e-10): number {
-  const rows = matRows(m), cols = matCols(m);
-  const a = m.map((r) => [...r]);
-  const scale = Math.max(1e-300, ...a.flat().map(Math.abs));
-  let rank = 0;
-  for (let c = 0; c < cols && rank < rows; c++) {
-    let piv = rank;
-    for (let r = rank + 1; r < rows; r++) if (Math.abs(a[r][c]) > Math.abs(a[piv][c])) piv = r;
-    if (Math.abs(a[piv][c]) <= tol * scale) continue;
-    [a[rank], a[piv]] = [a[piv], a[rank]];
-    for (let r = rank + 1; r < rows; r++) {
-      const f = a[r][c] / a[rank][c];
-      for (let k = c; k < cols; k++) a[r][k] -= f * a[rank][k];
-    }
-    rank++;
-  }
-  return rank;
-}
-
 export type MatNormKind = "fro" | "1" | "inf" | "max";
-export function matNorm(m: NumMat, kind: MatNormKind = "fro"): number {
-  if (kind === "fro") return Math.sqrt(m.reduce((a, r) => a + r.reduce((x, y) => x + y * y, 0), 0));
-  if (kind === "max") return Math.max(0, ...m.flat().map(Math.abs));
-  if (kind === "1") { let best = 0; for (let c = 0; c < matCols(m); c++) best = Math.max(best, m.reduce((a, r) => a + Math.abs(r[c]), 0)); return best; }
-  return Math.max(0, ...m.map((r) => r.reduce((a, v) => a + Math.abs(v), 0)));
-}
 
 export function matSolve(A: NumMat, b: readonly number[]): number[] | null {
   const n = matRows(A);
@@ -287,15 +98,3 @@ export type SkipCells = "none" | "blanks" | "errors" | "both";
 /** Excel's `ignore` codes: 0 keeps every value, 1 skips blanks, 2 errors, 3 both. */
 export const SKIP_BY_CODE: readonly SkipCells[] = ["none", "blanks", "errors", "both"];
 
-/** A table's cells in reading order, row by row or column by column, skipping blanks, errors or both. */
-export function flattenCells<T>(m: readonly (readonly T[])[], byColumn: boolean, skip: SkipCells): T[] {
-  const out: T[] = [];
-  const width = m.reduce((w, row) => Math.max(w, row.length), 0);
-  const keep = (v: T) => !((skip === "blanks" || skip === "both") && v == null) && !((skip === "errors" || skip === "both") && isSolError(v));
-  if (byColumn) {
-    for (let j = 0; j < width; j++) for (const row of m) { const v = row[j] as T; if (keep(v)) out.push(v); }
-  } else {
-    for (const row of m) for (const v of row) if (keep(v)) out.push(v);
-  }
-  return out;
-}

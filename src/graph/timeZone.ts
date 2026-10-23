@@ -1,10 +1,5 @@
 // [[C44]] dateSerials
-// Time-zone reinterpretation via Intl. Serials are wall-clock-as-UTC: read the components as the FROM zone's local
-// time, find the true UTC instant, express it in the TO zone; DST falls out because the offset is read at that instant.
-import { solError, type SolError } from "./errorValue";
-
-const MS_PER_DAY = 86400000;
-const EPOCH_OFFSET = 25569; // Excel serial of 1970-01-01
+// Time zones through Intl: the IANA names a picker offers, and a zone's offset at an instant.
 
 /** Runtime `Intl.supportedValuesOf` where available, with a static fallback so the list is never empty. */
 export const IANA_ZONES: readonly string[] = (() => {
@@ -49,23 +44,3 @@ export function zoneOffsetMs(zone: string, utcMs: number): number {
   return wall.getTime() - utcMs;
 }
 
-/** Two offset reads settle a value that lands beside a DST transition. */
-function wallSerialToInstant(serial: number, zone: string): number {
-  const wallMs = (serial - EPOCH_OFFSET) * MS_PER_DAY; // components taken as if UTC
-  let off = zoneOffsetMs(zone, wallMs);
-  off = zoneOffsetMs(zone, wallMs - off);
-  return wallMs - off;
-}
-
-function instantToWallSerial(ms: number, zone: string): number {
-  return (ms + zoneOffsetMs(zone, ms)) / MS_PER_DAY + EPOCH_OFFSET;
-}
-
-/** #VALUE! for an unknown zone or a non-finite serial. */
-export function convertZone(serial: number, fromZone: string, toZone: string): number | SolError {
-  if (!Number.isFinite(serial)) return solError("#VALUE!", "The date/time input is empty.");
-  const from = fromZone.trim(), to = toZone.trim();
-  if (!isValidZone(from)) return solError("#VALUE!", `Unknown time zone "${from}". Use an IANA name like America/New_York.`);
-  if (!isValidZone(to)) return solError("#VALUE!", `Unknown time zone "${to}". Use an IANA name like Asia/Tokyo.`);
-  return instantToWallSerial(wallSerialToInstant(serial, from), to);
-}

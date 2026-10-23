@@ -5,17 +5,12 @@
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
-import type { ExcelReturn, ExcelRank, VectorOrient } from "../excelFunctions";
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 
-interface PackFormulaBase {
+/** A pack's formula function: the core carries its body (`fns_packs.rs`); the pack declares how the editor shows it. */
+export interface PackFormula {
   /** Dispatch name, UPPERCASE. */
   name: string;
-  /** Returns a value or a `SolError`, never throws, like a core `registerInternal` impl. */
-  impl: (...args: unknown[]) => unknown;
-  returns: ExcelReturn;
-  /** Default "scalar". */
-  rank?: ExcelRank;
   arity: [number, number];
   signature?: string;
   /** An empty slot marks the unknown to solve for, so it reads as the argument left out ([[C80]] blankArgIsExcelBlank). */
@@ -23,12 +18,6 @@ interface PackFormulaBase {
   /** The placeholder such a slot shows ([[D96]] emptySlotShowsItsValue); "solve" when unset. */
   emptySlotShown?: string;
 }
-
-/** A formula that takes whole lists declares whether a vector's direction matters to it ([[D85]] columnsStayColumns). */
-export type PackFormula = PackFormulaBase & (
-  | { listArgs?: false; orient?: undefined }
-  | { listArgs: true; orient: VectorOrient }
-);
 
 export interface FormulaPackEntry {
   type: string;          // prefixed by pack: "geo-circle-area"

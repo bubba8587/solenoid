@@ -134,17 +134,3 @@ describe("Computed Column units, bindings and λ captures", () => {
     expect(isSolError(cell) && cell.code).toBe("#DIV/0!");
   });
 });
-
-describe("a computed column's date typing", () => {
-  it("knows every function registered as returning a date (DATE_FUNCTIONS in nodes/columns.rs)", async () => {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const { EXCEL_IMPL_META } = await import("../../src/graph/excelFunctions");
-    const src = fs.readFileSync(path.resolve(__dirname, "../../crates/solenoid-core/src/nodes/columns.rs"), "utf8");
-    const list = /const DATE_FUNCTIONS: &\[&str\] = &\[([^\]]*)\]/.exec(src)![1];
-    const rust = new Set([...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
-    const dated = Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.returns === "date").map(([n]) => n);
-    expect(dated.length).toBeGreaterThan(0);
-    expect(dated.filter((n) => !rust.has(n))).toEqual([]);
-  });
-});

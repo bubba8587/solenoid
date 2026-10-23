@@ -4,7 +4,16 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-export interface CallTraits { kind: "handler" | "whole" | "range" | "broadcast"; scalar: boolean[]; resolves: boolean }
+export interface CallTraits {
+  kind: "handler" | "whole" | "range" | "broadcast";
+  scalar: boolean[];
+  resolves: boolean;
+  /** Registered with Solenoid, not only a Formula.js name. */
+  known: boolean;
+  /** A one-column or one-row table reads as its items, and a list answer comes back the way the vector came in. */
+  free: boolean;
+  matrixArgs: boolean;
+}
 
 const table = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../crates/solenoid-core/data/call_traits.json"), "utf8")) as Record<string, CallTraits>;
 

@@ -1,6 +1,14 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import { stlDecompose, runHW } from "../../../src/graph/nodes/forecastOps";
+import { runHW } from "../../../src/graph/nodes/forecastOps";
+import { coreFunction } from "../coreFunction";
+
+/** DECOMPOSE's three STL components, or null where it answers blank. */
+function stlDecompose(y: (number | null)[], m: number): { trend: unknown[]; seasonal: unknown[]; residual: unknown[] } | null {
+  const part = (c: string) => coreFunction("DECOMPOSE")!(y, m, c, "stl");
+  const trend = part("trend");
+  return Array.isArray(trend) ? { trend, seasonal: part("seasonal") as unknown[], residual: part("residual") as unknown[] } : null;
+}
 
 // STL (R stl s.window="periodic") on a hand-built trend + season: the decomposition of a
 // clean signal must recover an exactly-periodic seasonal and a ~zero residual (a linear

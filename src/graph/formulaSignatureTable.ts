@@ -409,7 +409,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   CONCATLISTS: "list1, [list2], …",
   SHUFFLE: "list",
 
-  // ── Formula.js-backed names ──
+  // ── Excel names ──
   // math / trig
   ACOT: "x",
   ACOTH: "x",

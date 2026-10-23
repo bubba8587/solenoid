@@ -1,9 +1,9 @@
 // [[B16]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
-import { formulaFunctionNames } from "../../src/graph/excelFormula";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
-import { FX_FUNCTION_NAMES, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { formulaFunctionNames, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { EXCEL_NAMES } from "./fixtures/excelNames";
 import { NODE_OPS } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
@@ -33,7 +33,7 @@ describe("[[B16]] oneFormulaSurface — ALL CAPS ⟺ callable function name", ()
   // Excel + Solenoid dispatch, plus the refused frame verbs: a FRAME_SURFACE_NAMES key IS a real
   // Excel function, and typing it redirects to the node that carries the name (GROUPBY, PIVOTBY).
   const callable = new Set([...formulaFunctionNames(), ...Object.keys(FRAME_SURFACE_NAMES)].map((n) => n.toUpperCase()));
-  const excel = new Set(FX_FUNCTION_NAMES.map((n) => n.toUpperCase())); // real Excel (Formula.js) names
+  const excel = EXCEL_NAMES; // real Excel names, as Formula.js listed them
 
   const leafLabels: string[] = [];
   const walk = (entries: CatalogEntry[]): void => {

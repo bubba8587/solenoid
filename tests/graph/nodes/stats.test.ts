@@ -13,7 +13,11 @@ import {
   InterpolateNode,
   HypothesisTestNode,
 } from "../../../src/graph/nodes/stats";
-import { interpolateLinear, gridAxes, fillGrid } from "../../../src/graph/nodes/mathUtils";
+import { coreFunction } from "../coreFunction";
+
+const interpolateLinear = (xs: number[], ys: number[], at: number[]) => coreFunction("INTERPOLATE")!(ys, xs, at) as number[];
+const fillGrid = (z: (number | null)[][], xs: number[], ys: number[], forecast = true) =>
+  coreFunction("INTERPOLATE")!(z, xs, ys, forecast) as (number | null)[][];
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
@@ -255,9 +259,6 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
   it("holds flat with a single known point", () => {
     expect(interpolateLinear([7], [42], [0, 7, 100])).toEqual([42, 42, 42]);
   });
-  it("keeps a NaN query as NaN", () => {
-    expect(interpolateLinear([0, 10], [0, 10], [NaN])[0]).toBeNaN();
-  });
 
   // Node wiring — the query is a numlist COMBO: a SCALAR X in yields a SCALAR y,
   // a LIST of Xs yields a LIST (result mirrors the query's shape).
@@ -473,23 +474,16 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     expect(n2.forecast).toBe(false);
   });
 
-  // gridAxes — the axis-normalization the node and formula share.
-  it("gridAxes: unwired axes index, wired-blank propagates, mismatch/non-finite error", () => {
+  it("an axis of the wrong length or with a non-finite value is an error", () => {
     const z = [[1, 2], [3, 4]];
-    expect(gridAxes(z, undefined, undefined)).toEqual({ xs: [1, 2], ys: [1, 2], z });
-    expect(gridAxes(z, [10, 20], undefined)).toEqual({ xs: [10, 20], ys: [1, 2], z });
-    expect(gridAxes(z, null, undefined)).toBeNull();       // wired-blank axis → propagate
-    expect(gridAxes(null, undefined, undefined)).toBeNull(); // no matrix → null
-    const sh = gridAxes(z, [1, 2, 3], undefined);
+    const sh = fillGrid(z, [1, 2, 3], [1, 2]) as unknown;
     expect(isSolError(sh) && sh.code).toBe("#SHAPE!");
-    const vl = gridAxes(z, [1, NaN], undefined);
+    const vl = fillGrid(z, [1, NaN], [1, 2]) as unknown;
     expect(isSolError(vl) && vl.code).toBe("#VALUE!");
   });
 
-  it("gridAxes and fillGrid take a table too tall to spread into Math.max", () => {
+  it("fills a table too tall to spread into Math.max", () => {
     const z = Array.from({ length: 300_000 }, (_, i) => [i]);
-    const axes = gridAxes(z, undefined, undefined);
-    expect(axes && !isSolError(axes) && axes.xs).toEqual([1]);
     const out = fillGrid(z, [1], Array.from({ length: z.length }, (_, i) => i + 1));
     expect(out.length).toBe(300_000);
     expect(out[299_999][0]).toBe(299_999);

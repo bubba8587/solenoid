@@ -1,7 +1,5 @@
 // [[C17]] shareImpl
 
-import { solError, type SolError } from "../errorValue";
-
 /** Fixed-point iteration on x = 1/√f, a contraction for every physical Re and ε/D given the Swamee–Jain seed. */
 export function colebrookF(re: number, rr: number): number {
   let x = 1 / Math.sqrt(0.25 / Math.log10(rr / 3.7 + 5.74 / re ** 0.9) ** 2);
@@ -11,13 +9,6 @@ export function colebrookF(re: number, rr: number): number {
     x = next;
   }
   return 1 / (x * x);
-}
-
-export function colebrookFriction(re: number, rr: number): number | SolError {
-  if (re <= 0 || rr < 0 || rr >= 1) {
-    return solError("#DOMAIN!", "Needs Re > 0 and relative roughness 0 ≤ ε/D < 1");
-  }
-  return re < 2300 ? 64 / re : colebrookF(re, rr);
 }
 
 // Absolute roughness ε in mm.

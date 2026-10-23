@@ -4,7 +4,8 @@ import {
   BondPricingNode, DiscountSecurityNode, DurationNode, CouponNode, AccruedInterestNode,
   PaymentBreakdownNode,
 } from "../../../src/graph/nodes/finance";
-import { vdb, accrintM } from "../../../src/graph/nodes/financeOps";
+import { vdb } from "../../../src/graph/nodes/financeOps";
+import { coreFunction } from "../coreFunction";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 
 // Formula.js implements almost none of the bond/coupon family, so these functions have
@@ -13,6 +14,7 @@ import { parseDateToSerial } from "../../../src/graph/nodes/date";
 // real-Excel GOLDEN values the author verified by hand (2026-08-31).
 
 const d = (s: string) => parseDateToSerial(s);
+const accrintM = (...a: number[]) => coreFunction("ACCRINTM")!(...a) as number;
 const settle = d("2024-01-15"), maturity = d("2029-01-15");
 
 describe("real-Excel golden values (author-verified 2026-08-31)", () => {
@@ -200,7 +202,7 @@ describe("ONE Accrued Interest card: frequency is the periodic form's socket", (
     node.setOp("periodic");
     expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "frequency", "basis"]);
   });
-  it("At maturity is ACCRINTM: the kernel the formula uses", () => {
+  it("At maturity is ACCRINTM", () => {
     const issue = d("2023-07-15"), settle = d("2024-01-15");
     const viaNode = new AccruedInterestNode({ op: "maturity" }).data({ issue: [issue], settle: [settle], rate: [0.06], par: [1000], basis: [0] }).result;
     expect(viaNode).toBeCloseTo(accrintM(issue, settle, 0.06, 1000, 0) as number, 12);
