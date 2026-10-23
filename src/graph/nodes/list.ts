@@ -8,18 +8,18 @@ import { retypeOutputCables } from "../fcReconcile";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, readRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
 import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys } from "./logic";
 import { type FilterCondConfig } from "../frameVerbs";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { type Tri } from "../valueKinds";
 import { type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import type { AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
+import { type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { type FrameValue, type CubeValue, type CubeCell } from "../frame";
 
@@ -1552,7 +1552,7 @@ export class RandArrayNode extends ClassicPreset.Node {
   }
 
   /** The rolls are drawn here, once a recalculation, as many as `body` asks for; `body` reads the count and scales them. */
-  data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
+  data(inputs: Record<string, unknown[] | undefined>): { list: number[] | SolError | null } {
     const gen = getRecalcGen();
     if (this.lastGen !== gen) {
       this.rolls = [];
@@ -1564,28 +1564,8 @@ export class RandArrayNode extends ClassicPreset.Node {
     return this.body(inputs);
   }
 
-  body(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
-    // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
-    const countRaw = readRole<number | undefined>(this, "count", inputs.count) ?? 1;
-    const lo    = readRole<number | undefined>(this, "min", inputs.min) ?? 0;
-    const hi    = readRole<number | undefined>(this, "max", inputs.max) ?? 1;
-    const read = arrayCount(countRaw, "RANDARRAY");
-    const count = isSolError(read) ? 0 : read;
-    const bad = isSolError(read) ? read
-      : count > MAX_GENERATED ? solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`)
-      : randArrayRange(lo, hi, this.integer);
-    if (bad) {
-      this.cachedList = bad; this.rolls = []; this.rollsNeeded = null;
-      return { list: bad };
-    }
-    if (this.rolls.length !== count) {
-      this.rollsNeeded = count;
-      return { list: null };
-    }
-    this.rollsNeeded = null;
-    const list = this.rolls.map((r) => randArrayDraw(r, lo, hi, this.integer));
-    this.cachedList = list;
-    return { list };
+  body(inputs: Record<string, unknown[] | undefined>): { list: number[] | SolError | null } {
+    return nodeOnCore(this, inputs) as { list: number[] | SolError | null };
   }
 }
 
