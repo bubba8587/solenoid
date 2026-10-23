@@ -1,8 +1,8 @@
 // [[C103]] untrustedContentSeams, [[C130]] rustCore
-//! Port of `src/graph/csv.ts` and the Papa Parse 5.7 reader and writer it called (`Papa.parse` with a fixed or
-//! guessed delimiter, `Papa.unparse` at its defaults), and of `csvToFrame` (`nodes/connection.ts`) and the CSV half of
-//! `parseFrameSource` (`frame.ts`): the typed columns `inferColumn` reads off text cells. Held to the TS's answers by
-//! `tests/csv.rs` (`fixtures/core/csv-*.json.gz`, frozen by `tests/graph/coreCsv.test.ts`).
+//! CSV text read and written by the `csv` crate, with Solenoid's layers on top: newlines normalized, the delimiter
+//! guess, the blank-line options `src/graph/csv.ts`'s callers pass, and the typed columns `inferColumn` reads off text
+//! cells (`csvToFrame` in `frameBackend.ts`, the CSV half of `parseFrameSource` in `frame.ts`). Held to frozen answers
+//! by `tests/csv.rs` (`fixtures/core/csv-*.json.gz`, frozen by `tests/graph/coreCsv.test.ts`).
 
 use std::borrow::Cow;
 
@@ -13,7 +13,7 @@ use crate::excel_criteria::DateReading;
 use crate::frame::{make_headers, FrameColType};
 use crate::jsnum::{is_js_space, js_trim};
 
-/// The delimiters Papa Parse guesses among, in its order.
+/// The delimiters the guess chooses among, in its order.
 const GUESSES: [u8; 6] = [b',', b'\t', b'|', b';', 0x1e, 0x1f];
 
 /// `CsvOptions`: guess the delimiter (file ingestion) or read commas; keep a blank line as a row (a literal source) or
@@ -24,42 +24,31 @@ pub struct CsvOptions {
     pub keep_blank_lines: bool,
 }
 
-/// A field: a slice of the text, or (`start` == `OWNED`) the `end`th unescaped copy.
-#[derive(Clone, Copy)]
-struct Field {
-    start: u32,
-    end: u32,
+/// Rows read by the `csv` crate, their fields' text end to end: field `k` ends at `ends[k]`, row `i` is fields
+/// `rows[i - 1]..rows[i]`.
+#[derive(Default)]
+pub struct Rows {
+    text: String,
+    ends: Vec<u32>,
+    rows: Vec<usize>,
 }
 
-const OWNED: u32 = u32::MAX;
-
-/// Parsed rows, their fields flat: row `i` is `fields[ends[i - 1]..ends[i]]`.
-pub struct Rows<'a> {
-    input: &'a str,
-    fields: Vec<Field>,
-    owned: Vec<String>,
-    ends: Vec<usize>,
-}
-
-impl<'a> Rows<'a> {
-    fn new(input: &'a str) -> Rows<'a> {
-        Rows { input, fields: Vec::new(), owned: Vec::new(), ends: Vec::new() }
-    }
-
+impl Rows {
     pub fn len(&self) -> usize {
-        self.ends.len()
+        self.rows.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.ends.is_empty()
+        self.rows.is_empty()
     }
 
-    fn text(&self, f: Field) -> &str {
-        if f.start == OWNED { &self.owned[f.end as usize] } else { &self.input[f.start as usize..f.end as usize] }
+    fn field(&self, k: usize) -> &str {
+        let start = if k == 0 { 0 } else { self.ends[k - 1] as usize };
+        &self.text[start..self.ends[k] as usize]
     }
 
     fn span(&self, i: usize) -> std::ops::Range<usize> {
-        (if i == 0 { 0 } else { self.ends[i - 1] })..self.ends[i]
+        (if i == 0 { 0 } else { self.rows[i - 1] })..self.rows[i]
     }
 
     pub fn row_len(&self, i: usize) -> usize {
@@ -69,34 +58,15 @@ impl<'a> Rows<'a> {
     /// Row `i`'s field `j`, if the row reaches it.
     pub fn get(&self, i: usize, j: usize) -> Option<&str> {
         let span = self.span(i);
-        (j < span.len()).then(|| self.text(self.fields[span.start + j]))
+        (j < span.len()).then(|| self.field(span.start + j))
     }
 
     pub fn row(&self, i: usize) -> impl Iterator<Item = &str> + '_ {
-        self.fields[self.span(i)].iter().map(|&f| self.text(f))
+        self.span(i).map(|k| self.field(k))
     }
 
     pub fn to_vecs(&self) -> Vec<Vec<String>> {
         (0..self.len()).map(|i| self.row(i).map(String::from).collect()).collect()
-    }
-
-    fn push(&mut self, start: usize, end: usize) {
-        self.fields.push(Field { start: start as u32, end: end as u32 });
-    }
-
-    /// A quoted field's inside, `""` read as `"`.
-    fn push_unescaped(&mut self, start: usize, end: usize) {
-        let inside = &self.input[start..end];
-        if inside.contains("\"\"") {
-            self.owned.push(inside.replace("\"\"", "\""));
-            self.fields.push(Field { start: OWNED, end: (self.owned.len() - 1) as u32 });
-        } else {
-            self.push(start, end);
-        }
-    }
-
-    fn end_row(&mut self) {
-        self.ends.push(self.fields.len());
     }
 
     /// Drops every row of blank fields (`skipEmptyLines: "greedy"`).
@@ -104,179 +74,85 @@ impl<'a> Rows<'a> {
         if !(0..self.len()).any(|i| self.blank(i)) {
             return;
         }
-        let mut fields = Vec::with_capacity(self.fields.len());
-        let mut ends = Vec::with_capacity(self.ends.len());
+        let mut kept = Rows::default();
         for i in 0..self.len() {
             if !self.blank(i) {
-                fields.extend_from_slice(&self.fields[self.span(i)]);
-                ends.push(fields.len());
+                for f in self.row(i) {
+                    kept.text.push_str(f);
+                    kept.ends.push(kept.text.len() as u32);
+                }
+                kept.rows.push(kept.ends.len());
             }
         }
-        self.fields = fields;
-        self.ends = ends;
+        *self = kept;
     }
 
-    /// `testEmptyLine` under `skipEmptyLines: "greedy"`: the row's fields joined trim to nothing.
+    /// The row's fields joined trim to nothing.
     fn blank(&self, i: usize) -> bool {
         self.row(i).all(|f| f.chars().all(is_js_space))
     }
 }
 
-/// `indexOf` for one byte, eight at a time: a 50 MB file is searched for each delimiter Papa Parse guesses among.
-fn index_of(b: &[u8], needle: u8, from: usize) -> Option<usize> {
-    const LO: u64 = u64::from_ne_bytes([0x01; 8]);
-    const HI: u64 = u64::from_ne_bytes([0x80; 8]);
-    let hay = b.get(from..)?;
-    let rep = u64::from_ne_bytes([needle; 8]);
-    let mut i = 0;
-    for chunk in hay.as_chunks::<8>().0 {
-        let x = u64::from_ne_bytes(*chunk) ^ rep;
-        if x.wrapping_sub(LO) & !x & HI != 0 {
+/// The `csv` crate's records over `\n`-ended text, ragged rows allowed, a leading BOM dropped; its first `limit` rows
+/// when that's set. The crate skips an empty line; `keep_blank` reads each as a row of one empty field.
+fn read(input: &str, delim: u8, keep_blank: bool, limit: Option<usize>) -> Rows {
+    let b = input.as_bytes();
+    let mut rdr = csv::ReaderBuilder::new().has_headers(false).flexible(true).delimiter(delim).buffer_capacity(1 << 16).from_reader(b);
+    let mut rec = csv::ByteRecord::new();
+    let mut text = Vec::with_capacity(if limit.is_none() { b.len() } else { 0 });
+    let mut out = Rows::default();
+    let full = |out: &Rows| limit.is_some_and(|n| out.rows.len() >= n);
+    loop {
+        let more = matches!(rdr.read_byte_record(&mut rec), Ok(true));
+        if keep_blank {
+            let from = rec.position().map_or(0, |p| p.byte() as usize);
+            let lead = &b[from.min(b.len())..];
+            let lead = if from == 0 { lead.strip_prefix("\u{feff}".as_bytes()).unwrap_or(lead) } else { lead };
+            for _ in lead.iter().take_while(|&&c| c == b'\n') {
+                out.ends.push(text.len() as u32);
+                out.rows.push(out.ends.len());
+                if full(&out) {
+                    break;
+                }
+            }
+        }
+        if !more || full(&out) {
             break;
         }
-        i += 8;
-    }
-    hay[i..].iter().position(|&c| c == needle).map(|k| k + i + from)
-}
-
-/// Papa Parse's `Parser` over `\n`-ended text with a one-character delimiter, quote and escape `"`, no comments; its
-/// first `preview` rows when that's set. A field that opens with a quote runs to a quote followed by the delimiter or a
-/// newline, optionally after whitespace; an unclosed one takes the rest of the text as it stands.
-fn parse(input: &str, quoted: bool, delim: u8, preview: Option<usize>) -> Rows<'_> {
-    let b = input.as_bytes();
-    let len = b.len();
-    let mut out = Rows::new(input);
-    if preview.is_none() {
-        out.fields.reserve(len / 8);
-    }
-    if len == 0 {
-        return out;
-    }
-    let full = |out: &Rows| preview.is_some_and(|p| out.ends.len() >= p);
-    if !quoted {
-        let mut start = 0;
-        for line in input.split('\n') {
-            for f in line.split(delim as char) {
-                out.push(start, start + f.len());
-                start += f.len() + 1;
-            }
-            out.end_row();
-            if full(&out) {
-                break;
-            }
+        for f in &rec {
+            text.extend_from_slice(f);
+            out.ends.push(text.len() as u32);
         }
-        return out;
-    }
-    let mut cursor = 0usize;
-    let mut next_delim = index_of(b, delim, 0);
-    let mut next_newline = index_of(b, b'\n', 0);
-    // `extraSpaces`: the whitespace between the closing quote at `q` and `index`, when that's all there is.
-    let extra_spaces = |q: usize, index: Option<usize>| match index {
-        Some(i) if i > q + 1 && input[q + 1..i].chars().all(is_js_space) => i - q - 1,
-        _ => 0,
-    };
-    loop {
-        if b.get(cursor) == Some(&b'"') {
-            let mut q = cursor;
-            cursor += 1;
-            loop {
-                let Some(found) = index_of(b, b'"', q + 1) else {
-                    out.push(cursor, len);
-                    out.end_row();
-                    return out;
-                };
-                q = found;
-                if q == len - 1 {
-                    out.push_unescaped(cursor, q);
-                    out.end_row();
-                    return out;
-                }
-                if b[q + 1] == b'"' {
-                    q += 1;
-                    continue;
-                }
-                if next_delim.is_some_and(|d| d < q + 1) {
-                    next_delim = index_of(b, delim, q + 1);
-                }
-                if next_newline.is_some_and(|n| n < q + 1) {
-                    next_newline = index_of(b, b'\n', q + 1);
-                }
-                let check_up_to = match (next_delim, next_newline) {
-                    (d, None) => d,
-                    (Some(d), Some(n)) => Some(d.min(n)),
-                    (None, Some(_)) => None,
-                };
-                let spaces = extra_spaces(q, check_up_to);
-                if b.get(q + 1 + spaces) == Some(&delim) {
-                    out.push_unescaped(cursor, q);
-                    cursor = q + 1 + spaces + 1;
-                    next_delim = index_of(b, delim, cursor);
-                    next_newline = index_of(b, b'\n', cursor);
-                    break;
-                }
-                let spaces = extra_spaces(q, next_newline);
-                if b.get(q + 1 + spaces) == Some(&b'\n') {
-                    out.push_unescaped(cursor, q);
-                    cursor = q + 1 + spaces + 1;
-                    out.end_row();
-                    next_newline = index_of(b, b'\n', cursor);
-                    next_delim = index_of(b, delim, cursor);
-                    if full(&out) {
-                        return out;
-                    }
-                    break;
-                }
-                // A malformed closing quote is data; the search goes on past the character after it.
-                q += 1;
-            }
-            continue;
-        }
-        match (next_delim, next_newline) {
-            (Some(d), n) if n.is_none_or(|n| d < n) => {
-                out.push(cursor, d);
-                cursor = d + 1;
-                next_delim = index_of(b, delim, cursor);
-            }
-            (_, Some(n)) => {
-                out.push(cursor, n);
-                cursor = n + 1;
-                out.end_row();
-                next_newline = index_of(b, b'\n', cursor);
-                if full(&out) {
-                    return out;
-                }
-            }
-            _ => break,
+        out.rows.push(out.ends.len());
+        if full(&out) {
+            break;
         }
     }
-    out.push(cursor.min(len), len);
-    out.end_row();
+    // Fields of UTF-8 text cut at ASCII bytes are UTF-8.
+    out.text = String::from_utf8(text).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned());
     out
 }
 
-/// `guessDelimiter`: over each candidate's first ten rows, the most consistent field count wins, the larger average
-/// breaking a tie; one that averages under two fields never does. None when no candidate qualifies.
-fn guess_delimiter(input: &str, quoted: bool, skip_blank: bool) -> Option<u8> {
+/// The delimiter guess (Papa Parse's `guessDelimiter`): over each candidate's first ten rows, the most consistent field
+/// count wins, the larger average breaking a tie; one that averages under two fields never does. None when no
+/// candidate qualifies.
+fn guess_delimiter(input: &str, keep_blank: bool) -> Option<u8> {
     let mut best: Option<(u8, usize, f64)> = None;
     for delim in GUESSES {
-        let rows = parse(input, quoted, delim, Some(10));
+        let rows = read(input, delim, keep_blank, Some(10));
         let (mut delta, mut sum, mut empty) = (0usize, 0usize, 0usize);
         let mut prev: Option<usize> = None;
         for i in 0..rows.len() {
-            if skip_blank && rows.blank(i) {
+            if !keep_blank && rows.blank(i) {
                 empty += 1;
                 continue;
             }
             let n = rows.row_len(i);
             sum += n;
-            match prev {
-                None => prev = Some(n),
-                Some(p) if n > 0 => {
-                    delta += n.abs_diff(p);
-                    prev = Some(n);
-                }
-                Some(_) => {}
+            if let Some(p) = prev {
+                delta += n.abs_diff(p);
             }
+            prev = Some(n);
         }
         let avg = if rows.is_empty() { sum as f64 } else { sum as f64 / (rows.len() - empty) as f64 };
         if avg > 1.99 && best.is_none_or(|(_, d, a)| delta < d || (delta == d && avg > a)) {
@@ -286,7 +162,7 @@ fn guess_delimiter(input: &str, quoted: bool, skip_blank: bool) -> Option<u8> {
     best.map(|(d, _, _)| d)
 }
 
-/// `\r\n` and `\r` as `\n`: Papa locks onto one newline, so a stray one would bleed into the last field.
+/// `\r\n` and `\r` as `\n`, inside quotes too, so a quoted line break reads the same from any file.
 pub fn normalize_newlines(text: &str) -> Cow<'_, str> {
     if !text.contains('\r') {
         return Cow::Borrowed(text);
@@ -306,31 +182,24 @@ pub fn normalize_newlines(text: &str) -> Cow<'_, str> {
 }
 
 /// `parseCsvRows` over text whose newlines are already `\n` (`normalize_newlines`).
-pub fn rows_of(normalized: &str, opts: CsvOptions) -> Rows<'_> {
-    let input = normalized.strip_prefix('\u{feff}').unwrap_or(normalized);
-    let skip_blank = !opts.keep_blank_lines;
-    let quoted = index_of(input.as_bytes(), b'"', 0).is_some();
-    let delim = if opts.detect_delimiter { guess_delimiter(input, quoted, skip_blank).unwrap_or(b',') } else { b',' };
-    let mut rows = parse(input, quoted, delim, None);
-    if skip_blank {
+pub fn rows_of(normalized: &str, opts: CsvOptions) -> Rows {
+    let keep_blank = opts.keep_blank_lines;
+    let delim = if opts.detect_delimiter { guess_delimiter(normalized, keep_blank).unwrap_or(b',') } else { b',' };
+    let mut rows = read(normalized, delim, keep_blank, None);
+    if !keep_blank {
         rows.drop_blank_rows();
-    } else if normalized.ends_with('\n') && !rows.is_empty() && rows.row_len(rows.len() - 1) == 1 && rows.get(rows.len() - 1, 0) == Some("") {
-        // The final newline's phantom row of one empty field is a terminator, not a blank row.
-        rows.ends.pop();
-        rows.fields.pop();
     }
     rows
 }
 
-/// `parseCsvRows`: every row Papa Parse reads from the text.
+/// `parseCsvRows`: every row the text reads as.
 pub fn parse_rows(text: &str, opts: CsvOptions) -> Vec<Vec<String>> {
     rows_of(&normalize_newlines(text), opts).to_vecs()
 }
 
 /// `parseCsvRows` in the columnar hand-off: every field's text in order, and each row's width in `nums`.
 pub fn rows_columnar(text: &str, opts: CsvOptions) -> (Columnar, usize) {
-    let normalized = normalize_newlines(text);
-    let rows = rows_of(&normalized, opts);
+    let rows = rows_of(&normalize_newlines(text), opts);
     let mut out = Columnar::default();
     for i in 0..rows.len() {
         for f in rows.row(i) {
@@ -563,51 +432,19 @@ pub fn frame_columnar(text: &str) -> (Columnar, usize) {
 
 // ─── Writing ────────────────────────────────────────────────────────────────────
 
-/// `safe` at `Papa.unparse`'s defaults: a field holding a comma, quote, `\r`, `\n` or BOM, or starting or ending with
-/// a space, is quoted, its quotes doubled.
-fn safe_field(out: &mut String, s: &str) {
-    let needs = s.contains([',', '"', '\r', '\n', '\u{feff}']) || s.starts_with(' ') || s.ends_with(' ');
-    if needs {
-        out.push('"');
-        out.push_str(&s.replace('"', "\"\""));
-        out.push('"');
-    } else {
-        out.push_str(s);
-    }
-}
-
-/// `Papa.unparse({ fields, data })` at its defaults: the header row, then each row, lines ended by `\r\n`. No rows
-/// write as one empty row, so a header still ends in a newline.
+/// The header row, then each row as wide as the header (as it stands when there is none), written by the `csv` crate:
+/// a field quoted when it must be, lines ended by `\r\n`.
 pub fn unparse(fields: &[String], data: &[Vec<String>]) -> String {
-    let one_empty = [Vec::new()];
-    let data = if data.is_empty() { &one_empty[..] } else { data };
-    let mut csv = String::new();
-    let has_header = !fields.is_empty();
-    if has_header {
-        for (i, f) in fields.iter().enumerate() {
-            if i > 0 {
-                csv.push(',');
-            }
-            safe_field(&mut csv, f);
-        }
-        if !data.is_empty() {
-            csv.push_str("\r\n");
-        }
+    let mut w = csv::WriterBuilder::new().flexible(true).terminator(csv::Terminator::CRLF).from_writer(Vec::new());
+    let width = fields.len();
+    if width > 0 {
+        let _ = w.write_record(fields);
     }
-    for (r, row) in data.iter().enumerate() {
-        let max_col = if has_header { fields.len() } else { row.len() };
-        let null_line = row.is_empty();
-        for col in 0..max_col {
-            if col > 0 && !null_line {
-                csv.push(',');
-            }
-            safe_field(&mut csv, row.get(col).map_or("", String::as_str));
-        }
-        if r + 1 < data.len() {
-            csv.push_str("\r\n");
-        }
+    for row in data {
+        let _ = if width > 0 { w.write_record((0..width).map(|j| row.get(j).map_or("", String::as_str))) } else { w.write_record(row) };
     }
-    csv
+    let bytes = w.into_inner().unwrap_or_default();
+    String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
 
 /// The engine commands that cross as JSON: `engine_csv_source`, `engine_csv_text`.
