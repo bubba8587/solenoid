@@ -1,6 +1,6 @@
 // [[C69]], [[C70]], [[C71]]
 import { describe, it, expect } from "vitest";
-import { scheduleTasks } from "../../src/graph/scheduleCpm";
+import { scheduleTasks } from "./scheduleOnCard";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
 import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";

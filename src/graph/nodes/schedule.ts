@@ -4,6 +4,7 @@ import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, f
 import { isSolError, type SolError } from "../errorValue";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { scheduleTasks } from "../scheduleCpm";
+import { engineClock } from "../coreValues";
 import type { ScheduleOutput } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
@@ -35,9 +36,9 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
   { value: "calendar", label: "Calendar days", title: "Durations count every day" },
 ];
 
+/** Today's local day, as the calc's clock reads it ([[D46]] freezeVolatilePerCalc). */
 export function todaySerial(): number {
-  const d = new Date();
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+  return Math.floor(engineClock().now);
 }
 
 export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
