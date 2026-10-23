@@ -573,7 +573,7 @@ fn smooth(c: &mut Call) -> Answer {
 }
 
 /// `listLiteralItems`: a typed row's items, trimmed, the empty ones dropped.
-fn literal_items(csv: &str) -> Vec<String> {
+pub(crate) fn literal_items(csv: &str) -> Vec<String> {
     csv_line(csv).into_iter().map(|s| js_trim(&s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 

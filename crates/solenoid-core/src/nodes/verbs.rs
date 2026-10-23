@@ -46,12 +46,12 @@ fn one(v: V) -> Answer {
     Ok(vec![("frame".into(), v)])
 }
 
-fn nullish(v: &V) -> bool {
+pub(crate) fn nullish(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
 /// The ref with `op` planned after its own: `{__frameRef, __plan: [...plan, op]}`.
-fn plan(f: &V, op: Json) -> V {
+pub(crate) fn plan(f: &V, op: Json) -> V {
     let V::Json(r) = f else { return thrown("r.__plan is not iterable") };
     let mut ops = r.get("__plan").and_then(Json::as_array).cloned().unwrap_or_default();
     ops.push(op);
@@ -59,7 +59,7 @@ fn plan(f: &V, op: Json) -> V {
 }
 
 /// Whether the shell uploaded `key`'s frame for the ref this call holds.
-fn uploaded(c: &Call, key: &str) -> bool {
+pub(crate) fn uploaded(c: &Call, key: &str) -> bool {
     c.wired("uploaded").is_some_and(|u| u.iter().any(|v| matches!(v, V::Str(s) if &**s == key)))
 }
 
@@ -74,7 +74,7 @@ fn texts(names: &[String]) -> Json {
 }
 
 /// `readColumnList`: the text items of a wired list, none where the list is blank.
-fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V> {
+pub(crate) fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V> {
     match c.read_input(key, V::List(Rc::new(Vec::new()))) {
         V::Null => Ok(None),
         V::List(items) => Ok(Some(items.iter().filter_map(|v| if let V::Str(s) = v { Some(s.to_string()) } else { None }).collect())),
@@ -467,7 +467,7 @@ fn window(c: &mut Call) -> Answer {
 // ─── Get Column ─────────────────────────────────────────────────────────────────
 
 /// `getColumn`: by name, else by a 1-based position.
-fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a Column> {
+pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a Column> {
     let key = js_trim(name);
     if let Some(c) = columns.iter().find(|c| c.name == key) {
         return Some(c);
@@ -726,7 +726,7 @@ fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>),
 }
 
 /// `flatCubeToFrame`'s column: cells in one unit read in it, cells that disagree as base SI with no unit.
-fn flat_column(cube: &Cube, col: &CubeColumn) -> (FrameColumn, Option<Json>) {
+pub(crate) fn flat_column(cube: &Cube, col: &CubeColumn) -> (FrameColumn, Option<Json>) {
     let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) { matrix_cells_from_list(&col.cells) } else { (col.cells.clone(), None) };
     let cells: Vec<FrameCell> = if unit.is_some() { mags } else { col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect() }.iter().map(core_cell).collect();
     let typed = crate::frame_fns::typed_column(col.name.clone(), &cells, cube_row_count(cube), col.ty);
