@@ -1,7 +1,7 @@
 // [[C118]] formatTravelsWithValue, [[D94]] oneNumberDisplay
 import { describe, it, expect } from "vitest";
 import { formatScalar } from "../../../src/graph/components/format";
-import { settingsStore, type Settings } from "../../../src/graph/settingsStore";
+import { settingsStore } from "../../../src/graph/settingsStore";
 import { formatAnnotationStore } from "../../../src/graph/formatAnnotationStore";
 import { frameFormatStore } from "../../../src/graph/frameFormatStore";
 
@@ -35,26 +35,26 @@ describe("formatScalar", () => {
 
   it("the setting moves the decimals and the scientific cut-off, and redraws the format stores", () => {
     const before = [formatAnnotationStore.version(), frameFormatStore.version()];
-    settingsStore.set("numberDecimals", "2");
+    settingsStore.set("numberDecimals", 2);
     try {
       expect(formatScalar(0.22033898)).toBe("0.22");
       expect(formatScalar(0.005)).toBe("5e-3");
       expect(formatAnnotationStore.version()).toBeGreaterThan(before[0]);
       expect(frameFormatStore.version()).toBeGreaterThan(before[1]);
     } finally {
-      settingsStore.set("numberDecimals", "4");
+      settingsStore.set("numberDecimals", 4);
     }
     expect(formatScalar(0.22033898)).toBe("0.2203");
   });
 
   it("no decimals rounds to a whole number and keeps its zeros", () => {
-    settingsStore.set("numberDecimals", "0" as Settings["numberDecimals"]);
+    settingsStore.set("numberDecimals", 0);
     try {
       expect(formatScalar(99.6)).toBe("100");
       expect(formatScalar(1234.5)).toBe("1235");
       expect(formatScalar(-0.5 - 1e-9)).toBe("-5e-1");
     } finally {
-      settingsStore.set("numberDecimals", "4");
+      settingsStore.set("numberDecimals", 4);
     }
   });
 

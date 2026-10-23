@@ -43,7 +43,7 @@ const VARIANTS: Partial<FormatAnnotation>[] = [
   { decimalMode: "sigfigs", decimalDigits: 0 }, { decimalMode: "sigfigs", decimalDigits: 30 }, { decimalMode: "sigfigs", grouping: false },
 ];
 
-const SETTINGS: Partial<Settings>[] = [{}, { numberDecimals: "0" as Settings["numberDecimals"] }, { numberDecimals: "2" }, { numberDecimals: "6", sciAbove: "off" }, { sciAbove: "6" }, { numberDecimals: "3", sciAbove: "12" }];
+const SETTINGS: Partial<Settings>[] = [{}, { numberDecimals: 0 }, { numberDecimals: 2 }, { numberDecimals: 6, sciAbove: "off" }, { sciAbove: "6" }, { numberDecimals: 3, sciAbove: "12" }];
 
 it("numbers show through their annotations as frozen", () => {
   const cases = frozen("number-format", () => {

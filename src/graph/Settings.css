@@ -240,6 +240,51 @@
   color: var(--accent-ink);
 }
 
+.solenoid-settings__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* The Slider card's range look: a thin track and an accent thumb. */
+.solenoid-settings__slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 4px;
+  margin: 0;
+  border-radius: 2px;
+  background: var(--border-strong);
+  outline: none;
+  cursor: pointer;
+}
+.solenoid-settings__slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.solenoid-settings__slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.solenoid-settings__slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.solenoid-settings__slider-value {
+  min-width: 2ch;
+  text-align: right;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+
 /* A setting with no mobile counterpart: grayed and inert but kept in place, using the :disabled look (opacity 0.5, default cursor). */
 .solenoid-settings__row--disabled .solenoid-settings__row-label,
 .solenoid-settings__row--disabled .solenoid-settings__row-help {

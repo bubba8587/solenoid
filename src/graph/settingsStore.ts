@@ -46,7 +46,7 @@ export interface Settings {
   commandPaletteAlwaysOn: boolean;
   relativeDates: boolean;
   /** How many decimal places a number with no format shows; a string so the segment control stores it directly. */
-  numberDecimals: "2" | "3" | "4" | "6";
+  numberDecimals: number;
   /** The power of ten at which an unformatted number turns scientific; "off" never does. */
   sciAbove: "6" | "9" | "12" | "off";
 }
@@ -77,7 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   headerTitleCase: "upper",
   commandPaletteAlwaysOn: false,
   relativeDates: false,
-  numberDecimals: "4",
+  numberDecimals: 4,
   sciAbove: "9",
 };
 
@@ -85,10 +85,12 @@ export interface SettingField {
   key: keyof Settings;
   label: string;
   help?: string;
-  type?: "boolean" | "folder" | "segment" | "text";
+  type?: "boolean" | "folder" | "segment" | "slider" | "text";
   /** What an empty field reads as; a function when it depends on another setting. */
   placeholder?: string | ((get: <K extends keyof Settings>(key: K) => Settings[K]) => string);
   options?: { value: string; label: string }[];
+  /** A slider's range and step. */
+  range?: { min: number; max: number; step: number };
   accordion?: string;
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
   disabledOnMobile?: boolean;
@@ -201,13 +203,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "numberDecimals",
         label: "Decimal places",
         help: "For numbers without a format. Trailing zeros are dropped.",
-        type: "segment",
-        options: [
-          { value: "2", label: "2" },
-          { value: "3", label: "3" },
-          { value: "4", label: "4" },
-          { value: "6", label: "6" },
-        ],
+        type: "slider",
+        range: { min: 0, max: 10, step: 1 },
       },
       {
         key: "sciAbove",
