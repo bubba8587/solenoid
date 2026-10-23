@@ -47,7 +47,7 @@ describe("framePreview — head-N shaping", () => {
   });
 });
 
-describe("JsFrameBackend — handle lifecycle + materialization", () => {
+describe("the frame backend — handle lifecycle + materialization", () => {
   it("collect materializes the WHOLE frame back (every row)", async () => {
     const be = frameBackend();
     const h = await be.source(sample);

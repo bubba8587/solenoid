@@ -2,7 +2,8 @@
 // Realistic scenarios, each with the answer a careful person would expect, written apart from the engine. A scenario the
 // engine answers differently is either a fix or a recorded reason (`ruling`) why the math is right to differ.
 import { describe, it, expect } from "vitest";
-import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria, type DecisionNormalize } from "../../src/graph/frameVerbs";
+import { type DecisionNormalize } from "../../src/graph/frameOps";
+import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria } from "./coreVerbs";
 import { relateFramesToCube, relateCubeToFrame, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { ChoiceLadderNode } from "../../src/graph/nodes/frame";
 import { isSolError } from "../../src/graph/errorValue";

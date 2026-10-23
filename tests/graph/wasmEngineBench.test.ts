@@ -4,7 +4,7 @@
 import { describe, it, beforeAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { FrameOp } from "../../src/graph/frameVerbs";
+import type { FrameOp } from "../../src/graph/frameOps";
 import type { FrameValue } from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, type FrameHandle } from "../../src/graph/frameBackend";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";

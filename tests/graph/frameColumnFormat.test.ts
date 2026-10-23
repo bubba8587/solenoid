@@ -14,7 +14,7 @@ import {
   type FrameColumn, type FrameSource, type FrameValue,
 } from "../../src/graph/frame";
 import { readFrame } from "../../src/graph/frameBackend";
-import { resetFrameBackendToJs, clearCollectMemo } from "../../src/graph/frameBackend";
+import { useWasmBackend, clearCollectMemo } from "../../src/graph/frameBackend";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/allocator.json";
 
@@ -48,7 +48,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
   return f;
 }
 
-beforeEach(() => { frameFormatStore.clear(); resetFrameBackendToJs(); clearCollectMemo(); });
+beforeEach(() => { frameFormatStore.clear(); useWasmBackend(); clearCollectMemo(); });
 afterEach(() => { frameFormatStore.clear(); });
 
 // [[D41]] formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
@@ -138,7 +138,7 @@ describe("the Allocator seed's Headroom column", () => {
 });
 
 // The unit rule is the precedent: a derived column carries the source column's format
-// exactly where `nodes/frame.ts` / `frameVerbs.ts` already carry its unit tag.
+// exactly where `frameSchema.ts` carries its unit tag.
 describe("a DERIVED column carries the format only where it carries the unit", () => {
   it("Add Index: the index column carries nothing, the existing ones keep theirs", async () => {
     const input = new FrameInputNode({

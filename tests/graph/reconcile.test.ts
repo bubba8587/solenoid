@@ -1,6 +1,6 @@
 // [[C45]], [[C130]], [[C24]]
 import { describe, it, expect } from "vitest";
-import { reconcileFrames } from "../../src/graph/frameVerbs";
+import { reconcileFrames } from "./coreVerbs";
 import { solError, isSolError } from "../../src/graph/errorValue";
 import { ReconcileNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";

@@ -13,7 +13,7 @@ import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys } from "./logic";
-import { type FilterCondConfig } from "../frameVerbs";
+import { type FilterCondConfig } from "../frameOps";
 import { isSolError, type SolError } from "../errorValue";
 import { type Tri } from "../valueKinds";
 import { type UnitCell } from "../unitValue";
@@ -708,8 +708,8 @@ export class SliceNode extends ClassicPreset.Node {
 
 // ─── Filter ───────────────────────────────────────────────────────────────────
 
-export type { FilterCombine } from "../frameVerbs";
-import type { FilterCombine } from "../frameVerbs";
+export type { FilterCombine } from "../frameOps";
+import type { FilterCombine } from "../frameOps";
 
 /** Null means a wired blank; any other wired value stringifies (an error to its code) to match a typed literal. */
 export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {

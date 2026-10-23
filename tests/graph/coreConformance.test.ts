@@ -8,7 +8,7 @@ import { isSolError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { parseFormula } from "../../src/graph/excelFormula";
 import { frameRowCount, type FrameValue } from "../../src/graph/frame";
-import type { FrameOp, JoinOpts } from "../../src/graph/frameVerbs";
+import type { FrameOp, JoinOpts } from "../../src/graph/frameOps";
 import { isUnitCell } from "../../src/graph/unitValue";
 import { coreValue, readReply } from "../../src/graph/coreValues";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";

@@ -5,29 +5,29 @@
 // on via the same global the desktop shell sets.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { FrameValue } from "../../src/graph/frame";
-import type { FrameOp, JoinOpts } from "../../src/graph/frameVerbs";
+import type { FrameOp, JoinOpts } from "../../src/graph/frameOps";
 
 // The invoke spy — ipcBridge imports `@tauri-apps/api/core` lazily inside
 // ipcInvoke, so the mock must be registered before that dynamic import runs.
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
-import { frameBackend, initFrameBackend, resetFrameBackendToJs, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "../../src/graph/frameBackend";
+import { frameBackend, initFrameBackend, useWasmBackend, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "../../src/graph/frameBackend";
 import { solError } from "../../src/graph/errorValue";
 import { READINGS_ADD, READINGS_SCALE } from "../../src/graph/unitValue";
-import { ZERO_GROUP_TOTAL } from "../../src/graph/frameVerbs";
+import { ZERO_GROUP_TOTAL } from "../../src/graph/frameOps";
 
 // Force the desktop guard on (engineAvailable() === isDesktop(), which reads
-// window.__TAURI_INTERNALS__), and start each test from the default JS backend.
+// window.__TAURI_INTERNALS__), and start each test from the default wasm backend.
 beforeEach(() => {
   (globalThis as Record<string, unknown>).window = globalThis;
   (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
   invokeMock.mockReset();
-  resetFrameBackendToJs();
+  useWasmBackend();
 });
 afterEach(() => {
   delete (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
-  resetFrameBackendToJs();
+  useWasmBackend();
 });
 
 const sample: FrameValue = {
@@ -417,7 +417,7 @@ describe("PolarsBackend — units and formats survive a native verb ([[C25]] fir
     invokeMock.mockClear();
   });
 
-  it("a column's unit comes back on collect, column and preview, as the JS oracle keeps it", async () => {
+  it("a column's unit comes back on collect, column and preview, as the wasm core keeps it", async () => {
     const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
     const km = columnUnitFromSpec("km")!;
     const withUnit: FrameValue = { __frame: true, columns: [{ name: "d", type: "number", values: [3, 1], unit: km }, sample.columns[1]] };

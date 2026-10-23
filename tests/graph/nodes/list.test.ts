@@ -504,7 +504,7 @@ describe("Reduce — means and shape", () => {
 
 describe("Filter — condition rows over the list's own values ([[C49]] filterOneJob)", () => {
   const mk = (
-    conds: Array<{ op: import("../../../src/graph/frameVerbs").FilterOp; value: string; matchCase?: boolean }>,
+    conds: Array<{ op: import("../../../src/graph/frameOps").FilterOp; value: string; matchCase?: boolean }>,
     combine: "and" | "or" = "and",
   ) => {
     const n = new FilterNode({
@@ -617,7 +617,7 @@ describe("SUMIFS — conditional aggregation over one frame ([[C49]] filterOneJo
   });
   const mk = (
     op: CondAggOp,
-    conds: Array<{ column: string; op: import("../../../src/graph/frameVerbs").FilterOp; value: string }>,
+    conds: Array<{ column: string; op: import("../../../src/graph/frameOps").FilterOp; value: string }>,
     valuesCol = "sales",
   ) => {
     const n = new SumIfsNode({

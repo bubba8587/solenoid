@@ -180,7 +180,7 @@ results get retried and settled rulings relapse.
 | `crates/solenoid-graph/`, `dataflowEngine.ts`, `graphWasm/` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
-| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `src-tauri/src/engine.rs` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
+| `frameOps.ts`, `frameSchema.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `src-tauri/src/engine.rs` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
@@ -203,7 +203,7 @@ results get retried and settled rulings relapse.
 - **Touching the FC / formats / units:** `tree/specs/values/format-model.md` +
   `../tree/specs/values/unit-flow.md` + [[D43]] unitByGranularity (units granularity).
 - **Touching frames/the engine:** `glossary.md` + [[C130]] rustCore/arraySemantics + the
-  `frameVerbs.ts` oracle and cargo parity tests.
+  frame-verb corpus (`fixtures/frame-verbs`) and the frozen verb pipelines.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.
 - **Proposing a feature or scope change:** `out-of-scope.md` + the decision tree (`dte.md`) +
   `v2.0/README.md` (verdict-pending + ruled-out lists) — most of the idea space

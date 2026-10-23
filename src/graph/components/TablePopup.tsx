@@ -11,7 +11,6 @@ import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
-import { distinctColumnValues } from "../frameVerbs";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
@@ -122,6 +121,13 @@ export function listInViewOrder(line: string[], vertical: boolean, order: number
 }
 
 /** The cells a text edit suggests from: a list's items (its grid is one row), else column c. */
+/** A column's suggestions: each distinct non-empty text once, first seen first. */
+export function distinctColumnValues(cells: readonly (string | null | undefined)[], isExcluded?: (v: string) => boolean): string[] {
+  const seen = new Set<string>();
+  for (const c of cells) if (c != null && c !== "" && !isExcluded?.(c)) seen.add(c);
+  return [...seen];
+}
+
 export function suggestionCells(grid: string[][], c: number, list: boolean): string[] {
   return list ? (grid[0] ?? []) : grid.map((r) => r[c]);
 }

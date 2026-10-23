@@ -1,7 +1,7 @@
 // [[C127]] pivotView
 import { isSolError } from "./errorValue";
 import { frameRowCount, type FrameCell, type FrameColType } from "./frame";
-import type { AggOp } from "./frameVerbs";
+import type { AggOp } from "./frameOps";
 import { frameSidecar } from "./frameSidecar";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 

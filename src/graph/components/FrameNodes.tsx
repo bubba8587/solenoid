@@ -51,8 +51,8 @@ import type {
 } from "../rete-nodes";
 import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
-import { VALUELESS_FILTER_OPS } from "../frameVerbs";
-import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
+import { VALUELESS_FILTER_OPS } from "../frameOps";
+import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { CloseIcon } from "./CloseIcon";

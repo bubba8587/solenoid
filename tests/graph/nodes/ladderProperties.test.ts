@@ -1,6 +1,6 @@
 // [[C122]] choiceLadder: the plan search held to exhaustive search on many small random problems.
 import { describe, it, expect } from "vitest";
-import { bestPlan, buildLadder, type LadderOption } from "../../../src/graph/nodes/ladderOps";
+import { bestPlan, type LadderOption } from "../../../src/graph/nodes/ladderOps";
 
 function rng(seed: number) { return () => ((seed = (seed * 16807) % 2147483647) / 2147483647); }
 
@@ -68,61 +68,12 @@ describe("Choice Ladder plan search against exhaustive search", () => {
     }
   });
 
-  it("every ladder path keeps the cap, meets the floor, clashes nowhere and carries its Requires", () => {
-    for (let seed = 1; seed <= 400; seed++) {
-      const { opts, cap, floor } = problem(seed);
-      if (brute(opts, cap, floor) == null) continue;
-      const l = buildLadder(opts, [{ limit: cap }, { limit: null, floor }], 0.05);
-      for (const s of l.states.filter((x) => x.end && x.share > 0)) {
-        const set = s.taken;
-        expect(set.reduce((t, i) => t + opts[i].costs[0], 0), `seed ${seed}`).toBeLessThanOrEqual(cap);
-        expect(set.reduce((t, i) => t + opts[i].costs[1], 0), `seed ${seed}`).toBeGreaterThanOrEqual(floor);
-        expect(clashes(opts, set) || !closed(opts, set), `seed ${seed}`).toBe(false);
-      }
-    }
-  });
 });
 
 describe("Choice Ladder: round-5 review", () => {
-  it("a floor with no cap keeps the search exact after the floor is met", () => {
-    // A (Veg), B excludes C and D: A, C, D (1.9) beat A, B (1.7).
-    const o = (score: number, veg: number, excludes: number[] = []): LadderOption => ({ score, value: [score], costs: [veg], requires: [], excludes });
-    const opts = [o(0.9, 1), o(0.8, 0, [2, 3]), o(0.5, 0), o(0.5, 0)];
-    const l = buildLadder(opts, [{ limit: null, floor: 1 }], 0);
-    expect(l.main.map((e) => l.edges[e].pick).sort()).toEqual([0, 2, 3]);
-  });
   it("with no cap, a harmful requirement comes only when the pair is worth having", () => {
     const o = (score: number, requires: number[] = []): LadderOption => ({ score, value: [score], costs: [], requires, excludes: [] });
     expect(bestPlan([o(0.33, [1]), o(-0.67), o(0.19)], [0, 1, 2], [], [])).toEqual([2]);
     expect(bestPlan([o(0.9, [1]), o(-0.2), o(0.19)], [0, 1, 2], [], [])!.sort()).toEqual([0, 1, 2]);
-  });
-});
-
-describe("Choice Ladder forks against exhaustive search", () => {
-  it("taking either side of a fork at the top gives the best plan that holds that side", () => {
-    let forks = 0;
-    for (let seed = 1; seed <= 1500; seed++) {
-      const { opts, cap, floor } = problem(seed);
-      if (brute(opts, cap, floor) == null) continue;
-      const res = [{ limit: cap }, { limit: null, floor }];
-      const l = buildLadder(opts, res, 0.15);
-      for (const e of l.edges.filter((x) => x.from === 0 && x.kind === "close")) {
-        forks++;
-        const c = buildLadder(opts, res, 0.15, [e.pick]);
-        const plan = c.main.map((k) => c.edges[k].pick);
-        const withIt = opts.map((o) => ({ ...o }));
-        // The best plan holding e.pick: exhaustive search over the rest with e.pick forced in.
-        let best = -Infinity;
-        for (let mask = 0; mask < 1 << opts.length; mask++) {
-          if (!(mask & (1 << e.pick))) continue;
-          const set = opts.map((_, i) => i).filter((i) => mask & (1 << i));
-          if (set.reduce((s, i) => s + opts[i].costs[0], 0) > cap || set.reduce((s, i) => s + opts[i].costs[1], 0) < floor) continue;
-          if (clashes(withIt, set) || !closed(withIt, set)) continue;
-          best = Math.max(best, set.reduce((s, i) => s + opts[i].score, 0));
-        }
-        expect(plan.reduce((s, i) => s + opts[i].score, 0), `seed ${seed}, fork side ${e.pick}`).toBeCloseTo(best, 6);
-      }
-    }
-    expect(forks).toBeGreaterThan(20);
   });
 });

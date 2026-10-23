@@ -37,17 +37,6 @@ export function pairIdsFromKeys(valueKeys: string[] | undefined, prefixA: string
 
 export type ComparisonOp = "gt" | "gte" | "lt" | "lte" | "eq" | "neq";
 
-export function compareOp(op: ComparisonOp, x: number, y: number): boolean {
-  switch (op) {
-    case "gt":  return x > y;
-    case "gte": return x >= y;
-    case "lt":  return x < y;
-    case "lte": return x <= y;
-    case "eq":  return x === y;
-    case "neq": return x !== y;
-  }
-}
-
 // `label` is the name alone because an Add-menu search row showing a bare ≥ says nothing.
 export const COMPARISON_OP_META = {
   gt:  { symbol: ">", label: "Greater than",     description: "`TRUE` when A is greater than B. Excel: `A>B`." },

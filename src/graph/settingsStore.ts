@@ -28,10 +28,8 @@ export interface Settings {
   obsidianAssetSubfolder: string;
   /** Empty means http://localhost:8080. The bearer token lives in apiKeyStore, never here. */
   taskNotesUrl: string;
-  /** Desktop: frame verbs run on the native Polars engine; off runs them on the JS oracle, as the web does. */
+  /** Desktop: frame verbs run on the native Polars engine; off runs them on the Rust engine in WebAssembly, as the web does. */
   nativeEngine: boolean;
-  /** Frame verbs run on the Rust engine compiled to WebAssembly wherever Polars doesn't; off runs them on the JS oracle. */
-  wasmEngine: boolean;
 
   minimapPosition: "bottom" | "top" | "hide";
   hideGridDots: boolean;
@@ -62,7 +60,6 @@ export const DEFAULT_SETTINGS: Settings = {
   docsFolder: "",
   alwaysAllowNetwork: false,
   nativeEngine: true,
-  wasmEngine: true,
   useDemoVault: true,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
@@ -253,11 +250,6 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Polars engine",
         help: "Runs table operations on Polars. Turn it off to compare results with the web app's engine. Changing it reloads the document.",
         desktopOnly: true,
-      },
-      {
-        key: "wasmEngine",
-        label: "Rust engine",
-        help: "Runs table operations on Solenoid's Rust engine in WebAssembly where Polars isn't on, and pivots and computed-column formulas everywhere. Turn it off to compare results with the JavaScript engine. Changing it reloads the document.",
       },
       {
         key: "alwaysAllowNetwork",

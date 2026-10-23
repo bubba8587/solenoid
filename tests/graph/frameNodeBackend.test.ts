@@ -5,15 +5,12 @@
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, useWasmBackend, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
 import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/inlineInput";
-import {
-  selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
-  filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames,
-  type FrameOp, type JoinOpts,
-} from "../../src/graph/frameVerbs";
+import { type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames } from "./coreVerbs";
 
 // The runners now return a LAZY ref (the result stays in the backend); collect it
 // back to compare against the pure verb. (An op that fails returns a SolError VALUE
@@ -117,7 +114,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
   };
 
   beforeEach(() => {
-    resetFrameBackendToJs();
+    useWasmBackend();
     calcModeStore.setMode("auto"); // also clears dirty; leaves sketch off
   });
 
@@ -213,7 +210,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     readFrame((await n.data(inputs)).frame);
 
   it("a wired NUMBER matches a number column (was impossible on a strIn socket)", async () => {
-    resetFrameBackendToJs();
+    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [10, 20, 30] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
@@ -223,7 +220,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("a wired BOOLEAN matches a logical column", async () => {
-    resetFrameBackendToJs();
+    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "flag", type: "logical", values: [true, false, true] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "flag";
@@ -233,7 +230,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("a wired-blank Find is unknown → the whole result is null", async () => {
-    resetFrameBackendToJs();
+    useWasmBackend();
     const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [1, 2] }] };
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
@@ -241,7 +238,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 
   it("the card's typed Find and Replace are text kept exactly as typed", async () => {
-    resetFrameBackendToJs();
+    useWasmBackend();
     const n = new ReplaceValuesNode({ mode: "substring" });
     expect(takesAutoLiteral(n, "any")).toBe(false);
     expect(takesTextLiteral(n, "any")).toBe(true);

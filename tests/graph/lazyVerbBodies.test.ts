@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ClassicPreset } from "rete";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
-import { resetFrameBackendToJs, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { useWasmBackend, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
 import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { solError } from "../../src/graph/errorValue";
 import { applyFcUnit } from "../../src/graph/unitBridge";
@@ -75,7 +75,7 @@ function card<T extends ClassicPreset.Node>(n: T): T & Card {
   return n as T & Card;
 }
 
-beforeEach(() => resetFrameBackendToJs());
+beforeEach(() => useWasmBackend());
 
 describe("a lazy verb plans over refs", () => {
   it("passes a frame value through as itself", async () => {

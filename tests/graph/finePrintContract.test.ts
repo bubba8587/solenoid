@@ -5,7 +5,7 @@ import { XMatchNode } from "../../src/graph/nodes/list";
 import { TakeDropNode } from "../../src/graph/nodes/matrix";
 import { BaseConvertNode } from "../../src/graph/nodes/scalar";
 import { GetRowNode } from "../../src/graph/nodes/frame";
-import { dropBlankRows, mergeColumns } from "../../src/graph/frameVerbs";
+import { dropBlankRows, mergeColumns } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 

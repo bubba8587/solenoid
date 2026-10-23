@@ -1,7 +1,7 @@
 // [[C122]] choiceLadder
 import { describe, it, expect } from "vitest";
 import { layoutLadder, metricsFor, type Layout, type Box } from "../../../src/graph/components/ladderLayout";
-import { choiceLadder } from "../../../src/graph/frameVerbs";
+import { choiceLadder } from "../coreVerbs";
 import type { FrameValue } from "../../../src/graph/frame";
 import type { LadderPayload } from "../../../src/graph/chartValue";
 import seed from "../../../src/graph/seedGraphs/choice-ladder.json";

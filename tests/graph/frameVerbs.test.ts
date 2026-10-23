@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D49]]
 import { describe, it, expect } from "vitest";
-import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "../../src/graph/frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 
@@ -405,7 +405,7 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
   });
 
   it("split on an empty delimiter is a no-op", () => {
-    expect(splitColumn(f, "name", "")).toBe(f);
+    expect(splitColumn(f, "name", "")).toEqual(f);
   });
 
   it("addIndex prepends a 1-based row-number column by default", () => {
@@ -571,7 +571,7 @@ describe("column units ride the reshaping verbs (unitFlow, review pins)", () => 
     expect(out.columns[2].unit).toEqual(km);
   });
   it("Window keeps the unit on a running sum, not on a rank", async () => {
-    const { windowFrame } = await import("../../src/graph/frameVerbs");
+    const { windowFrame } = await import("./coreVerbs");
     const sum = windowFrame(src(), { partitionBy: [], fn: "cumsum", column: "Dist", as: "Run" });
     expect(sum.columns.find((c) => c.name === "Run")!.unit).toEqual(km);
     const rank = windowFrame(src(), { partitionBy: [], orderBy: "Dist", fn: "rank", as: "R" });
@@ -582,12 +582,12 @@ describe("column units ride the reshaping verbs (unitFlow, review pins)", () => 
 describe("sampleFrame (sketch mode's preview rows)", () => {
   const f: FrameValue = { __frame: true, columns: [{ name: "n", type: "number", values: Array.from({ length: 10 }, (_, i) => i) }] };
   it("takes n evenly spaced rows, first row included and in order", async () => {
-    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    const { sampleFrame } = await import("./coreVerbs");
     expect(sampleFrame(f, 5).columns[0].values).toEqual([0, 2, 4, 6, 8]);
     expect(sampleFrame(f, 3).columns[0].values).toEqual([0, 3, 6]);
   });
   it("hands back the frame itself when it is no longer than n, or n is not positive", async () => {
-    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    const { sampleFrame } = await import("./coreVerbs");
     expect(sampleFrame(f, 10)).toBe(f);
     expect(sampleFrame(f, 0)).toBe(f);
   });

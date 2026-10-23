@@ -5,7 +5,7 @@ import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { FilterNode } from "../../src/graph/nodes/list";
 import { solError, isSolError, type SolError } from "../../src/graph/errorValue";
 import { compilePositional } from "../../src/graph/excelFormula";
-import { passesFilter, filterRowsMulti } from "../../src/graph/frameVerbs";
+import { passesFilter, filterRowsMulti } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);

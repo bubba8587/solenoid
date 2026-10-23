@@ -1,15 +1,16 @@
-// [[C130]] rustCore, [[D98]] wholeColumnFallback, [[C24]] arraySemantics
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C24]] arraySemantics
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import {
-  getColumn, frameRowCount,
+  frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
+import { PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type AggOp, type FrameOp, type JoinOpts, type PivotSpec } from "./frameOps";
+import { withUnitScales, joinKeyTransform, pivotUnits, opMeta, joinMeta, appendMeta, bindMeta, withMeta, type ColumnMeta } from "./frameSchema";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
-import { coreValue, errorRef, errorFromCore, toWellFormed, engineClock, wasmEngineOn, readReply } from "./coreValues";
-export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./coreValues";
+import { coreValue, errorRef, errorFromCore, toWellFormed, engineClock, readReply } from "./coreValues";
+export { engineClock, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -207,78 +208,6 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
   };
 }
 
-class JsFrameBackend implements FrameBackend {
-  // A sourced frame is held weakly, because a strong entry would pin its own FinalizationRegistry key; derived frames stay strong.
-  private store = new Map<string, FrameValue | WeakRef<FrameValue>>();
-  private seq = 0;
-
-  async source(frame: FrameValue): Promise<FrameHandle> {
-    const id = `jsf:${++this.seq}` as FrameHandle;
-    this.store.set(id, typeof WeakRef !== "undefined" ? new WeakRef(frame) : frame);
-    return id;
-  }
-
-  async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    return this.register(applyVerb(this.get(handle), op));
-  }
-
-  async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    let frame = this.get(handle);
-    for (const op of ops) frame = applyVerb(frame, op);
-    return this.register(frame);
-  }
-
-  async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
-    return this.register(joinFrames(this.get(left), this.get(right), opts));
-  }
-
-  async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    return this.register(appendFrames(handles.map((h) => this.get(h))));
-  }
-
-  async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    return this.register(bindColumns(handles.map((h) => this.get(h))));
-  }
-
-  private register(frame: FrameValue): FrameHandle {
-    const id = `jsf:${++this.seq}` as FrameHandle;
-    this.store.set(id, frame);
-    return id;
-  }
-
-  async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
-    return framePreview(this.get(handle), n);
-  }
-
-  async collect(handle: FrameHandle): Promise<FrameValue> {
-    return this.get(handle);
-  }
-
-  async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
-    return getColumn(this.get(handle), name);
-  }
-
-  drop(handle: FrameHandle): void {
-    this.store.delete(handle);
-  }
-
-  async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
-    const f = this.get(handle);
-    const total = frameRowCount(f);
-    const sampled = sampleFrame(f, n);
-    const sampledRows = frameRowCount(sampled);
-    if (sampledRows >= total) return { handle, factor: 1 };
-    return { handle: this.register(sampled), factor: total / sampledRows };
-  }
-
-  private get(handle: FrameHandle): FrameValue {
-    const e = this.store.get(handle);
-    const f = e instanceof WeakRef ? e.deref() : e;
-    if (!f) throw solError("#REF!", `frame handle ${handle} not found (dropped or never created)`);
-    return f;
-  }
-}
-
 // IPC argument names must match the Rust command parameters in engine.rs.
 type WireCell = unknown;
 
@@ -291,7 +220,7 @@ function encodeWireCell(v: unknown): WireCell {
   return v;
 }
 
-/** The engine names why a cell is an error (`why`, engine.rs `num_to_json`); the message is the oracle's. */
+/** The engine names why a cell is an error (`why`, engine.rs `num_to_json`); the message is the core's. */
 const ENGINE_ERROR_WHY: Readonly<Record<string, string>> = {
   domain: DOMAIN_MESSAGE,
   overflow: OVERFLOW_MESSAGE,
@@ -398,24 +327,40 @@ function schemaOnly(frame: FrameValue): FrameValue {
   return { __frame: true, columns: frame.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: [] })) };
 }
 
-function shadow(run: () => FrameValue): FrameValue | null {
-  try { return schemaOnly(run()); } catch { return null; }
+/** Frames through the wasm core at once: sourced, `run` over their handles, its frame read back and every handle
+ *  dropped. Throws what the core refuses. */
+export function onCoreFrames(inputs: readonly FrameValue[], run: (handles: string[]) => string): FrameValue {
+  const handles = inputs.map((f) => wasmSourceBin(encodeBinary(f)));
+  let out: string | undefined;
+  try {
+    out = run(handles);
+    return { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
+  } finally {
+    for (const h of handles) wasmInvokeSync("engine_drop", { handle: h });
+    if (out) wasmInvokeSync("engine_drop", { handle: out });
+  }
 }
 
-/** A pivot's value fields as the unit-blind engine needs them (each one's reading and linear scale), and the unit
- *  each one's body columns take: `aggUnitPlan` over the frame the pivot reads. */
-function pivotUnits(schema: FrameValue, spec: PivotSpec): { scales: { readingScale?: number; unitScale?: number }[]; units: (ColumnUnit | undefined)[] } {
-  const names = spec.values.filter((n) => n.trim() !== "");
-  const cols = names.map((n) => schema.columns.find((c) => c.name === n));
-  const funcs = names.map((_, i): AggOp => spec.funcs[i] ?? spec.funcs[0] ?? "sum");
-  return {
-    scales: cols.map((c) => {
-      const r = readingScaleOf(c?.unit), u = linearScaleOf(c?.unit);
-      return { ...(r !== undefined ? { readingScale: r } : {}), ...(u !== undefined ? { unitScale: u } : {}) };
-    }),
-    units: cols.map((c, v) => aggUnitPlan(funcs[v], c?.unit).unit),
-  };
+/** The schema a verb leaves: its columns as the core answers it over no rows, with the units and formats laid back on
+ *  (`frameSchema.ts`). Null where the verb refuses the schema. */
+function shadowOnCore(inputs: readonly FrameValue[], meta: (out: number) => ColumnMeta[], run: (handles: string[]) => string): FrameValue | null {
+  return onCore(() => {
+    try {
+      const f = onCoreFrames(inputs.map(schemaOnly), run);
+      return { __frame: true, columns: withMeta(f.columns, meta(f.columns.length)) } as FrameValue;
+    } catch {
+      return null;
+    }
+  }, null);
 }
+
+const joinShadow = (l: FrameValue, r: FrameValue, opts: JoinOpts) =>
+  shadowOnCore([l, r], () => joinMeta(l, r, opts), ([a, b]) => wasmInvokeSync<string>("engine_join", { left: a, right: b, opts }));
+const appendShadow = (fs: FrameValue[]) => shadowOnCore(fs, () => appendMeta(fs), (handles) => wasmInvokeSync<string>("engine_append", { handles }));
+const bindShadow = (fs: FrameValue[]) => shadowOnCore(fs, () => bindMeta(fs), (handles) => wasmInvokeSync<string>("engine_bind_columns", { handles }));
+
+/** Bind's output schema, for a card's shape. */
+export const bindSchema = (frames: FrameValue[]): FrameValue | null => bindShadow(frames);
 
 /** The engine's layout, the units its body columns take, and the frame it read, whose columns lend their formats to the
  *  Details columns ([[C128]] pivotDetails). */
@@ -456,10 +401,10 @@ function adoptPivot(frame: FrameValue, p: PivotWire): void {
   attachPivotLayout(frame, pivotWireOnto(frame, p));
 }
 
-/** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
+/** PIVOTBY on the Rust engine, synchronously; null where the core trapped. */
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+    if (!wasmEngineLoaded()) return null;
     const { scales, units } = pivotUnits(f, spec);
     const src = wasmSourceBin(encodeBinary(f));
     let out: string | undefined;
@@ -541,7 +486,7 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
   { frame: FrameValue; value?: unknown } | { value: unknown } | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+    if (!wasmEngineLoaded()) return null;
     const wire = args.map((a) => coreValue(a));
     if (wire.includes(undefined)) return null;
     const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
@@ -570,7 +515,7 @@ export function frameFnOnCore(name: string, frames: readonly FrameValue[], args:
  *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
 export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number, opts: ColumnOpts = {}): ColumnAnswer | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+    if (!wasmEngineLoaded()) return null;
     const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
     if (!inputs) return null;
     const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
@@ -624,9 +569,13 @@ export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[
   let s = schema;
   const wire: FrameOp[] = [];
   for (const op of ops) {
-    if (op.kind !== "formats") wire.push(s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } as FrameOp : withUnitScales(s, op)) : op);
+    const lowered = s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } as FrameOp : withUnitScales(s, op)) : op;
+    if (op.kind !== "formats") wire.push(lowered);
     const cur = s;
-    s = cur ? shadow(() => applyVerb(cur, op)) : null;
+    if (!cur) continue;
+    s = op.kind === "formats"
+      ? { __frame: true, columns: cur.columns.map((c, i, all) => ({ name: c.name, type: c.type, values: [], ...opMeta(cur, op, all.length)[i] })) }
+      : shadowOnCore([cur], (n) => opMeta(cur, lowered, n), ([h]) => wasmInvokeSync<string>("engine_apply", { handle: h, op: encodeOpCells(lowered) }));
   }
   return { wire, schema: s };
 }
@@ -658,13 +607,17 @@ function noteLogicalNaN(f: FrameValue): void {
   pushNotice("Polars reads a logical cell that isn't TRUE or FALSE as blank, where the web app shows NaN. Results that count blanks can differ.", "info");
 }
 
-const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
+// Polars' frames that hold what it can't, and the verbs it doesn't have, go to the core in wasm; those handles wear this.
+const ORACLE = "wasm:";
+const isOracleHandle = (h: FrameHandle): boolean => h.startsWith(ORACLE);
+const toOracle = (h: FrameHandle) => h.slice(ORACLE.length) as FrameHandle;
+const fromOracle = (h: FrameHandle) => (ORACLE + h) as FrameHandle;
 
 /** Verbs the Rust core runs and Polars doesn't ([[C130]] rustCore). */
 const RUST_CORE_ONLY: ReadonlySet<FrameOp["kind"]> = new Set(["dropBlankRows", "addIndex", "splitColumn", "mergeColumns"]);
 
 /** An op's own cells (a filter's value) in wire form, so an error, NaN or infinity crosses as itself. */
-function encodeOpCells(op: FrameOp): FrameOp {
+export function encodeOpCells(op: FrameOp): FrameOp {
   if (op.kind === "filter") return { ...op, value: encodeWireCell(op.value) as FrameCell };
   if (op.kind === "filterMulti") return { ...op, conditions: op.conditions.map((c) => ({ ...c, value: encodeWireCell(c.value) as FrameCell })) };
   return op;
@@ -673,7 +626,8 @@ function encodeOpCells(op: FrameOp): FrameOp {
 type EngineInvoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 
 /** An engine behind handles: Polars over IPC on desktop, or the Rust engine in WebAssembly. `fullCells` says the
- *  engine stores every cell the oracle does, so no frame needs the oracle's fallback. */
+ *  engine stores every cell kind, so no frame needs the core's fallback (Polars keeps an error cell only in a number or
+ *  date column, and has no pivot layout or cleaning verbs). */
 class EngineBackend implements FrameBackend {
   constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean, private readonly bulk?: BulkTransport) {}
 
@@ -702,8 +656,11 @@ class EngineBackend implements FrameBackend {
     const layout = await this.invoke<unknown>("engine_pivot_layout", { handle: h });
     this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [], schema: before });
   }
-  /** Frames holding an error cell the engine can't store compute here, on the oracle. */
-  private oracle = new JsFrameBackend();
+  /** Frames holding an error cell Polars can't store, and the verbs it lacks, compute on the core in wasm. */
+  private _oracle: EngineBackend | null = null;
+  private get oracle(): EngineBackend {
+    return (this._oracle ??= new EngineBackend(wasmInvoke, true, wasmBulk));
+  }
 
   /** An op this engine can't run: Polars has no pivot layout and none of the Rust core's cleaning verbs. */
   private needsOracle(op: FrameOp): boolean {
@@ -716,12 +673,12 @@ class EngineBackend implements FrameBackend {
     try {
       const hs: FrameHandle[] = [];
       for (const h of handles) {
-        if (isOracleHandle(h)) { hs.push(h); continue; }
+        if (isOracleHandle(h)) { hs.push(toOracle(h)); continue; }
         const t = await this.oracle.source(await this.collect(h));
         temps.push(t);
         hs.push(t);
       }
-      return await run(hs);
+      return fromOracle(await run(hs));
     } finally {
       for (const t of temps) this.oracle.drop(t);
     }
@@ -738,7 +695,7 @@ class EngineBackend implements FrameBackend {
 
   async source(frame: FrameValue): Promise<FrameHandle> {
     if (!this.fullCells) {
-      if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
+      if (holdsTextOrLogicalError(frame)) return fromOracle(await this.oracle.source(frame));
       noteLogicalNaN(frame);
     }
     if (this.bulk) return this.remember(this.bulk.source(frame), schemaOnly(frame));
@@ -748,7 +705,7 @@ class EngineBackend implements FrameBackend {
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
+    if (isOracleHandle(handle)) return fromOracle(await this.oracle.apply(toOracle(handle), op));
     if (this.needsOracle(op)) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
     if (op.kind === "formats") return this.applyMany(handle, [op]);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
@@ -758,7 +715,7 @@ class EngineBackend implements FrameBackend {
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
+    if (isOracleHandle(handle)) return fromOracle(await this.oracle.applyMany(toOracle(handle), ops));
     if (ops.some((op) => this.needsOracle(op))) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
     const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
@@ -777,25 +734,25 @@ class EngineBackend implements FrameBackend {
       if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
     }
     const h = await (this.invoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
-    return this.remember(h, l && r ? shadow(() => joinFrames(l, r, wireOpts)) : null);
+    return this.remember(h, l && r ? joinShadow(l, r, wireOpts) : null);
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.append(hs));
     const h = await (this.invoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
-    return this.remember(h, ss.every(Boolean) ? shadow(() => appendFrames(ss as FrameValue[])) : null);
+    return this.remember(h, ss.every(Boolean) ? appendShadow(ss as FrameValue[]) : null);
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.bindColumns(hs));
     const h = await (this.invoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
-    return this.remember(h, ss.every(Boolean) ? shadow(() => bindColumns(ss as FrameValue[])) : null);
+    return this.remember(h, ss.every(Boolean) ? bindShadow(ss as FrameValue[]) : null);
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
-    if (isOracleHandle(handle)) return this.oracle.preview(handle, n);
+    if (isOracleHandle(handle)) return this.oracle.preview(toOracle(handle), n);
     if (this.bulk) {
       const r = this.bulk.read(handle, undefined, n)!;
       const take = Math.max(0, Math.min(n, r.rowCount));
@@ -815,7 +772,7 @@ class EngineBackend implements FrameBackend {
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
-    if (isOracleHandle(handle)) return this.oracle.collect(handle);
+    if (isOracleHandle(handle)) return this.oracle.collect(toOracle(handle));
     if (this.bulk) {
       const frame: FrameValue = { __frame: true, columns: withSchemaMeta(this.bulk.read(handle)!.columns, this.schemaOf(handle)) };
       const pivot = this.pivots.get(handle);
@@ -827,7 +784,7 @@ class EngineBackend implements FrameBackend {
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
-    if (isOracleHandle(handle)) return this.oracle.column(handle, name);
+    if (isOracleHandle(handle)) return this.oracle.column(toOracle(handle), name);
     if (this.bulk) {
       const r = this.bulk.read(handle, name);
       return r ? withSchemaMeta(r.columns, this.schemaOf(handle))[0] : null;
@@ -839,14 +796,17 @@ class EngineBackend implements FrameBackend {
   }
 
   drop(handle: FrameHandle): void {
-    if (isOracleHandle(handle)) { this.oracle.drop(handle); return; }
+    if (isOracleHandle(handle)) { this.oracle.drop(toOracle(handle)); return; }
     this.schemas.delete(handle);
     this.pivots.delete(handle);
     void this.invoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
-    if (isOracleHandle(handle)) return this.oracle.sample(handle, n);
+    if (isOracleHandle(handle)) {
+      const r = await this.oracle.sample(toOracle(handle), n);
+      return { handle: fromOracle(r.handle), factor: r.factor };
+    }
     const r = await (this.invoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
     if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
     return r;
@@ -855,8 +815,9 @@ class EngineBackend implements FrameBackend {
 
 let _backend: FrameBackend | null = null;
 
+/** The Rust core in wasm until `initFrameBackend` picks Polars. */
 export function frameBackend(): FrameBackend {
-  if (!_backend) _backend = new JsFrameBackend();
+  if (!_backend) _backend = new EngineBackend(wasmInvoke, true, wasmBulk);
   return _backend;
 }
 
@@ -876,18 +837,13 @@ export function setFrameBackend(backend: FrameBackend): void {
   clearHandleKeyedCaches();
 }
 
-export function resetFrameBackendToJs(): void {
-  _backend = new JsFrameBackend();
-  clearHandleKeyedCaches();
-}
-
-/** The native engine runs frame verbs: the desktop app, unless Settings turns it off to compare with the web's oracle. */
+/** The native engine runs frame verbs: the desktop app, unless Settings turns it off to compare with the web's engine. */
 export function nativeEngineOn(): boolean {
   return engineAvailable() && settingsStore.get("nativeEngine") !== false;
 }
 
 
-/** Polars where the desktop has it on, else the Rust engine in WebAssembly where it is on, else the JS oracle. */
+/** Polars where the desktop has it on, else the Rust engine in WebAssembly. */
 export async function initFrameBackend(): Promise<void> {
   if (nativeEngineOn()) {
     try {
@@ -895,25 +851,21 @@ export async function initFrameBackend(): Promise<void> {
       if (info?.backend === "polars") {
         await ipcInvoke("engine_clear", {}).catch(() => {});
         setFrameBackend(new EngineBackend(ipcInvoke, false));
-        // Pivots and formulas run on the Rust core beside Polars, which has neither.
-        if (wasmEngineOn()) await loadWasmEngine();
+        // Pivots, formulas and what Polars can't hold run on the Rust core beside it.
+        await loadWasmEngine();
         return;
       }
     } catch {
     }
   }
-  if (wasmEngineOn() && await loadWasmEngine()) {
-    await wasmInvoke("engine_clear", {});
-    setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
-    return;
-  }
-  if (_backend instanceof EngineBackend) resetFrameBackendToJs();
+  if (await loadWasmEngine()) await wasmInvoke("engine_clear", {});
+  setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
 }
 
-/** Flipping an engine switch swaps the backend and hands back so the caller reloads the document: no frame may
- *  keep a handle from the engine it left. */
+/** Flipping the Polars switch swaps the backend and hands back so the caller reloads the document: no frame may keep
+ *  a handle from the engine it left. */
 export function watchEngineSetting(onSwitched: () => void): void {
-  const engines = () => `${settingsStore.get("nativeEngine")}|${settingsStore.get("wasmEngine")}`;
+  const engines = () => String(settingsStore.get("nativeEngine"));
   let last = engines();
   settingsStore.subscribe(() => {
     const now = engines();

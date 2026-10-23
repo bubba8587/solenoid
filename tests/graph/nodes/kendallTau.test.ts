@@ -1,7 +1,9 @@
 // [[C120]] linearWork
 import { it, expect } from "vitest";
-import { kendallTau } from "../../../src/graph/nodes/statsOps";
-/** The pairwise loop kendallTau replaced, kept as the reference its O(n log n) counts must equal. */
+import { coreFunction } from "../coreFunction";
+
+const kendallTau = (xs: number[], ys: number[]) => coreFunction("KENDALL")!(xs, ys);
+/** The pairwise loop KENDALL replaced, kept as the reference its O(n log n) counts must equal. */
 function slow(xs: number[], ys: number[]) {
   const n = Math.min(xs.length, ys.length); if (n < 2) return null;
   let conc = 0, disc = 0, tx = 0, ty = 0;

@@ -5,7 +5,7 @@ import { evaluateOnCore } from "../../src/graph/coreValues";
 import { frameBackend, useWasmBackend } from "../../src/graph/frameBackend";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import type { FrameValue } from "../../src/graph/frame";
-import type { FrameOp } from "../../src/graph/frameVerbs";
+import type { FrameOp } from "../../src/graph/frameOps";
 
 it("a slice that halves an emoji answers U+FFFD for the half, and whole slices keep it", () => {
   const t = "a😀b";

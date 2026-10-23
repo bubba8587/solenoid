@@ -1,12 +1,12 @@
 // [[C59]], [[C45]], [[C130]]
 import { describe, it, expect } from "vitest";
 import { compareStrings } from "../../src/graph/stringOrder";
-import { sortByColumn } from "../../src/graph/frameVerbs";
+import { sortByColumn } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 // Task 4 (Stream D): string ordering is BYTE order (JS `<`/`>`), not locale.
 // This PINS that choice — the point is that it must NOT behave like
-// `localeCompare`, so the JS oracle matches the Polars backend and stays
+// `localeCompare`, so the core matches the Polars backend and stays
 // deterministic across machines. See stringOrder.ts for the rationale.
 
 describe("compareStrings — byte order, not locale", () => {

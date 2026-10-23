@@ -3,11 +3,7 @@
 // all-null keys, zero-take. The nodes will lean on these never throwing on edge
 // shapes (an empty upstream frame is common mid-build), so pin the behavior.
 import { describe, it, expect } from "vitest";
-import {
-  selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
-  filterRows, groupByFrame, joinFrames, appendFrames, pivotFrame, unpivotFrame,
-  nestFrame, windowFrame,
-} from "../../src/graph/frameVerbs";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, joinFrames, appendFrames, pivotFrame, unpivotFrame, nestFrame, windowFrame } from "./coreVerbs";
 import { frameRowCount, type FrameValue } from "../../src/graph/frame";
 
 const empty: FrameValue = {

@@ -29,7 +29,6 @@ export function nextChoices(choices: readonly string[], a: LadderAction): string
 
 export const LADDER_MAX_OPTIONS = 40;
 const SEARCH_BUDGET = 2_000_000;
-const MAX_ENDS = 6;
 const EPS = 1e-9;
 
 /** Where an option sits in the ladder's order: value for its share of the rough costs, or plain value when there are none.
@@ -43,8 +42,6 @@ export function priorities(opts: LadderOption[], res: LadderResource[]): { tier:
     return share <= EPS ? { tier: 0, p: o.score } : { tier: 1, p: o.score / share };
   });
 }
-
-const ahead = (a: { tier: number; p: number }, b: { tier: number; p: number }) => (a.tier !== b.tier ? a.tier < b.tier : a.p > b.p + EPS);
 
 /** Two options are close when they sit in the same tier and their places differ by no more than `gap` of the larger. */
 export function isClose(a: { tier: number; p: number }, b: { tier: number; p: number }, gap: number): boolean {
@@ -152,161 +149,3 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   return best == null ? null : (best as { ids: number[] }).ids;
 }
 
-/** Why the Must options can't all be taken ([[C124]] dealBreakers): two of them (or what they need) exclude each other,
- *  or together they need more of a countable resource than its limit. Null when they fit. */
-export function mustClash(opts: LadderOption[], res: LadderResource[]): { clash: [number, number] } | { over: number } | null {
-  const need = new Set<number>();
-  const pull = (i: number) => { if (need.has(i)) return; need.add(i); opts[i].requires.forEach(pull); };
-  opts.forEach((o, i) => { if (o.must) pull(i); });
-  const ids = [...need].sort((a, b) => a - b);
-  for (const a of ids) for (const b of ids) if (a < b && clash(opts, a, [b])) return { clash: [a, b] };
-  for (let r = 0; r < res.length; r++) {
-    const lim = res[r].limit;
-    if (lim != null && ids.reduce((s, i) => s + opts[i].costs[r], 0) > lim + EPS) return { over: r };
-  }
-  return null;
-}
-
-/** Whether taking `a` or `b` next ends with the same set either way. */
-function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[]; need: number[] }, a: number, b: number, exact: boolean): boolean {
-  const after = (x: number) => {
-    const taken = [...s.taken, x];
-    const rest = open.filter((i) => i !== x && !clash(opts, i, taken));
-    return new Set([x, ...(bestPlan(opts, rest, taken, spend(s.left, opts[x]), meet(s.need, opts[x]), exact) ?? [])]);
-  };
-  const A = after(a), B = after(b);
-  return A.size === B.size && [...A].every((i) => B.has(i));
-}
-
-/** The ladder: rungs in priority order toward the best plan, forking where the next two options are close, the flow
- *  splitting between them by score. The option not taken stays open, so a fork rejoins when both sides reach the same set.
- *  A `chosen` option wins its fork outright; the side passed over stays as a rung that carries nothing and goes nowhere. An option whose turn comes but needs another first brings that one in first. */
-export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: number, chosen: number[] = []): LadderResult {
-  if (opts.length > LADDER_MAX_OPTIONS) throw solError("#VALUE!", `Choice Ladder takes at most ${LADDER_MAX_OPTIONS} options`);
-  const pri = priorities(opts, res);
-  const order = opts.map((_, i) => i).sort((a, b) => (ahead(pri[a], pri[b]) ? -1 : ahead(pri[b], pri[a]) ? 1 : a - b));
-  const rank = new Map(order.map((o, k) => [o, k]));
-
-  // `forced`: reached only by Musts and what they need, so no plan from here means none at all.
-  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; need: number[]; share: number; depth: number; noFork: boolean; ins: number[]; forced: boolean }
-  const states: S[] = [];
-  const edges: LadderEdge[] = [];
-  // Two paths merge when their futures match: the same options still open, the same countable limits left and floors owed.
-  const futureKey = (taken: number[], out: Set<number>, left: (number | null)[], need: number[]) => {
-    const has = new Set(taken);
-    const open = order.filter((i) => !has.has(i) && !out.has(i) && !clash(opts, i, taken));
-    const met = open.map((i) => (opts[i].requires.every((r) => has.has(r) || open.includes(r)) ? 1 : 0)).join("");
-    const num = (v: number | null) => (v == null ? "" : Math.round(v * 1e6));
-    return `${open.join(",")}|${met}|${left.map(num).join(",")}|${need.map(num).join(",")}`;
-  };
-  const root: S = { id: 0, taken: [], out: new Set<number>(), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [], forced: true };
-  const floored = root.need.some((x) => x > EPS);
-  const exact = res.some((r) => !isRough(r));
-  states.push(root);
-  let level: S[] = [root];
-  let ends = 0;
-
-  while (level.length) {
-    const next = new Map<string, S>();
-    for (let li = 0; li < level.length; li++) {
-      const s = level[li];
-      const has = new Set(s.taken);
-      const open = order.filter((i) => !has.has(i) && !s.out.has(i) && !clash(opts, i, s.taken));
-      // Musts come before anything else, in order, and strike nothing.
-      const must = order.find((i) => opts[i].must && !has.has(i));
-      const found = must != null ? [] : bestPlan(opts, open, s.taken, s.left, s.need, exact);
-      if (found == null && s.forced) throw solError("#VALUE!", "Choice Ladder: no plan meets every At least");
-      const plan = new Set(found ?? []);
-      let a = must ?? order.find((i) => plan.has(i) && !has.has(i));
-      if (a == null) { ends++; continue; }
-
-      // Everything open and ahead of the pick that won't be taken is struck here.
-      const struck = must != null ? [] : open.filter((i) => rank.get(i)! < rank.get(a!)! && !plan.has(i));
-
-      // The pick's turn: anything it needs comes first.
-      let kind: LadderEdge["kind"] = must != null ? "must" : "clear";
-      // Taken only because a floor still needs it: the plan without the floors would leave it.
-      if (kind === "clear" && s.need.some((x) => x > EPS) && !(bestPlan(opts, open, s.taken, s.left, [], exact) ?? []).includes(a)) kind = "quota";
-      const needs = (i: number): number | null => opts[i].requires.filter((r) => !has.has(r)).sort((x, y) => rank.get(x)! - rank.get(y)!)[0] ?? null;
-      for (let guard = 0; guard < opts.length; guard++) {
-        const nd = needs(a);
-        if (nd == null) break;
-        a = nd; kind = "required";
-      }
-
-      // A fork: the open option nearest the pick in priority, when close and taken by the plan or able to stand in for it.
-      let b: number | null = null;
-      if (kind === "clear" && !s.noFork) {
-        let bestGap = Infinity;
-        for (const i of open) {
-          if (i === a || struck.includes(i) || needs(i) != null || !fits(opts[i], s.left)) continue;
-          if (!isClose(pri[a], pri[i], gap)) continue;
-          // A side that would leave a floor out of reach is no side at all.
-          if (floored && bestPlan(opts, open.filter((k) => k !== i && !clash(opts, k, [...s.taken, i])), [...s.taken, i], spend(s.left, opts[i]), meet(s.need, opts[i]), exact) == null) continue;
-          const g = Math.abs(pri[a].p - pri[i].p);
-          if (g < bestGap - EPS) { bestGap = g; b = i; }
-        }
-      }
-      // Two sides that end with the same set are no choice at all, only an order.
-      if (b != null && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b, exact)) b = null;
-      const picks: { take: number; share: number; kind: LadderEdge["kind"] }[] = [];
-      if (b != null && (chosen.includes(a) || chosen.includes(b))) {
-        const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
-        picks.push({ take: win, share: s.share, kind: "chosen" });
-        // The side passed over stays in view, carrying nothing, so it can be taken instead.
-        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, need: s.need, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length], forced: false };
-        states.push(t);
-        edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [], conflicts: [] });
-      } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
-        const pa = Math.max(EPS, opts[a].score), pb = Math.max(EPS, opts[b].score);
-        picks.push({ take: a, share: (s.share * pa) / (pa + pb), kind: "close" }, { take: b, share: (s.share * pb) / (pa + pb), kind: "close" });
-      } else {
-        picks.push({ take: a, share: s.share, kind });
-      }
-
-      for (const pk of picks) {
-        // Each side skips what its own best plan leaves out ahead of it, so the other side of a fork can still take
-        // what the main side passed over.
-        const own = pk.take === a ? struck.filter((i) => !clash(opts, i, [pk.take])) : (() => {
-          const t = [...s.taken, pk.take];
-          const rest = open.filter((i) => i !== pk.take && !clash(opts, i, t));
-          const plan = new Set(bestPlan(opts, rest, t, spend(s.left, opts[pk.take]), meet(s.need, opts[pk.take]), exact) ?? []);
-          return open.filter((i) => rank.get(i)! < rank.get(pk.take)! && i !== pk.take && !plan.has(i) && !clash(opts, i, [pk.take]));
-        })();
-        const ruled = open.filter((i) => i !== pk.take && !own.includes(i) && clash(opts, i, [pk.take]));
-        const taken = [...s.taken, pk.take];
-        const out = new Set([...s.out, ...own]);
-        const left = spend(s.left, opts[pk.take]);
-        const need = meet(s.need, opts[pk.take]);
-        const key = futureKey(taken, out, left, need);
-        let t = next.get(key);
-        if (!t) {
-          t = { id: states.length, taken, out, left, need, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [], forced: s.forced && must != null };
-          states.push(t);
-          next.set(key, t);
-        } else {
-          for (const i of own) t.out.add(i);
-          t.noFork = false;
-        }
-        t.share += pk.share;
-        t.ins.push(edges.length);
-        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck: own, conflicts: ruled });
-      }
-    }
-    level = [...next.values()];
-  }
-
-  // The main line: from the top, at each fork the side with more of the flow.
-  const main: number[] = [];
-  for (let s = 0; ; ) {
-    const outs = edges.filter((e) => e.from === s);
-    if (!outs.length) break;
-    const e = outs.reduce((x, y) => (y.share > x.share + EPS ? y : x));
-    main.push(edges.indexOf(e));
-    s = e.to;
-  }
-  return {
-    states: states.map((s) => ({ id: s.id, depth: s.depth, share: s.share, taken: s.taken, end: !edges.some((e) => e.from === s.id) })),
-    edges, main,
-  };
-}

@@ -5,7 +5,7 @@ import { notifyGraphChanged, processGraph } from "../process";
 import { csvList } from "../nodes/frameShapeHook";
 import { listLiteralText } from "../coerceInputs";
 import { appThemeStore } from "../appTheme";
-import type { AggOp } from "../frameVerbs";
+import type { AggOp } from "../frameOps";
 import { AGG_OP_META, type PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";

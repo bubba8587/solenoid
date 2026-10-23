@@ -4,7 +4,8 @@ import {
   cubeFromColumns, frameFromRows, frameToCube, isCubeValue, selectCubeRows,
   type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
-import { sortByColumn, distinctRows, sliceRows, filterRowsMulti, type FilterCond, type FilterOp } from "../../src/graph/frameVerbs";
+import { type FilterCond, type FilterOp } from "../../src/graph/frameOps";
+import { sortByColumn, distinctRows, sliceRows, filterRowsMulti } from "./coreVerbs";
 import { isSolError } from "../../src/graph/errorValue";
 import {
   ComputedColumnNode, AddColumnNode, SortFrameNode, DistinctNode, HeadNode, FilterFrameNode, WindowNode, type HeadOp, type WindowFn,

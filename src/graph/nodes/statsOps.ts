@@ -151,69 +151,6 @@ export function spearman(xs: readonly number[], ys: readonly number[]): number |
   return pearson(averageRanks(xs.slice(0, n)), averageRanks(ys.slice(0, n)));
 }
 
-/** Pairs counted in O(n log n) (Knight): sort by x then y, count the tied runs, and count y's inversions while merge
- *  sorting it; the counts are the pairwise loop's exactly. Finite values only, where a difference's sign is the order. */
-function kendallCounts(xs: readonly number[], ys: readonly number[], n: number): { conc: number; disc: number; tx: number; ty: number } {
-  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => (xs[a] < xs[b] ? -1 : xs[a] > xs[b] ? 1 : ys[a] < ys[b] ? -1 : ys[a] > ys[b] ? 1 : 0));
-  const pairs = (t: number) => (t * (t - 1)) / 2;
-  let n1 = 0, n3 = 0;
-  for (let i = 0; i < n; ) {
-    let j = i, k = i;
-    while (j + 1 < n && xs[idx[j + 1]] === xs[idx[i]]) j++;
-    n1 += pairs(j - i + 1);
-    for (; k <= j; ) {
-      let m = k;
-      while (m + 1 <= j && ys[idx[m + 1]] === ys[idx[k]]) m++;
-      n3 += pairs(m - k + 1);
-      k = m + 1;
-    }
-    i = j + 1;
-  }
-  let y = idx.map((i) => ys[i]);
-  let buf = new Array<number>(n);
-  let swaps = 0;
-  for (let w = 1; w < n; w *= 2) {
-    for (let lo = 0; lo < n; lo += 2 * w) {
-      const mid = Math.min(lo + w, n), hi = Math.min(lo + 2 * w, n);
-      let a = lo, b = mid, o = lo;
-      while (a < mid && b < hi) {
-        if (y[b] < y[a]) { swaps += mid - a; buf[o++] = y[b++]; } else buf[o++] = y[a++];
-      }
-      while (a < mid) buf[o++] = y[a++];
-      while (b < hi) buf[o++] = y[b++];
-    }
-    [y, buf] = [buf, y];
-  }
-  let n2 = 0;
-  for (let i = 0; i < n; ) {
-    let j = i;
-    while (j + 1 < n && y[j + 1] === y[i]) j++;
-    n2 += pairs(j - i + 1);
-    i = j + 1;
-  }
-  return { conc: pairs(n) - n1 - n2 + n3 - swaps, disc: swaps, tx: n1 - n3, ty: n2 - n3 };
-}
-
-export function kendallTau(xs: readonly number[], ys: readonly number[]): number | SolError | null {
-  const n = Math.min(xs.length, ys.length);
-  if (n < 2) return null;
-  let conc = 0, disc = 0, tx = 0, ty = 0;
-  let finite = true;
-  for (let i = 0; i < n && finite; i++) finite = Number.isFinite(xs[i]) && Number.isFinite(ys[i]);
-  if (finite) ({ conc, disc, tx, ty } = kendallCounts(xs, ys, n));
-  // NaN and two equal infinities have no sign of difference, which the pairwise reading counts as discordant.
-  else for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    const dx = Math.sign(xs[i] - xs[j]), dy = Math.sign(ys[i] - ys[j]);
-    if (dx === 0 && dy === 0) continue;
-    if (dx === 0) { tx++; continue; }
-    if (dy === 0) { ty++; continue; }
-    if (dx === dy) conc++; else disc++;
-  }
-  const den = Math.sqrt((conc + disc + tx) * (conc + disc + ty));
-  if (den === 0) return solError("#DIV/0!", "One of the lists has no variation");
-  return (conc - disc) / den;
-}
-
 export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;

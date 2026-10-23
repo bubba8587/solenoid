@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { coerceScriptResult } from "../../src/graph/nodes/scriptCoerce";
-import { pivotFrame } from "../../src/graph/frameVerbs";
+import { pivotFrame } from "./coreVerbs";
 
 // A call takes about 125k arguments, so a kernel that spreads a list into one throws past that.
 const N = 150_000;

@@ -1,12 +1,12 @@
 // [[B17]]
 import { describe, it, expect } from "vitest";
 import seed from "../../src/graph/seedGraphs/decision-matrix.json";
-import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "../../src/graph/frameVerbs";
+import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "./coreVerbs";
 import { isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
-import type { DecisionNormalize } from "../../src/graph/frameVerbs";
+import type { DecisionNormalize } from "../../src/graph/frameOps";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { extractKnapVariables } from "../../src/graph/knapTemplate";
-import { joinFrames } from "../../src/graph/frameVerbs";
+import { joinFrames } from "./coreVerbs";
 
 // Runtime check for the Decision Matrix seed: the notes state concrete outcomes
 // (who wins, where the winner flips, the dead tie), so run the seed's own data

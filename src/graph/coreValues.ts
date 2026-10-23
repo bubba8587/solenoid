@@ -7,7 +7,6 @@ import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
 import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
-import { settingsStore } from "./settingsStore";
 import { wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
@@ -122,10 +121,6 @@ export function readReply(r: unknown): { value: unknown } | null {
 }
 
 // ─── Running on the core ─────────────────────────────────────────────────────────
-
-export function wasmEngineOn(): boolean {
-  return settingsStore.get("wasmEngine") !== false;
-}
 
 /** The moment a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): NOW as the TS reads it
  *  (TODAY is its day). The core reads the local zone itself. */

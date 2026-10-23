@@ -4,7 +4,7 @@ import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
 import { makeCube, recordsToCube, type CubeValue, type CubeColumn, type FrameValue } from "../frame";
-import type { AggOp } from "../frameVerbs";
+import type { AggOp } from "../frameOps";
 import { solError, type SolError } from "../errorValue";
 import { volatileStamp } from "../volatileDates";
 

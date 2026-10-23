@@ -2,7 +2,8 @@
 // the frame and cube verbs answer as a formula does. Both engines are held to the values by
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
+import { type FrameOp } from "../../src/graph/frameOps";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame, withUnitScales } from "./coreVerbs";
 import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";

@@ -2,7 +2,7 @@
 // The cards whose verb is a backend call of its own (Join, Append, Bind Columns) or a read of a ref's schema and
 // columns (Table Size, Slicer, PIVOTBY), driven through data() over values and refs alike.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, resetFrameBackendToJs, clearCollectMemo, readFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { runFrameUnary, useWasmBackend, clearCollectMemo, readFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
 import { JoinNode, AppendNode, BindColumnsNode, PivotNode } from "../../src/graph/nodes/frame";
 import { TableInfoNode } from "../../src/graph/nodes/matrix";
 import { SlicerNode } from "../../src/graph/nodes/control";
@@ -40,7 +40,7 @@ const lazy = async (f: FrameValue) => (await runFrameUnary(f, { kind: "distinct"
 const shown = async (v: unknown) => (isFrameRef(v) ? readFrame(v) : v) as Promise<FrameValue | null>;
 const cols = (f: FrameValue | null) => f && Object.fromEntries(f.columns.map((c) => [c.name, c.values]));
 
-beforeEach(() => { resetFrameBackendToJs(); clearCollectMemo(); });
+beforeEach(() => { useWasmBackend(); clearCollectMemo(); });
 
 describe("Join", () => {
   const join = async (init: ConstructorParameters<typeof JoinNode>[0], keys: Record<string, string>, inputs: Record<string, unknown[]>) => {

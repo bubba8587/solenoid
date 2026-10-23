@@ -1,7 +1,7 @@
 // [[C130]] rustCore
 // Readers on a lazy upstream answer as they do on the same frame held eagerly.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { runFrameUnary, resetFrameBackendToJs, clearCollectMemo, readFrame, frameBackend, setFrameBackend, SKETCH_SAMPLE_ROWS, type FrameRef, type FrameBackend, type FrameHandle } from "../../src/graph/frameBackend";
+import { runFrameUnary, useWasmBackend, clearCollectMemo, readFrame, frameBackend, setFrameBackend, SKETCH_SAMPLE_ROWS, type FrameRef, type FrameBackend, type FrameHandle } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { GetColumnNode, PivotNode } from "../../src/graph/nodes/frame";
@@ -17,7 +17,7 @@ const abc: FrameValue = {
   ],
 };
 
-beforeEach(() => { resetFrameBackendToJs(); clearCollectMemo(); });
+beforeEach(() => { useWasmBackend(); clearCollectMemo(); });
 
 describe("SUMIFS resolves a positional column against the upstream frame", () => {
   const sumifs = async (cond: string, values: string, lazy: boolean) => {

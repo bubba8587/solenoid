@@ -3,7 +3,7 @@ import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";
-import type { FilterCondConfig } from "../frameVerbs";
+import type { FilterCondConfig } from "../frameOps";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getOwningView } from "../activeGraph";

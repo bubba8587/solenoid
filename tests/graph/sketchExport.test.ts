@@ -13,7 +13,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
-import { resetFrameBackendToJs, clearCollectMemo, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { useWasmBackend, clearCollectMemo, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { processGraph, setEditorRefs } from "../../src/graph/process";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { WriteFileNode } from "../../src/graph/nodes/sink";
@@ -44,7 +44,7 @@ async function wire(sink: ClassicPreset.Node, input: string) {
   await processGraph();
 }
 
-beforeEach(() => { resetFrameBackendToJs(); clearCollectMemo(); written.length = 0; calcModeStore.setMode("sketch"); });
+beforeEach(() => { useWasmBackend(); clearCollectMemo(); written.length = 0; calcModeStore.setMode("sketch"); });
 afterEach(() => { calcModeStore.setMode("auto"); });
 
 describe("Write File in Sketch mode", () => {

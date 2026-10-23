@@ -1,6 +1,7 @@
 // [[C24]] arraySemantics (nulls and errors in a column profile)
-import { describeColumn, type ColumnProfile } from "../frameVerbs";
-import { aggregate } from "../nodes/statsOps";
+import { aggregate, percentileOf } from "../nodes/statsOps";
+import { isSolError } from "../errorValue";
+import type { FrameColType } from "../frame";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
@@ -17,6 +18,50 @@ export type ColSummary = {
   checked: number | null;
   unchecked: number | null;
 };
+
+export interface ColumnProfile {
+  count: number; blank: number; error: number; distinct: number;
+  mean: number | null; std: number | null; min: number | null;
+  q25: number | null; median: number | null; q75: number | null; max: number | null;
+}
+
+/** A column's profile, as Describe reads one. The popups show it in the Obsidian plugin too, which runs without the
+ *  core, so it is computed here. */
+export function describeColumn(values: readonly unknown[], type: FrameColType | undefined): ColumnProfile {
+  let count = 0, error = 0;
+  const distinctNums = new Set<number>(), distinctBools = new Set<boolean>(), distinctText = new Set<string>();
+  for (const v of values) {
+    if (v == null) continue;
+    count++;
+    if (isSolError(v)) error++;
+    else if (typeof v === "number") distinctNums.add(v);
+    else if (typeof v === "boolean") distinctBools.add(v);
+    else distinctText.add(String(v));
+  }
+  const profile: ColumnProfile = {
+    count, blank: values.length - count, error,
+    distinct: distinctNums.size + distinctBools.size + distinctText.size,
+    mean: null, std: null, min: null, q25: null, median: null, q75: null, max: null,
+  };
+  if (type === "number" || type === "date") {
+    const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
+    const sorted = type === "number" ? [...nums].sort((x, y) => x - y) : [];
+    const pct = (q: number): number | null => {
+      if (sorted.length === 0) return null;
+      const r = percentileOf(sorted, q, false);
+      return Number.isFinite(r) ? r : null;
+    };
+    profile.mean = type === "number" ? stat("avg") : null;
+    profile.std = type === "number" ? stat("stdev") : null;
+    profile.min = stat("min");
+    profile.q25 = type === "number" ? pct(0.25) : null;
+    profile.median = type === "number" ? pct(0.5) : null;
+    profile.q75 = type === "number" ? pct(0.75) : null;
+    profile.max = stat("max");
+  }
+  return profile;
+}
 
 /** One column's footer figures over every row. */
 export function summarizeColumn(values: readonly unknown[], type: FooterColType): ColSummary {

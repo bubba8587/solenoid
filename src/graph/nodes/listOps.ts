@@ -1,5 +1,5 @@
 // [[C17]], [[B11]] (MAX_GENERATED), [[C110]] rangeIncludesStop
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, type UnitCell, forAggregateUnits, isAffineDisplay, tagDim, unitError, READINGS_ADD } from "../unitValue";
 import { dimEqual, dimPow, isDimensionless } from "../dimension";
@@ -127,36 +127,6 @@ export type XMatchSearchMode = "first" | "last";
 
 export function lookupEq(a: unknown, b: unknown): boolean {
   return typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
-}
-
-export function xmatchIndex(
-  lookup: unknown, keys: readonly unknown[],
-  matchMode: XMatchMatchMode = "exact", searchMode: XMatchSearchMode = "first",
-): number | SolError {
-  const n = keys.length;
-  const at = (s: number) => (searchMode === "last" ? n - 1 - s : s);
-  if (matchMode === "exact") {
-    for (let s = 0; s < n; s++) {
-      const i = at(s);
-      const k = keys[i];
-      if (k === null || isSolError(k)) continue;
-      if (lookupEq(k, lookup)) return i;
-    }
-    return -1;
-  }
-  if (typeof lookup !== "number" || !Number.isFinite(lookup)) {
-    return solError("#VALUE!", "Approximate match compares numbers. Use exact match (0) for text");
-  }
-  let bestIdx = -1, bestKey = NaN;
-  for (let s = 0; s < n; s++) {
-    const i = at(s);
-    const k = keys[i];
-    if (typeof k !== "number" || !Number.isFinite(k)) continue;
-    if (k === lookup) return i;
-    if (matchMode === "next_smaller" && k < lookup && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
-    if (matchMode === "next_larger"  && k > lookup && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
-  }
-  return bestIdx;
 }
 
 // ─── Weighted statistics ──────────────────────────────────────────────────────

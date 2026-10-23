@@ -1,4 +1,4 @@
-// Fuzzes the frame-verb parity corpus: random frames and ops, expected results from the JS oracle,
+// Fuzzes the frame-verb parity corpus: random frames and ops, expected results from the Rust core in wasm,
 // written as ordinary fixtures (fixtures/frame-verbs/fuzz-*.json) that the cargo corpus runner then checks.
 //   node scripts/vite-run.mjs scripts/fuzz-frame-verbs.ts [seed] [casesPerVerb]
 //   cd src-tauri && cargo test corpus_cases       # the divergence hunt
@@ -11,7 +11,8 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts, type FilterOp, type AggOp } from "../src/graph/frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns } from "../tests/graph/coreVerbs";
+import type { FrameOp, JoinOpts, FilterOp, AggOp } from "../src/graph/frameOps";
 import { isSolError, solError } from "../src/graph/errorValue";
 import type { FrameValue, FrameCell, FrameColType } from "../src/graph/frame";
 

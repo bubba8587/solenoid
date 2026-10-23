@@ -10,7 +10,7 @@ import type { Schemes } from "../../src/graph/schemes";
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
-import { initFrameBackend, resetFrameBackendToJs, clearCollectMemo } from "../../src/graph/frameBackend";
+import { initFrameBackend, useWasmBackend, clearCollectMemo } from "../../src/graph/frameBackend";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { FrameInputNode, DistinctNode, FillBlanksNode } from "../../src/graph/nodes/frame";
@@ -44,7 +44,7 @@ beforeEach(async () => {
   (globalThis as Record<string, unknown>).window = globalThis;
   (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
   invokeMock.mockReset();
-  resetFrameBackendToJs();
+  useWasmBackend();
   stubEngine();
   await initFrameBackend();
   clearCollectMemo();
@@ -52,7 +52,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   delete (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
-  resetFrameBackendToJs();
+  useWasmBackend();
 });
 
 async function chain(nodes: ClassicPreset.Node[], lastKey = "frame") {

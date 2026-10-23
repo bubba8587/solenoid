@@ -1,6 +1,6 @@
 // [[C127]] pivotView
 import { describe, it, expect } from "vitest";
-import { pivotFrame } from "../../src/graph/frameVerbs";
+import { pivotFrame } from "./coreVerbs";
 import { frameRowCount, type FrameValue, type FrameCell } from "../../src/graph/frame";
 import {
   pivotLayoutOf, buildPivotModel, readPivotView, savedPivotView, groupKey,

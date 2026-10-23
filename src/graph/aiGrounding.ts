@@ -7,7 +7,7 @@ import { SolenoidSocket, SOCKET_TYPE_LABELS, elementFamilyOf, latticeRank, type 
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER, extractInit } from "./nodeInit";
 import { NODE_OPS } from "./nodeOps";
 import { opVocabByCtor } from "./opVocab";
-import type { FilterOp } from "./frameVerbs";
+import type { FilterOp } from "./frameOps";
 import type { FrameColType } from "./frame";
 
 // A Record over the union, so tsc keeps the condition-row op list complete.

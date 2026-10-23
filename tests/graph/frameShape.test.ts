@@ -4,21 +4,13 @@ import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   type Shape,
 } from "../../src/graph/frameShape";
-import {
-  selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows,
-  groupByFrame, unpivotFrame, pivotFrame, joinFrames, appendFrames, addIndexColumn, splitColumn,
-  type FrameOp,
-} from "../../src/graph/frameVerbs";
+import { type FrameOp } from "../../src/graph/frameOps";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, unpivotFrame, pivotFrame, joinFrames, appendFrames, addIndexColumn, splitColumn } from "./coreVerbs";
 import type { FrameValue, FrameColumn } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
 
-// Every assertion here checks shapeOf's DECLARED shape against the JS oracle's
-// ACTUAL output columns for the same op + fixture — a mismatch is exactly the
-// "caught seam error" the shape-checking design calls for. frameVerbs.ts is
-// also the reference oracle the Rust/Polars backend is parity-tested against
-// (frameVerbs.ts:1-7), so agreement here is a real cross-engine guarantee for the
-// verbs `engine.rs` implements (select/drop/rename/sort/distinct/head/filter/
-// groupBy/unpivot/join/append — see src-tauri/src/engine/tests.rs).
+// Every assertion here checks shapeOf's DECLARED shape against the core's ACTUAL output columns for the same op and
+// fixture: a mismatch is exactly the "caught seam error" the shape-checking design calls for.
 
 function col(name: string, type: FrameColumn["type"], values: FrameColumn["values"]): FrameColumn {
   return { name, type, values };

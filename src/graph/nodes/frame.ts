@@ -24,23 +24,17 @@ import {
   cubeRowCount, frameFromRows,
   type FrameValue, type FrameColumn, type FrameColType,
 } from "../frame";
-import {
-  pivotFrame,
-  allocateFrame,
-  demoteHeaders,
-  reconcileFrames,
-  type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode,
-} from "../frameVerbs";
+import type { FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import { pairIdsFromKeys } from "./logic";
-import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
+import type { PivotSpec, FilterCondConfig } from "../frameOps";
 import type { AllocateMode } from "./allocateOps";
 import { settleGroup, settleLedger, type Expense } from "./settleOps";
 import { payoffPlan, type PayoffOrder } from "./payoffOps";
-import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
-export type { WindowFn } from "../frameVerbs";
-export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
-import { bindColumns } from "../frameVerbs";
+import { WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameOps";
+export type { WindowFn } from "../frameOps";
+export type { CorrMethod } from "../frameOps";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, bindSchema, type FrameInput, type FrameRef } from "../frameBackend";
+import { TRAPPED_MESSAGE } from "../coreValues";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
@@ -51,6 +45,12 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+
+/** A frame computation's shape: the core answers it over no rows. */
+function shapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = []): Shape | null {
+  const r = frameFnOnCore(name, inputs.map(emptyFrameOf), args);
+  return r && "frame" in r ? shapeOfFrameValue(r.frame) : null;
+}
 
 function runVerb<T>(fn: () => T): T | SolError {
   try {
@@ -341,7 +341,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
 
-export type { FilterCondConfig } from "../frameVerbs";
+export type { FilterCondConfig } from "../frameOps";
 
 export class FilterFrameNode extends ClassicPreset.Node {
   label: string;
@@ -634,7 +634,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
       const spec: PivotSpec = { rowFields: keys, colFields: [], values: [col], funcs: [this.agg], rowTotalDepth: this.totalDepth };
-      const out = runVerb(() => pivotOnEngine(mat, spec) ?? pivotFrame(mat, spec));
+      const out = runVerb(() => pivotOnEngine(mat, spec) ?? solError("#ERROR!", TRAPPED_MESSAGE));
       // A min or max of dates stays a date, as the plain groupBy's does (`shapeOf`).
       if (!isSolError(out) && (this.agg === "min" || this.agg === "max") && getColumn(mat, col)?.type === "date") {
         const last = out.columns.length - 1;
@@ -969,7 +969,8 @@ export class BindColumnsNode extends ClassicPreset.Node {
     }
     if (shapes.length === 0) return null;
     if (shapes.length === 1) return shapes[0];
-    return shapeOfFrameValue(bindColumns(shapes.map(emptyFrameOf)));
+    const bound = bindSchema(shapes.map(emptyFrameOf));
+    return bound ? shapeOfFrameValue(bound) : null;
   }
 
   async data(inputs: Inputs) {
@@ -1231,7 +1232,7 @@ export class HeadersNode extends ClassicPreset.Node {
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
     if (!input || this.action === "promote") return null;
-    return shapeOfFrameValue(demoteHeaders(emptyFrameOf(input)));
+    return shapeOnCore("demoteHeaders", [input]);
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -1504,7 +1505,7 @@ export class AllocatorNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("categories");
-    return input ? shapeOfFrameValue(allocateFrame(emptyFrameOf(input), this.mode, 0)) : null;
+    return input ? shapeOnCore("allocateFrame", [input], [this.mode, 0]) : null;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
@@ -1849,7 +1850,7 @@ export class ReconcileNode extends ClassicPreset.Node {
     const right = ctx.inputShape("right");
     const key = (this.stringLiterals.key ?? "").trim();
     if (!left || !right || !key || ctx.wired("key")) return null;
-    return shapeOfFrameValue(reconcileFrames(emptyFrameOf(left), emptyFrameOf(right), { leftKey: key, rightKey: key }).frame);
+    return shapeOnCore("reconcileFrames", [left, right], [key, key]);
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -2386,7 +2387,7 @@ export class DescribeNode extends ClassicPreset.Node {
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
-    return ctx.wired("frame") ? shapeOfFrameValue(describeFrame(emptyFrameOf({ columns: [] }))) : null;
+    return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -2421,7 +2422,7 @@ export class CorrMatrixNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    return input ? shapeOfFrameValue(correlationMatrix(emptyFrameOf(input), this.method)) : null;
+    return input ? shapeOnCore("correlationMatrix", [input], [this.method]) : null;
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

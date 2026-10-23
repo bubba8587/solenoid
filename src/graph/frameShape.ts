@@ -2,7 +2,7 @@
 import { makeHeaders, type FrameColType, type FrameValue } from "./frame";
 import { solError } from "./errorValue";
 import type { FrameSchemaColumn } from "./frameBackend";
-import type { FrameOp, JoinOpts } from "./frameVerbs";
+import type { FrameOp, JoinOpts } from "./frameOps";
 
 export type ShapeColumn = FrameSchemaColumn;
 

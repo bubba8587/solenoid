@@ -311,7 +311,7 @@ describe("review pins: SORTBY length, COMBINA at zero", () => {
 
 describe("review pins: pivot totals", () => {
   it("a key column that carries a Total label is text, never a number column with a string inside", async () => {
-    const { pivotFrame } = await import("../../src/graph/frameVerbs");
+    const { pivotFrame } = await import("./coreVerbs");
     const { buildFrame } = await import("../../src/graph/frame");
     const f = buildFrame([[1, 10], [1, 20], [2, 30]] as never, ["k", "v"]);
     const out = pivotFrame(f, { rowFields: ["k"], colFields: [], values: ["v"], funcs: ["sum"], rowTotalDepth: 1 } as never);
@@ -447,7 +447,7 @@ describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
 
 describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup ([[D76]] textMinMax)", () => {
   it("PIVOTBY sorts rows by a text max in code-unit order, not as blanks", async () => {
-    const { pivotFrame } = await import("../../src/graph/frameVerbs");
+    const { pivotFrame } = await import("./coreVerbs");
     const t = { __frame: true as const, columns: [
       { name: "k", type: "string" as const, values: ["a", "b", "c"] },
       { name: "s", type: "string" as const, values: ["pear", "apple", "fig"] },
@@ -535,7 +535,7 @@ describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
     expect(inferColumn("h", ["0x1F", "0b1"]).type).toBe("string");
     expect(inferColumn("n", ["1,234", "5"]).values).toEqual([1234, 5]);
     expect(coerceFrameCell("number", "0x1F")).toBeNaN();
-    const { passesFilter } = await import("../../src/graph/frameVerbs");
+    const { passesFilter } = await import("./coreVerbs");
     expect(passesFilter(31, "eq", "0x1F", "number", false)).toBe(false);
     expect(passesFilter(31, "eq", "31", "number", false)).toBe(true);
     expect(code(await ev('"0x1F" + 1'))).toBe("#VALUE!");

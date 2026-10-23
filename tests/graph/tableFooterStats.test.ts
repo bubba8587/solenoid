@@ -1,6 +1,6 @@
 // [[C45]], [[C130]], [[C24]]
 import { describe, it, expect } from "vitest";
-import { describeColumn } from "../../src/graph/frameVerbs";
+import { describeColumn } from "./coreVerbs";
 import { formatScalar } from "../../src/graph/components/format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, parseDateToSerial } from "../../src/graph/nodes/date";
 import {

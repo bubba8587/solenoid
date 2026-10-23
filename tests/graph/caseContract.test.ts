@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import {
-  distinctRows, groupByFrame, joinFrames, passesFilter, replaceValues,
-} from "../../src/graph/frameVerbs";
+import { distinctRows, groupByFrame, joinFrames, passesFilter, replaceValues } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 // [[C45]] excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;

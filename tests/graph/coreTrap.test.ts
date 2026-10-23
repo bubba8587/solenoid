@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadWasmEngineSync, wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
-import { computeColumnOnEngine, collectPreview, runFrameUnary, useWasmBackend, resetFrameBackendToJs } from "../../src/graph/frameBackend";
+import { computeColumnOnEngine, collectPreview, runFrameUnary, useWasmBackend } from "../../src/graph/frameBackend";
 
 it("a trap answers its own call and leaves later calls on a working core", () => {
   loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
@@ -30,6 +30,6 @@ it("a lazy frame left in a dead instance rejects its preview with #REF!", async 
     expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
     await expect(collectPreview(ref)).rejects.toMatchObject({ code: "#REF!" });
   } finally {
-    resetFrameBackendToJs();
+    useWasmBackend();
   }
 });

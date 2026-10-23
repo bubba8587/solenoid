@@ -1,6 +1,6 @@
 // [[C45]], [[C130]], [[C24]]
 import { describe, it, expect } from "vitest";
-import { distinctColumnValues } from "../../src/graph/frameVerbs";
+import { distinctColumnValues } from "./coreVerbs";
 import { coerceFrameCell } from "../../src/graph/frame";
 
 // B2.1 constrained entry: a TEXT column's distinct existing values feed the edit datalist.

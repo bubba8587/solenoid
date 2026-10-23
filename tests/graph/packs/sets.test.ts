@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/rete-nodes";
-import { joinFrames, type JoinOpts } from "../../../src/graph/frameVerbs";
+import { type JoinOpts } from "../../../src/graph/frameOps";
+import { joinFrames } from "../coreVerbs";
 import { shapeOfJoin } from "../../../src/graph/frameShape";
 import { inferColumn, getColumn, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
@@ -60,7 +61,7 @@ describe("COUNT DISTINCT aggregate op", () => {
   });
 });
 
-describe("semi / anti join (JS oracle)", () => {
+describe("semi / anti join", () => {
   const f = (cols: Record<string, unknown[]>): FrameValue => ({
     __frame: true,
     columns: Object.entries(cols).map(([name, values]) => inferColumn(name, values)),

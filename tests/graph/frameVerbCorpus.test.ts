@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, joinFrames, appendFrames, bindColumns, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
+import { FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameOps";
+import { applyVerb, joinFrames, appendFrames, bindColumns } from "./coreVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "../../src/graph/frame";
 import { isSolError, solError, ERROR_EXPLANATIONS, type SolErrorCode } from "../../src/graph/errorValue";
 
