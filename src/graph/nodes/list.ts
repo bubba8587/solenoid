@@ -18,7 +18,6 @@ import { isSolError, type SolError } from "../errorValue";
 import { type Tri } from "../valueKinds";
 import { type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
-import type { AggregateOp } from "./statsOps";
 import { type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { type FrameValue, type CubeValue, type CubeCell } from "../frame";
@@ -1437,7 +1436,10 @@ export class WeightedNode extends ClassicPreset.Node {
 
 // ─── Aggregate ────────────────────────────────────────────────────────────────
 
-export type ReduceOp = AggregateOp | "countblank";
+export type ReduceOp =
+  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
+  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt"
+  | "ptp" | "iqr" | "mad" | "sem" | "cv" | "rms" | "countblank";
 
 export const REDUCE_OP_META = {
   sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },

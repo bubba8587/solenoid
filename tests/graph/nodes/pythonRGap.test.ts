@@ -8,7 +8,7 @@ import { EpochNode, DateTruncNode } from "../../../src/graph/nodes/date";
 import { dateTrunc } from "../../../src/graph/nodes/dateOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { describeFrame, describeColumn, correlationMatrix, windowFrame } from "../coreVerbs";
+import { describeFrame, summarizeColumn, correlationMatrix, windowFrame } from "../coreVerbs";
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
@@ -188,7 +188,8 @@ describe("Describe (pandas describe / R summary)", () => {
   });
 });
 
-describe("describeColumn (the shared kernel behind describeFrame + the popup footer)", () => {
+describe("columnProfiles (Describe's kernel behind the popup footer)", () => {
+  const describeColumn = (values: unknown[], type: "number" | "string" | "date") => summarizeColumn(values, type).profile;
   it("counts errors as their own share of present (present = valid + error)", () => {
     const p = describeColumn([1, solError("#DIV/0!", "x"), 3, null], "number");
     expect(p.count).toBe(3); // present includes the error cell

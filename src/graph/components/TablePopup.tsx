@@ -40,7 +40,7 @@ import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
-import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumn } from "./tableFooterStats";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumns } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
@@ -143,7 +143,8 @@ function typeDefaultAnn(st: TablePopupState, j: number): FormatAnnotation {
   return { format: st.formatControls !== "matrix" && st.columnTypes?.[j] === "date" ? "date_dmy" : "auto", unit };
 }
 
-export function TablePopup() {
+/** `footer: false` drops the summary footer, which the core computes (the Obsidian plugin runs without it). */
+export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
@@ -171,7 +172,7 @@ export function TablePopup() {
   const [, bumpDraft] = useState(0);
   const gridRef = useRef<HTMLTableElement | null>(null);
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
-  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary")) && footer;
   const showCellUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
   const [listVertical, setListVertical] = useState(false);
@@ -702,9 +703,7 @@ export function TablePopup() {
         if (frameCols) return frameCols[c]?.values ?? [];
         return state.data.map((row) => row?.[c] ?? null);
       };
-      return Array.from({ length: cols }, (_c, c) => {
-        return summarizeColumn(valuesFor(c), colTypeAt(c));
-      });
+      return summarizeColumns(Array.from({ length: cols }, (_c, c) => ({ values: valuesFor(c), type: colTypeAt(c) })));
     })() : null;
     summaryCache.current = { deps: summaryDeps, value };
   }
@@ -1031,7 +1030,7 @@ export function TablePopup() {
             { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
-            ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(isFramePopup && footer ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             ...(showFmtControls ? [{ label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
             ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),

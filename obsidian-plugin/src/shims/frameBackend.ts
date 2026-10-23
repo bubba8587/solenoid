@@ -12,6 +12,10 @@ export function collectPreview(_out: FrameValue | SolError | null, _n?: number):
   return Promise.resolve(null);
 }
 
+export function frameFnOnCore(_name: string, _frames: readonly FrameValue[], _args?: readonly unknown[]): null {
+  return null;
+}
+
 export function readFrame(_v: FrameValue | SolError | null | undefined): Promise<FrameValue | SolError | null> {
   return Promise.resolve(null);
 }

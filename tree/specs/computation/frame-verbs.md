@@ -703,7 +703,7 @@ The kernels are `nodes/mlOps.ts` and take rows × features numbers; the frame ca
 
 ### Describe and Correlation Matrix
 
-`describeColumn(values, type)` profiles one column, for the Describe card and the table popup's summary footer: `count` (present cells, errors included), `blank`, `error` (the error cells among `count`) and `distinct` (distinct present non-error values, type-aware, so `1` and `"1"` differ). A number column adds `mean`, `std` (sample), `min`, the quartiles `q25`, `median`, `q75` (PERCENTILE.INC, pandas' linear method) and `max`, over its finite numbers. A date column adds only `min` and `max`, as serials. Other columns leave the statistics blank.
+`describe_column(values, type)` (`frame_fns.rs`) profiles one column, for the Describe card and, through `columnProfiles`, the table popup's summary footer: `count` (present cells, errors included), `blank`, `error` (the error cells among `count`) and `distinct` (distinct present non-error values, type-aware, so `1` and `"1"` differ). A number column adds `mean`, `std` (sample), `min`, the quartiles `q25`, `median`, `q75` (PERCENTILE.INC, pandas' linear method) and `max`, over its finite numbers. A date column adds only `min` and `max`, as serials. Other columns leave the statistics blank.
 
 `describeFrame(f)` returns one row per input column: `column`, `type`, `count`, `blank`, `distinct`, `mean`, `std`, `min`, `25%`, `50%`, `75%`, `max`.
 
