@@ -46,6 +46,16 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
     expect(ev("TREND(x)", { x })).toMatchObject({ code: "#VALUE!", message: "Known Ys need numbers" });
   });
 
+  it("DIAGONAL and GEOMETRIC refuse a text cell", () => {
+    expect(ev("DIAGONAL(x)", { x: [1, "5"] })).toMatchObject({ code: "#VALUE!", message: "DIAGONAL needs numbers" });
+    expect(ev('GEOMETRIC("1", 2, 3)')).toMatchObject({ code: "#VALUE!", message: "GEOMETRIC needs a number" });
+  });
+
+  it("ACCRINT reads its dates as serials, as every date argument does, and never date text", () => {
+    expect(ev("ACCRINT(39508, 39691, 39569, 0.1, 1000, 2, 0)") as number).toBeCloseTo(16.666667, 6); // Excel's example
+    expect(code(ev('ACCRINT("2008-03-01", 39691, 39569, 0.1, 1000, 2, 0)'))).toBe("#VALUE!");
+  });
+
   it("TEXT formats a number and leaves text as it is", () => {
     expect(ev('TEXT("5", "0.00")')).toBe("5");
     expect(ev('TEXT(5, "0.00")')).toBe("5.00");

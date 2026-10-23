@@ -2602,7 +2602,7 @@ const REFUSED: &[(&str, Refused)] = &[
     ("NTILE", nums(&[1])), ("ISOUTLIER", nums(&[2])), ("RUNNING", nums(&[2])), ("LINSPACE", nums(&[0, 1, 2])),
     ("RANGE", nums(&[0, 1, 2])), ("SPECTRUM", nums(&[1])), ("GAUSSIANSMOOTH", nums(&[1])), ("SAVGOL", nums(&[1, 2])),
     ("LOWESS", nums(&[1])), ("FINDPEAKS", nums(&[1, 2, 3])), ("DECOMPOSE", nums(&[1])), ("FORECAST.ETS", nums(&[0, 3])),
-    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])), ("FIBONACCI", nums(&[0])),
+    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])), ("FIBONACCI", nums(&[0])), ("GEOMETRIC", nums(&[0, 1, 2])),
     // Shapers, matrices and generators.
     ("TAKE", nums(&[1, 2])), ("DROP", nums(&[1, 2])), ("SORT", flags(&[1], &[3])), ("UNIQUE", flags(&[], &[1, 2])),
     ("CHOOSECOLS", Refused { numbers: &[], from: Some(1), flags: &[] }), ("CHOOSEROWS", Refused { numbers: &[], from: Some(1), flags: &[] }),

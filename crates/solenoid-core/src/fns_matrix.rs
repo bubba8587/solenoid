@@ -1101,6 +1101,16 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "DIAGONAL" => {
             let v = arg(a, 0);
+            // A text cell is refused, never read as a number ([[C131]] noTextGuessing).
+            let read: Vec<V> = match v {
+                V::List(items) if matches!(items.first(), Some(V::List(_))) => {
+                    items.iter().enumerate().filter_map(|(i, row)| if let V::List(r) = row { r.get(i).cloned() } else { None }).collect()
+                }
+                other => to_list(other),
+            };
+            if read.iter().any(crate::excel_functions::holds_text) {
+                return err(ErrorCode::Value, "DIAGONAL needs numbers");
+            }
             let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(js_number(c)) };
             if let V::List(items) = v {
                 if matches!(items.first(), Some(V::List(_))) {
