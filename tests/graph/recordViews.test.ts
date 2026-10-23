@@ -126,10 +126,10 @@ describe("a board's number lanes", () => {
     const p = (await rec.data({ frame: [f] })).chart.payload as RecordPayload;
     expect(p.lanes?.map((l) => l.cards)).toEqual([[0, 1], [2]]);
     try {
-      settingsStore.set("numberDecimals", "2");
+      settingsStore.set("numberDecimals", 2);
       expect(p.lanes?.map(recordLaneText)).toEqual(["1.23", "2"]);
     } finally {
-      settingsStore.set("numberDecimals", "4");
+      settingsStore.set("numberDecimals", 4);
     }
     expect(recordLaneText(p.lanes![0])).toBe("1.2346");
   });
