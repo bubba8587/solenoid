@@ -12,13 +12,16 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 ryu-js = "1"
+csv = "1.4"
+qrcodegen = "1.8"
 regress = { path = "../vendor/regress", default-features = false, features = ["std", "utf16", "no-property-escapes"] }
 
 [dev-dependencies]
 flate2 = "1"
+rqrr = { version = "0.11", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-jiff = { version = "0.2.38", default-features = false, features = ["std", "tzdb-bundle-always"] }
+jiff = { version = "0.2.38", default-features = false, features = ["tzdb-bundle-always"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.100"

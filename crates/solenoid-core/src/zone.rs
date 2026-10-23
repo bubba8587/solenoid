@@ -329,11 +329,11 @@ pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
 #[cfg(not(target_arch = "wasm32"))]
 mod tzdb {
     use super::{time_clip, ZoneError};
+    use crate::date_serial::civil_from_days;
     use jiff::{tz::TimeZone, Timestamp};
 
     /// The names ICU takes that the tzdb has no link for (Java's three-letter IDs and others), each to the zone ICU
-    /// reads for it. The fixed SystemV zones are the Etc ones; the six SystemV zones with daylight saving keep rules
-    /// no tzdb zone has, so natively they are refused.
+    /// reads for it. The fixed SystemV zones are the Etc ones.
     const ICU_ONLY: &[(&str, &str)] = &[
         ("act", "Australia/Darwin"), ("aet", "Australia/Sydney"), ("agt", "America/Buenos_Aires"), ("art", "Africa/Cairo"),
         ("ast", "America/Anchorage"), ("bet", "America/Sao_Paulo"), ("bst", "Asia/Dhaka"),
@@ -347,9 +347,24 @@ mod tzdb {
         ("systemv/yst9", "Etc/GMT+9"), ("us/pacific-new", "America/Los_Angeles"), ("vst", "Asia/Saigon"),
     ];
 
+    /// ICU's SystemV zones with daylight saving: their standard offset, and from 1902 on the April to October rule
+    /// they kept for ever but in the energy crisis years, which no tzdb zone has.
+    const SYSTEMV_DST: &[(&str, &str)] = &[
+        ("systemv/ast4adt", "AST4ADT,M4.5.0,M10.5.0"), ("systemv/cst6cdt", "CST6CDT,M4.5.0,M10.5.0"),
+        ("systemv/est5edt", "EST5EDT,M4.5.0,M10.5.0"), ("systemv/mst7mdt", "MST7MDT,M4.5.0,M10.5.0"),
+        ("systemv/pst8pdt", "PST8PDT,M4.5.0,M10.5.0"), ("systemv/yst9ydt", "YST9YDT,M4.5.0,M10.5.0"),
+    ];
+    /// 1902-01-01 UTC, where ICU starts a SystemV rule.
+    const SYSTEMV_FROM: i64 = -2_145_916_800;
+    /// 1974 and 1975 in SystemV: daylight saving from 2:00 standard time on the first day to 2:00 daylight time on the
+    /// second, as days since 1970.
+    const SYSTEMV_CRISIS: [(i64, i64, i64); 2] = [(1974, 1466, 1788), (1975, 1879, 2124)];
+
     pub enum Found {
         Fixed(i64),
         Zone(TimeZone),
+        /// A SystemV rule and the standard offset before it.
+        SystemV(TimeZone, i64),
     }
 
     /// "±HH", "±HHMM" or "±HH:MM" to 23:59, the minus sign either ASCII's or U+2212, as seconds east of UTC.
@@ -379,6 +394,11 @@ mod tzdb {
         if key == "factory" || key == "etc/unknown" {
             return None;
         }
+        if let Some(&(_, rule)) = SYSTEMV_DST.iter().find(|(k, _)| *k == key) {
+            let z = TimeZone::posix(rule).ok()?;
+            let standard = z.to_offset(Timestamp::from_second(SYSTEMV_FROM).ok()?).seconds();
+            return Some(Found::SystemV(z, i64::from(standard)));
+        }
         let name = ICU_ONLY.iter().find(|(k, _)| *k == key).map_or(zone, |&(_, v)| v);
         jiff::tz::db().get(name).ok().map(Found::Zone)
     }
@@ -403,6 +423,12 @@ mod tzdb {
         let wall = s + match found {
             Found::Fixed(o) => o,
             Found::Zone(z) => offset(&z, s),
+            Found::SystemV(_, standard) if s < SYSTEMV_FROM => standard,
+            Found::SystemV(z, standard) => match SYSTEMV_CRISIS.iter().find(|c| c.0 == civil_from_days((s + standard).div_euclid(86_400)).0) {
+                Some(&(_, from, to)) if s >= from * 86_400 + 7200 - standard && s < to * 86_400 + 3600 - standard => standard + 3600,
+                Some(_) => standard,
+                None => offset(&z, s),
+            },
         };
         Ok((wall.div_euclid(86_400), wall.rem_euclid(86_400)))
     }

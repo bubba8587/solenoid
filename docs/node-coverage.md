@@ -429,7 +429,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
   - It is a desktop-only local read (no network gate). On web it shows "Reading a vault is available in the desktop app only", except for the demo vault. `statVaultFile` backs created / modified.
 - **Import Obsidian Note**: see *Obsidian* below.
 - **Write File** (CSV / JSON / Text): disk writes fire only from the node's Run button ([[C38]] sinkRunButtonOnly). The format is an argument ([[C26]] opArgDistinct).
-  - CSV is written as Papa Parse wrote it, on the core (`unparseCsv`, `csv.rs`), each cell formatted as displayed, text cells neutralized against spreadsheet formula injection ([[C103]] untrustedContentSeams).
+  - CSV is written by the `csv` crate on the core (`unparseCsv`, `csv.rs`), each cell formatted as displayed, text cells neutralized against spreadsheet formula injection ([[C103]] untrustedContentSeams).
   - JSON is an array of row records, the shape Web Source reads back; only dates (ISO, a time kept) and error cells become strings.
   - Text writes a wired string verbatim (Schedule's `mspdi` Project XML), so the input becomes a string socket in that mode; switching across that boundary retypes it and prunes the cable.
   - A lazy upstream is read in full only at Run. Browse picks a path in a Save dialog without writing.
@@ -600,7 +600,7 @@ The built-in set. Geometry and Common Excel Timesavers ship on; the rest ship of
   - **Spell Number** (a number in English words, cardinals to the trillions, decimals digit by digit, negatives prefixed; or an ordinal, 42nd). Its kernel is in `textOps.ts`, so the SPELLNUMBER formula never loads the editor.
   - **Time Zone Convert** (formula `TIMEZONECONVERT(datetime, from_zone, to_zone)`, the one shared kernel `convertZone`; pure `Intl`, DST-correct at the instant). The result defaults to a datetime display style (`annotationFor`), which a docked Format Controller overrides. From and To take Geocode's time zone or a typed IANA name, with suggestions from `timeZone.ts` `IANA_ZONES`. It stays blank until every part is present.
   - **World Clock** (a zones list to a Place · Local frame of the current local time in each; pure `Intl`, DST-correct; it recomputes with the graph, with no live tick; the Zones field shares the IANA suggestions).
-  - **QR Code** (text, URL, Wi-Fi join or vCard to an `ImageValue` on the chart socket; the encoder and the SVG are the core's, `crates/solenoid-core/src/qr.rs` and `nodes/qr.rs`).
+  - **QR Code** (text, URL, Wi-Fi join or vCard to an `ImageValue` on the chart socket; the symbol is the `qrcodegen` crate's, the payload and the SVG are the core's `nodes/qr.rs`).
 - **Electricity & Circuits**: 23 presets (SI units) + Electrical FC units and an SI-prefix format (3 significant figures, 4700 is "4.7k"). Ohm's Law and dBm ↔ Watts are locked Equation presets (solve any way, or truth-check). Custom nodes:
   - **Parallel Combine**: 1/Σ(1/x), a node because it reduces a list and the formula engine is element-wise. Errors propagate and blanks are skipped; empty is blank; any 0 gives 0 (a 0 Ω branch); cancelling reciprocals are `#DIV/0!`.
   - **E-Series Value**: the nearest IEC 60063 preferred value by ratio (log) distance, looking into the neighboring decades (9.8 snaps to 10). E3 to E24 are the published tables, which deviate from the geometric series; E48 and E96 follow 10^(k/N).

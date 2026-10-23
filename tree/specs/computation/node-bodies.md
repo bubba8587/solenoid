@@ -81,8 +81,8 @@ The core is required: the app's first render waits for it with no deadline (`mai
 - `tests/graph/coreNodes.test.ts` replays the same cases through the wasm module and the TS's reading of the reply.
 - A case whose answer comes from host data is held by both: the zone cards' cases, frozen through Node's `Intl`, are
   replayed natively on jiff's bundled tzdb, so `tests/graph/timeZoneCards.test.ts` keeps to zones and instants on
-  which the two tzdb releases agree. A release that changes one (Morocco and western Canada in 2026, `EST5EDT` in
-  2026e) takes that zone out of the hand tests, not into the fixture.
+  which the two tzdb releases agree: a zone whose future rules releases keep revising is probed only through 2024, and
+  one a release rewrote (`EST5EDT` before 1967 in 2026e, Morocco and western Canada from 2026) stays out of them.
 - The whole vitest suite runs the ported cards on the core.
 
 ## What has moved
@@ -108,7 +108,7 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Pack and frame stragglers | Resistor Color Code, Element, Molar Mass, Physics Constant, NA, TODAY/NOW, Headers, Split Frame, Group Cost Settle, Describe, Correlation Matrix, PCA, Decision Sensitivity | their families' modules |
 | Plans | Schedule, Gantt, Earned Value on the core's port of `@solenoid/schedule-engine` (`schedule/`); ODE Integrate; SCAN | `nodes/sched.rs` |
 | Documents | Display, Alert, Expect, Format Controller, Template, Frame Input, Record; their number text, card plans and record layouts on `card_helpers.rs` | `nodes/docs.rs` |
-| Lambda and draws | LAMBDA (its shell keeps the last λ while its text and captures stand, since consumers memo on identity), RANDARRAY (its shell draws the rolls the body asks for, `coreFields` `rolls`), QR Code on the core's port of `qrcode` 1.5.4 (`crate::qr`, held to `fixtures/core/qr-encoder.json.gz`) | `nodes/lambda.rs`, `list.rs`, `nodes/qr.rs` |
+| Lambda and draws | LAMBDA (its shell keeps the last λ while its text and captures stand, since consumers memo on identity), RANDARRAY (its shell draws the rolls the body asks for, `coreFields` `rolls`), QR Code (the symbol is the `qrcodegen` crate's at exactly the medium level, one segment per text; the payload and the SVG are Solenoid's; `fixtures/core/qr-encoder.json.gz`, frozen by `tests/qr.rs`, which reads every symbol back to its text with the `rqrr` decoder) | `nodes/lambda.rs`, `list.rs`, `nodes/qr.rs` |
 | Lazy frame verbs | Distinct, Head, Frame Sort, Frame Filter, Columns, GROUPBY (no totals, no cube), Unpivot, Rename, Split Column, Add Index, Fill Blanks, Replace Values, Merge Columns, Drop Blank Rows, Window, Get Column, SUMIFS: each body extends a frame ref's plan or runs a value's verb, the shell uploads a value first and reads a ref's columns for Get Column and SUMIFS | `nodes/verbs.rs` |
 | Computed columns | Computed Column (over a value, and the placing of a column the backend computed over a frame ref; the shell runs the ref's formula and assembles the answer), Cube Input (its formula columns; the shell reads the source text into a cube); Frame Input's unit plan lives here too | `nodes/columns.rs` |
 | Backend frame verbs | Join, Append, Bind Columns, Table Size, Slicer, PIVOTBY: Join, Append and Bind Columns answer the join or the inputs to stack for the shell to run, or one frame passed on; Table Size counts a zero-row preview the shell reads or takes; Slicer and PIVOTBY over a ref answer the columns they read and are called again with them; PIVOTBY shows its layout (`pivotWire`) for the shell to keep beside the frame and answers the frame's column names (`fieldNames`), to which the shell prunes the saved fields | `nodes/backend_verbs.rs` |

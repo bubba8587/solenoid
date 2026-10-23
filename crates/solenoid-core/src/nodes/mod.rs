@@ -24,7 +24,7 @@ mod list;
 mod logic;
 mod matrix;
 mod packs;
-mod qr;
+pub mod qr;
 mod scalar;
 mod sched;
 mod stats;
