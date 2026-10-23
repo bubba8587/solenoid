@@ -31,5 +31,10 @@ Test oracle idea: ironcalc_base 0.9.1 (MIT/Apache, wasm-capable, Excel-faithful)
 [[C14]] currentExcelParity for PRICE, YIELD, COUP*, WORKDAY without Excel. Not as a runtime dependency (it follows
 Excel, not Formula.js, and pulls chrono, chrono-tz, regex, statrs).
 
+IronCalc health (checked 2026-10-23): ~4.2k stars, 230 open issues, releases every 2 to 6 months (0.9.1 on 2026-10-21),
+~370 commits in the last 3 months. Two main authors (Nicolás Hatcher, Daniel Gonzalez Albo), funded by NLnet/NGI0
+grants. Pre-1.0, so its API churns: fine for a dev-dependency. Its suite carries ~226 Excel-made .xlsx files by function
+category, which is what makes it a credible oracle; where we follow Formula.js on purpose it will disagree, by design.
+
 Watch list: ferrigura-jsmath (V8 Math in Rust, published 2026-10-22, immature), ssf-rs (SheetJS format engine),
 ironcalc_base.
