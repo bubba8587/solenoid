@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-10-21/22: the Rust core and the graph on it, branch solenoid/tsrs; cloud session)
+### SESSION DIGEST (2026-10-21/22: the Rust core and the graph on it, branch rust-port, once solenoid/tsrs; cloud session)
 - **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
 - **What runs on the core:** every formula (compileEvaluator, outside a row frame) and computed column; about 150 node
   bodies through `callCore`; 25 frame computations through `frameFnOnCore` (headers, Describe, Correlation, Reconcile,
