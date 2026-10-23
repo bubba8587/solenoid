@@ -61,6 +61,23 @@ pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>)
     }))
 }
 
+/// Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+#[wasm_bindgen]
+pub fn engine_csv_frame(text: &str) -> String {
+    let (out, rows) = crate::csv::frame_columnar(text);
+    let schema = serde_json::json!({ "columns": out.schema, "rowCount": rows });
+    STAGED.with(|s| *s.borrow_mut() = out);
+    reply(Ok(schema))
+}
+
+/// Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+#[wasm_bindgen]
+pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
+    let (out, rows) = crate::csv::rows_columnar(text, crate::csv::CsvOptions { detect_delimiter: detect, keep_blank_lines: keep_blank });
+    STAGED.with(|s| *s.borrow_mut() = out);
+    reply(Ok(serde_json::json!(rows)))
+}
+
 #[wasm_bindgen]
 pub fn take_tags() -> Vec<u8> {
     STAGED.with(|s| std::mem::take(&mut s.borrow_mut().tags))

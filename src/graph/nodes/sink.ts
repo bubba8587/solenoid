@@ -1,6 +1,6 @@
 // [[C38]] sinkRunButtonOnly, [[C103]] untrustedContentSeams, [[B11]] maximalMerge, [[C26]] opArgDistinct, [[B2]] webTryDesktopFull
 import { ClassicPreset } from "rete";
-import Papa from "papaparse";
+import { unparseCsv } from "../csv";
 import { neutralizeFormulaCell } from "../csvSafety";
 import { frameIn, strIn } from "./shared";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue } from "../frame";
@@ -18,10 +18,10 @@ export function frameToCsvText(f: FrameValue): string {
   const data = Array.from({ length: rows }, (_, i) =>
     f.columns.map((c) => {
       const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";
-      return c.type === "string" && typeof shown === "string" ? neutralizeFormulaCell(shown) : shown;
+      return c.type === "string" && typeof shown === "string" ? neutralizeFormulaCell(shown) : String(shown);
     }),
   );
-  return Papa.unparse({ fields, data });
+  return unparseCsv(fields, data);
 }
 
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {

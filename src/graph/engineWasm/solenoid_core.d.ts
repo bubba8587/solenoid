@@ -10,6 +10,14 @@ export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float6
  * `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
  */
 export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
+/**
+ * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+ */
+export function engine_csv_frame(text: string): string;
+/**
+ * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+ */
+export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
 export function take_tags(): Uint8Array;
 export function take_nums(): Float64Array;
 export function take_strs(): string;
@@ -19,6 +27,8 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
+  readonly engine_csv_frame: (a: number, b: number, c: number) => void;
+  readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;

@@ -1,6 +1,6 @@
 // [[C103]] untrustedContentSeams
 
-import Papa from "papaparse";
+import { wasmCsvRows, wasmInvokeSync } from "./engineWasm";
 
 export interface CsvOptions {
   /** Auto-detect the delimiter: off for the in-app editors (deterministic), on for file ingestion. */
@@ -9,21 +9,16 @@ export interface CsvOptions {
   keepBlankLines?: boolean;
 }
 
+/** Every row the text reads as, on the core (`csv.rs`): fields split as Papa Parse split them, `\r\n` and `\r` read as
+ *  `\n`, a leading BOM dropped, a final newline a terminator. */
 export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
-  // Normalize line endings first: Papa locks onto one newline type, so a stray one bleeds into the last field.
-  const normalized = text.replace(/\r\n?/g, "\n");
-  const result = Papa.parse<string[]>(normalized, {
-    delimiter: opts.detectDelimiter ? "" : ",", // "" → Papa auto-detects
-    newline: "\n",
-    skipEmptyLines: opts.keepBlankLines ? false : "greedy",
-  });
-  const rows = result.data;
-  // Papa emits a phantom [""] for a single final newline (a terminator, not a blank row); pop exactly that one.
-  if (opts.keepBlankLines && normalized.endsWith("\n")) {
-    const last = rows[rows.length - 1];
-    if (last && last.length === 1 && last[0] === "") rows.pop();
-  }
-  return rows;
+  return wasmCsvRows(text, !!opts.detectDelimiter, !!opts.keepBlankLines);
+}
+
+/** Rows as CSV text with a header row, on the core: a field holding a comma, quote, newline or BOM, or with a space at
+ *  either end, quoted; lines ended by `\r\n`. */
+export function unparseCsv(fields: readonly string[], rows: readonly (readonly string[])[]): string {
+  return wasmInvokeSync<string>("engine_csv_text", { fields, rows });
 }
 
 /** Rows of already-escaped fields as CSV text. A row that is one blank field writes as `""`: an empty line would read back as the final newline's phantom, and the row would drop. */

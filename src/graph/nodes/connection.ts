@@ -22,20 +22,12 @@ import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listM
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
-import { parseCsvRows } from "../csv";
 import { engineAvailable, ipcInvoke } from "../ipcBridge";
-import { readCsvFrame, dropFrameRef, collectPreview, nativeEngineOn, type FrameRef, type FrameHandle } from "../frameBackend";
+import { readCsvFrame, csvToFrame, dropFrameRef, collectPreview, nativeEngineOn, type FrameRef, type FrameHandle } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
-
-export function csvToFrame(text: string): FrameValue {
-  const rows = parseCsvRows(text, { detectDelimiter: true });
-  if (rows.length === 0) return { __frame: true, columns: [] };
-  const headers = rows[0].map((h) => h.trim());
-  return frameFromCells(headers, rows.slice(1));
-}
 
 export function jsonToFrame(text: string): FrameValue {
   const data = JSON.parse(text);

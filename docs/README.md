@@ -181,6 +181,7 @@ results get retried and settled rulings relapse.
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `src-tauri/src/engine.rs` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
+| `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |

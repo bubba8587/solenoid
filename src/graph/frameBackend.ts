@@ -13,7 +13,7 @@ export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./c
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
-import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, onCore, onWasmEngineReset, type BinaryCells } from "./engineWasm";
+import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, wasmCsvFrame, onCore, onWasmEngineReset, type BinaryCells } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
 import { settingsStore } from "./settingsStore";
@@ -349,7 +349,8 @@ function encodeBinary(frame: FrameValue): BinaryCells {
 function decodeBinary(b: BinaryCells): FrameColumn[] {
   let k = 0, off = 0, li = 0;
   const text = () => { const n = b.lens[li++]; const t = b.strs.slice(off, off + n); off += n; return t; };
-  return b.schema.map((c) => {
+  const out: FrameColumn[] = [];
+  for (const c of b.schema) {
     const values = new Array<FrameCell>(c.len);
     for (let i = 0; i < c.len; i++, k++) {
       switch (b.tags[k]) {
@@ -365,8 +366,18 @@ function decodeBinary(b: BinaryCells): FrameColumn[] {
         default: values[i] = null;
       }
     }
-    return { name: c.name, type: c.type as FrameColType, values };
-  });
+    if (c.raw) out[out.length - 1].raw = values as string[];
+    else out.push({ name: c.name, type: c.type as FrameColType, values });
+  }
+  return out;
+}
+
+/** A CSV file's text as a typed frame, read on the core ([[C103]] untrustedContentSeams): its delimiter guessed, blank
+ *  lines skipped, the first row the header, each column's trimmed text kept as `raw`. */
+export function csvToFrame(text: string): FrameValue {
+  const columns = decodeBinary(wasmCsvFrame(text));
+  for (const c of columns) c.raw ??= c.values.map((v) => (v === null ? "" : (v as string)));
+  return { __frame: true, columns };
 }
 
 /** Frames crossing in bulk without JSON: the wasm engine shares memory with JS, so cells move as buffers. */

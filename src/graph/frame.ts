@@ -1,5 +1,5 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[D43]] unitByGranularity
-import { parseCsvRows } from "./csv";
+import { wasmInvokeSync } from "./engineWasm";
 import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
@@ -264,15 +264,6 @@ export function frameSourceToText(source: FrameSource): string {
   })));
 }
 
-function inferColType(cells: ReadonlyArray<string>): FrameColType {
-  const nonBlank = cells.filter((c) => !isBlank(c));
-  if (nonBlank.length === 0) return "string";
-  if (nonBlank.every((c) => cellToNumber(c) !== null)) return "number";
-  if (nonBlank.every(isLogicalCell)) return "logical";
-  if (nonBlank.every((c) => dateCellSerial(c) !== null)) return "date";
-  return "string";
-}
-
 export function parseFrameSource(text: string): FrameSource {
   const trimmed = text.trim();
   if (trimmed.startsWith("[")) {
@@ -296,15 +287,7 @@ export function parseFrameSource(text: string): FrameSource {
       }
     } catch { /* malformed JSON falls through to the CSV reader */ }
   }
-  const rows = parseCsvRows(trimmed);
-  const headers = (rows[0] ?? []).map((h) => h.trim());
-  const body = rows.slice(1);
-  const ncols = Math.max(headers.length, body.reduce((m, r) => Math.max(m, r.length), 0));
-  const names = makeHeaders(headers, ncols);
-  return names.map((name, j) => {
-    const cells = body.map((r) => (r[j] ?? "").trim());
-    return { name, type: inferColType(cells), cells };
-  });
+  return wasmInvokeSync<FrameSource>("engine_csv_source", { text: trimmed });
 }
 
 export function frameColumnsToInputText(columns: ReadonlyArray<FrameColumn>): string {

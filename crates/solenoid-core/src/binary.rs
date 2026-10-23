@@ -101,7 +101,7 @@ fn utf16_len(s: &str) -> u32 {
 }
 
 impl Columnar {
-    fn push_str(&mut self, s: &str) {
+    pub(crate) fn push_str(&mut self, s: &str) {
         self.strs.push_str(s);
         self.lens.push(utf16_len(s));
     }
