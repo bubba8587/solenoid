@@ -30,7 +30,7 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 | `solenoid-complexlist` | Complex List | sequence of `a+bi` text | same, complex tint | same |
 | `solenoid-logicallist` | Boolean List | sequence of `true` / `false` | same, logical tint | same |
 | `solenoid-table`, `-strtable`, `-datetable`, `-complextable`, `-logicaltable` | Numeric / String / Date / Complex / Boolean Matrix | sequence of sequences | `[R×C Table]` in the family's matrix shade | Table Input's raw grid |
-| `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
+| `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
 **Knap notes.** A note with `knap: true` in its properties renders its body as a Knap template from
@@ -64,8 +64,8 @@ control. The page shows no sample chips: a chip over made-up data is bogus (the 
 
 **Everything the popups do without a graph:** cell and header editing, add and remove rows and
 columns, the column type cycle, visual sort, the CSV view, Copy, Copy as Markdown, Export CSV,
-the summary footer and its per-column stat, freeze header, the resize grip, the cube breadcrumb
-and drill levels, Escape semantics.
+freeze header, the resize grip, the cube breadcrumb and drill levels, Escape semantics. The summary
+footer is left out (`footer={false}`): its profile runs on the core, which the plugin doesn't load.
 
 ## The look
 
@@ -438,9 +438,7 @@ plugin's README discloses it.
 **Review findings that stand** (warnings; each is the app's own code, read by the review because
 the snapshot carries whole files): `localStorage` in `palette.ts` and `settingsStore.ts`
 (rewritten to memory by the build, above); `throw solError(…)` in
-`frameShape.ts` (a thrown `SolError` is the engine's error model, [[error-values]]); the
-normal-CDF coefficients in `mathUtils.ts`, printed as published (the footer's `aggregate` pulls
-the file in; 310 bytes of it ship); in CSS, the `vh` line before each `dvh` one (the fallback),
+`frameShape.ts` (a thrown `SolError` is the engine's error model, [[error-values]]); in CSS, the `vh` line before each `dvh` one (the fallback),
 `:has()`, and the browser-support notes. Reproduce the review before a release with
 `eslint-plugin-obsidianmd`'s recommended config, run in the exported snapshot. The review fails an eslint
 directive that has no description or names a rule its config doesn't load (`react-hooks`), and fails `no-control-regex`,

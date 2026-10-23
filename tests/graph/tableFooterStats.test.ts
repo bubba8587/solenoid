@@ -1,11 +1,9 @@
 // [[C45]], [[C130]], [[C24]]
 import { describe, it, expect } from "vitest";
-import { describeColumn } from "./coreVerbs";
+import { summarizeColumn as summarize } from "./coreVerbs";
 import { formatScalar } from "../../src/graph/components/format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, parseDateToSerial } from "../../src/graph/nodes/date";
 import {
-  type FooterColType,
-  type ColSummary,
   STATS_BY_TYPE,
   defaultFooterStat,
   footerStatFor,
@@ -14,16 +12,6 @@ import {
   statReadsAsCell,
   FOOTER_STAT_LABEL,
 } from "../../src/graph/components/tableFooterStats";
-
-// Build a ColSummary exactly as the Table popup's summary pass does.
-function summarize(values: unknown[], type: FooterColType): ColSummary {
-  const profile = describeColumn(values, type);
-  const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-  const sum = type === "number" ? nums.reduce((a, b) => a + b, 0) : null;
-  const checked = type === "logical" ? values.filter((v) => v === true).length : null;
-  const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
-  return { profile, sum, checked, unchecked };
-}
 
 describe("footer stat choices", () => {
   it("defaults to Sum on numbers and Count elsewhere", () => {

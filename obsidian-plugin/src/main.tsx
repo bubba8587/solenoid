@@ -174,7 +174,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   private renderPopups(): void {
     this.popups?.unmount();
     this.popups = createRoot(popupLayerRoot());
-    this.popups.render(<><TablePopup /><CubePopup /></>);
+    this.popups.render(<><TablePopup footer={false} /><CubePopup footer={false} /></>);
   }
 
   async setPalette(name: PaletteName): Promise<void> {

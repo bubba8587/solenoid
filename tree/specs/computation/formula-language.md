@@ -708,7 +708,7 @@ A `Cell` is a number, `null` or a `SolError`; `firstError` returns the first `So
 - `fftReal(x)`: the discrete Fourier transform of a real list at any length, as `{ re, im }`. A power-of-two length uses iterative radix-2 Cooley–Tukey; any other length uses Bluestein's chirp-z through a power-of-two FFT of size at least 2n − 1, so no padding changes the answer.
 - `spectrum(x, rate)`: the one-sided amplitude spectrum, bins 0 to ⌊n/2⌋, frequency `k·rate/n`, phase in radians. Magnitudes are scaled by 2/n (1/n at DC, and at Nyquist for an even length) so a pure sine of amplitude A reads A. A blank or text in the signal counts as 0; the first error in the signal, or an error rate, is the answer.
 
-### Statistics kernels (`nodes/statsOps.ts`)
+### Statistics kernels (`excel_functions.rs`, `fns_stats.rs`)
 
 The Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher and Hypothesis Test nodes and the statistics formulas call these. Inputs are already-prepared numbers: errors propagated and blanks skipped by the caller. Null means the input cannot support the statistic (too few points, a flat list) and shows as a blank ([[D70]] nullNotEnoughData); a `SolError` is a real domain failure.
 

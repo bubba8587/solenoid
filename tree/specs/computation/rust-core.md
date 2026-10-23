@@ -21,10 +21,10 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
      every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is
      how a deliberate change in behaviour moves a fixture.
 - Gone so far: the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
-  the pack functions' JavaScript, the JS frame verbs and their backend, and the card bodies ([[node-bodies]]). The TS
-  keeps the editor's walkers over the core's tree (variables, LaTeX, steps), the units and formats a verb leaves
-  (`frameSchema.ts`), the table popups' footer profile (`tableFooterStats.ts`: the Obsidian plugin shows those popups
-  and runs without the core), and the op modules the components and the canvas still read.
+  the pack functions' JavaScript, the JS frame verbs and their backend, the card bodies ([[node-bodies]]), the
+  statistics kernels (`statsOps.ts`) and the table popups' footer profile. The TS keeps the editor's walkers over the
+  core's tree (variables, LaTeX, steps), the units and formats a verb leaves (`frameSchema.ts`), and the op modules the
+  components and the canvas still read.
 - The JavaScript semantics the frozen answers carry stay ported, because they decided those answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.

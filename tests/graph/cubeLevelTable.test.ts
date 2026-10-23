@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { cubeLevelColumns, statValues } from "../../src/graph/cubeLevelTable";
 import { recordsToCube } from "../../src/graph/frame";
-import { summarizeColumn } from "../../src/graph/components/tableFooterStats";
+import { summarizeColumn } from "./coreVerbs";
 
 describe("cubeLevelColumns", () => {
   const cube = recordsToCube([

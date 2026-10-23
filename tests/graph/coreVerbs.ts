@@ -11,9 +11,9 @@ import type {
 import { onCoreFrames, encodeOpCells, lowerForEngine, pivotOnEngine, frameFnOnCore } from "../../src/graph/frameBackend";
 import { joinKeyTransform, opMeta, joinMeta, appendMeta, bindMeta, withMeta } from "../../src/graph/frameSchema";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
+import { summarizeColumns, type ColSummary, type FooterColType } from "../../src/graph/components/tableFooterStats";
 
 export { joinKeyTransform, withUnitScales } from "../../src/graph/frameSchema";
-export { describeColumn } from "../../src/graph/components/tableFooterStats";
 export { distinctColumnValues } from "../../src/graph/components/TablePopup";
 
 export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
@@ -111,6 +111,12 @@ const frameOf = (name: string, frames: FrameValue[], args: unknown[] = []): Fram
 export const promoteHeaders = (f: FrameValue) => frameOf("promoteHeaders", [f]);
 export const demoteHeaders = (f: FrameValue) => frameOf("demoteHeaders", [f]);
 export const describeFrame = (f: FrameValue) => frameOf("describeFrame", [f]);
+/** One column's footer figures, from the core's `columnProfiles`. */
+export function summarizeColumn(values: unknown[], type: FooterColType): ColSummary {
+  const s = summarizeColumns([{ values, type }]);
+  if (!s) throw new Error("columnProfiles didn't answer on the core");
+  return s[0];
+}
 export const correlationMatrix = (f: FrameValue, method: string) => frameOf("correlationMatrix", [f], [method]);
 
 export interface ReconcileOpts { leftKey: string; rightKey: string; priceColumn?: string; qtyColumn?: string }

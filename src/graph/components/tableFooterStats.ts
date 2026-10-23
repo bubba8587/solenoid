@@ -1,7 +1,7 @@
-// [[C24]] arraySemantics (nulls and errors in a column profile)
-import { aggregate, percentileOf } from "../nodes/statsOps";
+// [[C24]] arraySemantics (nulls and errors in a column profile), [[D99]] rustIsSpec
 import { isSolError } from "../errorValue";
-import type { FrameColType } from "../frame";
+import type { FrameCell } from "../frame";
+import { frameFnOnCore } from "../frameBackend";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
@@ -25,55 +25,22 @@ export interface ColumnProfile {
   q25: number | null; median: number | null; q75: number | null; max: number | null;
 }
 
-/** A column's profile, as Describe reads one. The popups show it in the Obsidian plugin too, which runs without the
- *  core, so it is computed here. */
-export function describeColumn(values: readonly unknown[], type: FrameColType | undefined): ColumnProfile {
-  let count = 0, error = 0;
-  const distinctNums = new Set<number>(), distinctBools = new Set<boolean>(), distinctText = new Set<string>();
-  for (const v of values) {
-    if (v == null) continue;
-    count++;
-    if (isSolError(v)) error++;
-    else if (typeof v === "number") distinctNums.add(v);
-    else if (typeof v === "boolean") distinctBools.add(v);
-    else distinctText.add(String(v));
-  }
-  const profile: ColumnProfile = {
-    count, blank: values.length - count, error,
-    distinct: distinctNums.size + distinctBools.size + distinctText.size,
-    mean: null, std: null, min: null, q25: null, median: null, q75: null, max: null,
-  };
-  if (type === "number" || type === "date") {
-    const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
-    const sorted = type === "number" ? [...nums].sort((x, y) => x - y) : [];
-    const pct = (q: number): number | null => {
-      if (sorted.length === 0) return null;
-      const r = percentileOf(sorted, q, false);
-      return Number.isFinite(r) ? r : null;
-    };
-    profile.mean = type === "number" ? stat("avg") : null;
-    profile.std = type === "number" ? stat("stdev") : null;
-    profile.min = stat("min");
-    profile.q25 = type === "number" ? pct(0.25) : null;
-    profile.median = type === "number" ? pct(0.5) : null;
-    profile.q75 = type === "number" ? pct(0.75) : null;
-    profile.max = stat("max");
-  }
-  return profile;
-}
+/** A cell as the core reads it; anything else in a column (a nested list, a record) counts as filled text. */
+const asCell = (v: unknown): FrameCell =>
+  v == null ? null : typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v) ? v : String(v);
 
-/** One column's footer figures over every row. */
-export function summarizeColumn(values: readonly unknown[], type: FooterColType): ColSummary {
-  const profile = describeColumn(values, type);
-  let sum: number | null = null;
-  if (type === "number") {
-    const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
-    sum = typeof r === "number" ? r : null;
-  }
-  const checked = type === "logical" ? values.filter((v) => v === true).length : null;
-  const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
-  return { profile, sum, checked, unchecked };
+type ProfileRow = [number, number, number, number, ...(number | null)[]];
+
+/** Each column's footer figures over every row, from the core's `columnProfiles` (Describe's kernel). Null where the
+ *  core can't answer. */
+export function summarizeColumns(columns: readonly { values: readonly unknown[]; type: FooterColType }[]): ColSummary[] | null {
+  const frame = { __frame: true as const, columns: columns.map((c, i) => ({ name: String(i), type: c.type, values: c.values.map(asCell) })) };
+  const r = frameFnOnCore("columnProfiles", [frame]);
+  if (!r || !Array.isArray(r.value)) return null;
+  return (r.value as ProfileRow[]).map(([count, blank, error, distinct, mean, std, min, q25, median, q75, max, sum, checked, unchecked]) => ({
+    profile: { count, blank, error, distinct, mean, std, min, q25, median, q75, max },
+    sum, checked, unchecked,
+  }));
 }
 
 export const FOOTER_STAT_LABEL: Record<FooterStat, string> = {

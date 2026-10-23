@@ -49,6 +49,7 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         ("promoteHeaders", Some(f)) => Ok(FrameOut::Frame(promote_headers(f))),
         ("demoteHeaders", Some(f)) => Ok(FrameOut::Frame(demote_headers(f))),
         ("describeFrame", Some(f)) => Ok(FrameOut::Frame(describe_frame(f))),
+        ("columnProfiles", Some(f)) => Ok(FrameOut::Value(column_profiles(f))),
         ("correlationMatrix", Some(f)) => str_arg(args, 0).map(|m| FrameOut::Frame(correlation_matrix(f, &m))),
         ("reconcileFrames", Some(l)) => match second {
             Some(r) => reconcile_frames(l, r, args),
@@ -273,14 +274,14 @@ fn num_or_none(v: V) -> Option<f64> {
     }
 }
 
-/// `describeColumn`: count, blank, distinct and, for number and date columns, the summary statistics.
-fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [Option<f64>; 7]) {
-    let mut count = 0usize;
+/// A column's profile: count, blank, error, distinct and, for number and date columns, the summary statistics.
+fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, f64, [Option<f64>; 7]) {
+    let (mut count, mut error) = (0usize, 0usize);
     let (mut nums, mut bools, mut text) = (HashSet::new(), HashSet::new(), HashSet::new());
     for v in values {
         match v {
             FrameCell::Null => continue,
-            FrameCell::Err(_) => {}
+            FrameCell::Err(_) => error += 1,
             FrameCell::Num(n) => {
                 nums.insert(same_value_zero(*n));
             }
@@ -316,7 +317,29 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [O
             stat(Stat::Max),
         ];
     }
-    (count as f64, (values.len() - count) as f64, (nums.len() + bools.len() + text.len()) as f64, stats)
+    (count as f64, (values.len() - count) as f64, error as f64, (nums.len() + bools.len() + text.len()) as f64, stats)
+}
+
+/// The table popups' summary footer, one list per column: count, blank, error, distinct, the seven statistics, then
+/// the sum of a number column's finite cells and a logical column's TRUE and FALSE counts (null where the type has none).
+fn column_profiles(f: &FrameValue) -> V {
+    let num = |v: Option<f64>| v.map_or(V::Null, V::Num);
+    let cols = f.columns.iter().map(|c| {
+        let (count, blank, error, distinct, stats) = describe_column(&c.values, c.ty);
+        let mut row: Vec<V> = [count, blank, error, distinct].into_iter().map(V::Num).collect();
+        row.extend(stats.into_iter().map(num));
+        let sum = (c.ty == FrameColType::Number).then(|| {
+            let finite: Vec<f64> = c.values.iter().filter_map(|v| if let FrameCell::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
+            crate::excel_functions::sum(&finite)
+        });
+        row.push(num(sum.filter(|s| s.is_finite())));
+        let logical = c.ty == FrameColType::Logical;
+        let tally = |b: bool| logical.then(|| c.values.iter().filter(|v| matches!(v, FrameCell::Bool(x) if *x == b)).count() as f64);
+        row.push(num(tally(true)));
+        row.push(num(tally(false)));
+        V::List(Rc::new(row))
+    });
+    V::List(Rc::new(cols.collect()))
 }
 
 /// `describeFrame`: one row per column.
@@ -329,7 +352,7 @@ fn describe_frame(f: &FrameValue) -> FrameValue {
     for c in &f.columns {
         names.push(FrameCell::str(&c.name));
         types.push(FrameCell::str(c.ty.as_str()));
-        let (count, blank, distinct, s) = describe_column(&c.values, c.ty);
+        let (count, blank, _, distinct, s) = describe_column(&c.values, c.ty);
         for (col, v) in counts.iter_mut().zip([count, blank, distinct]) {
             col.push(FrameCell::Num(v));
         }
