@@ -3,9 +3,9 @@ import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
 import { chartOut } from "./shared";
 import type { ChartValue } from "../chartValue";
-import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame, coerceFrameCell } from "../frame";
+import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
@@ -17,16 +17,14 @@ import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
-import { readFilterValue, readConditionValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
-import { logicalOrTypeError } from "../valueKinds";
 import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn,
+  isCubeValue, isFrameValue, inferColumn,
   cubeRowCount, frameFromRows, cubeFromColumns,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
@@ -35,9 +33,7 @@ import {
   allocateFrame,
   demoteHeaders,
   reconcileFrames,
-  VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
-  sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
-  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode,
+  type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
@@ -47,7 +43,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, verbOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -58,7 +54,7 @@ import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
-import { tagFrameCellUnit, tagCubeCellUnit, parseColumnUnitFromHeader } from "../unitColumn";
+import { tagCubeCellUnit, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -140,6 +136,60 @@ export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef 
   node._ref = isFrameRef(out) ? out : null;
   node.cachedResult = preview;
   return { frame: out };
+}
+
+type Inputs = Record<string, unknown[] | undefined>;
+
+/** A lazy verb's body run over refs: each input of `keys` holding a frame (not a ref, nor a Cube the body reads) is
+ *  uploaded for a ref with nothing planned, and `uploaded` names those inputs, so a body passing one through answers
+ *  that ref and the frame itself comes back. A failed upload is the answer. */
+async function planOnBody<O extends Record<string, unknown>>(inputs: Inputs, keys: readonly string[], body: (inputs: Inputs) => O, cubes = true): Promise<O | SolError> {
+  const resolved: Inputs = { ...inputs };
+  const values = new Map<unknown, unknown>();
+  const uploaded: string[] = [];
+  for (const k of keys) {
+    const v = inputs[k]?.[0];
+    if (v == null || isFrameRef(v) || (cubes && isCubeValue(v))) continue;
+    const ref = await uploadFrame(v as FrameValue);
+    if (isSolError(ref)) return ref;
+    values.set(ref, v);
+    resolved[k] = [ref];
+    uploaded.push(k);
+  }
+  if (uploaded.length) resolved.uploaded = uploaded;
+  const out: Record<string, unknown> = body(resolved);
+  const refs = keys.map((k) => resolved[k]?.[0]).filter(isFrameRef);
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (values.has(v)) out[k] = values.get(v);
+    else if (isFrameRef(v)) out[k] = relinked(v, refs);
+  }
+  return out as O;
+}
+
+/** A plan the body extended from an input ref, its leading ops that ref's own objects: the backend reuses a flushed
+ *  prefix by its ops' identity. */
+function relinked(out: FrameRef, from: readonly FrameRef[]): FrameRef {
+  const src = from.find((r) => r.__frameRef === out.__frameRef && r.__plan.length < out.__plan.length);
+  return src ? { __frameRef: out.__frameRef, __plan: [...src.__plan, ...out.__plan.slice(src.__plan.length)] } : out;
+}
+
+type LazyOut = FrameRef | FrameValue | CubeValue | SolError | null;
+
+/** A lazy verb's pass: its body over refs; a Cube's answer is the body's own, which it showed, a frame's is emitted. */
+async function lazyPass(node: FrameVerbNode & { body(inputs: Inputs): { frame: LazyOut } }, inputs: Inputs): Promise<{ frame: LazyOut }> {
+  const gen = beginPass(node);
+  const out = await planOnBody(inputs, ["frame"], (i) => node.body(i));
+  if (isSolError(out)) return emitFrame(node, gen, out);
+  if (isCubeValue(inputs.frame?.[0]) && out.frame != null) return { frame: out.frame };
+  return emitFrame(node, gen, out.frame as FrameRef | FrameValue | SolError | null);
+}
+
+/** `lazyPass` for a verb on a frame socket: a Cube there is uploaded as any other value. */
+async function lazyFramePass(node: FrameVerbNode & { body(inputs: Inputs): { frame: LazyOut } }, inputs: Inputs): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
+  const gen = beginPass(node);
+  const out = await planOnBody(inputs, ["frame"], (i) => node.body(i), false);
+  return emitFrame(node, gen, isSolError(out) ? out : out.frame as FrameRef | FrameValue | SolError | null);
 }
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
@@ -242,9 +292,11 @@ export class DistinctNode extends ClassicPreset.Node {
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
   async data(inputs: { frame?: unknown[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    if (isCubeValue(f)) { const r = runVerb(() => distinctCube(f, verbOnEngine)); this.cachedResult = r; return { frame: r }; }
-    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
+    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -286,15 +338,11 @@ export class HeadNode extends ClassicPreset.Node {
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
   async data(inputs: { frame?: unknown[]; rows?: number[]; to?: number[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const n = readRole<number>(this, "rows", inputs.rows);
-    // A blank To runs to the end of the Rows count, as an unset one does.
-    const to = this.op === "range" ? readRole<number | undefined>(this, "to", inputs.to) ?? n : 0;
-    const gen = beginPass(this);
-    if (f == null) return emitFrame(this, gen, null);
-    if (isCubeValue(f)) { const r = runVerb(() => sliceCube(f, this.op, n, this.op === "range" ? to : undefined)); this.cachedResult = r; return { frame: r }; }
-    if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
-    return emitFrame(this, gen, await runFrameUnary(f, { kind: "sliceRows", mode: this.op, n, to: this.op === "range" ? to : undefined }));
+    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -324,11 +372,11 @@ export class SortFrameNode extends ClassicPreset.Node {
   columnPickers(): ColumnPickerSpec[] { return [{ key: "column", frameInput: "frame" }]; }
 
   async data(inputs: { frame?: unknown[]; column?: string[] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const col = readInput(inputs.column, this.stringLiterals.column ?? "");
-    if (f == null || col === null) return emitFrame(this, beginPass(this), null);
-    if (isCubeValue(f)) { const r = runVerb(() => col.trim() === "" ? f : sortCube(f, col.trim(), this.dir, verbOnEngine)); this.cachedResult = r; return { frame: r }; }
-    return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
+    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -420,36 +468,14 @@ export class FilterFrameNode extends ClassicPreset.Node {
   async data(inputs: { frame?: unknown[]; [k: string]: unknown[] | undefined }) {
     const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const gen = beginPass(this);
-    if (f == null) return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
-    const conditions: FilterCond[] = [];
-    for (const [colKey, valKey] of this.valuePairKeys()) {
-      const id = colKey.slice(6);
-      const colRaw = readConditionValue(inputs[colKey], this.stringLiterals[colKey]);
-      const cfg = this.condConfig[id];
-      const op = cfg?.op ?? "gt";
-      const val = readConditionValue(inputs[valKey], this.stringLiterals[valKey]);
-      const valueless = VALUELESS_FILTER_OPS.has(op);
-      const col = colRaw.trim();
-      if (col === "" || (!valueless && val.trim() === "")) continue;
-      conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
-    }
-    if (isCubeValue(f)) {
-      const kept = runVerb(() => filterCube(f, this.combine, conditions, false, verbOnEngine));
-      const dropped = runVerb(() => filterCube(f, this.combine, conditions, true, verbOnEngine));
-      this.cachedResult = kept;
-      return { frame: kept, dropped };
-    }
-    const listOp = conditions.find((c) => LIST_FILTER_OPS.has(c.op));
-    if (listOp) {
-      const err = solError("#SHAPE!", `${listOp.op} needs a list column. Connect a cube, not a frame`);
-      return { ...(await emitFrame(this, gen, err)), dropped: this.publishDropped(gen, err) };
-    }
-    if (conditions.length === 0) {
-      return { ...(await emitFrame(this, gen, await passFrame(f))), dropped: this.publishDropped(gen, null) };
-    }
-    const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
-    const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
-    return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
+    const out = await planOnBody({ ...inputs, frame: [f] }, ["frame"], (i) => this.body(i));
+    if (isSolError(out)) return { ...(await emitFrame(this, gen, out)), dropped: this.publishDropped(gen, out) };
+    if (isCubeValue(f)) return out as { frame: CubeValue | SolError; dropped: CubeValue | SolError };
+    return { ...(await emitFrame(this, gen, out.frame as FrameRef | FrameValue | SolError | null)), dropped: this.publishDropped(gen, out.dropped as FrameRef | FrameValue | SolError | null) };
+  }
+
+  body(inputs: Inputs): { frame: LazyOut; dropped: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut; dropped: LazyOut };
   }
 }
 
@@ -565,17 +591,11 @@ export class ColumnsNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: unknown[]; columns?: string[][] }) {
-    const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const cols = readColumnList(inputs.columns);
-    const gen = beginPass(this);
-    if (f == null || cols === null) return emitFrame(this, gen, null);
-    if (isCubeValue(f)) {
-      const r = runVerb(() => (this.op === "keep" && cols.length === 0 ? f : selectCubeColumns(f, cols, this.op === "drop" ? "drop" : "keep")));
-      this.cachedResult = r;
-      return { frame: r };
-    }
-    if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
-    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await passFrame(f));
+    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0] ?? null)] });
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -636,6 +656,16 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
     const raw = rowVerbInput(inputs.frame?.[0]);
+    if (isCubeValue(raw) || this.totalDepth !== 0) return this.flatData(raw, inputs);
+    return lazyPass(this, { ...inputs, frame: [raw] }) as Promise<{ frame: FrameRef | FrameValue | SolError | null }>;
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
+  }
+
+  /** A Cube flattened to the columns it groups, and the totals, which pivot the frame's cells, stay here. */
+  private async flatData(raw: FrameInput | CubeValue | null, inputs: { keys?: string[][]; column?: string[] }) {
     const keys = readColumnList(inputs.keys);
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     if (raw == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
@@ -861,11 +891,11 @@ export class UnpivotNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; idColumns?: string[][]; valueColumns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const ids = readColumnList(inputs.idColumns);
-    const vals = readColumnList(inputs.valueColumns);
-    if (f == null || ids === null || vals === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await passFrame(f));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1065,16 +1095,11 @@ export class RenameNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    // Read raw, not through readColumnList: `from` and `to` pair by index, so dropping a cell shifts the pairing.
-    const from = readInput(inputs.from, [] as string[]);
-    const to = readInput(inputs.to, [] as string[]);
-    if (f == null || from === null || to === null) return emitFrame(this, beginPass(this), null);
-    const map: Record<string, string> = {};
-    for (let i = 0; i < Math.min(from.length, to.length); i++) {
-      if (from[i] && to[i]) map[from[i]] = to[i];
-    }
-    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await passFrame(f));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1109,14 +1134,11 @@ export class SplitColumnNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const columnRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const delimiter = readInput(inputs.delimiter, this.stringLiterals.delimiter ?? "");
-    const into = readColumnList(inputs.into);
-    if (f == null || columnRaw === null || delimiter === null || into === null) return emitFrame(this, beginPass(this), null);
-    const column = columnRaw.trim();
-    const gen = beginPass(this);
-    return emitFrame(this, gen, column ? await runFrameUnary(f, { kind: "splitColumn", column, delimiter, into }) : await passFrame(f));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1144,11 +1166,11 @@ export class AddIndexNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; start?: number[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const start = readRole<number>(this, "start", inputs.start);
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
-    if (f == null || nameRaw === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "addIndex", name: nameRaw.trim() || "Index", start }));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1181,11 +1203,11 @@ export class FillBlanksNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const colsRaw = readColumnList(inputs.columns);
-    if (f == null || colsRaw === null) return emitFrame(this, beginPass(this), null);
-    const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "fillBlanks", columns, dir: this.dir }));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1223,12 +1245,11 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const find = readFilterValue(inputs.find, this.stringLiterals.find ?? "");
-    const replace = readFilterValue(inputs.replace, this.stringLiterals.replace ?? "");
-    if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "replaceValues", column, find, replaceWith: replace, mode: this.mode }));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1260,14 +1281,11 @@ export class MergeColumnsNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const colsRaw = readColumnList(inputs.columns);
-    const separator = readInput(inputs.separator, this.stringLiterals.separator ?? "");
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (f == null || colsRaw === null || separator === null || name === null) return emitFrame(this, beginPass(this), null);
-    const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    const gen = beginPass(this);
-    return emitFrame(this, gen, columns.length < 2 ? await passFrame(f) : await runFrameUnary(f, { kind: "mergeColumns", columns, separator, name }));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -1330,9 +1348,11 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
   }
 
   async data(inputs: { frame?: (FrameInput | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (f == null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "dropBlankRows", mode: this.mode }));
+    return lazyFramePass(this, inputs);
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }
 
@@ -2119,83 +2139,24 @@ export class GetColumnNode extends ClassicPreset.Node {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
+  /** A ref's column is read from the backend first, and the body reads it as `column`: one column, an error or none. */
   data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
     const gen = ++this._gen;
     const f = inputs.frame?.[0] ?? null;
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
-    if (isCubeValue(f)) {
-      const cc = f.columns.find((c) => c.name === name);
-      if (!cc) { this.cachedResult = null; return { values: null }; }
-      for (const cell of cc.cells) {
-        if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
-          this.cachedResult = null;
-          return { values: solError("#SHAPE!", `"${name}" has list or table cells; Get Column reads a scalar column`) };
-        }
-      }
-      return { values: this.readColumn(inferColumn(name, cc.cells)) };
-    }
-    const fr: FrameInput = isFrameValue(f) || isFrameRef(f) ? f : widenToFrame(f);
+    if (!isFrameRef(f) || typeof name !== "string" || name.trim() === "") return this.body(inputs);
     // The engine awaits a promise-returning data(); the cast keeps the sync signature.
-    if (isFrameRef(fr)) {
-      return (async () => {
-        const col = await materialize(readRefColumn(fr, name));
-        if (gen !== this._gen) return { values: null };
-        if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
-        if (!col) { this.cachedResult = null; return { values: null }; }
-        return { values: this.readColumn(col) };
-      })() as unknown as { values: GetColumnValues };
-    }
-    const col = columnOnCore(fr, name);
-    if (!col) { this.cachedResult = null; return { values: null }; }
-    return { values: this.readColumn(col) };
+    return (async () => {
+      const col = await materialize(readRefColumn(f, name));
+      if (gen !== this._gen) return { values: null };
+      return this.body({ ...inputs, column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
+    })() as unknown as { values: GetColumnValues };
   }
 
-  private readColumn(col: FrameColumn): GetColumnValues {
-    if (this.readAs === "text") {
-      // Format, don't String(): a date column must read as date text, not serials.
-      const out = col.values.map((v) => {
-        const c = formatFrameCell(col.type, v);
-        return c == null ? "" : String(c);
-      });
-      this.cachedResult = out;
-      return out;
-    }
-    if (this.readAs === "logical") {
-      // Shares coerceLogical with Cast to Boolean so the two parse identically.
-      const out = col.values.map((v) =>
-        v === null ? null : isSolError(v) ? v : logicalOrTypeError(v, `Get Column "${col.name}"`),
-      );
-      this.cachedResult = out;
-      return out;
-    }
-    const colUnit = this.readAs === "number" && col.unit ? col.unit : undefined;
-    const out = col.values.map((v) => {
-      if (v === null) return null; // blank stays null, not NaN
-      if (typeof v === "number") return colUnit ? (tagFrameCellUnit(v, colUnit) as number | UnitCell) : v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      if (isSolError(v)) return v;
-      if (typeof v === "string") {
-        // Text reads as a Frame cell of the read type does ([[D93]] oneTextReading).
-        const n = coerceFrameCell(this.readAs === "date" ? "date" : "number", v) as number | SolError | null;
-        if (n === null || isSolError(n)) return n;
-        return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
-      }
-      return NaN;
-    });
-    this.cachedResult = out;
-    return out;
+  body(inputs: Record<string, unknown[] | undefined>): { values: GetColumnValues } {
+    return nodeOnCore(this, inputs) as { values: GetColumnValues };
   }
 }
-
-/** `getColumn` with the name resolved on the core, which reads the names alone. */
-function columnOnCore(f: FrameValue, name: string): FrameColumn | null {
-  const r = frameFnOnCore("getColumn", [namesOnly(f)], [name]);
-  if (!r || "frame" in r) return getColumn(f, name);
-  return typeof r.value === "number" ? f.columns[r.value] : null;
-}
-
-const namesOnly = (f: FrameValue): FrameValue => ({ __frame: true, columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) });
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
 
@@ -2867,29 +2828,10 @@ export class WindowNode extends ClassicPreset.Node {
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const f = rowVerbInput(inputs.frame?.[0]);
-    const keys = readColumnList(inputs.keys);
-    const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
-    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const n = readRole<number>(this, "n", inputs.n);
-    if (f == null || keys === null || orderBy === null || column === null || name === null) return emitFrame(this, beginPass(this), null);
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) {
-      if (isCubeValue(f)) { this.cachedResult = f; return { frame: f }; }
-      return emitFrame(this, beginPass(this), await passFrame(f));
-    }
-    const as = this.outColumnName(name, column);
-    if (isCubeValue(f)) {
-      const r = runVerb(() => windowCube(f, {
-        partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
-        column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
-      }, verbOnEngine));
-      this.cachedResult = r;
-      return { frame: r };
-    }
-    return emitFrame(this, beginPass(this), await runFrameUnary(f, {
-      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
-      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
-    }));
+    return lazyPass(this, { ...inputs, frame: [rowVerbInput(inputs.frame?.[0])] });
+  }
+
+  body(inputs: Inputs): { frame: LazyOut } {
+    return nodeOnCore(this, inputs) as { frame: LazyOut };
   }
 }

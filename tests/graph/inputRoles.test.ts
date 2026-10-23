@@ -32,11 +32,12 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     const rust = readdirSync(rustDir).filter((f) => f.endsWith(".rs")).map((f) => readFileSync(`${rustDir}/${f}`, "utf8")).join("\n");
     const seen = new Set<string>();
     for (const leaf of FLAT_CATALOG.values()) {
-      let cls: { name: string; inputRoles?: Record<string, unknown>; prototype: { data?: () => unknown } };
+      let cls: { name: string; inputRoles?: Record<string, unknown>; prototype: { data?: () => unknown; body?: () => unknown } };
       try { cls = (leaf.create() as { constructor: typeof cls }).constructor; } catch { continue; }
       if (!cls?.inputRoles || seen.has(cls.name)) continue;
       seen.add(cls.name);
-      const onCore = String(cls.prototype.data).includes("nodeOnCore");
+      // A lazy verb's data() is a shell around its body.
+      const onCore = String(cls.prototype.body ?? cls.prototype.data).includes("nodeOnCore");
       for (const key of Object.keys(cls.inputRoles)) {
         if (onCore) expect(rust, `${cls.name}.${key}`).toMatch(new RegExp(`\\b(read_role|setting|setting_or|required|required_picks|rounded_setting|role_value)\\(c, "${key}"`));
         else expect(src, `${cls.name}.${key}`).toMatch(new RegExp(`readRole(<[^>]*>)?\\(this, "${key}"`));

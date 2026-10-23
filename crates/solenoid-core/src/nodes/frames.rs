@@ -1894,7 +1894,7 @@ fn cell_column_unit(u: &crate::unit_dims::UnitCell) -> Json {
 }
 
 /// `matrixCellsFromList`: each unit cell as the number it shows, and the one unit they share, if they do.
-fn matrix_cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
+pub(crate) fn matrix_cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
     let mags = cells.iter().map(|v| if let V::Unit(u) = v { V::Num(crate::unit_expression::display_magnitude_of(u)) } else { v.clone() }).collect();
     let mut unit: Option<&crate::unit_dims::UnitCell> = None;
     for v in cells {
@@ -1916,7 +1916,7 @@ fn unit_display(unit: Option<&Json>) -> Option<&str> {
     unit?.get("display").and_then(Json::as_str).filter(|d| !d.is_empty())
 }
 
-fn affine_display(d: &str) -> bool {
+pub(crate) fn affine_display(d: &str) -> bool {
     crate::unit_catalog::fc_unit_to_unit(d).and_then(|u| u.offset).is_some_and(|o| o != 0.0)
 }
 

@@ -3,7 +3,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame, frameToCube,
+  isCubeValue, formatFrameCell, selectCubeRows, flatCubeToFrame, frameToCube,
 } from "./frame";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { isUnitCell, withDisplay, sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
@@ -295,115 +295,6 @@ export function filterRowsMulti(f: FrameValue, combine: FilterCombine, condition
     if (kept !== complement) keep.push(i);
   }
   return reorderRows(f, keep);
-}
-
-// ─── Cube row verbs ───────────────────────────────────────────────────────────
-
-export function encodeCubeCell(v: CubeCell): unknown {
-  if (Array.isArray(v)) return ["l", v.map(encodeCubeCell)];
-  if (isCubeValue(v)) return ["c", v.columns.map((c) => [c.name, c.cells.map(encodeCubeCell)])];
-  if (isFrameValue(v)) return ["f", v.columns.map((c) => [c.name, c.values.map(encodeCell)])];
-  return encodeCell(v as FrameCell);
-}
-
-function cubeScalarColumn(cube: CubeValue, name: string): FrameColumn {
-  const col = cube.columns.find((c) => c.name === name);
-  if (!col) throw solError("#REF!", `column "${name}" not found`);
-  for (const cell of col.cells) {
-    if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
-      throw solError("#SHAPE!", `"${name}" has list or table cells; this needs a scalar column`);
-    }
-  }
-  // Read as a Frame reads it, so a declared type, unit and format hold.
-  const f = flatCubeToFrame(cube, [name]);
-  if (isSolError(f)) throw f;
-  return f.columns[0];
-}
-
-export function passesListFilter(cell: CubeCell, op: FilterOp, value: FrameCell, matchCase: boolean): boolean {
-  const items = Array.isArray(cell) ? cell : cell === null ? [] : [cell];
-  if (op === "listEmpty") return items.length === 0;
-  const fold = (s: string) => (matchCase ? s : s.toLowerCase());
-  const has = (needle: string) =>
-    items.some((it) => !Array.isArray(it) && !isFrameValue(it) && !isCubeValue(it) && it !== null && fold(String(it)) === fold(needle));
-  if (op === "listContains") return has(String(value ?? "").trim());
-  const needles = String(value ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
-  if (op === "listContainsAny") return needles.some(has);
-  if (op === "listContainsAll") return needles.every(has);
-  return false;
-}
-
-/** Runs a frame verb over a frame the cube verb built from its scalar columns, on the core ([[D99]] rustIsSpec); null
- *  leaves it to the TS. The cube verbs read the rows it leaves and carry their nested cells along. */
-export type VerbOnCore = (flat: FrameValue, op: FrameOp) => FrameValue | null;
-
-/** The column that numbers a cube's rows in the frame a cube verb hands the core. */
-const CUBE_ROW = "\u0000row";
-
-/** The source rows `op` leaves, in its order, run on the core over `cols` beside the row numbers. */
-function cubeRowsOnCore(onCore: VerbOnCore | undefined, rows: number, cols: FrameColumn[], op: FrameOp): number[] | null {
-  if (!onCore) return null;
-  const flat = frame([{ name: CUBE_ROW, type: "number", values: Array.from({ length: rows }, (_, i) => i) }, ...cols]);
-  const out = onCore(flat, op);
-  const at = out?.columns.find((c) => c.name === CUBE_ROW);
-  return at ? (at.values as number[]) : null;
-}
-
-export function sortCube(cube: CubeValue, by: string, dir: "asc" | "desc", onCore?: VerbOnCore): CubeValue {
-  const col = cubeScalarColumn(cube, by);
-  const rows = cubeRowsOnCore(onCore, cubeRowCount(cube), [col], { kind: "sort", by, dir })
-    ?? sortedIndexOrder(cubeRowCount(cube), (i) => cellAt(col, i), col.type, dir);
-  return selectCubeRows(cube, rows);
-}
-
-export function distinctCube(cube: CubeValue, onCore?: VerbOnCore): CubeValue {
-  const key = (i: number) => JSON.stringify(cube.columns.map((c) => encodeCubeCell(c.cells[i] ?? null)));
-  const n = cubeRowCount(cube);
-  const KEY = "\u0000key";
-  const keys: FrameColumn = { name: KEY, type: "string", values: Array.from({ length: n }, (_, i) => key(i)) };
-  const rows = cubeRowsOnCore(onCore, n, [keys], { kind: "distinct", columns: [KEY] }) ?? distinctIndexOrder(n, key);
-  return selectCubeRows(cube, rows);
-}
-
-export function sliceCube(cube: CubeValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): CubeValue {
-  const [start, end] = sliceBounds(cubeRowCount(cube), mode, n, to);
-  return selectCubeRows(cube, Array.from({ length: end - start }, (_, k) => start + k));
-}
-
-export function filterCube(
-  cube: CubeValue, combine: FilterCombine, conditions: readonly FilterCond[], complement = false, onCore?: VerbOnCore,
-): CubeValue {
-  if (conditions.length === 0) return complement ? selectCubeRows(cube, []) : cube;
-  // A list condition reads nested cells, which only the TS holds.
-  if (!conditions.some((c) => LIST_FILTER_OPS.has(c.op))) {
-    const names = [...new Set(conditions.map((c) => c.column))];
-    const cols = names.map((n) => cubeScalarColumn(cube, n));
-    conditions.forEach((c) => requireTextColumn(c.op, cols[names.indexOf(c.column)].type, c.column));
-    const rows = cubeRowsOnCore(onCore, cubeRowCount(cube), cols, { kind: "filterMulti", combine, conditions: [...conditions], complement });
-    if (rows) return selectCubeRows(cube, rows);
-  }
-  const resolved = conditions.map((c) => {
-    if (LIST_FILTER_OPS.has(c.op)) {
-      const raw = cube.columns.find((cc) => cc.name === c.column);
-      if (!raw) throw solError("#REF!", `column "${c.column}" not found`);
-      return { list: true as const, cells: raw.cells };
-    }
-    const col = cubeScalarColumn(cube, c.column);
-    requireTextColumn(c.op, col.type, c.column);
-    return { list: false as const, col, pass: compileFilter(c.op, c.value, col.type, c.matchCase ?? false) };
-  });
-  const keep: number[] = [];
-  for (let i = 0, n = cubeRowCount(cube); i < n; i++) {
-    const passOne = (c: FilterCond, j: number) => {
-      const r = resolved[j];
-      return r.list
-        ? passesListFilter(r.cells[i] ?? null, c.op, c.value, c.matchCase ?? false)
-        : r.pass(cellAt(r.col, i));
-    };
-    const kept = combine === "and" ? conditions.every(passOne) : conditions.some(passOne);
-    if (kept !== complement) keep.push(i);
-  }
-  return selectCubeRows(cube, keep);
 }
 
 function modeOf(nums: readonly number[]): number {
@@ -2675,30 +2566,6 @@ const WINDOW_FNS: ReadonlySet<string> = new Set<WindowFn>([
   "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
   "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
 ]);
-
-export function selectCubeColumns(cube: CubeValue, names: readonly string[], op: "keep" | "drop"): CubeValue {
-  if (op === "drop") return cubeFromColumns(cube.columns.filter((c) => !names.includes(c.name)));
-  return cubeFromColumns(names.map((n) => {
-    const c = cube.columns.find((cc) => cc.name === n);
-    if (!c) throw solError("#REF!", `column "${n}" not found`);
-    return c;
-  }));
-}
-
-export function windowCube(cube: CubeValue, spec: WindowSpec, onCore?: VerbOnCore): CubeValue {
-  const read = [...new Set([...spec.partitionBy, spec.orderBy, spec.column].filter((c): c is string => !!c))];
-  // Carries the row count when the function reads no column (row_number).
-  const ROW = "\u0000row";
-  const rows = cubeRowCount(cube);
-  const flat: FrameValue = {
-    __frame: true,
-    columns: [{ name: ROW, type: "number", values: Array.from({ length: rows }, (_, i) => i) }, ...read.map((n) => cubeScalarColumn(cube, n))],
-  };
-  const outCols = (onCore?.(flat, { kind: "window", ...spec }) ?? windowFrame(flat, spec)).columns;
-  const outCol = outCols[outCols.length - 1];
-  const kept = cube.columns.filter((c) => c.name !== outCol.name);
-  return cubeFromColumns([...kept, { name: outCol.name, cells: cubeCellsFromColumn(outCol), type: outCol.type }]);
-}
 
 export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   if (!WINDOW_FNS.has(spec.fn)) throw solError("#VALUE!", `unknown window function "${spec.fn}"`);

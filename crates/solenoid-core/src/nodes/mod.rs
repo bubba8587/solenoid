@@ -27,6 +27,7 @@ mod stats;
 mod text;
 mod units;
 mod values;
+mod verbs;
 mod visual;
 mod widgets;
 
@@ -228,6 +229,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| formula::run(kind, c))
         .or_else(|| sched::run(kind, c))
         .or_else(|| docs::run(kind, c))
+        .or_else(|| verbs::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
