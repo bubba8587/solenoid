@@ -207,11 +207,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 crate::frame_fns::FrameOut::Bail => Ok(json!({ "bail": true })),
             }
         }
-        "engine_external_names" => {
-            crate::eval::set_external(parse::<Vec<String>>(args, "names")?);
-            crate::eval::forget_formulas();
-            Ok(Json::Null)
-        }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
         "engine_formula_names" => {
             let src = parse::<Option<String>>(args, "src")?.unwrap_or_default();
@@ -366,13 +361,8 @@ pub enum CallReply {
 fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Option<crate::excel_functions::V> {
     use crate::excel_functions::{call_function, V};
     let upper = name.to_uppercase();
-    // A name the core has no body for may be a pack's JS, which the TS calls; anything else is unknown.
     if crate::eval::traits(&upper).is_none() && !crate::excel_functions::is_ported(name) {
-        return if crate::eval::is_external(&upper) {
-            None
-        } else {
-            Some(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))))
-        };
+        return Some(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))));
     }
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
         return None;

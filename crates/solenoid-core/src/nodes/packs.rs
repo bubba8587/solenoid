@@ -84,7 +84,7 @@ fn null_or(v: Option<f64>) -> V {
 // ─── Electrical ────────────────────────────────────────────────────────────────
 
 /// `parallelCombine`: the first error, else the reciprocal of the reciprocals' sum over the numbers.
-fn parallel_combine_of(cells: &[V]) -> V {
+pub(crate) fn parallel_combine_of(cells: &[V]) -> V {
     if let Some(e) = cells.iter().find(|v| v.is_sol_error()) {
         return e.clone();
     }
@@ -114,7 +114,7 @@ fn parallel_combine(c: &mut Call) -> Answer {
 const E24: [f64; 24] = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
 
 /// `E_SERIES[op]`: E3 to E24 are IEC 60063's published tables; E48 and E96 are generated.
-fn e_series_table(op: &str) -> Option<Vec<f64>> {
+pub(crate) fn e_series_table(op: &str) -> Option<Vec<f64>> {
     let generated = |n: f64| (0..n as usize).map(|k| to_precision(pow(10.0, k as f64 / n), 3)).collect();
     Some(match op {
         "E3" => vec![1.0, 2.2, 4.7],
@@ -128,7 +128,7 @@ fn e_series_table(op: &str) -> Option<Vec<f64>> {
 }
 
 /// `nearestESeries`: the series value nearest on a log scale, in the value's decade or either neighbour.
-fn nearest_e_series(value: f64, table: &[f64]) -> f64 {
+pub(crate) fn nearest_e_series(value: f64, table: &[f64]) -> f64 {
     let decade = log10(value).floor();
     let (mut best, mut best_dist) = (f64::NAN, f64::INFINITY);
     for d in [decade - 1.0, decade, decade + 1.0] {
@@ -164,7 +164,7 @@ fn e_series(c: &mut Call) -> Answer {
 }
 
 /// `AWG_AMPACITY_75C`.
-fn awg_ampacity(n: f64) -> Option<f64> {
+pub(crate) fn awg_ampacity(n: f64) -> Option<f64> {
     const TABLE: [(f64, f64); 13] = [
         (-3.0, 230.0), (-2.0, 200.0), (-1.0, 175.0), (0.0, 150.0), (1.0, 130.0), (2.0, 115.0), (3.0, 100.0),
         (4.0, 85.0), (6.0, 65.0), (8.0, 50.0), (10.0, 35.0), (12.0, 25.0), (14.0, 20.0),
@@ -203,51 +203,52 @@ fn resistor_code(c: &mut Call) -> Answer {
         V::Str(s) => Some(s.to_string()),
         _ => None,
     };
-    let named = |b: &Option<String>| b.clone().unwrap_or_else(|| "undefined".into());
-    let digit = |s: &str| ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"].iter().position(|d| *d == s);
     let five = c.field_str("bands", "4") == "5";
     let digits = if five { vec![band("b1"), band("b2"), band("b3")] } else { vec![band("b1"), band("b2")] };
-    let decoded = (|| {
-        let mut value = 0.0;
-        for d in &digits {
-            let Some(v) = d.as_deref().and_then(digit) else {
-                return Err(err(ErrorCode::Value, format!("\"{}\" is not a digit band color", named(d))));
-            };
-            value = value * 10.0 + v as f64;
-        }
-        let mult = band("mult");
-        let m = match mult.as_deref() {
-            Some("gold") => 0.1,
-            Some("silver") => 0.01,
-            Some(s) => match digit(s) {
-                Some(k) => [1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9][k],
-                None => return Err(err(ErrorCode::Value, format!("\"{}\" is not a multiplier band color", named(&mult)))),
-            },
-            None => return Err(err(ErrorCode::Value, "\"undefined\" is not a multiplier band color")),
-        };
-        let tol = band("tol");
-        let t = match tol.as_deref() {
-            Some("brown") => 1.0,
-            Some("red") => 2.0,
-            Some("green") => 0.5,
-            Some("blue") => 0.25,
-            Some("violet") => 0.1,
-            Some("gray") => 0.05,
-            Some("gold") => 5.0,
-            Some("silver") => 10.0,
-            _ => return Err(err(ErrorCode::Value, format!("\"{}\" is not a tolerance band color", named(&tol)))),
-        };
-        Ok((value * m, t))
-    })();
-    let (ohms, tol) = match decoded {
+    let (ohms, tol) = match decode_resistor(&digits, band("mult"), band("tol")) {
         Ok((o, t)) => (V::Num(o), V::Num(t)),
         Err(e) => (e.clone(), e),
     };
     shown(c, &[("ohms", "cachedOhms", ohms), ("tolerance", "cachedTol", tol)])
 }
 
+/// `decodeResistor`: the ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
+/// colour; a band left out reads as `undefined`.
+pub(crate) fn decode_resistor(digits: &[Option<String>], mult: Option<String>, tol: Option<String>) -> Result<(f64, f64), V> {
+    let named = |b: &Option<String>| b.clone().unwrap_or_else(|| "undefined".into());
+    let digit = |s: &str| ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"].iter().position(|d| *d == s);
+    let mut value = 0.0;
+    for d in digits {
+        let Some(v) = d.as_deref().and_then(digit) else {
+            return Err(err(ErrorCode::Value, format!("\"{}\" is not a digit band color", named(d))));
+        };
+        value = value * 10.0 + v as f64;
+    }
+    let m = match mult.as_deref() {
+        Some("gold") => 0.1,
+        Some("silver") => 0.01,
+        Some(s) => match digit(s) {
+            Some(k) => [1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9][k],
+            None => return Err(err(ErrorCode::Value, format!("\"{}\" is not a multiplier band color", named(&mult)))),
+        },
+        None => return Err(err(ErrorCode::Value, "\"undefined\" is not a multiplier band color")),
+    };
+    let t = match tol.as_deref() {
+        Some("brown") => 1.0,
+        Some("red") => 2.0,
+        Some("green") => 0.5,
+        Some("blue") => 0.25,
+        Some("violet") => 0.1,
+        Some("gray") => 0.05,
+        Some("gold") => 5.0,
+        Some("silver") => 10.0,
+        _ => return Err(err(ErrorCode::Value, format!("\"{}\" is not a tolerance band color", named(&tol)))),
+    };
+    Ok((value * m, t))
+}
+
 /// `ELEMENTS`: each element's symbol and standard atomic weight, by atomic number.
-const ELEMENTS: [(&str, f64); 118] = [
+pub(crate) const ELEMENTS: [(&str, f64); 118] = [
     ("H", 1.008), ("He", 4.002602), ("Li", 6.94), ("Be", 9.0121831), ("B", 10.81), ("C", 12.011), ("N", 14.007), ("O", 15.999),
     ("F", 18.998403163), ("Ne", 20.1797), ("Na", 22.98976928), ("Mg", 24.305), ("Al", 26.9815385), ("Si", 28.085),
     ("P", 30.973761998), ("S", 32.06), ("Cl", 35.45), ("Ar", 39.948), ("K", 39.0983), ("Ca", 40.078), ("Sc", 44.955908),
@@ -268,7 +269,7 @@ const ELEMENTS: [(&str, f64); 118] = [
 ];
 
 /// `ELEMENT_BY_SYMBOL`: the atomic number and weight.
-fn element(symbol: &str) -> Option<(f64, f64)> {
+pub(crate) fn element(symbol: &str) -> Option<(f64, f64)> {
     ELEMENTS.iter().position(|(s, _)| *s == symbol).map(|i| ((i + 1) as f64, ELEMENTS[i].1))
 }
 
@@ -378,7 +379,7 @@ fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
 }
 
 /// `molarMass`: each hydrate segment's leading multiplier times its formula's mass.
-fn molar_mass(input: &str) -> V {
+pub(crate) fn molar_mass(input: &str) -> V {
     let s: Vec<u16> = input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
     if s.is_empty() {
         return err(ErrorCode::Value, "Type a chemical formula, such as H2O");
@@ -413,9 +414,18 @@ fn molar_mass_node(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), result)])
 }
 
-/// `PHYS_CONSTANTS`: CODATA 2018, SI units.
 fn physics_constant(c: &mut Call) -> Answer {
-    let v = match c.field_str("op", "c") {
+    let op = c.field_str("op", "c");
+    let v = match physics_constant_value(op) {
+        Some(v) => V::Num(v),
+        None => super::err(crate::error_value::ErrorCode::Value, format!("Unknown constant \"{op}\"")),
+    };
+    Ok(vec![("value".into(), v)])
+}
+
+/// `PHYS_CONSTANTS`: CODATA 2018, SI units.
+pub(crate) fn physics_constant_value(op: &str) -> Option<f64> {
+    Some(match op {
         "c" => 299792458.0,
         "G" => 6.67430e-11,
         "h" => 6.62607015e-34,
@@ -438,9 +448,8 @@ fn physics_constant(c: &mut Call) -> Answer {
         "rgas" => 8.314462618,
         "sigma" => 5.670374419e-8,
         "wien" => 2.897771955e-3,
-        op => return Ok(vec![("value".into(), super::err(crate::error_value::ErrorCode::Value, format!("Unknown constant \"{op}\"")))]),
-    };
-    Ok(vec![("value".into(), V::Num(v))])
+        _ => return None,
+    })
 }
 // ─── Astronomy ─────────────────────────────────────────────────────────────────
 
@@ -476,7 +485,7 @@ fn julian_day(serial: f64) -> f64 {
 }
 
 /// `solarPosition`: elevation, azimuth and declination for a UTC serial at a latitude and longitude.
-fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
+pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
     let (declination, eq_of_time) = solar_basis(julian_day(serial));
     let minutes_utc = ((serial % 1.0) + 1.0) % 1.0 * 1440.0;
     let true_solar_time = (((minutes_utc + eq_of_time + 4.0 * lon) % 1440.0) + 1440.0) % 1440.0;
@@ -495,7 +504,7 @@ fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
 }
 
 /// `sunTimes`: sunrise and sunset serials (None in polar day or night) and the hours of daylight.
-fn sun_times(serial: f64, lat: f64, lon: f64) -> (Option<f64>, Option<f64>, f64) {
+pub(crate) fn sun_times(serial: f64, lat: f64, lon: f64) -> (Option<f64>, Option<f64>, f64) {
     let day = serial.floor();
     let (declination, eq_of_time) = solar_basis(julian_day(day + 0.5));
     let cos_ha = cos(RAD * 90.833) / (cos(RAD * lat) * cos(RAD * declination)) - tan(RAD * lat) * tan(RAD * declination);
@@ -510,7 +519,7 @@ fn sun_times(serial: f64, lat: f64, lon: f64) -> (Option<f64>, Option<f64>, f64)
     (Some(day + noon - (ha * 4.0) / 1440.0), Some(day + noon + (ha * 4.0) / 1440.0), (ha * 8.0) / 60.0)
 }
 
-fn lat_lon_error(lat: f64, lon: f64) -> Option<V> {
+pub(crate) fn lat_lon_error(lat: f64, lon: f64) -> Option<V> {
     if lat < -90.0 || lat > 90.0 {
         return Some(domain("Latitude runs −90 to 90"));
     }
@@ -563,13 +572,16 @@ const NEW_MOON_EPOCH_SERIAL: f64 = 36531.7597;
 fn moon_phase_node(c: &mut Call) -> Answer {
     let [phase, age, illumination] = match number(&first(c, "when")) {
         None => [V::Null, V::Null, V::Null],
-        Some(serial) => {
-            let days = serial - NEW_MOON_EPOCH_SERIAL;
-            let phase = ((days / SYNODIC_MONTH) % 1.0 + 1.0) % 1.0;
-            [V::Num(phase), V::Num(phase * SYNODIC_MONTH), V::Num((1.0 - cos(2.0 * PI * phase)) / 2.0)]
-        }
+        Some(serial) => moon_phase_of(serial).map(V::Num),
     };
     shown(c, &[("phase", "cachedPhase", phase), ("age", "cachedAge", age), ("illumination", "cachedIllumination", illumination)])
+}
+
+/// `moonPhase`: the phase (0 new, 0.5 full), the age in days and the lit fraction at a serial.
+pub(crate) fn moon_phase_of(serial: f64) -> [f64; 3] {
+    let days = serial - NEW_MOON_EPOCH_SERIAL;
+    let phase = ((days / SYNODIC_MONTH) % 1.0 + 1.0) % 1.0;
+    [phase, phase * SYNODIC_MONTH, (1.0 - cos(2.0 * PI * phase)) / 2.0]
 }
 
 // ─── Thermodynamics ────────────────────────────────────────────────────────────
@@ -611,7 +623,7 @@ fn isa_bases() -> Vec<IsaBase> {
 }
 
 /// `standardAtmosphere`: temperature, pressure, density and the speed of sound at a geometric altitude.
-fn standard_atmosphere(z: f64) -> Result<[f64; 4], V> {
+pub(crate) fn standard_atmosphere(z: f64) -> Result<[f64; 4], V> {
     let h = (EARTH_R * z) / (EARTH_R + z);
     if h < -5000.0 || h > ISA_TOP {
         return Err(domain("The 1976 standard atmosphere is defined from −5 to 86 km"));
@@ -642,7 +654,7 @@ fn isa_atmosphere(c: &mut Call) -> Answer {
 }
 
 /// `ANTOINE[substance]`: log₁₀(p/mmHg) = A − B/(C + T°C).
-fn antoine_coefficients(substance: &str) -> Option<(f64, f64, f64)> {
+pub(crate) fn antoine_coefficients(substance: &str) -> Option<(f64, f64, f64)> {
     Some(match substance {
         "water" => (8.07131, 1730.63, 233.426),
         "ethanol" => (8.20417, 1642.89, 230.3),
@@ -657,7 +669,7 @@ fn antoine_coefficients(substance: &str) -> Option<(f64, f64, f64)> {
     })
 }
 
-const MMHG_TO_PA: f64 = 133.322387415;
+pub(crate) const MMHG_TO_PA: f64 = 133.322387415;
 
 fn antoine(c: &mut Call) -> Answer {
     let t = c.read_input("t", c.literal("t"));
@@ -677,7 +689,7 @@ fn antoine(c: &mut Call) -> Answer {
 // ─── Fluids ────────────────────────────────────────────────────────────────────
 
 /// `colebrookF`: fixed-point iteration on x = 1/√f from the Swamee–Jain seed.
-fn colebrook_f(re: f64, rr: f64) -> f64 {
+pub(crate) fn colebrook_f(re: f64, rr: f64) -> f64 {
     let mut x = 1.0 / (0.25 / pow(log10(rr / 3.7 + 5.74 / pow(re, 0.9)), 2.0)).sqrt();
     for _ in 0..100 {
         let next = -2.0 * log10(rr / 3.7 + (2.51 * x) / re);
@@ -703,7 +715,7 @@ fn colebrook(c: &mut Call) -> Answer {
 }
 
 /// `PIPE_ROUGHNESS`: absolute roughness ε in mm.
-fn pipe_roughness_mm(material: &str) -> Option<f64> {
+pub(crate) fn pipe_roughness_mm(material: &str) -> Option<f64> {
     Some(match material {
         "pvc" | "copper" => 0.0015,
         "stainless" => 0.015,
@@ -732,7 +744,7 @@ fn pipe_roughness(c: &mut Call) -> Answer {
 
 // ─── Health ────────────────────────────────────────────────────────────────────
 
-const ZONES: [(&str, f64, f64); 5] =
+pub(crate) const ZONES: [(&str, f64, f64); 5] =
     [("Z1 Recovery", 0.5, 0.6), ("Z2 Endurance", 0.6, 0.7), ("Z3 Tempo", 0.7, 0.8), ("Z4 Threshold", 0.8, 0.9), ("Z5 Maximum", 0.9, 1.0)];
 
 /// `hrZonesFrame`: a row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
@@ -774,10 +786,10 @@ fn hr_zones(c: &mut Call) -> Answer {
 
 // ─── Electromagnetic spectrum ──────────────────────────────────────────────────
 
-const LIGHT_SPEED: f64 = 299792458.0;
+pub(crate) const LIGHT_SPEED: f64 = 299792458.0;
 
 /// `emBand`: the band a wavelength in meters falls in, on the textbook boundaries.
-fn em_band(wavelength: f64) -> &'static str {
+pub(crate) fn em_band(wavelength: f64) -> &'static str {
     let nm = wavelength * 1e9;
     if wavelength >= 1.0 {
         "Radio"
@@ -916,7 +928,7 @@ fn is_angle(k: &str) -> bool {
 }
 
 /// A triangle's parts by `PART_KEYS` position, each given or not.
-type Parts = [Option<f64>; 6];
+pub(crate) type Parts = [Option<f64>; 6];
 
 struct Solved {
     parts: [f64; 6],
@@ -1025,15 +1037,15 @@ fn solve_triangle(g: &Parts) -> Result<Solved, V> {
 }
 
 /// `solveGivenParts`' answer: each part, the area, the perimeter, whether the parts agree, and the parts it solved.
-struct TriangleResult {
-    values: [V; 6],
+pub(crate) struct TriangleResult {
+    pub(crate) values: [V; 6],
     area: V,
     perimeter: V,
     valid: V,
     solved: Vec<usize>,
 }
 
-fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
+pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
     let done = |values: [V; 6], area: V, perimeter: V, valid: V, solved: Vec<usize>| TriangleResult { values, area, perimeter, valid, solved };
     if let Some(e) = cell_err {
         return done(std::array::from_fn(|_| e.clone()), e.clone(), e.clone(), e, Vec::new());

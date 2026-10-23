@@ -102,7 +102,7 @@ pub fn take_thrown() -> Option<SolError> {
 }
 
 /// The modules that answer their own names, beside `call_function`'s arms and the finance functions.
-const MODULES: [&[&str]; 6] = [crate::formulajs::NAMES, crate::fns_complex::NAMES, crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES, crate::fns_random::NAMES];
+const MODULES: [&[&str]; 7] = [crate::formulajs::NAMES, crate::fns_complex::NAMES, crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES, crate::fns_random::NAMES, crate::fns_packs::NAMES];
 
 /// Every function the core carries, for the conformance suites to tell a pending name from a ported one. A formula
 /// calling anything else runs on the TS.
@@ -161,31 +161,6 @@ fn clock() -> Option<Clock> {
 
 thread_local! {
     static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
-}
-
-/// What one calc reads beside its arguments, and what it has raised so far.
-pub struct CalcState {
-    clock: Option<Clock>,
-    row: Option<f64>,
-    thrown: Option<SolError>,
-    bailed: bool,
-}
-
-/// Takes the calc's state, leaving nothing raised, for a call made from inside it to start clean.
-pub fn save_calc_state() -> CalcState {
-    CalcState {
-        clock: clock(),
-        row: ROW_NUMBER.with(|r| r.get()),
-        thrown: THROWN.with(|t| t.borrow_mut().take()),
-        bailed: BAILED.with(|b| b.replace(false)),
-    }
-}
-
-pub fn restore_calc_state(s: CalcState) {
-    CLOCK.with(|k| k.set(s.clock));
-    ROW_NUMBER.with(|r| r.set(s.row));
-    THROWN.with(|t| *t.borrow_mut() = s.thrown);
-    BAILED.with(|b| b.set(s.bailed));
 }
 
 /// What a calc raised beside its answer. A bail throws too, and outranks the throw.
@@ -2633,6 +2608,7 @@ pub enum Route {
     Mod_fns_lists,
     Mod_fns_stats,
     Mod_fns_random,
+    Mod_fns_packs,
     Finance,
     None,
 }
@@ -2660,6 +2636,8 @@ pub fn route(name: &str) -> Route {
         Route::Mod_fns_stats
     } else if crate::fns_random::NAMES.contains(&name) {
         Route::Mod_fns_random
+    } else if crate::fns_packs::NAMES.contains(&name) {
+        Route::Mod_fns_packs
     } else if is_finance(name) {
         Route::Finance
     } else {
@@ -2702,6 +2680,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         Route::Mod_fns_lists => return crate::fns_lists::call(name, a),
         Route::Mod_fns_stats => return crate::fns_stats::call(name, a),
         Route::Mod_fns_random => return crate::fns_random::call(name, a),
+        Route::Mod_fns_packs => return crate::fns_packs::call(name, a),
         Route::Finance => return finance_function(name, a),
         Route::None => return V::Undef,
     };

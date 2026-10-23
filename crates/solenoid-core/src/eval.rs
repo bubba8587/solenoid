@@ -139,26 +139,6 @@ thread_local! {
         .collect();
 }
 
-thread_local! {
-    /// None until the TS first says: a fresh instance (after a trap) reads every name it doesn't know as possibly a
-    /// pack's, so the TS answers it rather than the core answering #NAME?.
-    static EXTERNAL: RefCell<Option<rustc_hash::FxHashSet<String>>> = RefCell::default();
-}
-
-/// The names the TS registry holds (packs register theirs at run time), which a formula may call back into.
-pub fn set_external(names: Vec<String>) {
-    EXTERNAL.with(|e| *e.borrow_mut() = Some(names.into_iter().map(|n| n.to_uppercase()).collect()));
-}
-
-pub fn is_external(name: &str) -> bool {
-    EXTERNAL.with(|e| e.borrow().as_ref().is_none_or(|names| names.contains(name)))
-}
-
-/// Whether the TS has said `name` is its own.
-pub fn listed_external(name: &str) -> bool {
-    EXTERNAL.with(|e| e.borrow().as_ref().is_some_and(|names| names.contains(name)))
-}
-
 /// The facts of an uppercased function name, if it is one.
 pub fn traits(name: &str) -> Option<Rc<Traits>> {
     TRAITS.with(|t| t.get(name).cloned())
@@ -773,16 +753,7 @@ impl Eval<'_> {
             });
             return V::Lambda(Rc::new(LambdaV { params, body: Some(body), env: env.clone(), ..Default::default() }));
         }
-        // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
-        let Some(t) = site.traits.as_deref() else {
-            // In wasm the TS is always there to ask, so a name the core doesn't know goes to it rather than to a list of
-            // its names that may lag the registry; it answers the #NAME? itself.
-            return if crate::external::HOSTED || is_external(name) {
-                self.call_external(name, &site, args, env)
-            } else {
-                V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")))
-            };
-        };
+        let Some(t) = site.traits.as_deref() else { return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))) };
         if let Some(r) = &t.refusal {
             return V::err(sol_error(r.code, r.message.as_str()));
         }
@@ -839,23 +810,6 @@ impl Eval<'_> {
             }
             self.route_call(name, t, one, settled)
         })
-    }
-
-    /// A pack's function: its arguments here, the call on the TS. The same whole column row after row is one call.
-    fn call_external(&self, name: &str, site: &Site, args: &[Ast], env: &Rc<Env>) -> V {
-        let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).collect();
-        let memo = self.row.is_some() && argv.iter().any(is_arr);
-        let key = args.as_ptr();
-        if memo {
-            if let Some(r) = self.memo.borrow().get(&key).and_then(|m| m.answers(name, &argv)) {
-                return r;
-            }
-        }
-        let Some(r) = crate::external::call(name, &site.empty, &argv) else { return crate::excel_functions::bail() };
-        if memo && !is_arr(&r) {
-            self.memo.borrow_mut().insert(key, Memo { name: name.to_string(), args: argv, answer: r.clone() });
-        }
-        r
     }
 
     /// Steps 9 to 11 of the dispatch ladder (`routeCall`).
@@ -1460,11 +1414,6 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
         }
     };
     Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
-}
-
-/// A registry change can change what a call answers, so no memo outlives one.
-pub fn forget_formulas() {
-    FORMULAS.with(|f| f.borrow_mut().clear());
 }
 
 pub fn forget_held(ids: &[u64]) {

@@ -39,8 +39,13 @@ describe("pack-contributed formula functions", () => {
   });
 
   it("COMPUTES while the pack is OFF — a saved graph must not break", () => {
-    packsStore.setActive(FIXTURE.id, false);
-    expect(compileEvaluator("TESTPACKDOUBLE(21)")!({})).toBe(42);
+    const was = packsStore.isActive("chemistry");
+    packsStore.setActive("chemistry", false);
+    try {
+      expect(compileEvaluator('ELEMENT("Fe", "number")')!({})).toBe(26);
+    } finally {
+      packsStore.setActive("chemistry", was);
+    }
   });
 
   it("is NOT advertised while the pack is off, and IS once it is on", () => {

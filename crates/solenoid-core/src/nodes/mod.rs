@@ -23,7 +23,7 @@ mod lambda;
 mod list;
 mod logic;
 mod matrix;
-mod packs;
+pub(crate) mod packs;
 pub mod qr;
 mod scalar;
 mod sched;

@@ -734,7 +734,7 @@ fn unknown_call(ast: &Ast, bound: &[String]) -> Option<String> {
     match ast {
         Ast::Call { name, args } => {
             let upper = name.to_uppercase();
-            let known = upper == "LAMBDA" || bound.iter().any(|b| b.eq_ignore_ascii_case(name)) || crate::eval::traits(&upper).is_some() || crate::eval::listed_external(&upper);
+            let known = upper == "LAMBDA" || bound.iter().any(|b| b.eq_ignore_ascii_case(name)) || crate::eval::traits(&upper).is_some();
             if !known {
                 return Some(upper);
             }

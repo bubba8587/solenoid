@@ -9,7 +9,7 @@ import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } fr
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
-import { registryGeneration, internalFunctionNames, resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
+import { resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
 import { argumentError, type Ast } from "./excelFormula";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
@@ -137,20 +137,6 @@ export function engineClock(at: Date = new Date()): EngineClock {
   return { now: wallClockSerial(at) };
 }
 
-/** `compileEvaluator(src)(env)` on the core, or null where the wasm engine is off, a value can't cross, or the core
- *  leaves a reading to the TS. */
-let externalGen = -1;
-onWasmEngineReset(() => { externalGen = -1; });
-
-/** Tells the core which names the TS registry holds, once per registry change: a pack's function, registered in JS
- *  at run time, is called back on the TS rather than answered #NAME?. */
-export function syncExternalNames(): void {
-  const gen = registryGeneration();
-  if (gen === externalGen) return;
-  wasmInvokeSync("engine_external_names", { names: internalFunctionNames() });
-  externalGen = gen;
-}
-
 // A long list crossing again and again (a wired LAMBDA's capture, its body called once per item) is sent once: the
 // core holds it under an id for as long as the JS list lives, which is what makes a list's identity its content
 // ([[C120]] linearWork). Ids only grow, so one a dead instance held never names another list.
@@ -182,7 +168,6 @@ export function evaluateOnCore(src: string, env: Record<string, unknown>): { val
       if (w === undefined) return null;
       wire[k] = w;
     }
-    syncExternalNames();
     return readReply(wasmInvokeSync<unknown>("engine_eval", { src, env: wire, clock: engineClock() }));
   }, null);
 }
@@ -247,10 +232,7 @@ function answerEach(calls: Recorded[]): void {
       items.push(item);
     }
     if (sent.length < 2) continue;
-    const r = onCore(() => {
-      syncExternalNames();
-      return wasmInvokeSync<{ each?: unknown[] }>("engine_call_each", { name: g[0].name, args, at, items, clock: engineClock(), scan: true });
-    }, null);
+    const r = onCore(() => wasmInvokeSync<{ each?: unknown[] }>("engine_call_each", { name: g[0].name, args, at, items, clock: engineClock(), scan: true }), null);
     r?.each?.forEach((v, k) => {
       const a = typeof v === "number" ? { value: v } : readReply(v);
       if (a) sent[k].answer = { value: normalizeFxResult(a.value) };
@@ -277,10 +259,7 @@ export function callCore(name: string, args: readonly unknown[]): unknown {
   if (wasmEngineLoaded() && wasmEngineOn()) {
     const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {
-      const r = onCore(() => {
-        syncExternalNames();
-        return readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true }));
-      }, null);
+      const r = onCore(() => readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true })), null);
       if (r) return normalizeFxResult(r.value);
     }
   }

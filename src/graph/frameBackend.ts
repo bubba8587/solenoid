@@ -8,7 +8,7 @@ import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, 
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
-import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, syncExternalNames, readReply } from "./coreValues";
+import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, readReply } from "./coreValues";
 export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
@@ -487,7 +487,6 @@ function columnInputs(expr: string, columns: readonly string[], opts: ColumnOpts
   if (!wellFormed(expr)) return null;
   const lambdas = opts.lambdas ?? {};
   const bodies = [...Object.values(lambdas), ...(opts.bare ? [opts.bare] : [])].flatMap((l) => (l.expr ? [l.expr] : []));
-  syncExternalNames();
   const names = wasmInvokeSync<{ parses: boolean; vars?: string[]; rows?: string[] }>("engine_formula_names", { src: opts.bare ? "" : expr, bodies });
   if (!names.parses) return null;
   const colSet = new Set(columns);

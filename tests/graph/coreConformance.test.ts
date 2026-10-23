@@ -22,7 +22,7 @@ import {
 } from "../../src/graph/frame";
 import { tagFrameCellUnit } from "../../src/graph/unitColumn";
 import { isUnitCell, type ColumnUnit, type UnitCell } from "../../src/graph/unitValue";
-import { coreValue, readReply, syncExternalNames } from "../../src/graph/coreValues";
+import { coreValue, readReply } from "../../src/graph/coreValues";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
@@ -1518,12 +1518,11 @@ if (FREEZING) {
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.
 void FORMULA_FNS;
 
-// ─── Pack functions called back from the core (external.rs) ─────────────────────────
+// ─── Pack functions (fns_packs.rs) ───────────────────────────────────────────────
 
 type PackCase = { src: string; env: Record<string, unknown>; want: unknown };
 
-/** Formulas calling the built-in packs' functions, alone and inside the core's own functions and LAMBDA hosts: the core
- *  evaluates the arguments and calls the TS back for each pack call. */
+/** Formulas calling the built-in packs' functions, alone and inside the core's own functions and LAMBDA hosts. */
 const packCalls = frozen<PackCase>("pack-calls", () => {
   initPackFormulas();
   const cases: PackCase[] = [];
@@ -1573,10 +1572,8 @@ const packCalls = frozen<PackCase>("pack-calls", () => {
   return cases;
 });
 
-describe("pack functions answer as frozen, called back from the core", () => {
+describe("pack functions answer as frozen", () => {
   it(`${packCalls.length} formulas`, { timeout: 600_000 }, () => {
-    initPackFormulas();
-    syncExternalNames();
     let ran = 0;
     const bad: unknown[] = [];
     for (const c of packCalls) {
@@ -1591,7 +1588,7 @@ describe("pack functions answer as frozen, called back from the core", () => {
   });
 });
 
-describe("a computed column calls a pack function back from the core", () => {
+describe("a computed column calls a pack function", () => {
   it("row by row, as the TS computes it", () => {
     initPackFormulas();
     const src = "PARALLELCOMBINE(@a, 10) + COUNT(TALLY(a))";

@@ -57,18 +57,8 @@ function reinstantiate(): void {
   }
 }
 
-type ExternalCaller = (name: string, empty: string, args: string) => string | undefined;
-let _external: ExternalCaller | undefined;
-
-/** What the core calls back for a pack's function (`external.rs`). It's set on the global before each call rather than
- *  once, so the core always reaches the registry of the module copy that called it. */
-export function setExternalCaller(f: ExternalCaller): void {
-  _external = f;
-}
-
 function guarded<T>(call: () => T): T {
   if (!_loaded) throw new CoreTrap("the core is reloading");
-  (globalThis as { __solenoidCallExternal?: ExternalCaller }).__solenoidCallExternal = _external;
   try {
     return call();
   } catch (e) {

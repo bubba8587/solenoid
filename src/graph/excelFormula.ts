@@ -9,8 +9,7 @@ import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
 import { readRowCell, readWholeColumn, inRowFrame } from "./computedColumnCore";
-import { evaluateOnCore, coreValue, readReply } from "./coreValues";
-import { setExternalCaller } from "./engineWasm";
+import { evaluateOnCore } from "./coreValues";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -892,24 +891,6 @@ function callWithArgs(name: string, emptySlots: boolean[], hasBlank: boolean, ev
     return routeCall(name, one, blanks.settled);
   });
 }
-
-/** A pack's function called from the core, its arguments already evaluated there (`external.rs`, [[D99]] rustIsSpec).
- *  The core keeps the range memo, so the same whole column row after row is one call. */
-export function callFromCore(name: string, emptySlots: boolean[], argv: unknown[]): unknown {
-  return callRefusal(name) ?? callWithArgs(name, emptySlots, emptySlots.includes(true), argv, null);
-}
-
-/** The core's way back in: arguments and answer as the core's wire values, undefined where one can't cross. */
-setExternalCaller((name: string, empty: string, args: string): string | undefined => {
-  const argv: unknown[] = [];
-  for (const a of JSON.parse(args) as unknown[]) {
-    const r = readReply(a);
-    if (!r) return undefined;
-    argv.push(r.value);
-  }
-  const out = coreValue(callFromCore(name, JSON.parse(empty) as boolean[], argv));
-  return out === undefined ? undefined : JSON.stringify(out);
-});
 
 type CallAst = Extract<Ast, { t: "call" }>;
 const callPlans = new WeakMap<CallAst, { name: string; emptySlots: boolean[]; hasBlank: boolean }>();

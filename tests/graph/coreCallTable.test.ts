@@ -9,7 +9,7 @@ import * as path from "node:path";
 import { freezes } from "./coreFixtures";
 import { formulaCallTable, type FormulaCallTraits } from "../../src/graph/excelFormula";
 import { FX_FUNCTION_NAMES, internalFunctionNames, resolveExcelFunction, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
-import { allPacks } from "../../src/graph/packs";
+import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
 const FILE = path.resolve(__dirname, "../../crates/solenoid-core/data/call_traits.json");
 const SLOTS = 64;
@@ -22,13 +22,11 @@ function head<T>(xs: T[]): T[] {
   return xs.slice(0, n);
 }
 
-/** A pack's functions are JS it registers at run time, which the core calls back, so the table never holds them
- *  (whether another test file has registered them in this worker or not). */
-const packNames = new Set(allPacks().flatMap((p) => (p.formulas ?? []).map((f) => f.name.toUpperCase())));
-
 function build(): Record<string, unknown> {
+  // A pack's functions are the core's own, so the table holds them whether a pack is on or not.
+  initPackFormulas();
   const names = [...new Set([...FX_FUNCTION_NAMES, ...internalFunctionNames(), ...Object.keys(FRAME_SURFACE_NAMES), ...Object.keys(NODE_SURFACE_NAMES), ...ELIMINATED_FUNCTIONS]
-    .map((n) => n.toUpperCase()))].filter((n) => /^[A-Z_][A-Z0-9_.]*$/.test(n) && !packNames.has(n)).sort();
+    .map((n) => n.toUpperCase()))].filter((n) => /^[A-Z_][A-Z0-9_.]*$/.test(n)).sort();
   const out: Record<string, unknown> = {};
   for (const name of names) {
     const t = formulaCallTable(`${name}(${",".repeat(SLOTS - 1)})`)?.[name] as FormulaCallTraits | undefined;
