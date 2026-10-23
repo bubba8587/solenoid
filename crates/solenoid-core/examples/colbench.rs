@@ -1,7 +1,7 @@
 // [[C120]] linearWork
 //! A computed column's cost on the core, natively: `cargo run --release --example colbench [formula…]`, ROWS and REPS to
 //! size it. Under `valgrind --tool=callgrind --toggle-collect='*Eval*run*'` it counts the evaluator's instructions alone.
-use solenoid_core::eval::{column, ColumnInputs, ColumnSpec};
+use solenoid_core::eval::{column, ColumnInputs, ColumnSpec, Table};
 use solenoid_core::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 use std::time::Instant;
 
@@ -34,7 +34,7 @@ fn main() {
         let ast = solenoid_core::excel_formula::parse_formula(&s).expect("parses");
         let mut best = f64::INFINITY;
         for _ in 0..std::env::var("REPS").ok().and_then(|r| r.parse().ok()).unwrap_or(9) {
-            let inp = ColumnInputs { frame: &f, sides: Default::default(), row_sides: Default::default(), reserved: vec![], alias: Default::default(), rows };
+            let inp = ColumnInputs { table: Table::Frame(&f), sides: Default::default(), row_sides: Default::default(), reserved: vec![], alias: Default::default(), rows };
             let t = Instant::now();
             let out = column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp);
             best = best.min(t.elapsed().as_secs_f64() * 1000.0);

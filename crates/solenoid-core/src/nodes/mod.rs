@@ -9,6 +9,7 @@ use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
+mod columns;
 mod complex;
 mod control;
 mod date;
@@ -230,6 +231,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| sched::run(kind, c))
         .or_else(|| docs::run(kind, c))
         .or_else(|| verbs::run(kind, c))
+        .or_else(|| columns::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or

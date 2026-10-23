@@ -8,7 +8,7 @@ import { computeCubeColumnCells } from "../computedColumnCore";
 import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { computedColumnType } from "./frame";
 import { planColumnUnits, exprDefinition } from "../computedColumnUnits";
-import { cubeFromColumns, recordsToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue, type FrameCell } from "../frame";
+import { cubeFromColumns, makeCube, recordsToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue, type FrameCell } from "../frame";
 import type { AggOp } from "../frameVerbs";
 import { tagCubeCellUnit } from "../unitColumn";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -162,22 +162,35 @@ export class CubeRollupNode extends ClassicPreset.Node {
   }
 }
 
-/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[C22]] rowFormulaRefs). */
-export function cubeFromSource(source: CubeSource): CubeValue {
+/** A Cube Input's records as its formula columns read them: the records' cube in the source's column order, each
+ *  formula column empty, beside each column's formula (null for a data column). The text's key order and the
+ *  records' reading are JS's, shared with the Cube popup's editor ([[D90]] cubeTypesAtDepth). */
+export function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs: (string | null)[] } {
   const data = recordsToCube(source.rows, sourcePicks(source), source.nested);
   const keys = recordKeys(source.rows);
   const rows = source.rows.length;
-  const empty = (): CubeCell[] => Array.from({ length: rows }, () => null);
   const cols: CubeColumn[] = source.columns.map((c) => {
     const k = c.expr === undefined ? keys.indexOf(c.name) : -1;
-    return k >= 0 ? { ...data.columns[k], name: c.name } : { name: c.name, cells: empty() };
+    return k >= 0 ? { ...data.columns[k], name: c.name } : { name: c.name, cells: Array.from({ length: rows }, () => null) };
   });
+  return { cube: makeCube(cols), exprs: source.columns.map((c) => c.expr ?? null) };
+}
+
+/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[C22]] rowFormulaRefs). */
+export function cubeFromSource(source: CubeSource): CubeValue {
+  const { cube, exprs } = cubeSourceColumns(source);
+  return fillFormulaColumns(cube, exprs);
+}
+
+function fillFormulaColumns(cube: CubeValue, exprs: readonly (string | null)[]): CubeValue {
+  const cols: CubeColumn[] = cube.columns.slice();
+  const rows = cols.reduce((m, c) => Math.max(m, c.cells.length), 0);
   const pending = new Map<number, string>();
-  source.columns.forEach((c, i) => { if (c.expr !== undefined) pending.set(i, c.expr); });
+  exprs.forEach((e, i) => { if (e !== null) pending.set(i, e); });
   if (pending.size === 0) return cubeFromColumns(cols);
 
   const fill = (i: number, cell: CubeCell) => { cols[i] = { name: cols[i].name, cells: Array.from({ length: rows }, () => cell) }; };
-  const index = new Map(source.columns.map((c, i) => [c.name, i] as const));
+  const index = new Map(cols.map((c, i) => [c.name, i] as const));
   const compiled = new Map([...pending].map(([i, expr]) => {
     const ev = expr.trim() ? compileEvaluator(expr) : null;
     return [i, { ev, vars: ev ? extractVariables(expr) : [], refs: ev ? rowRefNames(expr) : [] }] as const;
@@ -235,9 +248,18 @@ export class CubeInputNode extends ClassicPreset.Node {
     const stamp = volatileStamp(this.cubeText);
     if (this.cachedResult && this._builtFrom === this.cubeText && this._builtStamp === stamp) return { cube: this.cachedResult };
     const parsed = parseCubeSource(this.cubeText);
-    this.cachedResult = "error" in parsed ? solError("#VALUE!", parsed.error) : cubeFromSource(parsed.source);
+    if ("error" in parsed) this.cachedResult = solError("#VALUE!", parsed.error);
+    else {
+      const { cube, exprs } = cubeSourceColumns(parsed.source);
+      this.cachedResult = this.body({ cube: [cube], exprs: [exprs] }).cube;
+    }
     this._builtFrom = this.cubeText;
     this._builtStamp = stamp;
     return { cube: this.cachedResult };
+  }
+
+  /** The formula columns over the records' cube (`cubeSourceColumns`). */
+  body(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue } {
+    return { cube: fillFormulaColumns(inputs.cube?.[0] as CubeValue, (inputs.exprs?.[0] ?? []) as (string | null)[]) };
   }
 }

@@ -2,7 +2,7 @@
 //! The evaluator's per-site caches (the range memo, the call sites) are keyed by node address: one LAMBDA body's entry
 //! must never answer another's. The native allocator reuses a freed body's address at once, so these run natively.
 
-use solenoid_core::eval::{column, ColumnInputs, ColumnOutcome, ColumnSpec};
+use solenoid_core::eval::{column, ColumnInputs, ColumnOutcome, ColumnSpec, Table};
 use solenoid_core::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 
 fn cells(src: &str) -> Vec<FrameCell> {
@@ -11,7 +11,7 @@ fn cells(src: &str) -> Vec<FrameCell> {
         FrameColumn::new("n", FrameColType::Number, vec![FrameCell::Num(2.0), FrameCell::Num(3.0), FrameCell::Num(4.0)]),
     ] };
     let ast = solenoid_core::excel_formula::parse_formula(src).expect("parses");
-    let inp = ColumnInputs { frame: &f, sides: Default::default(), row_sides: Default::default(), reserved: vec![], alias: Default::default(), rows: 3 };
+    let inp = ColumnInputs { table: Table::Frame(&f), sides: Default::default(), row_sides: Default::default(), reserved: vec![], alias: Default::default(), rows: 3 };
     match column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp) {
         Ok(ColumnOutcome::Done { cells, .. }) => cells,
         _ => panic!("no column"),

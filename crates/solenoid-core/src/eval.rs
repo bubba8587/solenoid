@@ -372,9 +372,50 @@ fn js_unary(v: &V) -> f64 {
 const ETA_HOSTS: [&str; 6] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"];
 const LAMBDA_HOSTS: [&str; 7] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY"];
 
+/// A column a row formula reads as values (`RowColumn`): a Cube's, whose rows may hold lists, each row's value and,
+/// where it isn't simply its rows, its whole read ([[C22]] rowFormulaRefs).
+#[derive(Clone, Debug)]
+pub struct RowColumn {
+    pub name: String,
+    pub values: Vec<V>,
+    pub whole: Option<V>,
+}
+
+/// The columns a computed column reads: a frame's cells, or columns read as values.
+pub enum Table<'a> {
+    Frame(&'a crate::frame::FrameValue),
+    Rows(Vec<&'a RowColumn>),
+}
+
+#[derive(Clone, Copy)]
+enum Col<'a> {
+    Frame(&'a FrameColumn),
+    Row(&'a RowColumn),
+}
+
+impl Col<'_> {
+    /// `c.values[i] ?? null`.
+    fn cell(&self, i: usize) -> V {
+        match self {
+            Col::Frame(c) => cell_to_v(c.cell_at(i)),
+            Col::Row(c) => match c.values.get(i) {
+                None | Some(V::Undef) => V::Null,
+                Some(v) => v.clone(),
+            },
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            Col::Frame(c) => &c.name,
+            Col::Row(c) => &c.name,
+        }
+    }
+}
+
 /// A computed column's row (`runColumn`'s row frame): what `@name`, `[name]` and ROW() read.
 pub struct RowCtx<'a> {
-    cols: FxHashMap<&'a str, &'a FrameColumn>,
+    cols: FxHashMap<&'a str, Col<'a>>,
     alias: FxHashMap<String, String>,
     reserved: Vec<String>,
     rows: usize,
@@ -392,7 +433,7 @@ struct AtVerdict {
 }
 
 impl<'a> RowCtx<'a> {
-    fn column(&self, key: &str) -> Option<&'a FrameColumn> {
+    fn column(&self, key: &str) -> Option<Col<'a>> {
         match self.alias.get(key) {
             Some(target) => self.cols.get(target.as_str()).copied(),
             None => self.cols.get(key).copied(),
@@ -403,12 +444,16 @@ impl<'a> RowCtx<'a> {
         V::err(sol_error(ErrorCode::Ref, format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
     }
 
-    /// `wholeOf`: a column as a one-column table, built once.
-    fn whole_of(&self, c: &FrameColumn) -> V {
+    /// `wholeOf`: a column as a one-column table, or its own whole read, built once.
+    fn whole_of(&self, c: Col) -> V {
         self.wholes
             .borrow_mut()
-            .entry(c.name.clone())
-            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_to_v(c.cell_at(i))])).collect()))
+            .entry(c.name().to_string())
+            .or_insert_with(|| match c {
+                Col::Frame(c) => list((0..c.values.len()).map(|i| list(vec![cell_to_v(c.cell_at(i))])).collect()),
+                Col::Row(RowColumn { whole: Some(w), .. }) => w.clone(),
+                Col::Row(c) => list(c.values.iter().map(|v| list(vec![v.clone()])).collect()),
+            })
             .clone()
     }
 
@@ -575,10 +620,7 @@ impl Eval<'_> {
             Ast::AtCol(name) => match self.row {
                 None => V::err(sol_error(ErrorCode::Ref, "@ reads the current row, so it only works inside a computed column")),
                 Some(row) => match row.column(name) {
-                    Some(c) => match c.cell_at(row.cursor.get()) {
-                        crate::frame::FrameCell::Null => V::Null,
-                        cell => cell_to_v(cell),
-                    },
+                    Some(c) => c.cell(row.cursor.get()),
                     None => match env.get(name) {
                         Some(v) => row.at(name, v),
                         None => row.side(name),
@@ -1501,7 +1543,7 @@ pub enum ColumnSpec<'s> {
 }
 
 pub struct ColumnInputs<'a> {
-    pub frame: &'a crate::frame::FrameValue,
+    pub table: Table<'a>,
     /// `sideValue(name, "var")` for the names the formula reads bare that no column holds.
     pub sides: FxHashMap<String, V>,
     pub row_sides: FxHashMap<String, V>,
@@ -1510,16 +1552,26 @@ pub struct ColumnInputs<'a> {
     pub rows: usize,
 }
 
-pub enum ColumnOutcome {
+pub enum ColumnOutcome<C = crate::frame::FrameCell> {
     /// A body bailed: the TS computes this column.
     Bail,
-    Done { cells: Vec<crate::frame::FrameCell>, side_vars: Vec<String> },
+    Done { cells: Vec<C>, side_vars: Vec<String> },
 }
 
 /// `computeColumnCells`: each row's cell and the side inputs the formula reads, or the error that stops it.
 pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crate::error_value::SolError> {
+    column_with(spec, inp, crate::excel_formula::tag_computed_cell)
+}
+
+/// `runColumn` with each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a
+/// list (`tagCubeComputedCell`).
+pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
+    let cols: FxHashMap<&str, Col> = match &inp.table {
+        Table::Frame(f) => f.columns.iter().map(|c| (c.name.as_str(), Col::Frame(c))).collect(),
+        Table::Rows(cs) => cs.iter().map(|c| (c.name.as_str(), Col::Row(c))).collect(),
+    };
     let ctx = RowCtx {
-        cols: inp.frame.columns.iter().map(|c| (c.name.as_str(), c)).collect(),
+        cols,
         alias: inp.alias,
         reserved: inp.reserved,
         rows: inp.rows,
@@ -1534,7 +1586,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
     let mut side_vars: Vec<String> = Vec::new();
     // One binding per parameter: a column (whole, or this row's cell for a LAMBDA) or a side value.
     enum Bind<'c> {
-        Col(&'c FrameColumn),
+        Col(Col<'c>),
         Side(V),
     }
     let params: Vec<String> = match &spec {
@@ -1553,13 +1605,13 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
     for p in &params {
         if let Some(target) = ctx.alias.get(p) {
             match ctx.cols.get(target.as_str()) {
-                Some(c) => binds.push(Bind::Col(c)),
+                Some(c) => binds.push(Bind::Col(*c)),
                 None => return Err(sol_error(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to"))),
             }
             continue;
         }
         if let Some(c) = ctx.cols.get(p.as_str()) {
-            binds.push(Bind::Col(c));
+            binds.push(Bind::Col(*c));
             continue;
         }
         if ctx.reserved.contains(p) {
@@ -1573,8 +1625,8 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
     take_raised();
     let finish = |v: V| match take_raised() {
         Raised::Bailed => None,
-        Raised::Thrown(e) => Some(crate::frame::FrameCell::err(e)),
-        Raised::Nothing => Some(crate::excel_formula::tag_computed_cell(v)),
+        Raised::Thrown(e) => Some(tag(V::err(e))),
+        Raised::Nothing => Some(tag(v)),
     };
     /// ROW()'s row while the column runs; dropping it clears the row.
     struct Rows;
@@ -1607,7 +1659,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
             }
             // Every binding is a whole column or a side value, so one env serves every row.
             let env: Env = params.iter().zip(&binds).map(|(p, b)| (p.clone(), match b {
-                Bind::Col(c) => ctx.whole_of(c),
+                Bind::Col(c) => ctx.whole_of(*c),
                 Bind::Side(v) => v.clone(),
             })).collect();
             let env = Rc::new(env);
@@ -1626,7 +1678,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                 ctx.cursor.set(i);
                 rows.at(i);
                 let argv: Vec<V> = binds.iter().map(|b| match b {
-                    Bind::Col(c) => cell_to_v(c.cell_at(i)),
+                    Bind::Col(c) => c.cell(i),
                     Bind::Side(v) => v.clone(),
                 }).collect();
                 // A parameter's error cell answers the row before the body runs.

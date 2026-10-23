@@ -266,7 +266,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 Ok(map_arg(args, key)?.into_iter().flatten().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
             };
             let inputs = crate::eval::ColumnInputs {
-                frame: &f,
+                table: crate::eval::Table::Frame(&f),
                 sides: values("sides")?,
                 row_sides: values("rowSides")?,
                 reserved: parse::<Option<Vec<String>>>(args, "reserved")?.unwrap_or_default(),
