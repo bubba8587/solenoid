@@ -15,6 +15,7 @@ import {
   SplitColumnNode, AddIndexNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, DropBlankRowsNode, WindowNode, GetColumnNode,
   HEAD_OP_META, COLUMNS_OP_META, AGG_OP_META, BLANK_ROW_OP_META, WINDOW_FN_META,
 } from "../../src/graph/nodes/frame";
+import { SumIfsNode } from "../../src/graph/nodes/list";
 
 const sales: FrameValue = {
   __frame: true,
@@ -164,6 +165,11 @@ const SPECS: Record<string, Spec> = {
   GetColumn: {
     make: () => new GetColumnNode(), cubes: true, fields: { readAs: ["number", "text", "date", "logical"] }, strs: ["name"],
     frames: async () => [metered, metered, await uploadFrame(metered), 7, [1, 2], [[1, "a"], [2, "b"]]],
+  },
+  SumIfs: {
+    make: () => new SumIfsNode(), cubes: true, fields: { op: ["sumifs", "countifs", "averageifs", "minifs", "maxifs"], match: ["all", "any"] },
+    strs: ["values"], pairs: true,
+    frames: async () => [metered, metered, await uploadFrame(metered), await runFrameUnary(metered, { kind: "distinct" })],
   },
   Window: { make: () => new WindowNode(), cubes: true, fields: { agg: Object.keys(WINDOW_FN_META) }, lists: ["keys"], strs: ["orderBy", "column", "name"], nums: ["n"] },
 };

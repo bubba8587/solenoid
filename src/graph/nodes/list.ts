@@ -900,29 +900,37 @@ export class SumIfsNode extends ClassicPreset.Node {
     delete this.stringLiterals[`value${id}`];
   }
 
+  /** A ref's columns the body reads are read from the backend first and handed it as `read`: a frame of them, each
+   *  under the name it was asked by, or the error a read answered. */
   data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
-    const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
     const gen = ++this._gen;
     const raw = inputs.frame?.[0];
-    if (isCubeValue(raw)) return this.data({ ...inputs, frame: [flatCubeToFrame(raw, "scalar")] });
-    if (isFrameRef(raw)) {
-      const names = new Set<string>();
-      for (const [colKey] of this.valuePairKeys()) {
-        const n = readConditionValue(inputs[colKey], this.stringLiterals[colKey]).trim();
-        if (n !== "") names.add(n);
-      }
-      const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
-      if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
-      return (async () => {
-        const cols = await materialize(Promise.all([...names].map(async (n) => [n, await readRefColumn(raw, n)] as const)));
-        if (gen !== this._gen) return { result: null };
-        if (isSolError(cols)) return finish(cols);
-        const byName = new Map(cols);
-        const slice: FrameValue = { __frame: true, columns: cols.map(([, c]) => c).filter((c): c is FrameColumn => c != null) };
-        return finish(this.compute(inputs, slice, (n) => byName.get(n) ?? null));
-      })() as unknown as { result: number | UnitCell | SolError | null };
+    if (!isFrameRef(raw)) return this.body(inputs);
+    const names = new Set<string>();
+    for (const [colKey] of this.valuePairKeys()) {
+      const n = readConditionValue(inputs[colKey], this.stringLiterals[colKey]).trim();
+      if (n !== "") names.add(n);
     }
-    const f = raw as FrameValue | null | undefined;
+    const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
+    if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
+    return (async () => {
+      const cols = await materialize(Promise.all([...names].map(async (n) => [n, await readRefColumn(raw, n)] as const)));
+      if (gen !== this._gen) return { result: null };
+      const read: FrameValue | SolError = isSolError(cols) ? cols
+        : { __frame: true, columns: cols.filter(([, c]) => c != null).map(([n, c]) => ({ ...c!, name: n })) };
+      return this.body({ ...inputs, read: [read] });
+    })() as unknown as { result: number | UnitCell | SolError | null };
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
+    const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
+    const raw = inputs.frame?.[0];
+    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") : raw;
+    if (isFrameRef(f)) {
+      const read = inputs.read?.[0] as FrameValue | SolError;
+      if (isSolError(read)) return finish(read);
+      return finish(this.compute(inputs, read, (n) => read.columns.find((c) => c.name === n) ?? null));
+    }
     if (!isFrameValue(f)) return finish(null);
     return finish(this.compute(inputs, f, (n) => getColumn(f, n)));
   }
