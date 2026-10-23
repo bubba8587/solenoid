@@ -102,8 +102,8 @@ formula or computed column over one stays on the TS. A card's body on the core h
 ([[node-bodies]]): Expression runs its unit wrapper (`unit_expression.rs`) and REDUCE, BYROW and BYCOL theirs
 (`unit_fold.rs`) on the core, a bail answering on the card. `engine_expression_units` and `engine_fold_units` remain as
 the conformance suite's way in to those wrappers. A wired LAMBDA crosses with the captures its body reads
-(`readValues`: the numbers they show, or a computed column's unit plan's magnitudes), never their units, which only
-the TS unit plan reads (`capturedValues`). `bails.json` counts what's left.
+(`readValues`: the numbers they show, or a computed column's unit plan's magnitudes) and, beside them, the same
+captures with their units (`capturedValues`), which the core's unit plan (`nodes/columns.rs`) reads. `bails.json` counts what's left.
 
 ## Where it runs
 

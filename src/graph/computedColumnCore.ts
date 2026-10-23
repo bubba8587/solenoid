@@ -1,5 +1,5 @@
 // [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas
-import type { FrameCell, CubeCell } from "./frame";
+import type { FrameCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
 import { isSolError, solError, type SolError } from "./errorValue";
@@ -89,14 +89,6 @@ export interface ComputeColumnOptions {
   alias?: Record<string, string | undefined>;
 }
 
-/** A Cube row can hold a list or a grid, so a list answer is that row's cell; its items are tagged as scalar answers are. */
-export function tagCubeComputedCell(v: unknown): CubeCell {
-  if (!Array.isArray(v)) return tagComputedCell(v);
-  return v.map((x) => (Array.isArray(x)
-    ? x.map((y) => (Array.isArray(y) ? solError("#SHAPE!", "A row's answer can be a list or a grid, not deeper") : tagComputedCell(y)))
-    : tagComputedCell(x)));
-}
-
 export interface ComputedColumnResult<C = FrameCell> {
   cells: C[];
   sideVars: string[];
@@ -104,10 +96,6 @@ export interface ComputedColumnResult<C = FrameCell> {
 
 export function computeColumnCells(f: RowTable, spec: ComputedSpec, opts: ComputeColumnOptions = {}): ComputedColumnResult | SolError {
   return runColumn(f, spec, opts, tagComputedCell);
-}
-
-export function computeCubeColumnCells(f: RowTable, spec: ComputedSpec, opts: ComputeColumnOptions = {}): ComputedColumnResult<CubeCell> | SolError {
-  return runColumn(f, spec, opts, tagCubeComputedCell);
 }
 
 function runColumn<C>(

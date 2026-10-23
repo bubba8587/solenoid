@@ -321,33 +321,6 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
-export function exprYieldsDate(expr: string, isDateName: (name: string) => boolean): boolean {
-  const ast = parseExpr(expr);
-  if (!ast) return false;
-  const isDate = (n: Ast): boolean => {
-    switch (n.t) {
-      case "name": case "atcol": case "wholecol": return isDateName(n.name);
-      case "unary": return n.op === "+" && isDate(n.arg);
-      case "bin": {
-        if (n.op === "+") return isDate(n.l) !== isDate(n.r);
-        if (n.op === "-") return isDate(n.l) && !isDate(n.r);
-        return false;
-      }
-      case "call": {
-        const name = n.name.toUpperCase();
-        if (EXCEL_IMPL_META[name]?.returns === "date") return true;
-        if (name === "IF" && n.args.length === 3) {
-          const branches = n.args.slice(1).filter((a) => a.t !== "blank");
-          return branches.length > 0 && branches.every(isDate);
-        }
-        return false;
-      }
-      default: return false;
-    }
-  };
-  return isDate(ast);
-}
-
 function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
     case "atcol": if (!bound.has(n.name)) out.add(n.name); break;

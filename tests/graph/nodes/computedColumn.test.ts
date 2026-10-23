@@ -77,7 +77,7 @@ describe("ComputedColumnNode — inline formula (tableRefSemantics: bare = whole
   });
 
   it("a blank formula passes the frame through untouched", () => {
-    expect(run(named(""), sales)).toBe(sales);
+    expect(run(named(""), sales)).toEqual(sales);
   });
 
   it("an unparsable formula is #VALUE!", () => {

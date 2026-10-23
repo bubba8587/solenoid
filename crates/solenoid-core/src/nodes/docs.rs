@@ -5,8 +5,11 @@
 //! Record (`nodes/visual.ts`, [[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
 //! reconcile and a frame ref's read stay with the TS around these bodies.
 
+use super::columns::{
+    called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition, TableColumn,
+};
 use super::kit::{each, guard_finite};
-use super::{err, list, Answer, Call, Column, Frame};
+use super::{err, list, Answer, Call, Column};
 use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
 use crate::frame::FrameColType;
@@ -377,15 +380,15 @@ fn expect(c: &mut Call) -> Answer {
 // ─── Format Controller ──────────────────────────────────────────────────────────
 
 /// A unit's dimension and display unit.
-type UnitParts = (Dim, Option<String>);
+pub(crate) type UnitParts = (Dim, Option<String>);
 
 /// A `ColumnUnit` (a table's unit) as the wire carries it: its dimension and display unit.
-fn column_unit_parts(u: &Json) -> UnitParts {
+pub(crate) fn column_unit_parts(u: &Json) -> UnitParts {
     let dim = u.get("dim").and_then(Json::as_object).map(|o| o.iter().map(|(k, v)| (k.clone(), json_f64(v))).collect()).unwrap_or_default();
     (dim, u.get("display").and_then(Json::as_str).map(String::from))
 }
 
-fn json_f64(v: &Json) -> f64 {
+pub(crate) fn json_f64(v: &Json) -> f64 {
     match crate::wire::decode_cell(v) {
         crate::frame::FrameCell::Num(n) => n,
         _ => f64::NAN,
@@ -422,7 +425,7 @@ fn with_display(u: &UnitCell, id: &str) -> V {
     }))
 }
 
-fn unit_err(detail: String) -> V {
+pub(crate) fn unit_err(detail: String) -> V {
     V::err(crate::unit_value::unit_error(&detail))
 }
 
@@ -676,386 +679,6 @@ fn derive_column(s: &SourceColumn) -> Column {
         format: None,
         raw: Some(Json::Array(s.cells.iter().map(|x| Json::String(x.clone())).collect())),
     }
-}
-
-/// `calledNames`: the functions a formula calls by name.
-fn called_names(ast: &Ast, out: &mut Vec<String>) {
-    match ast {
-        Ast::Call { name, args } => {
-            if !out.contains(name) {
-                out.push(name.clone());
-            }
-            args.iter().for_each(|a| called_names(a, out));
-        }
-        Ast::Apply { func, args } => {
-            called_names(func, out);
-            args.iter().for_each(|a| called_names(a, out));
-        }
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => called_names(arg, out),
-        Ast::Bin { l, r, .. } => {
-            called_names(l, out);
-            called_names(r, out);
-        }
-        _ => {}
-    }
-}
-
-/// The functions whose answer is a date (`EXCEL_IMPL_META[name].returns === "date"`), the packs' among them.
-const DATE_FUNCTIONS: &[&str] = &[
-    "EOMONTH", "TODAY", "NOW", "DATE", "EDATE", "DATEVALUE", "WORKDAY", "WORKDAY.INTL", "TIMEZONECONVERT", "COUPNCD", "COUPPCD",
-    "FROMEPOCH", "DATETRUNC", "SUNRISE", "SUNSET",
-];
-
-/// `exprYieldsDate`: a date column or a date function, shifted by days, is a date.
-fn yields_date(ast: &Ast, is_date_name: &dyn Fn(&str) -> bool) -> bool {
-    use crate::excel_formula::{BinOp, UnaryOp};
-    match ast {
-        Ast::Name(n) | Ast::AtCol(n) | Ast::WholeCol(n) => is_date_name(n),
-        Ast::Unary { op, arg } => *op == UnaryOp::Plus && yields_date(arg, is_date_name),
-        Ast::Bin { op: BinOp::Add, l, r } => yields_date(l, is_date_name) != yields_date(r, is_date_name),
-        Ast::Bin { op: BinOp::Sub, l, r } => yields_date(l, is_date_name) && !yields_date(r, is_date_name),
-        Ast::Call { name, args } => {
-            let up = name.to_uppercase();
-            if DATE_FUNCTIONS.contains(&up.as_str()) {
-                return true;
-            }
-            if up == "IF" && args.len() == 3 {
-                let branches: Vec<&Ast> = args[1..].iter().filter(|a| !matches!(a, Ast::Blank)).collect();
-                return !branches.is_empty() && branches.iter().all(|b| yields_date(b, is_date_name));
-            }
-            false
-        }
-        _ => false,
-    }
-}
-
-/// `computedColumnType`: the type the cells read as, a number column a date where the formula shifts a date.
-fn computed_column_type(name: &str, cells: &[V], columns: &[Column], definition: Option<&Ast>) -> FrameColType {
-    let ty = super::list::infer_column(name, cells).ty;
-    match definition {
-        Some(ast) if ty == FrameColType::Number => {
-            let is_date = |n: &str| columns.iter().find(|c| c.name == n).is_some_and(|c| c.ty == FrameColType::Date);
-            if yields_date(ast, &is_date) { FrameColType::Date } else { ty }
-        }
-        _ => ty,
-    }
-}
-
-/// A LAMBDA reading its captured values, `units` (with their units), through `side` (`lambdaInPlan`).
-fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn(&V) -> V) -> Rc<LambdaV> {
-    let Some(captured) = &lam.captured else { return lam.clone() };
-    if captured.is_empty() || captured.len() != units.len() {
-        return lam.clone();
-    }
-    let mut env: crate::eval::Env = (*lam.env).clone();
-    for (name, v) in captured.iter().zip(units) {
-        env.insert(name.clone(), side(v));
-    }
-    Rc::new(LambdaV {
-        params: lam.params.clone(),
-        body: lam.body.clone(),
-        env: Rc::new(env),
-        eta: lam.eta.clone(),
-        captured: lam.captured.clone(),
-        src: lam.src.clone(),
-        units: lam.units.clone(),
-        descriptions: lam.descriptions.clone(),
-    })
-}
-
-/// A column's unit (`ColumnUnit`) as the wire writes it, an integral exponent as an integer.
-fn unit_json(dim: &Dim, display: Option<&str>) -> Json {
-    let dim: serde_json::Map<String, Json> = dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), super::frames::json_num(*e))).collect();
-    let mut o = serde_json::Map::new();
-    o.insert("dim".into(), Json::Object(dim));
-    if let Some(d) = display {
-        o.insert("display".into(), Json::String(d.to_string()));
-    }
-    Json::Object(o)
-}
-
-/// Every number in a cell, a list's items included.
-fn map_numbers(v: &V, f: &dyn Fn(f64) -> f64) -> V {
-    match v {
-        V::Num(n) => V::Num(f(*n)),
-        V::List(items) => list(items.iter().map(|x| map_numbers(x, f)).collect()),
-        other => other.clone(),
-    }
-}
-
-/// `shownOf` and `baseOf`: a side value in display magnitudes, or in base units.
-fn shown_of(v: &V) -> V {
-    match v {
-        V::Unit(u) => V::Num(crate::unit_expression::display_magnitude_of(u)),
-        V::List(items) => list(items.iter().map(shown_of).collect()),
-        other => other.clone(),
-    }
-}
-
-fn base_of(v: &V) -> V {
-    match v {
-        V::Unit(u) => V::Num(u.value),
-        V::List(items) => list(items.iter().map(base_of).collect()),
-        other => other.clone(),
-    }
-}
-
-/// A formula's definition as the unit pass reads it (`ColumnDefinition`): its tree and the LAMBDAs it calls by name.
-struct Definition {
-    ast: Ast,
-    fns: crate::unit_dims::NamedLambdas,
-}
-
-fn named_lambda(v: &V) -> Option<(Vec<String>, Ast)> {
-    match v {
-        V::Lambda(l) => l.body.as_ref().map(|b| (l.params.clone(), (**b).clone())),
-        _ => None,
-    }
-}
-
-/// `referencedNames`: the names the formula and its LAMBDAs read that no LAMBDA answers.
-fn referenced_names(def: &Definition) -> Vec<String> {
-    fn walk(n: &Ast, fns: &crate::unit_dims::NamedLambdas, out: &mut Vec<String>) {
-        match n {
-            Ast::Name(name) | Ast::AtCol(name) | Ast::WholeCol(name) => {
-                if !fns.contains_key(name) && !out.contains(name) {
-                    out.push(name.clone());
-                }
-            }
-            Ast::Call { args, .. } => args.iter().for_each(|a| walk(a, fns, out)),
-            Ast::Apply { func, args } => {
-                walk(func, fns, out);
-                args.iter().for_each(|a| walk(a, fns, out));
-            }
-            Ast::Unary { arg, .. } | Ast::Percent(arg) => walk(arg, fns, out),
-            Ast::Bin { l, r, .. } => {
-                walk(l, fns, out);
-                walk(r, fns, out);
-            }
-            _ => {}
-        }
-    }
-    let mut out = Vec::new();
-    walk(&def.ast, &def.fns, &mut out);
-    for (_, body) in def.fns.values() {
-        walk(body, &def.fns, &mut out);
-    }
-    out
-}
-
-struct United {
-    dim: Dim,
-    display: Option<String>,
-    list: bool,
-}
-
-/// `sideUnit`: a side value's one dimension and shared display, or the `#UNIT!` for a list mixing two.
-fn side_unit(name: &str, v: &V) -> Result<Option<United>, V> {
-    use crate::unit_lists::format_dim;
-    fn flat(v: &V, depth: usize, out: &mut Vec<V>) {
-        match v {
-            V::List(items) if depth > 0 => items.iter().for_each(|x| flat(x, depth - 1, out)),
-            other => out.push(other.clone()),
-        }
-    }
-    let mut cells = Vec::new();
-    match v {
-        V::List(_) => flat(v, 3, &mut cells),
-        other => cells.push(other.clone()),
-    }
-    let mut first: Option<UnitParts> = None;
-    let mut mixed = false;
-    for c in &cells {
-        let V::Unit(u) = c else { continue };
-        if crate::unit_dims::is_dimensionless(&u.dim) {
-            continue;
-        }
-        match &first {
-            None => first = Some((u.dim.clone(), u.display.clone())),
-            Some((dim, display)) => {
-                if !dim_equal(dim, &u.dim) {
-                    return Err(unit_err(format!("{name} holds mixed units: {} and {}.", format_dim(dim), format_dim(&u.dim))));
-                }
-                if u.display != *display {
-                    mixed = true;
-                }
-            }
-        }
-    }
-    Ok(first.map(|(dim, display)| United { dim, display: if mixed { None } else { display }, list: matches!(v, V::List(_)) }))
-}
-
-/// `exactFcUnitId`: the FC id whose scale and offset are exactly the unit's.
-fn exact_fc_unit_id(dim: &Dim, scale: f64) -> Option<&'static str> {
-    crate::card_helpers::UNIT_ANNOTATIONS.iter().map(|(id, ..)| *id).find(|id| {
-        crate::unit_catalog::fc_unit_to_unit(id).is_some_and(|c| dim_equal(&c.dim, dim) && (c.scale - scale).abs() <= 1e-9 * scale.abs() && c.offset.unwrap_or(0.0) == 0.0)
-    })
-}
-
-fn is_affine_display(id: Option<&str>) -> bool {
-    id.filter(|i| !i.is_empty()).and_then(crate::unit_catalog::fc_unit_to_unit).is_some_and(|u| u.offset.is_some_and(|o| o != 0.0))
-}
-
-/// `convert`: a number from one unit to another of its dimension.
-fn convert_between(n: f64, a: &crate::unit_catalog::Unit, b: &crate::unit_catalog::Unit) -> Option<f64> {
-    if !dim_equal(&a.dim, &b.dim) {
-        return None;
-    }
-    let out = (n * a.scale + a.offset.unwrap_or(0.0) - b.offset.unwrap_or(0.0)) / b.scale;
-    out.is_finite().then_some(out)
-}
-
-/// `ColumnUnitPlan`: the table in the magnitudes the formula runs on, whether a side value reads shown or in base
-/// units, and how the answer's cells and unit come out.
-struct UnitPlan {
-    columns: Vec<Column>,
-    shown: bool,
-    scale: f64,
-    unit: Option<UnitParts>,
-    authored: Option<UnitParts>,
-}
-
-impl UnitPlan {
-    fn side(&self, v: &V) -> V {
-        if self.shown { shown_of(v) } else { base_of(v) }
-    }
-
-    /// `finish`: the cells in the result column's unit, and that unit.
-    fn finish(&self, cells: Vec<V>) -> (Vec<V>, Option<Json>) {
-        let k = self.scale;
-        let scaled: Vec<V> = if k == 1.0 { cells } else { cells.iter().map(|c| map_numbers(c, &|n| n * k)).collect() };
-        let json = |u: &UnitParts| unit_json(&u.0, u.1.as_deref());
-        match (&self.authored, &self.unit) {
-            (None, unit) => (scaled, unit.as_ref().map(json)),
-            (Some(a), None) => (scaled, Some(json(a))),
-            (Some(a), Some(r)) => {
-                let resolve = |u: &UnitParts| {
-                    u.1.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit).unwrap_or(crate::unit_catalog::Unit { dim: u.0.clone(), scale: 1.0, offset: None })
-                };
-                let (from, to) = (resolve(r), resolve(a));
-                (scaled.iter().map(|c| map_numbers(c, &|n| convert_between(n, &from, &to).unwrap_or(n))).collect(), Some(json(a)))
-            }
-        }
-    }
-}
-
-/// `planColumnUnits` ([[D100]] computedColumnInfersUnit): the formula's dimension from its columns' and side values'
-/// units. Where every united input shows a linear unit the formula runs on the shown numbers and the answer keeps
-/// their composed display; else it runs in base SI. An authored unit wins, and a clash with it is `#UNIT!`.
-fn plan_column_units(def: Option<&Definition>, columns: &[Column], side: &dyn Fn(&str) -> V, authored: Option<Json>) -> Result<UnitPlan, V> {
-    use crate::unit_dims::{dim_eval_with_code, dim_mul, dim_pow, is_dimensionless, AffScope, Codes};
-    use crate::unit_lists::format_dim;
-    let authored = authored.map(|a| column_unit_parts(&a)).filter(|(d, _)| !is_dimensionless(d));
-    let plain = |columns: &[Column]| UnitPlan { columns: columns.to_vec(), shown: true, scale: 1.0, unit: None, authored: authored.clone() };
-    let Some(def) = def else { return Ok(plain(columns)) };
-    let mut united: Vec<(String, United)> = Vec::new();
-    let mut bare: Vec<String> = Vec::new();
-    for n in referenced_names(def) {
-        let u = match columns.iter().find(|c| c.name == n) {
-            Some(col) => col.unit.as_ref().map(column_unit_parts).filter(|(d, _)| !is_dimensionless(d)).map(|(dim, display)| United { dim, display, list: true }),
-            None => side_unit(&n, &side(&n))?,
-        };
-        match u {
-            Some(u) => united.push((n, u)),
-            None => bare.push(n),
-        }
-    }
-    if united.is_empty() {
-        return Ok(plain(columns));
-    }
-    let env: std::collections::BTreeMap<String, Dim> = united.iter().map(|(n, u)| (n.clone(), u.dim.clone())).collect();
-    let currency: Dim = [("currency".to_string(), 1.0)].into_iter().collect();
-    let codes: Codes = united.iter().filter_map(|(n, u)| u.display.clone().filter(|_| dim_equal(&u.dim, &currency)).map(|d| (n.clone(), d))).collect();
-    let r = match dim_eval_with_code(&def.ast, &env, &codes, Some(&def.fns)) {
-        Err(e) => return Err(V::err(e)),
-        Ok(None) => return Ok(plain(columns)),
-        Ok(Some(op)) => op,
-    };
-    let dr = (!is_dimensionless(&r.dim)).then(|| r.dim.clone());
-    if let (Some((a_dim, a_display)), Some(dr)) = (&authored, &dr) {
-        if !dim_equal(dr, a_dim) {
-            let label = match a_display.as_deref() {
-                Some(d) if crate::unit_catalog::fc_unit_to_unit(d).is_some() => d.to_string(),
-                _ => format_dim(a_dim),
-            };
-            return Err(unit_err(format!("The formula gives {}, but the column's unit is {label}.", format_dim(dr))));
-        }
-    }
-    if let (Some((a_dim, Some(a_display))), Some(code)) = (&authored, &r.code) {
-        if dim_equal(a_dim, &currency) && a_display != code {
-            return Err(unit_err(format!("The formula gives {code}, but the column's unit is {a_display}: they are different currencies with no exchange rate.")));
-        }
-    }
-    let inputs: Vec<&United> = united.iter().map(|(_, u)| u).collect();
-    let first_display = inputs[0].display.clone();
-    let shared_id = inputs.iter().all(|u| u.display == first_display).then_some(first_display).flatten();
-    let shared = shared_id.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);
-    let shared_affine = shared.filter(|s| s.offset.is_some_and(|o| o != 0.0) && inputs.iter().all(|u| dim_equal(&u.dim, &s.dim)));
-    let mut point: Option<u8> = None;
-    if shared_affine.is_some() || inputs.iter().all(|u| is_affine_display(u.display.as_deref())) {
-        let names: Vec<String> = united.iter().map(|(n, _)| n.clone()).collect();
-        let lists: Vec<String> = united.iter().filter(|(_, u)| u.list).map(|(n, _)| n.clone()).collect();
-        point = Some(crate::unit_dims::affine_weight(&def.ast, &AffScope::new(&names, &lists, &bare, &def.fns)).map_err(V::err)?);
-    }
-    let mut result: Option<(f64, Option<UnitParts>)> = None;
-    let mut shown = false;
-    if let Some(sa) = &shared_affine {
-        shown = true;
-        result = Some(match &dr {
-            None => (1.0, None),
-            Some(d) if point == Some(1) => (1.0, Some((d.clone(), shared_id.clone()))),
-            Some(d) => (sa.scale, Some((d.clone(), None))),
-        });
-    } else if inputs.iter().all(|u| {
-        u.display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit).is_some_and(|l| l.offset.is_none_or(|o| o == 0.0) && dim_equal(&l.dim, &u.dim))
-    }) {
-        let disp_env: std::collections::BTreeMap<String, Dim> =
-            united.iter().map(|(n, u)| (n.clone(), [(format!("⟨{}⟩", u.display.as_deref().unwrap_or("")), 1.0)].into_iter().collect())).collect();
-        if let Ok(Some(rd)) = dim_eval_with_code(&def.ast, &disp_env, &Codes::new(), Some(&def.fns)) {
-            shown = true;
-            let mut scale = 1.0;
-            let mut dim = Dim::new();
-            let axes: Vec<(String, f64)> = rd.dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), *e)).collect();
-            let id_of = |axis: &str| axis.trim_start_matches('⟨').trim_end_matches('⟩').to_string();
-            for (axis, e) in &axes {
-                let Some(u) = crate::unit_catalog::fc_unit_to_unit(&id_of(axis)) else { continue };
-                scale *= crate::fdlibm::pow(u.scale, *e);
-                dim = dim_mul(&dim, &dim_pow(&u.dim, *e));
-            }
-            let id = match &dr {
-                None => None,
-                Some(_) if axes.len() == 1 && axes[0].1 == 1.0 => Some(id_of(&axes[0].0)),
-                Some(_) => exact_fc_unit_id(&dim, scale).map(String::from),
-            };
-            result = Some(match (&dr, id) {
-                (None, _) => (scale, None),
-                (Some(d), Some(id)) => (1.0, Some((d.clone(), Some(id)))),
-                (Some(d), None) => (scale, Some((d.clone(), None))),
-            });
-        }
-    }
-    let (scale, unit) = result.unwrap_or_else(|| match &dr {
-        Some(d) => (1.0, Some((d.clone(), r.code.clone()))),
-        None => (1.0, None),
-    });
-    let columns: Vec<Column> = if shown {
-        columns.to_vec()
-    } else {
-        columns
-            .iter()
-            .map(|c| {
-                let u = c.unit.as_ref().map(column_unit_parts).filter(|(d, _)| !is_dimensionless(d)).and_then(|(_, d)| d).and_then(|d| crate::unit_catalog::fc_unit_to_unit(&d));
-                match u {
-                    Some(u) if !(u.scale == 1.0 && u.offset.is_none_or(|o| o == 0.0)) => {
-                        let to_base = |n: f64| n * u.scale + u.offset.unwrap_or(0.0);
-                        Column { values: c.values.iter().map(|v| map_numbers(v, &to_base)).collect(), ..c.clone() }
-                    }
-                    _ => c.clone(),
-                }
-            })
-            .collect()
-    };
-    Ok(UnitPlan { columns, shown, scale, unit, authored })
 }
 
 // ─── Record ─────────────────────────────────────────────────────────────────────
@@ -1437,9 +1060,11 @@ fn lambda_socket_name(key: &str) -> String {
 
 /// A computed column over the table on the core's evaluator (`computeColumnOnEngine`): its cells, or the error that
 /// stops it.
-fn run_column(planned: &[Column], rows: usize, spec: crate::eval::ColumnSpec, sides: crate::fxhash::FxHashMap<String, V>, row_sides: crate::fxhash::FxHashMap<String, V>) -> Result<Vec<V>, V> {
-    let frame = super::frames::to_core(&Frame { columns: planned.to_vec(), total_rows: None, approx: None });
-    let inputs = crate::eval::ColumnInputs { frame: &frame, sides, row_sides, reserved: Vec::new(), alias: Default::default(), rows };
+fn run_column(planned: &[TableColumn], rows: usize, spec: crate::eval::ColumnSpec, sides: crate::fxhash::FxHashMap<String, V>, row_sides: crate::fxhash::FxHashMap<String, V>) -> Result<Vec<V>, V> {
+    let frame = crate::frame::FrameValue {
+        columns: planned.iter().map(|c| crate::frame::FrameColumn::new(c.row.name.clone(), c.ty, c.row.values.iter().map(super::frames::core_cell).collect())).collect(),
+    };
+    let inputs = crate::eval::ColumnInputs { table: crate::eval::Table::Frame(&frame), sides, row_sides, reserved: Vec::new(), alias: Default::default(), rows };
     match crate::eval::column(spec, inputs) {
         Err(e) => Err(V::err(e)),
         Ok(crate::eval::ColumnOutcome::Done { cells, .. }) => Ok(cells.iter().map(super::frames::card_cell).collect()),
@@ -1539,7 +1164,8 @@ fn frame_input(c: &mut Call) -> Answer {
                 None => ast.clone().map(|a| Definition { ast: a, fns: lam_by_name.iter().filter_map(|(n, v)| named_lambda(v).map(|fl| (n.clone(), fl))).collect() }),
             };
             let authored = source[i].unit.as_deref().and_then(super::frames::column_unit_from_spec);
-            let plan = match plan_column_units(def.as_ref(), &columns, &side, authored) {
+            let table = frame_table(&columns);
+            let plan = match plan_column_units(def.as_ref(), &table, &[], &side, authored) {
                 Ok(p) => p,
                 Err(e) => {
                     fill(&mut columns, i, e);
@@ -1547,7 +1173,7 @@ fn frame_input(c: &mut Call) -> Answer {
                 }
             };
             let rows = row_count(&columns);
-            let names: Vec<&str> = plan.columns.iter().map(|c| c.name.as_str()).collect();
+            let names: Vec<&str> = plan.columns.iter().map(|c| c.row.name.as_str()).collect();
             let free = |p: &str| !names.contains(&p);
             let mut sides = crate::fxhash::FxHashMap::default();
             let mut row_sides = crate::fxhash::FxHashMap::default();
@@ -1591,7 +1217,7 @@ fn frame_input(c: &mut Call) -> Answer {
                         Some(l) => l.body.as_deref().cloned(),
                         None => ast.clone(),
                     };
-                    let ty = computed_column_type(&source[i].name, &cells, &columns, definition.as_ref());
+                    let ty = computed_column_type(&source[i].name, &cells, &table, definition.as_ref(), &[]);
                     columns[i] = Column { name: source[i].name.clone(), ty, values: cells, unit: unit.filter(|_| ty == FrameColType::Number), format: None, raw: None };
                 }
             }

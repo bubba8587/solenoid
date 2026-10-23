@@ -10,6 +10,7 @@ use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
 mod backend_verbs;
+mod columns;
 mod complex;
 mod control;
 mod date;
@@ -233,6 +234,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| sched::run(kind, c))
         .or_else(|| docs::run(kind, c))
         .or_else(|| verbs::run(kind, c))
+        .or_else(|| columns::run(kind, c))
         .or_else(|| backend_verbs::run(kind, c))
         .or_else(|| lambda::run(kind, c))
         .or_else(|| qr::run(kind, c))

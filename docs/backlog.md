@@ -27,7 +27,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Own the formula library instead of leaning on Formula.js** (author 2026-10-21, to weigh): the rust-port sweep found Formula.js recursing to stack overflows (FACT, COMBIN), dividing factorials (`COMBIN(30, 15)` off), looping once per period or order (DB, DDB, BESSEL*), throwing on plain arguments (CLEAN(5)) and mutating its first list argument; each is now an override in `tree/specs/computation/formulajs-divergences.md`. Options: fork it, publish Solenoid's own JS function set, or export one package from Solenoid (the TS kernels, the divergence tripwires as its tests, and the Rust core's ports as a sibling crate). Weigh against [[C17]] shareImpl and what a public package must keep stable.
 
 ## Rust core (rust-port, [[D99]] rustIsSpec)
-- [ ] **Card bodies still on the TS** (`tree/specs/computation/node-bodies.md` lists what moved): Join, Append, Bind Columns, Table Info, Slicer, Pivot; Computed Column, Cube Input; LAMBDA (needs a λ to cross the wire whole, units of its captures included), RANDARRAY, QR Code; Time Zone Convert, World Clock (a native tz table; the web keeps Intl); Note, Report (knap templating). A round on all but Note and Report stopped at the session's end: its work-in-progress branches are `port-backend-verbs`, `port-formula-columns`, `port-lambda-qr` and `port-timezones` on origin, each commit naming what's done; merge or resume from them.
+- [ ] **Card bodies still on the TS:** Note and Report (knap templating, async frame reads); `tree/specs/computation/node-bodies.md` lists what moved.
 - [ ] **The TS schedule engine** (`packages/schedule-engine`'s cpm, graph, calendar, diagnostics, mermaid, `writeMspdi`) is unused by the app now that Schedule, Gantt and Earned Value run on the core's port; only its own tests use it. Deleting it touches [[C69]] ganttPackages (an MIT package meant to publish on its own): the author's call. The MSPDI round trip and DCMA corpus tests would move onto the card first.
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 - [ ] **Delete the TS once covered:** the TS evaluator and function bodies, `wasmEngine.test.ts`'s differentials, then retire [[D98]] wholeColumnFallback.
@@ -340,7 +340,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **The formula highlighter paints a called λ socket (`λ1(`) as an unknown function** (`identClass`,
   formulaSyntax.ts). No surface shows it today (the popup's formula field is a plain input); fix it the day a
   highlighted editor edits a Frame Input column formula.
-- [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
+- [ ] **A computed column's date typing is conservative** (`yields_date`, `nodes/columns.rs`): `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
   Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
 - [ ] **A blank frame's CSV view starts with a blank header line** (`buildText`): a CSV pasted below it makes its
   header row the first data row, with the columns unnamed. Found filming the demo video (a new Frame property in

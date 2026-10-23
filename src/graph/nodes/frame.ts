@@ -7,13 +7,9 @@ import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableO
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
-import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
-import { planColumnUnits, exprDefinition, lambdaDefinition, lambdaCaptures, lambdaInPlan } from "../computedColumnUnits";
 import { stripUnitCells } from "../unitBridge";
-import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
@@ -24,9 +20,9 @@ import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText,
-  isCubeValue, isFrameValue, inferColumn,
-  cubeRowCount, frameFromRows, cubeFromColumns,
-  type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
+  isCubeValue, isFrameValue,
+  cubeRowCount, frameFromRows,
+  type FrameValue, type FrameColumn, type FrameColType,
 } from "../frame";
 import {
   pivotFrame,
@@ -43,7 +39,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -52,9 +48,8 @@ import {
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
-import type { CubeValue, CubeCell, CubeColumn } from "../frame";
+import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
-import { tagCubeCellUnit, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -78,40 +73,6 @@ function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
   return widenToFrame(v);
-}
-
-/** What the unit and date rules read of a row table: each column's name, type and unit. */
-type TypedColumns = { columns: ReadonlyArray<{ name: string; type: FrameColType; unit?: ColumnUnit }> };
-
-export function computedColumnType(
-  name: string, cells: readonly FrameCell[], f: TypedColumns, definition: string | undefined,
-  alias: Record<string, string | undefined> = {},
-): FrameColType {
-  const type = inferColumn(name, cells).type;
-  if (type !== "number" || !definition) return type;
-  const isDateName = (n: string) => f.columns.find((c) => c.name === (alias[n] ?? n))?.type === "date";
-  return exprYieldsDate(definition, isDateName) ? "date" : type;
-}
-
-/** The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items included, and a replaced column keeps its place and format. */
-function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string, unit: ColumnUnit | null): CubeValue {
-  const { clean } = parseColumnUnitFromHeader(name);
-  const tagged = unit && type === "number" ? cells.map((v) => tagCubeCellUnit(v, unit) as CubeCell) : cells;
-  const col: CubeColumn = { name: clean, cells: tagged, ...(type ? { type } : {}) };
-  const at = cube.columns.findIndex((c) => c.name === clean);
-  if (at >= 0) {
-    const cols = cube.columns.slice();
-    const format = cols[at].format;
-    cols[at] = format ? { ...col, format } : col;
-    return cubeFromColumns(cols);
-  }
-  const cols = [...cube.columns, col];
-  if (after) {
-    const a = cols.findIndex((c) => c.name === after);
-    if (a < 0) throw solError("#REF!", `No column "${after}" to place after`);
-    cols.splice(a + 1, 0, cols.pop()!);
-  }
-  return cubeFromColumns(cols);
 }
 
 /** Call before the verb's await; `emitFrame(this, beginPass(this), await …)` gets this from argument order. */
@@ -2173,6 +2134,8 @@ export class AddColumnNode extends ClassicPreset.Node {
 
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
+const COMPUTED_RESERVED = ["frame", "name", "fn", "after"];
+
 type ComputedColumnInputs = { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>;
 
 export class ComputedColumnNode extends ClassicPreset.Node {
@@ -2193,10 +2156,6 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   sourceColumns: string[] = [];
   defVars: string[] = [];
   width = 235; height = 290;
-  private _evaluator: ExprEvaluator | null = null;
-  private _vars: string[] = [];
-  private _rowRefs: string[] = [];
-  private _compiledFor: string | null = null;
 
   constructor(init?: { label?: string; expr?: string; addAs?: ComputedColumnAs; literals?: Record<string, number>; bindings?: Record<string, string>; sideVars?: string[] }) {
     super("ComputedColumn");
@@ -2218,13 +2177,13 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
-  /** Runs from data(), so socket changes wait for a microtask, and cables on a removed socket are pruned first. */
-  private _reconcileSideSockets(needed: string[]): void {
-    const current = this.sideVars;
-    const added = needed.filter((v) => !current.includes(v));
-    const removed = current.filter((v) => !needed.includes(v));
+  /** The side inputs grown to `this.sideVars` from `before`; runs from data(), so socket changes wait for a
+   *  microtask, and cables on a removed socket are pruned first. */
+  private _reconcileSideSockets(before: readonly string[]): void {
+    const needed = this.sideVars;
+    const added = needed.filter((v) => !before.includes(v));
+    const removed = before.filter((v) => !needed.includes(v));
     if (added.length === 0 && removed.length === 0) return;
-    this.sideVars = needed;
     queueMicrotask(() => {
       void (async () => {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
@@ -2255,15 +2214,18 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   _gen?: number;
   _ref?: FrameRef | null;
 
+  /** The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. */
+  static coreFields = ["bindings"] as const;
+
   data(inputs: ComputedColumnInputs) {
     const raw = inputs.frame?.[0] ?? null;
     // A ref's answer is a promise, which the compute pass awaits; a value's stays synchronous, as callers read it.
-    return (isFrameRef(raw) ? this.dataOnRef(raw, inputs) : this.dataValue(inputs)) as ReturnType<ComputedColumnNode["dataValue"]>;
+    return (isFrameRef(raw) ? this.dataOnRef(raw, inputs) : this.dataValue(inputs)) as { frame: FrameValue | CubeValue | SolError | null };
   }
 
-  /** A frame in the engine: the formula runs there and only its answer column comes back, for the type, the unit
-   *  refusal and the placement, which stay here. Anything the engine path doesn't carry reads the frame and runs
-   *  as a value. */
+  /** A frame in the engine: the formula runs there and only its answer column comes back, for the body to type,
+   *  unit and place; the shell assembles the answer in the engine. Anything the engine path doesn't carry (a side
+   *  value with a unit, a plan that rescales) reads the frame and runs as a value. */
   private async dataOnRef(ref: FrameRef, inputs: ComputedColumnInputs) {
     const gen = beginPass(this);
     const asValue = async () => {
@@ -2273,51 +2235,32 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       return gen === this._gen ? this.dataValue({ ...inputs, frame: [mat] }) : { frame: null };
     };
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
     if (isLambdaValue(inputs.fn?.[0]) || Object.keys(this.bindings).length > 0 || !this.expr.trim() || nameRaw === null) return asValue();
-    if (this._compiledFor !== this.expr) {
-      this._evaluator = compileEvaluator(this.expr);
-      this._vars = this._evaluator ? extractVariables(this.expr) : [];
-      this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
-      this._compiledFor = this.expr;
-    }
-    if (!this._evaluator) return asValue();
     const schema = await collectPreview(ref, 0);
     if (!isFrameValue(schema)) return asValue();
-    const name = nameRaw.trim() || "computed";
-    const after = (afterRaw ?? "").trim();
-    // The unit pass needs only the schema; a plan that rescales its inputs runs as a value ([[D100]] computedColumnInfersUnit).
-    const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
-    const plan = planColumnUnits<FrameCell>(exprDefinition(this.expr), schema, { sideValue: sideRaw, authored: parseColumnUnitFromHeader(name).unit });
-    if (isSolError(plan) || plan.table.columns !== schema.columns) return asValue();
-    const sideValue = (p: string) => plan.side(sideRaw(p));
-    const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: ["frame", "name", "fn", "after"] });
+    let united = false;
+    const sideValue = (p: string) => {
+      const v = readInput(inputs[p] as unknown[] | undefined, this.literals[p] ?? 0);
+      if (stripUnitCells(v) !== v) united = true;
+      return v;
+    };
+    const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: COMPUTED_RESERVED });
     if (!r || isSolError(r)) return asValue();
     try {
-      const done = plan.finish(r.cells);
-      if (done.cells !== r.cells) return asValue();
+      if (united) return asValue();
+      const placed = this.body({ ...inputs, frame: [schema], cells: [r.cells] });
+      if (placed.asValue) return asValue();
       if (gen !== this._gen) return { frame: null };
-      this.sourceColumns = schema.columns.map((c) => c.name);
-      this.defVars = this._vars;
-      this._reconcileSideSockets(r.sideVars);
-      const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, r.cells, schema, this.expr, this.bindings);
-      // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
-      const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
-      const added = addColumn(shape, name, [], colType, done.unit ?? null);
-      const replaced = added.columns.length === shape.columns.length;
-      const fresh = replaced ? added.columns.find((c, i) => c !== shape.columns[i])! : added.columns[added.columns.length - 1];
-      let cols = added.columns;
-      if (after && !replaced) {
-        const anchorIdx = cols.findIndex((c) => c.name === after);
-        if (anchorIdx < 0) return emitFrame(this, gen, solError("#REF!", `No column "${after}" to place after`));
-        cols = [...cols];
-        cols.splice(anchorIdx + 1, 0, cols.pop()!);
-      }
+      const before = this.sideVars;
+      this.sideVars = r.sideVars;
+      this._reconcileSideSockets(before);
+      const shape = placed.frame;
+      if (!isFrameValue(shape)) return emitFrame(this, gen, shape as SolError | null);
       const out = await assembleOnEngine(
-        cols.map((c) => (c === fresh
-          ? { handle: r.col, column: "out", as: c.name, type: colType }
+        shape.columns.map((c, i) => (i === placed.fresh
+          ? { handle: r.col, column: "out", as: c.name, type: c.type }
           : { handle: r.base, column: c.name, as: c.name, type: c.type })),
-        { __frame: true, columns: cols },
+        shape,
       );
       return emitFrame(this, gen, out);
     } finally {
@@ -2325,100 +2268,39 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     }
   }
 
+  /** The body over a value, its answer kept while the input, definition, placement and side values stand. */
   private dataValue(inputs: ComputedColumnInputs) {
     const rawF = inputs.frame?.[0] ?? null;
-    const isCube = isCubeValue(rawF);
-    const f = rawF == null ? null : isCube ? cubeRowTable(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
+    const name = (nameRaw ?? "").trim() || "computed";
+    const after = (readInput(inputs.after, this.stringLiterals.after ?? "") ?? "").trim();
     const lam = inputs.fn?.[0];
-    const out = (frame: FrameValue | CubeValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
-    this.sourceColumns = isCube ? rawF.columns.map((c) => c.name) : (f ? f.columns.map((c) => c.name) : []);
-    if (!f || nameRaw === null) { this.defVars = []; this._reconcileSideSockets([]); return out(null); }
-    const name = nameRaw.trim() || "computed";
-    const after = (afterRaw ?? "").trim();
-
     const wired = isLambdaValue(lam) ? lam : null;
-    if (!wired) {
-      if (this._compiledFor !== this.expr) {
-        this._evaluator = compileEvaluator(this.expr);
-        this._vars = this._evaluator ? extractVariables(this.expr) : [];
-        this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
-        this._compiledFor = this.expr;
-      }
-      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(isCube ? rawF : (f as FrameValue)); }
-      if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
-    }
-
-    const sideVals = this.sideVars.map((p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0));
+    const sideVals = this.sideVars.map((p) => readInput(inputs[p] as unknown[] | undefined, this.literals[p] ?? 0));
     const bindJson = JSON.stringify(this.bindings);
     const stamp = volatileStamp(wired ? wired.expr : this.expr);
     const k = this._lastKey;
     if (
-      this.cachedResult && !isSolError(this.cachedResult) && k &&
+      nameRaw !== null && this.cachedResult && !isSolError(this.cachedResult) && k &&
       Object.is(k.f, rawF) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
       k.name === name && k.after === after && k.bindings === bindJson && k.stamp === stamp &&
       k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
     ) {
       return { frame: this.cachedResult };
     }
-    const remember = (frame: FrameValue | CubeValue) => {
-      this._lastKey = { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals, stamp };
-      return out(frame);
-    };
+    const before = this.sideVars;
+    const { frame } = this.body(inputs);
+    this._reconcileSideSockets(before);
+    const computed = frame != null && !isSolError(frame) && (wired !== null || this.expr.trim() !== "");
+    this._lastKey = computed ? { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals, stamp } : null;
+    return { frame };
+  }
 
-    this.defVars = wired ? wired.params : this._vars;
-    const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
-    const captures = lambdaCaptures(wired ? [wired] : []);
-    const plan = planColumnUnits<CubeCell>(
-      wired ? lambdaDefinition(wired) : exprDefinition(this.expr),
-      f,
-      { alias: this.bindings, sideValue: (p) => (captures.has(p) ? captures.get(p) : sideRaw(p)), authored: parseColumnUnitFromHeader(name).unit },
-    );
-    const runPlan = isSolError(plan) ? null : plan;
-    const sideValue = (p: string) => (runPlan ? runPlan.side(sideRaw(p)) : stripUnitCells(sideRaw(p)));
-    const reserved = ["frame", "name", "fn", "after"];
-    const table = (runPlan ? runPlan.table : f) as FrameValue;
-    const onEngine = !wired && !isCube && Object.keys(this.bindings).length === 0
-      ? computeColumnOnEngine(table, this.expr, table.columns.reduce((m, c) => Math.max(m, c.values.length), 0), { sideValue, reserved }) : null;
-    const computed = onEngine ?? (isCube ? computeCubeColumnCells : computeColumnCells)(
-      runPlan ? runPlan.table : f,
-      wired ? { kind: "lambda", lam: runPlan ? lambdaInPlan(wired, runPlan) : wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
-      {
-        reserved,
-        sideValue,
-        alias: this.bindings,
-        rowRefs: wired
-          ? (wired.expr ? rowRefNames(wired.expr).filter((p) => !(wired.captured ?? []).includes(p)) : [])
-          : this._rowRefs,
-      },
-    );
-    if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
-    this._reconcileSideSockets(computed.sideVars);
-    const done = runPlan ? runPlan.finish(computed.cells) : null;
-    const values: CubeCell[] = isSolError(plan) ? computed.cells.map(() => plan) : done ? done.cells : computed.cells;
-    const listType = isCube ? cubeCellsType(values) : null;
-    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs)
-      : listType ?? computedColumnType(name, values as FrameCell[], f, wired ? wired.expr : this.expr, this.bindings);
-
-    if (isCube) {
-      const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after, done?.unit ?? null));
-      return isSolError(cubeOut) ? out(cubeOut) : remember(cubeOut);
-    }
-
-    // Detect replacement by column count, which is exact and avoids repeating addColumn's `Name (unit)` parsing.
-    const frame = f as FrameValue;
-    const result = addColumn(frame, name, values as FrameCell[], colType, done?.unit ?? null);
-    const replacing = result.columns.length === f.columns.length;
-    if (after && !replacing) {
-      const anchorIdx = result.columns.findIndex((c) => c.name === after);
-      if (anchorIdx < 0) return out(solError("#REF!", `No column "${after}" to place after`));
-      const cols = [...result.columns];
-      const added = cols.pop()!;
-      cols.splice(anchorIdx + 1, 0, added);
-      return remember({ __frame: true, columns: cols });
-    }
-    return remember(result);
+  /** The card's answer over a value. With `cells`, `frame` is a frame ref's schema and `cells` the column the
+   *  engine computed over it: the answer is the columns the shell assembles, `fresh` the computed one's place, or
+   *  `asValue` where the ref must be read and run as a value. */
+  body(inputs: ComputedColumnInputs & { cells?: unknown[] }): { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true };
   }
 
   private _lastKey: {
