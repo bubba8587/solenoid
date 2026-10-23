@@ -52,15 +52,15 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 
 ## Module boundaries
 
-### The formula path is rete-free
+### The formula path is graph-free
 
-**MUST:** a module the formula path imports never pulls in rete, the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts`, `convertUnits.ts` and `listOps.ts` do. `formulaPathIsReteFree.test.ts` pins it.
+**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts`, `convertUnits.ts` and `listOps.ts` do. `formulaPathIsGraphFree.test.ts` pins it.
 
-**MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in rete arrives as an argument instead of an import. The pattern is `indexAccess.ts` plus the Frame and Cube branch in `nodes/list.ts`, with `tagFrameCellUnit` passed into `indexInto`.
+**MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in the graph model arrives as an argument instead of an import. The pattern is `indexAccess.ts` plus the Frame and Cube branch in `nodes/list.ts`, with `tagFrameCellUnit` passed into `indexInto`.
 
-The headless formula path (`run-graph` and the evaluator) shouldn't have to load the editor. While the rule was only a convention it broke three times: `excelFunctions` reached rete through `nodes/date.ts` and `nodes/convert.ts` until the serial helpers and the unit table were extracted, and `indexAccess.ts` was first created by lifting the INDEX node's `data()` whole, which imported `frame.ts`. That is why the rule binds the moment a module is created, and says what not to extract.
+The headless formula path (`run-graph` and the evaluator) shouldn't have to load the editor. While the rule was only a convention it broke three times: `excelFunctions` reached the graph model through `nodes/date.ts` and `nodes/convert.ts` until the serial helpers and the unit table were extracted, and `indexAccess.ts` was first created by lifting the INDEX node's `data()` whole, which imported `frame.ts`. That is why the rule binds the moment a module is created, and says what not to extract.
 
-Two modules look like pure value code but reach rete, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `unitBridge.ts` → `formatAnnotationStore.ts` → `nodes/date.ts`).
+Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `unitBridge.ts` → `formatAnnotationStore.ts` → `nodes/date.ts`).
 
 ### Heavy libraries load lazily
 

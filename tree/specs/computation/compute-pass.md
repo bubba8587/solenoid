@@ -20,7 +20,7 @@ This file owns what happens from "something changed" to "every card shows its ne
 
 ## The engine
 
-The model is a rete `NodeEditor`; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`, [[graph-core]]) attached with `editor.use(engine)`. The app uses `fetch`, `reset`, `seed` and the graph walks below.
+The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's Ruggine editor; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`) attached with `editor.use(engine)`, both [[graph-core]]. The app uses `fetch`, `reset`, `seed` and the graph walks below.
 
 - **Registration.** The engine mirrors `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`. A node's input and output key sets are read live (`Object.keys(node.inputs)`, `Object.keys(node.outputs)`) at every fetch, so a node that adds or removes sockets needs no re-registration.
 - **Pull.** `engine.fetch(id)` returns the node's outputs. If the cache holds an entry for `id`, that entry is returned. Otherwise the engine starts a cancellable run that first fetches the inputs, then calls `node.data(inputs)`, and caches it under `id` before it resolves. Fetching inputs means: take every connection whose target is `id` and whose `targetInput` is a current input key, fetch each source concurrently, and build `inputs[targetInput]` as an array holding `sourceOutputs[sourceOutput]` for each such cable, in the order the cables were added. An input with no cable has no key in `inputs` at all.
@@ -290,7 +290,7 @@ A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the
 
 ## Composites
 
-A composite card owns a private `NodeEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches only the output markers. Run modes and heavy-mode holding ([[D52]] compositesHoldUntilSolve) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
+A composite card owns a private `GraphEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches only the output markers. Run modes and heavy-mode holding ([[D52]] compositesHoldUntilSolve) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
 
 ## Enforcement
 

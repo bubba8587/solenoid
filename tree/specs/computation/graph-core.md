@@ -35,7 +35,8 @@ owns how the model and the engine are hosted.
   nothing is mirrored and a fetch reads port keys without calling into JavaScript.
 - **TypeScript holds a handle**, `GraphEditor`, with the method names the app called on rete's editor: `addNode`,
   `removeNode`, `addConnection`, `removeConnection`, `clear`, `getNode`, `getNodes`, `getConnection`,
-  `getConnections`, `addPipe`, `use`, plus `removePipe`. Every edit is made in the core; the handle's own lists
+  `getConnections`, `addPipe`, `use`, plus `removePipe` and `reorderNodes` (the stacking order, a full order or
+  nothing, no signal; Ruggine's `reorder_nodes`). Every edit is made in the core; the handle's own lists
   change only when the core's signals say so.
 - **What TypeScript still holds** (until the node bodies and their state move, D102's later phases): each node's
   JavaScript object (its class, fields, `data()`) and each cable's, kept in the core beside the Rust node and cable and
@@ -124,6 +125,10 @@ machine. Node `data()` work is in both columns; rete-engine's per-node cost stay
 | 308 | 18.5 | 13.4 |
 | 616 | 38.2 | 23.5 |
 | 1232 | 88.3 | 39.5 |
+
+Moving the model into the core (2026-10-23, same test, a loaded machine, two runs each) left the compute phase level
+(1232 nodes: 101 to 106 ms before, 90 to 92 after) and halved building the graph (1232 nodes: 99 to 152 ms before, 47
+to 76 after): `getNodes()` and `getConnections()` hand out a cached list and never cross into the module.
 
 ## Enforcement
 

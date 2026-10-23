@@ -76,11 +76,11 @@ This file is the map.
 
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
-- **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
-  + the graph core's DataflowEngine (pull-based recompute, Rust on Ruggine in its own
-  wasm module, `dataflowEngine.ts`, [[D102]] graphOnCore). No rete render/area
-  plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  ([[A1]] visualGraphCalculator — author-ratified 2026-08-27).
+- **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on Ruggine in its
+  own wasm module, [[D102]] graphOnCore): a Ruggine editor holding the nodes, their ports
+  and the cables, behind `GraphEditor` (`graphEditor.ts`), and the DataflowEngine
+  (pull-based recompute, `dataflowEngine.ts`) on that same editor. `elkjs` is called
+  directly for Tidy.
 - **UI**: React + Vite, desktop shell via Tauri. KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
   pattern) read via `useSyncExternalStore` — they predate the single tree and
@@ -113,8 +113,11 @@ src/
 | `viewPresets.ts` | The pure zoom module both surfaces share: `MIN_ZOOM`/`MAX_ZOOM`, `clampZoom`, `wheelZoomDelta` (the proportional wheel curve — px slope, step cap, line/page normalization) |
 | `view.ts` | THE canvas-view seam, `View`: what model-side code may ask of the view — `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)` (position reads `node.position`, the model's one source of truth; elements resolve to the live RF DOM per call), `container`/`viewport`, the camera (`transform`, `zoom`, `pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `onRender`, `measured`; `flow/flowView.ts` is the one implementation |
 | `zoomAt.ts` | Frame a node set over a `Pick` of the `View` seam (`ZoomView`): RF's `getNodesBounds` + `getViewportForBounds` (padding 0.1, never zooms IN past 1), zoom floored to the snap step |
-| `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
-| `rete-nodes.ts` | Node class re-exports for the editor |
+| `graphEditor.ts` | `GraphEditor`, the handle over the graph core's editor: edits, the node and cable lists, pipes, the module's load and trap recovery (`../tree/specs/computation/graph-core.md` § The model) |
+| `graphModel.ts` | `GraphNode`, `GraphSocket`, `GraphInput`, `GraphOutput`, `GraphConnection`: what node classes are built from; port changes reach the core |
+| `dataflowEngine.ts` | The `DataflowEngine` handle: fetch, reset, seed and the graph walks, on the editor's core |
+| `schemes.ts` | The node and cable types an editor holds (`SolenoidNode`, `SolenoidConnection`) |
+| `nodeClasses.ts` | The barrel re-exporting every node class |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `coerceInputs.ts` | The `nodecreated` wrapper around every `data()` that normalizes each arriving value to its socket's type. Mechanics: `../tree/specs/computation/compute-pass.md` § Arrival coercion |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
@@ -129,15 +132,15 @@ src/
 | `aiGrounding.ts` | The model-facing authoring spec, GENERATED from the catalog + live classes (grammar, socket lattice, per-class init/inline/ops); cached per session as the AI system prompt |
 | `aiService.ts` (+`aiKey.ts`, `apiKeyStore.ts`, `aiDemo.ts`, `aiReveal.ts`) | The AI palette's loop: prompt + current text form → `claude-opus-5` (SDK, browser opt-in, user's key) → prose answer or fenced full rewrite, validator-gated with repair rounds; canonicalized for the diff; `aiDemo.ts` fakes the transport for the keyless demo, `aiReveal.ts` animates AI-added nodes, `apiKeyStore.ts` holds the device-local keys |
 | `textDiff.ts` | Pure LCS line diff for the AI apply-approval view |
-| `nodeNameStore.ts`, `nodeNaming.ts`, `nodeNames.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from rete's regenerated-on-load `id`); `nodeNames.ts` derives live display names + endpoints for the connection dialog |
+| `nodeNameStore.ts`, `nodeNaming.ts`, `nodeNames.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from the regenerated-on-load `id`); `nodeNames.ts` derives live display names + endpoints for the connection dialog |
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
 | `seeds.ts` + `seedGraphs/*.json` (+`seedTune.ts`) | Example graphs in Export format, globbed into a registry; `seedTune.ts` is the console-only live group-fit tuner `scripts/tune-seeds.mjs` drives |
-| `flow/flowModel.ts` (+`.test.ts`, `flowModelEdit.test.ts`) | The headless graph model builder (real NodeEditor + DataflowEngine + coercion + guards, no view), its edit verbs (`connect`/`disconnect`/`addNode`/`removeNodes`/`moveNode` under the lattice) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable): a group member projects as an RF child (`parentId`, position relative to the group, parents first), `toFlowPosition`/`fromFlowPosition` convert at the boundary, `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
+| `flow/flowModel.ts` (+`.test.ts`, `flowModelEdit.test.ts`) | The headless graph model builder (real GraphEditor + DataflowEngine + coercion + guards, no view), its edit verbs (`connect`/`disconnect`/`addNode`/`removeNodes`/`moveNode` under the lattice) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable): a group member projects as an RF child (`parentId`, position relative to the group, parents first), `toFlowPosition`/`fromFlowPosition` convert at the boundary, `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
 | `flow/FlowSurface.tsx` | THE surface, shared by the main canvas and the drill-in: the RF element + identity-preserving `syncTopology`, handler binding, gesture installers, lasso, the socket/cable/node context menus, canvas keyboard, add menu (quick-wire), FC docking on drop, standoff tow (RF tows group members itself), RF-driven Delete (`onBeforeDelete`), selection mirror (`useOnSelectionChange`), right-click routing (`onNode/Edge/PaneContextMenu`), snapToGrid, isolate, touch select, RF `<MiniMap>`, `StandoffLayer` (hosts opting in), `HtmlCanvasLayer`, `CableInspector`. Takes a `SurfaceStack` + `SurfaceHooks` |
 | `flow/CanvasBacking.tsx`, `flow/panLayer.ts` (+test) | The canvas color and dot grid as an opaque backing in graph coordinates, and the pan layer that moves the viewport as one composited bitmap during a press pan (`tree/specs/canvas/react-flow-surface-contract.md` § The dot grid, § Drag performance) |
 | `flow/FlowCanvas.tsx` | The main host: app-lifetime stack (editor + engine + flowView + rebuild-aware topology pipe), the canvasCommands slot registrations, cable-change pipe, document restore, autosave + snapshot history hooks, and the app chrome rendered BESIDE the surface (palette, toasts, dialogs, legend, load/compute overlays) so it stays visible under a drill-in |
 | `flow/flowView.ts` | `makeFlowView` — the ONE `View` implementation: the seam's verbs become RF state via late-bound callbacks; `position(id)` reads/writes `node.position` on the editor's nodes, `nodeElement`/`connectionElement` resolve the live RF DOM per call; the surface writes back camera/pointer/measured sizes through the `FlowView` half |
-| `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a rete node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
+| `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type; paths from `cablePaths.ts`, visible strokes as `<BaseEdge>`s styled inline, ribbons, run selection, hit path `.solenoid-cable-hit`) |
 | `flow/FlowConnectionLine.tsx` | The cable being DRAGGED from a socket (RF `connectionLineComponent`): same router + type color as a live cable |
 | `flow/FlowSocketHandle.tsx` | The handle each socket renders through (measurement + cable anchoring): RF's handle markup and `XYHandle` connection start without RF's `<Handle>`, so no socket subscribes to the RF store; lights the socket a dragged cable would land on (`litTargetStore`, published by `FlowConnectionLine.tsx` so sockets never watch the RF store) |
@@ -207,8 +210,8 @@ src/
 | `compositeEditorStore.ts` + `flow/FlowCompositeOverlay.tsx` + `compositeLogic.ts` | Composite drill-in, a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
 | `compositeStaleStore.ts` | Which composites are STALE (a heavy run mode — goal-seek/scenarios/data-table/simulation — whose inputs/config changed since the last Solve). Drives the arm-and-run status dot, and holds each one's last solve time for the "last run" line; a module store because a HELD composite's output doesn't change, so processGraph's re-render pruning would skip the card |
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
-| `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
-| `lambdaValue.ts` | Lambda values, rete-free (implReteFree) so the formula path runs editor-less |
+| `cxValue.ts` | Tagged complex values (tagSpecialScalars), graph-free — kernels shared with the IM* formulas |
+| `lambdaValue.ts` | Lambda values, graph-free so the formula path runs editor-less |
 | `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox ([[C66]] scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
@@ -424,8 +427,8 @@ overlay tabs.
 
 One file per pack on `packs/packShared.ts` (authoring types,
 `formulaNode`/`placeFormulas`, Equation presets; a pack file may import ONLY
-packShared, its `<id>Formulas.ts`, `../rete-nodes`, and type-only app seams — never core internals),
-its `formulas` in `packs/<id>Formulas.ts`, which imports only rete-free kernels (`../tree/specs/floors/engineering.md` § The formula path is rete-free),
+packShared, its `<id>Formulas.ts`, `../nodeClasses`, and type-only app seams — never core internals),
+its `formulas` in `packs/<id>Formulas.ts`, which imports only graph-free kernels (`../tree/specs/floors/engineering.md` § The formula path is graph-free),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the

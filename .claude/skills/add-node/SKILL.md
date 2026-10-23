@@ -58,7 +58,7 @@ script when the component needs hand-writing anyway (op select, custom render).
    `logic.ts` `text.ts` `date.ts` `finance.ts` `frame.ts` `matrix.ts`
    `cube.ts` `input.ts` (sources) `display.ts` (sinks) `control.ts` (widgets)
    `visual.ts` (chart-socket content) `connection.ts`/`dataFeed.ts` (fetchers)
-   `convert.ts` `complex.ts`. `rete-nodes.ts` is the barrel — existing domain
+   `convert.ts` `complex.ts`. `nodeClasses.ts` is the barrel — existing domain
    files are already `export *`'d, so adding to one needs no barrel edit.
    - **Ports**: use the factories in `nodes/shared.ts` — every socket family
      has typed in/out helpers (`numIn`, `strIn`, `dateIn`, `logicalIn`,
