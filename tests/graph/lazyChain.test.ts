@@ -89,7 +89,7 @@ describe("verb chain IPC cost through real node data()", () => {
   });
 });
 
-// Every verb class that emits a ref (calls a runFrame* runner) must be in the lazy
+// Every verb class that emits a ref (calls a runFrame* runner, or plans its body over refs) must be in the lazy
 // set, or coerceInputs collects its INPUT and the chain re-sources mid-way — the
 // 2026-08-25 finding (BindColumns / FillBlanks / ReplaceValues / Window were missing).
 import { readFileSync } from "node:fs";
@@ -99,7 +99,7 @@ describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
   it("frame.ts: a class calling runFrame* is lazy", () => {
     const src = readFileSync(new URL("../../src/graph/nodes/frame.ts", import.meta.url), "utf-8");
     const classes = [...src.matchAll(/^export class (\w+) extends ClassicPreset\.Node[\s\S]*?(?=^export class |\Z)/gm)];
-    const emitters = classes.filter((m) => /\brunFrame(Unary|Join|Append|BindColumns)\(/.test(m[0])).map((m) => m[1]);
+    const emitters = classes.filter((m) => /\b(runFrame(Unary|Join|Append|BindColumns)|lazyPass|lazyFramePass|planOnBody)\(/.test(m[0])).map((m) => m[1]);
     expect(emitters.length).toBeGreaterThan(10);
     const missing = emitters.filter((c) => !LAZY_FRAME_NODES.has(c));
     expect(missing).toEqual([]);

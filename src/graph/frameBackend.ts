@@ -1024,6 +1024,15 @@ export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<Fra
   }
 }
 
+/** A frame uploaded to the backend, as a ref with nothing planned yet: what a lazy verb's body plans over. */
+export async function uploadFrame(input: FrameValue): Promise<FrameRef | SolError> {
+  try {
+    return wrapRef((await inputHandle(input)).h);
+  } catch (e) {
+    return asErrorValue(e);
+  }
+}
+
 export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: JoinOpts): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];
