@@ -86,16 +86,16 @@ never saved; they're worked out again on load. A node that retypes a socket in p
 
 Scalars, lists and matrices are plain JS values on cables. A Frame on a cable is usually a
 lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`
-seam: `JsFrameBackend` on web (the pure `frameVerbs.ts` oracle) or `PolarsBackend` on
-desktop (native Rust, with verb chains fused into one round trip). Data materializes only
+seam: the Rust core in wasm on the web, or `PolarsBackend` on desktop (native Rust, with verb
+chains fused into one round trip, and the core in wasm beside it for what Polars can't hold). Data materializes only
 at the boundary: `preview` (cards show the first N rows), `column` (the bridge to scalars and
 lists) and `collect`. A shared fixture corpus, run from both vitest and cargo, keeps the two
-backends identical. There is one definition per verb (`frameVerbs.ts`); node code never
-re-implements one ([[C130]] rustCore).
+backends identical. There is one definition per verb, the core's (`frame_verbs.rs`); node code
+never re-implements one ([[C130]] rustCore).
 
 Formulas stop at matrices: Frames and Cubes never enter them ([[C15]] matricesInFormulas).
 Per-row math on a Frame is a **computed column**, either Frame Input's **Fx** column or the
-Computed Column node, both running `computedColumnCore.ts`. Inside one, a bare name is the
+Computed Column node, both running on the core (`nodes/columns.rs`). Inside one, a bare name is the
 whole column and `@name` is this row's cell, as in Excel tables ([[C22]] rowFormulaRefs).
 
 ## What a value box shows

@@ -2,11 +2,11 @@
 aliases: ["Rust core"]
 tags: [spec, computation]
 ---
-<!-- [[C130]] rustCore, [[D99]] rustIsSpec, [[D98]] wholeColumnFallback -->
+<!-- [[C130]] rustCore, [[D99]] rustIsSpec -->
 
 # Spec: the Rust core
 
-Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `crates/solenoid-core` is a Rust port of the headless TypeScript core, built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
+Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solenoid's headless core (it began as a port of the TypeScript one), built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
 
 ## The rule: the Rust is the spec ([[D99]] rustIsSpec)
 
@@ -14,11 +14,17 @@ Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `c
   changes, in the same commit.
 - The port began as a mechanical copy of the TypeScript, so the Rust keeps the TS's names (in snake_case) and order of
   operations wherever a fixture depends on them.
-- Moving off the TypeScript, subsystem by subsystem:
-  1. Freeze: the TS's answers on the differential tests' inputs are written to fixture files (`fixtures/core/`):
-     `FREEZE_CORE=1` rewrites every suite, `FREEZE_CORE=frame-fns,columns` only those.
-  2. Cover: the core answers every case the subsystem's callers make, so nothing falls back.
-  3. Delete: the TS implementation, its fallback and its differential test go, and the fixtures stay as the test.
+- Moving a TS copy onto the core:
+  1. Freeze: the TS's answers on its tests' inputs are written to fixture files (`fixtures/core/`).
+  2. Cover: the core answers every case the copy's callers make.
+  3. Delete: the TS copy and its differential test go, and the fixtures stay as the test. `FREEZE_CORE=1` re-answers
+     every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is
+     how a deliberate change in behaviour moves a fixture.
+- Gone so far: the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
+  the pack functions' JavaScript, the JS frame verbs and their backend, and the card bodies ([[node-bodies]]). The TS
+  keeps the editor's walkers over the core's tree (variables, LaTeX, steps), the units and formats a verb leaves
+  (`frameSchema.ts`), the table popups' footer profile (`tableFooterStats.ts`: the Obsidian plugin shows those popups
+  and runs without the core), and the op modules the components and the canvas still read.
 - The JavaScript semantics the frozen answers carry stay ported, because they decided those answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.
@@ -27,39 +33,39 @@ Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `c
     and `atanh`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
     the platform libm is off by an ulp on some inputs.
   - A JS exception (a function that throws) ends the row's evaluation.
-- Facts the TS keeps in tables are frozen into the core, not passed per call: `data/call_traits.json` holds every
-  function name's dispatch facts, argument roles and empty-slot readings (frozen from `formulaCallTable` by
-  `tests/graph/coreCallTable.test.ts`); unit scales are still lowered into a verb (`withUnitScales`, `pivotUnits`).
+- A function's dispatch facts, argument roles and empty-slot readings live in `data/call_traits.json` (first frozen
+  from the TS's call table; the tests read it through `tests/graph/callTraits.ts`). The names the editor offers come
+  from the core (`engine_function_names`); the TS keeps only each name's arity and signature hint
+  (`excelFunctions.ts`, `formulaSignatureTable.ts`). Unit scales are still lowered into a verb (`withUnitScales`,
+  `pivotUnits`, `frameSchema.ts`).
 - Correctness rests on the conformance checks, not review:
   - `tests/graph/coreConformance.test.ts` replays the frozen answers in `fixtures/core/`: every function body on random
-    and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines; V8's `Math` is checked live.
-  - `fixtures/core/bails.json` caps how many frozen cases each suite may leave to the TS (`CORE_BAILS_WRITE=1`
-    rewrites it; its numbers only fall).
+    and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines, 6k parser trees (checked
+    against the TS parser on all 49k formulas the fixtures hold before it went), 3k pack calls; V8's `Math` is
+    checked live, and `corePlatform.test.ts` holds UNACCENT to Node's NFD and a caseless backreference to V8.
   - Every test file loads the core (`tests/setup/graphEngine.ts`), so the hand-written suite's
     formulas check the Rust evaluator too.
-  - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively; `tests/graph/wasmEngine.test.ts`
-    still fuzzes verbs, pivots and the parser against the TS while the TS exists
-    (`FUZZ_RUNS=100000 FUZZ_SEED=7 npx vitest run tests/graph/wasmEngine.test.ts` widens a run).
-- Where JS engines disagree among themselves (a sort whose comparator is inconsistent, such as NaN in a pivot
-  sort field), there's no single answer to match, so the fuzzers leave it out.
+  - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively; `scripts/fuzz-frame-verbs.ts`
+    writes random corpus cases with the wasm core's answers, for the cargo runner to hold Polars to.
 
 ## Tracking develop
 
 Pinned upstream: `develop` @ `31ce0f7`.
 
-On each rebase, list what moved in the ported TS, then port each change, run the checks above and move the pin:
+`develop` still runs the TypeScript copies this branch deleted. On each rebase, list what moved in them, port each
+change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back: the TS
+copies here are gone.
 
 ```
 git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
   src/graph/valueKinds.ts src/graph/stringOrder.ts src/graph/unitValue.ts src/graph/pivotLayout.ts \
   src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
-  src/graph/computedColumnCore.ts src/graph/nodes/statsOps.ts src/graph/nodes/mathUtils.ts \
-  src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
-  src/graph/nodes/textOps.ts src/graph/csv.ts package.json fixtures/frame-verbs
+  src/graph/computedColumnCore.ts src/graph/formulaExtensions.ts src/graph/packs src/graph/nodes/statsOps.ts \
+  src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
+  src/graph/nodes/textOps.ts src/graph/csv.ts fixtures/frame-verbs
 ```
 
-The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and the pass-throughs) follow the version
-`package.json` pins: a bump means re-reading them.
+A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
 
 Moved on develop since the pin (checked at `3a6a667`): nothing in the files above that isn't mirrored. The last were
 the finance functions' currency ([[D101]] financeCarriesMoney, `finance_units.rs`) and PIVOTBY's `details` ([[C128]]
@@ -70,88 +76,82 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 
 | Surface | Where | Evidence |
 | --- | --- | --- |
-| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm; Polars on desktop where it is on | the corpus natively; the verb and pivot fuzzers; frozen verb pipelines |
+| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm; Polars on desktop where it is on, the core beside it for what it can't hold. The units and formats a verb leaves ride in the TS (`frameSchema.ts`): a verb's output schema is the core's answer over no rows with them laid back on | the corpus natively; frozen verb pipelines; the verb tests through `tests/graph/coreVerbs.ts` |
 | A cube's row verbs (sort, filter, distinct, head, window) | the card bodies (`nodes/verbs.rs`): the scalar columns run through the frame verb, which answers the rows they keep or the window's column, and the nested cells ride along by them; list conditions read the nested cells | the frozen card cases (`fixtures/core/nodes/`) |
-| The formula parser | `excel_formula.rs` | the parser fuzzer |
+| The formula parser, for the evaluator and the editor (`parseFormula`, `engine_formula_parse`) | `excel_formula.rs` | 6k frozen trees (`formula-trees`) |
 | The evaluator (`evalAst`): operators, broadcasting, argument roles, the IFERROR family, `routeCall`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen formulas; the whole suite |
 | Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone and IANA zones through `zone.rs` (`Intl` in wasm, jiff's bundled tzdb natively, with the names only ICU takes mapped beside it) and text dates through `date_parse.rs` | the frozen function-body cases |
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
 | The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) | `crates/solenoid-graph` on Ruggine, its own wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the whole suite |
-| Node `data()` | whole bodies move onto the core class by class ([[node-bodies]]); a body still in TS calls its functions through `callCore` (`coreValues.ts`): an error argument reads as the formula's call reads it, first found, and a range function's list cells too (`argumentError`, `engine_call` with `scan`). A card mapping a body over a list crosses once per body, not per item ([[C120]] linearWork): the broadcast helpers run their item loop in `coreEach`, which records each item's `callCore`, sends a body's calls as one `engine_call_each` (the arguments that vary as items, finite numbers back as bare JSON) and answers the replayed loop from it. A call the replay makes differently, or one the batch can't answer (a value that can't cross, an item that bails or throws, which bails the batch), goes through `callCore` as ever | `fixtures/core/nodes/` ([[node-bodies]]); each family's tests; `callCore.test.ts`; `coreCallEach.test.ts` (each frozen body mapped over its cases' arguments, batch against per call) |
-| Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, the Choice Ladder (its plan, and its ladder beside it as `ladderWire` lays it out; a table with a column longer than every scored one stays with the TS), Group Cost Settle's totals and its ledger (a ledger holding lists stays with the TS), Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `ladder.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
-| A pack's function, registered in JS at run time: the core evaluates its arguments and calls the TS back for the call itself (its roles, blank slots and ladder on the TS); the same whole column row after row is one call | `external.rs`, `callFromCore` (`excelFormula.ts`), `globalThis.__solenoidCallExternal` | the frozen pack-call formulas |
-| A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEvalWithCode`) and its point weight over readings (`affineWeight`), for every caller: Expression, the LAMBDA folds, a computed column's unit plan (`planColumnUnits`, Frames and Cubes alike, its named LAMBDAs crossing as `fns`) and Equation. A caller with no formula text (Equation's isolated side) sends its tree, as the TS `Ast` object (`Ast::from_json`) | `unit_dims.rs` (a finance call's money through `finance_units.rs`, [[D101]] financeCarriesMoney), `engine_dim_eval`, `engine_affine_weight`, `dimEvalWithCode` and `affineWeight` (`unitDimExpr.ts`) | 18k frozen formula dimensions (`unit-dims`), 6k through named LAMBDAs (`unit-dims-fns`), 17k frozen weights (`affine-weights`), each replayed as text and as a tree |
+| Node `data()` | the card bodies ([[node-bodies]]); a body over a list runs its loop on the core | `fixtures/core/nodes/` ([[node-bodies]]); each family's tests |
+| Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, the Choice Ladder (its plan, and its ladder beside it as `ladderWire` lays it out), Group Cost Settle's totals and its ledger, Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `ladder.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
+| A pack's formula functions (ELEMENT, SUNRISE, ESERIESVALUE and kin), always known, advertised only while their pack is on | `fns_packs.rs`, over the cards' kernels (`nodes/packs.rs`); a pack's TS declares each one's name, arity and hint (`packs/*Formulas.ts`) | 3k frozen pack-call formulas (`pack-calls`) |
+| A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEvalWithCode`) and its point weight over readings (`affineWeight`), for every caller: Expression, the LAMBDA folds, a computed column's unit plan (`planColumnUnits`, Frames and Cubes alike, its named LAMBDAs crossing as `fns`) and Equation. A caller with no formula text (Equation's isolated side) sends its tree, as the TS `Ast` object (`Ast::from_json`) | `unit_dims.rs` (a finance call's money through `finance_units.rs`, [[D101]] financeCarriesMoney); `engine_dim_eval` and `engine_affine_weight` are the conformance suite's way in | 18k frozen formula dimensions (`unit-dims`), 6k through named LAMBDAs (`unit-dims-fns`), 17k frozen weights (`affine-weights`), each replayed as text and as a tree |
 | Expression's unit wrapper ([[unit-flow]] § Expression) once its inputs are read: the dimension check, the one shared display unit the formula runs in, the point weight over readings, the inputs in their shown magnitudes (`displayMagnitudeOf`), the evaluation and the result's unit. Each cell's display unit crosses with its dimension beside its scale and offset (`displayDim`) | `unit_expression.rs`, called by Expression's body on the core (`nodes/formula.rs`, [[node-bodies]]) | 6k frozen Expressions over generated unit inputs (`expression-units`) |
 | REDUCE, BYROW and BYCOL's unit wrapper ([[unit-flow]] § LAMBDA hosts) over an inline formula: the cells' one dimension, the display unit they share, the fold on the stripped magnitudes, the point weight over readings and the result's re-tagging | `unit_fold.rs`, called by those cards' bodies on the core (`nodes/matrix.rs`, [[node-bodies]]) | 5k frozen folds over generated unit tables (`fold-units`), also replayed through the nodes' `data()` |
 | List bodies over values with a unit (`UNIT_READY`): the ones that move cells without reading them, the shapers SORT, SORTBY, UNIQUE, TAKE and DROP (a unit cell sorts after the logicals and ties with its kind; UNIQUE keys it by base magnitude at 15 digits and dimension), FILTER (a unit cell as a condition is `#VALUE!`), and RUNNING, which reads each cell's display unit from the wire (its scale and offset as the TS resolves them) | `V::Unit`, `unit_lists.rs`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`), 5k frozen shaper calls (`unit-shapers`), 4k frozen FILTER calls (`unit-filters`), 6k frozen RUNNING calls with and without units (`unit-running`) |
 | CSV text, on the `csv` crate: the rows under each option, a file's typed frame (`csvToFrame`), a Frame Input's CSV text, and the Sink's CSV ([[frame-verbs]] § Reading CSV text). A 50 MB file reads into a typed frame in about 1.7 s in Node, from 4.1 s on Papa Parse and `inferColumn`; its rows alone in about 1.1 s | `csv.rs`, `engine_csv_frame` and `engine_csv_rows` (the columnar hand-off), `engine_csv_source`, `engine_csv_text` | 11k frozen row readings, 2.9k frozen frames and as many Frame Input sources, 800 frozen writes (`csv-*`, the core's own answers), over generated CSV and the repo's own files |
-| A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
 
-## Fallback ([[D98]] wholeColumnFallback)
+## Nothing falls back
 
-A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
-TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
-REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
-a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
-cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
-`{__unit}` (`V::Unit`, with its display unit's scale, offset and dimension beside a display id), and only the bodies in
-`UNIT_READY` (`unit_dims.rs`) take it: REVERSE, SLICE, NTHELEMENT, INTERLEAVE, CONCATLISTS, PADLEFT, PADRIGHT, which
-move values without reading them, SORT, SORTBY, UNIQUE, TAKE and DROP, FILTER (a unit cell as a condition is
-`#VALUE!`, as `ifTest` reads it) and RUNNING (`unit_lists.rs`); any other call holding one bails, and a
-formula or computed column over one stays on the TS. A card's body on the core has no TS to fall back to
-([[node-bodies]]): Expression runs its unit wrapper (`unit_expression.rs`) and REDUCE, BYROW and BYCOL theirs
-(`unit_fold.rs`) on the core, a bail answering on the card. `engine_expression_units` and `engine_fold_units` remain as
-the conformance suite's way in to those wrappers. A wired LAMBDA crosses with the captures its body reads
+The core is the only evaluator. A reading it doesn't make is an answer, never a hand-off: free text that only
+chrono-node read as a date is not a date (DATEVALUE answers an error, a criterion compares it as text); a loop past
+a cap, a value nested past a table and a regex past the core's limits answer an error that says so; a name the core
+doesn't know is #NAME?. Text crosses well formed: a lone surrogate reads as U+FFFD at the boundary (`toWellFormed`,
+`coreValues.ts`). A formula over a value with a unit it doesn't take is #VALUE! (the cards run their unit wrappers on
+the core, `unit_expression.rs` and `unit_fold.rs`). A wired LAMBDA crosses with the captures its body reads
 (`readValues`: the numbers they show, or a computed column's unit plan's magnitudes) and, beside them, the same
-captures with their units (`capturedValues`), which the core's unit plan (`nodes/columns.rs`) reads. `bails.json` counts what's left.
+captures with their units (`capturedValues`), which the core's unit plan (`nodes/columns.rs`) reads.
 
 ## Where it runs
 
-- **Frame verbs:** `initFrameBackend` picks Polars on desktop when it's on. Otherwise it uses this engine in
-  wasm when Settings → Rust engine is on (the default). Otherwise it uses the JS oracle.
-  - The wasm engine holds every cell kind, so unlike Polars it needs no oracle fallback for text or logical errors.
-- **Formulas, computed columns, pivots:** on the wasm core wherever it's on, desktop included, beside Polars. The app's
+- **Frame verbs:** `initFrameBackend` picks Polars on desktop while Settings → Polars engine is on, and this engine in
+  wasm otherwise, the web included. The wasm engine holds every cell kind; Polars keeps an error cell only in a
+  number or date column and has no pivot layout or cleaning verbs, so those frames and verbs run on the core in wasm
+  beside it (their handles wear `wasm:`).
+- **Formulas, computed columns, pivots, card bodies:** on the wasm core everywhere, desktop included, beside Polars. The app's
   first render waits for it with no deadline (`main.tsx`), since the cards' bodies run on it ([[node-bodies]]).
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
   where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
   `scripts/build-wasm.mjs` appends to wasm-bindgen's glue, guarding it as [[graph-core]] § Traps says), numbering its handles past the dead one's
-  (`engine_handle_base`). The call that trapped answers on the TS (`onCore`); a frame the verb backend held in the
+  (`engine_handle_base`). The call that trapped answers #ERROR! (`onCore`); a frame the verb backend held in the
   dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
   tests' trigger (`coreTrap.test.ts`).
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 
-Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
+Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts` (2026-10-23).
 
 - A verb row is the op plus a 100-row preview, with the frame already in wasm.
 - An fx row includes uploading its columns and downloading the answer.
-- Frames cross as columnar buffers: uploading 200k rows takes about 55 ms, a full download about 55 ms.
+- Frames cross as columnar buffers: uploading 200k rows takes about 55 ms, a full download about 70 ms.
 - Run to run the times move by about 20% on a shared machine. `examples/colbench.rs` counts a formula column's
   instructions natively under callgrind, which doesn't move.
 
-| op | JS ms | Rust ms | × |
-| --- | ---: | ---: | ---: |
-| sort by a number | 93.0 | 30.5 | 3.0 |
-| sort by text | 183.5 | 65.3 | 2.8 |
-| filter value > 0 | 9.6 | 5.2 | 1.9 |
-| filter text contains | 8.3 | 4.2 | 2.0 |
-| distinct key | 7.7 | 6.2 | 1.3 |
-| group by key: sum, avg, median | 98.0 | 28.5 | 3.4 |
-| window: cumsum by cat over day | 85.5 | 36.5 | 2.3 |
-| window: rank by cat | 106.2 | 44.1 | 2.4 |
-| pipeline: filter, group, sort | 78.4 | 14.5 | 5.4 |
-| left join a 1000-row lookup | 81.9 | 16.8 | 4.9 |
-| fx: `@value / SUM(value)` | 141.7 | 86.3 | 1.6 |
-| fx: `@value * 1.2 + @cat` | 104.9 | 35.0 | 3.0 |
-| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 413.0 | 97.1 | 4.3 |
-| fx: `@key & "-" & UPPER(@key)` | 238.9 | 115.8 | 2.1 |
-| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 433.2 | 121.6 | 3.6 |
-| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 606.9 | 200.7 | 3.0 |
-| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 483.7 | 235.8 | 2.1 |
+| op | ms |
+| --- | ---: |
+| sort by a number | 28.8 |
+| sort by text | 76.9 |
+| filter value > 0 | 6.3 |
+| filter text contains | 4.8 |
+| distinct key | 3.9 |
+| group by key: sum, avg, median | 24.8 |
+| window: cumsum by cat over day | 56.0 |
+| window: rank by cat | 62.8 |
+| pipeline: filter, group, sort | 22.0 |
+| left join a 1000-row lookup | 18.7 |
+| fx: `@value / SUM(value)` | 64.3 |
+| fx: `@value * 1.2 + @cat` | 35.6 |
+| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 113.9 |
+| fx: `@key & "-" & UPPER(@key)` | 119.8 |
+| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 107.5 |
+| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 217.4 |
+| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 224.5 |
+
+Before the JS verbs went, the same ops ran 1.3 to 5 times slower on them.
 
 ## Follow-ups
-
 - **Load time is the module's bytes.** A `<link rel="preload">` for the wasm was measured and dropped (2026-10-22): under
   4 Mbps throttling the first render came 0.4 s later, since the wasm then shares the link with the entry scripts the
   render also waits for. What would move it is a smaller module, or a first render that doesn't wait for the core.
@@ -165,34 +165,24 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   or the module that holds its body, and the call path's per-name facts (eta host, LAMBDA host, memo shaper, branch
   selector, ported) sit in its `Traits` as `fast`, so no string is compared per row; that cut `ABS` from 1,440.
   What's left is spread thin: each call's argument vector, the call site's cache lookup, the column lookup by name.
-- **Size.** The module is 4.8 MB raw / 1.7 MB gzipped (2026-10-23) after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. HASH's digests and base64 run on `md-5`, `sha1`, `sha2`, `crc32fast` and `base64` (20 KB gzipped; `hash_ops.rs` keeps the FNV-1a lines and base64's whitespace, URL-safe, padding and byte-order-mark rules), the hash maps on `rustc-hash`. `regress`
-  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) reads as V8's: a non-ASCII unit never goes to ASCII (`ſ` and `s` don't match each other), and a unit whose full uppercase is two units stays itself (`ᾳ` and `ᾼ` don't), from a 102-unit table taken from V8 (`wasmEngine.test.ts` checks every BMP unit beside its own cases). The `no-property-escapes` feature: `\p{…}` parses only in
+- **Size.** The module is 4.8 MB raw / 1.7 MB gzipped (2026-10-23, the pack functions in) after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. HASH's digests and base64 run on `md-5`, `sha1`, `sha2`, `crc32fast` and `base64` (20 KB gzipped; `hash_ops.rs` keeps the FNV-1a lines and base64's whitespace, URL-safe, padding and byte-order-mark rules), the hash maps on `rustc-hash`. `regress`
+  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) reads as V8's: a non-ASCII unit never goes to ASCII (`ſ` and `s` don't match each other), and a unit whose full uppercase is two units stays itself (`ᾳ` and `ᾼ` don't), from a 102-unit table taken from V8 (`corePlatform.test.ts` checks every BMP unit against V8). The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
   NFD, every code point, combining classes read off its reordering; 19 KB gzipped) instead of `unicode-normalization`. Size
   modes (`opt-level = "z"`) cut it by a fifth but halve the speed, so they're out. Ops arrive as `TaggedOp`, which reads
   the TS's `{ kind, ... }` as serde's external tagging, because the derived internally tagged form was the largest
   function. What's left is spread thin: `call_function` (53 KB before opt), the pivot, the command dispatcher.
-- **What the core still leaves to the TS** is `fixtures/core/bails.json`, a ratchet the conformance suite holds
-  (`CORE_BAILS_WRITE=1` rewrites it; its numbers only fall). Each entry needs a real answer before its TS goes:
-  criteria whose text reaches chrono-node (the *IF/*IFS family), and the few frozen columns and formulas those
-  reach. The suite pins `TZ=UTC`, so the zone readings (`zone.rs`) meet other zones only in the live fuzzers.
 - **Text is always well formed** (the author, 2026-10-22). A slice or match that halves a surrogate pair answers
-  U+FFFD for the half on the core (`from_utf16` in `excel_functions.rs` and `text_ops.rs`; `coreSurrogates.test.ts`).
-  Input text holding a lone surrogate still can't cross into wasm, whose strings are UTF-8, so its frame or formula
-  stays on the TS (`crossesWhole`, `wellFormed` in frameBackend.ts); once the TS goes, it reads as U+FFFD at the
-  boundary.
+  U+FFFD for the half (`from_utf16` in `excel_functions.rs` and `text_ops.rs`), and text holding a lone surrogate reads
+  as U+FFFD where it crosses into wasm, whose strings are UTF-8 (`toWellFormed`, `coreValues.ts`;
+  `coreSurrogates.test.ts`): `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b`, and Distinct merges two lone
+  halves into one U+FFFD. The rule has no leaf yet.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **A card mapping a body over a list is still about 3× develop** ([[C120]] linearWork): one `engine_call_each` per
-  body (`coreEach`) took 50,000 items from about 4 µs an item to about 1.5: UPPER 215 ms to about 70 (develop: 23),
-  ROUND 290 to about 100, ISEVEN 210 to about 80 (`BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts`). What's
-  left is the JSON both ways, the loop run twice, and the core's per-call name lookups (`call_body`, then
-  `call_function`), which one batch could resolve once. No card crosses per item otherwise: a sweep feeding every
-  catalog card 300-item lists (2026-10-22) found only an item the core answers as JS's own throw (DOLLAR past 100
-  decimals) sending its batch back to the TS, as designed. A wired LAMBDA's captures no longer cost that: a list of
-  64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
-  in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
-  `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).
-- **The TS fallback still keeps a halved surrogate**, so `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b` on the
-  core and `a😀b` where the formula falls back; the author's well-formed rule has no leaf yet.
+- **A card mapping a body over a list runs its loop on the core** ([[C120]] linearWork): over 50,000 items UPPER takes
+  about 30 ms (develop: 23), ROUND about 36, ISEVEN about 27 (`BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts`).
+  A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list lives
+  (`envValue` in `coreValues.ts`, `HELD` in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their
+  range memo (`eval::formula`), so `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s
+  (develop: 8 ms).

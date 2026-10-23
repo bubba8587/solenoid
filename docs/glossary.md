@@ -97,13 +97,13 @@ area. When you coin a new load-bearing term, add it here.
   (a query plan), not the data itself. (`frameBackend.ts` `isFrameRef`)
 - **Verb node**: a relational operation node: Filter, Sort, Join, GROUPBY, Append,
   Distinct, PIVOTBY, Unpivot, Nest, Unnest, Computed Column, Split Column and the rest of
-  the catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
+  the catalog's Table group. (`nodes/frame.ts`, the core's `frame_verbs.rs`; inventory in
   `nodeCatalog.ts`)
-- **FrameBackend**: the seam with two implementations: `JsFrameBackend` (web/dev, eager)
-  and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see [[C130]] rustCore)
-- **Frame verbs (`frameVerbs.ts`)**: the pure JS reference implementation ("the oracle")
-  of every verb; the correctness standard the Rust engine is tested against.
+- **FrameBackend**: the seam with two engines behind it: the Rust core in wasm (web, and
+  beside Polars for what it can't hold) and `PolarsBackend` (desktop, native). One
+  interface, chosen at startup. (`frameBackend.ts`; see [[C130]] rustCore)
+- **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`), the
+  correctness standard Polars is held to; their vocabulary is `frameOps.ts`.
 - **Materialization boundary**: the point where a lazy `FrameRef` is collected into a
   real `FrameValue` (e.g. Get Column, a chart, an export). (`coerceInputs.ts`)
 - **Preview / collectPreview**: a verb card shows head-N rows, not the whole frame;
@@ -127,11 +127,11 @@ area. When you coin a new load-bearing term, add it here.
   noPerCellFormulas). It has two surfaces on one core: an **Fx** column in the Frame Input
   popup (the last stop on the column-type button; a formula row sits under the header, and a
   wired λ is called by its socket name, `λ1` or `λ1(@a, @b)`), and the Computed Column node.
-  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; [[C22]] rowFormulaRefs)
+  (the core's `nodes/columns.rs`, `nodes/frame.ts`, `tablePopupStore.ts`; [[C22]] rowFormulaRefs)
 - **Side value**: a value that isn't a column, wired into a computed column's formula: a
   single value or a List with one item per row. Each free name in the formula grows a side
   socket, and the socket goes when the name does (`sideVars`). `@list` reads this row's item
-  of a side List after checking its length. (`computedColumnCore.ts`, `nodes/frame.ts`)
+  of a side List after checking its length. (the core's `eval::column`, `nodes/frame.ts`)
 
 ## Formula layer
 
@@ -144,8 +144,8 @@ area. When you coin a new load-bearing term, add it here.
   card. (`nodes/lambda.ts` `captured`, `nodes/tableLambda.ts`)
 - **`@` / this-row reference**: inside a computed column, `@name` reads this row's cell of a
   column, or this row's item of a side List. A bare name is the whole column as a List, the
-  same as Excel's table references ([[C22]] rowFormulaRefs). (`computedColumnCore.ts`
-  `readRowCell`/`readWholeColumn`, `excelFormula.ts` `atcol`/`wholecol`)
+  same as Excel's table references ([[C22]] rowFormulaRefs). (the core's `eval::column`,
+  the tree's `atcol`/`wholecol`)
 - **Structured (bracket) reference**: how to write a column name that isn't a valid
   identifier. `[Unit Price]` is the whole column; `@[Unit Price]` or `[@Unit Price]` is this
   row. (`excelFormula.ts` tokenizer `colref`/`rowref`)

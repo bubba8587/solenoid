@@ -146,3 +146,4 @@ B10	2026-10-01	reverted	-	Claude	-	reactFlowView: React Flow draws the canvas ov
 C41	2026-10-01	reverted	-	Claude	-	branchModel: All work goes on develop; main is production only
 C16	2026-10-21	superseded	C130	Claude Opus 5.5	the author	polarsEngine: Desktop runs tables on Polars, the web on a matching JavaScript engine
 D97	2026-10-21	superseded	D99	Claude Opus 5.5	the author	tsIsSpec: The Rust core ports the TypeScript, which stays the spec: a different answer is a Rust bug
+D98	2026-10-23	reverted	-	Claude (delete-ts, ring B)	-	wholeColumnFallback: A formula the Rust core can't answer exactly runs whole on the TypeScript, never approximated

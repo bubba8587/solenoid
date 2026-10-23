@@ -6,15 +6,13 @@ tags: [spec, computation]
 
 # Spec: Formula.js divergences
 
-Serves [[C17]] shareImpl. Formula.js is the vendored library that backs every Excel function Solenoid does not register itself. Where its answer differs from Excel's, `excelFunctions.ts` registers an override (`registerInternal`) that gives Excel's answer, usually by calling the same kernel the matching node calls. This spec lists each override and the evidence for it. Read it before deleting an override, widening the Formula.js fallthrough, or folding a registration back into the library: each entry is the reason the library's answer is wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins each one both ways, the override right and Formula.js still wrong.
+Serves [[C17]] shareImpl. Formula.js was the library behind every Excel function Solenoid didn't write itself; its bodies were ported into the core ([[rust-core]]) and the library is gone. Where its answer differed from Excel's, Solenoid answers as Excel does, usually through the same kernel the matching card runs. This spec lists each of those and the evidence for it. Read it before changing one of these functions: each entry is the reason Formula.js's answer was wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins the Excel-correct answers. A kernel named below (`roundDigits`, `mathUtils.ts`) is the TypeScript one the core's body was ported from, its name kept in snake_case.
 
 Deliberate differences from Excel itself (not from Formula.js) are in [[formula-language]] under *Function notes*.
 
-## Overrides and tripwires
+## Excel's answer, pinned
 
-**MUST:** where Formula.js gives a different answer from Excel, Solenoid registers an override that gives Excel's answer, backed by the same implementation as the node ([[C17]] shareImpl). Each divergence is pinned in both directions: a test that the override is right, and a tripwire that Formula.js is still wrong. A Formula.js update that changes either answer then fails the suite and forces a fresh look.
-
-Without the tripwire, a vendor update that fixes or changes a function passes silently, and the override either shadows a fix or starts diverging in a new way. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
+**MUST:** where Formula.js gave a different answer from Excel, Solenoid gives Excel's, backed by the same implementation as the card ([[C17]] shareImpl), and a test pins it. The tripwires that held Formula.js to its wrong answers went with the library: no vendor update reaches the core. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
 
 ## Scalar math
 
@@ -32,7 +30,7 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 
 - **BINOM.DIST.RANGE** runs `binomDistRange` (`mathUtils.ts`): Excel's constraints (0 ≤ s ≤ s2 ≤ trials, a probability from 0 to 1) answer `#DOMAIN!`, where Formula.js checks nothing and sums a reversed range to 0; each term multiplies COMBIN's exact count by the powers, or works in logs where the count overflows, so `BINOM.DIST.RANGE(1e5, 0.5, 0, 50000)` answers instead of overflowing the call stack; a range past a million outcomes is `#DOMAIN!`.
 
-- **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js with the order truncated to a whole number, as Excel does (Formula.js rounds it, so `BESSELJ(1, 2.7)` was J₃). A negative order answers `#DOMAIN!` ("BESSELJ takes an order of 0 or more", Excel's `#NUM!`) and an order past 1,000,000, infinity included, `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork). An order given as text is read as every number text is ([[C117]] usNumberText), so `BESSELJ(1, "-Infinity")` is `#VALUE!` ("BESSELJ needs a number"), where Formula.js reads it as -Infinity and loops. The Bessel card computes through these registrations, its order passed as wired ([[C17]] shareImpl).
+- **BESSELJ, BESSELI, BESSELK, BESSELY** answer as Formula.js did with the order truncated to a whole number, as Excel does (Formula.js rounds it, so `BESSELJ(1, 2.7)` was J₃). A negative order answers `#DOMAIN!` ("BESSELJ takes an order of 0 or more", Excel's `#NUM!`) and an order past 1,000,000, infinity included, `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork). An order given as text is read as every number text is ([[C117]] usNumberText), so `BESSELJ(1, "-Infinity")` is `#VALUE!` ("BESSELJ needs a number"), where Formula.js reads it as -Infinity and loops. The Bessel card computes through these registrations, its order passed as wired ([[C17]] shareImpl).
 
 - **CLEAN** drops character codes 0 to 31, as Excel's does, and reads a number or logical as its text: Formula.js threw on `CLEAN(5)`. The Text Transform card's CLEAN calls it, so the card no longer also drops DEL (127), which Excel keeps.
 
@@ -71,7 +69,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **DOLLAR**: Excel writes a negative in accounting form as `($1,234.57)`, the `$` inside the parentheses. Formula.js writes `$(1,234.57)`, and the override moves the `$`. A negative that rounds to zero keeps the form, `($0.00)`, where Formula.js writes `-$0.00`. The DOLLAR card calls the same registration.
 - **FIXED, DOLLAR** round with `roundDigits` first, so `FIXED(1.005, 2)` is "1.01" as in Excel; Formula.js's `toFixed` reads the binary 1.00499… and writes "1.00". A value that rounds to zero goes through unrounded, so its sign survives. The FIXED card calls the same registration.
 - **CONVERT** runs Solenoid's unit system on the Convert node's units, read by Excel code first (`"C"`, `"lbm"`, `"oz"` the fluid ounce) and by the node's unit id second (`convertUnitKey`). An unknown or cross-category unit is `#N/A`, as in Excel. Formula.js's CONVERT errors even on Celsius to Fahrenheit.
-- **TEXT** stays Formula.js, with its holes patched up front:
+- **TEXT** answers as Formula.js did, with its holes patched up front:
   - text that is not a number passes through unchanged, where Formula.js throws;
   - `@` and `General` use `numberToText`;
   - a code of only zeros (`000`) zero-pads the rounded magnitude;
@@ -92,15 +90,13 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **TBILLEQ, TBILLPRICE, TBILLYIELD** run the T-Bill node's actual/360 kernel. Formula.js counts 30/360 and misses Microsoft's worked examples by a day.
 - **IRR, XIRR** run the IRR node's solver, `financeOps.solveDiscountRate`: Newton's method with a rate floor, then bracket and bisect, answering `#CONV!` only when no root exists above the floor. Formula.js's IRR returns a fabricated 1000 (100,000%) when the root sits close to the floor: `IRR([-4943, -2458, 285])` is −0.903. The `guess` argument is accepted and ignored, because this solver needs no seed and the node takes none ([[D73]] nodeCoversFormula). Pinned across both surfaces in `tests/graph/nodes/financeIterative.test.ts`.
 - **MIRR** runs the node's `mirr` kernel on the same cash-flow preparation as IRR.
-- **DB, DDB** call Formula.js, except that a period past 1,000,000 within the life answers `#DOMAIN!` ("DB needs a period of at most 1,000,000"). Formula.js steps once per period, so a huge period hung the app ([[C120]] linearWork); VDB, CUMIPMT and CUMPRINC stop at the same million. The tripwire checks that Formula.js still loops.
-- **NPV** stays Formula.js but is `RANGE_ZERO_FILL`: a blank period is a zero cash flow, as the nodes' `cashPrep` treats it. Dropping the blank would shift every later period.
+- **DB, DDB** answer as Formula.js did, except that a period past 1,000,000 within the life answers `#DOMAIN!` ("DB needs a period of at most 1,000,000"). Formula.js stepped once per period, so a huge period hung the app ([[C120]] linearWork); VDB, CUMIPMT and CUMPRINC stop at the same million.
+- **NPV** answers as Formula.js did, but is `RANGE_ZERO_FILL`: a blank period is a zero cash flow, as the nodes' `cashPrep` treats it. Dropping the blank would shift every later period.
 
 ## Array-returning names and complex numbers
 
-UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LINEST, LOGEST) are registered internally. Formula.js writes its array functions against 2-D spreadsheet ranges with unvetted quirks, and has been caught changing its arguments in place ([[formula-language#The dispatch ladder]]). The IM* family is internal for the same reason: Formula.js's IM* functions accept complex numbers only as text and refuse the graph's own complex values.
+UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LINEST, LOGEST) are Solenoid's own. Formula.js wrote its array functions against 2-D spreadsheet ranges with unvetted quirks, and was caught changing its arguments in place ([[formula-language#The dispatch ladder]]). The IM* family is Solenoid's own for the same reason: Formula.js's IM* functions took complex numbers only as text and refused the graph's own complex values.
 
-## Name walking
+## Names
 
-A Formula.js function is itself a container: `FX.CEILING` is the CEILING function and also the parent of `FX.CEILING.MATH`, and Formula.js hangs `.MATH`, `.PRECISE`, `.INTL` and `.TEST` children off callable parents. Both walks, `fxLookup` (dispatch) and `FX_FUNCTION_NAMES` (autocomplete and highlighting), therefore descend into functions as well as plain objects, to a depth of two (`NORM.S.DIST`), and skip Formula.js's internal `FX.utils` namespace.
-
-The two walks must match. If they differ, a name is advertised and then fails at dispatch with "Unknown function", or dispatches but is never offered. `formulaTier1.test.ts` and `formulaNodeParity.test.ts` dispatch the dotted names.
+The dotted names Formula.js hung off callable parents (`CEILING.MATH`, `NORM.S.DIST`, `T.TEST`) are ordinary names on the core. The editor's list and dispatch read one set (`engine_function_names`), so a name can't be offered and then fail. `formulaTier1.test.ts` and `formulaNodeParity.test.ts` dispatch the dotted names.

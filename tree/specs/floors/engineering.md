@@ -30,7 +30,7 @@ A separate map is a second place that must be kept in step, sitting away from th
 
 A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM`) were once missing from `RANGE_FUNCTIONS`, so each ran once per cell and gave a believable wrong answer. A test that compares the list against a second typed-in list proves nothing, since both can be wrong together; a test that `T.TEST` returns one number, not four, is a real check.
 
-*Exception:* `RANGE_FUNCTIONS` (`excelFormula.ts`) is typed by hand for the Formula.js functions, because Formula.js publishes no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** a signature table for Formula.js.
+*Exception:* the routing of the functions taken from Formula.js (`kind` and `scalar` in the core's `data/call_traits.json`) was typed by hand, because Formula.js published no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** generating the call table from the bodies' own signatures.
 
 *Exception:* `ShortcutsOverlay.tsx` keeps its own copy of the key bindings, because it only displays them. **Removed by:** the overlay reading the bindings table.
 

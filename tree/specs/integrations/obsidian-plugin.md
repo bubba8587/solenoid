@@ -437,7 +437,7 @@ plugin's README discloses it.
 
 **Review findings that stand** (warnings; each is the app's own code, read by the review because
 the snapshot carries whole files): `localStorage` in `palette.ts` and `settingsStore.ts`
-(rewritten to memory by the build, above); `throw solError(…)` in `frameVerbs.ts` and
+(rewritten to memory by the build, above); `throw solError(…)` in
 `frameShape.ts` (a thrown `SolError` is the engine's error model, [[error-values]]); the
 normal-CDF coefficients in `mathUtils.ts`, printed as published (the footer's `aggregate` pulls
 the file in; 310 bytes of it ship); in CSS, the `vh` line before each `dvh` one (the fallback),

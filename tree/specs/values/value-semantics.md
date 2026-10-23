@@ -66,7 +66,7 @@ Which rule applies is decided by the kind of computation, not by the function's 
 | **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls stay put, since dropping them would shift indices | `RANGE_POSITIONAL` |
 | **The COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` |
 | **A ragged element-wise zip** | — | pads to the longest with null; a padded position is missing | every broadcaster |
-| **Computed column, per row** | a row-bound error cell (a λ parameter or an `@`-read) fails that row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` ([[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas) |
+| **Computed column, per row** | a row-bound error cell (a λ parameter or an `@`-read) fails that row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | the core's `tag_computed_cell` (`excel_formula.rs`) ([[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas) |
 
 The one sanctioned divergence ([[D51]] oneAnswerOneDivergence): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 

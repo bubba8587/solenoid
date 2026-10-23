@@ -106,7 +106,7 @@ A node that emits a Frame states its output columns once, through `frameShape(ou
 
 ### Static shape rules (`frameShape.ts`)
 
-A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. `shapeOf(op, input)` is the static twin of `applyVerb` in `frameVerbs.ts`, with one arm per `FrameOp` kind, and its columns must be exactly what a real `preview()` reports. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. A column a rule needs that the input lacks throws `#REF!` ("column … not found").
+A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. `shapeOf(op, input)` is the static twin of the core's `apply_verb` (`frame_verbs.rs`), with one arm per `FrameOp` kind, and its columns must be exactly what a real `preview()` reports. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. A column a rule needs that the input lacks throws `#REF!` ("column … not found").
 
 | Verb | Output shape |
 |---|---|

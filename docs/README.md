@@ -43,8 +43,8 @@ is parked there.
 - **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
   integrating it, each with the workaround it would retire, re-verified on every
   bump. The list to file upstream.
-- **`../tree/specs/computation/formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
-  override instead of falling through to Formula.js. Read before deleting an
+- **`../tree/specs/computation/formulajs-divergences.md`** — where Solenoid answers otherwise
+  than Formula.js did, and why. Read before changing one of those functions; an
   override or widening the fallthrough; the library being wrong is the whole
   reason the override exists.
 - **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
@@ -142,7 +142,7 @@ results get retried and settled rulings relapse.
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `mathUtils.ts` `fillBorderedGrid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
-| `excelFunctions.ts` overrides / dispatch walk | `../tree/specs/computation/formulajs-divergences.md` (why each override exists) |
+| `excel_functions.rs`, `fns_*.rs` (an answer that differs from Formula.js) | `../tree/specs/computation/formulajs-divergences.md` (why each one differs) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |

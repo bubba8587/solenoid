@@ -20,10 +20,14 @@ This file is the map.
 │                             #     tests src/graph/foo.ts; "(+`.test.ts`)" below means its
 │                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
+├── crates/                   # solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the
+│                             #     app, native in tests; ../tree/specs/computation/rust-core.md), and
+│                             #     solenoid-graph (the dataflow engine on Ruggine)
 ├── public/                   # Static assets served by Vite
 ├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
 │                             #     kept cut of the demo video and its poster (scripts/demo-video/)
-├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus);
+├── fixtures/                 # frame-verbs/ — the shared verb corpus, core and Polars (oneVerbCorpus);
+│                             #     core/ — the core's frozen answers (coreConformance, coreNodes);
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
 │                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
@@ -76,8 +80,7 @@ This file is the map.
   wasm module, `dataflowEngine.ts`, [[D102]] graphOnCore). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
   ([[A1]] visualGraphCalculator — author-ratified 2026-08-27).
-- **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
-  KaTeX (formula popup), marked (help panel).
+- **UI**: React + Vite, desktop shell via Tauri. KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
   pattern) read via `useSyncExternalStore` — they predate the single tree and
   remain the app-state convention.
@@ -216,10 +219,11 @@ src/
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |
 |---|---|
-| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (JS oracle on web, Polars over IPC on desktop), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
-| `frameVerbs.ts` (+`.test.ts`) | The pure relational verbs, one definition each, which the JS backend runs and the Polars engine is held to; also the Cube bridge (nest / unnest) and `reconcileFrames`. Contracts: `../tree/specs/computation/frame-verbs.md` |
+| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (the core in wasm on web; Polars over IPC on desktop, the core beside it for what Polars can't hold), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `frameOps.ts` | The verbs' vocabulary: `FrameOp` and its settings (the verbs are the core's, `frame_verbs.rs`). Contracts: `../tree/specs/computation/frame-verbs.md` |
+| `frameSchema.ts` | The units and formats a verb leaves on its columns, and the unit scales an engine is handed (`withUnitScales`, `pivotUnits`, `joinKeyTransform`) |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
-| `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
+| `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
 | `frameShapeResolver.ts` | The graph walk alone (`makeFrameShapeResolver(editor)` → `outShape(nodeId, outKey)`, memoized + cycle-guarded): resolve the input shapes, then read the producer's own `frameShape()` declaration (`nodes/frameShapeHook.ts`). Node-agnostic — it names only the Conduit lane case and reads `passthrough()` for forwarders; anything undeclared is unknown (`null`) |
 
 ### Cables
@@ -293,12 +297,12 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog) |
 | `packs.ts`, `fcExtensions.ts` | Pack framework (registry/activation store, placements, `NODE_PACK_TAGS` derived from per-pack tags, FC unit/format contributions); the pack definitions themselves live in `packs/` (its own section below) |
 | `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (per query word over label/description/Excel names/category path/keywords, one-edit typo tolerance via `fuzzy.ts`) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
-| `excelFunctions.ts` | The single declared home for "which of the two parallel Excel implementations is authoritative for this function" (the ~150 native nodes vs Formula.js via `excelFormula.ts` `dispatch`) — per the per-family verdicts in `docs/archive/formulajs-vs-native-audit.md` |
-| `excelFormula.ts` (+`.test.ts`) | The Expression/LAMBDA formula compiler (Formula.js scope); also owns the tableRefSemantics structured-reference syntax (`[Col]` whole column / `@[Col]` this row — tokenizer `colref`/`rowref` → AST `wholecol`/`atcol`) that the computed-column surfaces read |
+| `excelFunctions.ts` | The names the editor reads: each function's arity (`FUNCTION_ARITY`), the blocked and wrong-surface names, and the names the core resolves (`formulaFunctionNames`, `isFunctionName`, `packFunctionNames`, from `engine_function_names`) |
+| `excelFormula.ts` (+`.test.ts`) | The formula tree's type and `parseFormula` (the core's tree, `engine_formula_parse`), `compileEvaluator` over the core, and the editor's analyses of the tree: variables, row references (`[Col]` / `@[Col]`), LaTeX, the step trace |
 | `closeParens.ts` | `closeParens` for every formula surface's commit ([[C115]] closeParensOnCommit); outside `excelFormula.ts` so the Obsidian plugin doesn't bundle the engine |
-| `formulaSignatures.ts`, `formulaSyntax.ts`, `formulaExtensions.ts`, `formulaNodeParity.ts` | The formula-surface cluster: signature metadata + syntax hints, highlighting, registered extensions, and the node↔formula parity model (`inFormula`/`excelCovered` — oneMetricImpl/oneThingPerMetric/useEveryNotSome) |
+| `formulaSignatures.ts`, `formulaSyntax.ts`, `formulaExtensions.ts`, `formulaNodeParity.ts` | The formula-surface cluster: signature metadata + syntax hints, highlighting, pack formula declarations, and the node↔formula parity model (`inFormula`/`excelCovered` — oneMetricImpl/oneThingPerMetric/useEveryNotSome) |
 | `nodeOps.ts` | Per-class op declarations (`kind: "op" \| "argument"`) — what the Add-menu search may surface and how ops are counted; aggregator hosts are `argument` (never searchable) |
-| `formulaDivergence.test.ts` | Durable CI guard for the node-vs-Formula.js divergence audit: pins every Excel-correct override (`resolveExcelFunction`) the 2026-06-25 consolidation made because FX is wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK), plus FX-still-buggy tripwires — an FX upgrade that fixes those trips the test instead of silently re-introducing drift |
+| `formulaDivergence.test.ts` | Pins the Excel-correct answers where Formula.js was wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK and the rest, `../tree/specs/computation/formulajs-divergences.md`) |
 
 ### App chrome
 
@@ -462,7 +466,7 @@ src-tauri/
 ├── tauri.conf.json           # Window, identifier, build hooks
 ├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
-├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.55; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
+├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.55; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity with the core runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
 ```
 

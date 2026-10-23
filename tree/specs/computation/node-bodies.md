@@ -55,7 +55,7 @@ the call. A value that can't cross (text with a lone surrogate) answers `#VALUE!
 runs says.
 
 The core is required: the app's first render waits for it with no deadline (`main.tsx`), and every test file loads it
-(`tests/setup/graphEngine.ts`). Settings → Rust engine no longer reaches a ported card.
+(`tests/setup/graphEngine.ts`).
 
 ## Freezing (`FREEZE_NODES`)
 

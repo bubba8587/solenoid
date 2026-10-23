@@ -10,19 +10,23 @@ Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, 
 
 The formulas and the nodes share one set of functions ([[B16]] oneFormulaSurface). A new function lands on both surfaces in one change, or on neither. Nodes that no formula can express (Frame verbs, figures, inputs) aren't functions and sit outside that set. A surface that offers fewer functions, such as a simple mode, would be a filter over the one set, never a second set.
 
-The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is either an internal registration, which usually calls the same kernel as the matching node, or a Formula.js fallthrough. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared rete-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
+The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is a body on the core ([[rust-core]]), which usually shares its kernel with the matching card. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared rete-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
 
-The per-name reasons Solenoid overrides a Formula.js function are [[formulajs-divergences]]; this spec does not repeat them. Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
+The per-name reasons Solenoid answers otherwise than Formula.js did are [[formulajs-divergences]]; this spec does not repeat them. The mechanics below name the TypeScript functions the core was ported from: `crates/solenoid-core` keeps them in snake_case (`mapCells` is `map_cells`), and the TypeScript copies are gone ([[D99]] rustIsSpec). Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
 
 ## Files
 
 | File | Owns |
 |---|---|
-| `src/graph/excelFormula.ts` | Tokenizer, parser, AST, the evaluator (`compileEvaluator`, `compilePositional`), argument routing and preparation, broadcasting (`mapCells`), the operator table (`applyOp`), the error-handler family, LAMBDA as a special form, static analyses (`extractVariables` and siblings), LaTeX rendering and the step trace. |
-| `src/graph/excelFunctions.ts` | The function registry (`registerInternal`, `resolveExcelFunction`), the declared contracts (`EXCEL_IMPL_META`), the Formula.js fallthrough and its error mapping, the blocklist (`LEGACY_ALIASES`), the wrong-surface names (`FRAME_SURFACE_NAMES`, `NODE_SURFACE_NAMES`), and every internal registration, including the LAMBDA hosts. |
+| `crates/solenoid-core/src/excel_formula.rs` | Tokenizer, parser and the tree (`engine_formula_parse` hands it to the TS). |
+| `crates/solenoid-core/src/eval.rs` | The evaluator: argument routing and preparation, broadcasting (`map_cells`), the operator table, the error-handler family, LAMBDA as a special form and the LAMBDA hosts, computed columns' row context. |
+| `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs`, `fns_packs.rs` | Every function body; `route` resolves a name to its arm or module. |
+| `crates/solenoid-core/data/call_traits.json` | Each name's contract (see *The registry*). |
+| `src/graph/excelFormula.ts` | The tree's type, `parseFormula` (the core's tree), `compileEvaluator` and `compilePositional` over the core (`evaluateOnCore`), static analyses (`extractVariables` and siblings), LaTeX rendering and the step trace. |
+| `src/graph/excelFunctions.ts` | The names the editor reads: each function's arity (`FUNCTION_ARITY`), the blocklist (`LEGACY_ALIASES`), the wrong-surface names (`FRAME_SURFACE_NAMES`, `NODE_SURFACE_NAMES`), and the names the core resolves (`formulaFunctionNames`, `isFunctionName`). |
 | `src/graph/closeParens.ts` | `closeParens` ([[C115]] closeParensOnCommit), alone so a caller outside the engine (the Obsidian plugin's column head) does not pull the engine in. |
 | `src/graph/formulaSignatures.ts` | Display-only argument hints per function name. |
-| `src/graph/formulaExtensions.ts` | Pack formula registration and the advertised (autocomplete) name set. |
+| `src/graph/formulaExtensions.ts` | Pack formula declarations and the advertised (autocomplete) name set. |
 | `src/graph/formulaSyntax.ts` | Editor highlighting, caret word, suggestions, enclosing-call detection. |
 | `src/graph/lambdaValue.ts` | The `LambdaValue` shape and `isLambdaValue`. |
 | `src/graph/nodeExcel.ts` | `NODE_EXCEL` (catalog node type to its Excel equivalents, with `parity` and a note) and `EXCEL_GAP` (Excel functions with no node, flagged out of scope or superseded). The Function Reference and catalog read them; the evaluator does not. |
@@ -33,8 +37,8 @@ The per-name reasons Solenoid overrides a Formula.js function are [[formulajs-di
 | `src/graph/cxValue.ts` | The tagged complex value, its text forms and its arithmetic kernels. |
 | `src/graph/excelToCatalog.ts` | `EXCEL_TO_CATALOG` and `CATALOG_TO_EXCEL`, derived from `NODE_EXCEL`, never hand-edited. |
 | `src/graph/formulaNodeParity.ts` | The node-and-formula parity measurement (see *Parity measurement*). |
-| `src/graph/nodes/listOps.ts`, `statsOps.ts`, `mathUtils.ts`, `financeOps.ts`, `dateSerial.ts`, `dateOps.ts`, `textOps.ts`, `matrixOps.ts`, `distributionOps.ts`, `fitOps.ts`, `forecastOps.ts`, `signalOps.ts`, `indexAccess.ts`, `visualOps.ts`, `hashOps.ts`, `convertUnits.ts`, `astroOps.ts`, `chemistryOps.ts`, `electricalOps.ts`, `emSpectrumOps.ts`, `fluidsOps.ts`, `healthOps.ts`, `physicsConstantsOps.ts`, `thermoOps.ts`, `triangleOps.ts` | The shared kernels (see *Shared kernels*). |
-| `src/graph/packs/*Formulas.ts` | A pack's `formulas` (its `PackFormula` impls), importing only kernels. |
+| `src/graph/nodes/*Ops.ts` | What the components and the cards' shells still read of the kernels; the kernels themselves are the core's (see *Shared kernels*). |
+| `src/graph/packs/*Formulas.ts` | A pack's `formulas`: each one's name, arity and argument hint. |
 
 Every module the formula path imports is rete-free, each pack's `*Formulas.ts` included ([[engineering#The formula path is rete-free]]). `formulaPathIsReteFree.test.ts` pins it.
 
@@ -95,7 +99,7 @@ A name immediately followed by `(` is a call, never an application; application 
 
 Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()` has no arguments. A slot that is empty, because a comma or the closing paren sits where an expression should start, is `{ t: "blank" }`: `IF(x,,y)` has three arguments, the middle one blank; `F(a,)` has two; `F(,)` has two blanks.
 
-`parseFormula` exports the AST (null on a syntax error); `equationSolve.ts` and `unitDimExpr.ts` walk it.
+`parseFormula` hands back the core's tree (null on a syntax error); `equationSolve.ts` and the editor's analyses walk it.
 
 ### Syntax hints
 
@@ -125,32 +129,24 @@ Function names in call position are case-insensitive and resolve through the reg
 
 ### The registry
 
-`registerInternal(name, fn)` stores an implementation under the uppercased name. A second registration of a live name throws ([[#Derived names are unique]]'s registry half); a withdrawn name may register again. `unregisterInternal` withdraws one, and only packs use it; the core registers once at module load and never withdraws. `internalFunctionNames()` is a function rather than a constant so it includes registrations made after the module loads. Each registration or withdrawal bumps `registryGeneration()`, which the derived name lists memoize against, because packs register after module load.
+A name resolves once, on the core: `route` (`excel_functions.rs`) gives it its arm of `call_function`'s match or the module that holds its body. A name nothing routes is `#NAME?` "Unknown function". The editor reads the names from the core (`engine_function_names`): `formulaFunctionNames()` is every callable name, `isFunctionName` every name that resolves (a blocked one included), `packFunctionNames()` the packs'.
 
-`resolveExcelFunction(name)` uppercases the name, returns the internal implementation if one exists, and otherwise walks Formula.js's export object by the dotted path (`NORM.S.DIST` is `FX.NORM.S.DIST`). Both functions and plain objects are walkable containers, since Formula.js hangs `.MATH`, `.PRECISE`, `.INTL` and `.TEST` off callable parents. The result is null when neither has the name. An internal registration therefore always wins over Formula.js. `FX_FUNCTION_NAMES`, which feeds autocomplete and highlighting, walks the same way to a depth of two and skips `FX.utils`; the two walks must match ([[formulajs-divergences]] *Name walking*).
-
-`EXCEL_IMPL_META[name]` declares a registration's contract ([[#The registry]]):
+`data/call_traits.json` holds each name's contract, keyed by the uppercased name ([[engineering#One declaration per fact]]):
 
 | Field | Meaning |
 |---|---|
-| `returns` | element type: `number`, `string`, `logical`, `date`, `complex`, or `any` (passes through whatever its arguments carry) |
-| `rank` | `scalar` (default), `list` or `matrix` |
-| `listArgs` | whole-list native: arguments arrive exactly as they are, skipping the range preparation |
-| `matrixArgs` | the only way a matrix reaches the implementation whole |
-| `cxArgs` | the only way a complex value reaches the implementation |
-| `arity` | `[min, max]`; a max of 255 or more means variadic |
-| `family` | a `FuncFamily` label |
-| `native` | Solenoid-only, no Formula.js equivalent |
+| `kind` | how a call routes: `range` (reads its lists whole), `broadcast` (maps over them), `whole` (a whole-list native: arguments arrive exactly as they are), `handler` (the error handlers) |
+| `prep` | a range function's preparation: `default`, or `positional` (the lookups, which skip the error scan) |
+| `scalar` | the range arguments a list lifts in (`LARGE`'s k, `PERCENTILE`'s p) |
+| `matrixArgs` | the only way a matrix reaches the body whole |
+| `checksCx` | the body reads a complex value itself |
+| `free` | a one-column or one-row table reads as its items, and a list answer comes back the way the vector came in |
+| `roles`, `blanks` | each argument's role and empty-slot reading ([[C80]] blankArgIsExcelBlank) |
+| `known`, `resolves`, `refusal` | registered with Solenoid; resolves to a body; the message a blocked name answers |
 
-`arity` is not enforced at evaluation. It feeds the signature hints and the tests; an implementation handles missing or extra arguments itself. `returns: "date"` is what a computed column's date typing reads ([[computed-columns#The column's type]]; the core holds the names in `DATE_FUNCTIONS`, `nodes/columns.rs`, which `computedColumnPaths.test.ts` holds to the registry). The routing reads `listArgs`, `matrixArgs` and `cxArgs`.
+A function's arity lives in the TS (`FUNCTION_ARITY`, `excelFunctions.ts`) for the signature hints and the tests; a body handles missing or extra arguments itself. A computed column's date typing reads `DATE_FUNCTIONS` (`nodes/columns.rs`) ([[computed-columns#The column's type]]).
 
-**MUST:** every `registerInternal` name has an `EXCEL_IMPL_META` entry declaring its `returns` and `arity`, plus `rank` and `listArgs` where they apply. Routing, rank checks and list handling are derived from that entry and declared nowhere else ([[engineering#Lists of names are generated]]). A registration with no declared contract leaves its routing to be guessed, or kept by hand in a second list, which is the drift [[engineering#One declaration per fact]] exists to stop.
-
-*Exception:* `XLOOKUP` and `XMATCH` declare meta but not `listArgs`. They are routed by `RANGE_POSITIONAL`, which skips the error scan, and the flag would reroute them. (`INDEX` is in `RANGE_POSITIONAL` too but declares `listArgs`, so it takes the whole-list route.) **Removed by:** unifying the two routing declarations.
-
-`FUNCTION_FAMILY` and `FAMILY_BACKING` record, for names that exist both as a node and in Formula.js, whether the family is backed internally, by Formula.js, or awaits verification. They are documentation data; `excelFunctionInfo(name)` reads them, and the evaluator does not.
-
-The core registers every internal function at module load. The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements, from `nodes/listOps.ts`, the constant the nodes use) and answers `#OVERFLOW!` past it. The 2-D builders (EXPAND, MUNIT, DIAGONAL, OUTER) apply the same limit to their cell count inside their `matrixOps` kernels, so the card and the formula refuse together. **One function, one limit** ([[C17]] shareImpl): a formula never generates more values than the matching node allows, rather than quietly allowing more. On a node the count is a spinner the user watches; in a formula one typo can ask for ten million values with nothing on screen to stop it.
+The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements, from `nodes/listOps.ts`, the constant the nodes use) and answers `#OVERFLOW!` past it. The 2-D builders (EXPAND, MUNIT, DIAGONAL, OUTER) apply the same limit to their cell count inside their `matrixOps` kernels, so the card and the formula refuse together. **One function, one limit** ([[C17]] shareImpl): a formula never generates more values than the matching node allows, rather than quietly allowing more. On a node the count is a spinner the user watches; in a formula one typo can ask for ten million values with nothing on screen to stop it.
 
 ### Blocked and wrong-surface names
 
@@ -165,16 +161,16 @@ Four tables name functions a formula refuses. Each refusal happens before any ar
 | `NODE_SURFACE_NAMES` | `#NAME?` "Use the {node} node" | `TEXTFILTER` to List Filter |
 | `POSITION_NAMES` (cell-position functions, [[C14]] currentExcelParity) | `#NAME?` with its own message | `COLUMN` says columns are read by name. `ROW()` is not here: it is a computed column's row number ([[computed-columns]]) |
 
-Formula.js also exposes some legacy stems with dotted children (`FX.TDIST.RT`); the stem is the superseded name, so those dotted spellings are blocked too (`TDIST.RT`, `CHIDIST.RT`, `BINOMDIST.RANGE`, `ISO.CEILING.MATH` and the rest). `TDIST` maps to `T.DIST.RT` because Excel split its tails argument into `.RT` and `.2T`; `TINV` was always two-tailed, so it maps to `T.INV.2T`. `ELIMINATED_FUNCTIONS` is the set of `LEGACY_ALIASES` and `POSITION_NAMES` keys, derived, never kept by hand, and `blockedNameMessage` is the one place a blocked name's message comes from. Each blocked name is also registered as an internal stub answering the same `#NAME?`, so a direct `resolveExcelFunction` caller (a node) gets the redirect instead of Formula.js's implementation. Blocked names are removed from `RANGE_FUNCTIONS` and `RANGE_POSITIONAL` at module load and filtered out of every advertised list.
+The legacy stems that had dotted children are blocked in their dotted spellings too (`TDIST.RT`, `CHIDIST.RT`, `BINOMDIST.RANGE`, `ISO.CEILING.MATH` and the rest). `TDIST` maps to `T.DIST.RT` because Excel split its tails argument into `.RT` and `.2T`; `TINV` was always two-tailed, so it maps to `T.INV.2T`. `ELIMINATED_FUNCTIONS` is the set of `LEGACY_ALIASES` and `POSITION_NAMES` keys, derived, never kept by hand. A blocked name's message is its `refusal` on the core, so a card calling the body by name gets the redirect too. Blocked names are filtered out of every advertised list.
 
 **Why each family is blocked** ([[C14]] currentExcelParity). A name is blocked only once its replacement already works, so a redirect never points at a name that fails. INDEX stays: it was never superseded.
 
-- **The D* database family** (DSUM, DAVERAGE, DGET and the rest) is superseded by composition, a Frame Filter feeding an aggregate, the way XLOOKUP supersedes VLOOKUP. It is blocked rather than left to Formula.js, whose versions are broken, and each name redirects to the aggregate it wraps; DGET, a unique-match lookup, redirects to XLOOKUP.
+- **The D* database family** (DSUM, DAVERAGE, DGET and the rest) is superseded by composition, a Frame Filter feeding an aggregate, the way XLOOKUP supersedes VLOOKUP. It is blocked rather than ported from Formula.js, whose versions were broken, and each name redirects to the aggregate it wraps; DGET, a unique-match lookup, redirects to XLOOKUP.
 - **CEILING.PRECISE, FLOOR.PRECISE, ISO.CEILING** differ from the MATH forms only in ignoring the significance's sign, so they redirect to CEILING.MATH and FLOOR.MATH.
 - **SUBTOTAL and AGGREGATE** pick their operation by a number code, and their hidden-row and ignore-errors options mean something only in a cell grid, so they redirect to SUM.
-- **COLUMN** answers a cell reference's position and was never superseded, so it is blocked with its own message rather than a replacement name, and Formula.js's version never runs: columns are read by name. ROW has one meaning here, a computed column's current row, so `ROW()` works there ([[C22]] rowFormulaRefs) and says where it works anywhere else.
+- **COLUMN** answers a cell reference's position and was never superseded, so it is blocked with its own message rather than a replacement name: columns are read by name. ROW has one meaning here, a computed column's current row, so `ROW()` works there ([[C22]] rowFormulaRefs) and says where it works anywhere else.
 - **The A forms** (AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA, VARPA) differ from their plain forms only in reading the text and logicals a range's cells hold. The graph's lists are typed, so text never sits among numbers, and how an aggregate reads a logical is one question for every aggregate rather than a second name per function. Each redirects to its plain form: AVERAGE, MIN, MAX, STDEV.S, STDEV.P, VAR.S, VAR.P (the author's suggestion, 2026-09-25).
-- **SUMIF** is covered by SUMIFS with one criteria pair, the node implements only the plural forms, and Formula.js's SUMIF concatenates a numeric-text sum range as text ("01030" for 4), a wrong answer rather than an error. So SUMIF redirects to SUMIFS.
+- **SUMIF** is covered by SUMIFS with one criteria pair, the node implements only the plural forms, and Formula.js's SUMIF concatenated a numeric-text sum range as text ("01030" for 4), a wrong answer rather than an error. So SUMIF redirects to SUMIFS.
 
 ### Excel names on nodes
 
@@ -187,18 +183,18 @@ Where a node does what an Excel function does, it wears the Excel spelling in ca
 - **The check.** A catalog leaf label or a `NODE_OPS` op label written in all capitals (dotted ones such as `STDEV.S` included, each token of an "X / Y" enumeration counted on its own) must be in `formulaFunctionNames()` or be a `FRAME_SURFACE_NAMES` key; every other label is Title Case. The allowlist: the acronyms PCA, BMI, TDEE, SVG and KPI and the Solenoid-only op ISNULL stay all-caps though they don't dispatch, and the flagship `Convert` stays Title Case though `CONVERT` dispatches.
 
 - **GROUPBY and PIVOTBY** are frame nodes. Excel runs them as formulas; Solenoid's formula surface refuses them through `FRAME_SURFACE_NAMES` (Frames don't flow through formulas, [[C15]] matricesInFormulas) and the refusal names the node, so the capitals still point at something the user can use. The capitals check admits the map's keys. Frame verbs with no Excel function (Unpivot, Nest, Rename and the like) stay Title Case. If the stack merge lands, Append and Bind Columns become VSTACK and HSTACK. Reopen if the formula surface starts accepting Frames.
-- **ISBOOLEAN** is the Type Check op's label, because Solenoid's first-class type is called Boolean on every surface. Excel has no ISBOOLEAN, so `excelFunctions.ts` registers `ISBOOLEAN(v)` with ISLOGICAL's test, which keeps the capitals a true callable claim with no `nameCase.test.ts` allowlist entry. `ISLOGICAL` stays callable for Excel parity and is the Inspector's Excel equivalent; the op's saved key stays `islogical`. Reopen if the type is renamed.
+- **ISBOOLEAN** is the Type Check op's label, because Solenoid's first-class type is called Boolean on every surface. Excel has no ISBOOLEAN, so the core answers `ISBOOLEAN(v)` with ISLOGICAL's test, which keeps the capitals a true callable claim with no `nameCase.test.ts` allowlist entry. `ISLOGICAL` stays callable for Excel parity and is the Inspector's Excel equivalent; the op's saved key stays `islogical`. Reopen if the type is renamed.
 - **DATE (Build)** is the DATE(year, month, day) node. A bare DATE beside Value Input's Date row in the Add menu would differ only by letter case, so the Title Case parenthetical tells them apart ([[D22]] oneNamePerCard allows a parenthetical that distinguishes rather than hints at use); DATE is still the callable token. Reopen if that row is renamed.
 
-`formulaFunctionNames()` is every dispatchable name, uppercase and sorted: Formula.js's flat and dotted names (walked to depth two, skipping `FX.utils`), every `EXCEL_IMPL_META` key and every internal registration, minus `ELIMINATED_FUNCTIONS`.
+`formulaFunctionNames()` is every callable name the core holds, uppercase and sorted, `ELIMINATED_FUNCTIONS` left out.
 
 ### Packs
 
-`initPackFormulas()` registers every known pack's formulas, active or not, with `registerInternal`, and writes an `EXCEL_IMPL_META` entry (`returns`, `arity`, `native: true`, and `rank` and `listArgs` when declared). A pack name that collides with a core name (snapshotted on the first call) or with another pack's throws at startup. A re-run first withdraws the previous run's registrations. A pack's functions always resolve, so a saved formula keeps computing with the pack off; `advertisedFunctionNames()` hides an inactive pack's names from the editor ([[C51]] formulaNaming).
+Every pack's formula functions are the core's (`fns_packs.rs`, over the cards' kernels in `nodes/packs.rs`), so a saved formula keeps computing with its pack off. A pack declares each one's name, arity and hint (`PackFormula`); `initPackFormulas()` records which pack owns which, and a name two packs claim throws at startup. `advertisedFunctionNames()` hides an inactive pack's names from the editor ([[C51]] formulaNaming), and `formulaExtensions.test.ts` holds the declarations one to one with the core's pack functions.
 
 ### Derived names are unique
 
-**MUST:** a rule that derives a name, such as [[C51]] formulaNaming's despaced node label, gives an answer for every input and never gives two different things the same name. Both properties are machine-checked, and `registerInternal` throwing on a second registration of a live name is the registry's half.
+**MUST:** a rule that derives a name, such as [[C51]] formulaNaming's despaced node label, gives an answer for every input and never gives two different things the same name. Both properties are machine-checked, and `initPackFormulas` throwing on a name two packs claim is the registry's half.
 
 A naming rule without a collision check collides silently, and whoever registers second finds out. Fill's `Interpolate` op and the `INTERPOLATE` node in `stats.ts` both despace to `INTERPOLATE`, so Fill's op declares `fx: "FILLINTERPOLATE"` ([[engineering#An override lives on the declaration it overrides]]). The first full sweep also caught the math-function `round` op claiming `ROUND`, whose two-argument Excel form can't express the op's one-argument meaning; RoundN at 0 digits covers the same ground, so the duplicate op was deleted.
 
@@ -214,15 +210,15 @@ Evaluating `{ t: "call", name, args }` uppercases the name and takes the first m
 6. **Empty slots and input roles.** An empty slot reads as its parameter's Excel blank, and `applyArgRoles` reads each other declared argument by its role in `ARG_ROLES` ([[input-roles]]), so a blank setting is its default, a blank pick is dropped and a missing required one is `#SYNTAX!` (see *Blank and omitted arguments*).
 7. **Error handlers.** `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` receive their arguments as they are (see *Error-handling functions*).
 8. **Error propagation.** The first top-level argument that is a `SolError` is the answer. Errors inside a list are not hoisted here; each route decides. IF, IFS and CHOOSE propagate only an error in what picks the branch (IF's condition, IFS's conditions, CHOOSE's index), here and cell by cell when they broadcast, so an error in a branch not taken isn't the answer, as in Excel: `IF(@qty = 0, 0, @total / @qty)` is 0 where qty is 0 (`BRANCH_SELECTORS`).
-9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a name with no `EXCEL_IMPL_META` entry and no internal registration (a Formula.js-only name), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
+9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a body taken from Formula.js (`known` false in the call table), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
 10. **Complex containment.** If any argument is or contains a complex value and the function declares no `cxArgs`, is not in `NULL_INSPECTING` and is not a whole-list native: `#TYPE!` "{NAME} doesn't compute on complex numbers, use the IM* family".
 11. **Route.** Whole-list native, else range function, else broadcast (see *Argument routing*).
 
-A body that throws answers a value at its call (`dispatch`), so an enclosing IFERROR reads it like any other error: a thrown `SolError` is itself, and a JavaScript engine failure (a `TypeError` or `RangeError`, such as a scalar where a body iterates a list, or Formula.js recursing too deep) is `#VALUE!` "{NAME} can't compute with these arguments", never the engine's own message. The Rust core answers the same at the call (`call_caught`).
+A body that throws answers a value at its call (`call_caught`), so an enclosing IFERROR reads it like any other error: a thrown `SolError` is itself, and a failure the TS raised as a JavaScript exception (a scalar where a body iterates a list) is `#VALUE!` "{NAME} can't compute with these arguments".
 
-**MUST (containment):** a matrix reaches a function whole only when its registration declares `matrixArgs`, and a complex value only when it declares `cxArgs`; every other case takes step 9 or 10 above. So Formula.js only ever receives lists and scalars, permanently. The three complex exemptions are those that must see their operand as it is: the `NULL_INSPECTING` value-passers (IF hands a complex branch through, and the type checks must see it), the error handlers (a catcher sees its raw operand), and the whole-list natives, whose position-preserving ops treat elements as opaque (`REVERSE` of a complex list is legitimate).
+**MUST (containment):** a matrix reaches a function whole only when its registration declares `matrixArgs`, and a complex value only when it declares `cxArgs`; every other case takes step 9 or 10 above. So a body taken from Formula.js only ever receives lists and scalars, permanently. The three complex exemptions are those that must see their operand as it is: the `NULL_INSPECTING` value-passers (IF hands a complex branch through, and the type checks must see it), the error handlers (a catcher sees its raw operand), and the whole-list natives, whose position-preserving ops treat elements as opaque (`REVERSE` of a complex list is legitimate).
 
-Formula.js's array functions are written against 2-D spreadsheet ranges and have untested quirks, and one has been caught changing its arguments in place (CHISQ.TEST). When [[C15]] matricesInFormulas lifted the old formula rank cap, which had partly been containing that, the containment had to stay. Without the gate, UNIQUE, SORT, MODE.MULT and FREQUENCY dispatched through Formula.js and broadcast element-wise, so `UNIQUE([3,1,3,2])` answered a column of singletons, and TREND, GROWTH, LINEST and LOGEST returned plausible-looking garbage the same way. Complex numbers had the same problem: `cx + 1` produced the text `"[object Object]1"`, and Formula.js's IM* functions accepted complex numbers written as text while refusing the graph's own complex values.
+Formula.js's array functions were written against 2-D spreadsheet ranges and had untested quirks, and one was caught changing its arguments in place (CHISQ.TEST); their ported bodies keep that shape. When [[C15]] matricesInFormulas lifted the old formula rank cap, which had partly been containing that, the containment had to stay. Without the gate, UNIQUE, SORT, MODE.MULT and FREQUENCY dispatched through Formula.js and broadcast element-wise, so `UNIQUE([3,1,3,2])` answered a column of singletons, and TREND, GROWTH, LINEST and LOGEST returned plausible-looking garbage the same way. Complex numbers had the same problem: `cx + 1` produced the text `"[object Object]1"`, and Formula.js's IM* functions accepted complex numbers written as text while refusing the graph's own complex values.
 
 ## Blank and omitted arguments
 
@@ -255,7 +251,7 @@ A dispatched call takes exactly one of three routes, chosen by the function's de
 
 ### Whole-list natives
 
-A function whose `EXCEL_IMPL_META` entry has `listArgs: true` (and is not blocked) receives every argument unchanged: nulls stay in place and cell errors stay where they are, because these functions preserve positions (`REVERSE([1, null, 3])` is `[3, null, 1]`). A list-returning function with scalar arguments (SEQUENCE, QUADRATICROOTS) is declared the same way so it is never broadcast. Before dispatch, a top-level `null` scalar argument makes the answer `null` (a blank scalar is unknown, not 0), unless the argument is a declared setting or pick ([[input-roles]]); an empty argument slot is exempt, as on the broadcast path, so `TRIANGLESOLVER(3, 4, , , , 90)` reaches its registration. The rule has further exceptions for the names in `NULLABLE_SCALARS_OK`, whose registrations decide blank by blank: `FILLVALUE`, `COALESCE`, the matrix and array-shaping functions (`SEQUENCE`, `WRAPROWS`, `WRAPCOLS`, `MMULT`, `MDETERM`, `MINVERSE`, `TRANSPOSE`, `MUNIT`, `TOCOL`, `TOROW`, `UNIQUE`, `SORT`, `SORTBY`, `FILTER`, `TAKE`, `DROP`, `MODE.MULT`, `FREQUENCY`, `RANDARRAY`, `RANDDIST`, `INTERPOLATE`, `HSTACK`, `VSTACK`, `CHOOSECOLS`, `CHOOSEROWS`, `EXPAND`), the lambda hosts (`MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `MAKEARRAY`, `GROUPBY`), the regression quartet (`TREND`, `GROWTH`, `LINEST`, `LOGEST`) and the criteria family (`SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`, `COUNTIF`, `AVERAGEIF`).
+A function whose `kind` is `whole` (and is not blocked) receives every argument unchanged: nulls stay in place and cell errors stay where they are, because these functions preserve positions (`REVERSE([1, null, 3])` is `[3, null, 1]`). A list-returning function with scalar arguments (SEQUENCE, QUADRATICROOTS) is declared the same way so it is never broadcast. Before dispatch, a top-level `null` scalar argument makes the answer `null` (a blank scalar is unknown, not 0), unless the argument is a declared setting or pick ([[input-roles]]); an empty argument slot is exempt, as on the broadcast path, so `TRIANGLESOLVER(3, 4, , , , 90)` reaches its registration. The rule has further exceptions for the names in `NULLABLE_SCALARS_OK`, whose registrations decide blank by blank: `FILLVALUE`, `COALESCE`, the matrix and array-shaping functions (`SEQUENCE`, `WRAPROWS`, `WRAPCOLS`, `MMULT`, `MDETERM`, `MINVERSE`, `TRANSPOSE`, `MUNIT`, `TOCOL`, `TOROW`, `UNIQUE`, `SORT`, `SORTBY`, `FILTER`, `TAKE`, `DROP`, `MODE.MULT`, `FREQUENCY`, `RANDARRAY`, `RANDDIST`, `INTERPOLATE`, `HSTACK`, `VSTACK`, `CHOOSECOLS`, `CHOOSEROWS`, `EXPAND`), the lambda hosts (`MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `MAKEARRAY`, `GROUPBY`), the regression quartet (`TREND`, `GROWTH`, `LINEST`, `LOGEST`) and the criteria family (`SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`, `COUNTIF`, `AVERAGEIF`).
 
 `INDEX` declares `listArgs`, so it takes this route even though it is also listed in `RANGE_FUNCTIONS` and `RANGE_POSITIONAL`. The matrix functions declare `listArgs` beside `matrixArgs`, so a rank-1 argument also arrives whole: TRANSPOSE of a list is a column, not an element-wise map, and COLUMNS and ROWS count a list as one row.
 
@@ -277,7 +273,7 @@ Before dispatch, `prepRangeArgs` applies the function's null and error policy ([
 | `RANGE_PAIRED` (term-by-term definitions that must stay index-aligned) | `SUMPRODUCT`, `CORREL`, `PEARSON`, `SPEARMAN`, `KENDALL`, `WILCOXON`, `COVAR`, `COVARIANCE.P`, `COVARIANCE.S`, `SLOPE`, `INTERCEPT`, `RSQ`, `STEYX`, `FORECAST.LINEAR`, `XNPV`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `CHISQ.TEST`, `PROB` | the first cell error is the answer | every list is cut to the shortest list's length, and an index where any list holds null is dropped from all of them |
 | pooled (default) | every other range function, including `T.TEST` and `F.TEST` | the first cell error is the answer | each list drops its own nulls independently |
 
-A Formula.js `Error` object found in a list counts as an error and is mapped with `fxErrorToSol`. Scalar arguments pass through every policy unchanged. The prepared lists are copied before dispatch because some Formula.js functions mutate their arguments. A numeric result passes `guardFinite` with every flattened input, so `SUM` over a list holding a first-class infinity still answers infinity.
+A Formula.js-style error found in a list (`V::Fx`) counts as an error. Scalar arguments pass through every policy unchanged. A numeric result passes `guardFinite` with every flattened input, so `SUM` over a list holding a first-class infinity still answers infinity.
 
 Dropping nulls per array would shear a paired function's pairing, which is why `RANGE_PAIRED` drops whole rows; its shortest-length zip is the same as padding with null, since padded rows would drop anyway. `T.TEST` and `F.TEST` stay pooled because their samples may differ in length for an independent test, and the paired policy's shortest-length zip would throw away the tail of the longer one ([[#Range functions]]). **Removed by:** routing per test type, if the evaluator ever dispatches on an argument's value.
 
@@ -336,9 +332,9 @@ Evaluation is eager. Both operands of every operator and every argument of every
 
 `guardFinite(result, inputs)`: a finite result passes; NaN is `#DOMAIN!`; an infinite result is `#OVERFLOW!` unless some input was itself infinite, in which case the infinity passes (a first-class infinity from the Constant node). The operators, range dispatch, broadcast calls and eta calls apply it.
 
-Formula.js reports failures as `Error` objects. Inside a formula they stay `Error`s (the error handlers recognize them). `fxErrorToSol` maps one to a `SolError` by the code in its message: `#DIV/0!`, `#N/A`, `#NAME?`, `#REF!`, `#VALUE!` keep their code, `#NULL!` becomes `#VALUE!`, `#NUM!` becomes `#DOMAIN!`, and anything unrecognized is `#VALUE!`. `normalizeFxResult` applies that to a top-level result.
+A body taken from Formula.js reports its failures as Formula.js did (`V::Fx`, its error code). Inside a formula they stay so (the error handlers recognize them); at the boundary `fxErrorToSol` (`coreValues.ts`) maps one to a `SolError` by its code: `#DIV/0!`, `#N/A`, `#NAME?`, `#REF!`, `#VALUE!` keep their code, `#NULL!` becomes `#VALUE!`, `#NUM!` becomes `#DOMAIN!`, and anything unrecognized is `#VALUE!`.
 
-`compileEvaluator(expr)` parses once and returns `(env) => value`, or null on a syntax error. The returned evaluator answers `#VALUE!` "LAMBDA needs arguments…" when the result is an unapplied `LambdaValue`, and otherwise returns `normalizeFxResult(result)`. Array results are returned as they are; each host cleans cells itself.
+`compileEvaluator(expr)` parses once and returns `(env) => value`, or null on a syntax error. The returned evaluator answers `#VALUE!` "LAMBDA needs arguments…" when the result is an unapplied `LambdaValue`, and otherwise returns the result, a Formula.js-style error mapped as above. Array results are returned as they are; each host cleans cells itself.
 
 `compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment. A name that is a constant still reads the constant; the LAMBDA node refuses such a parameter before it compiles. The LAMBDA node and the table-lambda nodes use it.
 
@@ -358,7 +354,7 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[va
 
 ## Error-handling functions
 
-`IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`ERROR_HANDLER_FUNCTIONS`) are handled by `applyErrorHandler` before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js `Error`. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
+`IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`ERROR_HANDLER_FUNCTIONS`) are handled by `applyErrorHandler` before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js-style error. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
 
 - `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `mapCells` like an operator's operands ([[#Broadcasting]]): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
 - `ISERROR`, `ISERR`, `ISNA`: TRUE or FALSE, walked cell by cell over lists and matrices.
@@ -413,10 +409,10 @@ A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node bi
 | `#SYNTAX!` | The formula does not parse (Expression and LAMBDA nodes). |
 | `#NAME?` | Unknown function; a blocked spelling (naming its replacement); a node-only verb (naming its node). |
 | `#TYPE!` | A Frame verb; ordering across types; any operator or undeclared function on a complex value; a lambda used as an operand. |
-| `#SHAPE!` | A value deeper than a matrix; a matrix given to a whole-list native, a positional lookup without `matrixArgs`, or a Formula.js-only function. |
-| `#VALUE!` | Applying a non-lambda; lambda arity mismatch; bad LAMBDA parameters or no body; an unapplied lambda as the result; a host without a lambda; mapped from Formula.js `#VALUE!`, `#NULL!` or an unrecognized error; many implementations' argument checks. |
+| `#SHAPE!` | A value deeper than a matrix; a matrix given to a whole-list native, a positional lookup without `matrixArgs`, or a function taken from Formula.js. |
+| `#VALUE!` | Applying a non-lambda; lambda arity mismatch; bad LAMBDA parameters or no body; an unapplied lambda as the result; a host without a lambda; a Formula.js-style `#VALUE!`, `#NULL!` or unrecognized error; many implementations' argument checks. |
 | `#DIV/0!` | `/` by zero; zero to a negative power; implementations. |
-| `#DOMAIN!` | A NaN result from an operator, a broadcast call, a range call, or Expression's final check; Formula.js `#NUM!`. |
+| `#DOMAIN!` | A NaN result from an operator, a broadcast call, a range call, or Expression's final check; a Formula.js-style `#NUM!`. |
 | `#OVERFLOW!` | An infinite result from finite inputs; a generator past `MAX_GENERATED`. |
 | `#REF!` | A row or column reference outside a computed column. |
 | `#N/A` | `ERROR.TYPE` of a non-error; lookups with no match; shape-builder padding. |
@@ -437,7 +433,7 @@ Errors produced by an implementation for its own reasons (a negative `SQRT`, a b
 **Evaluation.**
 
 1. No evaluator: an empty formula answers `null` with no error; otherwise `#SYNTAX!` carrying the syntax hint, and the card shows the hint (or "Syntax error").
-2. Run the evaluator. Each result cell (scalar, list cell or matrix cell) is tagged: a `SolError` passes; a Formula.js `Error` maps through `fxErrorToSol`; NaN is `#DOMAIN!`; a string, a logical, a number (an infinity included) or a complex value passes; anything else becomes `null`.
+2. Run the evaluator. Each result cell (scalar, list cell or matrix cell) is tagged: a `SolError` passes; a Formula.js-style error maps through `fxErrorToSol`; NaN is `#DOMAIN!`; a string, a logical, a number (an infinity included) or a complex value passes; anything else becomes `null`.
 3. When any input carries a non-dimensionless unit, `dimEval` computes the result's dimension from the AST, the input dimensions and their currency codes. An error there is the result; a known dimension tags each numeric cell; an indeterminate one drops the unit ([[unit-flow]]).
 4. A thrown exception answers `#VALUE!` "The formula failed to evaluate".
 
@@ -487,11 +483,11 @@ The advertised set is re-read by identity on each call, never kept as a module c
 
 ## Computed columns
 
-A computed column's formula runs on this evaluator inside a row context pushed by `computedColumnCore.ts`. There, a bare name is the whole column as a list, and `@name`, `@[Name]` or `[@Name]` is this row's cell; `readRowCell` resolves a this-row reference through columns, then the builtins, then the LAMBDA's own environment, then the surface's side value ([[C22]] rowFormulaRefs). [[computed-columns]] owns those rules.
+A computed column's formula runs on this evaluator inside a row context pushed by `eval::column`. There, a bare name is the whole column as a list, and `@name`, `@[Name]` or `[@Name]` is this row's cell; `readRowCell` resolves a this-row reference through columns, then the builtins, then the LAMBDA's own environment, then the surface's side value ([[C22]] rowFormulaRefs). [[computed-columns]] owns those rules.
 
 ## Function notes
 
-Per-function behavior that the routing above does not decide. The node and the formula call the same kernel ([[C17]] shareImpl), so the kernel's own rules are in *Shared kernels*; the overrides of Formula.js and their evidence are in [[formulajs-divergences]]. An omitted optional argument takes its default; a blank one follows the rules in *Blank and omitted arguments*.
+Per-function behavior that the routing above does not decide. The node and the formula call the same kernel ([[C17]] shareImpl), so the kernel's own rules are in *Shared kernels*; where Solenoid answers otherwise than Formula.js did, and the evidence, are in [[formulajs-divergences]]. An omitted optional argument takes its default; a blank one follows the rules in *Blank and omitted arguments*.
 
 ### Logic and choice
 
@@ -540,7 +536,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **The tests beyond Excel's four** run the Hypothesis Test node's kernels: ANOVA and KRUSKAL take each group as a separate list argument (the node reads a matrix's columns); MANNWHITNEY, WILCOXON and KSTEST take two lists; FISHEREXACT(a, b, c, d), PROPTEST(x1, n1, x2, n2) and BINOMTEST(k, n, p) take numbers. **T.TEST(a, b, tails, type)** defaults tails to 2; a type other than 1, 2 or 3, or tails other than 1 or 2, is `#DOMAIN!`.
 - **PROB(range, probabilities, lower, [upper])**: an omitted upper limit means exactly the lower limit.
 - **COUNTDISTINCT** counts distinct values by value (`setKey`), skipping blanks; an error in the list is the answer.
-- **The distributions.** The t, χ², F and gamma functions Formula.js lacks (T.DIST, T.DIST.RT, T.DIST.2T, T.INV, T.INV.2T, CHISQ.DIST.RT, CHISQ.INV.RT, F.DIST.RT, F.INV.RT, GAMMA.DIST, GAMMA.INV) run the `mathUtils` kernels; the rest (NORM.*, CHISQ.DIST and CHISQ.INV, F.DIST and F.INV, BETA.*, LOGNORM.*, WEIBULL.DIST, EXPON.DIST, BINOM.DIST, BINOM.INV, POISSON.DIST, HYPGEOM.DIST, NEGBINOM.DIST) run the Distribution node's `DIST_SPECS`, with Excel's argument order mapped onto the spec's value-then-parameters shape. A parameter or x outside the distribution's domain is `#DOMAIN!` (Excel's `#NUM!`) on the formula and the Distribution card alike ([[D70]] nullNotEnoughData), never a fabricated number. A `cumulative` flag is true for TRUE, 1, or the text "true" or "1". BETA.DIST and BETA.INV take Excel's optional support bounds [A, B]: x maps to `(x − A)/(B − A)`, the density scales by `1/(B − A)`, and the quantile maps back; B at or below A is `#DOMAIN!`.
+- **The distributions.** The t, χ², F and gamma functions Formula.js lacked (T.DIST, T.DIST.RT, T.DIST.2T, T.INV, T.INV.2T, CHISQ.DIST.RT, CHISQ.INV.RT, F.DIST.RT, F.INV.RT, GAMMA.DIST, GAMMA.INV) run the core's own kernels; the rest (NORM.*, CHISQ.DIST and CHISQ.INV, F.DIST and F.INV, BETA.*, LOGNORM.*, WEIBULL.DIST, EXPON.DIST, BINOM.DIST, BINOM.INV, POISSON.DIST, HYPGEOM.DIST, NEGBINOM.DIST) run the Distribution card's specs (`dists.rs`), with Excel's argument order mapped onto the spec's value-then-parameters shape. A parameter or x outside the distribution's domain is `#DOMAIN!` (Excel's `#NUM!`) on the formula and the Distribution card alike ([[D70]] nullNotEnoughData), never a fabricated number. A `cumulative` flag is true for TRUE, 1, or the text "true" or "1". BETA.DIST and BETA.INV take Excel's optional support bounds [A, B]: x maps to `(x − A)/(B − A)`, the density scales by `1/(B − A)`, and the quantile maps back; B at or below A is `#DOMAIN!`.
 - **RANDDIST(family, n, [params…])** draws n values (rounded, at most 100,000) from a Distribution-node family by inverse CDF, the node's `sample` form as a formula. The family name is case-insensitive with spaces read as hyphens; an unknown one is `#DOMAIN!` naming the families. An omitted parameter takes the node's default. It is volatile like RAND, a fresh stream each evaluation, while the node's form holds its draws for a recalculation. A draw that is not finite is blank.
 - **FITDIST(sample)** answers the name of the best-fitting family by AIC; **FITDIST(sample, family)** answers that family's parameters in the Distribution node's order. `lognormal` and `exponential` are accepted spellings; an unknown family is `#DOMAIN!`, and a sample a family cannot fit is `#VALUE!`.
 - **The regression quartet.** TREND(known_ys, [known_xs], [new_xs], [const]), GROWTH (the same, exponential), LINEST(known_ys, [known_xs]) answering `[slope, intercept, R²]`, and LOGEST(known_ys, [known_xs]) answering `[m, b]`. Pairs are prepared by `pairPresent`: an error is the answer, a pair with a blank side drops, and ragged tails are cut. Omitted Xs are 1 to n and omitted new Xs are the known Xs, the Excel defaults the node's sockets cannot express. TREND and GROWTH take Excel's `const`: FALSE fits through the origin (b = 0), or for GROWTH through b = 1, by least squares on ln y. LINEST and LOGEST take neither `const` nor `stats`, since both wait on their answer's shape matching Excel's. A prediction target that is an error is the answer, and a blank target drops. A blank `known_ys` answers blank; LINEST and LOGEST over two or more Xs with zero variance are `#DIV/0!` "Known Xs have zero variance", as the node's outputs are in both ops; GROWTH and LOGEST with a Y at or below 0 are `#DOMAIN!` "Exponential fit needs every y above 0", as the Fit card's exponential op is ([[D70]] nullNotEnoughData); a TREND or GROWTH that cannot fit answers `[]`.
@@ -632,7 +628,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 
 ## Shared kernels
 
-The kernels are the rete-free modules under `src/graph/nodes/` that a node's `data()` and a formula registration both call, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[engineering#The formula path is rete-free]]). They never import rete; a kernel that would need something from a rete-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
+The kernels are the core's, which a card's body and a formula both call; the names below are the TypeScript ones they were ported from, under the `src/graph/nodes/` modules that held them, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[engineering#The formula path is rete-free]]). They never import rete; a kernel that would need something from a rete-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
 
 ### List kernels (`nodes/listOps.ts`)
 
@@ -761,7 +757,7 @@ The Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher and Hypo
 - **Special functions.** `lnGamma` is the Lanczos approximation (g = 7), with the reflection formula below 0.5 and `Infinity` at or below 0. `regularizedGamma(a, x)` is P(a, x), by the series for x < a + 1 and a Lentz continued fraction otherwise. `regularizedBeta(x, a, b)` is Iₓ(a, b) by a Lentz continued fraction, using `Iₓ(a, b) = 1 − I₁₋ₓ(b, a)` to stay where it converges. Both answer NaN for arguments outside their domain.
 - **Normal distribution.** `stdNormCDF` is W. J. Cody's rational Chebyshev algorithm (ACM TOMS 715, the one R's `pnorm` runs): three ranges, double-precision relative error, exactly 0.5 at 0, and a tail that stays accurate where an erf-based form underflows. `normSInv` is Peter Acklam's rational approximation (error below 1.15 × 10⁻⁹) refined by one Halley step against `stdNormCDF`, for full precision.
 - `bisectionInv(cdf, p, lo, hi)` inverts a non-decreasing CDF on [lo, hi] by bisection (up to 200 steps, to 10⁻¹⁰); p at or below 0 answers `lo`, at or above 1 `hi`.
-- **Continuous distributions** Formula.js lacks, shared by the Distribution node and the formulas: `tCDF` (through the incomplete beta), `tPDF`, `chiSqCDF`, `fCDF`, and `gammaCDF`, `gammaPDF` with a scale parameter (Excel's β). The CDFs and the gamma PDF are 0 at or below the origin. The CDFs also back every inverse form through `bisectionInv`.
+- **Continuous distributions** Formula.js lacked, shared by the Distribution node and the formulas: `tCDF` (through the incomplete beta), `tPDF`, `chiSqCDF`, `fCDF`, and `gammaCDF`, `gammaPDF` with a scale parameter (Excel's β). The CDFs and the gamma PDF are 0 at or below the origin. The CDFs also back every inverse form through `bisectionInv`.
 - **Fits.** `linearFit(xs, ys)` is the least-squares line over the shorter list's length; fewer than two points, or Xs with zero variance, answer null so each surface tags its own error. `linearFitR2` adds R², which is 0 when Y has zero variance. `expFit` fits `y = b·mˣ` by least squares on ln y and answers null when any y is at or below 0 or the log fit is undefined; `expFitR2` adds R² on the log scale (Excel's LOGEST with stats).
 - `interpolateLinear(xs, ys, queryXs)`: piecewise-linear over the pairs sorted by x (the shorter list's length). A query past either end takes the end value; a NaN query stays NaN; no pairs give NaN everywhere. Two points with the same x have no gap between them, so the step between them has zero weight.
 - `pairPresent(xs, ys)`: the paired policy. The first error cell in either list is the answer; a pair with a null on either side drops; the longer list's tail is cut.
@@ -980,7 +976,7 @@ The measurement reports:
 | `nativeGap` (gap B) | Solenoid-native leaves with no formula name; not ratcheted, since visual and input/output nodes make parity moot |
 | `inScope` | leaves with `inFormula` or Excel names, the complement of `nativeGap` from the same predicate; the denominator a coverage claim must use, since `rows` includes leaves such as Slider and Note that were never candidates |
 | `noNode` | dispatchable names that no `NODE_EXCEL` entry claims |
-| `untracked` (gap C) | `noNode` names that are neither in `EXCEL_GAP` nor registered in `EXCEL_IMPL_META`: the uncurated surface Formula.js brings in. A deliberately registered name counts as tracked, so the ratchet never fights the registry. |
+| `untracked` (gap C) | `noNode` names that are neither in `EXCEL_GAP` nor `known` in the call table: the uncurated surface taken from Formula.js. A deliberately registered name counts as tracked, so the ratchet never fights the registry. |
 
 `excelNamedGapNames(m)` flattens gap A to a sorted, deduplicated list of the names that do not dispatch. It is the ratchet's unit, so closing one name of a multi-name node shows.
 
@@ -995,7 +991,7 @@ The measurement reports:
 | Matrix and complex containment | `tests/graph/formulaMatrix.test.ts`, `formulaComplex.test.ts` |
 | LAMBDA and hosts | `tests/graph/formulaLambda.test.ts`, `tests/graph/nodes/tableLambda.test.ts` |
 | Node and formula give one answer | `tests/graph/formulaNodeParity.test.ts`, `nodeFormulaArgParity.test.ts`, `formulaTier1.test.ts`, `formulaTier3.test.ts` |
-| Formula.js divergences and tripwires | `tests/graph/formulaDivergence.test.ts` |
+| Where Formula.js was wrong | `tests/graph/formulaDivergence.test.ts` |
 | Pack registration | `tests/graph/formulaExtensions.test.ts` |
 | The formula path stays rete-free | `tests/graph/formulaPathIsReteFree.test.ts` |
 | The criteria grammar | `tests/graph/criteriaFamily.test.ts` |

@@ -7,15 +7,9 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-10-21/22: the Rust core and the graph on it, branch rust-port, once solenoid/tsrs; cloud session)
-- **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
-- **What runs on the core:** every formula (compileEvaluator, outside a row frame) and computed column; about 150 node
-  bodies through `callCore`; 25 frame computations through `frameFnOnCore` (headers, Describe, Correlation, Reconcile,
-  Nest, frame XLOOKUP, Build/Split Frame, the Decision Matrix and flip points, the Allocator, Payoff, Settle and its
-  ledger, Amortization, K-Means, PCA, logistic). A pack's function is called back on the TS from inside a core
-  formula (`external.rs`). Units: the dimension algebra, the °C/°F rules, Expression's whole unit wrapper, RUNNING and
-  the list verbs over unit cells. Frozen fixtures in `fixtures/core/` hold the TS answers, every suite frozen with the
-  core off; `bails.json` is `{}`. Still on the TS: a computed column's unit plan (Frames and Cubes), Equation's
-  dimensions, Cube outputs, the Choice Ladder.
+- **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine) and [[D99]] rustIsSpec, both unratified; mechanics in [[rust-core]]. wholeColumnFallback retired 2026-10-23: nothing falls back.
+- **What runs on the core:** everything that computes. The TS engine went on 2026-10-23 (below); frozen fixtures in
+  `fixtures/core/` hold the TS answers it gave.
 - **Rust review pass (2026-10-22, branch `ccr-cc6b7c24-07oftp`):** clippy is clean and runs with `-D warnings` in
   `engine-test.yml` (three JS-port lints allowed crate-wide with reasons in `lib.rs`; `manual_range_contains` among
   them, since `!range.contains(x)` lets NaN fail where `x < lo || x > hi` lets it through). `call_function`'s arms are
@@ -26,8 +20,8 @@ specific item.
   options their one spelling, read only at the wire; `Wire<T>` keeps a name the corpus refuses in a verb's own words.
 - **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
   column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
-- **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
-- **Module size:** 2.3 MB raw / 835 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
+- **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the core in wasm (`RUST_CORE_ONLY`).
+- **Module size:** 4.8 MB raw / 1.7 MB gzipped (2026-10-23), with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
   - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
   - Split Column split a date's serial instead of its text;
@@ -85,7 +79,7 @@ specific item.
   per period. Past a million it answers #DOMAIN! at once. Found by a second sweep feeding every card extreme scalars,
   which found nothing else unbounded (ODE Integrate's 100,000-step cap costs a few seconds at worst, by design).
 - **The "Rust engine speed test" seed** times one manual composite (build N rows, two computed columns, group,
-  sort) under Settings ▸ Rust engine on and off; a held composite's card shows "last run" and its solve time. Its
+  sort), on desktop with Polars on and off; a held composite's card shows "last run" and its solve time. Its
   first profile found card replies spelling every list number as bits decoded through a BigInt (1.1 s of a 4 s run
   at a million rows); a reply's values now cross bare like frame cells. What's left is the per-row formula work.
 - **Card bodies on the core: 275 classes** after four parallel ports (widgets and draws, plans and the schedule
@@ -95,6 +89,17 @@ specific item.
   end; its branches are named in the backlog. Bugs the port had copied are fixed (RAND and Color Blend pass errors,
   an unknown constant is #VALUE!, 0 decimals no longer strip a whole number's zeros); SCAN folds a unit initial.
 - **Decimal places is a 0 to 10 slider** (Settings' new slider row), on rust-port only.
+- **The TS engine is gone** (2026-10-23, branch `delete-ts-engine`, [[D99]] rustIsSpec step 3): the evaluator and its
+  fallback, the parser, Formula.js and every TS function body, the pack functions' JavaScript (now `fns_packs.rs`),
+  the computed-column row path, the JS frame verbs and their backend, and Settings ▸ Rust engine. Polars' fallback is
+  the core in wasm. What the TS keeps: the editor's walkers over the core's tree, the units and formats a verb leaves
+  (`frameSchema.ts`), the popups' footer profile (the Obsidian plugin runs without the core). Before the parser went,
+  its trees were checked against the core's on all 49k fixture formulas (`formula-trees`). Answers that moved:
+  free-text dates only chrono-node read are not dates; a lone surrogate reads as U+FFFD (Distinct merges halves);
+  a formula over a value with a unit it doesn't take is #VALUE!; the old bail sites answer errors (a 1,000,000-term
+  distribution #DOMAIN!, DB/DDB past a million periods #DOMAIN!); the cumulative HYPGEOM.DIST sums only its Hoeffding
+  window, so `HYPGEOM.DIST(1e8, 2e8, 4e8, 8e8, TRUE)` is 0.5 where it was #DOMAIN!. Tests that pinned Formula.js
+  against itself went; the rest call the core (`tests/graph/coreFunction.ts`, `coreVerbs.ts`).
 - **vitest's fsModuleCache hid a new seed from the local suite** while CI failed on it; CLAUDE.md says to clear it.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
