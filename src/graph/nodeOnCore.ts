@@ -71,7 +71,11 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
     throw read(reply.thrown);
   }
   const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(reply.out ?? {})) out[k] = read(v);
+  for (const [k, v] of Object.entries(reply.out ?? {})) {
+    // An output that is one of the inputs as it came is that very object (`Outs` in nodes/mod.rs).
+    const from = (v as { input?: [string, number] } | null)?.input;
+    out[k] = Array.isArray(from) ? inputs[from[0]]?.[from[1]] : read(v);
+  }
   // A field that is an output itself comes back as that output, the same object, as the TS body set it.
   for (const [field, v] of Object.entries(reply.display)) {
     const o = v as { output?: string } | null;

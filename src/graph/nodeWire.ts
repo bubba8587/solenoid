@@ -78,7 +78,8 @@ export function nodeWire(v: unknown): unknown {
     }
     return { __cube: { columns } };
   }
-  if (v && typeof v === "object" && isPlainData(v)) return { __json: jsonEnc(v) };
+  // A frame ref is a backend handle and a plan of ops, plain data a card extends; the backend runs the plan later.
+  if (v && typeof v === "object" && (isPlainData(v) || "__frameRef" in v)) return { __json: jsonEnc(v) };
   return coreValue(v, true);
 }
 

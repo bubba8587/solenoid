@@ -228,6 +228,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// `{"none": true}` for a class with no body on the core.
 pub struct NodeReply {
     pub answer: Option<Answer>,
+    /// The call's inputs, so an output that is one of them can say so.
+    pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
     pub matrix_units: Vec<(String, Json)>,
 }
@@ -251,19 +253,30 @@ pub fn reply(args: &Json) -> NodeReply {
         }
         matrix_units.extend(shown);
     }
-    NodeReply { answer, display: c.display, matrix_units }
+    NodeReply { answer, inputs: c.inputs, display: c.display, matrix_units }
 }
 
 impl serde::Serialize for NodeReply {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use crate::frame_backend::Out;
         use serde::ser::SerializeMap;
-        struct Outs<'a>(&'a [(String, V)]);
+        // An output that is one of the inputs as it came (a frame ref passed through) crosses as where it came from,
+        // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
+        struct Outs<'a>(&'a [(String, V)], &'a [(String, Vec<V>)]);
         impl serde::Serialize for Outs<'_> {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
-                    m.serialize_entry(k, &Out(v))?;
+                    let from = match v {
+                        V::Json(j) => self.1.iter().find_map(|(key, vs)| {
+                            vs.iter().position(|x| matches!(x, V::Json(i) if Rc::ptr_eq(i, j))).map(|at| (key, at))
+                        }),
+                        _ => None,
+                    };
+                    match from {
+                        Some((key, at)) => m.serialize_entry(k, &serde_json::json!({ "input": [key, at] }))?,
+                        None => m.serialize_entry(k, &Out(v))?,
+                    }
                 }
                 m.end()
             }
@@ -296,7 +309,7 @@ impl serde::Serialize for NodeReply {
         let mut m = s.serialize_map(None)?;
         match &self.answer {
             None => m.serialize_entry("none", &true)?,
-            Some(Ok(outs)) => m.serialize_entry("out", &Outs(outs))?,
+            Some(Ok(outs)) => m.serialize_entry("out", &Outs(outs, &self.inputs))?,
             Some(Err(e)) => m.serialize_entry("thrown", &Out(e))?,
         }
         let outs = match &self.answer {

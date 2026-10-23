@@ -57,7 +57,9 @@ describe("card bodies on the core answer as frozen", () => {
         }
         if (c.result.out) {
           for (const [k, w] of Object.entries(c.result.out)) {
-            const got = r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
+            const from = (r.out?.[k] as { input?: [string, number] } | undefined)?.input;
+            const got = from ? nodeUnwire(c.inputs.find(([key]) => key === from[0])?.[1][from[1]])
+              : r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
             if (r.matrixUnits?.[k]) withMatrixUnit(got, jsonDec(r.matrixUnits[k]) as ColumnUnit);
             if (!same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
           }

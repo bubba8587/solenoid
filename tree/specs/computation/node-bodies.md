@@ -36,13 +36,16 @@ fields the body sets on the card for its component (`cachedResult` and the like)
 **The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
 only cards hand each other: a frame cell by cell with each column's unit, format and typed text (`V::Frame`), a cube
 (`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
-non-finite numbers, -0 and `undefined` are tagged (`V::Json`), and a table's unit, a hidden field on the JS array
+non-finite numbers, -0 and `undefined` are tagged (`V::Json`); a frame ref (a lazy verb's backend handle and plan of
+ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend (Polars on
+desktop, the core in wasm) runs it later; and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
 `set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A frame's and a cube's cells cross bare where
 they can (a finite number, text, a logical), and a field the body shows that is one of its outputs crosses as that
-output's key, so it comes back the same object, as the TS body left it. A frame ref (a lazy verb's plan) doesn't cross: the lazy
-verb cards route to the frame backend (Polars on desktop, the core in wasm) and stay TypeScript. A value that can't
-cross (a frame ref, text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
+output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as
+where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush
+and collect by its ref. Uploading a frame to the backend for a handle is async I/O and stays in the card's TS before
+the call. A value that can't cross (text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
 runs says.
 
 The core is required: the app's first render waits for it with no deadline (`main.tsx`), and every test file loads it
@@ -51,7 +54,8 @@ The core is required: the app's first render waits for it with no deadline (`mai
 ## Freezing (`FREEZE_NODES`)
 
 - `FREEZE_NODES=1 npx vitest run` records every body call the suite makes (`tests/setup/nodeRecorder.ts` wraps each
-  class's `data()`): the call as above, the outputs or the thrown error, the fields the body changed and what they held
+  class's `data()`, or its `body()` where `data()` is an async shell around one, as a lazy verb's is: the shell
+  uploads a frame to the backend for a ref, the body plans over refs): the call as above, the outputs or the thrown error, the fields the body changed and what they held
   before. `tests/graph/nodeFuzz.test.ts` adds 150 calls per catalog card on random values of its socket types, with
   units on a unit-aware card's numbers. `FREEZE_NODES=ArithmeticNode,…` records only those classes.
 - `node scripts/freeze-nodes.mjs [Class …]` folds the calls into `fixtures/core/nodes/<Class>.json.gz`: deduplicated,

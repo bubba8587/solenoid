@@ -157,10 +157,13 @@ function patch(lines: string[]): void {
   const seen = new Set<object>();
   for (const ctor of ctorRegistry().values()) {
     for (let proto = ctor.prototype; proto && proto !== Classic.Node.prototype; proto = Object.getPrototypeOf(proto)) {
-      if (seen.has(proto) || !Object.prototype.hasOwnProperty.call(proto, "data")) continue;
+      // A class whose data() is an async shell around a pure `body()` (a lazy verb resolving its frames to backend
+      // refs first) freezes the body, the part that moves to the core.
+      const method = Object.prototype.hasOwnProperty.call(proto, "body") ? "body" : "data";
+      if (seen.has(proto) || !Object.prototype.hasOwnProperty.call(proto, method)) continue;
       seen.add(proto);
-      const body = proto.data as (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) => unknown;
-      proto.data = function (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) {
+      const body = proto[method] as (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) => unknown;
+      proto[method] = function (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) {
         // A subclass calling super.data() is one call of the outer body.
         if (inFlight.has(this)) return body.call(this, inputs);
         const before = ownFields(this);
