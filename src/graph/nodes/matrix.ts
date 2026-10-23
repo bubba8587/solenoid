@@ -11,7 +11,7 @@ import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from
 import { parseCsvRows } from "../csv";
 import type { SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
-import { isFrameRef, collectPreview } from "../frameBackend";
+import { isFrameRef, collectPreview, materialize } from "../frameBackend";
 import { callCore } from "../coreValues";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -556,28 +556,36 @@ export class TableInfoNode extends ClassicPreset.Node {
     this.addOutput("cols", numOut("COLUMNS"));
   }
 
+  /** A frame reaches the body as its zero-row preview, the columns without their cells and the row count: a ref's
+   *  read from the backend, a value's taken here, so no frame crosses whole only to be counted. */
   data(inputs: { matrix?: unknown[] }) {
     const input = inputs.matrix?.[0];
-    const ofFrame = (f: FrameValue) => {
-      this.cachedRows = f.__totalRows ?? frameRowCount(f);
-      this.cachedCols = f.columns.length;
-      return { rows: this.cachedRows, cols: this.cachedCols };
-    };
     if (isFrameRef(input)) {
-      return (async () => {
-        const p = await collectPreview(input, 0);
-        if (!isFrameValue(p)) { this.cachedRows = null; this.cachedCols = null; return { rows: p, cols: p }; }
-        return ofFrame(p);
-      })() as unknown as { rows: number | null; cols: number | null };
+      return (async () => this.body({ preview: [await materialize(collectPreview(input, 0))] }))() as unknown as { rows: number | null; cols: number | null };
     }
-    // toAnyMatrix reads a Frame as 1×1, so report its real shape here.
-    if (isFrameValue(input)) return ofFrame(input);
+    return this.body(isFrameValue(input) ? { preview: [rowless(input)] } : inputs);
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { rows: number | SolError | null; cols: number | SolError | null } {
+    if (inputs.preview) {
+      const p = inputs.preview[0] as FrameValue | SolError | null;
+      if (!isFrameValue(p)) { this.cachedRows = null; this.cachedCols = null; return { rows: p, cols: p }; }
+      this.cachedRows = p.__totalRows ?? frameRowCount(p);
+      this.cachedCols = p.columns.length;
+      return { rows: this.cachedRows, cols: this.cachedCols };
+    }
+    const input = inputs.matrix?.[0];
     const rows = callCore("ROWS", [input]) as number | null;
     const cols = callCore("COLUMNS", [input]) as number | null;
     this.cachedRows = rows;
     this.cachedCols = cols;
     return { rows, cols };
   }
+}
+
+/** A frame's zero-row preview: its columns without their cells, and its row count. */
+function rowless(f: FrameValue): FrameValue {
+  return { __frame: true, columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: [] })), __totalRows: f.__totalRows ?? frameRowCount(f) };
 }
 
 // ─── SOLVE (A·x = b) ──────────────────────────────────────────────────────────

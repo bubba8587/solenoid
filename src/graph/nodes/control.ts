@@ -7,9 +7,9 @@ import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
 import { isFrameValue, getColumn, frameRowCount, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
-import { runFrameUnary, collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
-import { beginPass, passFrame, emitFrame } from "./frame";
-import type { FilterCond } from "../frameVerbs";
+import { collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
+import { beginPass, emitFrame, relinked } from "./frame";
+import type { FilterCond, FrameOp } from "../frameVerbs";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
@@ -374,12 +374,12 @@ function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
   return uniq;
 }
 
-function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: ReadonlySet<SlicerCell>): FrameValue {
+function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: readonly SlicerCell[]): FrameValue {
   const rows = frameRowCount(frame);
   const keep: number[] = [];
   for (let i = 0; i < rows; i++) {
     const v = col.values[i];
-    if (v !== null && v !== undefined && sel.has(v as SlicerCell)) keep.push(i);
+    if (v !== null && v !== undefined && sel.includes(v as SlicerCell)) keep.push(i);
   }
   return {
     __frame: true,
@@ -427,37 +427,52 @@ export class SlicerNode extends ClassicPreset.Node {
     return { result: frame };
   }
 
-  async data(inputs: { frame?: unknown[] }): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
+  /** A ref's schema is read first; the body names the column it reads, which is read next, and then it answers. A
+   *  stale pass writes nothing, or a stale one flickers the buttons. */
+  async data(inputs: Record<string, unknown[] | undefined>): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
     const raw = inputs.frame?.[0] ?? null;
     const gen = beginPass(this);
+    if (!isFrameRef(raw)) return this.emitResult(gen, this.body(inputs).result ?? null);
+    const schema = await materialize(collectPreview(raw, 0));
+    if (gen !== this._gen) return { result: null };
+    let out = this.body({ ...inputs, schema: [schema] });
+    if (out.read !== undefined) {
+      const col = await materialize(readRefColumn(raw, out.read));
+      if (gen !== this._gen) return { result: null };
+      out = this.body({ ...inputs, schema: [schema], column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
+    }
+    const result = out.result ?? null;
+    return this.emitResult(gen, isFrameRef(result) ? relinked(result, [raw]) : result);
+  }
 
+  /** Over a ref: the column to read (`read`), or, given it (`column`), the answer. Over a value: the answer. */
+  body(inputs: Record<string, unknown[] | undefined>): { result?: FrameRef | FrameValue | SolError | null; read?: string } {
+    const raw = inputs.frame?.[0] ?? null;
     if (isFrameRef(raw)) {
-      const schema = await collectPreview(raw, 0);
+      const schema = inputs.schema?.[0];
       const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
       const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
-      const col = colName
-        ? await materialize(readRefColumn(raw, colName))
-        : null;
-      // Write UI state only from the latest pass, or a stale one flickers the buttons.
-      if (gen === this._gen) {
-        this.cachedColumns = colNames;
-        if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
-        else this.cachedUniqueValues = [];
-      }
-      if (col && isSolError(col)) return this.emitResult(gen, col);
-      if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
+      if (colName && !inputs.column) return { read: colName };
+      const read = inputs.column?.[0] as FrameValue | SolError | null | undefined;
+      const col = isFrameValue(read) ? read.columns[0] ?? null : read ?? null;
+      this.cachedColumns = colNames;
+      if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
+      else this.cachedUniqueValues = [];
+      if (col && isSolError(col)) return { result: col };
+      const plan = (op: FrameOp): FrameRef => ({ __frameRef: raw.__frameRef, __plan: [...raw.__plan, op] });
+      if (!colName || this.selectedValues.length === 0) return { result: plan({ kind: "drop", columns: [] }) };
       const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true }));
-      return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
+      return { result: plan({ kind: "filterMulti", combine: "or", conditions }) };
     }
 
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
     this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
-    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return this.emitResult(gen, frame); }
+    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return { result: frame }; }
     const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
     this.cachedColumnType = col.type;
     this.cachedUniqueValues = slicerUniques(col.values);
-    if (this.selectedValues.length === 0) return this.emitResult(gen, frame);
-    return this.emitResult(gen, filterFrameByMembership(frame, col, new Set(this.selectedValues)));
+    if (this.selectedValues.length === 0) return { result: frame };
+    return { result: filterFrameByMembership(frame, col, this.selectedValues) };
   }
 }
 
