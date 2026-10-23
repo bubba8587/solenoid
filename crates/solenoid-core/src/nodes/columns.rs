@@ -692,7 +692,7 @@ pub(crate) fn plan_column_units(
 
 /// What a column computes over its table: its cells (`tag`ged) and side inputs, or the error that stops it.
 fn run_cells(
-    table: &[TableColumn], spec: crate::eval::ColumnSpec, sides: crate::fxhash::FxHashMap<String, V>, row_sides: crate::fxhash::FxHashMap<String, V>,
+    table: &[TableColumn], spec: crate::eval::ColumnSpec, sides: rustc_hash::FxHashMap<String, V>, row_sides: rustc_hash::FxHashMap<String, V>,
     reserved: &[&str], alias: &[(String, String)], tag: fn(V) -> V,
 ) -> Result<(Vec<V>, Vec<String>), V> {
     let inputs = |sides, row_sides, rows| crate::eval::ColumnInputs {
@@ -940,11 +940,11 @@ fn computed_column(c: &mut Call) -> Answer {
         Some(l) => l.body.as_ref().map(|b| crate::eval::row_refs(b)).unwrap_or_default(),
         None => ast.as_ref().map(crate::eval::row_refs).unwrap_or_default(),
     };
-    let mut sides = crate::fxhash::FxHashMap::default();
+    let mut sides = rustc_hash::FxHashMap::default();
     for p in params.iter().filter(|p| !has_col(p)) {
         sides.insert(p.clone(), run_side(c, p));
     }
-    let mut row_sides = crate::fxhash::FxHashMap::default();
+    let mut row_sides = rustc_hash::FxHashMap::default();
     for p in body_refs.iter().filter(|p| !has_col(p)) {
         row_sides.insert(p.clone(), run_side(c, p));
     }

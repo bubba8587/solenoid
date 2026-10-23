@@ -13,7 +13,7 @@ use crate::planners;
 use crate::excel_functions::{Stat, V};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{cell_key, unmatchable_key, CellKey};
-use crate::fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use crate::jsnum::{js_lower, js_string, js_trim};
 
 pub enum FrameOut {

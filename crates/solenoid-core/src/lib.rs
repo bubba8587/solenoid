@@ -28,7 +28,6 @@ pub mod fns_matrix;
 pub mod fns_random;
 pub mod formulajs;
 pub mod frame;
-pub mod fxhash;
 pub mod frame_backend;
 pub mod decision;
 pub mod frame_fns;

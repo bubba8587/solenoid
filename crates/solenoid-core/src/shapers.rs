@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
-use crate::fxhash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 use crate::jsnum::{math_round, number_to_string};
 use crate::js_sort::js_sort_by;
 use crate::string_order::compare_strings;

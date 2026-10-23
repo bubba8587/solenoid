@@ -1046,7 +1046,7 @@ fn lambda_socket_name(key: &str) -> String {
 
 /// A computed column over the table on the core's evaluator (`computeColumnOnEngine`): its cells, or the error that
 /// stops it.
-fn run_column(planned: &[TableColumn], rows: usize, spec: crate::eval::ColumnSpec, sides: crate::fxhash::FxHashMap<String, V>, row_sides: crate::fxhash::FxHashMap<String, V>) -> Result<Vec<V>, V> {
+fn run_column(planned: &[TableColumn], rows: usize, spec: crate::eval::ColumnSpec, sides: rustc_hash::FxHashMap<String, V>, row_sides: rustc_hash::FxHashMap<String, V>) -> Result<Vec<V>, V> {
     let frame = crate::frame::FrameValue {
         columns: planned.iter().map(|c| crate::frame::FrameColumn::new(c.row.name.clone(), c.ty, c.row.values.iter().map(super::frames::core_cell).collect())).collect(),
     };
@@ -1161,8 +1161,8 @@ fn frame_input(c: &mut Call) -> Answer {
             let rows = row_count(&columns);
             let names: Vec<&str> = plan.columns.iter().map(|c| c.row.name.as_str()).collect();
             let free = |p: &str| !names.contains(&p);
-            let mut sides = crate::fxhash::FxHashMap::default();
-            let mut row_sides = crate::fxhash::FxHashMap::default();
+            let mut sides = rustc_hash::FxHashMap::default();
+            let mut row_sides = rustc_hash::FxHashMap::default();
             let outcome = match &lam {
                 Some(l) => {
                     let in_plan = lambda_with_captures(l, &l.units, &|v| plan.side(v));
