@@ -38,6 +38,7 @@ export function formatScalar(n: number): string {
   const sci = extremeSci(n, decimals);
   if (sci !== null) return sci;
   if (Number.isInteger(n)) return n.toString();
-  const s = n.toFixed(decimals).replace(/\.?0+$/, "");
+  const fixed = n.toFixed(decimals);
+  const s = fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
   return s === "-0" ? "0" : s;
 }
