@@ -36,6 +36,14 @@ fn same(a: &V, b: &V) -> bool {
             }
         }
         (V::Json(x), V::Json(y)) => x == y,
+        // A LAMBDA by what its reader sees: its parameters, its body's text, the names it captures with their values
+        // as the body reads them and with their units, and its notes on its variables.
+        (V::Lambda(x), V::Lambda(y)) => {
+            let read = |l: &solenoid_core::eval::LambdaV| l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect::<Vec<_>>();
+            let all = |a: &[V], b: &[V]| a.len() == b.len() && a.iter().zip(b).all(|(p, q)| same(p, q));
+            x.params == y.params && x.src == y.src && x.eta == y.eta && x.captured == y.captured && x.descriptions == y.descriptions
+                && all(&read(x), &read(y)) && all(&x.units, &y.units)
+        }
         (V::Frame(x), V::Frame(y)) => {
             x.total_rows == y.total_rows
                 && x.approx == y.approx

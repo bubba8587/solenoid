@@ -1,8 +1,10 @@
 // [[C100]] chartIsAValue
 import { ClassicPreset } from "rete";
-import { chartOut, strIn, readInput } from "./shared";
+import { chartOut, strIn } from "./shared";
 import { type ImageValue } from "../imageValue";
-import { buildQrPayload, qrModulesToSvg, svgDataUrl, type QrTemplate, type QrFields } from "../qrCode";
+import { nodeOnCore } from "../nodeOnCore";
+
+export type QrTemplate = "text" | "wifi" | "vcard";
 
 export class QrCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -15,7 +17,9 @@ export class QrCodeNode extends ClassicPreset.Node {
   height = 200;
   width = 240;
   cachedResult: ImageValue | null = null;
-  private _cache: { key: string; value: ImageValue | null } | null = null;
+  /** The image is drawn at the card's height, a layout field the call's saved fields leave out. */
+  static coreFields = ["imageHeight"];
+  get imageHeight(): number { return this.height; }
 
   constructor(init?: { label?: string; qrTemplate?: QrTemplate }) {
     super("QrCode");
@@ -25,37 +29,7 @@ export class QrCodeNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("QR"));
   }
 
-  private fields(textFromInput: string): Partial<QrFields> {
-    const sl = this.stringLiterals;
-    return {
-      text: textFromInput,
-      ssid: sl.ssid ?? "", wifiPass: sl.wifiPass ?? "", wifiAuth: sl.wifiAuth || "WPA",
-      wifiHidden: sl.wifiHidden === "true",
-      vcName: sl.vcName ?? "", vcPhone: sl.vcPhone ?? "", vcEmail: sl.vcEmail ?? "",
-      vcOrg: sl.vcOrg ?? "", vcUrl: sl.vcUrl ?? "",
-    };
-  }
-
-  async data(inputs: { text?: string[] }): Promise<{ chart: ImageValue | null }> {
-    const wired = this.qrTemplate === "text" ? readInput(inputs.text, this.stringLiterals.text ?? "") : "";
-    const payload = buildQrPayload(this.qrTemplate, this.fields(typeof wired === "string" ? wired : ""));
-    const key = JSON.stringify([payload, this.height, this.label]);
-    if (this._cache && this._cache.key === key) {
-      this.cachedResult = this._cache.value;
-      return { chart: this._cache.value };
-    }
-    if (payload === "") {
-      this._cache = { key, value: null };
-      this.cachedResult = null;
-      return { chart: null };
-    }
-    const mod = await import("qrcode");
-    const QRCode: typeof import("qrcode") = (mod as { default?: typeof import("qrcode") }).default ?? mod;
-    const qr = QRCode.create(payload, { errorCorrectionLevel: "M" });
-    const svg = qrModulesToSvg(qr.modules.size, qr.modules.data);
-    const value: ImageValue = { __image: true, src: svgDataUrl(svg), height: this.height, alt: this.label, title: this.label };
-    this._cache = { key, value };
-    this.cachedResult = value;
-    return { chart: value };
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ImageValue | null } {
+    return nodeOnCore(this, inputs) as { chart: ImageValue | null };
   }
 }

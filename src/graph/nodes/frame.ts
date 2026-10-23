@@ -265,16 +265,11 @@ export class FrameInputNode extends ClassicPreset.Node {
     if (this.cachedResult && b && b.text === this.frameText && b.stamp === stamp && b.lams.length === lams.length && b.lams.every((v, i) => Object.is(v, lams[i]))) {
       return { frame: this.cachedResult };
     }
-    this.lambdaCaptures = lams.map((l) => (isLambdaValue(l) ? [...(l.capturedValues ?? [])] : []));
     const out = nodeOnCore(this, inputs) as { frame: FrameValue };
     this.cachedResult = out.frame;
     this._built = { text: this.frameText, lams, stamp };
     return out;
   }
-
-  /** Each wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads. */
-  static coreFields = ["lambdaCaptures"] as const;
-  lambdaCaptures: unknown[][] = [];
 }
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────

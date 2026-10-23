@@ -751,36 +751,16 @@ fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn(&V) -> V) 
     for (name, v) in captured.iter().zip(units) {
         env.insert(name.clone(), side(v));
     }
-    Rc::new(LambdaV { params: lam.params.clone(), body: lam.body.clone(), env: Rc::new(env), eta: lam.eta.clone(), captured: lam.captured.clone() })
-}
-
-/// A captured value as `jsonEnc` writes the TS object: a unit cell (`{__unitCell, value, dim, display}`), an error,
-/// a list, or a plain value.
-fn captured_value(j: &Json) -> V {
-    match j {
-        Json::Array(items) => list(items.iter().map(captured_value).collect()),
-        Json::Object(o) if o.contains_key("__unitCell") => {
-            let dim: Dim = o.get("dim").and_then(Json::as_object).map(|d| d.iter().map(|(k, v)| (k.clone(), json_f64(v))).collect()).unwrap_or_default();
-            let display = o.get("display").and_then(Json::as_str).map(String::from);
-            let shown = display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);
-            V::Unit(Rc::new(UnitCell {
-                value: o.get("value").map_or(f64::NAN, json_f64),
-                dim,
-                display,
-                ratio: o.get("ratio").and_then(Json::as_bool).unwrap_or(false),
-                scale: shown.as_ref().map(|u| u.scale),
-                offset: shown.as_ref().map(|u| u.offset.unwrap_or(0.0)),
-                unit_dim: shown.map(|u| u.dim),
-            }))
-        }
-        Json::Object(o) if o.contains_key("__solError") => {
-            let code = o.get("code").and_then(Json::as_str).and_then(|c| c.parse::<ErrorCode>().ok()).unwrap_or(ErrorCode::Value);
-            err(code, o.get("message").and_then(Json::as_str).unwrap_or(""))
-        }
-        Json::Object(o) if o.contains_key("__nf") || o.contains_key("__undef") => super::values::decode(j),
-        Json::Object(_) => V::Json(Rc::new(j.clone())),
-        other => super::values::decode(other),
-    }
+    Rc::new(LambdaV {
+        params: lam.params.clone(),
+        body: lam.body.clone(),
+        env: Rc::new(env),
+        eta: lam.eta.clone(),
+        captured: lam.captured.clone(),
+        src: lam.src.clone(),
+        units: lam.units.clone(),
+        descriptions: lam.descriptions.clone(),
+    })
 }
 
 /// A column's unit (`ColumnUnit`) as the wire writes it, an integral exponent as an integer.
@@ -1476,19 +1456,6 @@ fn frame_input(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.field("lambdaKeys").and_then(Json::as_array).map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect()).unwrap_or_default();
     let lam_by_name: Vec<(String, V)> = keys.iter().map(|k| (lambda_socket_name(k), first(c, k))).collect();
     let lam_of = |name: &str| lam_by_name.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-    let unit_rows: Vec<Vec<V>> = c
-        .field("lambdaCaptures")
-        .and_then(Json::as_array)
-        .map(|rows| rows.iter().map(|r| r.as_array().map(|a| a.iter().map(captured_value).collect()).unwrap_or_default()).collect())
-        .unwrap_or_default();
-    // `capturedValues`: a wired λ's captures with their units, where the λ itself carries the numbers its body reads.
-    let units_of = |l: &Rc<LambdaV>| -> Vec<V> {
-        let at = lam_by_name.iter().position(|(_, v)| matches!(v, V::Lambda(x) if Rc::ptr_eq(x, l)));
-        match at.and_then(|j| unit_rows.get(j)) {
-            Some(u) if !u.is_empty() => u.clone(),
-            _ => l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect(),
-        }
-    };
     let mut columns: Vec<Column> = base
         .into_iter()
         .zip(&source)
@@ -1554,10 +1521,10 @@ fn frame_input(c: &mut Call) -> Answer {
                 fill(&mut columns, i, err(ErrorCode::Value, "The formula does not parse"));
                 continue;
             }
-            // `lambdaCaptures`: the values the LAMBDAs capture, units kept, by name.
+            // The values the LAMBDAs capture, units kept, by name.
             let mut captures: Vec<(String, V)> = Vec::new();
             for l in &used_lams {
-                for (name, v) in l.captured.iter().flatten().zip(units_of(l)) {
+                for (name, v) in l.captured.iter().flatten().zip(l.units.iter().cloned()) {
                     if !captures.iter().any(|(n, _)| n == name) {
                         captures.push((name.clone(), v));
                     }
@@ -1586,7 +1553,7 @@ fn frame_input(c: &mut Call) -> Answer {
             let mut row_sides = crate::fxhash::FxHashMap::default();
             let outcome = match &lam {
                 Some(l) => {
-                    let in_plan = lambda_with_captures(l, &units_of(l), &|v| plan.side(v));
+                    let in_plan = lambda_with_captures(l, &l.units, &|v| plan.side(v));
                     for p in l.params.iter().filter(|p| free(p)) {
                         sides.insert(p.clone(), err(ErrorCode::Ref, format!("No column \"{p}\": a table λ's side values ride its captures")));
                     }
@@ -1597,7 +1564,7 @@ fn frame_input(c: &mut Call) -> Answer {
                 }
                 None => {
                     let a = ast.as_ref().expect("a formula column parses here");
-                    let lambdas: Vec<(String, V)> = used.iter().zip(&used_lams).map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &units_of(l), &|v| plan.side(v))))).collect();
+                    let lambdas: Vec<(String, V)> = used.iter().zip(&used_lams).map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &l.units, &|v| plan.side(v))))).collect();
                     let value = |p: &str| lambdas.iter().find(|(n, _)| n == p).map_or_else(|| err(ErrorCode::Ref, format!("No column \"{p}\"")), |(_, v)| v.clone());
                     for p in vars.iter().chain(used.iter()).filter(|p| free(p)) {
                         sides.entry(p.clone()).or_insert_with(|| value(p));

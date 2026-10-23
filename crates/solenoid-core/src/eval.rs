@@ -17,7 +17,7 @@ use crate::excel_formula::{Ast, BinOp, UnaryOp};
 pub type Env = FxHashMap<String, V>;
 
 /// A LAMBDA value: its parameters, body and the names it closed over; or a function named bare (`eta`).
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LambdaV {
     pub params: Vec<String>,
     pub body: Option<Rc<Ast>>,
@@ -26,6 +26,13 @@ pub struct LambdaV {
     /// A wired LAMBDA (a LAMBDA card's value): its body runs over its parameters and these captures alone
     /// (`compilePositional`), whose values `env` holds; inside a computed column a capture naming a column reads it.
     pub captured: Option<Vec<String>>,
+    /// A wired LAMBDA's body as written: what it crosses back to the TS as, which compiles its `fn` from it.
+    pub src: Option<String>,
+    /// A wired LAMBDA's captured values with their units (`capturedValues`), beside `captured`; `env` holds the values
+    /// the body reads for them (`readValues`), unit-blind.
+    pub units: Vec<V>,
+    /// The LAMBDA card's notes on its variables (`descriptions`).
+    pub descriptions: Option<Rc<serde_json::Value>>,
 }
 
 const MAX_GENERATED: f64 = 1_000_000.0;
@@ -559,7 +566,7 @@ impl Eval<'_> {
             if !env.contains_key(name) && constant_value(name).is_none() {
                 let up = name.to_uppercase();
                 if traits(&up).is_some_and(|t| t.resolves) {
-                    return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: env.clone(), eta: Some(up), captured: None }));
+                    return V::Lambda(Rc::new(LambdaV { env: env.clone(), eta: Some(up), ..Default::default() }));
                 }
             }
         }
@@ -722,7 +729,7 @@ impl Eval<'_> {
                 self.bodies.borrow_mut().insert(body as *const Ast, b.clone());
                 b
             });
-            return V::Lambda(Rc::new(LambdaV { params, body: Some(body), env: env.clone(), eta: None, captured: None }));
+            return V::Lambda(Rc::new(LambdaV { params, body: Some(body), env: env.clone(), ..Default::default() }));
         }
         // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
         let Some(t) = site.traits.as_deref() else {
@@ -1477,16 +1484,19 @@ pub fn decode_value(j: &serde_json::Value) -> V {
         Json::Object(o) if o.contains_key("__lambda") => {
             let w = &o["__lambda"];
             if let Some(name) = w.get("eta").and_then(Json::as_str) {
-                return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: Rc::new(Env::default()), eta: Some(name.to_uppercase()), captured: None }));
+                return V::Lambda(Rc::new(LambdaV { eta: Some(name.to_uppercase()), ..Default::default() }));
             }
             let strs = |k: &str| -> Vec<String> { w.get(k).and_then(Json::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default() };
+            let values = |k: &str| -> Option<Vec<V>> { w.get(k).and_then(Json::as_array).map(|a| a.iter().map(decode_value).collect()) };
             let (params, captured) = (strs("params"), strs("captured"));
-            let values: Vec<V> = w.get("capturedValues").and_then(Json::as_array).map(|a| a.iter().map(decode_value).collect()).unwrap_or_default();
-            let Some(body) = w.get("expr").and_then(Json::as_str).and_then(crate::excel_formula::parse_formula) else {
-                return crate::excel_functions::bail();
-            };
-            let env: Env = captured.iter().cloned().zip(values.into_iter().chain(std::iter::repeat(V::Undef))).collect();
-            V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured) }))
+            let units = values("capturedValues").unwrap_or_default();
+            // A λ frozen before its values crossed with their units carries only the ones its body reads.
+            let read = values("readValues").unwrap_or_else(|| units.clone());
+            let Some(src) = w.get("expr").and_then(Json::as_str) else { return crate::excel_functions::bail() };
+            let Some(body) = crate::excel_formula::parse_formula(src) else { return crate::excel_functions::bail() };
+            let env: Env = captured.iter().cloned().zip(read.into_iter().chain(std::iter::repeat(V::Undef))).collect();
+            let descriptions = w.get("descriptions").filter(|d| d.is_object()).map(|d| Rc::new(d.clone()));
+            V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured), src: Some(src.to_string()), units, descriptions }))
         }
         _ => cell_to_v(&crate::wire::decode_cell(j)),
     }

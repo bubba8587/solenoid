@@ -42,6 +42,7 @@ pub mod ladder;
 pub mod nfd_table;
 pub mod nodes;
 pub mod planners;
+pub mod qr;
 pub mod schedule;
 pub mod shapers;
 pub mod spelled;

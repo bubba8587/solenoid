@@ -47,7 +47,8 @@ export function wireCell(v: unknown): unknown {
   return v;
 }
 
-/** A value as the core reads it: arrays nest, a wired LAMBDA crosses as its body text and captures, and with `units` a
+/** A value as the core reads it: arrays nest, a wired LAMBDA crosses as its body text and captures (theirs with their
+ *  units whatever `units` says), and with `units` a
  *  value with a unit crosses as itself ([[C25]] firstClassUnits). Undefined where a value can't cross: a LAMBDA with no
  *  text, a frame or other object, text with a lone surrogate, a unit where `units` is off. */
 export function coreValue(v: unknown, units = false): unknown {
@@ -66,8 +67,14 @@ export function coreValue(v: unknown, units = false): unknown {
   if (isLambdaValue(v)) {
     if (v.eta) return { __lambda: { eta: v.expr } };
     if (!v.expr || !wellFormed(v.expr)) return undefined;
-    const values = (v.captured ?? []).map((_, i) => coreValue((v.readValues ?? v.capturedValues)?.[i]));
-    return values.includes(undefined) ? undefined : { __lambda: { params: v.params, expr: v.expr, captured: v.captured ?? [], capturedValues: values } };
+    const captured = v.captured ?? [];
+    // The captures with their units, beside the values the body reads for them (the shown numbers, or a plan's magnitudes).
+    const values = captured.map((_, i) => coreValue(v.capturedValues?.[i], true));
+    const read = captured.map((_, i) => coreValue((v.readValues ?? v.capturedValues)?.[i]));
+    if (values.includes(undefined) || read.includes(undefined)) return undefined;
+    const d = v.descriptions;
+    const descriptions = d && Object.entries(d).every(([k, x]) => wellFormed(k) && wellFormed(x)) ? { descriptions: d } : {};
+    return { __lambda: { params: v.params, expr: v.expr, captured, capturedValues: values, readValues: read, ...descriptions } };
   }
   if (v === null || typeof v === "number" || typeof v === "boolean" || isSolError(v)) return wireCell(v);
   return undefined;
