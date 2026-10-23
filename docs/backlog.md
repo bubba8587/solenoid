@@ -24,6 +24,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
 
 ## Formula library
+- [ ] **Replace Excel's criterion strings** (author 2026-10-23: "I always did hate Excel's syntax for those"): COUNTIFS, SUMIFS and kin read `">5"` and `">3/1/2024"` as a little language, the last place a formula reads a date out of text ([[C131]] noTextGuessing, unenforced there). Design a criterion that isn't text (an operator plus a typed value, the way the List Filter card takes one); until then the strings keep working as they do.
 - [ ] **Publish the formula library?** (author 2026-10-21, to weigh): Formula.js is gone from rust-port; the core owns every body (`excel_functions.rs`, `fns_*.rs`; the reasons it differs are `tree/specs/computation/formulajs-divergences.md`). Option: export the bodies as a crate of their own, the frozen fixtures as its tests. Weigh against [[C17]] shareImpl and what a public package must keep stable.
 
 - [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
