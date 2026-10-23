@@ -45,8 +45,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
     checked live, and `corePlatform.test.ts` holds UNACCENT to Node's NFD and a caseless backreference to V8.
   - Every test file loads the core (`tests/setup/graphEngine.ts`), so the hand-written suite's
     formulas check the Rust evaluator too.
-  - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively; `scripts/fuzz-frame-verbs.ts`
-    writes random corpus cases with the wasm core's answers, for the cargo runner to hold Polars to.
+  - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively.
 
 ## Tracking develop
 
@@ -76,7 +75,7 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 
 | Surface | Where | Evidence |
 | --- | --- | --- |
-| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm; Polars on desktop where it is on, the core beside it for what it can't hold. The units and formats a verb leaves ride in the TS (`frameSchema.ts`): a verb's output schema is the core's answer over no rows with them laid back on | the corpus natively; frozen verb pipelines; the verb tests through `tests/graph/coreVerbs.ts` |
+| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm, on the web and desktop alike. The units and formats a verb leaves ride in the TS (`frameSchema.ts`): a verb's output schema is the core's answer over no rows with them laid back on | the corpus natively; frozen verb pipelines; the verb tests through `tests/graph/coreVerbs.ts` |
 | A cube's row verbs (sort, filter, distinct, head, window) | the card bodies (`nodes/verbs.rs`): the scalar columns run through the frame verb, which answers the rows they keep or the window's column, and the nested cells ride along by them; list conditions read the nested cells | the frozen card cases (`fixtures/core/nodes/`) |
 | The formula parser, for the evaluator and the editor (`parseFormula`, `engine_formula_parse`) | `excel_formula.rs` | 6k frozen trees (`formula-trees`) |
 | The evaluator (`evalAst`): operators, broadcasting, argument roles, the IFERROR family, `routeCall`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen formulas; the whole suite |
@@ -106,12 +105,15 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
 
 ## Where it runs
 
-- **Frame verbs:** `initFrameBackend` picks Polars on desktop while Settings → Polars engine is on, and this engine in
-  wasm otherwise, the web included. The wasm engine holds every cell kind; Polars keeps an error cell only in a
-  number or date column and has no pivot layout or cleaning verbs, so those frames and verbs run on the core in wasm
-  beside it (their handles wear `wasm:`).
-- **Formulas, computed columns, pivots, card bodies:** on the wasm core everywhere, desktop included, beside Polars. The app's
-  first render waits for it with no deadline (`main.tsx`), since the cards' bodies run on it ([[node-bodies]]).
+- **Everything:** formulas, computed columns, frame verbs, pivots and card bodies run on the core in wasm on every
+  platform, desktop included: one build, one answer ([[C130]] rustCore). The app's first render waits for it with no
+  deadline (`main.tsx`), since the cards' bodies run on it ([[node-bodies]]). The desktop shell adds only what a
+  browser can't do; for tables that is reading a Parquet file (`crates/solenoid-parquet`, [[frame-verbs]] § Reading
+  Parquet).
+- **Speed** (2026-10-23, one chain of filter, computed column, group with sum, mean and median, join to a 1,000-row
+  lookup, sort; the frame already resident): at 1M rows 160 ms in wasm under Node and 210 ms natively. Polars, as
+  the desktop ran it, took 1.17 s, nearly all of it the computed column's round trip out of Polars and back (its
+  verbs alone were 60 ms, the core's 90 ms in wasm). Reopen [[C130]] if a table people open is slow in wasm.
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
   where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
   `scripts/build-wasm.mjs` appends to wasm-bindgen's glue, guarding it as [[graph-core]] § Traps says), numbering its handles past the dead one's

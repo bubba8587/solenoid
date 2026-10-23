@@ -1,7 +1,7 @@
 // [[C130]] rustCore
-//! The backend parity corpus (`fixtures/frame-verbs`), run through the engine's own commands:
-//! the same files `frameVerbCorpus.test.ts` holds the JS oracle to and `engine/tests.rs` holds
-//! Polars to. Cells compare as there: numbers sign-of-zero blind, errors by code.
+//! The frame-verb corpus (`fixtures/frame-verbs`), run natively through the engine's own commands:
+//! the same files `frameVerbCorpus.test.ts` runs in wasm. Cells compare as there: numbers
+//! sign-of-zero blind, errors by code.
 
 use std::fs;
 use std::path::Path;
@@ -11,9 +11,6 @@ use solenoid_core::error_value::ErrorCode;
 use solenoid_core::frame::FrameCell;
 use solenoid_core::frame_backend::invoke;
 use solenoid_core::wire::decode_cell;
-
-/// Verbs this engine doesn't speak: they run on the TS oracle.
-const ORACLE_ONLY_VERBS: &[&str] = &[];
 
 fn cells_equal(a: &FrameCell, b: &FrameCell) -> bool {
     match (a, b) {
@@ -79,9 +76,6 @@ fn corpus() {
     for path in files {
         let file: Json = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
         let verb = file["verb"].as_str().unwrap();
-        if ORACLE_ONLY_VERBS.contains(&verb) {
-            continue;
-        }
         for kase in file["cases"].as_array().unwrap() {
             let name = format!("{verb}: {}", kase["name"].as_str().unwrap());
             let outcome = match (run_case(verb, kase), kase.get("expectError").and_then(Json::as_str)) {

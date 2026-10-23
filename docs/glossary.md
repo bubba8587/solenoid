@@ -53,7 +53,7 @@ area. When you coin a new load-bearing term, add it here.
 - **`forAggregate`**: the canonical prep an aggregator must run: propagate the first
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
   (`valueKinds.ts`)
-- **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL/Polars.
+- **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
   (`valueKinds.ts` `kleeneAnd/Or/Not`)
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
@@ -99,11 +99,10 @@ area. When you coin a new load-bearing term, add it here.
   Distinct, PIVOTBY, Unpivot, Nest, Unnest, Computed Column, Split Column and the rest of
   the catalog's Table group. (`nodes/frame.ts`, the core's `frame_verbs.rs`; inventory in
   `nodeCatalog.ts`)
-- **FrameBackend**: the seam with two engines behind it: the Rust core in wasm (web, and
-  beside Polars for what it can't hold) and `PolarsBackend` (desktop, native). One
-  interface, chosen at startup. (`frameBackend.ts`; see [[C130]] rustCore)
-- **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`), the
-  correctness standard Polars is held to; their vocabulary is `frameOps.ts`.
+- **FrameBackend**: the seam frames live behind, by handle: the Rust core in wasm, on the web
+  and desktop alike. (`frameBackend.ts`; see [[C130]] rustCore)
+- **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`); their
+  vocabulary is `frameOps.ts`.
 - **Materialization boundary**: the point where a lazy `FrameRef` is collected into a
   real `FrameValue` (e.g. Get Column, a chart, an export). (`coerceInputs.ts`)
 - **Preview / collectPreview**: a verb card shows head-N rows, not the whole frame;

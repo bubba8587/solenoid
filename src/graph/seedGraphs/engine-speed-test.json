@@ -9,7 +9,7 @@
       "init": {
         "label": "How fast is the engine?",
         "color": "amber",
-        "body": "The composite below builds a table of Rows rows, adds two computed columns, groups it by region and sorts the totals. It runs only when you press Refresh, and the card shows its last run time. On desktop, turn Settings ▸ Polars engine off and Refresh again to time the same work in WebAssembly. Raise Rows to see how the time grows.",
+        "body": "The composite below builds a table of Rows rows, adds two computed columns, groups it by region and sorts the totals. It runs only when you press Refresh, and the card shows its last run time. Raise Rows to see how the time grows.",
         "width": 520
       }
     },

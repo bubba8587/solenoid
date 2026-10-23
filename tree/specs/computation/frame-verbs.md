@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[C130]] rustCore, [[C24]] arraySemantics (and its children [[D36]] nullSkippedNotZero, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D76]] textMinMax), [[C45]] excelComparisons, [[C59]] byteStringOrder and [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-A Frame is Solenoid's table: named, typed columns of cells. The relational verbs (select, sort, filter, group, join and the rest) take Frames and return new ones. They run behind one seam on two engines: the Rust core ([[rust-core]]), compiled to WebAssembly in the app and the one definition every engine must match, and native Polars on desktop. A shared corpus of cases holds them to identical answers. A Cube is the Frame's nested sibling, whose cells may hold lists and whole tables.
+A Frame is Solenoid's table: named, typed columns of cells. The relational verbs (select, sort, filter, group, join and the rest) take Frames and return new ones. They run behind one seam on the Rust core ([[rust-core]]), compiled to WebAssembly on the web and desktop alike, and a corpus of cases pins their answers. A Cube is the Frame's nested sibling, whose cells may hold lists and whole tables.
 
 | File | Holds |
 |---|---|
@@ -18,8 +18,8 @@ A Frame is Solenoid's table: named, typed columns of cells. The relational verbs
 | `src/graph/frameSchema.ts` | The units and formats each verb leaves, and the unit scales an engine is handed |
 | `src/graph/frameBackend.ts` | The seam, lazy refs, materialization, sketch mode |
 | `src/graph/nodes/frame.ts` | The verb cards |
-| `src-tauri/src/engine.rs` | The native Polars engine |
-| `fixtures/frame-verbs/` | The shared parity corpus |
+| `crates/solenoid-parquet` | The desktop's Parquet reader |
+| `fixtures/frame-verbs/` | The verb corpus |
 
 Computed columns (Frame Input's Fx column and the Computed Column node, on the core) have their own spec, [[computed-columns]]. Static schema prediction lives in `frameShape.ts`, whose `shapeOf(op, input)` must report exactly the columns a real `preview()` would.
 
@@ -48,7 +48,7 @@ A `FrameColumn` is:
 
 ### Rows
 
-A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (`cellAt`), so ragged columns behave as if padded with blanks. The native engine pads ragged columns with nulls on upload. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
+A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (`cellAt`), so ragged columns behave as if padded with blanks. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
 
 A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, replace, drop blank rows, and every verb built on `reorderRows`) drops `raw`, because a derived column has no source text that lines up with its values.
 
@@ -102,7 +102,7 @@ An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[
 
 ### Reading CSV text
 
-CSV text is read in one place, the core's `csv.rs` ([[C130]] rustCore), on the `csv` crate (BurntSushi's `rust-csv`); Solenoid adds only the newline normalization, the delimiter guess, the blank-line options and the column typing. Desktop's Local File reads through Polars instead (below); everything else comes here: Web Source, Local File on the web or off the native engine, the data feed presets, a Frame Input's CSV text, a Table Input's and a list literal's text, the Table popup's CSV view.
+CSV text is read in one place, the core's `csv.rs` ([[C130]] rustCore), on the `csv` crate (BurntSushi's `rust-csv`); Solenoid adds only the newline normalization, the delimiter guess, the blank-line options and the column typing. A Parquet file is the one exception (below); everything else comes here: Web Source, Local File's CSV and plan files, the data feed presets, a Frame Input's CSV text, a Table Input's and a list literal's text, the Table popup's CSV view.
 
 - **Rows** (`parseCsvRows(text, opts)`). `\r\n` and `\r` read as `\n` first, inside quotes too, and a leading BOM is dropped. Then the crate reads RFC 4180: a field that starts with `"` is quoted, its `""` read as `"`; a `"` that isn't a field's first character is data. Rows may be ragged. Malformed quoting reads as the crate reads it: after a closing quote, whatever follows up to the next delimiter or newline joins the field (`"a" ,b` is `a ` and `b`; `"a"b"c"` is `ab"c"`), and an unclosed quote takes the rest of the text, its `""` read as `"`.
 - **Options.** `detectDelimiter` (file ingestion) guesses among `,` tab `|` `;` and the record and unit separators, over each one's first ten rows as the crate reads them: the smallest total change in field count from row to row wins, the larger average breaking a tie, and a delimiter averaging under two fields never wins; nothing qualifying means `,`. Otherwise the delimiter is `,`. (No maintained sniffer crate fits: `csv-sniffer` is unmaintained, and `qsv-sniffer` is built for qsv, wants a seekable reader and pulls in regex and a date parser.) `keepBlankLines` (a literal source, where a typed blank row is data) reads each empty line as a row of one empty field, which the crate would skip; a final newline ends the last row and adds none. Without it, a row whose fields are all whitespace is no row.
@@ -110,12 +110,9 @@ CSV text is read in one place, the core's `csv.rs` ([[C130]] rustCore), on the `
 - **Writing** (`unparseCsv`, the Sink's CSV). The crate's writer: the header row, then each row padded or cut to the header's width (as it stands with no header), every line ended by `\r\n`, the last one too. A field is quoted, its `"` doubled, when it holds a comma, `"`, `\r` or `\n`, and a row of one empty field writes as `""` so it reads back as a row. No rows still write the header line. The editors' own writer is `joinCsvRows`, and `csvFieldSpans` marks fields in place for the CSV editor; neither is a parser.
 - **Evidence.** `fixtures/core/csv-rows`, `csv-frames`, `csv-sources` and `csv-unparse`, recorded through the callers by `tests/graph/coreCsv.test.ts` (`FREEZE_CORE=csv-rows,csv-frames,csv-sources,csv-unparse` re-records them after a deliberate change) and replayed natively by `crates/solenoid-core/tests/csv.rs`. Well-formed text, the repo's own CSV files among it, reads as it did on Papa Parse 5.7.
 
-### Native file readers
+### Reading Parquet
 
-Both readers are desktop only and read `folder/name`, joined the same way the CSV Connection node's `readFileText` joins them, so both file sources share one target-folder setting.
-
-- **CSV** (`engine_read_csv`, called through `readCsvFrame`). Polars reads the file with a header row and types the columns itself, mapped by kind: Boolean is logical, String is string, and every numeric dtype is number. Then `infer_iso_date_columns` applies the ISO gate above to the remaining string columns: a column becomes date only when every non-blank cell parses and at least one does, so an all-blank column stays text and one non-conforming cell keeps the whole column text. Zone-less text reads as UTC wall-clock (the same calendar date on every machine, as `parseDateToSerial` reads it); an explicit zone is an absolute instant, so `02:00+02:00` is midnight UTC. Where the two parsers could differ, the native one is the stricter: it rejects hour 24 and a fraction without seconds. The result comes back collected, as typed columns, so the file text never crosses IPC.
-- **Parquet** (`engine_read_parquet`, the Parquet Connection node). The frame goes straight into the engine store and the command returns a handle; it never passes through JS. Columns keep the file's own types, narrowed to the engine's three: Boolean is logical, String is string, `Date` becomes a serial (Unix days plus 25569, since serial 1 is 1900-01-01 and the Unix epoch is serial 25569), `Datetime` becomes a fractional serial by its time unit, and every other physical type is cast to a float number column.
+Local File reads a `.parquet` file on desktop only, from `folder/name` joined as the CSV path joins it: the shell's `read_parquet` command (`src-tauri/src/ipc.rs`) reads it with Apache's `parquet` and `arrow` crates (`crates/solenoid-parquet`) and answers wire columns, which the app reads as a plain frame (`readParquetFrame`). Columns keep the file's own types, narrowed to the frame's: Boolean is logical, text is string, `Date` becomes a serial (Unix days plus 25569, since serial 1 is 1900-01-01 and the Unix epoch is serial 25569), a timestamp becomes a fractional serial by its time unit, and every other column that casts to a float is a number column. A column that doesn't (a list, a struct, binary) fails the read with `#VALUE!` naming it, and a missing file is `#REF!`. On the web Local File's Parquet says it is desktop only.
 
 ### Frame Input's source
 
@@ -148,7 +145,7 @@ A `CubeColumn` is `{ name, cells, type?, format? }`. `type` is the column's elem
 - **Depth.** `depth` is cached at construction, bottom-up, so it never needs a re-walk: a Cube's depth is 1 plus the deepest Cube found in any of its cells. A Cube cell contributes its own cached depth, a list cell contributes the deepest of its items, and everything else, a nested Frame included, contributes nothing. So a flat Cube is depth 1 and a Cube of Cubes is depth 2. `makeCube` is the only constructor, so every Cube carries its depth.
 - **Rows.** The row count is the longest column (`cubeRowCount`).
 - **Constructors.** `cubeFromColumns(cols)` names the columns through `makeHeaders` and keeps each `type` and `format`. `cubeFromRows(rows, headers?)` builds from a row-major grid, padding short rows with `null`. `toCube(v)` widens any value, mirroring the Frame widening in `coerceInputs`: a Cube passes, a Frame goes through `frameToCube`, a 2-D array is a grid, a 1-D list is one row, and a scalar is 1×1. `cubeColumnFromValue(v)` reads one wired value as a Build Cube column: a list gives its elements, a single-column Cube gives that column's cells (so a cell-wise Build Cube pipes straight in), a Frame, matrix or scalar is one cell holding it, and `null` is no cells.
-- **Row subsets.** `selectCubeRows(cube, indices)` keeps whole rows by index, with nested cells carried by reference, so the Cube row verbs reorder rows without Polars ever seeing a nested cell. An index past the end gives a blank row.
+- **Row subsets.** `selectCubeRows(cube, indices)` keeps whole rows by index, with nested cells carried by reference, so the Cube row verbs reorder rows without a verb ever reading a nested cell. An index past the end gives a blank row.
 
 **Records to a Cube.** `recordsToCube(records, picks?, nested?, base?)` is the rows-of-objects reader that frontmatter and the vault readers share. Columns are the keys in first-appearance order, named through `makeHeaders`. A list value becomes a list cell (never joined into text), a list of lists a 2-D cell; a list whose present items are all objects becomes a nested Cube, a `null` beside the objects counting as an empty record; a single object becomes a one-row nested Cube. `picks` types the top level's columns ([[D90]] cubeTypesAtDepth) through `typedCubeCell`: a scalar crosses the type's own value boundary, `coerceFrameCell`, as a Frame Input cell would, so what the type cannot read becomes `NaN`, never a silent blank ([[D72]]); the items of a list or 2-D cell cross `coerceListItem`, which reads text as `coerceFrameCell` does, so what the type cannot read is NaN there too (Date over `[10-Sep-2026, apple]` is a date and a NaN; [[D93]] oneTextReading); a nested Cube or Frame passes untouched. Each nested table is read by its own declarations: `nested` (`cubeTypes.ts`) maps a table's records path from the top (`tableKey`, row and key down, a list index where a list holds it; `base` is the path of the records being read) to `{ frame?, types? }`, so two rows of one column declare their tables independently. A table with `frame: true` becomes a Frame cell (`frameCellFromRecords`: a picked column through `coerceFrameCell` with its text as `raw`, the rest through `inferColumn`, a nested value blank); any other becomes a nested Cube read the same way one level down. The records are never rewritten. An unpicked column of scalars keeps its cells as they came and takes `inferColumn`'s type as its hint; an unpicked column of lists or tables carries no type.
 
@@ -215,7 +212,7 @@ The aggregate guard classifies non-finite aggregate results at read time ([[D48]
 
 ### Interface
 
-All methods are async except `drop`, because the native backend is IPC.
+All methods are async except `drop`.
 
 | Method | Contract |
 |---|---|
@@ -233,70 +230,19 @@ All methods are async except `drop`, because the native backend is IPC.
 
 A missing handle is `#REF!` (`frame handle <h> not found (dropped or never created)`).
 
-### Choosing the backend
+### The backend
 
-`frameBackend()` starts as the core in wasm. At startup `initFrameBackend()` checks `engineAvailable()` (the desktop shell); if `engine_ping` reports `backend: "polars"`, it calls `engine_clear` (a webview reload would otherwise orphan every stored frame) and swaps in the `PolarsBackend`. Any failure keeps the core. A swap (`setFrameBackend`, `useWasmBackend`) clears every handle-keyed cache, because handle strings are unique only within one backend instance.
+`frameBackend()` is the core in wasm on every platform, desktop included ([[C130]] rustCore). At startup `initFrameBackend()` loads it and clears its store, since a webview reload would otherwise orphan every stored frame. A swap (`setFrameBackend`, `useWasmBackend`, a test's stub) clears every handle-keyed cache, because handle strings are unique only within one backend instance.
 
-Settings ▸ Data ▸ Polars engine (`nativeEngine`, on by default, desktop only) turns the native engine off to compare its answers with the core's. `nativeEngineOn()` is `engineAvailable()` and the setting. Off, `initFrameBackend` keeps the core in wasm, Local File reads a CSV with the web's reader (`csvToFrame`) and a Parquet file natively but collects its rows into a plain frame (`engine_collect`, then `engine_drop`). Flipping it swaps the backend and reloads the open document (`watchEngineSetting`, wired in `main.tsx`), so no frame keeps a handle from the engine it left.
+Handles are `rs:<n>`, numbered past a trapped instance's (`engine_handle_base`). Frames cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`), and `preview` reads the first rows the same way (a row reads `null` past a short column's end). An op's own cells (a filter's value) and a pivot layout's cells cross as JSON (`encodeWireCell`, `decodeWireCell`, the core's `wire.rs`): a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`, a SolError as `{"__err": code, "msg", "ref"}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell reads back as that same SolError, message and origin included, while the original is alive.
 
-### The core's backend
+Only name, type and cells cross: `unit`, `format` and `raw` are not sent and do not come back. The backend puts `unit` and `format` back itself: each handle keeps a row-less copy of its frame's columns, every verb that makes a new handle runs over those copies on the core with the units and formats laid back on by `frameSchema.ts`'s rules, and a collected, previewed or read column takes the unit and format of the copy with the same name and type. `raw` is not restored. A unit changes values in two places, readings on an offset scale and a variance over a scaled linear unit, so before sending, `lowerForEngine` (`frameBackend.ts`) runs each op against the copy it will meet and writes the column's `readingScale` onto every groupBy aggregate and window over readings, and its `unitScale` onto a `var` or `varp` over a scaled linear unit (`withUnitScales`).
 
-Handles are `rs:<n>`, numbered past a trapped instance's (`engine_handle_base`). Frames cross as columnar buffers (`wasmSourceBin`, `wasmReadBin`, `crates/solenoid-core/src/binary.rs`), and `preview` reads the first rows the same way (a row reads `null` past a short column's end, and the schema carries each column's unit and format).
+### The corpus
 
-### PolarsBackend and the wire
+Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColumns` has a fixture file in `fixtures/frame-verbs/<verb>.json`, plus `pipeline.json`. A file is `{ verb, cases: [{ name, frames, op, expect | expectError }] }`: `frames` maps names to wire frames (`in` for unary verbs, `left`/`right` for join, any names listed in `op.frames` for append and bind columns), `op` is the wire op (for join `{ kind: "join", …JoinOpts }`, for a pipeline `{ kind: "pipeline", ops }`, applied one after another), `expect` is a wire frame and `expectError` an error code. Exactly one of `expect` and `expectError` is present; case names are unique per file. `frameVerbCorpus.test.ts` runs the fixtures through the core in wasm on every push, and `crates/solenoid-core/tests/corpus.rs` runs them natively. Comparison is on name, type and values; `-0` compares equal to `0` and error cells compare by code. The completeness test fails if a verb in the inventory lacks a file or a file names a verb outside it; `FRAME_OP_KINDS` is checked against the `FrameOp` union at compile time.
 
-Handles are `plf:<n>`, held in a process-global store in the Rust process. The Tauri commands and their argument names:
-
-| Command | Arguments | Returns |
-|---|---|---|
-| `engine_source` | `frame: { columns: [{name, type, values}] }` | handle |
-| `engine_apply` | `handle, op` | handle |
-| `engine_apply_many` | `handle, ops` | handle |
-| `engine_join` | `left, right, opts: { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? }` | handle |
-| `engine_append` | `handles` | handle |
-| `engine_bind_columns` | `handles` | handle |
-| `engine_preview` | `handle, n` | `{ schema, rows, rowCount, truncated }` |
-| `engine_collect` | `handle` | `[{name, type, values}]` |
-| `engine_column` | `handle, name` | a column or `null` |
-| `engine_sample` | `handle, n` | `{ handle, factor }` |
-| `engine_drop`, `engine_clear` | `handle` / none | nothing |
-| `engine_read_csv`, `engine_read_parquet` | `folder, name` | columns / handle |
-
-An op is the `FrameOp` object itself, tagged by `kind` with the same camelCase field names (serde's `#[serde(tag = "kind")]` on `WireOp`); optional fields default when absent. There is no `pivot` variant.
-
-Cells cross as JSON. Upload direction (`encodeWireCell`): a finite number, string, boolean or `null` as is; a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`; a SolError as `{"__err": code, "ref": n}`, where `ref` names the original error in a registry of weak references (`errorRef`), so the cell downloads as that same SolError, message and origin included, while the original is alive. Once it has been collected (its producer recomputed between the upload and a later download), the cell comes back code-only, with the code's standard message: accepted, since only a frame no card still holds can lose its origin this way. Only name, type and values cross: `unit`, `format` and `raw` are not sent and do not come back. Both backends put `unit` and `format` back themselves: each handle keeps a row-less copy of its frame's columns, every verb that makes a new handle runs over those copies on the core with the units and formats laid back on by `frameSchema.ts`'s rules, and a collected, previewed or read column takes the unit and format of the copy with the same name and type. So a unit survives exactly the verbs it survives on the web. `raw` is not restored. A unit changes values in two places, readings on an offset scale and a variance over a scaled linear unit, so before sending, `lowerForEngine` (`frameBackend.ts`) runs each op against the copy it will meet and writes the column's `readingScale` onto every groupBy aggregate and window over readings, and its `unitScale` onto a `var` or `varp` over a scaled linear unit (`withUnitScales`). The engine coerces each cell by the declared column type (`json_to_cell`):
-
-| Column type | Accepts | Everything else |
-|---|---|---|
-| logical | a boolean; a number or numeric text (non-zero is true); text `true`/`false` after trim, any case | `null` |
-| string | text | `null` |
-| number, date | a number; a boolean as 1/0; text parsed after trimming and removing every comma; the `__nf` sentinel; `{"__err": code, "ref"?}` as an error cell (an unknown code reads `#ERROR!`) | `null` |
-
-Download direction (`num_to_json`): an integral number within the safe range as a JSON integer, other finite numbers at shortest round-trip precision, `±Infinity` and a canonical `NaN` as the `__nf` sentinel, an uploaded error cell as `{"__err": code, "ref": n}`, and an error the engine computed as `{"__err": code, "why": reason}`. The JS side decodes both sentinels back (`decodeWireCell`): a `ref` still in the registry returns the original SolError, and a computed error takes the message the core gives for its reason (`ENGINE_ERROR_WHY`), so a cell reads the same on both engines; the corpus compares error cells by code alone. A failed command rejects with `{ __solError: true, code, message }` (`IpcError` in `ipc.rs`), the same shape as the web side's tagged `SolError`, so a failure crossing IPC arrives as a value the app already renders and IFERROR can catch. `toSolError` accepts only canonical codes and maps anything else to `#ERROR!`. An unexpected engine failure is `#ERROR!` (`IpcError::internal`). `engine_ping` returns `{ name: "solenoid-engine", version, backend: "polars" }`. `engine_drop` is fire-and-forget: its failure is ignored.
-
-A string or logical column cannot hold an error cell natively, so a frame holding one never uploads: `PolarsBackend.source` keeps it on the core in wasm (`wasm:` handles), every unary verb on it runs there, and a join, append or bind columns that meets one collects its native partners into the core first. A column's source text (`raw`) is gone after any native verb. The reason: [[C130]] rustCore promises identical answers from both engines, and Polars' string and boolean columns have no bit pattern to spare for an error, so uploading one would turn the error into a blank; routing only those frames keeps answers exact and leaves the common case (errors in computed numeric columns and date parsing) native. Such a frame runs on the core in wasm. Revisit if those frames get large enough to be slow, or if the engine gains a lossless error encoding for text and logical columns (a reserved string, or a side column of codes).
-
-**The one known difference: a NaN logical cell.** The engine's boolean columns have no NaN either, but a NaN logical cell does not route to the core: it uploads and reads as blank, so `isblank` matches it and a count of blanks includes it, where the core says otherwise ([[D93]] oneTextReading makes it NaN). Such a cell only comes from typed text (Frame Input, List Input, a vault checkbox), so it is rare and the frame small, and holding the whole frame on the core for it would cost more than the difference. The first upload of one in a session says so in a notice (`noteLogicalNaN`, `frameBackend.ts`). **Remove it when** the engine gains the lossless encoding above.
-
-### Native execution and fusion
-
-`engine_apply_many` threads one Polars `LazyFrame` plus the tracked names and Solenoid types through the whole plan (`apply_step`) and collects once. Polars dtypes cannot tell number from date, so each stored frame keeps a `SolType` per column and every step computes its output types by the core's rules. The steps that build lazily are `select`, `drop`, `rename`, `sort`, `head`, `sliceRows`, `groupBy`, `window`, `fillBlanks`, `replaceValues`, a comparison `filter`, and a `filterMulti` whose conditions are all comparisons. The steps that need a row scan collect their own input, run a hand-written verb and resume lazily from the result: `distinct`, `unpivot`, a `filter` that needs a text scan, and a `filterMulti` with any text-scan condition. Join, append and bind columns run as separate commands. The store lock is held only to clone a frame out (a cheap `Arc` clone), and a poisoned lock is recovered. The Polars engine has no pivot op: PIVOTBY's totals, sorts and percent-of are richer than its op set, so the pivot runs on the Rust core in wasm on both platforms (see pivot).
-
-Why the lock is handled this way ([[C130]] rustCore): a panic deep in Polars would otherwise poison the lock and fail every later engine call until the app restarts, while the webview keeps running, and one long verb held under the lock would stall every other call. The store is only a handle map, so its data is valid wherever a panic unwound.
-
-A number or date column holds an error cell as a reserved quiet-NaN bit pattern. An uploaded error is tagged `0x7ffc` in the top 16 bits, with its code's index in `ERR_CODES` in bits 32 to 47 and its `ref` in bits 0 to 31. An error the engine computes has one pattern per reason: `#DOMAIN!` (`0x7ff8_0000_0000_0d01`), `#OVERFLOW!` (`…0f02`), `#DIV/0!` for a percent change from zero (`…0d03`) and for a zero group total (`…0d06`), and `#UNIT!` for a sum of readings (`…0e04`) and for a reading scaled (`…0e05`). A genuine data NaN is always the canonical `0x7ff8000000000000`, so the patterns cannot collide with real values. `error_of` reads a cell's code off its bits, and every verb reads a reserved pattern as the core reads a SolError: sort tails it, a comparison, `eq` and `neq` included, drops it, `iserror` keeps it (`is_err_expr`), a join key never matches it, Distinct and the groupBy and window keys tell errors apart by code (`key_json`, `nonfinite_label_expr`), an aggregate or a window function over a partition holding one answers with the first in row order (`first_error_or`), and fill and lag carry it as a value. Moving rows keeps the bits, and no verb does arithmetic on an error cell.
-
-### The parity corpus
-
-Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColumns` has a fixture file in `fixtures/frame-verbs/<verb>.json`, plus `pipeline.json` ([[#The parity corpus]]). A file is `{ verb, cases: [{ name, frames, op, expect | expectError }] }`: `frames` maps names to wire frames (`in` for unary verbs, `left`/`right` for join, any names listed in `op.frames` for append and bind columns), `op` is the wire op (for join `{ kind: "join", …JoinOpts }`, for a pipeline `{ kind: "pipeline", ops }`), `expect` is a wire frame and `expectError` an error code. Exactly one of `expect` and `expectError` is present; case names are unique per file. Both halves gate every change that can move them: `frameVerbCorpus.test.ts` runs the fixtures through the core in wasm in `.github/workflows/test.yml` on every push, and `corpus_cases` in `src-tauri/src/engine/tests.rs` runs them through Polars in `.github/workflows/engine-test.yml` (`cargo test`) on every push that touches `src-tauri/` or `fixtures/frame-verbs/`, and in any container with WebKitGTK's development packages installed. Parity is to the bit: `rolling_sum` and `rolling_avg` sum each window fresh, oldest first, on both engines, because Polars' rolling kernel keeps a running total whose rounding outlives a large value leaving the window. *Exception:* a window longer than 64 rows (`FRESH_SUM_MAX` in `engine.rs`) keeps the kernel natively and may differ from the core in the last bits. **Removed by:** a native per-window sum that doesn't grow the query plan with the window length.
-
-`scripts/fuzz-frame-verbs.ts` writes random cases for every unary verb, pipelines, join (cross and as-of over number and date keys included), append and bind columns as `fuzz-*.json` files with the core's answers. Its frames carry error cells in number and date columns, its filters the error predicates, its groupBy aggregates and windows `readingScale` and `unitScale`, and its groupBy may have no keys; `cargo test corpus_cases` then hunts divergences, and a find is kept as a hand-named case. `frameVerbCorpus.test.ts` runs each case through the core (a pipeline applies its ops one after another); `corpus_cases` in `src-tauri/src/engine/tests.rs` deserializes the same files with the production `WireFrame`, `WireOp` and `WireJoinOpts` types and runs them through the engine (a pipeline through `apply_ops`, fused). Comparison is on name, type and values; `-0` compares equal to `0` and error cells compare by code. `ORACLE_ONLY_VERBS` (`["pivot"]`) makes the cargo runner assert that the op still does not parse as a `WireOp`. The completeness test fails if a verb in the inventory lacks a file or a file names a verb outside it; `FRAME_OP_KINDS` is checked against the `FrameOp` union at compile time.
-
-**MUST:** every verb both engines speak is specified by corpus cases, and a verb without them doesn't ship. A verb only one side runs is declared (`ORACLE_ONLY_VERBS`), never skipped, so the exemption removes itself if the engine learns the op. **MUST NOT** re-encode a case per side: the corpus format is the wire format, so a fixture that parses on one side and not the other is itself the parity failure, surfacing at load.
-
-**The standing cost** ([[C130]] rustCore). Keeping the web and desktop engines in step is permanent work, to be budgeted for. Polars changes its API between versions (the crate is pinned at 0.55 in `src-tauri/Cargo.toml`); the risk is held down by keeping the engine behind the one `FrameBackend` seam, so a different engine (DuckDB on both targets is the scoped alternative) is a one-module swap, by treating the core as the reference answer, and by this corpus.
-
-The two engines were once kept in agreement by hand-mirrored test pairs tied together by comments, and nothing failed when a verb, option or edge case landed on one side only ([[C130]] rustCore). The corpus's first runs each caught a divergence the pairs had missed: a silent null column for an unknown aggregate op (now `#NAME?` on both sides), NaN passing gt and gte under Polars' total float order, and outer-join row order. Extending the fuzzer to window, fillBlanks, replaceValues, sliceRows, bindColumns and cross join found eight more in one run, each pinned as a shared wire case.
+**MUST:** every verb is specified by corpus cases, and a verb without them doesn't ship.
 
 ## Rules shared by every verb
 
@@ -304,39 +250,39 @@ The two engines were once kept in agreement by hand-mirrored test pairs tied tog
 - **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorderRows`), so a column's type, unit and format ride along.
 - **Identity keys.** Distinct, GROUPBY, Window partitions and Join keys encode each cell with `encodeCell`, a type-tagged tuple serialized as JSON: `["n"]` for null, `["b", v]`, `["#", v]` for a finite number, `["#", "nan" | "inf" | "-inf"]` for a non-finite, `["s", text]`, `["e", code]` for an error. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, the three non-finites are three keys, and an error keys by its code. The non-finites need their named tokens because `JSON.stringify` writes all three as `null`; the tokens sit under the `#` tag, so a string cell spelling `inf` cannot collide. Keys compare case-sensitively ([[C45]] excelComparisons). The engine's `key_json` produces the identical string (integral numbers within the safe range print without a decimal point, as JavaScript prints them, so `-0` keys as `0`; other numbers use the shortest round-trip form).
 - **Comparisons fold case; keys do not.** String `eq`/`neq` and the text predicates in Filter lowercase both sides with the plain Unicode lowercase (`toLowerCase` / Rust `to_lowercase`) unless `matchCase` is set. String ordering (`lt`, `gt`, sort) never folds.
-- **String order.** Every data sort and ordered comparison compares strings by UTF-16 code units (`compareStrings`, JavaScript `<`), which matches Polars' UTF-8 byte order outside the astral planes ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
+- **String order.** Every data sort and ordered comparison compares strings by UTF-16 code units (`compareStrings`, JavaScript `<`) ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
 - **New names go through `makeHeaders`.** Any verb that combines or invents column names de-duplicates them left to right.
 
 ## Verb contracts
 
 ### Summary
 
-| Verb | Card | Native | Refuses with |
-|---|---|---|---|
-| `select` | Columns (Keep) | lazy | `#REF!` unknown column |
-| `drop` | Columns (Drop) | lazy | nothing |
-| `rename` | Rename | lazy | nothing |
-| `sort` | Frame Sort | lazy | `#REF!` |
-| `distinct` | Distinct | row scan | `#REF!` |
-| `head` | Head (First N) | lazy | nothing |
-| `sliceRows` | Head (Last N, Skip first N, Rows M to N) | lazy | nothing |
-| `filter` | none emits it | lazy or row scan | `#REF!`, `#TYPE!` |
-| `filterMulti` | Frame Filter, Slicer | lazy or row scan | `#REF!`, `#TYPE!` |
-| `groupBy` | GROUPBY | lazy | `#REF!`, `#NAME?` |
-| `unpivot` | Unpivot | row scan | `#REF!`, `#TYPE!` |
-| `pivot` | PIVOTBY, GROUPBY with totals | the core only, on both platforms | `#REF!`, `#VALUE!` |
-| `window` | Window | lazy | `#REF!`, `#VALUE!` (unknown function) |
-| `fillBlanks` | Fill Down | lazy | `#REF!` |
-| `replaceValues` | Replace Values | lazy | `#REF!` |
-| `dropBlankRows`, `addIndex`, `splitColumn`, `mergeColumns` | Drop Blank Rows, Add Index, Split Column, Merge Columns | the core; Polars has none (see Table tidies) | `#REF!`, `#VALUE!` |
-| `formats` | none: the coercion wrapper adds it | never sent | nothing |
-| `join` | Join | command | `#REF!`, `#TYPE!`, `#UNIT!`, `#VALUE!` |
-| `append` | Append | command | `#TYPE!` |
-| `bindColumns` | Bind Columns | command | nothing |
+| Verb | Card | Refuses with |
+|---|---|---|
+| `select` | Columns (Keep) | `#REF!` unknown column |
+| `drop` | Columns (Drop) | nothing |
+| `rename` | Rename | nothing |
+| `sort` | Frame Sort | `#REF!` |
+| `distinct` | Distinct | `#REF!` |
+| `head` | Head (First N) | nothing |
+| `sliceRows` | Head (Last N, Skip first N, Rows M to N) | nothing |
+| `filter` | none emits it | `#REF!`, `#TYPE!` |
+| `filterMulti` | Frame Filter, Slicer | `#REF!`, `#TYPE!` |
+| `groupBy` | GROUPBY | `#REF!`, `#NAME?` |
+| `unpivot` | Unpivot | `#REF!`, `#TYPE!` |
+| `pivot` | PIVOTBY, GROUPBY with totals | `#REF!`, `#VALUE!` |
+| `window` | Window | `#REF!`, `#VALUE!` (unknown function) |
+| `fillBlanks` | Fill Down | `#REF!` |
+| `replaceValues` | Replace Values | `#REF!` |
+| `dropBlankRows`, `addIndex`, `splitColumn`, `mergeColumns` | Drop Blank Rows, Add Index, Split Column, Merge Columns | `#REF!`, `#VALUE!` |
+| `formats` | none: the coercion wrapper adds it | nothing |
+| `join` | Join | `#REF!`, `#TYPE!`, `#UNIT!`, `#VALUE!` |
+| `append` | Append | `#TYPE!` |
+| `bindColumns` | Bind Columns | nothing |
 
 ### select
 
-`{ kind: "select", columns }`. Keeps the named columns in the order given. A repeated name keeps its first occurrence only, on both engines (Polars refuses a duplicate selection outright). Any unknown name is `#REF!`. Columns keep their type, unit, format and `raw`. An empty list yields a frame with no columns; the Keep card instead passes its input through when its list is empty.
+`{ kind: "select", columns }`. Keeps the named columns in the order given. A repeated name keeps its first occurrence only. Any unknown name is `#REF!`. Columns keep their type, unit, format and `raw`. An empty list yields a frame with no columns; the Keep card instead passes its input through when its list is empty.
 
 ### drop
 
@@ -348,7 +294,7 @@ The two engines were once kept in agreement by hand-mirrored test pairs tied tog
 
 ### sort
 
-`{ kind: "sort", by, dir: "asc" | "desc" }`. Orders rows by one column. Present values compare within the column's type: numbers and dates numerically, strings by code-unit order, logicals false before true. Blank cells, error cells and `NaN` form a tail that comes last in both directions, in input order. `NaN` must be pulled into the tail explicitly: every comparison with it is false, so a subtraction comparator would place it by input position. `±Infinity` sorts as a real magnitude. Ties keep input order (the sort is stable in both directions). The engine sorts by a key expression (logical cast to 0/1, `NaN` mapped to null) with a row index as an ascending tiebreak. The Frame Sort card passes through when the column is blank.
+`{ kind: "sort", by, dir: "asc" | "desc" }`. Orders rows by one column. Present values compare within the column's type: numbers and dates numerically, strings by code-unit order, logicals false before true. Blank cells, error cells and `NaN` form a tail that comes last in both directions, in input order. `NaN` must be pulled into the tail explicitly: every comparison with it is false, so a subtraction comparator would place it by input position. `±Infinity` sorts as a real magnitude. Ties keep input order (the sort is stable in both directions). The Frame Sort card passes through when the column is blank.
 
 `sortedIndexOrder` is the shared index math: the frame sort calls it, and a Cube's sort (`sort_cube`, `nodes/verbs.rs`) runs that frame sort over its scalar column, so a Frame and a Cube of the same data sort identically. `distinctIndexOrder` plays the same role for Distinct.
 
@@ -390,8 +336,6 @@ A text predicate (`contains`, `startsWith`, `endsWith`) on a column that is not 
 7. On a number or date column, the cell is compared numerically with the value read by `decimalFromText`, the reading "Reads as a number" names; a value that is blank or does not parse to a finite number matches no rows (under `or`, other conditions still can). A date column compares against a serial; date text is not parsed.
 8. On a logical column, the cell is 1 or 0 and the value goes through `coerceLogical` (`TRUE`/`FALSE` in any case, or any number `decimalFromText` reads, non-zero being true), so `eq 12` matches TRUE rows.
 
-The engine keeps the same keep-set. Comparisons build a Polars expression; text predicates, and string `eq`/`neq` without `matchCase`, run as an in-engine row scan over the string column (`filter_needs_text_scan`). A `NaN` cell is masked out of `gt`/`gte`, which Polars' total float order would otherwise pass, and an error cell out of every comparison. `iserror` reads the reserved NaN patterns of a number or date column; a string or logical column on the engine holds no error cell (see § native execution), so there it keeps nothing.
-
 The Frame Filter card: each condition row is a column, an op and a value (`readFilterValue` stringifies a wired scalar, and an error value becomes its code). A wired blank column, or a wired blank value for an op that takes one, makes both outputs blank. A row whose literal column is empty, or whose literal value is empty for an op that takes one, is skipped. With no complete rows, Kept is the input and Dropped is blank. Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped follows the same stale-pass and previous-ref lifecycle as `emitFrame` (its own `_refDropped`) but collects no preview, so it stays a lazy ref until a consumer collects it. A list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filterCube` (see Eager verbs).
 
 The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTIONS` plus `noterror` and `iserror`), and `FILTER_OP_OPTIONS_WITH_LIST` adds the four list-cell ops for a Cube input. The error ops stay off the base list so SUMIFS, which shares it, never offers them. The value-free ops (`VALUELESS_FILTER_OPS`: the blank and error ops and `listEmpty`) hide the Value field and ignore a wired value. The case toggle (Aa) shows only for the ops where case matters (`TEXT_MATCH_OPS`: `eq`, `neq`, `contains`, `startsWith`, `endsWith`); numeric, date and logical comparisons ignore it.
@@ -415,13 +359,11 @@ The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTION
 | `stdevp`, `varp` | Population (n); 0 for one point | null | number | no |
 | `percentof` | null (it needs a total set; only Pivot computes it) | null | number | no |
 
-Every op but `count` reads only numeric cells: logical cells count as 1/0 and text cells contribute nothing (so a text column sums to 0). The exception is `min` and `max` over a text column ([[D76]] textMinMax): they compare the group's cells as text by code unit ([[C59]] byteStringOrder), the order Sort uses, so the comparison is case-sensitive and a number stored as text orders as text (`"10"` before `"9"`). A column mixing numbers and text is already a text column (`typedColumn`), so it follows the same rule. Blanks and empty strings are skipped, and a group with nothing else is blank. The caller passes the column type, since the cells alone cannot tell a text column from a number column holding one stray string. An error cell anywhere in the group makes the result that error (the first in row order). Then the non-finite guard: a `NaN` input makes the group `#DOMAIN!`, checked before aggregating because a `NaN` inside a reduce gives an order-dependent answer; a `NaN` result is `#DOMAIN!`; an infinite result from all-finite inputs is `#OVERFLOW!`; an infinite result when an input was infinite passes. The guard lives inside `aggregateGroup`, so pivot's re-aggregating totals get it too. Variance is the sequential two-pass form (sum, mean, sum of squared deviations) and median the midpoint `(lo + hi) / 2`; the engine runs both as per-group functions in the same operation order, because Polars' own `var()` and `median()` differ in the last digits. An op name outside the list is `#NAME?` (`Unknown aggregation "<op>"`) for the whole verb; Polars checks this before running, the core when it first aggregates a group with numeric cells.
+Every op but `count` reads only numeric cells: logical cells count as 1/0 and text cells contribute nothing (so a text column sums to 0). The exception is `min` and `max` over a text column ([[D76]] textMinMax): they compare the group's cells as text by code unit ([[C59]] byteStringOrder), the order Sort uses, so the comparison is case-sensitive and a number stored as text orders as text (`"10"` before `"9"`). A column mixing numbers and text is already a text column (`typedColumn`), so it follows the same rule. Blanks and empty strings are skipped, and a group with nothing else is blank. The caller passes the column type, since the cells alone cannot tell a text column from a number column holding one stray string. An error cell anywhere in the group makes the result that error (the first in row order). Then the non-finite guard: a `NaN` input makes the group `#DOMAIN!`, checked before aggregating because a `NaN` inside a reduce gives an order-dependent answer; a `NaN` result is `#DOMAIN!`; an infinite result from all-finite inputs is `#OVERFLOW!`; an infinite result when an input was infinite passes. The guard lives inside `aggregateGroup`, so pivot's re-aggregating totals get it too. Variance is the sequential two-pass form (sum, mean, sum of squared deviations) and median the midpoint `(lo + hi) / 2`. An op name outside the list is `#NAME?` (`Unknown aggregation "<op>"`) for the whole verb, raised when the core first aggregates a group with numeric cells.
 
 **Readings on an offset scale** (a °C or °F column) answer as a formula does ([[C25]] firstClassUnits, [[unit-flow]]); the core holds the cells' rule and `aggUnit` (`frameSchema.ts`) the unit's. `sum`, `product` and `percentof` are `#UNIT!` in every group, since the op, not a cell, is at fault, and the column carries no unit. `stdev` and `stdevp` are a delta in kelvin and `var` and `varp` a squared one: the value scales by the unit's scale per power (5/9 for °F) and the column unit is the bare temperature dimension. `count` is plain; the rest stay readings in the column's unit. The op carries the scale as `readingScale` on each aggregate, which the lowering reads off the column's unit (`withUnitScales`). Over a linear unit, `stdev` and `stdevp` keep the column's unit and `var` and `varp` square it, landing in base SI as a formula's VAR does (a km column's variance is in m², the value scaled by the unit's scale squared, carried to the engine as `unitScale`).
 
 Cube Rollup runs the same aggregate over a nested sub-frame's column on the core (`nodes/frames.rs`), passing that column's type and unit, so a roll-up and a GROUPBY agree on every op's edge cases and units. A nested cube's column reads its tagged cells in one unit first (`matrixCellsFromList`); when it carries no type, `inferColumn` reads its non-error cells for one, as a cube-to-frame read does, and its error cells stay errors. A roll-up that produced any text cell is a string column; otherwise it is number, carrying the unit its rows agree on. The Window verb's `group_min`, `rolling_min`, `cummin` and their max twins do not share it and stay numeric. The formula MIN and MAX over a list keep Excel's answer and ignore text; only the table aggregates read text ([[D76]] textMinMax).
-
-The engine groups with `group_by_stable` on derived key expressions (a float key split into its finite value and a non-finite class token: a finite `x` is `(x, null)`, `±∞` and `NaN` are `(null, "inf" | "-inf" | "nan")`, a null is `(null, null)`) so buckets match `encodeCell`, and each output key is the group's first-seen original cell. `count` counts the raw column whatever its type; on a string column `min` and `max` are Polars' string `min()` and `max()` over the non-empty cells (UTF-8 byte order, which matches code-unit order outside the astral plane), and every other op is the empty-group constant (0 for sum, 1 for product, blank otherwise). The guard wraps every aggregate over a number or date column except `count` and `percentof`, and its `#DOMAIN!` and `#OVERFLOW!` results travel as reserved NaN payloads (see Native execution). A min or max over a logical column is cast back to TRUE/FALSE.
 
 The GROUPBY card sends one aggregate over its Aggregate column with `as` equal to that column's name. With a totals depth other than 0 it collects its input and runs `pivot` with that column as the only value field and no column fields (the totals re-aggregate the source). A Cube input is flattened with `flatCubeToFrame`. With no keys or no column it passes through. The GROUPBY and Pivot cards' aggregate selector derives from `AGG_OP_META` ([[engineering#One declaration per fact]]) and leaves out the `pivotOnly` ops, which only the pivot assembly can run.
 
@@ -429,9 +371,9 @@ The GROUPBY card sends one aggregate over its Aggregate column with `as` equal t
 
 `{ kind: "unpivot", idColumns, valueColumns, variableName?, valueName? }`. Wide to long: for each input row, in order, one output row per value column, in the listed order. Output columns are the id columns (type and unit kept), a string column named `variableName` (default `variable`) holding the value column's name, and a column named `valueName` (default `value`) holding the cell. All names go through `makeHeaders`. The value column takes the value columns' shared type, and their unit when they all share one. Value columns of different types are `#TYPE!` (`Unpivot value columns must share a type (…)`); an unknown column is `#REF!`. The card passes through when Melt is empty.
 
-### pivot (the core only)
+### pivot
 
-`{ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth?, colTotalDepth?, rowSort?, colSort?, relativeTo?, filter?, details? }`, Excel's PIVOTBY. The PIVOTBY card's body runs it on the core (`nodes/backend_verbs.rs`); GROUPBY's totals run it on the Rust core in wasm on both platforms (`pivotOnEngine`); Polars has no pivot op. It always runs eagerly on a collected frame.
+`{ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth?, colTotalDepth?, rowSort?, colSort?, relativeTo?, filter?, details? }`, Excel's PIVOTBY. The PIVOTBY card's body runs it on the core (`nodes/backend_verbs.rs`); GROUPBY's totals run it through `pivotOnEngine`. It always runs eagerly on a collected frame.
 
 **Setup.** Blank field names are dropped. No value fields is `#VALUE!` (`PIVOTBY needs at least one value field`); an unknown field is `#REF!`. `funcs[i]` applies to `values[i]`, falling back to `funcs[0]`, then `sum`. `filter`, when present, keeps only source rows whose mask entry is `true`. `details` names columns for the Pivot view only ([[C128]] pivotDetails): the output is the same with or without it, and with row fields the layout kept beside the output records each row leaf's source rows and those columns' values ([[table-popup#The Pivot view]]); an unknown name is `#REF!`.
 
@@ -470,7 +412,7 @@ Values: the arithmetic functions read a numeric view of `column`: a number is pr
 | `share` | This value over the partition's sum; blank when this value is blank (checked first, so an all-blank partition is all blank); `#DIV/0!` when the sum is 0 |
 | `first`, `last` | The partition's first or last value in order, on every row |
 
-Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. Over readings on an offset scale (`readingScale`, as on groupBy), `cumsum`, `rolling_sum`, `group_sum`, `share` and `pct_change` are `#UNIT!` in every row, and `diff` is a delta in kelvin. The engine evaluates each function with Polars `.over()` after sorting by the order key with a row-index tiebreak, then sorts back by the index; its two `#DIV/0!` cells travel as a reserved NaN payload. An unknown function name is `#VALUE!` on both engines. Where Polars' window functions differ from the core, the engine masks explicitly: an all-blank partition's `group_sum` is blank (Polars sums it to 0); the zero denominators become the `#DIV/0!` payload; `cummin`/`cummax` over a prefix of only `+∞`/`−∞` read back as that infinity, not the largest finite float Polars seeds them with; and the rolling functions fill blanks with each op's identity before rolling (`rolling_avg` divides a rolling sum by a rolling count), because Polars' null-aware rolling min and max are broken. `ntile` floors through an integer cast. No partition is one group keyed by a constant column, since `.over()` a literal breaks `first` and `last`, and the output computes under a temporary name, so `as` may name a column the function reads.
+Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. Over readings on an offset scale (`readingScale`, as on groupBy), `cumsum`, `rolling_sum`, `group_sum`, `share` and `pct_change` are `#UNIT!` in every row, and `diff` is a delta in kelvin. An unknown function name is `#VALUE!`.
 
 The Window card always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input stays a Cube: `window_cube` (below) appends the column, and the output socket adopts the input's rank.
 
@@ -510,13 +452,13 @@ Output layout for the equality and as-of joins: every left column, then every ri
 
 As-of: both keys must be number or date (`#VALUE!`, `As-of join requires a numeric or date key`). Right rows with a finite key are sorted ascending (ties by row order). `backward` (the default) takes the last right key ≤ the left key; `forward` the first right key ≥ it; `nearest` whichever is closer, with a tie going backward. An exact key tie matches. When `asofTolerance` is set, a pick farther than it is no match. A left row with a blank or non-finite key has no match.
 
-The engine joins on masked temporary key columns (non-finite masked to null, because Polars would otherwise match `inf` with `inf` and `NaN` with `NaN`), so the real key columns ride through untouched. It adds a row index to each side and sorts the result into the core's order (driving side first, the other side's order within a fan-out), coalesces a right join's key by hand, and selects every output column by name before renaming it to the core's layout. It builds `outer` as a left join followed by an anti-join tail of the unmatched right rows, whose key is filled from the right and whose other left columns are blank. It runs as-of as a hand-written binary search that mirrors the core step for step, because Polars' as-of kernel breaks `nearest` ties differently, excludes exact key ties by default and treats non-finite keys its own way. An unknown `how` is `#VALUE!` on both engines.
+An unknown `how` is `#VALUE!`.
 
 The Join card: a blank Right key reuses the Left key; a blank Left key yields nothing unless the join is Cross; Tolerance is read only for as-of, and a wired blank there (or a wired blank key) makes the output blank.
 
 ### append
 
-`appendFrames(frames)`. Stacks frames in order, matching columns by name. The output columns are the union of names in first-seen order; a frame lacking a column contributes blanks for its rows. A name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced. A column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on (author 2026-10-05); a frame lacking the column has no say. The engines see no units, so the answer takes them from the schema copy (`appendMeta`, `frameSchema.ts`). The card stacks its wired rows in row order and passes a single frame through.
+`appendFrames(frames)`. Stacks frames in order, matching columns by name. The output columns are the union of names in first-seen order; a frame lacking a column contributes blanks for its rows. A name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced. A column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on (author 2026-10-05); a frame lacking the column has no say. The core sees no units, so the answer takes them from the schema copy (`appendMeta`, `frameSchema.ts`). The card stacks its wired rows in row order and passes a single frame through.
 
 ### bindColumns
 
@@ -524,7 +466,7 @@ The Join card: a blank Right key reuses the Left key; a blank Left key yields no
 
 ## Eager verbs outside the seam
 
-These run only on the core (`frame_fns.rs`), on the collected value, on both platforms. They have no `FrameOp` and no corpus file.
+These run on the core (`frame_fns.rs`), on the collected value. They have no `FrameOp` and no corpus file.
 
 ### Verbs on a Cube
 
@@ -537,7 +479,7 @@ These run only on the core (`frame_fns.rs`), on the collected value, on both pla
 
 `nestFrame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `encodeCell`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-table sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
 
-`unnestCube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). It is JavaScript only: Cubes never reach the native engine. Each nested cell votes for a kind: a non-empty list votes list, a Frame votes table, a Cube votes cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the table path.
+`unnestCube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). Each nested cell votes for a kind: a non-empty list votes list, a Frame votes table, a Cube votes cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the table path.
 
 | Path | Result |
 |---|---|
@@ -547,7 +489,7 @@ These run only on the core (`frame_fns.rs`), on the collected value, on both pla
 
 ### Table tidies
 
-The Power Query column and row tools. Each returns a new Frame, and names go through `makeHeaders`. Split Column, Add Index, Merge Columns and Drop Blank Rows are also `FrameOp`s (`splitColumn`, `addIndex`, `mergeColumns`, `dropBlankRows`), so their cards run lazily like the other verbs: the Rust core runs them, and under Polars, which lacks them, `RUST_CORE_ONLY` in `frameBackend.ts` sends them to the core in wasm. Headers stays a direct call.
+The Power Query column and row tools. Each returns a new Frame, and names go through `makeHeaders`. Split Column, Add Index, Merge Columns and Drop Blank Rows are also `FrameOp`s (`splitColumn`, `addIndex`, `mergeColumns`, `dropBlankRows`), so their cards run lazily like the other verbs. Headers stays a direct call.
 
 | Function | Card | Rule |
 |---|---|---|
@@ -585,7 +527,7 @@ The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `fr
 
 ## Analysis verbs
 
-These also run on the core, on the collected value, on both platforms.
+These also run on the core, on the collected value.
 
 ### Reconcile
 

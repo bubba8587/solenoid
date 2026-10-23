@@ -22,6 +22,7 @@ tests/setup
 src-tauri/Cargo.toml
 crates/solenoid-core/Cargo.toml
 crates/solenoid-graph/Cargo.toml
+crates/solenoid-parquet/Cargo.toml
 src-tauri/build.rs
 src-tauri/tauri.conf.json
 src-tauri/tauri.live.conf.json

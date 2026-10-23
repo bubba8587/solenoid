@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 // The frame verbs' vocabulary: the ops a card asks the engine for and their settings. The verbs themselves run on the
-// core (`crates/solenoid-core`) or on Polars.
+// core (`crates/solenoid-core`).
 import type { FrameCell } from "./frame";
 import type { ComparisonOp } from "./nodes/logic";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -65,9 +65,6 @@ export const WINDOW_FN_NEEDS_COLUMN: ReadonlySet<WindowFn> = new Set([
   "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
 ]);
 export const WINDOW_FN_NEEDS_N: ReadonlySet<WindowFn> = new Set(["lag", "lead", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max", "ntile"]);
-
-export const PCT_CHANGE_FROM_ZERO = "Percent change from zero is undefined";
-export const ZERO_GROUP_TOTAL = "The group total is 0";
 
 export type FrameOp =
   | { kind: "select"; columns: string[] }

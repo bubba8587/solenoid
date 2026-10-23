@@ -13,13 +13,10 @@ const f: FrameValue = {
   ],
 };
 
-// The verb-semantics tests live in fixtures/frame-verbs (the parity corpus —
-// frameVerbCorpus.test.ts runs them here, cargo's corpus_cases runs the same
-// files through Polars). What remains below is ORACLE-ONLY behavior: per-cell
-// SolErrors can't ride the wire (the {"__err"} upload degrades them to null
-// engine-side), so their semantics are pinned here and nowhere else.
+// The verb-semantics tests live in fixtures/frame-verbs (frameVerbCorpus.test.ts). What remains below is the
+// behavior of per-cell SolErrors, which the corpus compares by code alone.
 
-describe("sort — error cells (oracle-only)", () => {
+describe("sort — error cells", () => {
   const s: FrameValue = {
     __frame: true,
     columns: [
@@ -43,7 +40,7 @@ describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)"
     expect(distinctRows(nf).columns[0].values).toEqual([Infinity, -Infinity, NaN, null, 1]);
   });
 });
-describe("filter — error cells (oracle-only)", () => {
+describe("filter — error cells", () => {
   const t: FrameValue = {
     __frame: true,
     columns: [
@@ -70,7 +67,7 @@ describe("filter — error cells (oracle-only)", () => {
   });
 });
 
-describe("filterMulti — error cells (oracle-only)", () => {
+describe("filterMulti — error cells", () => {
   const t: FrameValue = {
     __frame: true,
     columns: [
@@ -114,11 +111,6 @@ describe("groupBy — error cells + the aggregate guard", () => {
     expect(isSolError(out.columns[2].values[1])).toBe(true);
     expect(out.columns[3].values).toEqual([2, 2]);           // present (non-null) cells per group
   });
-  // ── The aggregate non-finite guard (B-1b, decided 2026-07-02). The ENGINE
-  // guards identically since 2026-07-29 (guard_agg_expr, payload-NaN markers →
-  // the {"__err"} download form) — parity is pinned by the corpus's "the
-  // aggregate guard" cases in groupBy.json. Input-error PROPAGATION (the test
-  // above) stays oracle-only: uploads degrade error cells to null. ────────────
 });
 
 // [[D76]] textMinMax

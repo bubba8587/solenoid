@@ -3,7 +3,6 @@ use tauri::Manager;
 #[cfg(not(target_os = "linux"))]
 use tauri_plugin_decorum::WebviewWindowExt;
 
-mod engine;
 mod ipc;
 #[cfg(target_os = "linux")]
 mod linux_webview;
@@ -78,21 +77,7 @@ pub fn run() {
             open_devtools,
             set_window_border,
             toggle_fullscreen,
-            ipc::engine_ping,
-            engine::engine_source,
-            engine::engine_read_csv,
-            engine::engine_read_parquet,
-            engine::engine_apply,
-            engine::engine_apply_many,
-            engine::engine_join,
-            engine::engine_append,
-            engine::engine_bind_columns,
-            engine::engine_preview,
-            engine::engine_sample,
-            engine::engine_column,
-            engine::engine_collect,
-            engine::engine_drop,
-            engine::engine_clear,
+            ipc::read_parquet,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

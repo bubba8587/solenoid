@@ -1,0 +1,14 @@
+[package]
+name = "solenoid-parquet"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+solenoid-core = { path = "../solenoid-core" }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+parquet = "60"
+arrow-array = "60"
+arrow-schema = "60"
+arrow-cast = "60"

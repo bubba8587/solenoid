@@ -1,6 +1,6 @@
 // [[C130]], [[C24]], [[C23]]
-// The node-facing verb runners (runFrameUnary/Join/Append) + collect, on the JS
-// backend (the web path + the Polars oracle). Each runner must produce EXACTLY what
+// The node-facing verb runners (runFrameUnary/Join/Append) + collect, on the core in
+// wasm. Each runner must produce EXACTLY what
 // the pure verb produces — that's what guarantees the migrated frame nodes behave
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
@@ -204,7 +204,7 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
 });
 
 // C3.2: Replace Values' Find/Replace became `anyIn`, so a wired scalar of any type now
-// connects and stringifies through readFilterValue (the kernel + Polars plan are unchanged).
+// connects and stringifies through readFilterValue.
 describe("Replace Values — Find/Replace take a wired value of any type", () => {
   const collect = async (n: ReplaceValuesNode, inputs: Parameters<ReplaceValuesNode["data"]>[0]) =>
     readFrame((await n.data(inputs)).frame);
@@ -248,5 +248,25 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     const out = await collect(n, { frame: [f] });
     if (isSolError(out) || out == null) throw new Error("expected a frame");
     expect(out.columns[0].values).toEqual(["a b", "007"]);
+  });
+});
+
+// A groupBy's ±∞ comes back classified: #OVERFLOW! from finite inputs, ∞ where an input was ∞ ([[D48]] classifyNonFinite).
+describe("the aggregate guard on a collected groupBy", () => {
+  const big = (values: number[]): FrameValue => ({ __frame: true, columns: [
+    { name: "s", type: "string", values: values.map(() => "a") }, { name: "n", type: "number", values }] });
+  const sum = async (values: number[]) => {
+    useWasmBackend();
+    const out = await readFrame(await runFrameUnary(big(values), { kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }] }));
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    return out.columns[1].values[0];
+  };
+
+  it("a sum past the largest double from finite cells is #OVERFLOW!", async () => {
+    expect(await sum([1e308, 1e308])).toMatchObject({ code: "#OVERFLOW!" });
+  });
+
+  it("a sum over an infinite cell stays infinite", async () => {
+    expect(await sum([Infinity, 5])).toBe(Infinity);
   });
 });

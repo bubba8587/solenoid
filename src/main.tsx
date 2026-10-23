@@ -10,10 +10,9 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
-import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
+import { initFrameBackend } from "./graph/frameBackend";
 import { loadGraphEngine } from "./graph/dataflowEngine";
 import { loadWasmEngine } from "./graph/engineWasm";
-import { documentStore } from "./graph/documentStore";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
@@ -117,14 +116,12 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-// Nothing computes without the graph engine and the core the cards' bodies run on ([[D102]] graphOnCore), so they
-// have no deadline; the frame backend's native engine gets a few seconds.
+// Nothing computes without the graph engine and the core the cards' bodies and table verbs run on ([[D102]] graphOnCore).
 const backendReady = Promise.all([
-  Promise.race([initFrameBackend(), new Promise<void>((done) => setTimeout(done, 4000))]),
+  initFrameBackend(),
   loadGraphEngine(),
   loadWasmEngine(),
 ]);
-watchEngineSetting(() => void documentStore.reloadCurrent());
 
 initDevtoolsHotkey();
 

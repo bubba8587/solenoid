@@ -128,7 +128,7 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
+  "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
 // The frame GROUPBY is one relational verb over the frame, then Get Column

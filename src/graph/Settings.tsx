@@ -20,9 +20,7 @@ import "./Settings.css";
 
 
 const MOBILE_NA = "Not available in mobile mode.";
-const DESKTOP_ONLY = "Available in the desktop app only.";
-const naOnThisDevice = (field: SettingField): boolean => (isMobile() && !!field.disabledOnMobile) || (!isDesktop() && !!field.desktopOnly);
-const naNote = (field: SettingField): string => (!isDesktop() && field.desktopOnly ? DESKTOP_ONLY : MOBILE_NA);
+const naOnThisDevice = (field: SettingField): boolean => isMobile() && !!field.disabledOnMobile;
 
 function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (
@@ -64,7 +62,7 @@ function Toggle({ field }: { field: SettingField }) {
       label={field.label}
       help={field.help}
       disabled={off}
-      disabledNote={naNote(field)}
+      disabledNote={MOBILE_NA}
       on={settingsStore.get(field.key) as boolean}
       onToggle={() => settingsStore.toggle(field.key as Parameters<typeof settingsStore.toggle>[0])}
     />
@@ -79,7 +77,7 @@ function SegmentRow({ field }: { field: SettingField }) {
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
-        {off && <span className="solenoid-settings__muted">{naNote(field)}</span>}
+        {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
       </span>
       <span className="solenoid-settings__segment" role="radiogroup">
         {(field.options ?? []).map((o) => (

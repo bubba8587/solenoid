@@ -63,7 +63,7 @@ The Frame Input node allows you to define a custom Form Input layout for inputti
 
 ## Desktop
 
-The desktop app (Windows and Linux) runs the relational verbs on a native Rust (Polars) engine for memory-heavy tables. The web build uses an identical in-process JS engine.
+The desktop app (Windows and Linux) runs the same Rust engine as the web build, compiled to WebAssembly, and adds the files on your disk and your Obsidian vaults.
 
 ## From source
 
@@ -91,5 +91,5 @@ Add `-- --no-bundle` to build just the binary.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The node canvas is built on [React Flow](https://reactflow.dev) by [xyflow](https://xyflow.com); the graph model runs on [Rete.js](https://retejs.org) and the desktop relational engine is [Polars](https://pola.rs). Full third-party credits are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MIT, see [LICENSE](LICENSE). The node canvas is built on [React Flow](https://reactflow.dev) by [xyflow](https://xyflow.com); the graph model runs on [Rete.js](https://retejs.org). Full third-party credits are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 

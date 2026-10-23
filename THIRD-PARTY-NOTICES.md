@@ -44,8 +44,8 @@ model is [Rete.js](https://retejs.org) (`rete`, MIT) and the dataflow engine is
 `rete-engine` (MIT); Excel function semantics come from
 [Formula.js](https://formulajs.info) (MIT); charts are
 [Recharts](https://recharts.org) (MIT); the desktop shell is
-[Tauri](https://tauri.app) (MIT/Apache-2.0) and the native relational engine is
-[Polars](https://pola.rs) (MIT).
+[Tauri](https://tauri.app) (MIT/Apache-2.0), and it reads Parquet files with Apache Arrow's
+[`parquet` and `arrow` crates](https://github.com/apache/arrow-rs) (Apache-2.0).
 
 Not everything is MIT: `elkjs` (auto-arrange layout) is EPL-2.0 OR
 GPL-3.0-or-later, `dompurify` (markdown sanitizing) is MPL-2.0 OR Apache-2.0,

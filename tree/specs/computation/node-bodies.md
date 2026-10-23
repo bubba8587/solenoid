@@ -37,8 +37,8 @@ fields the body sets on the card for its component (`cachedResult` and the like)
 only cards hand each other: a frame cell by cell with each column's unit, format and typed text (`V::Frame`), a cube
 (`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
 non-finite numbers, -0 and `undefined` are tagged (`V::Json`); a frame ref (a lazy verb's backend handle and plan of
-ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend (Polars on
-desktop, the core in wasm) runs it later; and a table's unit, a hidden field on the JS array
+ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend runs it
+later; and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
 `set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A LAMBDA crosses as its text: `coreValue`'s `{__lambda: {params, expr, captured, capturedValues, readValues,
 descriptions?}}`, its captures with their units (`capturedValues`, what a computed column and Frame Input read) beside

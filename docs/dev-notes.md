@@ -10,6 +10,11 @@ specific item.
 - **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine) and [[D99]] rustIsSpec, both unratified; mechanics in [[rust-core]]. wholeColumnFallback retired 2026-10-23: nothing falls back.
 - **What runs on the core:** everything that computes. The TS engine went on 2026-10-23 (below); frozen fixtures in
   `fixtures/core/` hold the TS answers it gave.
+- **Polars gone (2026-10-23, the author: no redundant code):** desktop table verbs run on the core in wasm as the
+  web's do; Local File's Parquet reads through `crates/solenoid-parquet` (Apache's `parquet`/`arrow`) via the shell's
+  `read_parquet`, a CSV through the core's reader. A 1M-row chain: 160 ms in wasm, 1.17 s as Polars ran it
+  ([[rust-core]] § Where it runs). Settings ▸ Polars engine, `PolarsBackend`, `engine.rs` and the frame-verb fuzzer
+  went with it.
 - **Rust review pass (2026-10-22, branch `ccr-cc6b7c24-07oftp`):** clippy is clean and runs with `-D warnings` in
   `engine-test.yml` (three JS-port lints allowed crate-wide with reasons in `lib.rs`; `manual_range_contains` among
   them, since `!range.contains(x)` lets NaN fail where `x < lo || x > hi` lets it through). `call_function`'s arms are
@@ -20,7 +25,7 @@ specific item.
   options their one spelling, read only at the wire; `Wire<T>` keeps a name the corpus refuses in a verb's own words.
 - **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
   column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
-- **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the core in wasm (`RUST_CORE_ONLY`).
+- **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm.
 - **Module size:** 4.8 MB raw / 1.7 MB gzipped (2026-10-23), with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
   - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
