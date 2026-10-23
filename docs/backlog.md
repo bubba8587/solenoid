@@ -9,7 +9,7 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 
 ## Dependency updates (walking them one at a time)
 
-Current state (2026-10-10): everything is on latest except what's held below, Polars 0.55 included.
+Current state (2026-10-10): everything is on latest except what's held below.
 Held: `lodash-es` stays overridden to ^4.18.1 (mermaid 12's `chevrotain` 11.1 asks for 4.17.23, which
 carries two high-severity advisories); drop the override once chevrotain moves off 11.1.
 `@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`); bump them together. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
@@ -58,8 +58,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Bring the Unit Flow example back**: restore or rebuild it from `../backups/unit-flow.seed.json` and `../backups/unitFlowSeed.test.ts` (outside the repo) with Value Inputs; the test pinned unit-flow's captioned behaviors A to J.
 
 ## Performance (found 2026-10-06, not done)
-- [ ] **Engine commands run on the UI thread**: `#[tauri::command(async)]` frees it, but `engine_drop` is fire-and-forget (`frameBackend.ts`), so a drop could race a preview of its handle; needs a desktop check.
-- [ ] **Native CSV crosses IPC twice**: `engine_read_csv` returns every row, then the first verb re-uploads it; register a handle as Parquet does.
+- [ ] **A Parquet file crosses IPC as JSON** (`read_parquet`): a million-row file is a large string; a binary reply in the columnar hand-off's buffers (`binary.rs`) would skip the JSON.
 - [ ] **Input lists are copied per consumer per pass** (`familyCells`, now a plain loop, ~0.5 ms per 100k cells): passing the upstream array through needs an audit that no node reorders or splices an input in place.
 - [ ] **`raw` source text** rides beside every imported number/date column (`inferColumn`), doubling its memory; only the value popup reads it.
 - [ ] **Table popup filter** formats every row per keystroke (`TablePopup.tsx` `matchedOrder`), and up to 1000 rows × every column render unvirtualized; a memo needs every display dep (format controls, Source toggle, column types, computed values) or it filters stale text.

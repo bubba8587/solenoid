@@ -19,14 +19,15 @@ This file is the map.
 ├── tests/                    # ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts
 │                             #     tests src/graph/foo.ts; "(+`.test.ts`)" below means its
 │                             #     suite lives at the mirrored path)
-├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
+├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read
 ├── crates/                   # solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the
-│                             #     app, native in tests; ../tree/specs/computation/rust-core.md), and
-│                             #     solenoid-graph (the dataflow engine on Ruggine)
+│                             #     app, native in tests; ../tree/specs/computation/rust-core.md),
+│                             #     solenoid-graph (the dataflow engine on Ruggine) and solenoid-parquet (the
+│                             #     desktop's Parquet reader, on the parquet and arrow crates)
 ├── public/                   # Static assets served by Vite
 ├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
 │                             #     kept cut of the demo video and its poster (scripts/demo-video/)
-├── fixtures/                 # frame-verbs/ — the shared verb corpus, core and Polars (oneVerbCorpus);
+├── fixtures/                 # frame-verbs/ — the verb corpus, run in wasm and natively;
 │                             #     core/ — the core's frozen answers (coreConformance, coreNodes);
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
@@ -49,7 +50,7 @@ This file is the map.
 │                             #     formula-node-parity.ts (oneMetricImpl gap report),
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
+│                             #     tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
 │                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
 │                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
 │                             #     shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and
@@ -219,7 +220,7 @@ src/
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |
 |---|---|
-| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (the core in wasm on web; Polars over IPC on desktop, the core beside it for what Polars can't hold), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (the core in wasm, web and desktop alike), the Parquet read, the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
 | `frameOps.ts` | The verbs' vocabulary: `FrameOp` and its settings (the verbs are the core's, `frame_verbs.rs`). Contracts: `../tree/specs/computation/frame-verbs.md` |
 | `frameSchema.ts` | The units and formats a verb leaves on its columns, and the unit scales an engine is handed (`withUnitScales`, `pivotUnits`, `joinKeyTransform`) |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
@@ -462,21 +463,16 @@ gallery is `showcase/NodeShowcase.tsx`.
 
 ```
 src-tauri/
-├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
+├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps, solenoid-parquet)
 ├── tauri.conf.json           # Window, identifier, build hooks
 ├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
-├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
-├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.55; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity with the core runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
-└── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
+├── src/ipc.rs                # `read_parquet` (Local File's Parquet, as wire columns) + `IpcError` (serializes SolError-shaped).
+└── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `read_parquet`
 ```
 
-The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`engineAvailable`/
-`ipcInvoke`/`enginePing`, guarded by `isDesktop()` like `fileBridge.ts`); a Rust
-`Err` arrives as a tagged `SolError`. The Polars engine (WS2) is built — see
-`src/engine.rs` above (the original browser-vs-desktop scoping is archived as
-`archive/compute-architecture.md`). Solve/sweep now ship as COMPOSITE run modes
-(goal-seek bisection/secant, scenarios, data-table, simulation — JS, arm-and-run);
-there is no solver in the Rust engine itself.
+The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`ipcInvoke`, guarded by `isDesktop()` like
+`fileBridge.ts`); a Rust `Err` arrives as a tagged `SolError`. Table verbs run on the core in wasm on desktop
+as on the web ([[C130]] rustCore).
 
 ---
 

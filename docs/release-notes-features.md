@@ -144,9 +144,8 @@ opens differently isn't a surprise.
 
 ## Under the hood: seed list for the GitHub changelog
 
-- Native Polars runs in CI (`test.yml` `rust` job); the frame-verb fuzzer covers window,
-  fill, replace, slice, bind, cross join and error cells, and every divergence it found is
-  fixed and pinned.
+- Desktop runs table verbs on the same Rust engine as the web build, compiled to WebAssembly: one
+  implementation, one answer. Polars is gone; a Parquet file reads through Apache's `parquet` crate.
 - The test suite runs in about 15 s instead of about 100 s (shared and isolated vitest
   projects).
 - One declaration of what a blank means for every function's settings (`ARG_ROLES`), read
