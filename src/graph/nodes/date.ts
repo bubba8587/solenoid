@@ -474,6 +474,8 @@ export class WorldClockNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = { zones: "" };
   cachedResult: FrameValue | null = null;
+  static coreFields = ["nowMs"];
+  nowMs = Date.now();
   width = 220; height = 210;
 
   constructor(init?: { label?: string }) {
@@ -487,9 +489,15 @@ export class WorldClockNode extends ClassicPreset.Node {
     return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
   }
 
-  data(inputs: { zones?: string[][] }): { clock: FrameValue } {
+  /** The clock is read here; `body` shows each zone's wall clock at that instant. */
+  data(inputs: { zones?: (string | null)[][] }): { clock: FrameValue } {
+    this.nowMs = Date.now();
+    return this.body(inputs);
+  }
+
+  body(inputs: { zones?: (string | null)[][] }): { clock: FrameValue } {
     const zones = inputs.zones?.[0] ?? [];
-    const frame = worldClockFrame(worldClockRows(zones, Date.now()));
+    const frame = worldClockFrame(worldClockRows(zones, this.nowMs));
     this.cachedResult = frame;
     return { clock: frame };
   }

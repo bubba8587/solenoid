@@ -73,10 +73,10 @@ export function placeLabel(zone: string): string {
 }
 
 /** Formatted "Sun 14:32"; a blank entry is dropped, and an unknown zone keeps its name with a "?" time. */
-export function worldClockRows(zones: readonly string[], nowMs: number): ClockRow[] {
+export function worldClockRows(zones: readonly (string | null)[], nowMs: number): ClockRow[] {
   const out: ClockRow[] = [];
   for (const raw of zones) {
-    const zone = raw.trim();
+    const zone = (raw ?? "").trim();
     if (zone === "") continue;
     if (!isValidZone(zone)) { out.push({ place: zone, time: "?" }); continue; }
     const dtf = new Intl.DateTimeFormat("en-GB", {
