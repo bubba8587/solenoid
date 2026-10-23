@@ -319,23 +319,26 @@ export class FormatControllerNode extends ClassicPreset.Node {
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const raw = inputs.in?.[0];
     // A LAMBDA can't come back from the core; it holds no unit, so the card reads it as a blank and hands it on.
-    if (isLambdaValue(raw)) {
-      this.body({ ...inputs, in: [null] });
-      return { out: raw };
-    }
-    return this.body(inputs);
+    const out = isLambdaValue(raw) ? (this.body({ ...inputs, in: [null] }), { out: raw }) : this.body(inputs);
+    this.unit = this.adoptedUnit;
+    return out;
   }
+
+  /** The unit the card shows: the Convert's from-unit, else the one the value carries in. The card keeps it. */
+  adoptedUnit = "none";
 
   body(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
     const cell = heldUnit(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
     const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
-    if (dictated && this.unit === "none") this.unit = dictated;
-    this.lockedByConvert = dictated !== "" && this.unit === dictated;
+    let unit = this.unit;
+    if (dictated && unit === "none") unit = dictated;
+    this.lockedByConvert = dictated !== "" && unit === dictated;
     this.forwarding = !!cell && !this.lockedByConvert;
-    if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
+    if (this.forwarding && inherited && isFcUnit(inherited) && unit !== inherited) unit = inherited;
     this.unitLocked = this.lockedByConvert || this.forwarding;
-    return { out: applyFcUnit(val, this.unit, this.customUnit) };
+    this.adoptedUnit = unit;
+    return { out: applyFcUnit(val, unit, this.customUnit) };
   }
 }
