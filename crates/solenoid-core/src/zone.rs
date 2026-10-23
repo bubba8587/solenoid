@@ -1,7 +1,8 @@
 // [[C130]] rustCore, [[C44]] dateSerials
 //! The time zones a JS `Date` reads: the local zone and IANA zones. The wasm reads both from the JavaScript engine it
 //! runs in, as the TS reads them. Natively (desktop, `cargo test`) the local zone is UTC and an IANA zone is read from
-//! `data/zones.bin`, a table `scripts/gen-zone-table.mjs` writes from Node's `Intl` (its header has the format).
+//! jiff's bundled tzdb (`jiff-tzdb`), with the names ICU takes beside it; the tzdb release may be newer than the
+//! browser's, so a recent rule change can read differently in the two builds.
 //!
 //! A date here is a JS time value: milliseconds since 1970 UTC, NaN for an Invalid Date. The local-time methods below
 //! follow V8's `Date.prototype` (LocalTime, then MakeDay / MakeTime, then UTC and TimeClip).
@@ -264,7 +265,7 @@ pub fn is_valid_zone(zone: &str) -> bool {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn is_valid_zone(zone: &str) -> bool {
-    table::find(zone).is_some()
+    tzdb::find(zone).is_some()
 }
 
 /// `zoneOffsetMs`: the zone's wall clock at the instant, read through `formatToParts`, less the instant.
@@ -300,7 +301,7 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
 /// The clock to the whole second, as `formatToParts` shows it.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
-    let (days, secs) = table::wall_clock(zone, utc_ms)?;
+    let (days, secs) = tzdb::wall_clock(zone, utc_ms)?;
     let (y, m, d) = civil_from_days(days);
     let (h, mi, s) = (secs / 3600, secs / 60 % 60, secs % 60);
     Ok(wall_utc(y as f64, f64::from(m - 1), f64::from(d), h as f64, mi as f64, s as f64) - utc_ms)
@@ -319,152 +320,36 @@ pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
     const WEEKDAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    let (days, secs) = table::wall_clock(zone, utc_ms)?;
+    let (days, secs) = tzdb::wall_clock(zone, utc_ms)?;
     Ok(format!("{} {:02}:{:02}", WEEKDAYS[(days + 4).rem_euclid(7) as usize], secs / 3600, secs / 60 % 60))
 }
 
-/// The table `data/zones.bin` holds: every name `Intl` takes, in lower case, and each zone's offsets over all of a
-/// JS `Date`'s range. Beside it an offset like "+05:30", which `Intl` reads without a name.
+/// A zone natively: an offset like "+05:30", which `Intl` reads without a name, or a name in jiff's bundled tzdb,
+/// matched as `Intl` matches it, without regard to ASCII case.
 #[cfg(not(target_arch = "wasm32"))]
-mod table {
+mod tzdb {
     use super::{time_clip, ZoneError};
-    use crate::date_serial::{civil_from_days, days_from_civil};
-    use std::sync::OnceLock;
+    use jiff::{tz::TimeZone, Timestamp};
 
-    static BIN: &[u8] = include_bytes!("../data/zones.bin");
-
-    /// A yearly transition: the first `weekday` (0 Sunday) on or after day `min` of `month`, `secs` after that day's
-    /// UTC midnight, to the offset at `offset` in the palette.
-    struct Part {
-        month: u32,
-        weekday: i64,
-        min: u32,
-        secs: i64,
-        offset: usize,
-    }
-
-    struct Rule {
-        start: i64,
-        parts: [Part; 2],
-        /// The rule's first transition: before it the listed ones hold.
-        cut: i64,
-    }
-
-    pub struct Zone {
-        palette: Vec<i64>,
-        first: usize,
-        /// Seconds since 1970 and the offset from then on.
-        trans: Vec<(i64, usize)>,
-        rule: Option<Rule>,
-    }
-
-    struct Table {
-        names: Vec<(&'static [u8], usize)>,
-        zones: Vec<Zone>,
-    }
-
-    struct Reader(usize);
-
-    impl Reader {
-        fn uv(&mut self) -> u64 {
-            let (mut x, mut shift) = (0u64, 0);
-            loop {
-                let b = BIN[self.0];
-                self.0 += 1;
-                x |= u64::from(b & 127) << shift;
-                if b < 128 {
-                    return x;
-                }
-                shift += 7;
-            }
-        }
-
-        fn sv(&mut self) -> i64 {
-            let u = self.uv();
-            if u & 1 == 1 { -((u >> 1) as i64) - 1 } else { (u >> 1) as i64 }
-        }
-
-        fn ix(&mut self) -> usize {
-            self.uv() as usize
-        }
-    }
-
-    fn rule_transitions(parts: &[Part; 2], y: i64) -> [(i64, usize); 2] {
-        parts.each_ref().map(|p| {
-            let d0 = days_from_civil(y, p.month, p.min);
-            let d = d0 + (p.weekday - (d0 + 4).rem_euclid(7) + 7) % 7;
-            (d * 86_400 + p.secs, p.offset)
-        })
-    }
-
-    fn table() -> &'static Table {
-        static TABLE: OnceLock<Table> = OnceLock::new();
-        TABLE.get_or_init(|| {
-            let mut r = Reader(0);
-            let names = (0..r.uv())
-                .map(|_| {
-                    let len = r.ix();
-                    let name = &BIN[r.0..r.0 + len];
-                    r.0 += len;
-                    (name, r.ix())
-                })
-                .collect();
-            let zones = (0..r.uv())
-                .map(|_| {
-                    let palette: Vec<i64> = (0..r.uv()).map(|_| r.sv()).collect();
-                    let first = r.ix();
-                    let n = r.ix();
-                    let mut trans = Vec::with_capacity(n);
-                    let mut t = 0;
-                    for k in 0..n {
-                        if k == 0 {
-                            t = r.sv();
-                            trans.push((t, r.ix()));
-                        } else {
-                            let x = r.uv();
-                            let (q, at) = (x / palette.len() as u64, (x % palette.len() as u64) as usize);
-                            t += if q % 2 == 0 { (q / 2 * 60) as i64 } else { (q / 2) as i64 };
-                            trans.push((t, at));
-                        }
-                    }
-                    let rule = (r.uv() == 1).then(|| {
-                        let start = r.uv() as i64;
-                        let mut part = || Part { month: r.uv() as u32, weekday: r.uv() as i64, min: r.uv() as u32, secs: r.sv(), offset: r.ix() };
-                        let parts = [part(), part()];
-                        let cut = rule_transitions(&parts, start).iter().map(|&(t, _)| t).min().unwrap_or(i64::MAX);
-                        Rule { start, parts, cut }
-                    });
-                    Zone { palette, first, trans, rule }
-                })
-                .collect();
-            Table { names, zones }
-        })
-    }
-
-    impl Zone {
-        /// The offset in seconds at `s` seconds since 1970.
-        fn offset(&self, s: i64) -> i64 {
-            if let Some(r) = self.rule.as_ref().filter(|r| s >= r.cut) {
-                let y = civil_from_days(s.div_euclid(86_400)).0;
-                let best = (y - 1..=y + 1)
-                    .filter(|&yy| yy >= r.start)
-                    .flat_map(|yy| rule_transitions(&r.parts, yy))
-                    .filter(|&(t, _)| t <= s)
-                    .max_by_key(|&(t, _)| t);
-                if let Some((_, at)) = best {
-                    return self.palette[at];
-                }
-            }
-            match self.trans.partition_point(|&(t, _)| t <= s) {
-                0 => self.palette[self.first],
-                k => self.palette[self.trans[k - 1].1],
-            }
-        }
-    }
+    /// The names ICU takes that the tzdb has no link for (Java's three-letter IDs and others), each to the zone ICU
+    /// reads for it. The fixed SystemV zones are the Etc ones; the six SystemV zones with daylight saving keep rules
+    /// no tzdb zone has, so natively they are refused.
+    const ICU_ONLY: &[(&str, &str)] = &[
+        ("act", "Australia/Darwin"), ("aet", "Australia/Sydney"), ("agt", "America/Buenos_Aires"), ("art", "Africa/Cairo"),
+        ("ast", "America/Anchorage"), ("bet", "America/Sao_Paulo"), ("bst", "Asia/Dhaka"),
+        ("canada/east-saskatchewan", "America/Regina"), ("cat", "Africa/Maputo"), ("cnt", "America/St_Johns"),
+        ("cst", "America/Chicago"), ("ctt", "Asia/Shanghai"), ("eat", "Africa/Nairobi"), ("ect", "Europe/Paris"),
+        ("iet", "America/Indianapolis"), ("ist", "Asia/Calcutta"), ("jst", "Asia/Tokyo"), ("mit", "Pacific/Apia"),
+        ("net", "Asia/Yerevan"), ("nst", "Pacific/Auckland"), ("plt", "Asia/Karachi"), ("pnt", "America/Phoenix"),
+        ("prt", "America/Puerto_Rico"), ("pst", "America/Los_Angeles"), ("sst", "Pacific/Guadalcanal"),
+        ("systemv/ast4", "Etc/GMT+4"), ("systemv/cst6", "Etc/GMT+6"), ("systemv/est5", "Etc/GMT+5"),
+        ("systemv/hst10", "Etc/GMT+10"), ("systemv/mst7", "Etc/GMT+7"), ("systemv/pst8", "Etc/GMT+8"),
+        ("systemv/yst9", "Etc/GMT+9"), ("us/pacific-new", "America/Los_Angeles"), ("vst", "Asia/Saigon"),
+    ];
 
     pub enum Found {
         Fixed(i64),
-        Zone(&'static Zone),
+        Zone(TimeZone),
     }
 
     /// "±HH", "±HHMM" or "±HH:MM" to 23:59, the minus sign either ASCII's or U+2212, as seconds east of UTC.
@@ -485,15 +370,26 @@ mod table {
         (h <= 23 && m <= 59).then_some(sign * (h * 3600 + m * 60))
     }
 
-    /// The zone `Intl` reads for a name, matched without regard to ASCII case.
+    /// The zone `Intl` reads for a name. The tzdb's "Factory" and jiff's "Etc/Unknown" are names `Intl` refuses.
     pub fn find(zone: &str) -> Option<Found> {
         if let Some(secs) = offset_zone(zone) {
             return Some(Found::Fixed(secs));
         }
-        let t = table();
         let key = zone.to_ascii_lowercase();
-        let k = t.names.binary_search_by(|(n, _)| (*n).cmp(key.as_bytes())).ok()?;
-        Some(Found::Zone(&t.zones[t.names[k].1]))
+        if key == "factory" || key == "etc/unknown" {
+            return None;
+        }
+        let name = ICU_ONLY.iter().find(|(k, _)| *k == key).map_or(zone, |&(_, v)| v);
+        jiff::tz::db().get(name).ok().map(Found::Zone)
+    }
+
+    /// The offset in seconds at `s` seconds since 1970. Past jiff's range (years ±9999) the zone's yearly rule repeats
+    /// every 400 years, and before it the zone's first offset holds.
+    fn offset(z: &TimeZone, s: i64) -> i64 {
+        const CYCLE: i64 = 146_097 * 86_400;
+        let (min, max) = (Timestamp::MIN.as_second(), Timestamp::MAX.as_second());
+        let s = if s > max { s - ((s - max - 1) / CYCLE + 1) * CYCLE } else { s.max(min) };
+        Timestamp::from_second(s).map_or(0, |t| i64::from(z.to_offset(t).seconds()))
     }
 
     /// The zone's wall clock at an instant, to the second: days since 1970 and seconds into the day.
@@ -506,7 +402,7 @@ mod table {
         let s = (t / 1000.0).floor() as i64;
         let wall = s + match found {
             Found::Fixed(o) => o,
-            Found::Zone(z) => z.offset(s),
+            Found::Zone(z) => offset(&z, s),
         };
         Ok((wall.div_euclid(86_400), wall.rem_euclid(86_400)))
     }

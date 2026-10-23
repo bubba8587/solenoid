@@ -6,7 +6,7 @@ import { isSolError } from "../../src/graph/errorValue";
 
 // The two zone cards over real zones: each side of DST transitions, offset zones, aliases, case variants and bad
 // names. These calls are also the cases the cards' bodies on the core are held to (fixtures/core/nodes/), which is
-// where the native zone table (crates/solenoid-core/data/zones.bin) meets Intl.
+// where the native build's bundled tzdb meets Intl, so they keep to zones and instants on which the two releases agree.
 const H = 3600000;
 const M = 60000;
 const DAY = 86400000;
@@ -54,14 +54,17 @@ function transitions(zone: string, from: number, to: number, step = 6 * H): numb
 const DST_ZONES = [
   "America/New_York", "America/Los_Angeles", "America/St_Johns", "America/Santiago", "America/Havana",
   "America/Asuncion", "America/Nuuk", "Europe/London", "Europe/Dublin", "Europe/Berlin", "Africa/Cairo",
-  "Africa/Casablanca", "Asia/Gaza", "Asia/Jerusalem", "Australia/Sydney", "Australia/Adelaide", "Australia/Lord_Howe",
+  "Asia/Beirut", "Asia/Gaza", "Asia/Jerusalem", "Australia/Sydney", "Australia/Adelaide", "Australia/Lord_Howe",
   "Pacific/Auckland", "Pacific/Chatham", "Antarctica/Troll",
 ];
 const FIXED_ZONES = ["UTC", "Asia/Kolkata", "Asia/Kathmandu", "Asia/Tokyo", "Asia/Tehran", "Pacific/Kiritimati", "Pacific/Pago_Pago", "Etc/GMT+5", "Etc/GMT-14"];
-const ALIASES = ["Asia/Calcutta", "US/Eastern", "US/Pacific", "EST", "EST5EDT", "GB", "Japan", "Zulu", "SystemV/AST4", "Etc/Universal"];
-const CASES = ["america/new_york", "AMERICA/NEW_YORK", "utc", "Utc", "europe/LONDON", "etc/gmt+5", "us/eastern", "systemv/ast4", "est"];
+const ALIASES = [
+  "Asia/Calcutta", "US/Eastern", "US/Pacific", "EST", "NZ", "GB", "Eire", "Japan", "Zulu", "SystemV/AST4", "Etc/Universal",
+  "PST", "IST", "JST", "AET", "Canada/East-Saskatchewan", "US/Pacific-New",
+];
+const CASES = ["america/new_york", "AMERICA/NEW_YORK", "utc", "Utc", "europe/LONDON", "etc/gmt+5", "us/eastern", "systemv/ast4", "est", "pst", "Jst"];
 const OFFSETS = ["+05:30", "-0800", "+14", "−03:00", "+23:59", "-23:59", "+00", "-00:00", "+0545"];
-const BAD = ["Nowhere/Land", "America/New York", "EUROPE/İSTANBUL", "Etc/Unknown", "GMT+5", "+24:00", "+5:30", "+05:30:00", "+0560", "Z", "America/"];
+const BAD = ["Nowhere/Land", "America/New York", "EUROPE/İSTANBUL", "Etc/Unknown", "GMT+5", "+24:00", "+5:30", "+05:30:00", "+0560", "Z", "America/", "Factory"];
 
 describe("Time Zone Convert card", () => {
   const card = (datetime: number, from: string, to: string) =>
@@ -146,7 +149,7 @@ describe("Time Zone Convert card", () => {
   it("holds every kind of zone across the calendar's span", () => {
     const at = [
       serial(2026, 1, 15, 12, 0), serial(2026, 7, 15, 12, 0), serial(1850, 6, 1, 12, 0), serial(1900, 1, 1, 0, 0),
-      serial(2200, 7, 1, 12, 0), serial(9999, 12, 31, 23, 59), -1000.25, 0, 60.5, serial(2026, 7, 15, 12, 0) + 0.5 / 86400,
+      serial(2200, 7, 1, 12, 0), serial(9999, 12, 31, 23, 59), serial(100000, 7, 1, 12, 0), -1000.25, 0, 60.5, serial(2026, 7, 15, 12, 0) + 0.5 / 86400,
     ];
     const zones = [...DST_ZONES, ...FIXED_ZONES, ...ALIASES, ...CASES, ...OFFSETS];
     for (const s of at) {
@@ -197,7 +200,7 @@ describe("World Clock card", () => {
 
   it("reads every kind of zone at each side of its transitions", () => {
     const zones = [...DST_ZONES, ...FIXED_ZONES, ...ALIASES, ...CASES, ...OFFSETS, ...BAD];
-    const instants = [Date.UTC(1850, 5, 1), Date.UTC(1999, 11, 31, 23, 59, 59), Date.UTC(2300, 6, 1, 12, 30), -1, 0, Date.UTC(-50, 0, 1)];
+    const instants = [Date.UTC(1850, 5, 1), Date.UTC(1999, 11, 31, 23, 59, 59), Date.UTC(2300, 6, 1, 12, 30), Date.UTC(100000, 0, 1), Date.UTC(275760, 6, 1), 8.64e15, -1, 0, Date.UTC(-50, 0, 1)];
     for (const zone of DST_ZONES) {
       for (const t of transitions(zone, Date.UTC(2026, 0, 1), Date.UTC(2027, 0, 1))) instants.push(t - 1000, t);
     }

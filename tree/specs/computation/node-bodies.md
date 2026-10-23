@@ -79,6 +79,10 @@ The core is required: the app's first render waits for it with no deadline (`mai
   with a body on the core, natively (`NODES=ArithmeticNode,…` narrows it). A field the body sets must equal the frozen
   one, or what the card held before where the frozen call left it alone.
 - `tests/graph/coreNodes.test.ts` replays the same cases through the wasm module and the TS's reading of the reply.
+- A case whose answer comes from host data is held by both: the zone cards' cases, frozen through Node's `Intl`, are
+  replayed natively on jiff's bundled tzdb, so `tests/graph/timeZoneCards.test.ts` keeps to zones and instants on
+  which the two tzdb releases agree. A release that changes one (Morocco and western Canada in 2026, `EST5EDT` in
+  2026e) takes that zone out of the hand tests, not into the fixture.
 - The whole vitest suite runs the ported cards on the core.
 
 ## What has moved
@@ -90,7 +94,7 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Complex | COMPLEX, Unpack, the unary and binary ops, Power, Poly Roots, Quadratic Roots | `nodes/complex.rs` |
 | Packs | Parallel Combine, E-Series, AWG, Solar Position, Sunrise/Sunset, Moon Phase, ISA Atmosphere, Antoine, Colebrook, Pipe Roughness, HR Zones, EM Spectrum, Convert, Tornado | `nodes/packs.rs` |
 | Text | Text Transform, Replace, Roman/Arabic, Pad, REPT, FIXED, Truncate, CHAR/CODE, DOLLAR, Wrap, TEXTJOIN, Reverse, LEN, Split, Spell Number, CONCAT, EXACT, Similarity, Slice, URL Encode, SUBSTITUTE, Find, Hash | `nodes/text.rs` |
-| Date | Date and Time Construct, Date Part, Week Info, Date Diff, Date Add, Workdays, Epoch, Date Trunc, Time Zone Convert, World Clock (its shell reads the clock into `nowMs`; zones come from `Intl` in wasm and `data/zones.bin` natively, `zone.rs`) | `nodes/date.rs` |
+| Date | Date and Time Construct, Date Part, Week Info, Date Diff, Date Add, Workdays, Epoch, Date Trunc, Time Zone Convert, World Clock (its shell reads the clock into `nowMs`; zones come from `Intl` in wasm and jiff's bundled tzdb natively, `zone.rs`) | `nodes/date.rs` |
 | Stats | Rank & Percentile, Correl, Standardize, Covariance, Fisher, Regression, Forecast, MODE, Frequency, Confidence, Hypothesis Test, Interpolate, LINEST, Binomial Range, PROB, TRIMMEAN | `nodes/stats.rs` |
 | Finance | Bitwise, Depreciation, NPV, IRR, MIRR, FVSCHEDULE, ISPMT, DOLLAR, Discount Security, Coupon, Accrued Interest, Payment Breakdown, Duration, Bond Pricing, Returns | `nodes/finance.rs` |
 | Lists | 37 list cards, Aggregate, XMATCH and Series among them | `nodes/list.rs` |
