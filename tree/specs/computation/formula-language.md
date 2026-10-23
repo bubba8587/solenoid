@@ -450,7 +450,6 @@ Other surfaces read a formula without evaluating it. All return empty on a synta
 | Function | Answers |
 |---|---|
 | `extractVariables(expr)` | the variables, as above |
-| `calledNames(expr)` | every name in call position, raw spelling (a surface binding lambdas by name reads which ones a formula calls) |
 | `rowRefNames(expr)` | every `@` and bracket reference name, excluding a name that is a parameter of an enclosing LAMBDA literal (a computed column's dependency feed) |
 | `atColNames(expr)` | identifier-shaped `@name` references only (the LAMBDA node's capture sockets) |
 | `exprYieldsDate(expr, isDateName)` | whether the result is a date: a name or reference `isDateName` accepts; unary `+` of a date; `date + number` or `number + date`; `date - number`; a call whose `EXCEL_IMPL_META.returns` is `date`; `IF` whose every non-blank branch is a date. Everything else is false. |

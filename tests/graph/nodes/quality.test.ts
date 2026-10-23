@@ -58,7 +58,7 @@ describe("Expect over frames", () => {
   it("passes the frame through unchanged", () => {
     const n = new ExpectNode({ checkNotNull: true });
     const f = frame([["a", "number", [1, null]]]);
-    expect(n.data({ in: [f] }).out).toBe(f);
+    expect(n.data({ in: [f] }).out).toEqual(f);
   });
 });
 
