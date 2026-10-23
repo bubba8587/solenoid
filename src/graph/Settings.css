@@ -278,7 +278,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .solenoid-settings__slider-value {
-  min-width: 2ch;
+  min-width: 13ch;
   text-align: right;
   color: var(--text);
   font-family: inherit;

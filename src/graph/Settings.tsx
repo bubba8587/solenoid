@@ -118,7 +118,7 @@ function SliderRow({ field }: { field: SettingField }) {
           value={value}
           onChange={(e) => settingsStore.set(field.key, Number(e.target.value) as never)}
         />
-        <span className="solenoid-settings__slider-value">{value}</span>
+        <span className="solenoid-settings__slider-value">{field.show ? field.show(value) : value}</span>
       </span>
     </label>
   );

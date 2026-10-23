@@ -91,6 +91,8 @@ export interface SettingField {
   options?: { value: string; label: string }[];
   /** A slider's range and step. */
   range?: { min: number; max: number; step: number };
+  /** How a slider shows its value; plain by default. */
+  show?: (value: number) => string;
   accordion?: string;
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
   disabledOnMobile?: boolean;
@@ -205,6 +207,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         help: "For numbers without a format. Trailing zeros are dropped.",
         type: "slider",
         range: { min: 0, max: 10, step: 1 },
+        show: (d) => d.toFixed(d),
       },
       {
         key: "sciAbove",
