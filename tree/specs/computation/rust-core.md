@@ -74,7 +74,7 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 | A cube's row verbs (sort, filter, distinct, head, window) | the card bodies (`nodes/verbs.rs`): the scalar columns run through the frame verb, which answers the rows they keep or the window's column, and the nested cells ride along by them; list conditions read the nested cells | the frozen card cases (`fixtures/core/nodes/`) |
 | The formula parser | `excel_formula.rs` | the parser fuzzer |
 | The evaluator (`evalAst`): operators, broadcasting, argument roles, the IFERROR family, `routeCall`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen formulas; the whole suite |
-| Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone through `zone.rs` and text dates through `date_parse.rs` | the frozen function-body cases |
+| Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone and IANA zones through `zone.rs` (`Intl` in wasm, `data/zones.bin` natively) and text dates through `date_parse.rs` | the frozen function-body cases |
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
 | The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) | `crates/solenoid-graph` on Ruggine, its own wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the whole suite |

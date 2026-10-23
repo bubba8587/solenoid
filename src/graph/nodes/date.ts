@@ -1,11 +1,9 @@
 // [[C44]], [[B11]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
 import { ClassicPreset } from "rete";
-import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, BASIS_DOC, type BroadcastResult } from "./shared";
 import { setting } from "../inputRoles";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
-import { worldClockRows, worldClockFrame } from "../timeZone";
-import { callCore } from "../coreValues";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 import type { FormatCarrySpec } from "./formatCarry";
@@ -448,19 +446,8 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
     return outKey === "result" ? { format: "datetime", unit: "none" } : undefined;
   }
 
-  data(inputs: { datetime?: number[]; from?: string[]; to?: string[] }): { result: number | SolError | null } {
-    const serial = readInput(inputs.datetime, NaN);
-    const from = readInput(inputs.from, this.stringLiterals.from ?? "");
-    const to = readInput(inputs.to, this.stringLiterals.to ?? "");
-    if (typeof serial !== "number" || !Number.isFinite(serial)
-        || typeof from !== "string" || from.trim() === ""
-        || typeof to !== "string" || to.trim() === "") {
-      this.cachedResult = null;
-      return { result: null };
-    }
-    const result = callCore("TIMEZONECONVERT", [serial, from, to]) as number | SolError;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -489,16 +476,9 @@ export class WorldClockNode extends ClassicPreset.Node {
     return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
   }
 
-  /** The clock is read here; `body` shows each zone's wall clock at that instant. */
-  data(inputs: { zones?: (string | null)[][] }): { clock: FrameValue } {
+  /** The clock is read here; the core shows each zone's wall clock at that instant. */
+  data(inputs: Record<string, unknown[] | undefined>) {
     this.nowMs = Date.now();
-    return this.body(inputs);
-  }
-
-  body(inputs: { zones?: (string | null)[][] }): { clock: FrameValue } {
-    const zones = inputs.zones?.[0] ?? [];
-    const frame = worldClockFrame(worldClockRows(zones, this.nowMs));
-    this.cachedResult = frame;
-    return { clock: frame };
+    return nodeOnCore(this, inputs) as { clock: FrameValue };
   }
 }

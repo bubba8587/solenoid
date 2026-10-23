@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  isValidZone, zoneOffsetMs, convertZone, worldClockRows, worldClockFrame, placeLabel,
+  isValidZone, zoneOffsetMs, convertZone,
 } from "../../src/graph/timeZone";
 import { isSolError } from "../../src/graph/errorValue";
 
-// C1 Time Zone Convert + World Clock — the Intl reinterpretation is pure + fixture-tested
+// C1 Time Zone Convert — the Intl reinterpretation is pure + fixture-tested
 // (widget rule 5). Serials are wall-clock-as-UTC, so a serial is built the same way.
 const serial = (y: number, mo: number, d: number, h = 0, mi = 0) =>
   Date.UTC(y, mo - 1, d, h, mi, 0) / 86400000 + 25569;
@@ -56,35 +56,6 @@ describe("convertZone", () => {
 
   it("a non-finite serial is a #VALUE!", () => {
     expect(isSolError(convertZone(NaN, "UTC", "Asia/Tokyo"))).toBe(true);
-  });
-});
-
-describe("placeLabel", () => {
-  it("takes the last segment and spaces underscores", () => {
-    expect(placeLabel("America/New_York")).toBe("New York");
-    expect(placeLabel("Europe/London")).toBe("London");
-    expect(placeLabel("UTC")).toBe("UTC");
-  });
-});
-
-describe("worldClockRows / worldClockFrame", () => {
-  const now = Date.UTC(2026, 0, 1, 12, 0, 0); // 12:00 UTC
-  it("formats each zone's local time and labels the place", () => {
-    const rows = worldClockRows(["UTC", "Asia/Tokyo"], now);
-    expect(rows.map((r) => r.place)).toEqual(["UTC", "Tokyo"]);
-    expect(rows[0].time).toMatch(/12:00/);   // UTC noon
-    expect(rows[1].time).toMatch(/21:00/);   // Tokyo is UTC+9
-  });
-  it("drops blank entries and marks an unknown zone", () => {
-    const rows = worldClockRows(["  ", "Bad/Zone", "UTC"], now);
-    expect(rows.map((r) => r.place)).toEqual(["Bad/Zone", "UTC"]);
-    expect(rows[0].time).toBe("?");
-  });
-  it("builds a Place / Local frame aligned by row", () => {
-    const f = worldClockFrame(worldClockRows(["UTC", "Europe/London"], now));
-    expect(f.columns.map((c) => c.name)).toEqual(["Place", "Local"]);
-    expect(f.columns.map((c) => c.type)).toEqual(["string", "string"]);
-    expect(f.columns[0].values).toEqual(["UTC", "London"]);
   });
 });
 
