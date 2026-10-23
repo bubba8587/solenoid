@@ -1,11 +1,11 @@
 //! [[C100]] chartIsAValue, [[B2]] webTryDesktopFull. `nodes/qr.ts` and `qrCode.ts`: the QR Code card, a text, a Wi-Fi
-//! network or a contact as a QR image, drawn at the medium error correction level by `crate::qr`.
+//! network or a contact as a QR image: the payload and the SVG are Solenoid's, the symbol is `qrcodegen`'s.
 
 use super::{err, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::jsnum::js_trim;
-use crate::qr::{encode, Level};
+use qrcodegen::{QrCode, QrCodeEcc, QrSegment, Version};
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
 
@@ -14,6 +14,13 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "QrCodeNode" => qr_code(c),
         _ => return None,
     })
+}
+
+/// The smallest symbol that holds `text` at exactly `ecc` (no boost, so the card's level is the level drawn), the
+/// text in one numeric, alphanumeric or UTF-8 byte segment, with the mask whose penalty is lowest.
+pub fn encode(text: &str, ecc: QrCodeEcc) -> Result<QrCode, String> {
+    QrCode::encode_segments_advanced(&QrSegment::make_segments(text), ecc, Version::MIN, Version::MAX, None, false)
+        .map_err(|_| "The amount of data is too big to be stored in a QR Code".to_string())
 }
 
 /// The Wi-Fi MECARD-style grammar escapes \ ; , : and ".
@@ -67,13 +74,13 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
 }
 
 /// `qrModulesToSvg` with its four-module quiet zone, as a `data:` URL (`svgDataUrl`).
-fn svg_src(size: usize, modules: &[u8]) -> String {
+fn svg_src(size: usize, dark: &dyn Fn(usize, usize) -> bool) -> String {
     let margin = 4;
     let dim = size + margin * 2;
     let mut path = String::new();
     for r in 0..size {
         for col in 0..size {
-            if modules[r * size + col] & 1 == 1 {
+            if dark(col, r) {
                 path.push_str(&format!("M{} {}h1v1h-1z", col + margin, r + margin));
             }
         }
@@ -107,10 +114,10 @@ fn qr_code(c: &mut Call) -> Answer {
         c.show("cachedResult", V::Null);
         return Ok(vec![("chart".into(), V::Null)]);
     }
-    let symbol = encode(&payload, Level::M).map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
+    let symbol = encode(&payload, QrCodeEcc::Medium).map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
     let label = c.field_str("label", "QR Code").to_string();
     let height = c.field("imageHeight").cloned().unwrap_or(Json::from(200));
-    let image = V::Json(Rc::new(json!({ "__image": true, "src": svg_src(symbol.size, &symbol.modules), "height": height, "alt": label, "title": label })));
+    let image = V::Json(Rc::new(json!({ "__image": true, "src": svg_src(symbol.size() as usize, &|x, y| symbol.get_module(x as i32, y as i32)), "height": height, "alt": label, "title": label })));
     c.show("cachedResult", image.clone());
     Ok(vec![("chart".into(), image)])
 }
@@ -147,7 +154,7 @@ mod tests {
 
     #[test]
     fn the_image_rings_the_modules_with_a_quiet_zone() {
-        let src = svg_src(2, &[1, 0, 0, 1]);
+        let src = svg_src(2, &|x, y| x == y);
         let svg = src.strip_prefix("data:image/svg+xml,").unwrap();
         assert!(svg.contains("viewBox%3D%220%200%2010%2010%22"), "{svg}");
         assert!(svg.contains("M4%204h1v1h-1z") && svg.contains("M5%205h1v1h-1z") && !svg.contains("M4%205"), "{svg}");

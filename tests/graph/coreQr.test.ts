@@ -1,8 +1,8 @@
 // [[D99]] rustIsSpec
-// The QR encoder's symbols, frozen from the `qrcode` package (1.5.4) the QR Code card drew with, for the core's port
-// (`crates/solenoid-core/src/qr.rs`, held to these by its `tests/qr.rs`): every mode and mode mix, lengths either side
-// of each version's capacity, every error correction level, and texts that pick each mask. Here the card, on the core,
-// draws the medium-level ones as frozen.
+// The QR Code card's symbols, drawn by the core's `qrcodegen` and frozen and decoded by `crates/solenoid-core/tests/qr.rs`
+// (`FREEZE_CORE=qr-encoder cargo test --test qr`): every mode and mode mix, lengths either side of each version's
+// capacity, every error correction level, and texts that pick each mask. Here the card draws the medium-level ones as
+// frozen.
 import { it, expect } from "vitest";
 import { frozen } from "./coreFixtures";
 import { QrCodeNode } from "../../src/graph/nodes/qr";
@@ -11,7 +11,7 @@ type Level = "L" | "M" | "Q" | "H";
 type Case = { text: string; level: Level; version?: number; mask?: number; size?: number; modules?: string; thrown?: string };
 
 it("QR symbols encode as frozen", async () => {
-  const cases = frozen<Case>("qr-encoder", () => { throw new Error("frozen only"); });
+  const cases = frozen<Case>("qr-encoder", () => { throw new Error("frozen by crates/solenoid-core/tests/qr.rs"); });
   const masks = new Set(cases.filter((c) => c.mask !== undefined).map((c) => `${c.level}${c.mask}`));
   expect(masks.size).toBe(32);
 
