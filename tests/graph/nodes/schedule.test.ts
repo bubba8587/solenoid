@@ -136,9 +136,9 @@ describe("ScheduleNode", () => {
     const bad = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }, { name: "Predecessors", cells: [["A"]] }]);
     const out = n.data({ tasks: [bad], start: [MON] });
     expect(isSolError(out.cube) && out.cube.code).toBe("#VALUE!");
-    expect(out.gantt).toBe(out.cube);
-    expect(out.diagnostics).toBe(out.cube);
-    expect(n.cachedGantt).toBe(out.cube);
+    expect(out.gantt).toEqual(out.cube);
+    expect(out.diagnostics).toEqual(out.cube);
+    expect(n.cachedGantt).toEqual(out.cube);
   });
 
   it("the weekend code and status date reach the engine", () => {

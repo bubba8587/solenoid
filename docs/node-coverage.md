@@ -217,7 +217,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Schedule
 
-`nodes/schedule.ts` + `scheduleCpm.ts`, which binds the cube to `@solenoid/schedule-engine` in `packages/schedule-engine/`; frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `../tree/specs/computation/schedule-and-gantt.md` contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
+`nodes/schedule.ts`, whose body is the core's port of `@solenoid/schedule-engine` (`crates/solenoid-core/src/schedule/`, `nodes/sched.rs`); frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `../tree/specs/computation/schedule-and-gantt.md` contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
 - **Core columns:**
   - Task: `Task` / `name` / `title` or the first text column. Names are unique, matched trimmed and case-insensitive.
   - Duration: `Duration` / `days` or the first number column, in days. Blank or 0 is a milestone. An hour-united column converts through `hours`.
@@ -262,7 +262,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Earned Value
 
-`nodes/earnedValue.ts` + the pure `nodes/earnedValueOps.ts`, frame kind, Table verbs › Plan: EVM over a scheduled cube.
+`nodes/earnedValue.ts`, its body in the core (`nodes/sched.rs`), frame kind, Table verbs › Plan: EVM over a scheduled cube.
 - **Inputs:**
   - `schedule`: a Schedule cube. It reads Task, Complete 0–100, a Cost column named Cost / Budget / BAC or the `cost` literal, an Actual cost column, and Start / Finish.
   - `baseline`: a second scheduled cube joined by name. Its Cost is the budget (BAC) and its Start / Finish set the planned pace. Unwired, or for a task it lacks, the schedule is its own baseline.
