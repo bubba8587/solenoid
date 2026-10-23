@@ -200,7 +200,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     varNames: "extracted from expr",
-    captured: "derived from expr − params", compiled: "compiled from expr/params",
+    captured: "derived from expr − params",
     lambdaSig: "derived from the host's lambda config",
     nextCondId: "counter re-derived from live row keys",
     nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys", nextKeyId: "counter re-derived from live row keys",
