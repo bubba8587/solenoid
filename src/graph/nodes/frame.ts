@@ -164,7 +164,6 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** Hiding keeps the text but makes it inert, so read `activeLayout`, never `stringLiterals.layout`. */
   layoutHidden: boolean;
   lambdaKeys: string[] = [];
-  private _builtFrom: string | undefined;
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
@@ -200,9 +199,7 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
   }
 
-  private _exprCache = new Map<string, CompiledColumnExpr | null>();
-
-  private _computedFrom: { text: string; lams: unknown[]; stamp: number } | null = null;
+  private _built: { text: string; lams: unknown[]; stamp: number } | null = null;
 
   private _parsed: { text: string; source: ReturnType<typeof parseFrameSource>; shape?: Shape } | null = null;
 
@@ -216,25 +213,25 @@ export class FrameInputNode extends ClassicPreset.Node {
     return (parsed.shape ??= shapeOfFrameValue(frameFromInputText(this.frameText)));
   }
 
+  /** The frame, built again only when the text, a wired λ or a TODAY/NOW recalculation changes it. */
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    const source = this.parsedSource().source;
-    const isComputed = (c: FrameSourceColumn) => !!c.expr;
-    if (!source.some(isComputed)) {
-      if (!this.cachedResult || this._builtFrom !== this.frameText) {
-        this.cachedResult = frameFromInputText(this.frameText);
-        this._builtFrom = this.frameText;
-      }
-      return { frame: this.cachedResult };
-    }
     const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
     const stamp = volatileStamp([this.frameText, ...lams.map((l) => (isLambdaValue(l) ? l.expr : ""))].join("\n"));
-    if (
-      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText && this._computedFrom.stamp === stamp &&
-      this._computedFrom.lams.length === lams.length &&
-      this._computedFrom.lams.every((v, i) => Object.is(v, lams[i]))
-    ) {
+    const b = this._built;
+    if (this.cachedResult && b && b.text === this.frameText && b.stamp === stamp && b.lams.length === lams.length && b.lams.every((v, i) => Object.is(v, lams[i]))) {
       return { frame: this.cachedResult };
     }
+    const out = this.body(inputs);
+    this.cachedResult = out.frame;
+    this._built = { text: this.frameText, lams, stamp };
+    return out;
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue } {
+    const source = parseFrameSource(this.frameText);
+    const isComputed = (c: FrameSourceColumn) => !!c.expr;
+    if (!source.some(isComputed)) return { frame: frameFromInputText(this.frameText) };
+    const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
 
     const base = deriveFrame(source);
     const frame: FrameValue = {
@@ -250,12 +247,9 @@ export class FrameInputNode extends ClassicPreset.Node {
       const text = source[i].expr!;
       let entry = compiled.get(text);
       if (entry === undefined) {
-        entry = this._exprCache.get(text);
-        if (entry === undefined) {
-          const evaluator = compileEvaluator(text);
-          const vars = evaluator ? extractVariables(text) : [];
-          entry = evaluator ? { evaluator, vars, refs: [...new Set([...vars, ...calledNames(text)])] } : null;
-        }
+        const evaluator = compileEvaluator(text);
+        const vars = evaluator ? extractVariables(text) : [];
+        entry = evaluator ? { evaluator, vars, refs: [...new Set([...vars, ...calledNames(text)])] } : null;
         compiled.set(text, entry);
       }
       return entry;
@@ -339,10 +333,6 @@ export class FrameInputNode extends ClassicPreset.Node {
         frame.columns[i] = { name: source[i].name, type: "number", values: Array(n).fill(err) };
       }
     }
-    this._exprCache = compiled;
-    this.cachedResult = frame;
-    this._builtFrom = undefined;
-    this._computedFrom = { text: this.frameText, lams, stamp };
     return { frame };
   }
 }

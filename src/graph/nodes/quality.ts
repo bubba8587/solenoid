@@ -3,6 +3,7 @@ import { ClassicPreset } from "rete";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError } from "../errorValue";
+import { isLambdaValue } from "../lambdaValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
 import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type CubeValue } from "../frame";
@@ -63,6 +64,8 @@ function safeRegex(pattern: string): RegExp | null {
 
 export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 
+type ExpectInputs = { in?: unknown[]; min?: number[]; max?: number[]; pattern?: string[]; allowed?: unknown[][] };
+
 export class ExpectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     out: "The value passes through unchanged even when a check fails. A failure badges the node and raises an alert.",
@@ -110,13 +113,36 @@ export class ExpectNode extends ClassicPreset.Node {
     this.addOutput("out", trueAnyOut("Out"));
   }
 
-  data(inputs: { in?: unknown[]; min?: number[]; max?: number[]; pattern?: string[]; allowed?: unknown[][] }) {
+  data(inputs: ExpectInputs) {
+    const raw = inputs.in?.[0];
+    let out: { out: unknown };
+    // A LAMBDA can't come back from the core, and no check reads one.
+    if (isLambdaValue(raw)) {
+      this.cachedValue = raw;
+      this.violations = [];
+      out = { out: raw };
+    } else out = this.body(inputs);
+    const key = this.violations.join(",");
+    if (this.violations.length > 0 && key !== this.lastStatusKey && !isGraphRebuilding()) {
+      const name = (this.label ?? "").trim() || "Expect";
+      fireAlert({
+        nodeId: this.id,
+        label: name,
+        kind: "warning",
+        message: `${name}: failed ${this.violations.join(", ")}`,
+      });
+    }
+    this.lastStatusKey = key;
+    return out;
+  }
+
+  /** The checks; raising the alert when the failures change stays with the card. */
+  body(inputs: ExpectInputs): { out: unknown } {
     const raw = inputs.in?.[0] ?? null;
     this.cachedValue = raw;
 
     if (isSolError(raw)) {
       this.violations = [];
-      this.lastStatusKey = "";
       return { out: raw };
     }
 
@@ -180,18 +206,6 @@ export class ExpectNode extends ClassicPreset.Node {
     }
 
     this.violations = violations;
-    const key = violations.join(",");
-    if (violations.length > 0 && key !== this.lastStatusKey && !isGraphRebuilding()) {
-      const name = (this.label ?? "").trim() || "Expect";
-      fireAlert({
-        nodeId: this.id,
-        label: name,
-        kind: "warning",
-        message: `${name}: failed ${violations.join(", ")}`,
-      });
-    }
-    this.lastStatusKey = key;
-
     return { out: raw };
   }
 }

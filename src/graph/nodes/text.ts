@@ -9,7 +9,7 @@ import { getRecalcGen } from "../process";
 import { uuidV4, type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
-import { type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { callCore } from "../coreValues";
 import { nodeOnCore } from "../nodeOnCore";
 import { templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
@@ -644,14 +644,25 @@ export class TemplateNode extends ClassicPreset.Node {
 
   data(inputs: { template?: string[] } & Record<string, unknown[] | undefined>): { result: CellResult<string> } {
     const template = strScalar(inputs.template, this, "template");
+    if (typeof template === "string") this._reconcile(templatePlaceholders(template));
+    return this.body(inputs);
+  }
+
+  /** The text; adding and removing a placeholder's input stays with the card. */
+  body(inputs: { template?: string[] } & Record<string, unknown[] | undefined>): { result: CellResult<string> } {
+    const template = strScalar(inputs.template, this, "template");
     if (template === null) { this.cachedText = null; return { result: null }; }
+    if (typeof template !== "string") {
+      const e = solError("#VALUE!", "The template must be one text");
+      this.cachedText = e;
+      return { result: e };
+    }
     const names = templatePlaceholders(template);
-    this._reconcile(names);
     const isDate = (name: string) => {
       const sock = this.inputs[name]?.socket;
       return sock instanceof SolenoidSocket && sock.dataType.startsWith("date");
     };
-    const value = (name: string): unknown => (this.sideVars.includes(name) || this.inputs[name] ? inputs[name]?.[0] ?? null : null);
+    const value = (name: string): unknown => inputs[name]?.[0] ?? null;
     const lens = names.map((n) => { const v = value(n); return Array.isArray(v) ? v.length : -1; }).filter((l) => l >= 0);
     const render = (at: number | null) => renderTemplate(template, (n) => { const v = value(n); return at !== null && Array.isArray(v) ? v[at] ?? null : v; }, (v, n, spec) => templateFormat(v, spec, TEMPLATE_FORMATTERS, isDate(n)));
     const result: CellResult<string> = lens.length === 0 ? render(null) : Array.from({ length: Math.max(...lens) }, (_, i) => render(i));

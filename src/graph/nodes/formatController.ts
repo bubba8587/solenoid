@@ -6,6 +6,7 @@ import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isPurePassthroughNode } from "./passthrough";
 import { isUnitCell, matrixUnitOf, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
+import { isLambdaValue } from "../lambdaValue";
 import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
 /** The unit a value already carries: a scalar or list's first dimensioned cell, or a matrix's grid unit. */
@@ -47,6 +48,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
     in: "The format applies to the box feeding this input, and clears when it's disconnected.",
     out: "The unit rides the value out, and the display format follows it across downstream passthrough boxes.",
   };
+  /** The Convert this FC feeds names its from-unit at run time, which no save keeps. */
+  static coreFields = ["dictatedFromUnit"] as const;
 
   label: string;
   hostNodeId: string;
@@ -314,6 +317,16 @@ export class FormatControllerNode extends ClassicPreset.Node {
   }
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
+    const raw = inputs.in?.[0];
+    // A LAMBDA can't come back from the core; it holds no unit, so the card reads it as a blank and hands it on.
+    if (isLambdaValue(raw)) {
+      this.body({ ...inputs, in: [null] });
+      return { out: raw };
+    }
+    return this.body(inputs);
+  }
+
+  body(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
     const cell = heldUnit(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;

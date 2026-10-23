@@ -231,13 +231,19 @@ export class CubeInputNode extends ClassicPreset.Node {
     this.addOutput("cube", cubeOut("Cube"));
   }
 
+  /** The cube, built again only when the text or a TODAY/NOW recalculation changes it. */
   data(): { cube: CubeValue | SolError | null } {
     const stamp = volatileStamp(this.cubeText);
     if (this.cachedResult && this._builtFrom === this.cubeText && this._builtStamp === stamp) return { cube: this.cachedResult };
-    const parsed = parseCubeSource(this.cubeText);
-    this.cachedResult = "error" in parsed ? solError("#VALUE!", parsed.error) : cubeFromSource(parsed.source);
+    const out = this.body({});
+    this.cachedResult = out.cube;
     this._builtFrom = this.cubeText;
     this._builtStamp = stamp;
-    return { cube: this.cachedResult };
+    return out;
+  }
+
+  body(_inputs: Record<string, unknown[] | undefined>): { cube: CubeValue | SolError | null } {
+    const parsed = parseCubeSource(this.cubeText);
+    return { cube: "error" in parsed ? solError("#VALUE!", parsed.error) : cubeFromSource(parsed.source) };
   }
 }

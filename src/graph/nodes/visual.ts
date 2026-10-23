@@ -20,6 +20,8 @@ import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
 import { planCards, PROFILE_ROWS } from "../cardLayout";
 import { isDateStyle } from "../formatAnnotationStore";
+import { displayDecimals } from "../components/format";
+import { settingsStore } from "../settingsStore";
 
 import type { SparklineOp } from "./visualOps";
 export type { SparklineOp };
@@ -703,6 +705,8 @@ function readClamp(optStr: string | null): boolean {
 
 export const RECORD_CARD_CAP = 60;
 
+type RecordInputs = { frame?: unknown[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] };
+
 /** A cell as every Record view shows it: a number column's number stays raw for `recordNumberText`, anything else is its formatted text. */
 function recordCell(col: FrameColumn, r: number): number | string | null {
   const v = col.values[r] ?? null;
@@ -801,15 +805,29 @@ export class RecordNode extends ClassicPreset.Node {
     else if (this.inputs.layout) this.removeInput("layout");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const fv = await readFrame(inputs.frame?.[0] ?? null);
+  /** The display settings a number nobody formatted shows by ([[D94]] oneNumberDisplay), which the Cards plan reads. */
+  static coreFields = ["numberDisplay"] as const;
+  get numberDisplay(): { decimals: number; sciAbove: string } {
+    return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
+  }
+
+  /** Reads a frame ref through the backend first; Detail's pager keeps the page it lands on. */
+  async data(inputs: RecordInputs): Promise<{ chart: ChartValue }> {
+    const fv = await readFrame((inputs.frame?.[0] ?? null) as FrameInput | null);
+    const out = this.body(inputs.frame ? { ...inputs, frame: [fv] } : inputs);
+    const p = out.chart.payload as RecordPayload;
+    if (this.op === "detail" && p.total > 0) this.literals.page = p.index;
+    return out;
+  }
+
+  body(inputs: RecordInputs): { chart: ChartValue } {
+    const fv = inputs.frame?.[0] ?? null;
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
     const order = recordRows(readRole<unknown>(this, "rows", inputs.rows), cols[0]?.values.length ?? 0);
     const total = order.length;
     let index = 0;
     if (this.op === "detail" && total > 0) {
       index = clamp(Math.round(this.literals.page ?? 1), 1, total);
-      this.literals.page = index;
     }
     const layIn = this.op === "cards" ? null : readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;

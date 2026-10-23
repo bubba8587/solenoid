@@ -28,15 +28,22 @@ export class DisplayNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }) {
     const raw = inputs.in?.[0] ?? null;
+    // A LAMBDA can't come back from the core; the card keeps it whole, so the FC's lambdaView still reads it.
+    if (isLambdaValue(raw)) {
+      this.cachedValue = raw;
+      return { out: raw };
+    }
+    return this.body(inputs);
+  }
+
+  body(inputs: { in?: unknown[] }) {
+    const raw = inputs.in?.[0] ?? null;
     // Display sees errors (SEES_ERRORS): it badges the error and still forwards it.
     if (isSolError(raw)) {
       this.cachedValue = raw;
       return { out: raw };
     }
     if (isFrameValue(raw) || isCubeValue(raw)) {
-      this.cachedValue = raw;
-    } else if (isLambdaValue(raw)) {
-      // Keep the value: stringifying it would make the component's lambda branch, and the FC's lambdaView, unreachable.
       this.cachedValue = raw;
     } else if (Array.isArray(raw)) {
       if (Array.isArray(raw[0])) this.cachedValue = raw as number[][];
@@ -98,9 +105,15 @@ export class AlertNode extends ClassicPreset.Node {
   }
 
   data(inputs: AlertInputs) {
+    const out = this.body(inputs);
+    this.detectAndFire(out.result, inputs);
+    return out;
+  }
+
+  /** The status; firing the alert when it changes stays with the card. */
+  body(inputs: AlertInputs): { result: number | number[] | null } {
     const result = this.evaluate(inputs);
     this.cachedResult = result;
-    this.detectAndFire(result, inputs);
     return { result };
   }
 

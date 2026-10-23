@@ -43,7 +43,8 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
   for (const key of INIT_FIELD_ORDER) {
-    if (key in n && n[key] !== undefined) init[key] = n[key];
+    // A class's `body()` method (a split card body) shares its name with a Note's saved text.
+    if (key in n && n[key] !== undefined && typeof n[key] !== "function") init[key] = n[key];
   }
   if (n.funcs && typeof n.funcs === "object") {
     init.funcs = { ...(n.funcs as object) };
