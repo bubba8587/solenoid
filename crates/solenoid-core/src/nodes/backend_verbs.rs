@@ -6,13 +6,14 @@
 //! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
 //! and shows its layout (`pivotWire`) for the shell to keep beside the frame.
 
-use super::frames::{agg_unit_plan, affine_display, first, from_core, json_num, str_input, to_core, trimmed};
+use super::frames::{agg_unit_plan, affine_display, core_cell, first, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;
 use super::stats::first_raw;
-use super::verbs::{column_list, column_named, flat_column, nullish, plan, uploaded};
+use super::verbs::{column_list, flat_column, nullish, plan, uploaded};
 use super::{kit, list, Answer, Call, Column, Cube, Frame};
 use crate::excel_functions::{js_string_of, V};
-use crate::frame_verbs::{pivot_frame, PivotSpec};
+use crate::frame::FrameCell;
+use crate::frame_verbs::{compile_filter, pivot_frame, FilterOp, PivotSpec};
 use crate::jsnum::{js_trim, number_to_string};
 use crate::string_order::compare_strings;
 use serde_json::{json, Map, Value as Json};
@@ -143,6 +144,13 @@ fn slicer_uniques(values: &[V]) -> Vec<V> {
     out
 }
 
+/// The picks that are one of the column's filled values, as the text the filter compares by the column's type: a
+/// pick matches a cell only when it is that very value, as the card's pressed buttons show, on a value and a ref
+/// alike.
+fn slicer_picks(picked: &[V], values: &[V]) -> Vec<String> {
+    picked.iter().filter(|p| values.iter().any(|v| !nullish(v) && same_value_zero(p, v))).map(js_string_of).collect()
+}
+
 fn slicer(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
     let picked: Vec<V> = c.field("selectedValues").and_then(Json::as_array).map(|a| a.iter().map(super::decode).collect()).unwrap_or_default();
@@ -152,7 +160,7 @@ fn slicer(c: &mut Call) -> Answer {
             V::Frame(f) => f.columns.iter().map(|k| k.name.clone()).collect(),
             _ => Vec::new(),
         };
-        let name = if !selected.is_empty() && names.contains(&selected) { selected } else { names.first().cloned().unwrap_or_default() };
+        let name = if names.contains(&selected) { selected } else { names.first().cloned().unwrap_or_default() };
         if !name.is_empty() && c.wired("column").is_none() {
             return one("read", V::str(&name));
         }
@@ -175,7 +183,14 @@ fn slicer(c: &mut Call) -> Answer {
         if name.is_empty() || picked.is_empty() {
             return one("result", plan(&raw, drop_nothing()));
         }
-        let conditions: Vec<Json> = picked.iter().map(|v| json!({ "column": name, "op": "eq", "value": js_string_of(v), "matchCase": true })).collect();
+        let kept = match &col {
+            Some(Ok(k)) => slicer_picks(&picked, &k.values),
+            _ => Vec::new(),
+        };
+        if kept.is_empty() {
+            return one("result", plan(&raw, json!({ "kind": "head", "n": 0 })));
+        }
+        let conditions: Vec<Json> = kept.iter().map(|t| json!({ "column": name, "op": "eq", "value": t, "matchCase": true })).collect();
         return one("result", plan(&raw, json!({ "kind": "filterMulti", "combine": "or", "conditions": conditions })));
     }
     let frame = match &raw {
@@ -188,15 +203,27 @@ fn slicer(c: &mut Call) -> Answer {
         c.show("cachedUniqueValues", list(Vec::new()));
         return one("result", if matches!(raw, V::Frame(_)) { raw } else { V::Null });
     };
-    let col = if selected.is_empty() { None } else { column_named(&f.columns, &selected) }.unwrap_or(&f.columns[0]).clone();
+    let col = f.columns.iter().find(|k| k.name == selected).unwrap_or(&f.columns[0]).clone();
     c.show("cachedColumnType", V::str(col.ty.as_str()));
     c.show("cachedUniqueValues", list(slicer_uniques(&col.values)));
     if picked.is_empty() {
         return one("result", raw);
     }
-    let keep: Vec<usize> = (0..row_count(&f))
-        .filter(|&i| col.values.get(i).is_some_and(|v| !nullish(v) && picked.iter().any(|p| same_value_zero(p, v))))
-        .collect();
+    let needles: Vec<FrameCell> = slicer_picks(&picked, &col.values).into_iter().map(|t| FrameCell::Str(t.into())).collect();
+    let mut preds = Vec::with_capacity(needles.len());
+    for n in &needles {
+        preds.push(compile_filter(FilterOp::Eq, n, col.ty, true).map_err(V::err)?);
+    }
+    let mut keep = Vec::new();
+    for i in 0..row_count(&f) {
+        let cell = col.values.get(i).map(core_cell).unwrap_or(FrameCell::Null);
+        for p in preds.iter_mut() {
+            if p(&cell).map_err(V::err)? {
+                keep.push(i);
+                break;
+            }
+        }
+    }
     let columns = f
         .columns
         .iter()

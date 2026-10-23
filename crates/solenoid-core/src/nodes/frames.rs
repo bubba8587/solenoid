@@ -840,7 +840,7 @@ fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
                 .map(|v| match v {
                     V::Unit(u) => FrameCell::Num(u.value),
                     V::List(_) if Some(j) == amount_col => FrameCell::Null,
-                    V::List(items) => FrameCell::Str(ledger_names(items).into()),
+                    V::List(items) => ledger_names(items),
                     V::Frame(_) | V::Cube(_) => FrameCell::Null,
                     v => core_cell(v),
                 })
@@ -856,17 +856,22 @@ fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
     }
 }
 
-/// The names a row's list holds, as the ledger reads a comma-separated cell.
-fn ledger_names(items: &[V]) -> String {
+/// The names a row's list holds, as the ledger reads a comma-separated cell; an error or a logical among them is the
+/// cell, for the ledger to answer.
+fn ledger_names(items: &[V]) -> FrameCell {
     let mut out = Vec::new();
     for v in items {
         match v {
-            V::List(inner) => out.push(ledger_names(inner)),
+            V::List(inner) => match ledger_names(inner) {
+                FrameCell::Str(s) => out.push(s.to_string()),
+                other => return other,
+            },
             V::Null | V::Undef | V::Unit(_) | V::Frame(_) | V::Cube(_) => {}
+            V::Err(_) | V::Bool(_) => return core_cell(v),
             v => out.push(crate::excel_functions::js_string_of(v)),
         }
     }
-    out.join(",")
+    FrameCell::Str(out.join(",").into())
 }
 
 fn settle(c: &mut Call) -> Answer {

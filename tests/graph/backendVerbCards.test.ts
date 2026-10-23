@@ -207,9 +207,21 @@ describe("Slicer", () => {
     await expect(slice(bad, { selectedValues: ["a"] })).rejects.toThrow();
   });
 
-  it("a value keeps a text pick of a number column apart from the number", async () => {
-    const s = await slice(mixed, { selectedColumn: "n", selectedValues: ["3"] });
-    expect(cols(s.out)?.n).toEqual([]);
+  it.each([false, true])("a pick matches only the very value its button shows (lazy %s)", async (isLazy) => {
+    const src = isLazy ? await lazy(mixed) : mixed;
+    expect(cols((await slice(src, { selectedColumn: "n", selectedValues: ["3"] })).out)?.n).toEqual([]);
+    expect(cols((await slice(src, { selectedColumn: "n", selectedValues: ["3", 10] })).out)?.n).toEqual([10]);
+    expect(cols((await slice(src, { selectedColumn: "on", selectedValues: [true] })).out)?.on).toEqual([true, true, true, true]);
+    expect(cols((await slice(src, { selectedColumn: "on", selectedValues: ["true"] })).out)?.on).toEqual([]);
+  });
+
+  it.each([false, true])("names the column exactly, as its dropdown does (lazy %s)", async (isLazy) => {
+    const src = isLazy ? await lazy(mixed) : mixed;
+    for (const name of [" n ", "2"]) {
+      const s = await slice(src, { selectedColumn: name, selectedValues: ["a"] });
+      expect(s.n.cachedColumnType, name).toBe("string");
+      expect(cols(s.out)?.k, name).toEqual(["a"]);
+    }
   });
 });
 

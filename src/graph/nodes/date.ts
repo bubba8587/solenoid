@@ -476,9 +476,13 @@ export class WorldClockNode extends ClassicPreset.Node {
     return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
   }
 
-  /** The clock is read here; the core shows each zone's wall clock at that instant. */
+  /** The clock is read here; `body` shows each zone's wall clock at that instant. */
   data(inputs: Record<string, unknown[] | undefined>) {
     this.nowMs = Date.now();
+    return this.body(inputs);
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { clock: FrameValue };
   }
 }

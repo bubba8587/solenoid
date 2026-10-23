@@ -18,12 +18,19 @@ const formats = new Map<string, Intl.DateTimeFormat>();
 function offsetOf(zone: string, ms: number): number {
   let f = formats.get(zone);
   if (!f) {
-    f = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    f = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", era: "short", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
     formats.set(zone, f);
   }
   const p: Record<string, number> = {};
-  for (const part of f.formatToParts(new Date(ms))) if (part.type !== "literal") p[part.type] = Number(part.value);
-  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - ms;
+  let bc = false;
+  for (const part of f.formatToParts(new Date(ms))) {
+    if (part.type === "era") bc = part.value === "BC";
+    else if (part.type !== "literal") p[part.type] = Number(part.value);
+  }
+  const wall = new Date(0);
+  wall.setUTCFullYear(bc ? 1 - p.year : p.year, p.month - 1, p.day);
+  wall.setUTCHours(p.hour, p.minute, p.second, 0);
+  return wall.getTime() - ms;
 }
 
 /** The instants in [from, to) where a zone's offset changes, to the second, read every `step`. */
@@ -97,6 +104,21 @@ describe("Time Zone Convert card", () => {
     expect(new TimeZoneConvertNode().data({ from: ["UTC"], to: ["Asia/Tokyo"] }).result).toBeNull();
   });
 
+  it("keeps the year before 100 and before 1 AD, which Date.UTC would read as the 1900s", () => {
+    const early = (y: number) => {
+      const d = new Date(0);
+      d.setUTCFullYear(y, 0, 1);
+      d.setUTCHours(12);
+      return toSerial(d.getTime());
+    };
+    for (const y of [50, 0, -50]) {
+      expect(card(early(y), "UTC", "UTC"), String(y)).toBe(early(y));
+      expect(card(early(y), "UTC", "+05:30"), String(y)).toBeCloseTo(early(y) + 5.5 / 24, 9);
+      expect(card(early(y), "-08:00", "UTC"), String(y)).toBeCloseTo(early(y) + 8 / 24, 9);
+      expect(convertZone(early(y), "UTC", "+05:30"), String(y)).toBe(card(early(y), "UTC", "+05:30"));
+    }
+  });
+
   it("reads the typed zones when From and To are unwired", () => {
     const node = new TimeZoneConvertNode();
     node.stringLiterals = { from: "Europe/London", to: "Australia/Sydney" };
@@ -157,6 +179,15 @@ describe("World Clock card", () => {
     expect(at(Date.UTC(2026, 10, 1, 6, 0, 0), ["America/New_York"])).toEqual(["New York Sun 01:00"]);
     expect(at(Date.UTC(2026, 3, 4, 15, 59, 59), ["Australia/Sydney"])).toEqual(["Sydney Sun 02:59"]);
     expect(at(Date.UTC(2026, 3, 4, 16, 0, 0), ["Australia/Sydney"])).toEqual(["Sydney Sun 02:00"]);
+  });
+
+  it("reads the typed zones when Zones is unwired", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.UTC(2026, 0, 1, 12, 0, 0));
+    const node = new WorldClockNode();
+    node.stringLiterals = { zones: "UTC, Asia/Tokyo,, " };
+    const cols = node.data({}).clock.columns;
+    expect(cols[0].values.map((p, i) => `${p} ${cols[1].values[i]}`)).toEqual(["UTC Thu 12:00", "Tokyo Thu 21:00"]);
   });
 
   it("keeps a name as typed, marks one Intl refuses and drops blanks", () => {

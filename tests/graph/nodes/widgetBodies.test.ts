@@ -9,12 +9,12 @@ import type { PhysConstOp } from "../../../src/graph/nodes/physicsConstantsOps";
 import { ElementNode, MolarMassNode } from "../../../src/graph/nodes/chemistry";
 import { ResistorCodeNode } from "../../../src/graph/nodes/electrical";
 import { RandBetweenNode } from "../../../src/graph/nodes/display";
-import { ShuffleNode } from "../../../src/graph/nodes/list";
+import { ShuffleNode, RandArrayNode } from "../../../src/graph/nodes/list";
 import { UuidNode, PromoNode } from "../../../src/graph/nodes/text";
 import { DistributionsNode } from "../../../src/graph/nodes/distribution";
 import { HeadersNode, SplitFrameNode, SettleNode, DescribeNode, CorrMatrixNode, PcaNode, DecisionSensitivityNode } from "../../../src/graph/nodes/frame";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
 import { isUnitCell } from "../../../src/graph/unitValue";
 import type { FrameValue, CubeValue, FrameColType } from "../../../src/graph/frame";
 
@@ -246,6 +246,17 @@ describe("the random draws' bodies", () => {
     expect(n.body({ bound1: [null as unknown as number] })).toEqual({ result: null });
   });
 
+  it("RANDARRAY answers an error in Count, Min or Max, the first in that order", () => {
+    const n = new RandArrayNode();
+    const na = solError("#N/A", "x");
+    const div = solError("#DIV/0!", "y");
+    expect(n.data({ min: [na], max: [div] }).list).toMatchObject({ code: "#N/A" });
+    expect(n.data({ min: [3], max: [div] }).list).toMatchObject({ code: "#DIV/0!" });
+    expect(n.data({ count: [div], min: [na] }).list).toMatchObject({ code: "#DIV/0!" });
+    expect(n.data({ count: [-1], min: [na] }).list).toMatchObject({ code: "#N/A" });
+    expect(n.data({ count: [2], min: [3], max: [4] }).list).toHaveLength(2);
+  });
+
   it("Shuffle orders by its held keys, weighted or not", () => {
     const n = new ShuffleNode();
     const keys = (k: number[]) => { (n as unknown as { keys: number[] }).keys = k; };
@@ -326,6 +337,17 @@ describe("the small frame cards", () => {
     t.data({ in: [cube(["Cost", [5]], ["Payer", ["Ada"]])] });
     t.data({ in: [cube(["Amount", [5]])] });
     t.data({ in: [null] });
+  });
+
+  it("Settle's ledger answers an error among its names, and #VALUE! for a logical", () => {
+    const t = new SettleNode({ mode: "transactions" });
+    const na = solError("#N/A", "no payer");
+    const code = (r: { transfers: unknown; net: unknown }) => [r.transfers, r.net].map((v) => (isSolError(v) ? v.code : v));
+    expect(code(t.data({ in: [cube(["Amount", [30, 60]], ["Paid by", ["Ada", na]], ["For", ["", ""]])] }))).toEqual(["#N/A", "#N/A"]);
+    expect(code(t.data({ in: [cube(["Amount", [30, 60]], ["Paid by", ["Ada", "Bo"]], ["For", ["", ["Ada", na]]])] }))).toEqual(["#N/A", "#N/A"]);
+    expect(code(t.data({ in: [cube(["Amount", [30]], ["Paid by", [true]])] }))).toEqual(["#VALUE!", "#VALUE!"]);
+    expect(code(t.data({ in: [frame(["Amount", "number", [30, 60]], ["Paid by", "string", ["Ada", "Bo"]], ["For", "logical", [null, false]])] }))).toEqual(["#VALUE!", "#VALUE!"]);
+    expect(isSolError(t.data({ in: [cube(["Amount", [30, 5]], ["Paid by", ["", "Ada"]], ["For", [na, ""]])] }).transfers)).toBe(false);
   });
 
   it("Describe and Correlation Matrix summarize", () => {

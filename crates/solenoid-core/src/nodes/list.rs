@@ -1700,7 +1700,8 @@ fn js_plus(lo: &V, x: f64) -> V {
 }
 
 /// The RANDARRAY card: the rolls its shell drew this recalculation, scaled into Min and Max; where it holds fewer or
-/// more than the count, it asks for that many (`rollsNeeded`) and answers nothing until it has them.
+/// more than the count, it asks for that many (`rollsNeeded`) and answers nothing until it has them. An error in
+/// Count, Min or Max is the answer, the first in that order.
 fn rand_array(c: &mut Call) -> Answer {
     // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
     let count_raw = or(read_role(c, "count", &Role::Setting(V::Undef)), V::Num(1.0));
@@ -1709,7 +1710,9 @@ fn rand_array(c: &mut Call) -> Answer {
     let whole = c.field("integer").and_then(serde_json::Value::as_bool).unwrap_or(false);
     let read = crate::fns_random::array_count(js_number(&count_raw));
     let count = *read.as_ref().unwrap_or(&0.0);
+    let passed = [&count_raw, &lo, &hi].into_iter().find(|v| matches!(v, V::Err(_))).cloned();
     let bad = match read {
+        _ if passed.is_some() => passed,
         Err(e) => Some(e),
         Ok(n) if n > MAX_GENERATED => Some(err(ErrorCode::Overflow, format!("RANDARRAY count {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))),
         Ok(_) if matches!(lo, V::Num(x) if x.is_nan()) || matches!(hi, V::Num(x) if x.is_nan()) => Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers")),

@@ -294,7 +294,8 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
 // ─── Group Cost Settle (transactions) ───────────────────────────────────────────
 
 /// `settleLedgerCube` over a ledger's scalar cells: the transfers and the net table side by side, as `settle_frame`
-/// answers. A column in `unit_cols` held unit cells: its numbers are amounts and never name anyone.
+/// answers. A column in `unit_cols` held unit cells: its numbers are amounts and never name anyone. An error in Paid by
+/// or For is the answer, and a logical there is #VALUE!.
 pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     let amount_col = by_name(f, &["amount", "cost", "total", "price", "spend"]);
     let payer_col = by_name(f, &["paid by", "paidby", "payer", "paid", "by", "who paid", "from"]);
@@ -307,12 +308,19 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     };
     let unit = |c: usize| unit_cols.iter().any(|n| n == &f.columns[c].name);
     let mut canon: Vec<(String, String)> = Vec::new();
-    let mut names_of = |c: usize, i: usize| -> Vec<String> {
+    let mut names_of = |c: usize, i: usize| -> Res<Vec<String>> {
         let cell = f.columns[c].cell_at(i);
-        if matches!(cell, FrameCell::Null) || unit(c) {
-            return Vec::new();
+        match cell {
+            FrameCell::Null => return Ok(Vec::new()),
+            FrameCell::Err(e) => return Err((**e).clone()),
+            FrameCell::Bool(b) => {
+                let shown = if *b { "TRUE" } else { "FALSE" };
+                return Err(sol_error(ErrorCode::Value, format!("Group Cost Settle (Transactions): {} in row {} holds {shown}. A person's name is text", f.columns[c].name, i + 1)));
+            }
+            _ if unit(c) => return Ok(Vec::new()),
+            _ => {}
         }
-        js_string(cell)
+        Ok(js_string(cell)
             .split(',')
             .map(js_trim)
             .filter(|s| !s.is_empty())
@@ -326,7 +334,7 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
                     }
                 }
             })
-            .collect()
+            .collect())
     };
     let amount_of = |i: usize| -> f64 {
         let n = match f.columns[amount_col].cell_at(i) {
@@ -342,11 +350,14 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     let mut expenses: Vec<(f64, Vec<String>, Option<Vec<String>>)> = Vec::new();
     for i in 0..frame_row_count(f) {
         let amount = amount_of(i);
-        let payers = names_of(payer_col, i);
+        let payers = names_of(payer_col, i)?;
         if payers.is_empty() {
             continue;
         }
-        let named = for_col.map_or_else(Vec::new, |c| names_of(c, i));
+        let named = match for_col {
+            Some(c) => names_of(c, i)?,
+            None => Vec::new(),
+        };
         expenses.push((amount, payers, if named.is_empty() { None } else { Some(named) }));
     }
     // settleLedger

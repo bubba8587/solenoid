@@ -89,6 +89,7 @@ mod host {
                 set("timeZone", zone);
                 set("hourCycle", "h23");
                 set("year", "numeric");
+                set("era", "short");
                 for k in ["month", "day", "hour", "minute", "second"] {
                     set(k, "2-digit");
                 }
@@ -172,9 +173,8 @@ pub fn make_date(day: f64, time: f64) -> f64 {
     if day.is_finite() && time.is_finite() { day * MS_PER_DAY + time } else { f64::NAN }
 }
 
-/// `Date.UTC(y, m, d, h, mi, s)`.
-pub fn date_utc(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64) -> f64 {
-    let y = if !y.is_nan() && (0.0..=99.0).contains(&to_integer(y)) { 1900.0 + to_integer(y) } else { y };
+/// A wall clock read as UTC, the year as given (`setUTCFullYear`, not `Date.UTC`, which reads 0 to 99 as 1900 on).
+fn wall_utc(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64) -> f64 {
     time_clip(make_date(make_day(y, m, d), make_time(h, mi, s, 0.0)))
 }
 
@@ -274,6 +274,7 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
         let f = f.ok_or(ZoneError::UnknownZone)?;
         let parts = f.format_to_parts(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime)?;
         let mut p = [f64::NAN; 6];
+        let mut bc = false;
         for part in parts.iter() {
             let get = |k: &str| js_sys::Reflect::get(&part, &k.into()).ok().and_then(|v| v.as_string()).unwrap_or_default();
             let slot = match get("type").as_str() {
@@ -283,22 +284,26 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
                 "hour" => 3,
                 "minute" => 4,
                 "second" => 5,
+                "era" => {
+                    bc = get("value") == "BC";
+                    continue;
+                }
                 _ => continue,
             };
             p[slot] = crate::jsnum::string_to_number(&get("value"));
         }
-        Ok(date_utc(p[0], p[1] - 1.0, p[2], p[3], p[4], p[5]) - utc_ms)
+        let year = if bc { 1.0 - p[0] } else { p[0] };
+        Ok(wall_utc(year, p[1] - 1.0, p[2], p[3], p[4], p[5]) - utc_ms)
     })
 }
 
-/// The parts `formatToParts` shows: the year as its era gives it (1 BC is 1), and the clock to the whole second.
+/// The clock to the whole second, as `formatToParts` shows it.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
     let (days, secs) = table::wall_clock(zone, utc_ms)?;
     let (y, m, d) = civil_from_days(days);
-    let year = if y >= 1 { y } else { 1 - y };
     let (h, mi, s) = (secs / 3600, secs / 60 % 60, secs % 60);
-    Ok(date_utc(year as f64, f64::from(m - 1), f64::from(d), h as f64, mi as f64, s as f64) - utc_ms)
+    Ok(wall_utc(y as f64, f64::from(m - 1), f64::from(d), h as f64, mi as f64, s as f64) - utc_ms)
 }
 
 /// World Clock's "Thu 14:32": the zone's weekday and wall clock, as `Intl`'s en-GB short weekday and h23 hour and

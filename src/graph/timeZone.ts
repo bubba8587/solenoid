@@ -30,18 +30,23 @@ export function isValidZone(zone: string): boolean {
   }
 }
 
-/** Positive means ahead of UTC. */
+/** Positive means ahead of UTC. The wall clock is rebuilt with its real year: `Date.UTC` reads 0 to 99 as 1900 on. */
 export function zoneOffsetMs(zone: string, utcMs: number): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: zone, hourCycle: "h23",
+    timeZone: zone, hourCycle: "h23", era: "short",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
   const p: Record<string, number> = {};
+  let bc = false;
   for (const part of dtf.formatToParts(new Date(utcMs))) {
-    if (part.type !== "literal") p[part.type] = Number(part.value);
+    if (part.type === "era") bc = part.value === "BC";
+    else if (part.type !== "literal") p[part.type] = Number(part.value);
   }
-  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - utcMs;
+  const wall = new Date(0);
+  wall.setUTCFullYear(bc ? 1 - p.year : p.year, p.month - 1, p.day);
+  wall.setUTCHours(p.hour, p.minute, p.second, 0);
+  return wall.getTime() - utcMs;
 }
 
 /** Two offset reads settle a value that lands beside a DST transition. */

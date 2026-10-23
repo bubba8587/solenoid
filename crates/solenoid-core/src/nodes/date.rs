@@ -123,13 +123,17 @@ fn time_zone_convert(c: &Call) -> V {
     core_call("TIMEZONECONVERT", &[serial, from, to])
 }
 
-/// A row per zone at the card's `nowMs`: the place (the name's last part, underscores as spaces) and "Thu 14:32". A
-/// blank entry is dropped; a zone `Intl` refuses keeps its name, with "?" for its time.
+/// A row per zone at the card's `nowMs`, from the wired list or else the typed one: the place (the name's last part,
+/// underscores as spaces) and "Thu 14:32". A blank entry is dropped; a zone `Intl` refuses keeps its name, with "?" for its time.
 fn world_clock(c: &Call) -> V {
     let now = c.field("nowMs").and_then(serde_json::Value::as_f64).unwrap_or(f64::NAN);
-    let zones = match c.wired("zones").and_then(|w| w.first()) {
-        Some(V::List(items)) => items.to_vec(),
-        _ => Vec::new(),
+    let zones = match c.wired("zones") {
+        None | Some([]) => match c.string_literal("zones") {
+            V::Str(s) => super::list::literal_items(&s).iter().map(|z| V::str(z)).collect(),
+            _ => Vec::new(),
+        },
+        Some([V::List(items), ..]) => items.to_vec(),
+        Some(_) => Vec::new(),
     };
     let (mut places, mut times) = (Vec::new(), Vec::new());
     for raw in &zones {

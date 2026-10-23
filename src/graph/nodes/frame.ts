@@ -1753,9 +1753,11 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
 
   const canon = new Map<string, string>();
   const person = (raw: string): string => { const k = norm(raw); const seen = canon.get(k); if (seen) return seen; canon.set(k, raw.trim()); return raw.trim(); };
-  const namesOf = (cell: CubeCell | undefined): string[] => {
+  const namesOf = (cell: CubeCell | undefined, column: string, row: number): string[] => {
     if (cell == null) return [];
-    if (Array.isArray(cell)) return cell.flatMap(namesOf);
+    if (Array.isArray(cell)) return cell.flatMap((x) => namesOf(x, column, row));
+    if (isSolError(cell)) throw cell;
+    if (typeof cell === "boolean") throw solError("#VALUE!", `Group Cost Settle (Transactions): ${column} in row ${row + 1} holds ${cell ? "TRUE" : "FALSE"}. A person's name is text`);
     if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
     return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean).map(person);
   };
@@ -1770,9 +1772,9 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
   const expenses: Expense[] = [];
   for (let i = 0; i < rows; i++) {
     const amount = amountOf(amountCol.cells[i]);
-    const payers = namesOf(payerCol.cells[i]);
+    const payers = namesOf(payerCol.cells[i], payerCol.name, i);
     if (payers.length === 0) continue;
-    const named = forCol ? namesOf(forCol.cells[i]) : [];
+    const named = forCol ? namesOf(forCol.cells[i], forCol.name, i) : [];
     expenses.push({ amount, payers, beneficiaries: named.length ? named : null });
   }
   const r = settleLedger(expenses);
