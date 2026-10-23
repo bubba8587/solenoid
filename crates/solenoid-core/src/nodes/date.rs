@@ -1,12 +1,17 @@
 //! [[C44]] dateSerials, [[B11]] maximalMerge, [[C17]] shareImpl, [[D41]] formatFlowsDownstream. `nodes/date.ts`'s
-//! card bodies: dates are serials, each card the formula of its name item by item.
+//! card bodies: dates are serials, each card the formula of its name item by item; the zone cards read `zone.rs`.
 
 use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, each, guard_finite, short_circuit};
 use super::text::{js_floor, setting};
 use super::{err, list, Answer, Call};
 use crate::excel_functions::{js_less, to_f64_js, V};
+use super::values::{Column, Frame};
+use crate::frame::FrameColType;
+use crate::jsnum::js_trim;
 use crate::value_kinds::OVERFLOW_MESSAGE;
+use crate::zone;
+use std::rc::Rc;
 
 /// `broadcast`: as `broadcastErr`, but every answer but null goes through the non-finite guard, so one that isn't a
 /// number (an error included) is `#OVERFLOW!` unless an input was infinite.
@@ -90,10 +95,64 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
             let ceiling = V::Bool(c.field("ceiling").and_then(|j| j.as_bool()).unwrap_or(false));
             broadcast(&[first(c, "date")], |o| core_call("DATETRUNC", &[o[0].clone(), unit.clone(), ceiling.clone()]))
         }
+        "TimeZoneConvertNode" => time_zone_convert(c),
+        "WorldClockNode" => {
+            let clock = world_clock(c);
+            c.show("cachedResult", clock.clone());
+            return Some(Ok(vec![("clock".into(), clock)]));
+        }
         _ => return None,
     };
     c.show("cachedResult", result.clone());
     Some(Ok(vec![("result".into(), result)]))
+}
+
+/// Null until there is a finite date and both zones, then `TIMEZONECONVERT`.
+fn time_zone_convert(c: &Call) -> V {
+    let typed = |key: &str| match c.string_literal(key) {
+        V::Undef | V::Null => V::str(""),
+        v => v,
+    };
+    let serial = c.read_input("datetime", V::Num(f64::NAN));
+    let from = c.read_input("from", typed("from"));
+    let to = c.read_input("to", typed("to"));
+    let named = |v: &V| matches!(v, V::Str(s) if !js_trim(s).is_empty());
+    if !matches!(serial, V::Num(n) if n.is_finite()) || !named(&from) || !named(&to) {
+        return V::Null;
+    }
+    core_call("TIMEZONECONVERT", &[serial, from, to])
+}
+
+/// A row per zone at the card's `nowMs`: the place (the name's last part, underscores as spaces) and "Thu 14:32". A
+/// blank entry is dropped; a zone `Intl` refuses keeps its name, with "?" for its time.
+fn world_clock(c: &Call) -> V {
+    let now = c.field("nowMs").and_then(serde_json::Value::as_f64).unwrap_or(f64::NAN);
+    let zones = match c.wired("zones").and_then(|w| w.first()) {
+        Some(V::List(items)) => items.to_vec(),
+        _ => Vec::new(),
+    };
+    let (mut places, mut times) = (Vec::new(), Vec::new());
+    for raw in &zones {
+        let zone = match raw {
+            V::Str(s) => js_trim(s).to_string(),
+            _ => String::new(),
+        };
+        if zone.is_empty() {
+            continue;
+        }
+        match zone::clock_text(&zone, now) {
+            Ok(time) => {
+                places.push(V::str(&zone.rsplit('/').next().unwrap_or(&zone).replace('_', " ")));
+                times.push(V::str(&time));
+            }
+            Err(_) => {
+                places.push(V::str(&zone));
+                times.push(V::str("?"));
+            }
+        }
+    }
+    let column = |name: &str, values| Column { name: name.into(), ty: FrameColType::String, values, unit: None, format: None, raw: None };
+    V::Frame(Rc::new(Frame { columns: vec![column("Place", places), column("Local", times)], total_rows: None, approx: None }))
 }
 
 fn date_diff(c: &Call) -> V {

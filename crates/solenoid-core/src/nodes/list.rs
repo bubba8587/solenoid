@@ -60,6 +60,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "GroupListsNode" => group_lists(c),
         "FindPeaksNode" => find_peaks(c),
         "ListIndexNode" => list_index(c),
+        "RandArrayNode" => rand_array(c),
         _ => return None,
     })
 }
@@ -573,7 +574,7 @@ fn smooth(c: &mut Call) -> Answer {
 }
 
 /// `listLiteralItems`: a typed row's items, trimmed, the empty ones dropped.
-fn literal_items(csv: &str) -> Vec<String> {
+pub(crate) fn literal_items(csv: &str) -> Vec<String> {
     csv_line(csv).into_iter().map(|s| js_trim(&s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
@@ -1680,4 +1681,56 @@ fn shuffle(c: &mut Call) -> Answer {
     let order = list(pairs.into_iter().map(|p| p.0).collect());
     c.show("cachedList", order.clone());
     Ok(vec![("result".into(), order)])
+}
+
+/// `a > b` as JS compares them: two texts by UTF-16 order, anything else as numbers.
+fn js_greater(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::Str(x), V::Str(y)) => crate::jsnum::compare_utf16(x, y) == std::cmp::Ordering::Greater,
+        _ => js_number(a) > js_number(b),
+    }
+}
+
+/// `lo + x` as JS adds them: a number, or text where `lo` is text or an object.
+fn js_plus(lo: &V, x: f64) -> V {
+    match lo {
+        V::Num(_) | V::Null | V::Bool(_) | V::Undef => V::Num(if matches!(lo, V::Undef) { f64::NAN } else { js_number(lo) } + x),
+        other => V::str(&format!("{}{}", js_string_of(other), number_to_string(x))),
+    }
+}
+
+/// The RANDARRAY card: the rolls its shell drew this recalculation, scaled into Min and Max; where it holds fewer or
+/// more than the count, it asks for that many (`rollsNeeded`) and answers nothing until it has them.
+fn rand_array(c: &mut Call) -> Answer {
+    // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
+    let count_raw = or(read_role(c, "count", &Role::Setting(V::Undef)), V::Num(1.0));
+    let lo = or(read_role(c, "min", &Role::Setting(V::Undef)), V::Num(0.0));
+    let hi = or(read_role(c, "max", &Role::Setting(V::Undef)), V::Num(1.0));
+    let whole = c.field("integer").and_then(serde_json::Value::as_bool).unwrap_or(false);
+    let read = crate::fns_random::array_count(js_number(&count_raw));
+    let count = *read.as_ref().unwrap_or(&0.0);
+    let bad = match read {
+        Err(e) => Some(e),
+        Ok(n) if n > MAX_GENERATED => Some(err(ErrorCode::Overflow, format!("RANDARRAY count {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))),
+        Ok(_) if matches!(lo, V::Num(x) if x.is_nan()) || matches!(hi, V::Num(x) if x.is_nan()) => Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers")),
+        Ok(_) if js_greater(&lo, &hi) => Some(err(ErrorCode::Value, "RANDARRAY's Min is above its Max")),
+        Ok(_) if whole && js_number(&lo).ceil() > js_number(&hi).floor() => Some(err(ErrorCode::Value, "RANDARRAY's Min and Max hold no whole number")),
+        Ok(_) => None,
+    };
+    if let Some(e) = bad {
+        c.show("cachedList", e.clone());
+        c.show("rolls", list(Vec::new()));
+        c.show("rollsNeeded", V::Null);
+        return Ok(vec![("list".into(), e)]);
+    }
+    let rolls: Vec<f64> = c.field("rolls").and_then(serde_json::Value::as_array).map(|a| a.iter().map(|r| r.as_f64().unwrap_or(f64::NAN)).collect()).unwrap_or_default();
+    if rolls.len() as f64 != count {
+        c.show("rollsNeeded", V::Num(count));
+        return Ok(vec![("list".into(), V::Null)]);
+    }
+    c.show("rollsNeeded", V::Null);
+    let (a, b) = (js_number(&lo), js_number(&hi));
+    let drawn = list(rolls.iter().map(|&r| if whole { V::Num(a.ceil() + (r * (b.floor() - a.ceil() + 1.0)).floor()) } else { js_plus(&lo, r * (b - a)) }).collect());
+    c.show("cachedList", drawn.clone());
+    Ok(vec![("list".into(), drawn)])
 }

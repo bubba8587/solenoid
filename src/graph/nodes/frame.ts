@@ -22,7 +22,7 @@ import {
   frameFromInputText, parseFrameSource, frameSourceToText,
   isCubeValue, isFrameValue,
   cubeRowCount, frameFromRows,
-  type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
+  type FrameValue, type FrameColumn, type FrameColType,
 } from "../frame";
 import {
   pivotFrame,
@@ -39,7 +39,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -130,12 +130,15 @@ async function planOnBody<O extends Record<string, unknown>>(inputs: Inputs, key
 
 /** A plan the body extended from an input ref, its leading ops that ref's own objects: the backend reuses a flushed
  *  prefix by its ops' identity. */
-function relinked(out: FrameRef, from: readonly FrameRef[]): FrameRef {
+export function relinked(out: FrameRef, from: readonly FrameRef[]): FrameRef {
   const src = from.find((r) => r.__frameRef === out.__frameRef && r.__plan.length < out.__plan.length);
   return src ? { __frameRef: out.__frameRef, __plan: [...src.__plan, ...out.__plan.slice(src.__plan.length)] } : out;
 }
 
 type LazyOut = FrameRef | FrameValue | CubeValue | SolError | null;
+
+/** What a stacking body (Append, Bind Columns) answers: one frame, or the inputs, in order, for the shell to stack. */
+type StackRequest = { frame?: FrameRef | null; stack?: string[] };
 
 /** A lazy verb's pass: its body over refs; a Cube's answer is the body's own, which it showed, a frame's is emitted. */
 async function lazyPass(node: FrameVerbNode & { body(inputs: Inputs): { frame: LazyOut } }, inputs: Inputs): Promise<{ frame: LazyOut }> {
@@ -223,16 +226,11 @@ export class FrameInputNode extends ClassicPreset.Node {
     if (this.cachedResult && b && b.text === this.frameText && b.stamp === stamp && b.lams.length === lams.length && b.lams.every((v, i) => Object.is(v, lams[i]))) {
       return { frame: this.cachedResult };
     }
-    this.lambdaCaptures = lams.map((l) => (isLambdaValue(l) ? [...(l.capturedValues ?? [])] : []));
     const out = nodeOnCore(this, inputs) as { frame: FrameValue };
     this.cachedResult = out.frame;
     this._built = { text: this.frameText, lams, stamp };
     return out;
   }
-
-  /** Each wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads. */
-  static coreFields = ["lambdaCaptures"] as const;
-  lambdaCaptures: unknown[][] = [];
 }
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────
@@ -485,28 +483,25 @@ export class JoinNode extends ClassicPreset.Node {
     return [{ key: "leftKey", frameInput: "left" }, { key: "rightKey", frameInput: "right" }];
   }
 
-  async data(inputs: {
-    left?: (FrameInput | null)[]; right?: (FrameInput | null)[];
-    leftKey?: string[]; rightKey?: string[]; tolerance?: number[];
-  }) {
-    const left = inputs.left?.[0] ?? null;
-    const right = inputs.right?.[0] ?? null;
-    const lkRaw = readInput(inputs.leftKey, this.stringLiterals.leftKey ?? "");
-    const rkRaw = readInput(inputs.rightKey, this.stringLiterals.rightKey ?? "");
-    // Only the as-of join reads `tolerance`, so a wired blank must not blank the other joins.
-    const tolerance = this.how === "asof" ? readInput(inputs.tolerance, this.literals.tolerance) : undefined;
-    if (lkRaw === null || rkRaw === null || tolerance === null) {
-      return emitFrame(this, beginPass(this), null);
-    }
-    const lk = lkRaw.trim();
-    const rk = rkRaw.trim() || lk;
-    if (left == null || right == null || (lk === "" && this.how !== "cross")) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
-      leftKey: lk, rightKey: rk, how: this.how,
-      asofDirection: this.asofDirection, asofTolerance: tolerance,
+  /** The body names the join to run, or answers none; the shell runs it on the backend. */
+  async data(inputs: Inputs) {
+    const gen = beginPass(this);
+    const out = await planOnBody(inputs, ["left", "right"], (i) => this.body(i), false);
+    if (isSolError(out)) return emitFrame(this, gen, out);
+    if (out.frame !== undefined) return emitFrame(this, gen, out.frame);
+    const { leftKey, rightKey, how, asofDirection, asofTolerance } = out as Required<JoinRequest>;
+    return emitFrame(this, gen, await runFrameJoin(inputs.left![0] as FrameInput, inputs.right![0] as FrameInput, {
+      leftKey, rightKey, how, asofDirection, asofTolerance: asofTolerance ?? undefined,
     }));
   }
+
+  body(inputs: Inputs): JoinRequest {
+    return nodeOnCore(this, inputs) as JoinRequest;
+  }
 }
+
+/** What a Join body answers: no frame, or the join for the shell to run. */
+type JoinRequest = { frame?: null; leftKey?: string; rightKey?: string; how?: JoinHow; asofDirection?: AsofDirection; asofTolerance?: number };
 
 // ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
 
@@ -654,23 +649,6 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
 
-// The one stringification for filter keys, so the editor's excluded keys match the cells.
-function pivotCellKey(v: FrameCell): string {
-  if (v == null) return "";
-  if (isSolError(v)) return v.code;
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  return String(v);
-}
-function distinctKeys(values: readonly FrameCell[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const v of values) {
-    const k = pivotCellKey(v);
-    if (!seen.has(k)) { seen.add(k); out.push(k); if (out.length >= 200) break; }
-  }
-  return out;
-}
-
 export class PivotNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
@@ -684,7 +662,7 @@ export class PivotNode extends ClassicPreset.Node {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
-  // Per field, the value keys (`pivotCellKey`) to hide; ANDed with the wired `filter` mask.
+  // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
@@ -737,68 +715,52 @@ export class PivotNode extends ClassicPreset.Node {
     return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth: this.rowTotalDepth }, input);
   }
 
-  data(inputs: {
-    frame?: (FrameInput | CubeValue | null)[];
-    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
-    filter?: (boolean | null)[][];
-  }) {
+  /** The layout of the pivot the body just ran, as the engine wrote it; the shell keeps it beside the frame. */
+  pivotWire?: unknown;
+
+  /** A ref's schema is read first; the body names the columns it reads, which are read next, and then it answers.
+   *  A stale pass writes nothing. */
+  data(inputs: Inputs) {
     const raw = inputs.frame?.[0] ?? null;
-    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") as FrameValue : raw;
-    if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
-    if (!isFrameRef(f)) {
-      this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
-      // A value never takes the async branch, so this result is sync.
-      return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
-    }
+    if (!isFrameRef(raw)) return this.adopt(this.body(inputs));
     const gen = beginPass(this);
     return (async () => {
-      const schema = await collectPreview(f, 0);
+      const schema = await materialize(collectPreview(raw, 0));
       if (gen !== this._gen) return { frame: null };
-      if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
-      const have = new Set(schema.columns.map((c) => c.name));
-      const wanted = new Set<string>();
-      for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
-      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of csvList(this.stringLiterals[key])) if (have.has(n)) wanted.add(n);
-      for (const n of [...Object.keys(this.filterExclude), ...this.detailFields]) if (have.has(n)) wanted.add(n);
-      const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
-      if (gen !== this._gen) return { frame: null };
-      if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
-      const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
-      this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
-      const slice: FrameValue = { __frame: true, columns: schema.columns.map((c) => byName.get(c.name) ?? { name: c.name, type: c.type, values: [] }) };
-      return this.computePivot(slice, f, inputs);
+      let out = this.body({ ...inputs, schema: [schema] });
+      if (out.read) {
+        const cols = await materialize(Promise.all(out.read.map((n) => readRefColumn(raw, n))));
+        if (gen !== this._gen) return { frame: null };
+        const read = isSolError(cols) ? cols : { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
+        out = this.body({ ...inputs, schema: [schema], columns: [read] });
+      }
+      if (isFrameRef(out.frame)) {
+        this.pruneTo(out);
+        return emitFrame(this, beginPass(this), relinked(out.frame, [raw]));
+      }
+      return this.adopt(out);
     })() as unknown as { frame: FrameValue | SolError | null };
   }
 
-  private computePivot(f: FrameValue, source: FrameInput, inputs: {
-    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
-    filter?: (boolean | null)[][];
-  }): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
-    const valid = new Set(f.columns.map((c) => c.name));
-    this.pruneFieldsTo(valid);
-    const rowRaw = readColumnList(inputs.rowFields);
-    const colRaw = readColumnList(inputs.colFields);
-    const valRaw = readColumnList(inputs.values);
-    if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const rowFields = rowRaw.filter((n) => valid.has(n));
-    const colFields = colRaw.filter((n) => valid.has(n));
-    const values = valRaw.filter((n) => valid.has(n));
-    if (values.length === 0) {
-      if (isFrameRef(source)) return passFrame(source).then((out) => emitFrame(this, beginPass(this), out));
-      this.cachedResult = f; return { frame: f };
-    }
-    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
-    const spec: PivotSpec = {
-      rowFields, colFields, values, funcs,
-      rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
-      rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
-      filter: this.combineFilter(f, inputs.filter?.[0]),
-      details: this.detailFields,
-    };
-    this.cachedResult = runVerb(() => pivotOnEngine(f, spec) ?? pivotFrame(f, spec));
-    return { frame: this.cachedResult };
+  private adopt(out: PivotAnswer): { frame: FrameValue | SolError | null } {
+    this.pruneTo(out);
+    const wire = this.pivotWire;
+    this.pivotWire = undefined;
+    if (wire !== undefined && isFrameValue(out.frame)) attachPivotLayout(out.frame, wire);
+    return { frame: (out.frame ?? null) as FrameValue | SolError | null };
   }
 
+  /** Over a value: the answer. Over a ref: given its schema, the columns to read (`read`); given them (`columns`),
+   *  the answer, which passes the ref on (a plan) where there is nothing to pivot. */
+  body(inputs: Inputs): PivotAnswer {
+    return nodeOnCore(this, inputs) as PivotAnswer;
+  }
+
+  private pruneTo(out: PivotAnswer): void {
+    if (out.fieldNames) this.pruneFieldsTo(new Set(out.fieldNames));
+  }
+
+  /** Saved field names the input no longer has are dropped. */
   private pruneFieldsTo(valid: Set<string>): void {
     for (const key of ["rowFields", "colFields", "values"] as const) {
       const cur = this.stringLiterals[key] ?? "";
@@ -810,23 +772,11 @@ export class PivotNode extends ClassicPreset.Node {
     for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
     if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
   }
-
-  private combineFilter(f: FrameValue, wired?: (boolean | null)[]): (boolean | null)[] | undefined {
-    const active = Object.entries(this.filterExclude).filter(([, ks]) => ks && ks.length > 0);
-    if (active.length === 0) return wired;
-    const sets = active.map(([name, ks]) => ({ set: new Set(ks), col: f.columns.find((c) => c.name === name) }));
-    const n = frameRowCount(f);
-    const mask: (boolean | null)[] = [];
-    for (let i = 0; i < n; i++) {
-      let keep = true;
-      for (const { set, col } of sets) {
-        if (col && set.has(pivotCellKey(col.values[i] ?? null))) { keep = false; break; }
-      }
-      mask.push(keep && (wired ? wired[i] === true : true));
-    }
-    return mask;
-  }
 }
+
+/** What a Pivot body answers: the frame (a plan passing a ref on) and the frame's column names, to which the shell
+ *  prunes the saved fields; or the columns of a ref it reads first. */
+type PivotAnswer = { frame?: FrameRef | FrameValue | SolError | null; read?: string[]; fieldNames?: string[] };
 
 export class UnpivotNode extends ClassicPreset.Node {
   label: string;
@@ -956,12 +906,15 @@ export class AppendNode extends ClassicPreset.Node {
     return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
   }
 
-  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
-    const frames = this.valueInputKeys()
-      .map((k) => inputs[k]?.[0] ?? null)
-      .filter((f): f is FrameInput => f != null);
-    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameAppend(frames));
+  async data(inputs: Inputs) {
+    const gen = beginPass(this);
+    const out = await planOnBody(inputs, this.valueInputKeys(), (i) => this.body(i), false);
+    if (isSolError(out) || !out.stack) return emitFrame(this, gen, isSolError(out) ? out : out.frame ?? null);
+    return emitFrame(this, gen, await runFrameAppend(out.stack.map((k) => inputs[k]![0] as FrameInput)));
+  }
+
+  body(inputs: Inputs): StackRequest {
+    return nodeOnCore(this, inputs) as StackRequest;
   }
 }
 
@@ -1019,12 +972,15 @@ export class BindColumnsNode extends ClassicPreset.Node {
     return shapeOfFrameValue(bindColumns(shapes.map(emptyFrameOf)));
   }
 
-  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
-    const frames = this.valueInputKeys()
-      .map((k) => inputs[k]?.[0] ?? null)
-      .filter((f): f is FrameInput => f != null);
-    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameBindColumns(frames));
+  async data(inputs: Inputs) {
+    const gen = beginPass(this);
+    const out = await planOnBody(inputs, this.valueInputKeys(), (i) => this.body(i), false);
+    if (isSolError(out) || !out.stack) return emitFrame(this, gen, isSolError(out) ? out : out.frame ?? null);
+    return emitFrame(this, gen, await runFrameBindColumns(out.stack.map((k) => inputs[k]![0] as FrameInput)));
+  }
+
+  body(inputs: Inputs): StackRequest {
+    return nodeOnCore(this, inputs) as StackRequest;
   }
 }
 
@@ -2256,10 +2212,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   _gen?: number;
   _ref?: FrameRef | null;
 
-  /** A wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads.
-   *  The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. */
-  static coreFields = ["lambdaCaptures", "bindings"] as const;
-  lambdaCaptures: unknown[] = [];
+  /** The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. */
+  static coreFields = ["bindings"] as const;
 
   data(inputs: ComputedColumnInputs) {
     const raw = inputs.frame?.[0] ?? null;
@@ -2332,7 +2286,6 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     ) {
       return { frame: this.cachedResult };
     }
-    this.lambdaCaptures = wired ? [...(wired.capturedValues ?? [])] : [];
     const before = this.sideVars;
     const { frame } = this.body(inputs);
     this._reconcileSideSockets(before);

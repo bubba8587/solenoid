@@ -40,7 +40,13 @@ non-finite numbers, -0 and `undefined` are tagged (`V::Json`); a frame ref (a la
 ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend (Polars on
 desktop, the core in wasm) runs it later; and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
-`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A reply's values (an output, a list's items, a frame's and a
+`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A LAMBDA crosses as its text: `coreValue`'s `{__lambda: {params, expr, captured, capturedValues, readValues,
+descriptions?}}`, its captures with their units (`capturedValues`, what a computed column and Frame Input read) beside
+the values its body reads (`readValues`, unit-blind); a bare function name crosses as `{__lambda: {eta}}`, and a
+closure a formula made, which has no text, can't cross. A body answers a λ with text as `{lambda: {…}}` in the same
+shape (`values::serialize_lambda`), which `nodeWire.ts` rebuilds callable (`wiredLambda`: `fn` compiles the text on
+first call and reads a capture naming a column from the row, [[C22]] rowFormulaRefs); a λ with no text answers
+`{lambda: true}` and reads back as nothing. A reply's values (an output, a list's items, a frame's and a
 cube's cells) cross bare where they can (a finite number other than -0, text, a logical), and a field the body shows that is one of its outputs crosses as that
 output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as
 where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush
@@ -84,7 +90,7 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Complex | COMPLEX, Unpack, the unary and binary ops, Power, Poly Roots, Quadratic Roots | `nodes/complex.rs` |
 | Packs | Parallel Combine, E-Series, AWG, Solar Position, Sunrise/Sunset, Moon Phase, ISA Atmosphere, Antoine, Colebrook, Pipe Roughness, HR Zones, EM Spectrum, Convert, Tornado | `nodes/packs.rs` |
 | Text | Text Transform, Replace, Roman/Arabic, Pad, REPT, FIXED, Truncate, CHAR/CODE, DOLLAR, Wrap, TEXTJOIN, Reverse, LEN, Split, Spell Number, CONCAT, EXACT, Similarity, Slice, URL Encode, SUBSTITUTE, Find, Hash | `nodes/text.rs` |
-| Date | Date and Time Construct, Date Part, Week Info, Date Diff, Date Add, Workdays, Epoch, Date Trunc | `nodes/date.rs` |
+| Date | Date and Time Construct, Date Part, Week Info, Date Diff, Date Add, Workdays, Epoch, Date Trunc, Time Zone Convert, World Clock (its shell reads the clock into `nowMs`; zones come from `Intl` in wasm and `data/zones.bin` natively, `zone.rs`) | `nodes/date.rs` |
 | Stats | Rank & Percentile, Correl, Standardize, Covariance, Fisher, Regression, Forecast, MODE, Frequency, Confidence, Hypothesis Test, Interpolate, LINEST, Binomial Range, PROB, TRIMMEAN | `nodes/stats.rs` |
 | Finance | Bitwise, Depreciation, NPV, IRR, MIRR, FVSCHEDULE, ISPMT, DOLLAR, Discount Security, Coupon, Accrued Interest, Payment Breakdown, Duration, Bond Pricing, Returns | `nodes/finance.rs` |
 | Lists | 37 list cards, Aggregate, XMATCH and Series among them | `nodes/list.rs` |
@@ -98,5 +104,7 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Pack and frame stragglers | Resistor Color Code, Element, Molar Mass, Physics Constant, NA, TODAY/NOW, Headers, Split Frame, Group Cost Settle, Describe, Correlation Matrix, PCA, Decision Sensitivity | their families' modules |
 | Plans | Schedule, Gantt, Earned Value on the core's port of `@solenoid/schedule-engine` (`schedule/`); ODE Integrate; SCAN | `nodes/sched.rs` |
 | Documents | Display, Alert, Expect, Format Controller, Template, Frame Input, Record; their number text, card plans and record layouts on `card_helpers.rs` | `nodes/docs.rs` |
+| Lambda and draws | LAMBDA (its shell keeps the last λ while its text and captures stand, since consumers memo on identity), RANDARRAY (its shell draws the rolls the body asks for, `coreFields` `rolls`), QR Code on the core's port of `qrcode` 1.5.4 (`crate::qr`, held to `fixtures/core/qr-encoder.json.gz`) | `nodes/lambda.rs`, `list.rs`, `nodes/qr.rs` |
 | Lazy frame verbs | Distinct, Head, Frame Sort, Frame Filter, Columns, GROUPBY (no totals, no cube), Unpivot, Rename, Split Column, Add Index, Fill Blanks, Replace Values, Merge Columns, Drop Blank Rows, Window, Get Column, SUMIFS: each body extends a frame ref's plan or runs a value's verb, the shell uploads a value first and reads a ref's columns for Get Column and SUMIFS | `nodes/verbs.rs` |
 | Computed columns | Computed Column (over a value, and the placing of a column the backend computed over a frame ref; the shell runs the ref's formula and assembles the answer), Cube Input (its formula columns; the shell reads the source text into a cube); Frame Input's unit plan lives here too | `nodes/columns.rs` |
+| Backend frame verbs | Join, Append, Bind Columns, Table Size, Slicer, PIVOTBY: Join, Append and Bind Columns answer the join or the inputs to stack for the shell to run, or one frame passed on; Table Size counts a zero-row preview the shell reads or takes; Slicer and PIVOTBY over a ref answer the columns they read and are called again with them; PIVOTBY shows its layout (`pivotWire`) for the shell to keep beside the frame and answers the frame's column names (`fieldNames`), to which the shell prunes the saved fields | `nodes/backend_verbs.rs` |

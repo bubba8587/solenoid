@@ -6,10 +6,9 @@ import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
-import { isFrameValue, getColumn, frameRowCount, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
-import { runFrameUnary, collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
-import { beginPass, passFrame, emitFrame } from "./frame";
-import type { FilterCond } from "../frameVerbs";
+import type { FrameValue, FrameColType } from "../frame";
+import { collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
+import { beginPass, emitFrame, relinked } from "./frame";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
@@ -19,7 +18,6 @@ import { isSolError, type SolError } from "../errorValue";
 import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
-import { compareStrings } from "../stringOrder";
 
 export type SlicerCell = number | string;
 
@@ -368,29 +366,6 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
-  const uniq = [...new Set(values.filter((v): v is SlicerCell => v !== null && v !== ""))];
-  uniq.sort((a, b) => (typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b))));
-  return uniq;
-}
-
-function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: ReadonlySet<SlicerCell>): FrameValue {
-  const rows = frameRowCount(frame);
-  const keep: number[] = [];
-  for (let i = 0; i < rows; i++) {
-    const v = col.values[i];
-    if (v !== null && v !== undefined && sel.has(v as SlicerCell)) keep.push(i);
-  }
-  return {
-    __frame: true,
-    columns: frame.columns.map((c) => ({
-      ...c,
-      values: keep.map((i) => c.values[i] ?? null),
-      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined,
-    })),
-  };
-}
-
 export class SlicerNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
@@ -427,37 +402,27 @@ export class SlicerNode extends ClassicPreset.Node {
     return { result: frame };
   }
 
-  async data(inputs: { frame?: unknown[] }): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
+  /** A ref's schema is read first; the body names the column it reads, which is read next, and then it answers. A
+   *  stale pass writes nothing, or a stale one flickers the buttons. */
+  async data(inputs: Record<string, unknown[] | undefined>): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
     const raw = inputs.frame?.[0] ?? null;
     const gen = beginPass(this);
-
-    if (isFrameRef(raw)) {
-      const schema = await collectPreview(raw, 0);
-      const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
-      const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
-      const col = colName
-        ? await materialize(readRefColumn(raw, colName))
-        : null;
-      // Write UI state only from the latest pass, or a stale one flickers the buttons.
-      if (gen === this._gen) {
-        this.cachedColumns = colNames;
-        if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
-        else this.cachedUniqueValues = [];
-      }
-      if (col && isSolError(col)) return this.emitResult(gen, col);
-      if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true }));
-      return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
+    if (!isFrameRef(raw)) return this.emitResult(gen, this.body(inputs).result ?? null);
+    const schema = await materialize(collectPreview(raw, 0));
+    if (gen !== this._gen) return { result: null };
+    let out = this.body({ ...inputs, schema: [schema] });
+    if (out.read !== undefined) {
+      const col = await materialize(readRefColumn(raw, out.read));
+      if (gen !== this._gen) return { result: null };
+      out = this.body({ ...inputs, schema: [schema], column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
     }
+    const result = out.result ?? null;
+    return this.emitResult(gen, isFrameRef(result) ? relinked(result, [raw]) : result);
+  }
 
-    const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
-    this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
-    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return this.emitResult(gen, frame); }
-    const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
-    this.cachedColumnType = col.type;
-    this.cachedUniqueValues = slicerUniques(col.values);
-    if (this.selectedValues.length === 0) return this.emitResult(gen, frame);
-    return this.emitResult(gen, filterFrameByMembership(frame, col, new Set(this.selectedValues)));
+  /** Over a ref: the column to read (`read`), or, given it (`column`), the answer. Over a value: the answer. */
+  body(inputs: Record<string, unknown[] | undefined>): { result?: FrameRef | FrameValue | SolError | null; read?: string } {
+    return nodeOnCore(this, inputs) as { result?: FrameRef | FrameValue | SolError | null; read?: string };
   }
 }
 

@@ -6,7 +6,7 @@
 //! reconcile and a frame ref's read stay with the TS around these bodies.
 
 use super::columns::{
-    called_names, captured_value, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition, TableColumn,
+    called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition, TableColumn,
 };
 use super::kit::{each, guard_finite};
 use super::{err, list, Answer, Call, Column};
@@ -1081,19 +1081,6 @@ fn frame_input(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.field("lambdaKeys").and_then(Json::as_array).map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect()).unwrap_or_default();
     let lam_by_name: Vec<(String, V)> = keys.iter().map(|k| (lambda_socket_name(k), first(c, k))).collect();
     let lam_of = |name: &str| lam_by_name.iter().find(|(n, _)| n == name).map(|(_, v)| v);
-    let unit_rows: Vec<Vec<V>> = c
-        .field("lambdaCaptures")
-        .and_then(Json::as_array)
-        .map(|rows| rows.iter().map(|r| r.as_array().map(|a| a.iter().map(captured_value).collect()).unwrap_or_default()).collect())
-        .unwrap_or_default();
-    // `capturedValues`: a wired λ's captures with their units, where the λ itself carries the numbers its body reads.
-    let units_of = |l: &Rc<LambdaV>| -> Vec<V> {
-        let at = lam_by_name.iter().position(|(_, v)| matches!(v, V::Lambda(x) if Rc::ptr_eq(x, l)));
-        match at.and_then(|j| unit_rows.get(j)) {
-            Some(u) if !u.is_empty() => u.clone(),
-            _ => l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect(),
-        }
-    };
     let mut columns: Vec<Column> = base
         .into_iter()
         .zip(&source)
@@ -1159,10 +1146,10 @@ fn frame_input(c: &mut Call) -> Answer {
                 fill(&mut columns, i, err(ErrorCode::Value, "The formula does not parse"));
                 continue;
             }
-            // `lambdaCaptures`: the values the LAMBDAs capture, units kept, by name.
+            // The values the LAMBDAs capture, units kept, by name.
             let mut captures: Vec<(String, V)> = Vec::new();
             for l in &used_lams {
-                for (name, v) in l.captured.iter().flatten().zip(units_of(l)) {
+                for (name, v) in l.captured.iter().flatten().zip(l.units.iter().cloned()) {
                     if !captures.iter().any(|(n, _)| n == name) {
                         captures.push((name.clone(), v));
                     }
@@ -1192,7 +1179,7 @@ fn frame_input(c: &mut Call) -> Answer {
             let mut row_sides = crate::fxhash::FxHashMap::default();
             let outcome = match &lam {
                 Some(l) => {
-                    let in_plan = lambda_with_captures(l, &units_of(l), &|v| plan.side(v));
+                    let in_plan = lambda_with_captures(l, &l.units, &|v| plan.side(v));
                     for p in l.params.iter().filter(|p| free(p)) {
                         sides.insert(p.clone(), err(ErrorCode::Ref, format!("No column \"{p}\": a table λ's side values ride its captures")));
                     }
@@ -1203,7 +1190,7 @@ fn frame_input(c: &mut Call) -> Answer {
                 }
                 None => {
                     let a = ast.as_ref().expect("a formula column parses here");
-                    let lambdas: Vec<(String, V)> = used.iter().zip(&used_lams).map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &units_of(l), &|v| plan.side(v))))).collect();
+                    let lambdas: Vec<(String, V)> = used.iter().zip(&used_lams).map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &l.units, &|v| plan.side(v))))).collect();
                     let value = |p: &str| lambdas.iter().find(|(n, _)| n == p).map_or_else(|| err(ErrorCode::Ref, format!("No column \"{p}\"")), |(_, v)| v.clone());
                     for p in vars.iter().chain(used.iter()).filter(|p| free(p)) {
                         sides.entry(p.clone()).or_insert_with(|| value(p));

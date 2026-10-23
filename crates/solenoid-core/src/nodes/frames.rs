@@ -1920,14 +1920,14 @@ pub(crate) fn affine_display(d: &str) -> bool {
     crate::unit_catalog::fc_unit_to_unit(d).and_then(|u| u.offset).is_some_and(|o| o != 0.0)
 }
 
-enum Plan {
+pub(crate) enum Plan {
     Keep,
     Scale(f64),
     Refuse(V),
 }
 
 /// `aggUnitPlan`: how an aggregate answers over a column in `unit` ([[C25]] firstClassUnits): its cells, and its unit.
-fn agg_unit_plan(op: &str, unit: Option<&Json>) -> (Plan, Option<Json>) {
+pub(crate) fn agg_unit_plan(op: &str, unit: Option<&Json>) -> (Plan, Option<Json>) {
     use crate::unit_value::{unit_error, READINGS_ADD, READINGS_SCALE};
     let refused = match op {
         "sum" => Some(READINGS_ADD),

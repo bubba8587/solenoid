@@ -1,11 +1,10 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, lambdaOut, readInput } from "./shared";
-import { extractVariables, atColNames, compilePositional, formulaSyntaxHint, isFormulaConstant } from "../excelFormula";
+import { extractVariables, atColNames } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
-import { solError, type SolError } from "../errorValue";
-import { readCapturedColumn } from "../computedColumnCore";
-import { stripUnitCells } from "../unitBridge";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
@@ -29,10 +28,6 @@ export function perRowParamClashes(params: string[], expr: string): string[] {
   return params.filter((p) => bare.has(p) && at.has(p));
 }
 
-const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-type Compiled = (...args: unknown[]) => unknown;
-
 export class LambdaNode extends ClassicPreset.Node {
   unitAware = true;
   label: string;
@@ -47,7 +42,6 @@ export class LambdaNode extends ClassicPreset.Node {
   varDescriptions: Record<string, string> = {};
 
   captured: string[] = [];
-  compiled: Compiled | null = null;
 
   get varNames(): string[] {
     const params = this.paramList();
@@ -86,41 +80,12 @@ export class LambdaNode extends ClassicPreset.Node {
     }
 
     this.captured = next;
-    this.compiled = params.every((p) => IDENT.test(p))
-      ? (compilePositional(this.expr, [...params, ...next]) as Compiled | null)
-      : null;
     return { added, removed };
   }
 
-  data(inputs: Record<string, unknown[]>): { result: LambdaValue | SolError | null } {
-    const params = this.paramList();
-    if (!params.every((p) => IDENT.test(p))) {
-      this.cachedValue = null;
-      this.cachedError = "Bad parameter name";
-      return { result: solError("#NAME?", "A lambda parameter name isn't a valid identifier") };
-    }
-    if (new Set(params).size !== params.length) {
-      this.cachedValue = null;
-      this.cachedError = "A parameter appears twice";
-      return { result: solError("#NAME?", "A lambda parameter name appears twice") };
-    }
-    const constant = params.find(isFormulaConstant);
-    if (constant) {
-      // [[D77]] constantsAlwaysWin
-      this.cachedValue = null;
-      this.cachedError = `${constant} is a constant`;
-      return { result: solError("#NAME?", `${constant} is a constant, so it can't name a lambda parameter`) };
-    }
-    if (!this.compiled) {
-      this.cachedValue = null;
-      const hint = this.expr.trim() ? formulaSyntaxHint(this.expr) : null;
-      this.cachedError = this.expr.trim() ? (hint ?? "Syntax error") : null;
-      if (!this.expr.trim()) return { result: null };
-      return { result: solError("#SYNTAX!", hint ?? "The lambda body has a syntax error") };
-    }
-    const compiled = this.compiled;
+  /** An unchanged recompute returns the same LambdaValue object: consumers and the backend upload cache memo on identity. */
+  data(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
     const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
-    // An unchanged recompute must return the same LambdaValue object: consumers and the backend upload cache memo on identity.
     const descJson = JSON.stringify(this.varDescriptions);
     const last = this._lastBuild;
     if (
@@ -130,27 +95,13 @@ export class LambdaNode extends ClassicPreset.Node {
     ) {
       return { result: this.cachedValue };
     }
-    const captured = [...this.captured];
-    const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const expr = this.expr;
-    const build = (vals: readonly unknown[]): LambdaValue => ({
-      __lambda: true, params, expr, captured, descriptions,
-      // [[C22]] rowFormulaRefs: inside a computed column a column outranks a capture.
-      fn: (...args) =>
-        compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
-          const col = readCapturedColumn(c);
-          return col.hit ? col.v : vals[i];
-        })),
-      capturedValues: capturedVals,
-      readValues: vals,
-      withCaptures: build,
-    });
-    // [[C25]] firstClassUnits: the body reads its captures unit-blind; a computed column reads their units ([[D100]] computedColumnInfersUnit).
-    const value = build(capturedVals.map(stripUnitCells));
-    this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
-    this.cachedValue = value;
-    this.cachedError = null;
-    return { result: value };
+    const out = this.body(inputs);
+    this._lastBuild = this.cachedValue ? { expr: this.expr, params: this.params, descJson, capturedVals } : null;
+    return out;
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: LambdaValue | SolError | null };
   }
 
   private _lastBuild: { expr: string; params: string; descJson: string; capturedVals: unknown[] } | null = null;

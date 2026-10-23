@@ -410,24 +410,39 @@ function pivotUnits(schema: FrameValue, spec: PivotSpec): { scales: { readingSca
  *  Details columns ([[C128]] pivotDetails). */
 interface PivotWire { layout: unknown; units: (ColumnUnit | undefined)[]; schema: FrameValue | null }
 
-/** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
-function adoptPivot(frame: FrameValue, p: PivotWire): void {
+/** The units the engine's pivot body columns take, put on its frame, and its layout with the Details columns'
+ *  formats, its cells still as the wire carries them. */
+function pivotWireOnto(frame: FrameValue, p: PivotWire): unknown {
   const w = p.layout as PivotLayout | null;
-  if (!w) return;
-  const cells = (items: { tuple: FrameCell[] }[]) => items.map((it) => ({ ...it, tuple: it.tuple.map((x) => decodeWireCell(x) as FrameCell) }));
-  const layout: PivotLayout = { ...w, rows: cells(w.rows) as PivotLayout["rows"], cols: cells(w.cols) as PivotLayout["cols"] };
-  if (w.details) {
-    layout.details = w.details.map((d) => {
-      const format = p.schema?.columns.find((c) => c.name === d.name)?.format;
-      return { ...d, values: d.values.map((x) => decodeWireCell(x) as FrameCell), ...(format ? { format } : {}) };
-    });
-  }
-  layout.cols.forEach((c, bi) => {
-    const col = frame.columns[layout.rowFields.length + bi];
+  if (!w) return null;
+  w.cols.forEach((c, bi) => {
+    const col = frame.columns[w.rowFields.length + bi];
     const unit = p.units[c.value];
     if (col && unit) col.unit = unit;
   });
+  if (!w.details) return w;
+  return {
+    ...w,
+    details: w.details.map((d) => {
+      const format = p.schema?.columns.find((c) => c.name === d.name)?.format;
+      return format ? { ...d, format } : d;
+    }),
+  };
+}
+
+/** A pivot layout as the engine wrote it, its cells read back, kept beside the frame it laid out. */
+export function attachPivotLayout(frame: FrameValue, wire: unknown): void {
+  const w = wire as PivotLayout | null;
+  if (!w) return;
+  const cells = (items: { tuple: FrameCell[] }[]) => items.map((it) => ({ ...it, tuple: it.tuple.map((x) => decodeWireCell(x) as FrameCell) }));
+  const layout: PivotLayout = { ...w, rows: cells(w.rows) as PivotLayout["rows"], cols: cells(w.cols) as PivotLayout["cols"] };
+  if (w.details) layout.details = w.details.map((d) => ({ ...d, values: d.values.map((x) => decodeWireCell(x) as FrameCell) }));
   setPivotLayout(frame, layout);
+}
+
+/** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
+function adoptPivot(frame: FrameValue, p: PivotWire): void {
+  attachPivotLayout(frame, pivotWireOnto(frame, p));
 }
 
 /** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */

@@ -5,7 +5,7 @@
 //! is computed and assembled in the engine by the card's TS around the body, and a Cube Input's records are read
 //! there too: the text's key order is JS's.
 
-use super::docs::{column_unit_parts, json_f64, unit_err, UnitParts};
+use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed, widen_to_frame};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
@@ -14,7 +14,7 @@ use crate::excel_formula::Ast;
 use crate::excel_functions::V;
 use crate::frame::FrameColType;
 use crate::jsnum::js_trim;
-use crate::unit_dims::{dim_equal, Dim, UnitCell};
+use crate::unit_dims::{dim_equal, Dim};
 use serde_json::Value as Json;
 use std::rc::Rc;
 
@@ -354,36 +354,16 @@ pub(crate) fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn
     for (name, v) in captured.iter().zip(units) {
         env.insert(name.clone(), side(v));
     }
-    Rc::new(LambdaV { params: lam.params.clone(), body: lam.body.clone(), env: Rc::new(env), eta: lam.eta.clone(), captured: lam.captured.clone() })
-}
-
-/// A captured value as `jsonEnc` writes the TS object: a unit cell (`{__unitCell, value, dim, display}`), an error,
-/// a list, or a plain value.
-pub(crate) fn captured_value(j: &Json) -> V {
-    match j {
-        Json::Array(items) => list(items.iter().map(captured_value).collect()),
-        Json::Object(o) if o.contains_key("__unitCell") => {
-            let dim: Dim = o.get("dim").and_then(Json::as_object).map(|d| d.iter().map(|(k, v)| (k.clone(), json_f64(v))).collect()).unwrap_or_default();
-            let display = o.get("display").and_then(Json::as_str).map(String::from);
-            let shown = display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);
-            V::Unit(Rc::new(UnitCell {
-                value: o.get("value").map_or(f64::NAN, json_f64),
-                dim,
-                display,
-                ratio: o.get("ratio").and_then(Json::as_bool).unwrap_or(false),
-                scale: shown.as_ref().map(|u| u.scale),
-                offset: shown.as_ref().map(|u| u.offset.unwrap_or(0.0)),
-                unit_dim: shown.map(|u| u.dim),
-            }))
-        }
-        Json::Object(o) if o.contains_key("__solError") => {
-            let code = o.get("code").and_then(Json::as_str).and_then(|c| c.parse::<ErrorCode>().ok()).unwrap_or(ErrorCode::Value);
-            err(code, o.get("message").and_then(Json::as_str).unwrap_or(""))
-        }
-        Json::Object(o) if o.contains_key("__nf") || o.contains_key("__undef") => super::values::decode(j),
-        Json::Object(_) => V::Json(Rc::new(j.clone())),
-        other => super::values::decode(other),
-    }
+    Rc::new(LambdaV {
+        params: lam.params.clone(),
+        body: lam.body.clone(),
+        env: Rc::new(env),
+        eta: lam.eta.clone(),
+        captured: lam.captured.clone(),
+        src: lam.src.clone(),
+        units: lam.units.clone(),
+        descriptions: lam.descriptions.clone(),
+    })
 }
 
 /// A column's unit (`ColumnUnit`) as the wire writes it, an integral exponent as an integer.
@@ -916,13 +896,12 @@ fn computed_column(c: &mut Call) -> Answer {
     };
     c.show("defVars", names_list(&params));
     let alias = bindings(c);
-    let units: Vec<V> = c.field("lambdaCaptures").and_then(Json::as_array).map(|a| a.iter().map(captured_value).collect()).unwrap_or_default();
     let captures: Vec<(String, V)> = match &lam {
         Some(l) => {
             let names = l.captured.clone().unwrap_or_default();
             let mut out: Vec<(String, V)> = Vec::new();
-            if !names.is_empty() && names.len() == units.len() {
-                for (n, v) in names.iter().zip(&units) {
+            if !names.is_empty() && names.len() == l.units.len() {
+                for (n, v) in names.iter().zip(&l.units) {
                     if !out.iter().any(|(k, _)| k == n) {
                         out.push((n.clone(), v.clone()));
                     }
@@ -970,7 +949,7 @@ fn computed_column(c: &mut Call) -> Answer {
         row_sides.insert(p.clone(), run_side(c, p));
     }
     let in_plan = match (&lam, &plan) {
-        (Some(l), Ok(pl)) => Some(lambda_with_captures(l, &units, &|v| pl.side(v))),
+        (Some(l), Ok(pl)) => Some(lambda_with_captures(l, &l.units, &|v| pl.side(v))),
         (Some(l), Err(_)) => Some(l.clone()),
         _ => None,
     };

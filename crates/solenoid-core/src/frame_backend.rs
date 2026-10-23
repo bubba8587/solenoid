@@ -510,7 +510,7 @@ impl serde::Serialize for Out<'_> {
             V::Num(n) => one(s, "num", &bits(*n)),
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
-            V::Lambda(_) => one(s, "lambda", &true),
+            V::Lambda(l) => crate::nodes::serialize_lambda(l, s),
             V::Frame(f) => crate::nodes::serialize_frame(f, s),
             V::Cube(c) => crate::nodes::serialize_cube(c, s),
             V::Json(j) => one(s, "json", j.as_ref()),

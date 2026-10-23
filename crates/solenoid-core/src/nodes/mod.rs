@@ -9,6 +9,7 @@ use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
+mod backend_verbs;
 mod columns;
 mod complex;
 mod control;
@@ -18,10 +19,12 @@ mod finance;
 mod formula;
 mod frames;
 mod kit;
+mod lambda;
 mod list;
 mod logic;
 mod matrix;
 mod packs;
+mod qr;
 mod scalar;
 mod sched;
 mod stats;
@@ -32,7 +35,7 @@ mod verbs;
 mod visual;
 mod widgets;
 
-pub use values::{decode, serialize_cube, serialize_frame, Column, Cube, CubeColumn, Frame};
+pub use values::{decode, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Frame};
 
 /// A field the body leaves on the card for its component: a value (plain data as `V::Json`), or `undefined`.
 pub enum Shown {
@@ -232,6 +235,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| docs::run(kind, c))
         .or_else(|| verbs::run(kind, c))
         .or_else(|| columns::run(kind, c))
+        .or_else(|| backend_verbs::run(kind, c))
+        .or_else(|| lambda::run(kind, c))
+        .or_else(|| qr::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
@@ -271,7 +277,7 @@ impl serde::Serialize for NodeReply {
         use crate::frame_backend::Out;
         use values::Cell;
         use serde::ser::SerializeMap;
-        // An output that is one of the inputs as it came (a frame ref passed through) crosses as where it came from,
+        // An output that is one of the inputs as it came (a frame ref or a LAMBDA passed through) crosses as where it came from,
         // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
         struct Outs<'a>(&'a [(String, V)], &'a [(String, Vec<V>)]);
         impl serde::Serialize for Outs<'_> {
@@ -281,6 +287,9 @@ impl serde::Serialize for NodeReply {
                     let from = match v {
                         V::Json(j) => self.1.iter().find_map(|(key, vs)| {
                             vs.iter().position(|x| matches!(x, V::Json(i) if Rc::ptr_eq(i, j))).map(|at| (key, at))
+                        }),
+                        V::Lambda(l) => self.1.iter().find_map(|(key, vs)| {
+                            vs.iter().position(|x| matches!(x, V::Lambda(i) if Rc::ptr_eq(i, l))).map(|at| (key, at))
                         }),
                         _ => None,
                     };
@@ -303,6 +312,7 @@ impl serde::Serialize for NodeReply {
                         (V::Frame(a), V::Frame(b)) => Rc::ptr_eq(a, b),
                         (V::Cube(a), V::Cube(b)) => Rc::ptr_eq(a, b),
                         (V::Json(a), V::Json(b)) => Rc::ptr_eq(a, b),
+                        (V::Lambda(a), V::Lambda(b)) => Rc::ptr_eq(a, b),
                         _ => false,
                     }).map(|(k, _)| k.as_str())
                 };

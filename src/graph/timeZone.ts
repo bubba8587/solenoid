@@ -2,7 +2,6 @@
 // Time-zone reinterpretation via Intl. Serials are wall-clock-as-UTC: read the components as the FROM zone's local
 // time, find the true UTC instant, express it in the TO zone; DST falls out because the offset is read at that instant.
 import { solError, type SolError } from "./errorValue";
-import type { FrameValue } from "./frame";
 
 const MS_PER_DAY = 86400000;
 const EPOCH_OFFSET = 25569; // Excel serial of 1970-01-01
@@ -64,32 +63,4 @@ export function convertZone(serial: number, fromZone: string, toZone: string): n
   if (!isValidZone(from)) return solError("#VALUE!", `Unknown time zone "${from}". Use an IANA name like America/New_York.`);
   if (!isValidZone(to)) return solError("#VALUE!", `Unknown time zone "${to}". Use an IANA name like Asia/Tokyo.`);
   return instantToWallSerial(wallSerialToInstant(serial, from), to);
-}
-
-export interface ClockRow { place: string; time: string; }
-
-export function placeLabel(zone: string): string {
-  return (zone.split("/").pop() ?? zone).replace(/_/g, " ");
-}
-
-/** Formatted "Sun 14:32"; a blank entry is dropped, and an unknown zone keeps its name with a "?" time. */
-export function worldClockRows(zones: readonly string[], nowMs: number): ClockRow[] {
-  const out: ClockRow[] = [];
-  for (const raw of zones) {
-    const zone = raw.trim();
-    if (zone === "") continue;
-    if (!isValidZone(zone)) { out.push({ place: zone, time: "?" }); continue; }
-    const dtf = new Intl.DateTimeFormat("en-GB", {
-      timeZone: zone, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    });
-    out.push({ place: placeLabel(zone), time: dtf.format(new Date(nowMs)) });
-  }
-  return out;
-}
-
-export function worldClockFrame(rows: readonly ClockRow[]): FrameValue {
-  return { __frame: true, columns: [
-    { name: "Place", type: "string", values: rows.map((r) => r.place) },
-    { name: "Local", type: "string", values: rows.map((r) => r.time) },
-  ] };
 }

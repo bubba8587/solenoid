@@ -7,6 +7,9 @@ import { solError, type SolErrorCode } from "./errorValue";
 import { cx } from "./cxValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn } from "./frame";
+import { compilePositional } from "./excelFormula";
+import { readCapturedColumn } from "./computedColumnCore";
+import type { LambdaValue } from "./lambdaValue";
 
 /** The plain-data kinds a card makes whole, by their marker field. */
 const DATA_MARKERS = ["__chart", "__document", "__image", "__svg", "__mermaid"] as const;
@@ -83,7 +86,30 @@ export function nodeWire(v: unknown): unknown {
   return coreValue(v, true);
 }
 
-type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[] };
+type LambdaWire = { params: string[]; expr: string; captured: string[]; capturedValues: unknown[]; readValues: unknown[]; descriptions?: Record<string, string> };
+type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[];
+  lambda?: true | LambdaWire };
+
+/** A LAMBDA from its body's text: `fn` runs the body over the parameters, then the captures, where inside a computed
+ *  column a capture naming a column reads it ([[C22]] rowFormulaRefs). `fn` and `withCaptures` are not enumerable: a
+ *  reader that lists or compares a LAMBDA's parts sees its text and values. */
+function wiredLambda(w: LambdaWire, capturedValues: readonly unknown[], readValues: readonly unknown[]): LambdaValue {
+  const { params, expr, captured } = w;
+  let compiled: ((...args: unknown[]) => unknown) | null | undefined;
+  const build = (vals: readonly unknown[]): LambdaValue => {
+    const fn = (...args: unknown[]): unknown => {
+      compiled ??= compilePositional(expr, [...params, ...captured]);
+      if (!compiled) return solError("#SYNTAX!", "The lambda body has a syntax error");
+      return compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
+        const col = readCapturedColumn(c);
+        return col.hit ? col.v : vals[i];
+      }));
+    };
+    const lam = { __lambda: true, params, expr, captured, ...(w.descriptions ? { descriptions: w.descriptions } : {}), capturedValues, readValues: vals };
+    return Object.defineProperties(lam, { fn: { value: fn }, withCaptures: { value: build } }) as LambdaValue;
+  };
+  return build(readValues);
+}
 
 /** A list's items or a frame's or a cube's cells: a bare number, text or logical is itself (`nodes/values.rs` `Cell`). */
 function cells(vs: unknown[]): { value: unknown[] } | null {
@@ -105,12 +131,16 @@ function cells(vs: unknown[]): { value: unknown[] } | null {
   return failed ? null : { value: out };
 }
 
-/** A card body's answer back as a JS value; `{ none }` where it holds something JS can't take (a LAMBDA). */
+/** A card body's answer back as a JS value; `{ none }` where it holds something JS can't take (a LAMBDA with no text). */
 export function readNodeReply(r: unknown): { value: unknown } | null {
   if (typeof r === "number" || typeof r === "string" || typeof r === "boolean") return { value: r };
   const o = r as Wire | null;
   if (!o || typeof o !== "object" || Array.isArray(o)) return readReply(r);
   if (o.list) return cells(o.list);
+  if (o.lambda && typeof o.lambda === "object") {
+    const units = cells(o.lambda.capturedValues), read = cells(o.lambda.readValues);
+    return units && read ? { value: wiredLambda(o.lambda, units.value, read.value) } : null;
+  }
   if ("json" in o) return { value: jsonDec(o.json) };
   if (o.frame) {
     const columns: FrameColumn[] = [];
@@ -139,11 +169,17 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
   return readReply(r);
 }
 
-/** `nodeWire`'s inverse, for a frozen case's values: a LAMBDA comes back as its wire form. */
+/** `nodeWire`'s inverse, for a frozen case's values: a LAMBDA with its text comes back callable, a bare function name
+ *  as its wire form. */
 export function nodeUnwire(w: unknown): unknown {
   if (Array.isArray(w)) return w.map(nodeUnwire);
   if (!w || typeof w !== "object") return w;
   const o = w as Record<string, unknown>;
+  const lam = o.__lambda as LambdaWire | { eta: string } | undefined;
+  if (lam && typeof lam === "object" && !("eta" in lam)) {
+    const units = nodeUnwire(lam.capturedValues ?? []) as unknown[];
+    return wiredLambda(lam, units, lam.readValues ? (nodeUnwire(lam.readValues) as unknown[]) : units);
+  }
   if ("__munit" in o) return withMatrixUnit(nodeUnwire(o.m), jsonDec(o.__munit) as ColumnUnit);
   if ("__undef" in o) return undefined;
   if (typeof o.__nf === "string") return { nan: NaN, inf: Infinity, "-inf": -Infinity, "-0": -0 }[o.__nf];
