@@ -1,8 +1,9 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder. The lazy frame verbs of `nodes/frame.ts`: a card never runs its
-//! verb on a frame; it reads its settings and extends the input ref's plan (`{__frameRef, __plan}`) by one op, in
-//! the shape the backend reads, which runs the plan later. The card's shell uploads a frame value for its ref first
-//! and names it in `uploaded`, so a verb passing that frame through answers the ref it was given. A Cube runs its
-//! verb on its cells here, as `frameVerbs.ts`' cube verbs do, the scalar columns through the core's frame verbs.
+//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob. The lazy frame verbs of `nodes/frame.ts`
+//! and SUMIFS of `nodes/list.ts`. A verb never runs on a frame: it reads its settings and extends the input ref's plan
+//! (`{__frameRef, __plan}`) by one op, in the shape the backend reads, which runs the plan later. The card's shell
+//! uploads a frame value for its ref first and names it in `uploaded`, so a verb passing that frame through answers
+//! the ref it was given. A Cube runs its verb on its cells here, the scalar columns through the core's frame verbs.
+//! Get Column and SUMIFS read cells: the shell reads a ref's columns from the backend and hands them in.
 
 use super::frames::{card_cell, core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame};
 use super::list::{frame_cell_of, infer_column, truthy};
