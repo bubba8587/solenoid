@@ -950,7 +950,7 @@ fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str
 }
 
 /// `frameToCube`: each column's cells in its unit.
-fn frame_to_cube(f: &Frame) -> Cube {
+pub(crate) fn frame_to_cube(f: &Frame) -> Cube {
     Cube {
         columns: f
             .columns

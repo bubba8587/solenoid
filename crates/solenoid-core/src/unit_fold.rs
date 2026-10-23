@@ -1,6 +1,6 @@
-// The LAMBDA folds' unit wrapper ([[C25]] firstClassUnits, unit-flow § LAMBDA hosts over a 1-D list): REDUCE, BYROW and
-// BYCOL strip the cells to the display unit they share (else base SI), fold, and tag the result with the formula's
-// dimension, as `tableLambda.ts` does once its formula resolves.
+// The LAMBDA folds' unit wrapper ([[C25]] firstClassUnits, unit-flow § LAMBDA hosts over a 1-D list): REDUCE, SCAN,
+// BYROW and BYCOL strip the cells to the display unit they share (else base SI), fold, and tag the result with the
+// formula's dimension, as `tableLambda.ts` does once its formula resolves.
 
 use std::rc::Rc;
 
@@ -14,6 +14,8 @@ use crate::unit_lists::tag_dim;
 #[derive(Clone, Copy, PartialEq)]
 pub enum FoldKind {
     Reduce,
+    /// REDUCE's fold, answering every step's accumulator in the table's shape.
+    Scan,
     ByRow,
     ByCol,
 }
@@ -123,15 +125,17 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
     // Over a plain list only the accumulator carries the initial's unit: `value` is a plain number (a rate, a count).
     let united: &[&str] = if elem.is_some() { &["acc", "value"] } else { &["acc"] };
     // REDUCE's initial value is the first accumulator, so its unit joins the list's (`initialUnit`).
-    let elem = match (kind, initial, elem) {
-        (FoldKind::Reduce, V::Unit(_), None) => match elem_unit(&[vec![initial.clone()]]) {
+    let folds = matches!(kind, FoldKind::Reduce | FoldKind::Scan);
+    let elem = match (folds, initial, elem) {
+        (true, V::Unit(_), None) => match elem_unit(&[vec![initial.clone()]]) {
             Err(e) => return Some(e),
             Ok(e) => e,
         },
-        (FoldKind::Reduce, V::Unit(i), Some((e, _))) if !dim_equal(&e.dim, &i.dim) => {
-            return Some(V::err(sol_error(ErrorCode::Unit, "REDUCE's initial value and its list are in different units.")));
+        (true, V::Unit(i), Some((e, _))) if !dim_equal(&e.dim, &i.dim) => {
+            let name = if kind == FoldKind::Scan { "SCAN" } else { "REDUCE" };
+            return Some(V::err(sol_error(ErrorCode::Unit, format!("{name}'s initial value and its list are in different units."))));
         }
-        (FoldKind::Reduce, V::Unit(i), Some((e, _))) if e.display != i.display => Some((Elem { dim: e.dim, display: None }, None)),
+        (true, V::Unit(i), Some((e, _))) if e.display != i.display => Some((Elem { dim: e.dim, display: None }, None)),
         (_, _, elem) => elem,
     };
     let fu = elem.as_ref().and_then(|(_, u)| u.as_ref());
@@ -161,7 +165,7 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
             _ => Ok(None),
         }
     };
-    if kind == FoldKind::Reduce {
+    if folds {
         let mut acc = match initial {
             V::Unit(x) => V::Num(read_in(x.value, fu)),
             other => other.clone(),
@@ -170,12 +174,22 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
             return None;
         }
         let mut step = 0.0;
-        for x in mm.iter().flatten() {
-            step += 1.0;
-            acc = run(vec![("acc", acc), ("value", x.clone()), ("step", V::Num(step))]);
+        let mut steps: Vec<Vec<V>> = Vec::with_capacity(mm.len());
+        for row in &mm {
+            let mut done = Vec::with_capacity(row.len());
+            for x in row {
+                step += 1.0;
+                acc = run(vec![("acc", acc), ("value", x.clone()), ("step", V::Num(step))]);
+                if kind == FoldKind::Scan {
+                    done.push(cell(&acc));
+                }
+            }
+            steps.push(done);
         }
-        let out = cell(&acc);
-        let Some((elem, _)) = &elem else { return Some(out) };
+        let shaped = |steps: Vec<Vec<V>>, f: &dyn Fn(V) -> V| V::List(Rc::new(steps.into_iter().map(|r| V::List(Rc::new(r.into_iter().map(f).collect()))).collect()));
+        let Some((elem, _)) = &elem else {
+            return Some(if kind == FoldKind::Scan { shaped(steps, &|c| c) } else { cell(&acc) });
+        };
         let dr = match dims_of(united, &elem.dim) {
             Ok(d) => d,
             Err(e) => return Some(e),
@@ -186,7 +200,10 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
             Ok(p) => p,
             Err(e) => return Some(e),
         };
-        return Some(retag(out, &dr, elem, fu, point));
+        if kind == FoldKind::Scan {
+            return Some(shaped(steps, &|c| retag(c, &dr, elem, fu, point)));
+        }
+        return Some(retag(cell(&acc), &dr, elem, fu, point));
     }
     let vectors: Vec<Vec<V>> = if kind == FoldKind::ByRow {
         mm

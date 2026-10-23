@@ -1,4 +1,4 @@
-//! The engine's own tests, from `packages/schedule-engine/src/{engine,minutes,rules,regressions}.test.ts`.
+//! [[C70]] oneScheduleRule. The engine's own tests, from `packages/schedule-engine/src/{engine,minutes,rules,regressions}.test.ts`.
 
 use super::calendar::{day_of_week, intervals_for_hours, Calendar, CalendarSpec};
 use super::*;

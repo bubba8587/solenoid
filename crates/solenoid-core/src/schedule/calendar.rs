@@ -30,12 +30,12 @@ pub fn weekend_days(code: Option<f64>) -> Vec<f64> {
     let r = math_round(code.unwrap_or(1.0));
     let pair = |a: f64, b: f64| vec![a, b];
     match r {
-        x if x == 2.0 => pair(SUNDAY, 1.0),
-        x if x == 3.0 => pair(1.0, 2.0),
-        x if x == 4.0 => pair(2.0, 3.0),
-        x if x == 5.0 => pair(3.0, 4.0),
-        x if x == 6.0 => pair(4.0, 5.0),
-        x if x == 7.0 => pair(5.0, SATURDAY),
+        2.0 => pair(SUNDAY, 1.0),
+        3.0 => pair(1.0, 2.0),
+        4.0 => pair(2.0, 3.0),
+        5.0 => pair(3.0, 4.0),
+        6.0 => pair(4.0, 5.0),
+        7.0 => pair(5.0, SATURDAY),
         x if (11.0..=17.0).contains(&x) => vec![if x == 17.0 { SATURDAY } else { x - 11.0 }],
         _ => pair(SATURDAY, SUNDAY),
     }

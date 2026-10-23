@@ -1,4 +1,4 @@
-//! `graph.ts`: the nested plan flattened and the name-keyed dependency graph built over it.
+//! [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors. `graph.ts`: the nested plan flattened and the name-keyed dependency graph built over it.
 
 use super::calendar::{hours_per_day_of, CalendarSpec};
 use super::{Dependency, LinkType, PlanTask, ScheduleError, Sr, TaskCalendar};

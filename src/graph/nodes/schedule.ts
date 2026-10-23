@@ -1,10 +1,9 @@
 // [[C69]], [[C70]], [[C71]]
 import { ClassicPreset } from "rete";
-import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut, readInput } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
-import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
-import { scheduleTasks } from "../scheduleCpm";
-import { engineClock } from "../coreValues";
+import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut } from "./shared";
+import { type SolError } from "../errorValue";
+import { type CubeValue, type FrameValue } from "../frame";
+import { nodeOnCore } from "../nodeOnCore";
 import type { ScheduleOutput } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
@@ -35,11 +34,6 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
   { value: "working",  label: "Working days",  title: "Durations count the working week, skipping the Holidays list" },
   { value: "calendar", label: "Calendar days", title: "Durations count every day" },
 ];
-
-/** Today's local day, as the calc's clock reads it ([[D46]] freezeVolatilePerCalc). */
-export function todaySerial(): number {
-  return Math.floor(engineClock().now);
-}
 
 export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
 
@@ -109,37 +103,10 @@ export class ScheduleNode extends ClassicPreset.Node {
     this.addOutput("mspdi", strOut("Project XML"));
   }
 
-  data(inputs: {
-    tasks?: (CubeValue | null)[]; links?: (FrameValue | null)[]; start?: (number | null)[]; holidays?: (number | null)[][];
-    weekend_code?: number[]; status?: (number | null)[]; hours?: number[];
-  }) {
-    const tasks = inputs.tasks?.[0] ?? null;
-    const start = inputs.start ? inputs.start[0] : todaySerial();
-    const empty = { cube: null, finish: null, diagnostics: null, gantt: null, mspdi: null };
-    if (!isCubeValue(tasks) || start == null || !Number.isFinite(start)) {
-      this.cachedResult = null; this.cachedFinish = null; this.cachedGantt = null; this.cachedDiagnostics = null; this.cachedOutput = null; this.cachedMspdi = null;
-      return empty;
-    }
-    const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
-    const hoursPerDay = readInput(inputs.hours, this.literals.hours ?? 8) ?? 8;
-    const statusDate = inputs.status ? inputs.status[0] : null;
-    const links = isFrameValue(inputs.links?.[0]) ? inputs.links![0] : null;
-    try {
-      const r = scheduleTasks(tasks, {
-        start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
-        statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
-        precision: this.precision, progress: this.progress,
-        multipleCriticalPaths: this.criticalPaths === "many", longestPath: this.criticalPaths === "longest",
-        links,
-      });
-      this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
-      this.cachedMspdi = r.mspdi;
-      return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt, mspdi: r.mspdi };
-    } catch (e) {
-      const err = isSolError(e) ? e : null;
-      if (!err) throw e;
-      this.cachedResult = err; this.cachedFinish = err; this.cachedGantt = err; this.cachedDiagnostics = err; this.cachedOutput = null; this.cachedMspdi = err;
-      return { cube: err, finish: err, diagnostics: err, gantt: err, mspdi: err };
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as {
+      cube: CubeValue | SolError | null; finish: number | SolError | null; diagnostics: FrameValue | SolError | null;
+      gantt: string | SolError | null; mspdi: string | SolError | null;
+    };
   }
 }
