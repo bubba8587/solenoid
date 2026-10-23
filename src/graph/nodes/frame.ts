@@ -2295,8 +2295,9 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   _gen?: number;
   _ref?: FrameRef | null;
 
-  /** A wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads. */
-  static coreFields = ["lambdaCaptures"] as const;
+  /** A wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads.
+   *  The bindings cross whole: a save keeps only the ones the formula's variables name, and `@x` is not one. */
+  static coreFields = ["lambdaCaptures", "bindings"] as const;
   lambdaCaptures: unknown[] = [];
 
   data(inputs: ComputedColumnInputs) {

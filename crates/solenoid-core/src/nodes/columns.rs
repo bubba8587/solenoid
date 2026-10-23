@@ -715,18 +715,55 @@ fn run_cells(
     table: &[TableColumn], spec: crate::eval::ColumnSpec, sides: crate::fxhash::FxHashMap<String, V>, row_sides: crate::fxhash::FxHashMap<String, V>,
     reserved: &[&str], alias: &[(String, String)], tag: fn(V) -> V,
 ) -> Result<(Vec<V>, Vec<String>), V> {
-    let inputs = crate::eval::ColumnInputs {
+    let inputs = |sides, row_sides, rows| crate::eval::ColumnInputs {
         table: crate::eval::Table::Rows(table.iter().map(|c| &c.row).collect()),
         sides,
         row_sides,
         reserved: reserved.iter().map(|r| r.to_string()).collect(),
         alias: alias.iter().cloned().collect(),
-        rows: table_rows(table),
+        rows,
     };
-    match crate::eval::column_with(spec, inputs, tag) {
+    let unknown = match &spec {
+        crate::eval::ColumnSpec::Expr { ast, lambdas } => unknown_call(ast, lambdas),
+        crate::eval::ColumnSpec::Lambda(lam) => lam.body.as_deref().and_then(|b| unknown_call(b, &lam.params)),
+    };
+    let rows = table_rows(table);
+    let again = unknown.as_ref().map(|_| (sides.clone(), row_sides.clone(), spec));
+    match crate::eval::column_with(spec, inputs(sides, row_sides, rows), tag) {
         Err(e) => Err(V::err(e)),
         Ok(crate::eval::ColumnOutcome::Done { cells, side_vars }) => Ok((cells, side_vars)),
-        Ok(crate::eval::ColumnOutcome::Bail) => Err(err(ErrorCode::Value, "This formula uses a function the engine can't run in a computed column yet")),
+        Ok(crate::eval::ColumnOutcome::Bail) => match (unknown, again) {
+            // Each row answers the #NAME?; the side inputs are what the column reads before any row runs.
+            (Some(name), Some((sides, row_sides, spec))) => match crate::eval::column_with(spec, inputs(sides, row_sides, 0), tag) {
+                Ok(crate::eval::ColumnOutcome::Done { side_vars, .. }) => Ok((vec![tag(err(ErrorCode::Name, format!("Unknown function {name}"))); rows], side_vars)),
+                Err(e) => Err(V::err(e)),
+                Ok(crate::eval::ColumnOutcome::Bail) => Err(bailed()),
+            },
+            _ => Err(bailed()),
+        },
+    }
+}
+
+fn bailed() -> V {
+    err(ErrorCode::Value, "This formula uses a function the engine can't run in a computed column yet")
+}
+
+/// The first function a formula calls that neither the core nor the TS registry holds: where there is no TS to ask
+/// (natively), the call bails, and the TS would have answered it `#NAME?`.
+fn unknown_call(ast: &Ast, bound: &[String]) -> Option<String> {
+    match ast {
+        Ast::Call { name, args } => {
+            let upper = name.to_uppercase();
+            let known = upper == "LAMBDA" || bound.iter().any(|b| b.eq_ignore_ascii_case(name)) || crate::eval::traits(&upper).is_some() || crate::eval::listed_external(&upper);
+            if !known {
+                return Some(upper);
+            }
+            args.iter().find_map(|a| unknown_call(a, bound))
+        }
+        Ast::Apply { func, args } => unknown_call(func, bound).or_else(|| args.iter().find_map(|a| unknown_call(a, bound))),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => unknown_call(arg, bound),
+        Ast::Bin { l, r, .. } => unknown_call(l, bound).or_else(|| unknown_call(r, bound)),
+        _ => None,
     }
 }
 

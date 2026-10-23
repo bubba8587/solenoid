@@ -1537,6 +1537,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
 // ─── Computed columns ───────────────────────────────────────────────────────────
 
 /// What a computed column computes (`ComputedSpec`): a formula, or a bare wired LAMBDA called with each row's cells.
+#[derive(Clone, Copy)]
 pub enum ColumnSpec<'s> {
     Expr { ast: &'s Ast, lambdas: &'s [String] },
     Lambda(&'s LambdaV),
