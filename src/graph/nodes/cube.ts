@@ -3,15 +3,9 @@ import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
-import { compileEvaluator, extractVariables, rowRefNames } from "../excelFormula";
-import { computeCubeColumnCells } from "../computedColumnCore";
-import { cubeRowTable, cubeCellsType } from "../cubeRows";
-import { computedColumnType } from "./frame";
-import { planColumnUnits, exprDefinition } from "../computedColumnUnits";
-import { cubeFromColumns, makeCube, recordsToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue, type FrameCell } from "../frame";
+import { makeCube, recordsToCube, type CubeValue, type CubeColumn, type FrameValue } from "../frame";
 import type { AggOp } from "../frameVerbs";
-import { tagCubeCellUnit } from "../unitColumn";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { volatileStamp } from "../volatileDates";
 
 export class BuildCubeNode extends ClassicPreset.Node {
@@ -176,56 +170,6 @@ export function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs:
   return { cube: makeCube(cols), exprs: source.columns.map((c) => c.expr ?? null) };
 }
 
-/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[C22]] rowFormulaRefs). */
-export function cubeFromSource(source: CubeSource): CubeValue {
-  const { cube, exprs } = cubeSourceColumns(source);
-  return fillFormulaColumns(cube, exprs);
-}
-
-function fillFormulaColumns(cube: CubeValue, exprs: readonly (string | null)[]): CubeValue {
-  const cols: CubeColumn[] = cube.columns.slice();
-  const rows = cols.reduce((m, c) => Math.max(m, c.cells.length), 0);
-  const pending = new Map<number, string>();
-  exprs.forEach((e, i) => { if (e !== null) pending.set(i, e); });
-  if (pending.size === 0) return cubeFromColumns(cols);
-
-  const fill = (i: number, cell: CubeCell) => { cols[i] = { name: cols[i].name, cells: Array.from({ length: rows }, () => cell) }; };
-  const index = new Map(cols.map((c, i) => [c.name, i] as const));
-  const compiled = new Map([...pending].map(([i, expr]) => {
-    const ev = expr.trim() ? compileEvaluator(expr) : null;
-    return [i, { ev, vars: ev ? extractVariables(expr) : [], refs: ev ? rowRefNames(expr) : [] }] as const;
-  }));
-  let progress = true;
-  while (progress && pending.size > 0) {
-    progress = false;
-    for (const [i, expr] of [...pending]) {
-      const { ev, vars, refs } = compiled.get(i)!;
-      if ([...vars, ...refs].some((n) => { const d = index.get(n); return d !== undefined && pending.has(d); })) continue;
-      pending.delete(i);
-      progress = true;
-      if (!expr.trim()) { fill(i, null); continue; }
-      if (!ev) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
-      const table = cubeRowTable(cubeFromColumns(cols));
-      const plan = planColumnUnits<CubeCell>(exprDefinition(expr), table);
-      if (isSolError(plan)) { fill(i, plan); continue; }
-      const r = computeCubeColumnCells(plan.table, { kind: "expr", evaluator: ev, vars }, {
-        rowRefs: refs,
-        sideValue: (p) => solError("#REF!", `No column "${p}"`),
-      });
-      if (isSolError(r)) { fill(i, r); continue; }
-      const done = plan.finish(r.cells);
-      const type = cubeCellsType(done.cells) ?? computedColumnType(cols[i].name, done.cells as FrameCell[], table, expr);
-      const unit = type === "number" ? done.unit : undefined;
-      cols[i] = { name: cols[i].name, cells: unit ? done.cells.map((c) => tagCubeCellUnit(c, unit) as CubeCell) : done.cells, type };
-    }
-  }
-  if (pending.size > 0) {
-    const err = solError("#REF!", `Circular computed columns: ${[...pending.keys()].map((i) => cols[i].name).join(" → ")}`);
-    for (const i of pending.keys()) fill(i, err);
-  }
-  return cubeFromColumns(cols);
-}
-
 export class CubeInputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     cube: "One row per record. A list value is a list cell; a list of records nests a table or a cube.",
@@ -260,6 +204,6 @@ export class CubeInputNode extends ClassicPreset.Node {
 
   /** The formula columns over the records' cube (`cubeSourceColumns`). */
   body(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue } {
-    return { cube: fillFormulaColumns(inputs.cube?.[0] as CubeValue, (inputs.exprs?.[0] ?? []) as (string | null)[]) };
+    return nodeOnCore(this, inputs) as { cube: CubeValue };
   }
 }

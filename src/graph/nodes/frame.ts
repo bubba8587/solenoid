@@ -7,13 +7,9 @@ import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableO
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, exprYieldsDate, compileEvaluator, rowRefNames } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
-import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
-import { planColumnUnits, exprDefinition, lambdaDefinition } from "../computedColumnUnits";
 import { stripUnitCells } from "../unitBridge";
-import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
@@ -24,8 +20,8 @@ import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText,
-  isCubeValue, isFrameValue, inferColumn,
-  cubeRowCount, frameFromRows, cubeFromColumns,
+  isCubeValue, isFrameValue,
+  cubeRowCount, frameFromRows,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
@@ -43,7 +39,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -52,9 +48,8 @@ import {
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
-import type { CubeValue, CubeCell, CubeColumn } from "../frame";
+import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
-import { tagCubeCellUnit, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -78,40 +73,6 @@ function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
   return widenToFrame(v);
-}
-
-/** What the unit and date rules read of a row table: each column's name, type and unit. */
-type TypedColumns = { columns: ReadonlyArray<{ name: string; type: FrameColType; unit?: ColumnUnit }> };
-
-export function computedColumnType(
-  name: string, cells: readonly FrameCell[], f: TypedColumns, definition: string | undefined,
-  alias: Record<string, string | undefined> = {},
-): FrameColType {
-  const type = inferColumn(name, cells).type;
-  if (type !== "number" || !definition) return type;
-  const isDateName = (n: string) => f.columns.find((c) => c.name === (alias[n] ?? n))?.type === "date";
-  return exprYieldsDate(definition, isDateName) ? "date" : type;
-}
-
-/** The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items included, and a replaced column keeps its place and format. */
-function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string, unit: ColumnUnit | null): CubeValue {
-  const { clean } = parseColumnUnitFromHeader(name);
-  const tagged = unit && type === "number" ? cells.map((v) => tagCubeCellUnit(v, unit) as CubeCell) : cells;
-  const col: CubeColumn = { name: clean, cells: tagged, ...(type ? { type } : {}) };
-  const at = cube.columns.findIndex((c) => c.name === clean);
-  if (at >= 0) {
-    const cols = cube.columns.slice();
-    const format = cols[at].format;
-    cols[at] = format ? { ...col, format } : col;
-    return cubeFromColumns(cols);
-  }
-  const cols = [...cube.columns, col];
-  if (after) {
-    const a = cols.findIndex((c) => c.name === after);
-    if (a < 0) throw solError("#REF!", `No column "${after}" to place after`);
-    cols.splice(a + 1, 0, cols.pop()!);
-  }
-  return cubeFromColumns(cols);
 }
 
 /** Call before the verb's await; `emitFrame(this, beginPass(this), await …)` gets this from argument order. */
@@ -2384,107 +2345,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
    *  engine computed over it: the answer is the columns the shell assembles, `fresh` the computed one's place, or
    *  `asValue` where the ref must be read and run as a value. */
   body(inputs: ComputedColumnInputs & { cells?: unknown[] }): { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true } {
-    if (inputs.cells) return this.placeOnRef(inputs.frame?.[0] as FrameValue, inputs.cells[0] as FrameCell[], inputs);
-    const rawF = inputs.frame?.[0] ?? null;
-    const isCube = isCubeValue(rawF);
-    const f = rawF == null ? null : isCube ? cubeRowTable(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
-    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
-    const lam = inputs.fn?.[0];
-    const out = (frame: FrameValue | CubeValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
-    this.sourceColumns = isCube ? rawF.columns.map((c) => c.name) : (f ? f.columns.map((c) => c.name) : []);
-    if (!f || nameRaw === null) { this.defVars = []; this.sideVars = []; return out(null); }
-    const name = nameRaw.trim() || "computed";
-    const after = (afterRaw ?? "").trim();
-
-    const wired = isLambdaValue(lam) ? lam : null;
-    const evaluator = wired ? null : compileEvaluator(this.expr);
-    const vars = evaluator ? extractVariables(this.expr) : [];
-    if (!wired) {
-      if (!this.expr.trim()) { this.defVars = []; this.sideVars = []; return out(isCube ? rawF : (f as FrameValue)); }
-      if (!evaluator) { this.defVars = []; this.sideVars = []; return out(solError("#VALUE!", "The formula does not parse")); }
-    }
-
-    this.defVars = wired ? wired.params : vars;
-    const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
-    const captures = new Map<string, unknown>();
-    if (wired?.captured && wired.capturedValues) wired.captured.forEach((n, i) => { if (!captures.has(n)) captures.set(n, this.lambdaCaptures[i]); });
-    const plan = planColumnUnits<CubeCell>(
-      wired ? lambdaDefinition(wired) : exprDefinition(this.expr),
-      f,
-      { alias: this.bindings, sideValue: (p) => (captures.has(p) ? captures.get(p) : sideRaw(p)), authored: parseColumnUnitFromHeader(name).unit },
-    );
-    const runPlan = isSolError(plan) ? null : plan;
-    const sideValue = (p: string) => (runPlan ? runPlan.side(sideRaw(p)) : stripUnitCells(sideRaw(p)));
-    const table = (runPlan ? runPlan.table : f) as FrameValue;
-    const onEngine = !wired && !isCube && Object.keys(this.bindings).length === 0
-      ? computeColumnOnEngine(table, this.expr, table.columns.reduce((m, c) => Math.max(m, c.values.length), 0), { sideValue, reserved: COMPUTED_RESERVED }) : null;
-    const inPlan = wired && runPlan && wired.withCaptures && wired.capturedValues ? wired.withCaptures(this.lambdaCaptures.map(runPlan.side)) : wired;
-    const computed = onEngine ?? (isCube ? computeCubeColumnCells : computeColumnCells)(
-      runPlan ? runPlan.table : f,
-      inPlan ? { kind: "lambda", lam: inPlan } : { kind: "expr", evaluator: evaluator!, vars },
-      {
-        reserved: COMPUTED_RESERVED,
-        sideValue,
-        alias: this.bindings,
-        rowRefs: wired
-          ? (wired.expr ? rowRefNames(wired.expr).filter((p) => !(wired.captured ?? []).includes(p)) : [])
-          : rowRefNames(this.expr),
-      },
-    );
-    if (isSolError(computed)) { this.sideVars = []; return out(computed); }
-    this.sideVars = computed.sideVars;
-    const done = runPlan ? runPlan.finish(computed.cells) : null;
-    const values: CubeCell[] = isSolError(plan) ? computed.cells.map(() => plan) : done ? done.cells : computed.cells;
-    const listType = isCube ? cubeCellsType(values) : null;
-    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs)
-      : listType ?? computedColumnType(name, values as FrameCell[], f, wired ? wired.expr : this.expr, this.bindings);
-
-    if (isCube) {
-      return out(runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after, done?.unit ?? null)));
-    }
-
-    // Detect replacement by column count, which is exact and avoids repeating addColumn's `Name (unit)` parsing.
-    const frame = f as FrameValue;
-    const result = addColumn(frame, name, values as FrameCell[], colType, done?.unit ?? null);
-    const replacing = result.columns.length === f.columns.length;
-    if (after && !replacing) {
-      const anchorIdx = result.columns.findIndex((c) => c.name === after);
-      if (anchorIdx < 0) return out(solError("#REF!", `No column "${after}" to place after`));
-      const cols = [...result.columns];
-      const added = cols.pop()!;
-      cols.splice(anchorIdx + 1, 0, added);
-      return out({ __frame: true, columns: cols });
-    }
-    return out(result);
-  }
-
-  /** A ref's computed column placed: its type, unit and position among the schema's columns. */
-  private placeOnRef(schema: FrameValue, cells: FrameCell[], inputs: ComputedColumnInputs): { frame: FrameValue | SolError | null; fresh?: number; asValue?: true } {
-    const name = (readInput(inputs.name, this.stringLiterals.name ?? "") ?? "").trim() || "computed";
-    const after = (readInput(inputs.after, this.stringLiterals.after ?? "") ?? "").trim();
-    const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
-    const plan = planColumnUnits<FrameCell>(exprDefinition(this.expr), schema, { sideValue: sideRaw, authored: parseColumnUnitFromHeader(name).unit });
-    if (isSolError(plan) || plan.table.columns !== schema.columns) return { frame: null, asValue: true };
-    const done = plan.finish(cells);
-    if (done.cells !== cells) return { frame: null, asValue: true };
-    this.sourceColumns = schema.columns.map((c) => c.name);
-    this.defVars = extractVariables(this.expr);
-    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, cells, schema, this.expr, this.bindings);
-    // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
-    const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
-    const added = addColumn(shape, name, [], colType, done.unit ?? null);
-    const replaced = added.columns.length === shape.columns.length;
-    let fresh = replaced ? added.columns.findIndex((c, i) => c !== shape.columns[i]) : added.columns.length - 1;
-    let cols = added.columns;
-    if (after && !replaced) {
-      const anchorIdx = cols.findIndex((c) => c.name === after);
-      if (anchorIdx < 0) return { frame: solError("#REF!", `No column "${after}" to place after`) };
-      cols = [...cols];
-      cols.splice(anchorIdx + 1, 0, cols.pop()!);
-      fresh = anchorIdx + 1;
-    }
-    return { frame: { __frame: true, columns: cols }, fresh };
+    return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null; fresh?: number; asValue?: true };
   }
 
   private _lastKey: {

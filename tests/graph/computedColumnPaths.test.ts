@@ -74,8 +74,8 @@ describe("Computed Column over a Cube", () => {
   });
 
   it("a pinned type and a `Name (unit)` name", () => {
-    expect((run(card("@n", { addAs: "text" }), cube) as CubeValue).columns.at(-1)!.type).toBe("string");
-    expect((run(card("@n * 1000", { name: "len (m)" }), cube) as CubeValue).columns.at(-1)!.name).toBe("len");
+    expect((run(card("@n", { addAs: "text" }), cube) as CubeValue).columns.slice(-1)[0]!.type).toBe("string");
+    expect((run(card("@n * 1000", { name: "len (m)" }), cube) as CubeValue).columns.slice(-1)[0]!.name).toBe("len");
     expect(run(card("SUM(@legs)", { name: "len (hr)" }), cube)).toBeTruthy();
   });
 
@@ -112,11 +112,11 @@ describe("Computed Column units, bindings and λ captures", () => {
 
   it("bindings point a variable at a picked column, and a gone column is #REF!", () => {
     const bound = run(card("@x * 2 + SUM(y)", { bindings: { x: "a", y: "t" } }), frame) as FrameValue;
-    expect(bound.columns.at(-1)!.values).toHaveLength(3);
+    expect(bound.columns.slice(-1)[0]!.values).toHaveLength(3);
     const gone = run(card("@x * 2", { bindings: { x: "zz" } }), frame);
     expect(isSolError(gone) && gone.code).toBe("#REF!");
     const lam = run(card("", { bindings: { p: "a" } }), frame, { fn: [lambda("p * 2", "p")] }) as FrameValue;
-    expect(lam.columns.at(-1)!.values).toHaveLength(3);
+    expect(lam.columns.slice(-1)[0]!.values).toHaveLength(3);
   });
 
   it("a λ's united captures count in the unit pass", () => {
@@ -130,7 +130,21 @@ describe("Computed Column units, bindings and λ captures", () => {
   it("a λ parameter bound to an error cell answers that row with the error", () => {
     const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: [1, { __solError: true, code: "#DIV/0!", message: "x" } as never, 3] }] };
     const out = run(card(""), f, { fn: [lambda("v * 10", "v")] }) as FrameValue;
-    const cell = out.columns.at(-1)!.values[1];
+    const cell = out.columns.slice(-1)[0]!.values[1];
     expect(isSolError(cell) && cell.code).toBe("#DIV/0!");
+  });
+});
+
+describe("a computed column's date typing", () => {
+  it("knows every function registered as returning a date (DATE_FUNCTIONS in nodes/columns.rs)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { EXCEL_IMPL_META } = await import("../../src/graph/excelFunctions");
+    const src = fs.readFileSync(path.resolve(__dirname, "../../crates/solenoid-core/src/nodes/columns.rs"), "utf8");
+    const list = /const DATE_FUNCTIONS: &\[&str\] = &\[([^\]]*)\]/.exec(src)![1];
+    const rust = new Set([...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+    const dated = Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.returns === "date").map(([n]) => n);
+    expect(dated.length).toBeGreaterThan(0);
+    expect(dated.filter((n) => !rust.has(n))).toEqual([]);
   });
 });

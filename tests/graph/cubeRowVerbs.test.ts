@@ -217,7 +217,7 @@ describe("Computed Column over a cube", () => {
     const c = n.data({ frame: [src] as never }).frame as CubeValue;
     expect(c.columns.map((k) => k.name)).toEqual(["title", "hours", "timeEstimate"]);
     const hours = c.columns.find((k) => k.name === "hours")!;
-    expect(hours.format).toBe(fmt);
+    expect(hours.format).toEqual(fmt);
     expect(hours.cells.map((v) => (v as { dim?: unknown }).dim)).toEqual([{ mass: 1 }, { mass: 1 }]);
   });
 

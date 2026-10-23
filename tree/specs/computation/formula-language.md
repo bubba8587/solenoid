@@ -142,7 +142,7 @@ Function names in call position are case-insensitive and resolve through the reg
 | `family` | a `FuncFamily` label |
 | `native` | Solenoid-only, no Formula.js equivalent |
 
-`arity` is not enforced at evaluation. It feeds the signature hints and the tests; an implementation handles missing or extra arguments itself. `returns: "date"` is read by `exprYieldsDate`. The routing reads `listArgs`, `matrixArgs` and `cxArgs`.
+`arity` is not enforced at evaluation. It feeds the signature hints and the tests; an implementation handles missing or extra arguments itself. `returns: "date"` is what a computed column's date typing reads ([[computed-columns#The column's type]]; the core holds the names in `DATE_FUNCTIONS`, `nodes/columns.rs`, which `computedColumnPaths.test.ts` holds to the registry). The routing reads `listArgs`, `matrixArgs` and `cxArgs`.
 
 **MUST:** every `registerInternal` name has an `EXCEL_IMPL_META` entry declaring its `returns` and `arity`, plus `rank` and `listArgs` where they apply. Routing, rank checks and list handling are derived from that entry and declared nowhere else ([[engineering#Lists of names are generated]]). A registration with no declared contract leaves its routing to be guessed, or kept by hand in a second list, which is the drift [[engineering#One declaration per fact]] exists to stop.
 
@@ -452,7 +452,6 @@ Other surfaces read a formula without evaluating it. All return empty on a synta
 | `extractVariables(expr)` | the variables, as above |
 | `rowRefNames(expr)` | every `@` and bracket reference name, excluding a name that is a parameter of an enclosing LAMBDA literal (a computed column's dependency feed) |
 | `atColNames(expr)` | identifier-shaped `@name` references only (the LAMBDA node's capture sockets) |
-| `exprYieldsDate(expr, isDateName)` | whether the result is a date: a name or reference `isDateName` accepts; unary `+` of a date; `date + number` or `number + date`; `date - number`; a call whose `EXCEL_IMPL_META.returns` is `date`; `IF` whose every non-blank branch is a date. Everything else is false. |
 | `formulaSyntaxHint(expr)` | as in *Syntax hints* |
 | `formulaFunctionNames()` | every dispatchable name |
 

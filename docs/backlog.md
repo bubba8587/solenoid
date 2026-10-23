@@ -341,7 +341,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **The formula highlighter paints a called λ socket (`λ1(`) as an unknown function** (`identClass`,
   formulaSyntax.ts). No surface shows it today (the popup's formula field is a plain input); fix it the day a
   highlighted editor edits a Frame Input column formula.
-- [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
+- [ ] **A computed column's date typing is conservative** (`yields_date`, `nodes/columns.rs`): `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
   Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
 - [ ] **A blank frame's CSV view starts with a blank header line** (`buildText`): a CSV pasted below it makes its
   header row the first data row, with the columns unnamed. Found filming the demo video (a new Frame property in
