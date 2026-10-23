@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::error_value::{ErrorCode, SolError, sol_error};
-use crate::excel_functions::{bail, js_string_of, V};
+use crate::excel_functions::{js_string_of, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_max as js_max, math_min as js_min};
 use crate::string_order::compare_strings;
 use crate::value_kinds::decimal_from_text;
@@ -155,13 +155,11 @@ fn unescape(s: &str) -> Rc<str> {
     Rc::from(out)
 }
 
-/// What `parseDate` answers for a criterion's text: a serial, NaN, or `#AMBIGUOUS!`. Text that only chrono-node
-/// reads bails the column to the TS.
+/// What `parseDate` answers for a criterion's text: a serial, NaN, or `#AMBIGUOUS!`.
 pub(crate) enum DateReading {
     Serial(f64),
     NotADate,
     Ambiguous(SolError),
-    Bail,
 }
 
 fn ascii_digits(s: &[u8]) -> bool {
@@ -214,7 +212,7 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
     chrono_reading(t)
 }
 
-/// The few shapes of chrono-node's reading the core carries; anything else bails.
+/// The shapes of chrono-node's reading the core carries; any other text is not a date.
 fn chrono_reading(t: &str) -> DateReading {
     let b = t.as_bytes();
     // A bare number, signed or with a fraction: no chrono parser reads digits alone.
@@ -238,120 +236,7 @@ fn chrono_reading(t: &str) -> DateReading {
             }
         }
     }
-    if !could_cover(t) {
-        return DateReading::NotADate;
-    }
-    DateReading::Bail
-}
-
-/// Every word in chrono-node's English parsers, refiners and time-zone table, lower-cased: a word of a reading is one
-/// of these or several run together.
-const CHRONO_WORDS: &[&str] = &[
-    "a", "about", "acdt", "acst", "ad", "adt", "aedt", "aest", "aft", "after", "afternoon", "ago", "akdt", "akst",
-    "almt", "am", "amst", "amt", "an", "anast", "anat", "and", "apap", "approximately", "apr", "april", "aqtt",
-    "around", "art", "ast", "at", "aug", "august", "awdt", "awst", "azost", "azot", "azst", "azt", "bc", "bce", "be",
-    "before", "bnt", "bot", "brst", "brt", "bst", "btt", "cast", "cat", "cct", "cdt", "ce", "cest", "cet", "chadt",
-    "chast", "chst", "ckt", "clock", "clst", "clt", "cot", "couple", "cst", "ct", "cvt", "cxt", "d", "davt", "day",
-    "days", "dec", "december", "earlier", "easst", "east", "eat", "ect", "edt", "eest", "eet", "egst", "egt", "eight",
-    "eighteenth", "eighth", "eleven", "eleventh", "end", "est", "et", "evening", "feb", "february", "few",
-    "fifteenth", "fifth", "first", "five", "fjst", "fjt", "fkst", "fkt", "fnt", "for", "forward", "four",
-    "fourteenth", "fourth", "fri", "friday", "from", "galt", "gamt", "gft", "gilt", "gmt", "gst", "gyt", "h", "haa",
-    "hac", "hadt", "hae", "half", "hap", "har", "hast", "hat", "hay", "henceforth", "hkt", "hlv", "hna", "hnc", "hne",
-    "hnp", "hnr", "hnt", "hny", "hour", "hours", "hovt", "hr", "hrs", "i", "ict", "idt", "in", "iot", "irdt", "irkst",
-    "irkt", "irst", "ist", "jan", "january", "jst", "jul", "july", "jun", "june", "just", "kgt", "krast", "krat",
-    "kst", "kuyt", "last", "later", "lhdt", "lhst", "lint", "m", "magst", "magt", "mar", "march", "mart", "mawt",
-    "may", "mdt", "mesz", "mez", "mht", "midday", "midnight", "min", "mins", "minute", "minutes", "mmt", "mo", "mon",
-    "monday", "month", "months", "morning", "mos", "msd", "msk", "mst", "mt", "mut", "mvt", "myt", "nct", "nd", "ndt",
-    "next", "nft", "night", "nine", "nineteenth", "ninth", "noon", "nov", "november", "novst", "novt", "now", "npt",
-    "nst", "nut", "nzdt", "nzst", "o", "oct", "october", "of", "omsst", "omst", "on", "one", "out", "overmorrow", "p",
-    "past", "pdt", "pet", "petst", "pett", "pgt", "phot", "pht", "pkt", "pm", "pmdt", "pmst", "pont", "pst", "pt",
-    "pwt", "pyst", "pyt", "qtr", "quarter", "quarters", "rd", "ret", "roughly", "s", "samt", "sast", "sat",
-    "saturday", "sbt", "sct", "sec", "second", "seconds", "sep", "sept", "september", "seven", "seventeenth",
-    "seventh", "several", "sgt", "since", "six", "sixteenth", "sixth", "srt", "sst", "st", "sun", "sunday", "t",
-    "taht", "ten", "tenth", "tft", "th", "the", "third", "thirteenth", "thirtieth", "thirty", "this", "three",
-    "through", "thu", "thur", "thurs", "thursday", "till", "tjt", "tkt", "tlt", "tmr", "tmrw", "tmt", "to", "today",
-    "tomorrow", "tonight", "tue", "tuesday", "tvt", "twelfth", "twelve", "twentieth", "twenty", "two", "ulat",
-    "until", "utc", "uyst", "uyt", "uzt", "vet", "vlast", "vlat", "vut", "w", "wast", "wat", "wed", "wednesday",
-    "week", "weekday", "weekend", "weeks", "west", "wesz", "wet", "wez", "wft", "wgst", "wgt", "wib", "wit", "wita",
-    "within", "wst", "wt", "y", "yakst", "yakt", "yapt", "year", "years", "yekst", "yekt", "yesterday", "yr", "z",
-];
-
-/// Whether a run of letters splits into chrono-node words.
-fn chrono_word(run: &str) -> bool {
-    let w = run.to_ascii_lowercase();
-    let mut ok = vec![false; w.len() + 1];
-    ok[0] = true;
-    for i in 0..w.len() {
-        if ok[i] {
-            for word in CHRONO_WORDS {
-                if w[i..].starts_with(word) {
-                    ok[i + word.len()] = true;
-                }
-            }
-        }
-    }
-    ok[w.len()]
-}
-
-/// Whether one chrono-node reading starting at the text's first character could reach its end (but for `[\s.,]*`)
-/// with a certain day, month and year. False rules a date out: a reading holds only chrono's words, digits, white
-/// space and the punctuation its patterns spell; without a letter it starts on a digit, and its year comes from an ISO,
-/// slashed or year-first day (`d[-./]d[-./]d`, `dddd d d`) or a slashed day and a year after it.
-fn could_cover(t: &str) -> bool {
-    let body = t.trim_end_matches(|c: char| c == '.' || c == ',' || is_js_space(c));
-    // `o\W*clock` takes any punctuation between its words.
-    if body.to_ascii_lowercase().contains("clock") {
-        return true;
-    }
-    let punct = |c: char| "-/.:,+()'~?\u{2013}\u{2219}\u{301C}\u{FF08}\u{FF09}\u{FF1A}".contains(c);
-    if !body.chars().all(|c| c.is_ascii_alphanumeric() || is_js_space(c) || punct(c)) {
-        return false;
-    }
-    let mut letters = false;
-    for run in body.split(|c: char| !c.is_ascii_alphabetic()).filter(|r| !r.is_empty()) {
-        if !chrono_word(run) {
-            return false;
-        }
-        letters = true;
-    }
-    if letters {
-        return true;
-    }
-    if !body.starts_with(|c: char| c.is_ascii_digit()) {
-        return false;
-    }
-    if body.contains('/') {
-        return true;
-    }
-    // Three digit runs, each pair parted by one separator.
-    let b = body.as_bytes();
-    let mut runs = 0;
-    let mut i = 0;
-    while i < b.len() {
-        if b[i].is_ascii_digit() {
-            while i < b.len() && b[i].is_ascii_digit() {
-                i += 1;
-            }
-            runs += 1;
-            if runs == 3 {
-                return true;
-            }
-            let sep = body[i..].chars().next();
-            match sep {
-                Some(c) if c == '-' || c == '.' || is_js_space(c) => {
-                    i += c.len_utf8();
-                    if !b.get(i).is_some_and(u8::is_ascii_digit) {
-                        runs = 0;
-                    }
-                }
-                _ => runs = 0,
-            }
-        } else {
-            runs = 0;
-            i += body[i..].chars().next().map_or(1, char::len_utf8);
-        }
-    }
-    false
+    DateReading::NotADate
 }
 
 /// chrono-node's ISOFormatParser (`YYYY-M-D`, then optionally `THH:MM[:SS[.ffff]]` and `Z` or `±HH[:][MM]`), or its
@@ -448,7 +333,7 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
         return None;
     }
     let days = crate::date_serial::days_from_civil(year as i64, month as u32, day as u32);
-    // A day the month lacks fails `isValidDate`; what chrono reads instead stays with the TS.
+    // A day the month lacks fails `isValidDate`.
     if crate::date_serial::civil_from_days(days).1 != month as u32 {
         return None;
     }
@@ -688,7 +573,6 @@ fn split_num(b: &[u8], min: usize, max: usize) -> Option<(u32, &[u8])> {
 enum Parsed {
     Crit(Criterion),
     Err(V),
-    Bail,
 }
 
 fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
@@ -728,7 +612,6 @@ fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
         match parse_date(rest) {
             DateReading::Serial(d) if d.is_finite() => return plain(op, Value::Num(d)),
             DateReading::Ambiguous(e) => return Parsed::Err(V::err(e)),
-            DateReading::Bail => return Parsed::Bail,
             _ => {}
         }
     }
@@ -832,7 +715,6 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         let c = match parse_criterion(raw, numeric) {
             Parsed::Crit(c) => c,
             Parsed::Err(e) => return e,
-            Parsed::Bail => return bail(),
         };
         if !numeric
             && !matches!(c.op, Op::Eq | Op::Neq)

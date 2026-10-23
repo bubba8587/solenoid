@@ -8,7 +8,7 @@ import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, 
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
-import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, readReply } from "./coreValues";
+import { coreValue, errorRef, errorFromCore, toWellFormed, engineClock, wasmEngineOn, readReply } from "./coreValues";
 export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
@@ -459,7 +459,7 @@ function adoptPivot(frame: FrameValue, p: PivotWire): void {
 /** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !crossesWhole(f)) return null;
+    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
     const { scales, units } = pivotUnits(f, spec);
     const src = wasmSourceBin(encodeBinary(f));
     let out: string | undefined;
@@ -484,9 +484,9 @@ interface ColumnOpts { sideValue?: SideValue; reserved?: readonly string[]; lamb
  *  `runColumn` would, and the columns it reads. Null where the formula doesn't parse or a value can't cross. */
 function columnInputs(expr: string, columns: readonly string[], opts: ColumnOpts):
   { args: Record<string, unknown>; named: Set<string> } | null {
-  if (!wellFormed(expr)) return null;
   const lambdas = opts.lambdas ?? {};
-  const bodies = [...Object.values(lambdas), ...(opts.bare ? [opts.bare] : [])].flatMap((l) => (l.expr ? [l.expr] : []));
+  const bodies = [...Object.values(lambdas), ...(opts.bare ? [opts.bare] : [])].flatMap((l) => (l.expr ? [toWellFormed(l.expr)] : []));
+  expr = toWellFormed(expr);
   const names = wasmInvokeSync<{ parses: boolean; vars?: string[]; rows?: string[] }>("engine_formula_names", { src: opts.bare ? "" : expr, bodies });
   if (!names.parses) return null;
   const colSet = new Set(columns);
@@ -522,10 +522,6 @@ function columnInputs(expr: string, columns: readonly string[], opts: ColumnOpts
   };
 }
 
-/** A frame's string cells cross as UTF-8, where a lone surrogate would turn into U+FFFD. */
-const crossesWhole = (f: FrameValue): boolean =>
-  f.columns.every((c) => c.values.every((v) => typeof v !== "string" || wellFormed(v)));
-
 type ColumnAnswer = { cells: FrameCell[]; sideVars: string[] } | SolError;
 
 /** What `engine_compute_column` answered: the cells, the error that stopped the column, or null where a body bailed. */
@@ -545,7 +541,7 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
   { frame: FrameValue; value?: unknown } | { value: unknown } | null {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !frames.every(crossesWhole)) return null;
+    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
     const wire = args.map((a) => coreValue(a));
     if (wire.includes(undefined)) return null;
     const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
@@ -578,7 +574,6 @@ export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number,
     const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
     if (!inputs) return null;
     const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
-    if (!crossesWhole(frame)) return null;
     const src = wasmSourceBin(encodeBinary(frame));
     let out: string | undefined;
     try {
@@ -746,8 +741,6 @@ class EngineBackend implements FrameBackend {
       if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
       noteLogicalNaN(frame);
     }
-    // A lone surrogate would cross as U+FFFD and merge with its neighbours' halves.
-    if (!crossesWhole(frame)) return this.oracle.source(frame);
     if (this.bulk) return this.remember(this.bulk.source(frame), schemaOnly(frame));
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     const h = await (this.invoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);

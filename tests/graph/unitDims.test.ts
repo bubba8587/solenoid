@@ -1,15 +1,10 @@
 // [[C25]] firstClassUnits, [[C24]]
 import { describe, it, expect } from "vitest";
-import { parseFormula } from "../../src/graph/excelFormula";
-import { dimEval, formulaResultDim, type DimEnv, type DimResult } from "../../src/graph/unitDimExpr";
 import { type Dim } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
+import { dimOf } from "./coreDims";
 
-const evalExpr = (expr: string, env: DimEnv = {}): DimResult => {
-  const ast = parseFormula(expr);
-  if (!ast) throw new Error(`unparseable: ${expr}`);
-  return dimEval(ast, env);
-};
+const evalExpr = (expr: string, env: Record<string, Dim> = {}) => dimOf(expr, env);
 const LENGTH: Dim = { length: 1 };
 const TIME: Dim = { time: 1 };
 const MASS: Dim = { mass: 1 };
@@ -113,17 +108,5 @@ describe("dimensional AST interpretation — functions", () => {
     expect(evalExpr("IFERROR(a, b)", { a: LENGTH, b: LENGTH })).toEqual(LENGTH);
     expect(evalExpr("CHOOSE(i, a, b)", { i: {}, a: LENGTH, b: TIME })).toBeNull();
     expect(evalExpr('TEXT(a, "0.0")', { a: LENGTH })).toEqual({});
-  });
-});
-
-describe("formulaResultDim folds conflicts to null", () => {
-  it("returns a dim when determinable", () => {
-    const ast = parseFormula("d / t")!;
-    expect(formulaResultDim(ast, { d: { length: 1 }, t: { time: 1 } }))
-      .toEqual({ length: 1, time: -1 });
-  });
-  it("returns null on a #UNIT! conflict", () => {
-    const ast = parseFormula("a + b")!;
-    expect(formulaResultDim(ast, { a: { length: 1 }, b: { time: 1 } })).toBeNull();
   });
 });

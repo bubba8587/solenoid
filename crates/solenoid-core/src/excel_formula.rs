@@ -1,9 +1,6 @@
-// [[C130]] rustCore, [[D98]] wholeColumnFallback, [[C22]] rowFormulaRefs, [[C80]] blankArgIsExcelBlank
-//! Port of `src/graph/excelFormula.ts`: the tokenizer and parser whole, and the evaluator for a row formula over
-//! scalars (a computed column's `@price * @qty`). The table-driven facts a call needs (argument roles, an empty
-//! slot's reading, the null rule, range or broadcast) come lowered from the TS (`formulaCallTable`), as unit scales
-//! do for the frame verbs, so the Rust carries only the function bodies (`excel_functions.rs`). A formula outside
-//! the ported surface answers `Unsupported`, and the TS evaluates it.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C22]] rowFormulaRefs, [[C80]] blankArgIsExcelBlank
+//! The formula language's tokenizer and parser (ported from `src/graph/excelFormula.ts`). The table-driven facts a
+//! call needs (argument roles, an empty slot's reading, the null rule, range or broadcast) are `data/call_traits.json`.
 
 use std::rc::Rc;
 
@@ -541,10 +538,10 @@ pub(crate) fn lowered(v: &Json) -> V {
 
 // ─── Evaluator ──────────────────────────────────────────────────────────────────
 
-/// `dispatch`: a body's JavaScript failure answers #VALUE! at its call, so IFERROR reads it; a bail still ends the row.
+/// `dispatch`: a body's JavaScript failure answers #VALUE! at its call, so IFERROR reads it.
 pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     let v = call_function(name, argv);
-    if crate::excel_functions::thrown_pending() && !crate::excel_functions::bail_pending() {
+    if crate::excel_functions::thrown_pending() {
         crate::excel_functions::take_thrown();
         return V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")));
     }

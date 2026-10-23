@@ -61,19 +61,6 @@ impl V {
 
 thread_local! {
     static THROWN: std::cell::RefCell<Option<SolError>> = const { std::cell::RefCell::new(None) };
-    static BAILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// A reading this port leaves to the TS (a date only chrono-node reads): it ends the row like a throw, and the
-/// whole column runs on the TS.
-pub fn bail() -> V {
-    BAILED.with(|b| b.set(true));
-    throw(sol_error(ErrorCode::Value, "left to the TS"))
-}
-
-/// Whether a row bailed since the last call.
-pub fn take_bailed() -> bool {
-    BAILED.with(|b| b.replace(false))
 }
 
 /// A JS exception: it ends the row's evaluation, so the row answers it whatever encloses the call (the first one wins).
@@ -85,11 +72,6 @@ pub(crate) fn throw(e: SolError) -> V {
         }
     });
     V::Undef
-}
-
-/// Whether a row bailed, without clearing it.
-pub fn bail_pending() -> bool {
-    BAILED.with(|b| b.get())
 }
 
 pub fn thrown_pending() -> bool {
@@ -104,8 +86,7 @@ pub fn take_thrown() -> Option<SolError> {
 /// The modules that answer their own names, beside `call_function`'s arms and the finance functions.
 const MODULES: [&[&str]; 7] = [crate::formulajs::NAMES, crate::fns_complex::NAMES, crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES, crate::fns_random::NAMES, crate::fns_packs::NAMES];
 
-/// Every function the core carries, for the conformance suites to tell a pending name from a ported one. A formula
-/// calling anything else runs on the TS.
+/// Every function the core carries a body for.
 pub fn ported_names() -> Vec<&'static str> {
     F::ALL.iter().map(|f| f.name()).chain(FINANCE_WHOLE.iter().chain(FINANCE).copied()).chain(MODULES.into_iter().flatten().copied()).collect()
 }
@@ -150,7 +131,7 @@ thread_local! {
     static CLOCK: std::cell::Cell<Option<Clock>> = const { std::cell::Cell::new(None) };
 }
 
-/// The clock the next calc reads; without one TODAY and NOW leave the column to the TS.
+/// The clock the next calc reads; without one TODAY and NOW throw.
 pub fn set_clock(c: Option<Clock>) {
     CLOCK.with(|k| k.set(c));
 }
@@ -163,19 +144,14 @@ thread_local! {
     static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
 }
 
-/// What a calc raised beside its answer. A bail throws too, and outranks the throw.
+/// What a calc raised beside its answer.
 pub enum Raised {
     Nothing,
     Thrown(SolError),
-    Bailed,
 }
 
 /// What the calc raised since the last take, cleared.
 pub fn take_raised() -> Raised {
-    if take_bailed() {
-        take_thrown();
-        return Raised::Bailed;
-    }
     take_thrown().map_or(Raised::Nothing, Raised::Thrown)
 }
 
@@ -967,15 +943,15 @@ impl JsSum {
 
 /// `[...xs].sort((a, b) => a - b)`: `undefined` goes last unseen, as V8 does. None where V8's merge would decide
 /// an inconsistent comparator's order (64 or more items, not all numbers).
-pub(crate) fn js_numeric_sort(xs: &[V]) -> Option<Vec<V>> {
+pub(crate) fn js_numeric_sort(xs: &[V]) -> Vec<V> {
     let (mut s, undef): (Vec<V>, Vec<V>) = xs.iter().cloned().partition(|v| !matches!(v, V::Undef));
     if s.iter().all(|v| matches!(v, V::Num(n) if !n.is_nan())) {
         crate::js_sort::js_sort_by(&mut s, |a, b| (to_f64_js(a) - to_f64_js(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
     } else {
-        crate::js_sort::v8_sort_short(&mut s, |a, b| to_f64_js(a) - to_f64_js(b))?;
+        crate::decision::sort_by_num(&mut s, |a, b| to_f64_js(a) - to_f64_js(b));
     }
     s.extend(undef);
-    Some(s)
+    s
 }
 
 /// `(v ?? [])` as an array-like: its `length` (a string's in UTF-16 units; None where it is `undefined`) and what
@@ -1029,7 +1005,7 @@ fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
         return V::err(sol_error(ErrorCode::Domain, "TRIMMEAN trimmed away every value"));
     }
     let Some(items) = items else { return throw(sol_error(ErrorCode::Value, "values is not iterable")) };
-    let Some(s) = js_numeric_sort(&items) else { return bail() };
+    let s = js_numeric_sort(&items);
     let (lo, hi) = (js_slice_index(trim, s.len()), js_slice_index(n - trim, s.len()));
     let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
     V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
@@ -1556,7 +1532,7 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
         return V::Null;
     }
     match crate::dists::compute(key, form, vn, &ps) {
-        Err(crate::dists::TooLong) => bail(),
+        Err(crate::dists::TooLong) => V::err(sol_error(ErrorCode::Domain, "This distribution would sum more than 1,000,000 terms")),
         Ok(None) => dist_domain(),
         Ok(Some(r)) => finite_or_null(r),
     }
@@ -2659,7 +2635,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                         match x {
                             V::List(row) => {
                                 if row.iter().any(|y| matches!(y, V::List(_))) {
-                                    return bail();
+                                    return throw(sol_error(ErrorCode::Value, format!("{name} reads values and tables, not lists nested inside a table")));
                                 }
                                 flat.extend(row.iter().cloned());
                             }
@@ -3574,7 +3550,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return match parse_date(t) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
                     DateReading::Ambiguous(e) => V::err(e),
-                    DateReading::Bail => bail(),
                     _ => bad("date"),
                 };
             }
@@ -3595,7 +3570,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             // `parseDateToSerial`: any failure is NaN, an ambiguous date included.
             match parse_date(t) {
                 DateReading::Serial(d) if !d.is_nan() => V::Num(d - d.floor()),
-                DateReading::Bail => bail(),
                 _ => bad("time"),
             }
         }
@@ -4002,7 +3976,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         },
         F::TODAY | F::NOW => match clock() {
             Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
-            None => bail(),
+            None => throw(sol_error(ErrorCode::Value, format!("{name} reads the calculation's clock, and this call has none"))),
         },
         F::EDATE => fx_edate(arg(a, 0), arg(a, 1)),
         F::CONVERT => {
@@ -4068,7 +4042,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if tails != 1.0 && tails != 2.0 {
                 return V::err(sol_error(ErrorCode::Domain, "T.TEST: tails must be 1 or 2"));
             }
-            let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return bail() };
+            let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return V::err(sol_error(ErrorCode::Value, "T.TEST reads two lists of numbers")) };
             match t_test_p(kind, &xa, &xb) {
                 Some(p2) => V::Num(if tails == 2.0 { p2 } else { p2 / 2.0 }),
                 None => V::Null,
@@ -4099,11 +4073,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         },
         F::REGEXTEST | F::REGEXEXTRACT | F::REGEXREPLACE => regex_call(name, a),
         F::ENCODEURL => {
-            let t = to_str(arg(a, 0));
-            if may_hold_lone_surrogate(&t) {
-                return bail();
-            }
-            V::str(&crate::text_ops::encode_uri_component(&t))
+            V::str(&crate::text_ops::encode_uri_component(&to_str(arg(a, 0))))
         }
         F::DECODEURL | F::ENCODEBASE64 | F::DECODEBASE64 | F::UNACCENT | F::SPELLNUMBER | F::HASH | F::SLUGIFY | F::TEMPLATE
             if matches!(arg(a, 0), V::Null | V::Undef) =>
@@ -4133,21 +4103,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         F::UNACCENT => {
-            let t = to_str(arg(a, 0));
-            // Dropping a mark can join the two halves of a pair the wire turned into U+FFFD.
-            if may_hold_lone_surrogate(&t) {
-                return bail();
-            }
-            V::str(&crate::text_ops::unaccent(&t))
+            V::str(&crate::text_ops::unaccent(&to_str(arg(a, 0))))
         }
         F::SLUGIFY => {
             let sep = match arg(a, 1) {
                 V::Null | V::Undef => "-".to_string(),
                 v => to_str(v),
             };
-            if may_hold_lone_surrogate(&sep) {
-                return bail();
-            }
             V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
         }
         F::SPELLNUMBER => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
@@ -4521,7 +4483,7 @@ fn fx_edate(start: &V, months: &V) -> V {
     use crate::fns_stats::{parse_date, FxDate};
     use crate::zone;
     if matches!(start, V::List(_) | V::Cx(..) | V::Lambda(_)) {
-        return bail();
+        return V::Fx(FxError::Value);
     }
     let mut date = match parse_date(start) {
         FxDate::Date(t) => t,
@@ -4556,10 +4518,6 @@ fn fx_edate(start: &V, months: &V) -> V {
 
 /// Text that crossed the wire with half a surrogate pair holds U+FFFD where the TS holds the half, which a regex,
 /// an encoder or a joined pair reads differently.
-fn may_hold_lone_surrogate(s: &str) -> bool {
-    s.contains('\u{FFFD}')
-}
-
 /// `caseFlag`: whether the match ignores case.
 fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
     let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { to_f64_js(cs) };
@@ -4613,13 +4571,10 @@ fn regex_call(name: &str, a: &[V]) -> V {
         return V::Null;
     }
     let replacement = if name == "REGEXREPLACE" { to_str(arg(a, 2)) } else { String::new() };
-    if [&text, &pattern, &replacement].iter().any(|s| may_hold_lone_surrogate(s)) {
-        return bail();
-    }
     let re = match compile(&utf16(&pattern), icase) {
         Compiled::Ok(re) => re,
         Compiled::Invalid => return V::Null,
-        Compiled::Unsure => return bail(),
+        Compiled::Unsure => return V::err(sol_error(ErrorCode::Value, format!("{name} can't run this pattern: a repeat count past 100,000 or a \\p{{…}} class"))),
     };
     // Every match list (modes 1 and 2) is a list.
     let t = utf16(&text);
@@ -5226,6 +5181,10 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(rate)
         }
         "DB" => {
+            // [[C120]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
+                return V::err(sol_error(ErrorCode::Domain, "DB needs a period of at most 1,000,000"));
+            }
             let vals = [p(0), p(1), p(2), p(3), undef_or(4, 12.0)];
             let Some([cost, salvage, life, period, month]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
@@ -5243,9 +5202,8 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             let mut total = initial;
             let mut current = 0.0;
             let ceiling = if period == life { life - 1.0 } else { period };
-            // A step per period: past a million (or forever, for an infinite life) the TS takes it.
             if ceiling > 1e6 {
-                return bail();
+                return V::err(sol_error(ErrorCode::Domain, "DB needs a period of at most 1,000,000"));
             }
             let mut i = 2.0;
             while i <= ceiling {
@@ -5262,6 +5220,10 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             })
         }
         "DDB" => {
+            // [[C120]] linearWork: a step per period, so a huge period within a huge life is refused before the loop.
+            if to_num(arg(a, 3)) > 1e6 && to_num(arg(a, 3)) <= to_num(arg(a, 2)) {
+                return V::err(sol_error(ErrorCode::Domain, "DDB needs a period of at most 1,000,000"));
+            }
             let vals = [p(0), p(1), p(2), p(3), undef_or(4, 2.0)];
             let Some([cost, salvage, life, period, factor]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
@@ -5271,7 +5233,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 return V::Num(0.0);
             }
             if period > 1e6 {
-                return bail();
+                return V::err(sol_error(ErrorCode::Domain, "DDB needs a period of at most 1,000,000"));
             }
             let (mut total, mut current) = (0.0, 0.0);
             let mut i = 1.0;

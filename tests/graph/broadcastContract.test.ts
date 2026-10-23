@@ -1,6 +1,6 @@
 // [[D86]], [[D36]], [[C24]], [[D48]]
 import { describe, it, expect } from "vitest";
-import { broadcast, broadcastErr, readInput } from "../../src/graph/nodes/shared";
+import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { ComparisonNode, IfNode, BooleanOpNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -13,43 +13,6 @@ import { solError, isSolError } from "../../src/graph/errorValue";
 // (null) operand propagates as null; else compute. So an in-range list cell
 // behaves identically to a scalar and to a ragged-padded position.
 const e = solError("#DIV/0!", "boom");
-
-describe("broadcast / broadcastErr — numeric node broadcasters", () => {
-  it("error cell propagates UNMORPHED, not NaN / [object Object]", () => {
-    const r = broadcast((x, y) => x + y, [1, e as unknown as number, 3], 10) as unknown[];
-    expect(r[0]).toBe(11);
-    expect(r[1]).toBe(e); // the exact error object, not NaN
-    expect(r[2]).toBe(13);
-  });
-
-  it("missing cell propagates as null (null + 10 → null)", () => {
-    const r = broadcast((x, y) => x + y, [1, null as unknown as number, 3], 10) as unknown[];
-    expect(r).toEqual([11, null, 13]);
-  });
-
-  it("error beats missing at the same cell (error checked first)", () => {
-    const r = broadcast((x, y) => x + y, [e as unknown as number], [null as unknown as number]) as unknown[];
-    expect(r[0]).toBe(e);
-  });
-
-  it("ragged pad still yields null, unchanged", () => {
-    const r = broadcast((x, y) => x + y, [1, 2, 3], [10, 20]) as unknown[];
-    expect(r).toEqual([11, 22, null]);
-  });
-
-  it("scalar operands honour the contract too", () => {
-    expect(broadcast((x) => x * 2, e as unknown as number)).toBe(e);
-    expect(broadcast((x) => x * 2, null as unknown as number)).toBe(null);
-    expect(broadcast((x) => x * 2, 5)).toBe(10);
-  });
-
-  it("broadcastErr carries the same rule (and the fn may mint its own error)", () => {
-    const r = broadcastErr((x, y) => (y === 0 ? solError("#DIV/0!", "div") : x / y), [10, 20, 30], [2, 0, e as unknown as number]) as unknown[];
-    expect(r[0]).toBe(5);
-    expect(isSolError(r[1])).toBe(true); // fn-minted #DIV/0!
-    expect(r[2]).toBe(e);                // operand error propagates unmorphed
-  });
-});
 
 describe("readInput — unwired (undefined) vs wired-missing (null)", () => {
   it("unwired slot falls back to the literal", () => {

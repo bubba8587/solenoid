@@ -23,8 +23,11 @@ pub enum FrameOut {
     FrameAnd(FrameValue, V),
     /// What the TS throws: the caller throws it too.
     Error(SolError),
-    /// A reading the core doesn't make yet: the TS computes it.
-    Bail,
+}
+
+/// An argument of a shape the function doesn't take.
+fn bad() -> FrameOut {
+    FrameOut::Error(sol_error(ErrorCode::Error, "This frame function got an argument it doesn't take"))
 }
 
 type Res<T> = Result<T, FrameOut>;
@@ -49,7 +52,7 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         ("correlationMatrix", Some(f)) => str_arg(args, 0).map(|m| FrameOut::Frame(correlation_matrix(f, &m))),
         ("reconcileFrames", Some(l)) => match second {
             Some(r) => reconcile_frames(l, r, args),
-            None => Err(FrameOut::Bail),
+            None => Err(bad()),
         },
         ("nestGroups", Some(f)) => nest_groups(f, args),
         ("lookupRowIndex", Some(f)) => each(args, 1, |a| lookup_row_index(f, a).map(|i| V::Num(i.map_or(-1.0, |i| i as f64)))),
@@ -68,36 +71,36 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         // args: rate, nper, pv, fv, type (0 or 1).
         ("amortizationSchedule", _) => (0..5).map(|i| num_arg(args, i)).collect::<Res<Vec<f64>>>().and_then(|n| match n[..] {
             [rate, nper, pv, fv, ty] if ty == 0.0 || ty == 1.0 => Ok(frame_or_null(planners::amortization_frame(rate, nper, pv, fv, ty))),
-            _ => Err(FrameOut::Bail),
+            _ => Err(bad()),
         }),
         // frames: options, then the Weights if wired; args: normalize, breakdown.
         ("decisionMatrix", Some(f)) => match (normalize(), args.get(1)) {
             (Some(n), Some(V::Bool(b))) => Ok(decision::decision_matrix(f, second, n, *b).into()),
-            _ => Err(FrameOut::Bail),
+            _ => Err(bad()),
         },
         // frames: options, then the Weights and Limits where wired; args: normalize, close, choices, has weights, has limits.
         ("choiceLadder", Some(f)) => {
-            let (Some(n), close) = (normalize(), num_arg(args, 1)?) else { return Err(FrameOut::Bail) };
+            let (Some(n), close) = (normalize(), num_arg(args, 1)?) else { return Err(bad()) };
             let choices = list_arg(args, 2)?.iter().map(|v| match v {
                 V::Str(s) => Ok(s.to_string()),
-                _ => Err(FrameOut::Bail),
+                _ => Err(bad()),
             });
             let choices = choices.collect::<Res<Vec<_>>>()?;
-            let (Some(V::Bool(has_w)), Some(V::Bool(has_l))) = (args.get(3), args.get(4)) else { return Err(FrameOut::Bail) };
+            let (Some(V::Bool(has_w)), Some(V::Bool(has_l))) = (args.get(3), args.get(4)) else { return Err(bad()) };
             let mut rest = frames[1..].iter().copied();
             let w = if *has_w { rest.next() } else { None };
             let l = if *has_l { rest.next() } else { None };
             match crate::ladder::choice_ladder(f, w, l, n, close, &choices) {
                 Some(Ok((plan, wire))) => Ok(FrameOut::FrameAnd(plan, wire)),
                 Some(Err(e)) => Ok(FrameOut::Error(e)),
-                None => Err(FrameOut::Bail),
+                None => Err(bad()),
             }
         }
-        ("flipPoints", Some(f)) => normalize().map(|n| decision::flip_points(f, second, n).into()).ok_or(FrameOut::Bail),
+        ("flipPoints", Some(f)) => normalize().map(|n| decision::flip_points(f, second, n).into()).ok_or_else(bad),
         // args: mode, amount.
         ("allocateFrame", Some(f)) => {
             let (mode, amount) = (str_arg(args, 0)?, num_arg(args, 1)?);
-            decision::allocate_frame(f, &mode, amount).map(FrameOut::from).ok_or(FrameOut::Bail)
+            decision::allocate_frame(f, &mode, amount).map(FrameOut::from).ok_or_else(bad)
         }
         // args: extra, order, view, the start month's serial (or null).
         ("payoffFrame", Some(f)) => {
@@ -105,7 +108,7 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
             let start = match args.get(3) {
                 Some(V::Null) => None,
                 Some(V::Num(s)) => Some(*s),
-                _ => return Err(FrameOut::Bail),
+                _ => return Err(bad()),
             };
             Ok(planners::payoff_frame(f, extra, &order, &view, start).into())
         }
@@ -114,23 +117,23 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         ("settleLedger", Some(f)) => {
             let units = list_arg(args, 0)?.iter().map(|v| match v {
                 V::Str(s) => Ok(s.to_string()),
-                _ => Err(FrameOut::Bail),
+                _ => Err(bad()),
             });
             Ok(planners::settle_ledger(f, &units.collect::<Res<Vec<_>>>()?).into())
         }
         ("kmeans", Some(f)) => match num_arg(args, 0)? {
             k if !k.is_nan() => Ok(frame_or_null(planners::kmeans_frame(f, k))),
-            _ => Err(FrameOut::Bail),
+            _ => Err(bad()),
         },
         ("pca", Some(f)) => match args.first() {
             Some(V::Bool(s)) => Ok(frame_or_null(planners::pca_frame(f, *s))),
-            _ => Err(FrameOut::Bail),
+            _ => Err(bad()),
         },
         ("logisticFit", Some(f)) => match planners::logistic_frame(f, &str_arg(args, 0)?) {
             Some(out) => Ok(frame_or_null(out)),
-            None => Err(FrameOut::Bail),
+            None => Err(bad()),
         },
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     })();
     out.unwrap_or_else(|o| o)
 }
@@ -140,7 +143,7 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
 fn str_arg(args: &[V], i: usize) -> Res<String> {
     match args.get(i) {
         Some(V::Str(s)) => Ok(s.to_string()),
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     }
 }
 
@@ -149,21 +152,21 @@ fn opt_str_arg(args: &[V], i: usize) -> Res<Option<String>> {
     match args.get(i) {
         None | Some(V::Undef) | Some(V::Null) => Ok(None),
         Some(V::Str(s)) => Ok(Some(s.to_string())),
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     }
 }
 
 fn num_arg(args: &[V], i: usize) -> Res<f64> {
     match args.get(i) {
         Some(V::Num(n)) => Ok(*n),
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     }
 }
 
 fn list_arg(args: &[V], i: usize) -> Res<&[V]> {
     match args.get(i) {
         Some(V::List(items)) => Ok(items),
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     }
 }
 
@@ -181,7 +184,7 @@ fn each(args: &[V], at: usize, run: impl Fn(&[V]) -> Res<V>) -> Res<FrameOut> {
     Ok(FrameOut::Value(V::List(Rc::new(out))))
 }
 
-/// A value as a frame cell; one that isn't a cell (a list, a LAMBDA) leaves the call to the TS.
+/// A value as a frame cell; one that isn't a cell (a list, a LAMBDA) is an argument the function doesn't take.
 fn v_cell(v: &V) -> Res<FrameCell> {
     Ok(match v {
         V::Undef | V::Null => FrameCell::Null,
@@ -189,7 +192,7 @@ fn v_cell(v: &V) -> Res<FrameCell> {
         V::Str(s) => FrameCell::Str(s.clone()),
         V::Bool(b) => FrameCell::Bool(*b),
         V::Err(e) => FrameCell::Err(e.clone()),
-        _ => return Err(FrameOut::Bail),
+        _ => return Err(bad()),
     })
 }
 
@@ -605,7 +608,7 @@ fn reconcile_frames(left: &FrameValue, right: &FrameValue, args: &[V]) -> Res<Fr
 
 /// `nestGroups`: the output names (the keys', then the nested column's) and each key tuple's rows, in first-seen order.
 fn nest_groups(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
-    let keys: Vec<String> = list_arg(args, 0)?.iter().map(|v| if let V::Str(s) = v { Ok(s.to_string()) } else { Err(FrameOut::Bail) }).collect::<Res<_>>()?;
+    let keys: Vec<String> = list_arg(args, 0)?.iter().map(|v| if let V::Str(s) = v { Ok(s.to_string()) } else { Err(bad()) }).collect::<Res<_>>()?;
     let nested = str_arg(args, 1)?;
     let key_cols: Vec<&FrameColumn> = keys.iter().map(|k| require_column(f, k)).collect::<Res<_>>()?;
     let mut index: FxHashMap<Vec<CellKey>, usize> = FxHashMap::default();
@@ -656,7 +659,6 @@ fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
                 match crate::excel_criteria::parse_date(t) {
                     crate::excel_criteria::DateReading::Serial(s) => V::Num(s),
                     crate::excel_criteria::DateReading::NotADate | crate::excel_criteria::DateReading::Ambiguous(_) => V::Num(f64::NAN),
-                    crate::excel_criteria::DateReading::Bail => return Err(FrameOut::Bail),
                 }
             }
         }
@@ -674,7 +676,7 @@ fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
         None | Some("exact") => MatchMode::Exact,
         Some("nextSmaller") => MatchMode::NextSmaller,
         Some("nextLarger") => MatchMode::NextLarger,
-        Some(_) => return Err(FrameOut::Bail),
+        Some(_) => return Err(bad()),
     };
     let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
     let key = require_column(f, &column)?;
@@ -702,7 +704,7 @@ fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
 /// `frameRowAt`: the row at a 0-based index as a one-row frame (blank past the end).
 fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
     if !(i >= 0.0 && i.fract() == 0.0) {
-        return Err(FrameOut::Bail);
+        return Err(bad());
     }
     Ok(FrameOut::Frame(crate::frame_verbs::reorder_rows(f, &[i as usize])))
 }
@@ -714,7 +716,7 @@ fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
 fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let name = str_arg(args, 0)?;
     let values: Vec<FrameCell> = list_arg(args, 1)?.iter().map(v_cell).collect::<Res<_>>()?;
-    let ty: FrameColType = str_arg(args, 2)?.parse().map_err(|_| FrameOut::Bail)?;
+    let ty: FrameColType = str_arg(args, 2)?.parse().map_err(|_| bad())?;
     let clean = js_trim(&name);
     let mut columns = f.columns.clone();
     let at = match f.columns.iter().position(|c| c.name == clean) {
@@ -803,7 +805,7 @@ fn names_arg(args: &[V], i: usize) -> Res<Vec<String>> {
     match args.get(i) {
         None | Some(V::Undef) | Some(V::Null) => Ok(Vec::new()),
         Some(V::List(items)) => Ok(items.iter().map(|v| if let V::Str(s) = v { s.to_string() } else { String::new() }).collect()),
-        _ => Err(FrameOut::Bail),
+        _ => Err(bad()),
     }
 }
 
@@ -812,7 +814,7 @@ fn matrix_arg(args: &[V], i: usize) -> Res<Vec<Vec<FrameCell>>> {
         .iter()
         .map(|row| match row {
             V::List(cells) => cells.iter().map(v_cell).collect::<Res<Vec<_>>>(),
-            _ => Err(FrameOut::Bail),
+            _ => Err(bad()),
         })
         .collect()
 }
@@ -824,9 +826,9 @@ fn build_frame(args: &[V], typed: bool) -> Res<FrameOut> {
     let names = names_arg(args, 1)?;
     let known = if typed {
         match args.get(2) {
-            Some(V::Str(t)) => Some(t.parse().map_err(|_| FrameOut::Bail)?),
+            Some(V::Str(t)) => Some(t.parse().map_err(|_| bad())?),
             None | Some(V::Undef) | Some(V::Null) => None,
-            _ => return Err(FrameOut::Bail),
+            _ => return Err(bad()),
         }
     } else {
         None
@@ -862,7 +864,7 @@ fn frame_from_lists(args: &[V]) -> Res<FrameOut> {
     let known: Vec<Option<FrameColType>> = list_arg(args, 2)?
         .iter()
         .map(|v| match v {
-            V::Str(t) => t.parse().map(Some).map_err(|_| FrameOut::Bail),
+            V::Str(t) => t.parse().map(Some).map_err(|_| bad()),
             _ => Ok(None),
         })
         .collect::<Res<_>>()?;

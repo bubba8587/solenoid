@@ -18,12 +18,12 @@ use regress::{Flags, Regex};
 pub enum Compiled {
     /// V8 throws: the TS answers null.
     Invalid,
-    /// V8 takes it but the lowering can't promise regress agrees.
+    /// V8 takes it but the lowering can't promise regress agrees: the caller refuses it.
     Unsure,
     Ok(Rc<Regex>),
 }
 
-/// Quantifier bounds past this stay with the TS (V8 clamps them; regress may not).
+/// Quantifier bounds past this are refused (V8 clamps them; regress may not).
 const MAX_BOUND: u64 = 100_000;
 
 /// The flags that change what a pattern matches.

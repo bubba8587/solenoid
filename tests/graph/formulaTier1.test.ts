@@ -1,7 +1,8 @@
 // [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
 import { resolveExcelFunction, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
-import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
+import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
+import { isRange } from "./callTraits";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
 import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
@@ -260,7 +261,7 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
   });
 
   it("no blocked spelling gets range routing", () => {
-    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => RANGE_FUNCTIONS.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => isRange(n));
     expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
   });
 });

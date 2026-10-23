@@ -1,6 +1,7 @@
 // A range function's one-value arguments lift over a list, as in Excel (formula-language § Range functions).
 import { describe, it, expect } from "vitest";
-import { compileEvaluator, RANGE_FUNCTIONS, RANGE_SCALAR_ARGS } from "../../src/graph/excelFormula";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { callTraits, liftsAScalar, callTraitNames } from "./callTraits";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
 
 const env = { x: [5, 1, 9, 3, 7, 2], y: [10, 2, 18, 6, 14, 4] };
@@ -54,5 +55,5 @@ describe("LARGE and SMALL's k", () => {
 });
 
 it("every declared one-value argument belongs to a range function", () => {
-  for (const name of Object.keys(RANGE_SCALAR_ARGS)) expect(RANGE_FUNCTIONS.has(name), name).toBe(true);
+  for (const name of callTraitNames().filter(liftsAScalar)) expect(["range", "whole"], name).toContain(callTraits(name)!.kind);
 });

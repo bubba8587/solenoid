@@ -19,7 +19,6 @@ import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
-import { currentRowNumber } from "./computedColumnCore";
 import { matrixShape } from "./nodes/coerce";
 import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, flattenCells, SKIP_BY_CODE, type NumMat } from "./nodes/matrixOps";
 import {
@@ -1845,7 +1844,7 @@ registerInternal("TRANSPOSE", (v) => {
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
 // [[C22]] rowFormulaRefs: ROW() is the computed column's current row.
-registerInternal("ROW", () => currentRowNumber());
+registerInternal("ROW", () => solError("#NAME?", "ROW() is this row's number, so it only works inside a computed column"));
 registerInternal("HSTACK", (...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? stackH(mats) : null;

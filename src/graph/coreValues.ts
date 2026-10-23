@@ -8,9 +8,7 @@ import { isLambdaValue } from "./lambdaValue";
 import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
-import { wasmEngineLoaded, wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
-import { resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
-import { argumentError, type Ast } from "./excelFormula";
+import { wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
 // origin included, for as long as the original is alive.
@@ -37,7 +35,8 @@ export function errorFromCore(code: string, message: string, ref: number | undef
   return original && original.code === code ? original : solError(code as SolErrorCode, message);
 }
 
-export const wellFormed = (s: string): boolean => (s as string & { isWellFormed(): boolean }).isWellFormed();
+/** Text as the core holds it: a lone surrogate reads as U+FFFD ([[rust-core]] § Follow-ups, text is always well formed). */
+export const toWellFormed = (s: string): string => (s as string & { toWellFormed(): string }).toWellFormed();
 
 /** A number or error as the core's cell reader takes it: non-finite numbers and errors tagged. */
 export function wireCell(v: unknown): unknown {
@@ -48,12 +47,11 @@ export function wireCell(v: unknown): unknown {
 }
 
 /** A value as the core reads it: arrays nest, a wired LAMBDA crosses as its body text and captures (theirs with their
- *  units whatever `units` says), and with `units` a
- *  value with a unit crosses as itself ([[C25]] firstClassUnits). Undefined where a value can't cross: a LAMBDA with no
- *  text, a frame or other object, text with a lone surrogate, a unit where `units` is off. */
+ *  units whatever `units` says), and with `units` a value with a unit crosses as itself ([[C25]] firstClassUnits).
+ *  Undefined where a value can't cross: a LAMBDA with no text, a frame or other object, a unit where `units` is off. */
 export function coreValue(v: unknown, units = false): unknown {
   if (v === undefined) return { __undef: 1 };
-  if (typeof v === "string") return wellFormed(v) ? v : undefined;
+  if (typeof v === "string") return toWellFormed(v);
   if (units && isUnitCell(v)) {
     const udim = v.display ? displayDim(v.display) : null;
     const shown = v.display ? { scale: wireCell(displayScale(v.display)), offset: wireCell(displayOffset(v.display)), udim: udim && Object.fromEntries(Object.entries(udim).map(([k, x]) => [k, wireCell(x)])) } : {};
@@ -66,15 +64,15 @@ export function coreValue(v: unknown, units = false): unknown {
   if (isCx(v)) return { __cx: [wireCell(v.re), wireCell(v.im)] };
   if (isLambdaValue(v)) {
     if (v.eta) return { __lambda: { eta: v.expr } };
-    if (!v.expr || !wellFormed(v.expr)) return undefined;
+    if (!v.expr) return undefined;
     const captured = v.captured ?? [];
     // The captures with their units, beside the values the body reads for them (the shown numbers, or a plan's magnitudes).
     const values = captured.map((_, i) => coreValue(v.capturedValues?.[i], true));
     const read = captured.map((_, i) => coreValue((v.readValues ?? v.capturedValues)?.[i]));
     if (values.includes(undefined) || read.includes(undefined)) return undefined;
     const d = v.descriptions;
-    const descriptions = d && Object.entries(d).every(([k, x]) => wellFormed(k) && wellFormed(x)) ? { descriptions: d } : {};
-    return { __lambda: { params: v.params, expr: v.expr, captured, capturedValues: values, readValues: read, ...descriptions } };
+    const descriptions = d ? { descriptions: Object.fromEntries(Object.entries(d).map(([k, x]) => [toWellFormed(k), toWellFormed(x)])) } : {};
+    return { __lambda: { params: v.params.map(toWellFormed), expr: toWellFormed(v.expr), captured: captured.map(toWellFormed), capturedValues: values, readValues: read, ...descriptions } };
   }
   if (v === null || typeof v === "number" || typeof v === "boolean" || isSolError(v)) return wireCell(v);
   return undefined;
@@ -111,10 +109,10 @@ function fromReply(r: unknown): unknown {
   throw new Uncrossable();
 }
 
-/** The core's answer as a JS value, or `{ none }` where it bailed or answered something JS can't take back. */
+/** The core's answer as a JS value, or null where it threw or answered something JS can't take back. */
 export function readReply(r: unknown): { value: unknown } | null {
-  const o = r as { bail?: boolean; thrown?: string } | null;
-  if (o && typeof o === "object" && (o.bail || o.thrown !== undefined)) return null;
+  const o = r as { thrown?: string } | null;
+  if (o && typeof o === "object" && o.thrown !== undefined) return null;
   try {
     return { value: fromReply(r) };
   } catch (e) {
@@ -135,6 +133,20 @@ export interface EngineClock { now: number }
 
 export function engineClock(at: Date = new Date()): EngineClock {
   return { now: wallClockSerial(at) };
+}
+
+/** What a call answers where the core trapped mid-call; a fresh instance is on its way ([[rust-core]] § Where it runs). */
+export const TRAPPED_MESSAGE = "The engine stopped while computing this; it restarted, so recalculate to try again";
+
+const FX_CODE: Record<string, SolErrorCode> = {
+  "#DIV/0!": "#DIV/0!", "#N/A": "#N/A", "#NAME?": "#NAME?",
+  "#REF!": "#REF!", "#VALUE!": "#VALUE!", "#NULL!": "#VALUE!", "#NUM!": "#DOMAIN!",
+};
+
+/** A Formula.js error answer (`{fx}`) as the error a formula shows. */
+export function fxErrorToSol(e: Error): SolError {
+  const code = /#[A-Z0-9/?!.]+/.exec(e.message || String(e))?.[0] ?? "";
+  return solError(FX_CODE[code] ?? "#VALUE!", "The formula produced an error");
 }
 
 // A long list crossing again and again (a wired LAMBDA's capture, its body called once per item) is sent once: the
@@ -158,156 +170,41 @@ function envValue(v: unknown): unknown {
   return { __def: heldSeq, v: w };
 }
 
-export function evaluateOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
+/** A function body over plain arguments on the core, as a formula's call reads them; a JavaScript exception or a
+ *  trap answers an error value. */
+export function callOnCore(name: string, args: readonly unknown[]): unknown {
+  const wire = args.map((a) => coreValue(a));
+  if (wire.includes(undefined)) return solError("#VALUE!", `${name} got a value it can't read`);
+  const r = onCore(() => readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true })), null);
+  if (!r) return solError("#VALUE!", `${name} can't compute with these arguments`);
+  return r.value instanceof Error ? fxErrorToSol(r.value) : r.value;
+}
+
+/** `compileEvaluator(src)(env)`: the formula over named values on the core. A JavaScript exception the core reports
+ *  is thrown, as the formula threw it; a trap answers an error value. */
+export function evaluateOnCore(src: string, env: Record<string, unknown>): unknown {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
     if (forgotten.length) wasmInvokeSync("engine_forget", { ids: forgotten.splice(0) });
-    const wire: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(env)) {
-      const w = envValue(v);
-      if (w === undefined) return null;
-      wire[k] = w;
+    const send = () => {
+      const wire: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(env)) {
+        const w = envValue(v);
+        if (w === undefined) return solError("#VALUE!", `${k} holds a value a formula can't read`);
+        wire[k] = w;
+      }
+      return wasmInvokeSync<unknown>("engine_eval", { src: toWellFormed(src), env: wire, clock: engineClock() });
+    };
+    let r = send();
+    // The core lost a list it held (a fresh instance after a trap): send every list whole again.
+    if ((r as { missing?: true } | null)?.missing) {
+      heldIds = new WeakMap();
+      r = send();
     }
-    return readReply(wasmInvokeSync<unknown>("engine_eval", { src, env: wire, clock: engineClock() }));
-  }, null);
-}
-
-// A card mapping one body over a list crosses once for the list, not once an item ([[C120]] linearWork): `coreEach`
-// runs the item loop twice, first recording each `callCore` (which answers a placeholder), then sending each body's
-// calls in one `engine_call_each` and answering the second run's calls from the replies. A call the second run makes
-// differently from the first, or one the batch couldn't answer, goes through `callCore` as ever, so the answers are
-// the per-call ones. The loop must not keep what a call answers beyond the item (a cache would keep the placeholder).
-interface Recorded { name: string; args: readonly unknown[]; answer?: { value: unknown } }
-const PENDING = Object.freeze({ pendingCoreCall: true });
-let recording: Recorded[] | null = null;
-let replaying: { calls: Recorded[]; at: number } | null = null;
-const EACH_FROM = 8;
-
-export function coreEach<R>(n: number, item: (i: number) => R): R[] {
-  const out: R[] = new Array(n);
-  if (n >= EACH_FROM && !recording && !replaying && wasmEngineLoaded() && wasmEngineOn()) {
-    const calls: Recorded[] = [];
-    recording = calls;
-    try {
-      for (let i = 0; i < n; i++) item(i);
-    } catch {
-      calls.length = 0;
-    } finally {
-      recording = null;
-    }
-    answerEach(calls);
-    replaying = { calls, at: 0 };
-    try {
-      for (let i = 0; i < n; i++) out[i] = item(i);
-    } finally {
-      replaying = null;
-    }
-    return out;
-  }
-  for (let i = 0; i < n; i++) out[i] = item(i);
-  return out;
-}
-
-/** Answers the recorded calls body by body, one `engine_call_each` each over the argument positions that vary. */
-function answerEach(calls: Recorded[]): void {
-  const groups = new Map<string, Recorded[]>();
-  for (const c of calls) {
-    const key = `${c.args.length}:${c.name}`;
-    const g = groups.get(key);
-    if (g) g.push(c);
-    else groups.set(key, [c]);
-  }
-  for (const g of groups.values()) {
-    if (g.length < 2) continue;
-    const first = g[0].args;
-    const at = first.map((_, p) => p).filter((p) => g.some((c) => !Object.is(c.args[p], first[p])));
-    const args = first.map((a, p) => (at.includes(p) ? null : coreValue(a, true)));
-    if (args.includes(undefined)) continue;
-    const sent: Recorded[] = [];
-    const items: unknown[][] = [];
-    for (const c of g) {
-      const item = at.map((p) => coreValue(c.args[p], true));
-      if (item.includes(undefined)) continue;
-      sent.push(c);
-      items.push(item);
-    }
-    if (sent.length < 2) continue;
-    const r = onCore(() => wasmInvokeSync<{ each?: unknown[] }>("engine_call_each", { name: g[0].name, args, at, items, clock: engineClock(), scan: true }), null);
-    r?.each?.forEach((v, k) => {
-      const a = typeof v === "number" ? { value: v } : readReply(v);
-      if (a) sent[k].answer = { value: normalizeFxResult(a.value) };
-    });
-  }
-}
-
-/** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what
- *  its formula does in the one implementation ([[C17]] shareImpl, [[D99]] rustIsSpec). It runs on the TS where the
- *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. An error argument and a Formula.js
- *  error answer read as the evaluator reads them (`argumentError`). */
-export function callCore(name: string, args: readonly unknown[]): unknown {
-  if (recording) {
-    recording.push({ name, args });
-    return PENDING;
-  }
-  if (replaying) {
-    const r = replaying.calls[replaying.at];
-    if (r && r.name === name && r.args.length === args.length && r.args.every((a, i) => Object.is(a, args[i]))) {
-      replaying.at++;
-      if (r.answer) return r.answer.value;
-    } else replaying.at = Infinity;
-  }
-  if (wasmEngineLoaded() && wasmEngineOn()) {
-    const wire = args.map((a) => coreValue(a, true));
-    if (!wire.includes(undefined)) {
-      const r = onCore(() => readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true })), null);
-      if (r) return normalizeFxResult(r.value);
-    }
-  }
-  const f = resolveExcelFunction(name);
-  if (!f) return solError("#NAME?", `Unknown function ${name}`);
-  const early = argumentError(name.toUpperCase(), args);
-  if (early) return early;
-  try {
-    return normalizeFxResult(f(...args));
-  } catch (e) {
-    if (isSolError(e)) return e;
-    if (e instanceof TypeError || e instanceof RangeError) return solError("#VALUE!", `${name} can't compute with these arguments`);
-    throw e;
-  }
-}
-
-/** A formula as the core reads it: its text, or its tree (an Equation's isolated side has no text). */
-export type CoreFormula = { src: string } | { ast: Ast };
-/** Named LAMBDAs as their parameters and body, the body as text or as a tree. */
-export type CoreLambdas = Record<string, [string[], string | Ast]>;
-
-/** JSON escapes only a lone surrogate, which the core's UTF-8 strings can't hold. */
-const crosses = (v: unknown): boolean => !/\\ud[89a-f][0-9a-f]{2}/i.test(JSON.stringify(v));
-
-/** `dimEvalWithCode` on the core ([[C25]] firstClassUnits, [[D99]] rustIsSpec): a dimension (exponents as numbers) with its currency code, null where it is
- *  indeterminate, an error, or undefined where the core is off or can't read the formula. */
-export function dimEvalOnCore(f: CoreFormula, env: Record<string, Record<string, number>>, codes: Record<string, string>,
-  fns?: CoreLambdas): { dim: Record<string, number>; code?: string } | SolError | null | undefined {
-  return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !crosses(f) || (fns && !crosses(fns))) return undefined;
-    const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
-      "engine_dim_eval", { ...f, env, codes, ...(fns ? { fns } : {}) });
-    if (r.parses === false) return undefined;
-    if (r.indeterminate) return null;
-    if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
-    const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
-    return r.code == null ? { dim } : { dim, code: r.code };
-  }, undefined);
-}
-
-/** `affineWeight` on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or can't read
- *  the formula. */
-export function affineWeightOnCore(f: CoreFormula, points: readonly string[], lists: readonly string[], bare: readonly string[],
-  fns: CoreLambdas): 0 | 1 | SolError | undefined {
-  return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !crosses(f) || !crosses(fns)) return undefined;
-    const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { ...f, points, lists, bare, fns });
-    if (r.parses === false) return undefined;
-    return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
-  }, undefined);
+    if (isSolError(r)) return r;
+    const thrown = (r as { thrown?: string } | null)?.thrown;
+    if (thrown !== undefined) throw new Error(thrown);
+    const v = readReply(r);
+    if (!v) return solError("#VALUE!", "This answer can't come back from the engine");
+    return v.value instanceof Error ? fxErrorToSol(v.value) : v.value;
+  }, solError("#ERROR!", TRAPPED_MESSAGE));
 }

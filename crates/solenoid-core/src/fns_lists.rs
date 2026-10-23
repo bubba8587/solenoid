@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{ErrorCode, sol_error};
-use crate::excel_functions::{bail, js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
+use crate::excel_functions::{js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_string};
@@ -677,7 +677,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "FITDIST" => fitdist(a0, arg(a, 1)),
         "INTERPOLATE" => interpolate(a0, arg(a, 1), arg(a, 2), arg(a, 3)),
-        _ => bail(),
+        _ => V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))),
     }
 }
 
@@ -1661,9 +1661,9 @@ fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
         return domain("DECOMPOSE model must be additive, multiplicative or stl");
     }
     let y: Vec<Option<f64>> = to_list(l).iter().map(finite).collect();
-    // A NaN period runs on into `new Array(NaN)` and arrays of holes.
+    // A NaN period reaches `new Array(NaN)`, which throws.
     if to_num(period).is_nan() {
-        return bail();
+        return throw(sol_error(ErrorCode::Value, "Invalid array length"));
     }
     let d = if mdl == "stl" { stl_decompose(&y, to_num(period)) } else { seasonal_decompose(&y, to_num(period), mdl == "additive") };
     match d {

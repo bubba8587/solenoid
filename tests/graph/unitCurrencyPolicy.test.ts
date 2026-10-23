@@ -107,15 +107,14 @@ describe("the formula surface — codes ride the dim pass (the Expression gap, c
     expect(scaled.dim).toEqual({ currency: 1 });
   });
 
-  it("dimEval refuses codes directly (the pure pass)", async () => {
-    const { dimEval } = await import("../../src/graph/unitDimExpr");
-    const { parseFormula } = await import("../../src/graph/excelFormula");
+  it("the dimension pass refuses codes directly", async () => {
+    const { dimOf } = await import("./coreDims");
     const env = { a: { currency: 1 }, b: { currency: 1 } };
-    const mismatch = dimEval(parseFormula("a + b")!, env, { a: "usd", b: "eur" });
+    const mismatch = dimOf("a + b", env, { a: "usd", b: "eur" });
     expect(isSolError(mismatch) && mismatch.code === "#UNIT!").toBe(true);
     // Same code passes; an uncoded computed currency adopts leniently.
-    expect(dimEval(parseFormula("a + b")!, env, { a: "usd", b: "usd" })).toEqual({ currency: 1 });
-    expect(dimEval(parseFormula("a + b")!, env, { a: "usd" })).toEqual({ currency: 1 });
+    expect(dimOf("a + b", env, { a: "usd", b: "usd" })).toEqual({ currency: 1 });
+    expect(dimOf("a + b", env, { a: "usd" })).toEqual({ currency: 1 });
   });
 });
 

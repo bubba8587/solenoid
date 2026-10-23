@@ -102,7 +102,7 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
     }
 }
 
-/// The fold over a table's rows; None leaves it to the TS (a row that isn't a list, a unit nested in a cell).
+/// The fold over a table's rows; None where it can't carry the table (a row that isn't a list, a unit nested in a cell).
 pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
     fold_units_over(kind, &crate::excel_formula::parse_formula(src)?, &Env::default(), m, initial)
 }

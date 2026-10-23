@@ -405,7 +405,7 @@ pub enum Form {
     InvRt,
 }
 
-/// Loops a distribution runs one step per value: past this many, the column is left to the TS.
+/// Loops a distribution runs one step per value: past this many, it is refused ([[C120]] linearWork).
 const LOOP_CAP: f64 = 1e6;
 
 /// A loop longer than `LOOP_CAP`.

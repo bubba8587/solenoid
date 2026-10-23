@@ -1053,8 +1053,7 @@ fn run_column(planned: &[TableColumn], rows: usize, spec: crate::eval::ColumnSpe
     let inputs = crate::eval::ColumnInputs { table: crate::eval::Table::Frame(&frame), sides, row_sides, reserved: Vec::new(), alias: Default::default(), rows };
     match crate::eval::column(spec, inputs) {
         Err(e) => Err(V::err(e)),
-        Ok(crate::eval::ColumnOutcome::Done { cells, .. }) => Ok(cells.iter().map(super::frames::card_cell).collect()),
-        Ok(crate::eval::ColumnOutcome::Bail) => Err(err(ErrorCode::Value, "This formula uses a function the engine can't run in a computed column yet")),
+        Ok(o) => Ok(o.cells.iter().map(super::frames::card_cell).collect()),
     }
 }
 

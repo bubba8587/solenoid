@@ -13,7 +13,7 @@ fn cells(src: &str) -> Vec<FrameCell> {
     let ast = solenoid_core::excel_formula::parse_formula(src).expect("parses");
     let inp = ColumnInputs { table: Table::Frame(&f), sides: Default::default(), row_sides: Default::default(), reserved: vec![], alias: Default::default(), rows: 3 };
     match column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp) {
-        Ok(ColumnOutcome::Done { cells, .. }) => cells,
+        Ok(ColumnOutcome { cells, .. }) => cells,
         _ => panic!("no column"),
     }
 }

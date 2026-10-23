@@ -1,5 +1,5 @@
 // [[D99]] rustIsSpec
-//! What one engine call raises (a throw, a bail) never reaches the next call.
+//! What one engine call raises (a throw) never reaches the next call.
 
 use serde_json::json;
 use solenoid_core::frame_backend::invoke;
@@ -8,7 +8,7 @@ fn abs_of(x: f64) -> serde_json::Value {
     invoke("engine_call", &json!({ "name": "ABS", "args": [x] })).expect("engine_call answers")
 }
 
-/// A frame call's argument that bails as it decodes (a LAMBDA whose body doesn't parse) left its throw pending, and
+/// A frame call's argument that throws as it decodes (a LAMBDA whose body doesn't parse) left its throw pending, and
 /// the next call answered it as its own exception.
 #[test]
 fn a_frame_calls_throw_stays_its_own() {

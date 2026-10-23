@@ -854,11 +854,11 @@ impl Eval<'_> {
                 } else {
                     &args
                 };
-                // The ported range bodies read their lists flat, but for those that read each list in place. A value
-                // nested past a matrix would reach a flat reader as a list among its numbers, a shape none reads yet.
+                // The range bodies read their lists flat, but for those that read each list in place. A value nested
+                // past a table would reach a flat reader as a list among its numbers.
                 let in_place = crate::excel_functions::reads_lists(name);
                 if !in_place && flat.iter().any(is_arr) {
-                    return crate::excel_functions::bail();
+                    return V::err(sol_error(ErrorCode::Value, format!("{name} reads values and tables, not lists nested inside a table")));
                 }
                 match self.dispatch(name, Some(t), if in_place { &args } else { flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, flat),
@@ -919,7 +919,7 @@ impl Eval<'_> {
         })
     }
 
-    /// `dispatch`: the body itself, its JavaScript failure read as #VALUE!. A body the core doesn't carry yet bails.
+    /// `dispatch`: the body itself, its JavaScript failure read as #VALUE!.
     fn dispatch(&self, name: &str, t: Option<&Traits>, argv: &[V]) -> V {
         let (lambda_host, ported) = match t {
             Some(t) => (t.fast.lambda_host, t.fast.ported),
@@ -928,8 +928,11 @@ impl Eval<'_> {
         if lambda_host {
             return self.host(name, argv);
         }
-        if !ported || (argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name)) {
-            return crate::excel_functions::bail();
+        if !ported {
+            return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
+        }
+        if argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name) {
+            return V::err(sol_error(ErrorCode::Shape, format!("{name} works on values and 1-D lists, not a 2-D matrix")));
         }
         call_caught(name, argv)
     }
@@ -1079,7 +1082,7 @@ impl Eval<'_> {
                 }
                 list(groups.into_iter().map(|(k, vals)| list(vec![k, call(&[list(vals)], 1)])).collect())
             }
-            _ => crate::excel_functions::bail(),
+            _ => V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))),
         }
     }
 }
@@ -1483,8 +1486,12 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             let units = values("capturedValues").unwrap_or_default();
             // A λ frozen before its values crossed with their units carries only the ones its body reads.
             let read = values("readValues").unwrap_or_else(|| units.clone());
-            let Some(src) = w.get("expr").and_then(Json::as_str) else { return crate::excel_functions::bail() };
-            let Some(body) = crate::excel_formula::parse_formula(src) else { return crate::excel_functions::bail() };
+            let Some(src) = w.get("expr").and_then(Json::as_str) else {
+                return V::err(sol_error(ErrorCode::Value, "This LAMBDA has no formula text to run"));
+            };
+            let Some(body) = crate::excel_formula::parse_formula(src) else {
+                return V::err(sol_error(ErrorCode::Syntax, "The lambda body has a syntax error"));
+            };
             let env: Env = captured.iter().cloned().zip(read.into_iter().chain(std::iter::repeat(V::Undef))).collect();
             let descriptions = w.get("descriptions").filter(|d| d.is_object()).map(|d| Rc::new(d.clone()));
             V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured), src: Some(src.to_string()), units, descriptions }))
@@ -1512,10 +1519,9 @@ pub struct ColumnInputs<'a> {
     pub rows: usize,
 }
 
-pub enum ColumnOutcome<C = crate::frame::FrameCell> {
-    /// A body bailed: the TS computes this column.
-    Bail,
-    Done { cells: Vec<C>, side_vars: Vec<String> },
+pub struct ColumnOutcome<C = crate::frame::FrameCell> {
+    pub cells: Vec<C>,
+    pub side_vars: Vec<String>,
 }
 
 /// `computeColumnCells`: each row's cell and the side inputs the formula reads, or the error that stops it.
@@ -1584,9 +1590,8 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
     use crate::excel_functions::{take_raised, Raised};
     take_raised();
     let finish = |v: V| match take_raised() {
-        Raised::Bailed => None,
-        Raised::Thrown(e) => Some(tag(V::err(e))),
-        Raised::Nothing => Some(tag(v)),
+        Raised::Thrown(e) => tag(V::err(e)),
+        Raised::Nothing => tag(v),
     };
     /// ROW()'s row while the column runs; dropping it clears the row.
     struct Rows;
@@ -1627,10 +1632,7 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
                 ctx.cursor.set(i);
                 rows.at(i);
                 let v = ev.run(ast, &env);
-                match finish(v) {
-                    Some(c) => cells.push(c),
-                    None => return Ok(ColumnOutcome::Bail),
-                }
+                cells.push(finish(v));
             }
         }
         ColumnSpec::Lambda(lam) => {
@@ -1647,12 +1649,9 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
                     Some(e) => e,
                     None => ev.call_lambda(lam, &argv),
                 };
-                match finish(v) {
-                    Some(c) => cells.push(c),
-                    None => return Ok(ColumnOutcome::Bail),
-                }
+                cells.push(finish(v));
             }
         }
     }
-    Ok(ColumnOutcome::Done { cells, side_vars })
+    Ok(ColumnOutcome { cells, side_vars })
 }

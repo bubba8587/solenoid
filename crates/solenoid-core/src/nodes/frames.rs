@@ -671,7 +671,7 @@ fn choice_ladder(c: &mut Call) -> Answer {
 /// A frame function's one frame, a thrown error as the card's error, as `runVerb` reads `frameOnCore`.
 fn frame_fn_frame(name: &str, f: &Frame, args: &[V]) -> Option<Result<FrameValue, V>> {
     use crate::frame_fns::FrameOut;
-    match frame_fn(name, &[&to_core(f)], args) {
+    match crate::frame_fns::call(name, &[&to_core(f)], args) {
         FrameOut::Frame(r) | FrameOut::FrameAnd(r, _) => Some(Ok(r)),
         FrameOut::Error(e) => Some(Err(V::err(e))),
         _ => None,
@@ -728,7 +728,7 @@ fn split_frame(c: &mut Call) -> Answer {
     }
     let mixed = cols.iter().any(|col| col.ty == FrameColType::String);
     let sub = Frame { columns: cols, total_rows: None, approx: None };
-    let matrix = match frame_fn("splitFrame", &[&to_core(&sub)], &[]) {
+    let matrix = match crate::frame_fns::call("splitFrame", &[&to_core(&sub)], &[]) {
         crate::frame_fns::FrameOut::Value(V::List(v)) => v.first().cloned().unwrap_or(V::Null),
         _ => V::Null,
     };
@@ -768,7 +768,7 @@ fn pca(c: &mut Call) -> Answer {
         return out(c, err(ErrorCode::Value, "PCA needs at least one number column"), V::Null, V::Null);
     }
     let standardize = c.field("standardize").and_then(Json::as_bool).unwrap_or(false);
-    let r = match frame_fn("pca", &[&to_core(&f)], &[V::Bool(standardize)]) {
+    let r = match crate::frame_fns::call("pca", &[&to_core(&f)], &[V::Bool(standardize)]) {
         crate::frame_fns::FrameOut::Frame(r) => r,
         _ => return out(c, V::Null, V::Null, V::Null),
     };
@@ -849,7 +849,7 @@ fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
         })
         .collect();
     let money = amount_col.and_then(|j| cube[j].1.iter().find_map(|v| if let V::Unit(u) = v { Some(cell_money(u)) } else { None }));
-    match frame_fn("settleLedger", &[&FrameValue { columns }], &[list(units)]) {
+    match crate::frame_fns::call("settleLedger", &[&FrameValue { columns }], &[list(units)]) {
         crate::frame_fns::FrameOut::Frame(out) => settle_split(out, money, None).ok_or(V::Null),
         crate::frame_fns::FrameOut::Error(e) => Err(V::err(e)),
         _ => Err(V::Null),
@@ -906,7 +906,7 @@ fn settle(c: &mut Call) -> Answer {
     let paid = by_name(&["paid", "amount", "spent"])
         .or_else(|| f.columns.iter().find(|col| col.ty == FrameColType::Number && share.is_none_or(|s| !std::ptr::eq(*col, s))));
     let (unit, format) = paid.map_or((None, None), |p| (p.unit.clone(), p.format.clone()));
-    let r = match frame_fn("settleFrame", &[&to_core(&f)], &[V::str(split)]) {
+    let r = match crate::frame_fns::call("settleFrame", &[&to_core(&f)], &[V::str(split)]) {
         crate::frame_fns::FrameOut::Frame(out) => settle_split(out, unit, format).ok_or(V::Null),
         crate::frame_fns::FrameOut::Error(e) => Err(V::err(e)),
         _ => Err(V::Null),
@@ -999,7 +999,7 @@ fn decision_sensitivity(c: &mut Call) -> Answer {
             let w = w.map(|w| to_core(&w));
             let r = if flips {
                 let frames: Vec<&FrameValue> = std::iter::once(&s).chain(w.as_ref()).collect();
-                match frame_fn("flipPoints", &frames, &[V::str(c.field_str("normalize", "max"))]) {
+                match crate::frame_fns::call("flipPoints", &frames, &[V::str(c.field_str("normalize", "max"))]) {
                     crate::frame_fns::FrameOut::Frame(r) => Ok(V::Frame(Rc::new(from_core(&r)))),
                     crate::frame_fns::FrameOut::Error(e) => Err(e),
                     _ => Ok(V::Null),
@@ -1013,17 +1013,6 @@ fn decision_sensitivity(c: &mut Call) -> Answer {
     shown_frame(c, "cube", out)
 }
 // ─── The core's frame functions ───────────────────────────────────────────────
-
-/// A frame function by name on the core's frames (`engine_frame_fn`), a bailed reading answered as `Bail`.
-pub(crate) fn frame_fn(name: &str, frames: &[&FrameValue], args: &[V]) -> crate::frame_fns::FrameOut {
-    crate::excel_functions::take_bailed();
-    let out = crate::frame_fns::call(name, frames, args);
-    if crate::excel_functions::take_bailed() {
-        crate::excel_functions::take_thrown();
-        return crate::frame_fns::FrameOut::Bail;
-    }
-    out
-}
 
 // ─── Units on columns (unitColumn.ts) ───────────────────────────────────────────
 
@@ -1183,11 +1172,11 @@ fn add_column(c: &mut Call) -> Answer {
     let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
     let (clean, unit) = parse_column_unit_from_header(&name);
     let names_only = FrameValue { columns: f.columns.iter().map(|col| FrameColumn::new(col.name.clone(), col.ty, Vec::new())).collect() };
-    let at = match frame_fn("addColumn", &[&names_only], &[V::str(&clean), list(Vec::new()), V::str(ty.as_str())]) {
+    let at = match crate::frame_fns::call("addColumn", &[&names_only], &[V::str(&clean), list(Vec::new()), V::str(ty.as_str())]) {
         crate::frame_fns::FrameOut::FrameAnd(out, V::Num(at)) => Some((out, at as usize)),
         _ => None,
     };
-    let Some((out, at)) = at else { return Err(thrown("Add Column left a reading to the TS")) };
+    let Some((out, at)) = at else { return Err(thrown("Add Column got an answer it doesn't read")) };
     let unit = unit.filter(|_| ty == FrameColType::Number);
     let mut columns = f.columns.clone();
     if at < f.columns.len() {
@@ -1296,10 +1285,10 @@ fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str
     let cells: Vec<V> = (0..rows).map(|i| key.cells.get(i).cloned().unwrap_or(V::Undef)).collect();
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
     let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
-    match frame_fn("lookupRowIndex", &[&f], &[V::str(in_col), V::str(lookup), V::str(mm), V::str(sm)]) {
+    match crate::frame_fns::call("lookupRowIndex", &[&f], &[V::str(in_col), V::str(lookup), V::str(mm), V::str(sm)]) {
         crate::frame_fns::FrameOut::Value(V::Num(i)) => Ok(i as i64),
         crate::frame_fns::FrameOut::Error(e) => Err(V::err(e)),
-        _ => Err(thrown("XLOOKUP left a reading to the TS")),
+        _ => Err(thrown("XLOOKUP got an answer it doesn't read")),
     }
 }
 
@@ -1343,8 +1332,8 @@ fn lookup_on_core(src: &Frame, in_col: &str, ret: Option<&str>, lookups: &[Strin
     let f = FrameValue { columns };
     let items = list(lookups.iter().map(|l| V::str(l)).collect());
     let r = match ret {
-        None => frame_fn("lookupRowIndex", &[&f], &[V::str(in_col), items, V::str(mm), V::str(sm)]),
-        Some(r) => frame_fn("lookupCell", &[&f], &[V::str(in_col), V::str(r), items, V::str(mm), V::str(sm)]),
+        None => crate::frame_fns::call("lookupRowIndex", &[&f], &[V::str(in_col), items, V::str(mm), V::str(sm)]),
+        Some(r) => crate::frame_fns::call("lookupCell", &[&f], &[V::str(in_col), V::str(r), items, V::str(mm), V::str(sm)]),
     };
     let out = match r {
         crate::frame_fns::FrameOut::Value(V::List(l)) => l.to_vec(),
@@ -1483,14 +1472,14 @@ fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
 fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<V, V> {
     use crate::frame_fns::FrameOut;
     let args = [list(keys.iter().map(|k| V::str(k)).collect()), V::str(name)];
-    let (names, groups) = match frame_fn("nestGroups", &[&to_core(f)], &args) {
+    let (names, groups) = match crate::frame_fns::call("nestGroups", &[&to_core(f)], &args) {
         FrameOut::Value(V::List(r)) if r.len() == 2 => {
             let names: Vec<String> = super::stats::items(&r[0]).iter().map(|v| if let V::Str(s) = v { s.to_string() } else { String::new() }).collect();
             let groups: Vec<Vec<usize>> = super::stats::items(&r[1]).iter().map(|g| super::stats::items(g).iter().map(|i| super::kit::num(i) as usize).collect()).collect();
             (names, groups)
         }
         FrameOut::Error(e) => return Err(V::err(e)),
-        _ => return Err(thrown("Nest left a reading to the TS")),
+        _ => return Err(thrown("Nest got an answer it doesn't read")),
     };
     let cell = |col: &Column, i: usize| col.values.get(i).cloned().unwrap_or(V::Null);
     let mut cols: Vec<CubeColumn> = keys
@@ -2484,11 +2473,11 @@ fn build_frame(c: &mut Call) -> Answer {
     let clean = list(parsed.iter().map(|(n, _)| V::str(n)).collect());
     let matrix = list(m.into_iter().map(list).collect());
     let out = if typed {
-        frame_fn("buildFrameTyped", &[], &[matrix, clean, known.map_or(V::Null, V::str)])
+        crate::frame_fns::call("buildFrameTyped", &[], &[matrix, clean, known.map_or(V::Null, V::str)])
     } else {
-        frame_fn("buildFrame", &[], &[matrix, clean])
+        crate::frame_fns::call("buildFrame", &[], &[matrix, clean])
     };
-    let crate::frame_fns::FrameOut::Frame(f) = out else { return Err(thrown("Build Frame left a reading to the TS")) };
+    let crate::frame_fns::FrameOut::Frame(f) = out else { return Err(thrown("Build Frame got an answer it doesn't read")) };
     let mut f = from_core(&f);
     for (col, (_, unit)) in f.columns.iter_mut().zip(&parsed) {
         if unit.is_some() && (!typed || col.ty == crate::frame::FrameColType::Number) {
@@ -2518,9 +2507,9 @@ fn frame_from_lists(c: &mut Call) -> Answer {
     if names.is_empty() {
         return shown_frame(c, "frame", V::Null);
     }
-    match frame_fn("frameFromLists", &[], &[list(names), list(lists), list(known)]) {
+    match crate::frame_fns::call("frameFromLists", &[], &[list(names), list(lists), list(known)]) {
         crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", V::Frame(Rc::new(from_core(&f)))),
-        _ => Err(thrown("Frame from Lists left a reading to the TS")),
+        _ => Err(thrown("Frame from Lists got an answer it doesn't read")),
     }
 }
 
@@ -2547,10 +2536,10 @@ fn reconcile(c: &mut Call) -> Answer {
         return blank(c);
     }
     use crate::frame_fns::FrameOut;
-    let outcome = match frame_fn("reconcileFrames", &[&to_core(l), &to_core(r)], &[V::str(&key), V::str(&key), price, qty]) {
+    let outcome = match crate::frame_fns::call("reconcileFrames", &[&to_core(l), &to_core(r)], &[V::str(&key), V::str(&key), price, qty]) {
         FrameOut::FrameAnd(f, summary) => Ok((from_core(&f), summary)),
         FrameOut::Error(e) => Err(V::err(e)),
-        _ => return Err(thrown("Reconcile left a reading to the TS")),
+        _ => return Err(thrown("Reconcile got an answer it doesn't read")),
     };
     match outcome {
         Err(e) => {

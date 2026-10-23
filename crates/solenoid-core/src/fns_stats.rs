@@ -10,7 +10,7 @@ use crate::zone;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{ErrorCode, FxError, sol_error};
 use crate::excel_functions::{
-    average_ranks, bail, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js, to_num, V,
+    average_ranks, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js, to_num, V,
 };
 use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
@@ -134,7 +134,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "BESSELK" => bessel_wrap(besselk0, besselk1, x, n, 2, 1.0),
                 _ => bessel_wrap(bessely0, bessely1, x, n, 1, -1.0),
             };
-            r.map_or_else(bail, V::Num)
+            r.map_or_else(|| V::err(sol_error(ErrorCode::Domain, format!("{name} takes an order of at most 1,000,000"))), V::Num)
         }
         "ANOVA" | "KRUSKAL" => {
             let groups: Vec<Vec<f64>> = a.iter().map(|g| nums_of(std::slice::from_ref(g))).filter(|g| !g.is_empty()).collect();
@@ -158,16 +158,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "ACCRINT" => accrint(a),
         "COUPDAYS" => coupdays(a),
         "DISC" | "PRICEDISC" => discounted(name, a),
-        _ => bail(),
-    }
-}
-
-/// Whether a value holds an object whose `new Date` reading the core doesn't carry.
-fn holds_object(v: &V) -> bool {
-    match v {
-        V::Cx(..) | V::Lambda(_) => true,
-        V::List(items) => items.iter().any(holds_object),
-        _ => false,
+        _ => V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))),
     }
 }
 
@@ -195,9 +186,6 @@ fn truthy_value(v: &V) -> bool {
 
 /// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)` over `new Date` readings.
 fn accrint(a: &[V]) -> V {
-    if (0..3).any(|i| holds_object(arg(a, i))) {
-        return bail();
-    }
     let (issue, first, settlement) = (new_date(arg(a, 0)), new_date(arg(a, 1)), new_date(arg(a, 2)));
     let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx(FxError::Num) };
     if issue.is_nan() || first.is_nan() || settlement.is_nan() {

@@ -1,13 +1,14 @@
-// [[C22]]
+// [[C22]], [[C120]] linearWork
 import { describe, expect, it } from "vitest";
-import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
-import { computeColumnCells, type ComputedColumnResult } from "../../src/graph/computedColumnCore";
-import "../../src/graph/excelFunctions";
+import { computeColumnOnEngine } from "../../src/graph/frameBackend";
+import { isSolError } from "../../src/graph/errorValue";
+import type { FrameValue } from "../../src/graph/frame";
 
 const run = (expr: string, values: number[]) => {
-  const ev = compileEvaluator(expr)!;
-  const r = computeColumnCells({ columns: [{ name: "price", values }] }, { kind: "expr", evaluator: ev, vars: extractVariables(expr) });
-  return (r as ComputedColumnResult).cells;
+  const f: FrameValue = { __frame: true, columns: [{ name: "price", type: "number", values }] };
+  const r = computeColumnOnEngine(f, expr, values.length);
+  if (!r || isSolError(r)) throw new Error(`no column: ${JSON.stringify(r)}`);
+  return r.cells;
 };
 
 describe("a range function over a whole column", () => {
@@ -16,13 +17,8 @@ describe("a range function over a whole column", () => {
   });
 
   it("re-reads the column on the next run of the same formula", () => {
-    const expr = "@price - AVERAGE(price)";
-    const ev = compileEvaluator(expr)!;
-    const cells = (values: number[]) => (computeColumnCells(
-      { columns: [{ name: "price", values }] }, { kind: "expr", evaluator: ev, vars: extractVariables(expr) },
-    ) as ComputedColumnResult).cells;
-    expect(cells([1, 3])).toEqual([-1, 1]);
-    expect(cells([10, 20])).toEqual([-5, 5]);
+    expect(run("@price - AVERAGE(price)", [1, 3])).toEqual([-1, 1]);
+    expect(run("@price - AVERAGE(price)", [10, 20])).toEqual([-5, 5]);
   });
 
   it("stays linear at 20k rows", () => {

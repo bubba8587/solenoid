@@ -8,7 +8,6 @@ import { cx } from "./cxValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn } from "./frame";
 import { compilePositional } from "./excelFormula";
-import { readCapturedColumn } from "./computedColumnCore";
 import type { LambdaValue } from "./lambdaValue";
 
 /** The plain-data kinds a card makes whole, by their marker field. */
@@ -90,9 +89,8 @@ type LambdaWire = { params: string[]; expr: string; captured: string[]; captured
 type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[];
   lambda?: true | LambdaWire };
 
-/** A LAMBDA from its body's text: `fn` runs the body over the parameters, then the captures, where inside a computed
- *  column a capture naming a column reads it ([[C22]] rowFormulaRefs). `fn` and `withCaptures` are not enumerable: a
- *  reader that lists or compares a LAMBDA's parts sees its text and values. */
+/** A LAMBDA from its body's text: `fn` runs the body on the core over the parameters, then the captures. `fn` and
+ *  `withCaptures` are not enumerable: a reader that lists or compares a LAMBDA's parts sees its text and values. */
 function wiredLambda(w: LambdaWire, capturedValues: readonly unknown[], readValues: readonly unknown[]): LambdaValue {
   const { params, expr, captured } = w;
   let compiled: ((...args: unknown[]) => unknown) | null | undefined;
@@ -100,10 +98,7 @@ function wiredLambda(w: LambdaWire, capturedValues: readonly unknown[], readValu
     const fn = (...args: unknown[]): unknown => {
       compiled ??= compilePositional(expr, [...params, ...captured]);
       if (!compiled) return solError("#SYNTAX!", "The lambda body has a syntax error");
-      return compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
-        const col = readCapturedColumn(c);
-        return col.hit ? col.v : vals[i];
-      }));
+      return compiled(...args.slice(0, params.length), ...vals);
     };
     const lam = { __lambda: true, params, expr, captured, ...(w.descriptions ? { descriptions: w.descriptions } : {}), capturedValues, readValues: vals };
     return Object.defineProperties(lam, { fn: { value: fn }, withCaptures: { value: build } }) as LambdaValue;

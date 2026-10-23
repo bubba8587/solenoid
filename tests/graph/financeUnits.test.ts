@@ -1,7 +1,6 @@
 // [[D101]] financeCarriesMoney: the finance functions carry the currency their money arguments share.
 import { describe, it, expect } from "vitest";
-import { parseFormula } from "../../src/graph/excelFormula";
-import { dimEvalWithCode } from "../../src/graph/unitDimExpr";
+import { dimWithCode } from "./coreDims";
 import { fromUnit, isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { fcUnitToUnit } from "../../src/graph/unitBridge";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
@@ -19,8 +18,7 @@ const km = (n: number) => fromUnit(n, fcUnitToUnit("km")!, "km") as UnitCell;
 const CUR = { currency: 1 };
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
-const dimOf = (src: string, env: Record<string, Record<string, number>>, codes: Record<string, string> = {}) =>
-  dimEvalWithCode(parseFormula(src)!, env, codes);
+const dimOf = (src: string, env: Record<string, Record<string, number>>, codes: Record<string, string> = {}) => dimWithCode(src, env, codes);
 
 describe("the formula's dimension pass", () => {
   it("money in is money out, in the money's currency", () => {

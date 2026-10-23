@@ -105,7 +105,7 @@ describe("README routing-table code citations exist", () => {
   const basenames = new Set<string>();
   const walk = (dir: string) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+      if (e.name === "node_modules" || e.name === "target" || e.name.startsWith(".")) continue;
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
       else basenames.add(e.name);
@@ -115,6 +115,7 @@ describe("README routing-table code citations exist", () => {
   walk(path.join(ROOT, "tests"));
   walk(path.join(ROOT, "scripts"));
   walk(path.join(ROOT, "src-tauri", "src"));
+  walk(path.join(ROOT, "crates"));
 
   const readme = read(path.join(DOCS, "README.md"));
   const cited = new Set<string>();

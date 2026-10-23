@@ -6,7 +6,7 @@
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::{ErrorCode, FxError, sol_error};
-use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, truthy, V};
+use crate::excel_functions::{js_pow, js_string_of, parse_number, throw, truthy, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
@@ -94,9 +94,10 @@ fn array_join(n: f64, text: &str) -> Result<String, V> {
     if !((0.0..=4_294_967_295.0).contains(&n) && n.fract() == 0.0) {
         return Err(invalid_array_length());
     }
-    // Megabytes of text per call: past this only the TS's own length limits decide.
-    if n > 1e7 {
-        return Err(bail());
+    // V8's longest string, in UTF-16 units.
+    let units = text.encode_utf16().count() as f64;
+    if (n - 1.0).max(0.0) * units > 536_870_888.0 {
+        return Err(throw(sol_error(ErrorCode::Value, "Invalid string length")));
     }
     Ok(text.repeat((n as usize).saturating_sub(1)))
 }
@@ -520,7 +521,7 @@ fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
         p += t;
         steps += 1;
         if steps > 10_000_000 {
-            return Err(bail());
+            return Err(throw(sol_error(ErrorCode::Value, "CHISQ.TEST's statistic is too large to sum")));
         }
     }
     Ok(1.0 - p)
@@ -812,7 +813,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return throw(sol_error(ErrorCode::Value, "Cannot read properties of undefined (reading 'length')"));
             }
             if actual.iter().chain(expected.iter()).any(|v| matches!(v, V::List(_))) {
-                return bail();
+                return throw(sol_error(ErrorCode::Value, "CHISQ.TEST reads two tables of numbers"));
             }
             let dof = actual.len() as f64 - 1.0;
             let mut xsqr = 0.0;

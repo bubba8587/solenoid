@@ -28,10 +28,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// A formula over named values as `compileEvaluator` runs it; `Err` where the evaluation throws.
 fn evaluate(src: &str, env: Env) -> Result<V, ()> {
-    use crate::excel_functions::{take_bailed, take_thrown};
     let v = crate::eval::formula(src, env).ok_or(())?;
-    let (bailed, thrown) = (take_bailed(), take_thrown().is_some());
-    if bailed || thrown { Err(()) } else { Ok(v) }
+    if crate::excel_functions::take_thrown().is_some() { Err(()) } else { Ok(v) }
 }
 
 /// The label a unit id shows (`UNIT_ANNOTATIONS`), trimmed.
@@ -210,10 +208,9 @@ fn expression(c: &mut Call) -> Answer {
     }
     if names.iter().any(|v| has_unit_cell(&env[v])) {
         let r = crate::unit_expression::expression_units(&expr, &env, &names);
-        let bailed = crate::excel_functions::take_bailed();
         let thrown = crate::excel_functions::take_thrown().is_some();
         return match r {
-            Some(v) if !bailed && !thrown => expression_done(c, v, None, true),
+            Some(v) if !thrown => expression_done(c, v, None, true),
             _ => {
                 let e = err(ErrorCode::Value, "The formula failed to evaluate");
                 expression_done(c, e, Some("Evaluation error"), false)

@@ -67,13 +67,14 @@ fn row_of(v: &V) -> Option<Vec<V>> {
     if let V::List(r) = v { Some(r.to_vec()) } else { None }
 }
 
-/// `toMatrix` (excelFunctions.ts): blank is none, a flat list one row, a scalar one cell. Err is a bail.
+/// `toMatrix` (excelFunctions.ts): blank is none, a flat list one row, a scalar one cell. A table with a row that
+/// isn't a list throws.
 fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
     match v {
         V::Undef | V::Null => Ok(None),
         V::List(items) => {
             if matches!(items.first(), Some(V::List(_))) {
-                items.iter().map(|r| row_of(r).ok_or(())).collect::<Result<Mat, ()>>().map(Some).map_err(|_| crate::excel_functions::bail())
+                items.iter().map(|r| row_of(r).ok_or(())).collect::<Result<Mat, ()>>().map(Some).map_err(|_| crate::excel_functions::throw(sol_error(ErrorCode::Value, "A table's rows must all be lists")))
             } else {
                 Ok(Some(vec![items.to_vec()]))
             }
@@ -339,10 +340,6 @@ fn expand_mat(m: &Mat, req_r: f64, req_c: f64, fill: V) -> V {
     }
     if let Some(e) = cell_cap("EXPAND", r, c) {
         return e;
-    }
-    // No columns slip past the cap: past a million empty rows (an infinite count never ends) the TS runs it.
-    if r > MAX_GENERATED {
-        return crate::excel_functions::bail();
     }
     let (r, c) = (r as usize, c as usize);
     mat_v((0..r).map(|i| {
@@ -1284,6 +1281,6 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
         }
         "HISTOGRAM2D" => histogram2d(&to_list(arg(a, 0)), &to_list(arg(a, 1)), to_num(arg(a, 2)), to_num(arg(a, 3))),
-        _ => crate::excel_functions::bail(),
+        _ => err(ErrorCode::Name, format!("Unknown function {name}")),
     }
 }

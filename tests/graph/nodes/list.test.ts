@@ -26,7 +26,6 @@ import {
   type ReduceOp,
   type FillOp,
 } from "../../../src/graph/nodes/list";
-import { broadcast, broadcastErr } from "../../../src/graph/nodes/shared";
 import { cx } from "../../../src/graph/cxValue";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import katex from "katex";
@@ -863,17 +862,6 @@ describe("Interleave — ragged pad-to-longest keeps the A/B alternation aligned
   it("pads the shorter list with null instead of dropping the tail", () => {
     expect(new InterleaveNode().data({ a: [[1, 2, 3]], b: [[10]] }).result)
       .toEqual([1, 10, 2, null, 3, null]);
-  });
-});
-
-describe("broadcast / broadcastErr — ragged lists pad to the longest with null", () => {
-  it("a padded position is missing outright (fn not called)", () => {
-    expect(broadcast((a, b) => a + b, [1, 2, 3], [10, 20])).toEqual([11, 22, null]);
-    expect(broadcast((a, b) => a + b, [1], [10, 20, 30])).toEqual([11, null, null]);
-  });
-  it("broadcastErr pads too, alongside genuine per-cell errors", () => {
-    const div = (a: number, b: number) => (b === 0 ? solError("#DIV/0!", "test") : a / b);
-    expect(broadcastErr(div, [10, 20], [2, 0, 5])).toEqual([5, solError("#DIV/0!", "test"), null]);
   });
 });
 

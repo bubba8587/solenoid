@@ -4,12 +4,12 @@ import {
   extractVariables,
   compilePositional,
   compileEvaluator,
-  RANGE_FUNCTIONS,
   formulaToLatex,
   evaluateSteps,
   formulaSyntaxHint,
 } from "../../src/graph/excelFormula";
 import { closeParens } from "../../src/graph/closeParens";
+import { isRange } from "./callTraits";
 import { isSolError, solError } from "../../src/graph/errorValue";
 
 describe("extractVariables", () => {
@@ -385,21 +385,20 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
 
   it("classifies the common aggregators as range functions", () => {
     for (const f of ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "MEDIAN", "STDEV", "AND", "OR"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(true);
+      expect(isRange(f)).toBe(true);
     }
     // element-wise functions are NOT range functions
     for (const f of ["SQRT", "ABS", "ROUND", "UPPER", "IF"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(false);
+      expect(isRange(f)).toBe(false);
     }
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
     // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[C14]] currentExcelParity blocks
-    // them, and [[C14]] currentExcelParity strips a blocked spelling from RANGE_FUNCTIONS so it
-    // answers before its args are shaped.
+    // them, so a blocked spelling answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS"]) {
-      expect(RANGE_FUNCTIONS.has(f)).toBe(true);
+      expect(isRange(f)).toBe(true);
     }
     // the range arg passes WHOLE (would be wrong if broadcast element-wise)
     expect(ev('COUNTIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(2);

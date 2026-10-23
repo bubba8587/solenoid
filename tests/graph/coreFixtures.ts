@@ -1,11 +1,11 @@
 // [[D99]] rustIsSpec
-// Frozen answers the Rust core is held to. FREEZE_CORE runs a suite's generator through the TypeScript and writes
-// its cases to fixtures/core/<suite>.json.gz; without it, the suite reads the file, so it needs no TypeScript body.
+// Frozen answers the Rust core is held to (fixtures/core/<suite>.json.gz). Without FREEZE_CORE a suite reads its file;
+// with it, the suite's cases are answered again by the core and written back, which is how a deliberate change in
+// behaviour moves a fixture.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { solError, isSolError, type SolErrorCode } from "../../src/graph/errorValue";
-import { settingsStore } from "../../src/graph/settingsStore";
 
 /** FREEZE_CORE=1 freezes every suite; FREEZE_CORE=frame-fns,columns only those, so the rest keep their bytes. */
 const FREEZE = process.env.FREEZE_CORE ?? "";
@@ -39,19 +39,41 @@ export function dec(v: unknown): unknown {
   return v;
 }
 
-/** The suite's cases: made and written when freezing, read back otherwise. `make` is the only place the TypeScript runs. */
+const fileOf = (suite: string) => path.join(DIR, `${suite}.json.gz`);
+
+/** A suite's frozen cases. */
+export function readFrozen<C>(suite: string): C[] {
+  const file = fileOf(suite);
+  if (!fs.existsSync(file)) throw new Error(`no frozen cases for ${suite}`);
+  return (JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8")) as unknown[]).map(dec) as C[];
+}
+
+export function writeFrozen<C>(suite: string, cases: readonly C[]): void {
+  fs.mkdirSync(DIR, { recursive: true });
+  fs.writeFileSync(fileOf(suite), zlib.gzipSync(JSON.stringify(cases.map(enc)), { level: 9 }));
+}
+
+/** Each frozen case's answer, `got`, held to its `want`: with FREEZE_CORE naming the suite, `got` becomes the case's
+ *  `want` and the file is written; otherwise the cases that differ come back (the first few, for the failure). */
+export function replay<C extends { want: unknown }>(suite: string, cases: C[], got: (c: C) => unknown, same = sameJson): unknown[] {
+  const bad: unknown[] = [];
+  for (const c of cases) {
+    const g = got(c);
+    if (freezes(suite)) c.want = g;
+    else if (!same(g, c.want)) bad.push({ ...c, got: g });
+  }
+  if (freezes(suite)) writeFrozen(suite, cases);
+  return bad.slice(0, 5);
+}
+
+export const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(enc(a)) === JSON.stringify(enc(b));
+
+/** The suite's cases: made and written when freezing, read back otherwise. `make` is the only place they are made. */
 export function frozen<C>(suite: string, make: () => C[]): C[] {
-  const file = path.join(DIR, `${suite}.json.gz`);
   if (freezes(suite)) {
-    // A node or body that asks the core first would freeze the core's own answers: the TS runs with it off.
-    const engine = settingsStore.get("wasmEngine");
-    settingsStore.set("wasmEngine", false);
-    let cases: C[];
-    try { cases = make(); } finally { settingsStore.set("wasmEngine", engine); }
-    fs.mkdirSync(DIR, { recursive: true });
-    fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(cases.map(enc)), { level: 9 }));
+    const cases = make();
+    writeFrozen(suite, cases);
     return cases;
   }
-  if (!fs.existsSync(file)) throw new Error(`no frozen cases for ${suite}: run FREEZE_CORE=1 while its TypeScript exists`);
-  return (JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8")) as unknown[]).map(dec) as C[];
+  return readFrozen<C>(suite);
 }

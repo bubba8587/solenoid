@@ -179,7 +179,7 @@ src/
 | `nodes/kind.ts` | node → `NodeKind` CLASSIFIER (`nodeKindOf`) + per-kind weights/resizable/wide flags; the kind → accent map (`NODE_KIND_ACCENTS`) lives in `nodes/shared.ts` |
 | `dimension.ts` | Dimensional algebra — the pure, graph-free units foundation (dimension vectors, multiply/divide/power, commensurability) |
 | `unitValue.ts` | The unit-on-the-VALUE layer (FC A4): `UnitCell` (base-SI magnitude + display id), mirrors `valueKinds.ts`'s shape; `applyFcUnit` lives at this seam via `unitBridge` |
-| `unitDimExpr.ts` + `unitLattice.ts` | Unit-expression algebra (compound unit spellings) + the unit compatibility lattice |
+| `unitLattice.ts` | The unit compatibility lattice; a formula's unit algebra is the core's (`unit_dims.rs`) |
 | `unitBridge.ts` | The unit-blind boundary (`stripUnitCells`, applied per-input by `coerceInputs`; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`'s three branches |
 | `unitColumn.ts` | Per-column frame units: `ColumnUnit`, `columnUnitFromSpec`, `parseColumnUnitFromHeader` — the unitGranularity frame granularity, incl. computed columns |
 | `unitFlow.ts` | Format-annotation resolver: `makeAnnotationResolver` (+ the cached `sharedAnnotationResolver` most callers use, and `resolveValueOrigin` for the popup Go-to-source walk) walks the graph: an FC locks, Convert imposes its `toUnit`, a passthrough/selector carries (data-aware), a transform breaks. BIDIRECTIONAL — `inAnnotation` (upstream FC) + `downstreamAnnotation` (an FC ahead through pure passthroughs, for boxes in front of a trailing FC) |
@@ -193,7 +193,6 @@ src/
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
 | `scalarText.ts` | `guessScalarText`: how a note reads one scalar's text (null, Boolean, number, ISO date, complex, else text), shared by the frontmatter parser, a Note's quoted Knap fields and the Obsidian plugin |
 | `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
-| `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell`: the TS reference the core's column runner is checked against; the cards' columns run on the core (`nodes/columns.rs`) |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor), Nest Join, Cube Columns, Cube Rollup |
 | `nodes/equation.ts` + `equationSolve.ts` | The ACAUSAL Equation node (equationNode): every variable is an input AND an output + a logical Check; one unknown → solved. `equationSolve.ts` = the pure solver (symbolic AST isolation, quadratic multi-root, numeric log-grid + bisection fallback returning the smallest-magnitude root, `#SOLVE!`). `nodes/finance.ts` TvmNode/Compound Growth/Effective Rate + the pack presets subclass/lock it |
 | `cubePopupStore.ts` + `components/CubePopup.tsx` / `CubeChip.tsx` / `CubeDisplay.tsx` / `cubeCell.tsx` | Cube drill-in popup (depth + breadcrumb), result-box chip + preview, per-cell rendering |

@@ -192,11 +192,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let refs: Vec<&FrameValue> = frames.iter().map(|f| f.as_ref()).collect();
             let argv: Vec<crate::excel_functions::V> = list_arg(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
             let _calc = Calc::begin(None);
-            let out = crate::frame_fns::call(&name, &refs, &argv);
-            if matches!(take_raised(), Raised::Bailed) {
-                return Ok(json!({ "bail": true }));
-            }
-            match out {
+            match crate::frame_fns::call(&name, &refs, &argv) {
                 crate::frame_fns::FrameOut::Frame(f) => Ok(json!({ "handle": register(f) })),
                 crate::frame_fns::FrameOut::Value(v) => Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") })),
                 crate::frame_fns::FrameOut::FrameAnd(f, v) => Ok(json!({
@@ -204,7 +200,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes"),
                 })),
                 crate::frame_fns::FrameOut::Error(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
-                crate::frame_fns::FrameOut::Bail => Ok(json!({ "bail": true })),
             }
         }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
@@ -273,22 +268,20 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let outcome = match args.get("bare") {
                 Some(w) if !w.is_null() => match crate::eval::decode_value(&json!({ "__lambda": w })) {
                     crate::excel_functions::V::Lambda(lam) => crate::eval::column(crate::eval::ColumnSpec::Lambda(&lam), inputs),
-                    _ => Ok(crate::eval::ColumnOutcome::Bail),
+                    crate::excel_functions::V::Err(e) => Err(e.as_ref().clone()),
+                    _ => Err(sol_error(ErrorCode::Value, "This column's LAMBDA can't be read")),
                 },
                 _ => match crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) {
                     None => Err(sol_error(ErrorCode::Syntax, "The formula doesn't parse")),
                     Some(ast) => crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs),
                 },
             };
-            if matches!(take_raised(), Raised::Bailed) {
-                return Ok(json!({ "bail": true }));
-            }
+            take_raised();
             match outcome {
                 Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
-                Ok(crate::eval::ColumnOutcome::Bail) => Ok(json!({ "bail": true })),
-                Ok(crate::eval::ColumnOutcome::Done { cells, side_vars }) => {
-                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
-                    Ok(json!({ "handle": register(out), "sideVars": side_vars }))
+                Ok(o) => {
+                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, o.cells)] };
+                    Ok(json!({ "handle": register(out), "sideVars": o.side_vars }))
                 }
             }
         }
@@ -345,31 +338,36 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
     }
 }
 
-/// What `engine_call` and `engine_eval` answer: a bail, a JS exception, or the value. It serializes straight to
+/// What `engine_call` and `engine_eval` answer: a JS exception, or the value. It serializes straight to
 /// JSON text (`wasm.rs`), as a big list answer built as a `Json` tree first is slow in wasm.
 pub enum CallReply {
-    Bail,
     Thrown(String),
+    /// A held list the call named (`{"__ref"}`) that the core no longer holds: the TS sends it again.
+    Missing,
     Value(crate::excel_functions::V),
     /// `engine_call_each`'s answers, `{"each": [...]}`: a finite number other than -0 as a bare JSON number, which
     /// reads back exact, the rest as `Value` spells them.
     Each(Vec<crate::excel_functions::V>),
 }
 
-/// A body by name over decoded arguments, as `engine_call` makes it; `None` where the TS makes the call (a pack's
-/// function, a unit cell the body doesn't take).
-fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Option<crate::excel_functions::V> {
+/// A body by name over decoded arguments, as `engine_call` makes it.
+fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> crate::excel_functions::V {
     use crate::excel_functions::{call_function, V};
     let upper = name.to_uppercase();
     if crate::eval::traits(&upper).is_none() && !crate::excel_functions::is_ported(name) {
-        return Some(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))));
+        return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
     }
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
-        return None;
+        return V::err(sol_error(ErrorCode::Unit, format!("{name} reads plain values, and one of these has a unit")));
     }
     // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
     let early = if scan { crate::eval::argument_error(&upper, argv) } else { None };
-    Some(early.unwrap_or_else(|| call_function(name, argv)))
+    early.unwrap_or_else(|| call_function(name, argv))
+}
+
+/// What a unit wrapper answers where it can't carry the formula, as the card answers it.
+fn failed() -> crate::excel_functions::V {
+    crate::excel_functions::V::err(sol_error(ErrorCode::Value, "The formula failed to evaluate"))
 }
 
 /// `engine_call` (a body by name over wired arguments) and `engine_eval` (a formula over named values).
@@ -380,13 +378,10 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
         let argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
-        match call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false)) {
-            Some(v) => v,
-            None => return Ok(CallReply::Bail),
-        }
+        call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false))
     } else if command == "engine_call_each" {
         // [[C120]] linearWork: one body over many items in one crossing, each call as `engine_call` makes it, the
-        // items at the `at` positions. An item that would bail or throw bails the batch, and the TS calls one by one.
+        // items at the `at` positions. An item that throws answers as `engine_call` answers a throw.
         let name = parse::<String>(args, "name")?;
         let scan = parse::<Option<bool>>(args, "scan")?.unwrap_or(false);
         let mut argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
@@ -402,10 +397,10 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             for (&p, x) in at.iter().zip(item) {
                 argv[p] = arg_of(x);
             }
-            match (call_body(&name, &argv, scan), take_raised()) {
-                (Some(v), Raised::Nothing) => out.push(v),
-                _ => return Ok(CallReply::Bail),
-            }
+            out.push(match (call_body(&name, &argv, scan), take_raised()) {
+                (v, Raised::Nothing) => v,
+                (_, Raised::Thrown(_)) => V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments"))),
+            });
         }
         return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {
@@ -413,7 +408,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
         let order = parse::<Option<Vec<String>>>(args, "order")?.unwrap_or_default();
-        crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(crate::excel_functions::bail)
+        crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(failed)
     } else if command == "engine_fold_units" {
         // [[C25]] firstClassUnits: REDUCE, BYROW and BYCOL's unit wrapper over a table.
         use crate::unit_fold::FoldKind;
@@ -424,18 +419,20 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         };
         let src = parse::<String>(args, "src")?;
         let (m, initial) = (arg_of(args.get("m").unwrap_or(&Json::Null)), arg_of(args.get("initial").unwrap_or(&Json::Null)));
-        crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(crate::excel_functions::bail)
+        crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(failed)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
-        if crate::eval::take_missing() || env.values().any(crate::unit_dims::holds_unit) {
-            return Ok(CallReply::Bail);
+        if crate::eval::take_missing() {
+            return Ok(CallReply::Missing);
+        }
+        if env.values().any(crate::unit_dims::holds_unit) {
+            return Ok(CallReply::Value(V::err(sol_error(ErrorCode::Value, "A formula here reads plain values, and one of these has a unit"))));
         }
         crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
     };
     Ok(match take_raised() {
-        Raised::Bailed => CallReply::Bail,
         Raised::Thrown(e) => CallReply::Thrown(e.message),
         Raised::Nothing => CallReply::Value(r),
     })
@@ -445,9 +442,9 @@ impl serde::Serialize for CallReply {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
         match self {
-            CallReply::Bail => {
+            CallReply::Missing => {
                 let mut m = s.serialize_map(Some(1))?;
-                m.serialize_entry("bail", &true)?;
+                m.serialize_entry("missing", &true)?;
                 m.end()
             }
             CallReply::Thrown(msg) => {

@@ -1,11 +1,12 @@
 // [[C17]], [[B16]] oneFormulaSurface, [[D48]]
 import { describe, it, expect } from "vitest";
-import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { isRange } from "./callTraits";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";
 import { isSolError } from "../../src/graph/errorValue";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
-// `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
+// The range functions are a hand-kept list (`kind: "range"` in the core's call table), and one missing from it fails SILENTLY in the
 // worst way: `broadcastCall` maps it element-wise over the array argument, so it runs
 // N times on N scalars and returns a list of N answers to a question that has one.
 // Nothing looked wrong — T.TEST returned `[{},{},{},{}]`, F.TEST the same, MODE.SNGL
@@ -108,7 +109,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
 describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
   // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
   // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,
-  // [[C15]] matricesInFormulas), not RANGE_FUNCTIONS routing — so membership there stays false, and the
+  // [[C15]] matricesInFormulas), not range routing — so membership there stays false, and the
   // shape checks below are what "fixed" means: one fitted answer, never a
   // broadcast echo of the input.
   const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];
@@ -118,7 +119,7 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
   const EXP = [2, 4, 8, 16];      // exactly 2·2ˣ⁻¹ → m = 2, b = 1
 
   it.each(QUARTET)("%s is owned (listArgs), not range-routed", (name) => {
-    expect(RANGE_FUNCTIONS.has(name), `${name} entered RANGE_FUNCTIONS — it is owned, not routed`).toBe(false);
+    expect(isRange(name), `${name} became a range function — it is owned, not routed`).toBe(false);
   });
 
   it("TREND / GROWTH stay callable as formulas; Forecast is the node", () => {

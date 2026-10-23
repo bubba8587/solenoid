@@ -273,7 +273,6 @@ fn parse_date_text(s: &str) -> Rd<f64> {
         DateReading::Serial(d) => Ok(d),
         DateReading::NotADate => Ok(f64::NAN),
         DateReading::Ambiguous(e) => Err(Fail::Sol(e)),
-        DateReading::Bail => Err(Fail::Js(thrown("this date text has no reading on the core"))),
     }
 }
 

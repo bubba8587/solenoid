@@ -3,10 +3,8 @@ import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
-import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
-import { coreEach } from "../coreValues";
 import { applyRole, type InputRole } from "../inputRoles";
-import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
+import { type UnitCell, magnitudeOf } from "../unitValue";
 import { dimOf } from "../unitValue";
 
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
@@ -146,135 +144,9 @@ export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
 
 export type BroadcastResult = CellResult<number>;
 
-export function broadcast(
-  fn: (...xs: number[]) => number | null,
-  ...args: Array<number | number[] | null>
-): BroadcastResult {
-  const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(args as number[]));
-    return r === null ? null : guardFinite(r, args);
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i): number | SolError | null => {
-    if (lists.some((l) => i >= l.length)) return null;
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(ops as number[]));
-    return r === null ? null : guardFinite(r, ops);
-  });
-}
-
-export function broadcastErr(
-  fn: (...xs: number[]) => number | SolError | null,
-  ...args: Array<number | number[] | null>
-): BroadcastResult {
-  const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(args as number[]));
-    return typeof r === "number" ? guardFinite(r, args) : r;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i): number | SolError | null => {
-    if (lists.some((l) => i >= l.length)) return null;
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) return sc;
-    const r = fn(...(ops as number[]));
-    return typeof r === "number" ? guardFinite(r, ops) : r;
-  });
-}
-
-// No array-shaped element: the list check is `Array.isArray`, so such an element needs its own broadcaster.
-type Cell = string | number | boolean;
-
-export function broadcastCells<A extends Cell, R extends Cell>(
-  fn: (a: A) => R | SolError | null,
-  a: A | A[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, R extends Cell>(
-  fn: (a: A, b: B) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, R extends Cell>(
-  fn: (a: A, b: B, c: C) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null,
-): CellResult<R>;
-export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, D extends Cell, R extends Cell>(
-  fn: (a: A, b: B, c: C, d: D) => R | SolError | null,
-  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null, d: D | D[] | null,
-): CellResult<R>;
-export function broadcastCells(
-  fn: (...xs: never[]) => Cell | SolError | null,
-  ...args: Array<Cell | Cell[] | null>
-): CellResult<Cell> {
-  const call = fn as (...xs: Cell[]) => Cell | SolError | null;
-  const lists = args.filter((a): a is Cell[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    const r = call(...(args as Cell[]));
-    return typeof r === "number" ? guardFinite(r, args) : r;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i): Cell | SolError | null => {
-    if (lists.some((l) => i >= l.length)) return null;
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) return sc;
-    const r = call(...(ops as Cell[]));
-    return typeof r === "number" ? guardFinite(r, ops) : r;
-  });
-}
-
 export type UnitOperand = number | UnitCell;
 export type BroadcastUnitResult =
   number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
-
-function guardCell(r: number | UnitCell | SolError | null, inputs: ReadonlyArray<unknown>): number | UnitCell | SolError | null {
-  if (r === null || typeof r === "string") return r;
-  if (isUnitCell(r)) {
-    const g = guardFinite(r.value, inputs);
-    if (typeof g !== "number") return g;
-    // tagDim would collapse an empty-dim ratio cell to a bare number, so re-mint the ratio.
-    return r.ratio === true ? tagRatio(g) : tagDim(g, r.dim, r.display);
-  }
-  if (typeof r === "number") return guardFinite(r, inputs);
-  return r;
-}
-
-export function broadcastUnit(
-  fn: (...xs: UnitOperand[]) => number | UnitCell | SolError | null,
-  ...args: Array<UnitOperand | UnitOperand[] | null>
-): BroadcastUnitResult {
-  const lists = args.filter((a): a is UnitOperand[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const sc = cellShortCircuit(args);
-    if (sc !== COMPUTE) return sc;
-    return guardCell(fn(...(args as UnitOperand[])), args);
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i): number | UnitCell | SolError | null => {
-    if (lists.some((l) => i >= l.length)) return null;
-    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) return sc;
-    return guardCell(fn(...ops), ops);
-  });
-}
-
-export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null>): boolean {
-  for (const a of args) {
-    if (Array.isArray(a)) { if (a.some((c) => isUnitCell(c))) return true; }
-    else if (isUnitCell(a)) return true;
-  }
-  return false;
-}
 
 export { dimOf, magnitudeOf };
 

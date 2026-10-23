@@ -780,7 +780,6 @@ fn cast_one(x: &V, target: &str, format: &V, dateish: bool, seps: (&str, &str), 
                 use crate::excel_criteria::{parse_date, DateReading};
                 match parse_date(s) {
                     DateReading::Serial(d) => V::Num(d),
-                    DateReading::Bail => return Err(super::frames::thrown("Cast left a reading to the TS")),
                     _ => V::Num(f64::NAN),
                 }
             }
