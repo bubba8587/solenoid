@@ -44,6 +44,8 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
   shell whose command also says `vitest`): it kills your shell (exit 144). The dev server stops and restarts by
   PID: `node scripts/dev-up.mjs --stop | --restart`. Restart it after editing `src/` when a script that imports
   app modules (site-shots, shot-graph) sees a null editor: hot reload handed it a second copy of the module.
+- **vitest's `fsModuleCache` misses a new or deleted file under an `import.meta.glob`** (a seed, a pack): delete
+  `node_modules/.vitest-cache` before the run, or a local suite passes on the old file list while CI fails.
 - **The dev machine is Linux** (X11). There is no bare `python`: every `python tools/dte.py …` in
   the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
   scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
