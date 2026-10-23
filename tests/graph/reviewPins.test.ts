@@ -395,16 +395,13 @@ describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
   const ev = async (src: string) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!({});
   const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
-  it("IF reads TRUE and FALSE text as logicals and refuses other text, on both surfaces", async () => {
-    expect(await ev('IF("TRUE", 1, 2)')).toBe(1);
-    expect(await ev('IF("false", 1, 2)')).toBe(2);
-    expect(code(await ev('IF("text", 1, 2)'))).toBe("#VALUE!");
-    expect(code(await ev('IF("", 1, 2)'))).toBe("#VALUE!");
-    expect(code(await ev('IF("1", 1, 2)'))).toBe("#VALUE!");
+  it("IF refuses a text test, even TRUE or FALSE, on both surfaces ([[C131]] noTextGuessing)", async () => {
+    for (const t of ['"TRUE"', '"false"', '"text"', '""', '"1"']) expect(code(await ev(`IF(${t}, 1, 2)`))).toBe("#VALUE!");
+    expect(await ev("IF(TRUE, 1, 2)")).toBe(1);
     const { IfNode } = await import("../../src/graph/nodes/logic");
     const card = new IfNode();
     expect(code(card.data({ cond: ["text"], then: [1], else: [2] }).result)).toBe("#VALUE!");
-    expect(card.data({ cond: ["True"], then: [1], else: [2] }).result).toBe(1);
+    expect(code(card.data({ cond: ["True"], then: [1], else: [2] }).result)).toBe("#VALUE!");
   });
 
   it("CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading", async () => {
@@ -499,13 +496,15 @@ describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
   });
 
   it("IFS reads each condition as IF does, on both surfaces", async () => {
-    expect(await ev('IFS("false", 1, "TRUE", 2)')).toBe(2);
+    expect(await ev("IFS(FALSE, 1, TRUE, 2)")).toBe(2);
+    expect(code(await ev('IFS("false", 1, "TRUE", 2)'))).toBe("#VALUE!");
     expect(code(await ev('IFS("text", 1, TRUE, 2)'))).toBe("#VALUE!");
     expect(code(await ev("IFS(FALSE, 1)"))).toBe("#N/A");
     expect(await ev("IFS(0, 1, 3, 2)")).toBe(2);
     const { IfsNode } = await import("../../src/graph/nodes/logic");
     const card = new IfsNode();
-    expect(card.data({ cond0: ["false"], val0: [1], cond1: ["True"], val1: [2] }).result).toBe(2);
+    expect(card.data({ cond0: [false], val0: [1], cond1: [true], val1: [2] }).result).toBe(2);
+    expect(code(card.data({ cond0: ["false"], val0: [1], cond1: ["True"], val1: [2] }).result)).toBe("#VALUE!");
     expect(code(card.data({ cond0: ["text"], val0: [1] }).result)).toBe("#VALUE!");
   });
 

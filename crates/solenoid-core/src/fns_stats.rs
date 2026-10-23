@@ -4,7 +4,6 @@
 
 #![allow(clippy::excessive_precision)]
 
-use crate::date_parse::date_parse;
 use crate::date_serial::parts_of_ms;
 use crate::zone;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
@@ -162,17 +161,6 @@ pub fn call(name: &str, a: &[V]) -> V {
     }
 }
 
-/// `new Date(x)`: a number is a time value, text (and anything read as text) is `Date.parse`d.
-fn new_date(v: &V) -> f64 {
-    match v {
-        V::Num(n) => zone::time_clip(*n),
-        V::Null => 0.0,
-        V::Undef => f64::NAN,
-        V::Bool(b) => f64::from(u8::from(*b)),
-        other => date_parse(&js_string_of(other)),
-    }
-}
-
 /// JS truthiness of a value.
 fn truthy_value(v: &V) -> bool {
     match v {
@@ -184,13 +172,18 @@ fn truthy_value(v: &V) -> bool {
     }
 }
 
-/// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)` over `new Date` readings.
+/// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)`, its dates read as serials as every other
+/// date argument is (Formula.js's `new Date(serial)` read them as milliseconds).
 fn accrint(a: &[V]) -> V {
-    let (issue, first, settlement) = (new_date(arg(a, 0)), new_date(arg(a, 1)), new_date(arg(a, 2)));
     let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx(FxError::Num) };
-    if issue.is_nan() || first.is_nan() || settlement.is_nan() {
-        return V::Fx(FxError::Value);
+    let mut dates = [0.0; 3];
+    for (i, d) in dates.iter_mut().enumerate() {
+        match parse_date(arg(a, i)) {
+            FxDate::Date(t) => *d = t,
+            FxDate::Err(e) => return V::Fx(e),
+        }
     }
+    let [issue, _first, settlement] = dates;
     let (rate, par) = (number(arg(a, 3)), number(arg(a, 4)));
     if rate <= 0.0 || par <= 0.0 || settlement <= issue {
         return V::Fx(FxError::Num);
@@ -818,22 +811,7 @@ fn serial_to_date(mut serial: f64) -> f64 {
     zone::new_local(info.year as f64, month, days, hours, minutes, seconds, 0.0)
 }
 
-/// `/(\d{4})-(\d\d?)-(\d\d?)$/`: whether the text ends in an ISO-like day.
-fn ends_in_iso_day(s: &str) -> bool {
-    let b = s.as_bytes();
-    let digits = |from: usize, to: usize| b[from..to].iter().all(u8::is_ascii_digit);
-    (1..=2).any(|dl| {
-        (1..=2).any(|ml| {
-            let n = 4 + 1 + ml + 1 + dl;
-            b.len() >= n && {
-                let s0 = b.len() - n;
-                digits(s0, s0 + 4) && b[s0 + 4] == b'-' && digits(s0 + 5, s0 + 5 + ml) && b[s0 + 5 + ml] == b'-' && digits(b.len() - dl, b.len())
-            }
-        })
-    })
-}
-
-/// Formula.js `parseDate`.
+/// Formula.js `parseDate`, without its reading of date text: text is never a date ([[C131]] noTextGuessing).
 pub(crate) fn parse_date(v: &V) -> FxDate {
     if !to_f64_js(v).is_nan() {
         let d = js_parse_float(&js_string_of(v));
@@ -841,12 +819,6 @@ pub(crate) fn parse_date(v: &V) -> FxDate {
             return FxDate::Err(FxError::Num);
         }
         return FxDate::Date(serial_to_date(d));
-    }
-    if let V::Str(s) = v {
-        let t = if ends_in_iso_day(s) { date_parse(&format!("{s}T00:00:00.000")) } else { date_parse(s) };
-        if !t.is_nan() {
-            return FxDate::Date(t);
-        }
     }
     FxDate::Err(FxError::Value)
 }

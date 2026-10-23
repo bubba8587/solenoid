@@ -92,15 +92,11 @@ fn value(msg: &str) -> V {
     V::err(sol_error(ErrorCode::Value, msg))
 }
 
-/// `isTrue`: true, 1, or the text true or 1.
+/// `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
         V::Num(n) => *n == 1.0,
-        V::Str(s) => {
-            let t = js_trim(s);
-            t.eq_ignore_ascii_case("true") || t == "1"
-        }
         _ => false,
     }
 }
@@ -110,7 +106,7 @@ fn lower_key(v: &V) -> String {
     js_lower(js_trim(&js_string_of(v))).into_owned()
 }
 
-/// `numsOf`: numbers, and whatever else reads as one, one level of lists spread.
+/// `numsOf`: numbers and logicals, one level of lists spread; text is skipped ([[C131]] noTextGuessing).
 fn nums_of(v: &V) -> Vec<f64> {
     let items = match v {
         V::List(items) => items.as_ref().clone(),
@@ -2154,6 +2150,13 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
     if let Some(e) = first_error(&lx).or_else(|| first_error(&ly)) {
         return e;
     }
+    // Text is never read as a number ([[C131]] noTextGuessing).
+    let q_raw = to_list(new_xs);
+    for (l, what) in [(&ly, "known_ys"), (&lx, "known_xs"), (&q_raw, "new_xs")] {
+        if l.iter().any(crate::excel_functions::holds_text) {
+            return value(&format!("INTERPOLATE: {what} need numbers"));
+        }
+    }
     let mut pairs: Vec<(V, V)> = Vec::new();
     for i in 0..lx.len().min(ly.len()) {
         if matches!(lx[i], V::Null) || matches!(ly[i], V::Null) {
@@ -2161,7 +2164,6 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
         }
         pairs.push((lx[i].clone(), ly[i].clone()));
     }
-    let q_raw = to_list(new_xs);
     if let Some(e) = first_error(&q_raw) {
         return e;
     }

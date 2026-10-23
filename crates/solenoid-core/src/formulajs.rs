@@ -28,16 +28,9 @@ fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
 }
 
-/// `Number(v)`, the coercion `isNaN`, `<` and arithmetic apply.
+/// `Number(v)`, the coercion `isNaN`, `<` and arithmetic apply, which never reads text ([[C131]] noTextGuessing).
 fn js_number(v: &V) -> f64 {
-    match v {
-        V::Num(n) => *n,
-        V::Bool(b) => f64::from(u8::from(*b)),
-        V::Null => 0.0,
-        V::Str(s) => string_to_number(s),
-        V::List(_) => string_to_number(&js_string_of(v)),
-        V::Undef | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => f64::NAN,
-    }
+    crate::excel_functions::to_f64_js(v)
 }
 
 /// The global `isNaN`.
@@ -745,8 +738,11 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
         }
         "GESTEP" => {
-            let step = if truthy(arg(a, 1)) { arg(a, 1).clone() } else { V::Num(0.0) };
+            let step = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(0.0) };
             let number = parse_number(arg(a, 0));
+            if let V::Fx(_) = step {
+                return step;
+            }
             if matches!(step, V::Fx(_)) || matches!(number, V::Fx(_)) {
                 return number;
             }
@@ -790,7 +786,14 @@ pub fn call(name: &str, a: &[V]) -> V {
             let array = parse_number_array(&flatten(arg(a, 0)));
             let x = parse_number(arg(a, 1));
             let (Ok(array), Some(x)) = (array, num_of(&x)) else { return VALUE };
-            let sigma = if truthy(arg(a, 2)) { js_number(arg(a, 2)) } else { fx_var_s(&array).sqrt() };
+            let sigma = if truthy(arg(a, 2)) {
+                match num_of(&parse_number(arg(a, 2))) {
+                    Some(s) => s,
+                    None => return VALUE,
+                }
+            } else {
+                fx_var_s(&array).sqrt()
+            };
             let n = array.len() as f64;
             let mean = fx_average(&array).unwrap_or(f64::NAN);
             match fx_norm_s_cdf((mean - x) / (sigma / n.sqrt())) {

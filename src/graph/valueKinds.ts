@@ -44,20 +44,6 @@ export function logicalOrTypeError(v: unknown, where: string): boolean | null | 
   return solError("#TYPE!", `${where}: ${typeof v === "string" ? `"${v}"` : String(v)} isn't a logical. Only TRUE, FALSE or a number read as one`);
 }
 
-/** IF's and IFS's reading of a condition, Excel's: text counts only as TRUE or FALSE in any case, and anything else unreadable is `#VALUE!`. */
-export function ifTest(v: unknown): boolean | Missing | SolError {
-  if (isMissing(v) || isSolError(v)) return v;
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return Number.isNaN(v) ? solError("#VALUE!", "A condition is not a number") : numberToLogical(v);
-  if (isUncertain(v)) return numberToLogical(v.value);
-  if (typeof v === "string") {
-    const t = v.toLowerCase();
-    if (t === "true") return true;
-    if (t === "false") return false;
-  }
-  return solError("#VALUE!", "A condition needs a logical. Text counts only as TRUE or FALSE");
-}
-
 export function coerceNumber(v: unknown): number {
   if (typeof v === "number") return v;
   if (isUncertain(v)) return v.value;

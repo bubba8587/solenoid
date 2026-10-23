@@ -191,16 +191,26 @@ pub fn js_pow(x: f64, y: f64) -> f64 {
     crate::fdlibm::pow(x, y)
 }
 
-/// A JS number operand as arithmetic reads it (`undefined` is NaN).
+/// A JS number operand as arithmetic reads it (`undefined` is NaN), except that text, and a list holding text, is
+/// never read as a number ([[C131]] noTextGuessing).
 pub fn to_f64_js(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) => string_to_number(s),
         V::Null => 0.0,
         // An array reads as its joined text.
-        V::List(_) => string_to_number(&js_string_of(v)),
+        V::List(_) if !holds_text(v) => string_to_number(&js_string_of(v)),
         _ => f64::NAN,
+    }
+}
+
+/// Whether a value is text or a list with text in it: what a formula never reads as a number ([[C131]]
+/// noTextGuessing).
+pub(crate) fn holds_text(v: &V) -> bool {
+    match v {
+        V::Str(_) => true,
+        V::List(items) => items.iter().any(holds_text),
+        _ => false,
     }
 }
 
@@ -234,12 +244,11 @@ pub fn js_string_of(v: &V) -> String {
     }
 }
 
-/// `coerceNumber` (valueKinds.ts), the evaluator's `toNum`.
+/// The evaluator's `toNum`: a number, or a logical as 1 or 0. Text is NaN ([[C131]] noTextGuessing).
 pub(crate) fn to_num(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) => decimal_from_text(s),
         _ => f64::NAN,
     }
 }
@@ -347,9 +356,9 @@ pub(crate) fn parse_number(v: &V) -> V {
         V::Num(n) => {
             if n.is_nan() { V::Fx(FxError::Value) } else { V::Num(*n + 0.0) }
         }
-        V::Str(s) => {
-            if s.is_empty() || string_to_number(s).is_nan() { V::Fx(FxError::Value) } else { V::Num(js_parse_float(s)) }
-        }
+        // Text is never read as a number ([[C131]] noTextGuessing).
+        V::Str(_) => V::Fx(FxError::Value),
+        V::List(_) if holds_text(v) => V::Fx(FxError::Value),
         // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
         V::List(_) => {
             let s = js_string_of(v);
@@ -889,12 +898,11 @@ fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
     finite_of(r, xs, ys)
 }
 
-/// JS `a > b` with a number on the right: the left reads as a number.
+/// JS `a > b` with a number on the right: the left reads as a number, text never ([[C131]] noTextGuessing).
 fn as_number_cmp(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) => string_to_number(s),
         V::Null => 0.0,
         _ => f64::NAN,
     }
@@ -936,7 +944,8 @@ impl JsSum {
     pub(crate) fn number(&self) -> f64 {
         match self {
             JsSum::Num(x) => *x,
-            JsSum::Str(s) => string_to_number(s),
+            // Text joined into the sum is never read back as a number ([[C131]] noTextGuessing).
+            JsSum::Str(_) => f64::NAN,
         }
     }
 }
@@ -1245,34 +1254,15 @@ pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
     sum.sqrt() * max
 }
 
-/// `logicalOrTypeError` (valueKinds.ts): None for blank.
+/// A formula argument read as a logical: None for blank. Text is never read as one, even "TRUE" ([[C131]]
+/// noTextGuessing); a typed input reads text through `value_kinds::logical_or_type_error`.
 pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, V> {
-    let unreadable = || {
-        let shown = match v {
-            V::Str(s) => format!("\"{s}\""),
-            other => js_string_of(other),
-        };
-        Err(V::err(sol_error(ErrorCode::Type, format!("{place}: {shown} isn't a logical. Only TRUE, FALSE or a number read as one"))))
-    };
     match v {
         V::Null | V::Undef => Ok(None),
         V::Bool(b) => Ok(Some(*b)),
         V::Num(n) if n.is_finite() => Ok(Some(*n != 0.0)),
-        V::Str(s) => {
-            let t = crate::jsnum::js_lower(js_trim(s)).to_string();
-            if t.is_empty() {
-                return Ok(None);
-            }
-            if t == "true" {
-                return Ok(Some(true));
-            }
-            if t == "false" {
-                return Ok(Some(false));
-            }
-            let n = decimal_from_text(&t);
-            if n.is_finite() { Ok(Some(n != 0.0)) } else { unreadable() }
-        }
-        _ => unreadable(),
+        V::Str(s) => Err(V::err(sol_error(ErrorCode::Type, format!("{place}: \"{s}\" is text. Use TRUE, FALSE or a number")))),
+        other => Err(V::err(sol_error(ErrorCode::Type, format!("{place}: {} isn't a logical. Only TRUE, FALSE or a number read as one", js_string_of(other))))),
     }
 }
 
@@ -1601,7 +1591,6 @@ fn position_of(x: &V) -> Result<Ax, V> {
         V::Err(_) => return Err(x.clone()),
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) if !js_trim(s).is_empty() => string_to_number(s),
         _ => f64::NAN,
     };
     if n.is_nan() { Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
@@ -1936,15 +1925,11 @@ fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     V::Num(interest * rate)
 }
 
-/// `isTrue`: true, 1, or the text true or 1.
+/// `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
         V::Num(n) => *n == 1.0,
-        V::Str(s) => {
-            let t = js_trim(s);
-            t.eq_ignore_ascii_case("true") || t == "1"
-        }
         _ => false,
     }
 }
@@ -2054,7 +2039,7 @@ fn parse_value_text(text: &str) -> f64 {
     (if neg { -n } else { n }) / js_pow(100.0, f64::from(pct))
 }
 
-/// `numsOf`: numbers, and whatever else reads as one, lists flattened.
+/// `numsOf`: numbers and logicals, lists flattened; text is skipped ([[C131]] noTextGuessing).
 pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
         .flat_map(|v| match v {
@@ -2237,9 +2222,9 @@ pub(crate) fn if_test(v: &V) -> Cond {
         V::Bool(b) => Cond::Bool(*b),
         V::Num(n) if n.is_nan() => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition is not a number"))),
         V::Num(n) => Cond::Bool(*n != 0.0),
-        V::Str(s) if s.to_lowercase() == "true" => Cond::Bool(true),
-        V::Str(s) if s.to_lowercase() == "false" => Cond::Bool(false),
-        _ => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical. Text counts only as TRUE or FALSE"))),
+        // Text is text, even "TRUE" ([[C131]] noTextGuessing).
+        V::Str(_) => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical. Compare text with = to get one"))),
+        _ => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical"))),
     }
 }
 
@@ -2589,6 +2574,88 @@ pub enum Route {
     None,
 }
 
+/// The one-value arguments a function reads as a number or as TRUE or FALSE, where its body would read text with
+/// JavaScript's coercion: text there is `#VALUE!`, never read as a number or a logical ([[C131]] noTextGuessing).
+/// `from` is the first of a run of positions that goes on to the last argument.
+struct Refused {
+    numbers: &'static [usize],
+    from: Option<usize>,
+    flags: &'static [usize],
+}
+
+const fn nums(numbers: &'static [usize]) -> Refused {
+    Refused { numbers, from: None, flags: &[] }
+}
+
+const fn flags(numbers: &'static [usize], flags: &'static [usize]) -> Refused {
+    Refused { numbers, from: None, flags }
+}
+
+const fn every() -> Refused {
+    Refused { numbers: &[], from: Some(0), flags: &[] }
+}
+
+const REFUSED: &[(&str, Refused)] = &[
+    // List functions.
+    ("SLICE", nums(&[1, 2])), ("NTHELEMENT", nums(&[1])), ("SHIFT", flags(&[1], &[2])), ("ARGSORT", flags(&[], &[1])),
+    ("COMBINATIONS", nums(&[1])), ("PERMUTATIONS", nums(&[1])), ("EWMA", nums(&[1])), ("TRAPZ", nums(&[1])),
+    ("NTILE", nums(&[1])), ("ISOUTLIER", nums(&[2])), ("RUNNING", nums(&[2])), ("LINSPACE", nums(&[0, 1, 2])),
+    ("RANGE", nums(&[0, 1, 2])), ("SPECTRUM", nums(&[1])), ("GAUSSIANSMOOTH", nums(&[1])), ("SAVGOL", nums(&[1, 2])),
+    ("LOWESS", nums(&[1])), ("FINDPEAKS", nums(&[1, 2, 3])), ("DECOMPOSE", nums(&[1])), ("FORECAST.ETS", nums(&[0, 3])),
+    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])), ("FIBONACCI", nums(&[0])), ("GEOMETRIC", nums(&[0, 1, 2])),
+    // Shapers, matrices and generators.
+    ("TAKE", nums(&[1, 2])), ("DROP", nums(&[1, 2])), ("SORT", flags(&[1], &[3])), ("UNIQUE", flags(&[], &[1, 2])),
+    ("CHOOSECOLS", Refused { numbers: &[], from: Some(1), flags: &[] }), ("CHOOSEROWS", Refused { numbers: &[], from: Some(1), flags: &[] }),
+    ("EXPAND", nums(&[1, 2])), ("MUNIT", nums(&[0])), ("WRAPROWS", nums(&[1])), ("WRAPCOLS", nums(&[1])),
+    ("SEQUENCE", nums(&[0, 1, 2, 3])), ("TOCOL", nums(&[1])), ("TOROW", nums(&[1])), ("POLYFIT", nums(&[2])),
+    ("QUADRATICROOTS", nums(&[0, 1, 2])), ("HISTOGRAM2D", nums(&[2, 3])), ("RANDARRAY", flags(&[0, 1, 2, 3], &[4])),
+    ("TREND", flags(&[], &[3])), ("GROWTH", flags(&[], &[3])),
+    // Distributions: the value, the parameters and the cumulative flag.
+    ("NORM.DIST", flags(&[0, 1, 2], &[3])), ("NORM.INV", nums(&[0, 1, 2])), ("NORM.S.DIST", flags(&[0], &[1])),
+    ("NORM.S.INV", nums(&[0])), ("CHISQ.DIST", flags(&[0, 1], &[2])), ("CHISQ.INV", nums(&[0, 1])),
+    ("CHISQ.DIST.RT", nums(&[0, 1])), ("F.DIST", flags(&[0, 1, 2], &[3])), ("F.INV", nums(&[0, 1, 2])),
+    ("F.DIST.RT", nums(&[0, 1, 2])), ("GAMMA.DIST", flags(&[0, 1, 2], &[3])), ("LOGNORM.DIST", flags(&[0, 1, 2], &[3])),
+    ("LOGNORM.INV", nums(&[0, 1, 2])), ("WEIBULL.DIST", flags(&[0, 1, 2], &[3])), ("EXPON.DIST", flags(&[0, 1], &[2])),
+    ("BINOM.DIST", flags(&[0, 1, 2], &[3])), ("BINOM.INV", nums(&[0, 1, 2])), ("POISSON.DIST", flags(&[0, 1], &[2])),
+    ("HYPGEOM.DIST", flags(&[0, 1, 2, 3], &[4])), ("NEGBINOM.DIST", flags(&[0, 1, 2], &[3])), ("T.DIST", flags(&[0, 1], &[2])),
+    ("T.DIST.RT", nums(&[0, 1])), ("T.DIST.2T", nums(&[0, 1])), ("T.INV", nums(&[0, 1])), ("T.INV.2T", nums(&[0, 1])),
+    ("CHISQ.INV.RT", nums(&[0, 1])), ("F.INV.RT", nums(&[0, 1, 2])), ("GAMMA.INV", nums(&[0, 1, 2])),
+    ("BETA.DIST", flags(&[0, 1, 2, 4, 5], &[3])), ("BETA.INV", nums(&[0, 1, 2, 3, 4])), ("ISCLOSE", nums(&[0, 1, 2])),
+    // Order statistics: the position or fraction beside the range.
+    ("PERCENTILE", nums(&[1])), ("PERCENTILE.INC", nums(&[1])), ("PERCENTILE.EXC", nums(&[1])), ("QUARTILE", nums(&[1])),
+    ("QUARTILE.INC", nums(&[1])), ("QUARTILE.EXC", nums(&[1])), ("PERCENTRANK", nums(&[1, 2])),
+    ("PERCENTRANK.INC", nums(&[1, 2])), ("PERCENTRANK.EXC", nums(&[1, 2])),
+    // Dates, text, numbers and finance.
+    ("WEEKDAY", nums(&[1])), ("WEEKNUM", nums(&[1])), ("YEARFRAC", nums(&[2])), ("DAYS360", flags(&[], &[2])),
+    ("DATETRUNC", flags(&[], &[2])), ("TIMEZONECONVERT", nums(&[0])), ("TEXTSPLIT", flags(&[], &[3])),
+    ("TEXTJOIN", flags(&[], &[1])), ("TEXTBEFORE", nums(&[2, 3, 4])), ("TEXTAFTER", nums(&[2, 3, 4])), ("FIND", nums(&[2])),
+    ("PADTEXT", nums(&[1])), ("TRUNCATETEXT", nums(&[1])), ("WRAPTEXT", nums(&[1])), ("CHAR", nums(&[0])),
+    ("UNICHAR", nums(&[0])), ("SPELLNUMBER", nums(&[0])), ("ISEVEN", nums(&[0])), ("ISODD", nums(&[0])),
+    ("FIXED", flags(&[], &[2])), ("DOLLAR", nums(&[0, 1])), ("SLN", nums(&[0, 1, 2])),
+    // The finance kernels read a NaN argument as a missing one; every argument but a list of cash flows is a number.
+    ("COUPDAYBS", every()), ("COUPDAYSNC", every()), ("COUPNCD", every()), ("COUPPCD", every()), ("COUPNUM", every()),
+    ("ACCRINTM", every()), ("INTRATE", every()), ("RECEIVED", every()), ("YIELDDISC", every()), ("TBILLEQ", every()),
+    ("TBILLPRICE", every()), ("TBILLYIELD", every()), ("PRICEMAT", every()), ("YIELDMAT", every()), ("DURATION", every()),
+    ("MDURATION", every()), ("PRICE", every()), ("YIELD", every()), ("CUMIPMT", every()), ("CUMPRINC", every()),
+    ("VDB", every()), ("ODDFPRICE", every()), ("ODDFYIELD", every()), ("ODDLPRICE", every()), ("ODDLYIELD", every()),
+    ("RATE", every()), ("DB", every()), ("DDB", every()), ("SYD", every()), ("EFFECT", every()), ("NOMINAL", every()),
+    ("PDURATION", every()), ("RRI", every()), ("DOLLARDE", every()), ("DOLLARFR", every()), ("ISPMT", every()),
+    ("NPV", nums(&[0])), ("FVSCHEDULE", nums(&[0])),
+];
+
+/// The `#VALUE!` a call answers for text where `REFUSED` names a number or a logical, before its body runs.
+fn text_refused(name: &str, a: &[V]) -> Option<V> {
+    thread_local! {
+        static TABLE: rustc_hash::FxHashMap<&'static str, &'static Refused> = REFUSED.iter().map(|(n, r)| (*n, r)).collect();
+    }
+    let r = TABLE.with(|t| t.get(name).copied())?;
+    let text_at = |i: &usize| a.get(*i).is_some_and(holds_text);
+    if r.numbers.iter().any(text_at) || r.from.is_some_and(|k| (k..a.len()).any(|i| text_at(&i))) {
+        return Some(value_err(name));
+    }
+    r.flags.iter().any(text_at).then(|| V::err(sol_error(ErrorCode::Value, format!("{name} needs TRUE or FALSE"))))
+}
+
 /// `name`'s route, resolved once per name and kept.
 pub fn route(name: &str) -> Route {
     thread_local! {
@@ -2624,6 +2691,9 @@ pub fn route(name: &str) -> Route {
 }
 
 pub fn call_function(name: &str, a: &[V]) -> V {
+    if let Some(e) = text_refused(name, a) {
+        return e;
+    }
     // A range body ported for flat arguments reads a list or a table among them as its items, as the TS's does. A
     // value nested past a table is read differently by each TS body, which no ported one follows yet.
     if a.iter().any(|v| matches!(v, V::List(_))) && !reads_lists(name) && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range) {
@@ -4808,12 +4878,7 @@ fn sum_like_fx(a: &[V]) -> V {
         match v {
             V::Fx(_) => return v.clone(),
             V::Num(n) => result += n,
-            V::Str(s) => {
-                let p = js_parse_float(s);
-                if !p.is_nan() {
-                    result += p;
-                }
-            }
+            // Text is skipped, never read as a number ([[C131]] noTextGuessing).
             V::List(items) => match sum_like_fx(items) {
                 V::Num(n) => result += n,
                 e => return e,
@@ -5321,5 +5386,28 @@ mod tests {
         let mut seen = std::collections::HashSet::new();
         let twice: Vec<_> = ported_names().into_iter().filter(|n| !seen.insert(*n)).collect();
         assert!(twice.is_empty(), "answered twice: {twice:?}");
+    }
+
+    /// A name `REFUSED` lists that no body answers would refuse nothing, and one listed twice keeps only one entry
+    /// ([[C131]] noTextGuessing).
+    #[test]
+    fn every_refused_name_has_a_body() {
+        let unknown: Vec<_> = REFUSED.iter().map(|(n, _)| *n).filter(|n| matches!(route(n), Route::None)).collect();
+        assert!(unknown.is_empty(), "no body: {unknown:?}");
+        let mut seen = std::collections::HashSet::new();
+        let twice: Vec<_> = REFUSED.iter().map(|(n, _)| *n).filter(|n| !seen.insert(*n)).collect();
+        assert!(twice.is_empty(), "listed twice: {twice:?}");
+    }
+
+    /// Text where a function reads a number or a logical is `#VALUE!`, never read ([[C131]] noTextGuessing).
+    #[test]
+    fn text_is_never_a_number_or_a_logical() {
+        let s = V::str;
+        for (name, args) in [("ABS", vec![s("5")]), ("SQRT", vec![s("4")]), ("EDATE", vec![s("2024-01-31"), V::Num(1.0)]), ("TAKE", vec![V::Num(1.0), s("1")]), ("NORM.DIST", vec![V::Num(1.0), V::Num(0.0), V::Num(1.0), s("TRUE")])] {
+            let r = call_function(name, &args);
+            assert!(matches!(&r, V::Fx(FxError::Value)) || matches!(&r, V::Err(e) if e.code == ErrorCode::Value), "{name}: {r:?}");
+        }
+        assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), V::Num(n) if n == 1.0));
+        assert!(matches!(call_function("VALUE", &[s("5")]), V::Num(n) if n == 5.0));
     }
 }

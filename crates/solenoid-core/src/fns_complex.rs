@@ -19,16 +19,9 @@ fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
 }
 
-/// `Number(v)`.
+/// `Number(v)`, which never reads text ([[C131]] noTextGuessing).
 fn js_number(v: &V) -> f64 {
-    match v {
-        V::Num(n) => *n,
-        V::Bool(b) => f64::from(u8::from(*b)),
-        V::Null => 0.0,
-        V::Str(s) => string_to_number(s),
-        V::List(_) => string_to_number(&js_string_of(v)),
-        V::Undef | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => f64::NAN,
-    }
+    crate::excel_functions::to_f64_js(v)
 }
 
 fn is_nullish(v: &V) -> bool {
