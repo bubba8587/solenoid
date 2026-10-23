@@ -36,22 +36,13 @@ function strScalar(
 }
 
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
-const PROMO_LINES = [
-  "Solenoid: wire it, don't write it. ⚡",
-  "Spreadsheets, but the formulas have shapes now.",
-  "No more =SUM(A1:A8). Just plug it in.",
-  "Every cell wishes it were a node.",
-  "Built with Excel envy and React. 🔌",
-  "If you can chart it, you can wire it.",
-  "Ctrl+Z is a love language.",
-];
 
 export class PromoNode extends ClassicPreset.Node {
   label: string;
   cachedText: string | null = null;
   static coreFields = ["roll"];
   private lastRollGen = -1;
-  private roll = Math.random();
+  roll = Math.random();
   width = 220; height = 96;
 
   constructor(init?: { label?: string }) {
@@ -70,9 +61,8 @@ export class PromoNode extends ClassicPreset.Node {
     return this.body();
   }
 
-  body() {
-    this.cachedText = PROMO_LINES[Math.floor(this.roll * PROMO_LINES.length)];
-    return { value: this.cachedText };
+  body(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { value: string };
   }
 }
 
@@ -695,7 +685,7 @@ export class UuidNode extends ClassicPreset.Node {
   label: string;
   cachedText: string | null = null;
   private lastGen = -1;
-  private generated = "";
+  generated = "";
   width = 260; height = 104;
 
   constructor(init?: { label?: string }) {
@@ -713,9 +703,8 @@ export class UuidNode extends ClassicPreset.Node {
     return this.body();
   }
 
-  body(): { result: string } {
-    this.cachedText = this.generated;
-    return { result: this.generated };
+  body(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: string };
   }
 }
 

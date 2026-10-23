@@ -1,7 +1,8 @@
 //! [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C15]] matricesInFormulas,
 //! [[C44]] dateSerials, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics. The small packs'
-//! card bodies: `nodes/electrical.ts`, `astro.ts`, `thermo.ts`, `fluids.ts`, `health.ts`, `emSpectrum.ts`, `convert.ts`,
-//! `tornado.ts` and `triangle.ts`, with the kernels of their `*Ops.ts` beside them.
+//! card bodies: `nodes/electrical.ts`, `chemistry.ts`, `physicsConstants.ts`, `astro.ts`, `thermo.ts`, `fluids.ts`,
+//! `health.ts`, `emSpectrum.ts`, `convert.ts`, `tornado.ts` and `triangle.ts`, with the kernels of their `*Ops.ts`
+//! beside them.
 
 use crate::frame::FrameColType;
 use crate::error_value::ErrorCode;
@@ -23,6 +24,10 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "ParallelCombineNode" => parallel_combine(c),
         "ESeriesNode" => e_series(c),
         "AwgNode" => awg(c),
+        "ResistorCodeNode" => resistor_code(c),
+        "ElementNode" => element_node(c),
+        "MolarMassNode" => molar_mass_node(c),
+        "PhysicsConstantNode" => physics_constant(c),
         "SolarPositionNode" => solar_position(c),
         "SunriseSunsetNode" => sunrise_sunset(c),
         "MoonPhaseNode" => moon_phase_node(c),
@@ -190,6 +195,253 @@ fn awg(c: &mut Call) -> Answer {
     ])
 }
 
+// ─── Resistor code, elements, molar mass, physical constants ───────────────────
+
+/// `decodeResistor`: the digit bands, the multiplier and the tolerance, each band by its colour.
+fn resistor_code(c: &mut Call) -> Answer {
+    let band = |k: &str| match c.string_literal(k) {
+        V::Str(s) => Some(s.to_string()),
+        _ => None,
+    };
+    let named = |b: &Option<String>| b.clone().unwrap_or_else(|| "undefined".into());
+    let digit = |s: &str| ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"].iter().position(|d| *d == s);
+    let five = c.field_str("bands", "4") == "5";
+    let digits = if five { vec![band("b1"), band("b2"), band("b3")] } else { vec![band("b1"), band("b2")] };
+    let decoded = (|| {
+        let mut value = 0.0;
+        for d in &digits {
+            let Some(v) = d.as_deref().and_then(digit) else {
+                return Err(err(ErrorCode::Value, format!("\"{}\" is not a digit band color", named(d))));
+            };
+            value = value * 10.0 + v as f64;
+        }
+        let mult = band("mult");
+        let m = match mult.as_deref() {
+            Some("gold") => 0.1,
+            Some("silver") => 0.01,
+            Some(s) => match digit(s) {
+                Some(k) => [1.0, 10.0, 100.0, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9][k],
+                None => return Err(err(ErrorCode::Value, format!("\"{}\" is not a multiplier band color", named(&mult)))),
+            },
+            None => return Err(err(ErrorCode::Value, "\"undefined\" is not a multiplier band color")),
+        };
+        let tol = band("tol");
+        let t = match tol.as_deref() {
+            Some("brown") => 1.0,
+            Some("red") => 2.0,
+            Some("green") => 0.5,
+            Some("blue") => 0.25,
+            Some("violet") => 0.1,
+            Some("gray") => 0.05,
+            Some("gold") => 5.0,
+            Some("silver") => 10.0,
+            _ => return Err(err(ErrorCode::Value, format!("\"{}\" is not a tolerance band color", named(&tol)))),
+        };
+        Ok((value * m, t))
+    })();
+    let (ohms, tol) = match decoded {
+        Ok((o, t)) => (V::Num(o), V::Num(t)),
+        Err(e) => (e.clone(), e),
+    };
+    shown(c, &[("ohms", "cachedOhms", ohms), ("tolerance", "cachedTol", tol)])
+}
+
+/// `ELEMENTS`: each element's symbol and standard atomic weight, by atomic number.
+const ELEMENTS: [(&str, f64); 118] = [
+    ("H", 1.008), ("He", 4.002602), ("Li", 6.94), ("Be", 9.0121831), ("B", 10.81), ("C", 12.011), ("N", 14.007), ("O", 15.999),
+    ("F", 18.998403163), ("Ne", 20.1797), ("Na", 22.98976928), ("Mg", 24.305), ("Al", 26.9815385), ("Si", 28.085),
+    ("P", 30.973761998), ("S", 32.06), ("Cl", 35.45), ("Ar", 39.948), ("K", 39.0983), ("Ca", 40.078), ("Sc", 44.955908),
+    ("Ti", 47.867), ("V", 50.9415), ("Cr", 51.9961), ("Mn", 54.938044), ("Fe", 55.845), ("Co", 58.933194), ("Ni", 58.6934),
+    ("Cu", 63.546), ("Zn", 65.38), ("Ga", 69.723), ("Ge", 72.63), ("As", 74.921595), ("Se", 78.971), ("Br", 79.904),
+    ("Kr", 83.798), ("Rb", 85.4678), ("Sr", 87.62), ("Y", 88.90584), ("Zr", 91.224), ("Nb", 92.90637), ("Mo", 95.95),
+    ("Tc", 98.0), ("Ru", 101.07), ("Rh", 102.9055), ("Pd", 106.42), ("Ag", 107.8682), ("Cd", 112.414), ("In", 114.818),
+    ("Sn", 118.71), ("Sb", 121.76), ("Te", 127.6), ("I", 126.90447), ("Xe", 131.293), ("Cs", 132.90545196), ("Ba", 137.327),
+    ("La", 138.90547), ("Ce", 140.116), ("Pr", 140.90766), ("Nd", 144.242), ("Pm", 145.0), ("Sm", 150.36), ("Eu", 151.964),
+    ("Gd", 157.25), ("Tb", 158.92535), ("Dy", 162.5), ("Ho", 164.93033), ("Er", 167.259), ("Tm", 168.93422), ("Yb", 173.045),
+    ("Lu", 174.9668), ("Hf", 178.49), ("Ta", 180.94788), ("W", 183.84), ("Re", 186.207), ("Os", 190.23), ("Ir", 192.217),
+    ("Pt", 195.084), ("Au", 196.966569), ("Hg", 200.592), ("Tl", 204.38), ("Pb", 207.2), ("Bi", 208.9804), ("Po", 209.0),
+    ("At", 210.0), ("Rn", 222.0), ("Fr", 223.0), ("Ra", 226.0), ("Ac", 227.0), ("Th", 232.0377), ("Pa", 231.03588),
+    ("U", 238.02891), ("Np", 237.0), ("Pu", 244.0), ("Am", 243.0), ("Cm", 247.0), ("Bk", 247.0), ("Cf", 251.0), ("Es", 252.0),
+    ("Fm", 257.0), ("Md", 258.0), ("No", 259.0), ("Lr", 266.0), ("Rf", 267.0), ("Db", 268.0), ("Sg", 269.0), ("Bh", 270.0),
+    ("Hs", 269.0), ("Mt", 278.0), ("Ds", 281.0), ("Rg", 282.0), ("Cn", 285.0), ("Nh", 286.0), ("Fl", 289.0), ("Mc", 290.0),
+    ("Lv", 293.0), ("Ts", 294.0), ("Og", 294.0),
+];
+
+/// `ELEMENT_BY_SYMBOL`: the atomic number and weight.
+fn element(symbol: &str) -> Option<(f64, f64)> {
+    ELEMENTS.iter().position(|(s, _)| *s == symbol).map(|i| ((i + 1) as f64, ELEMENTS[i].1))
+}
+
+fn element_node(c: &mut Call) -> Answer {
+    let Some((n, mass)) = element(c.field_str("symbol", "H")) else {
+        return Err(super::frames::thrown("Cannot read properties of undefined (reading 'mass')"));
+    };
+    Ok(vec![("mass".into(), V::Num(mass)), ("number".into(), V::Num(n))])
+}
+
+/// `^\d+(?:\.\d+)?` at `i`: the count's length and value, or none.
+fn count_at(s: &[u16], i: usize) -> Option<(usize, f64)> {
+    let digit = |k: usize| s.get(k).is_some_and(|c| (u16::from(b'0')..=u16::from(b'9')).contains(c));
+    let mut j = i;
+    while digit(j) {
+        j += 1;
+    }
+    if j == i {
+        return None;
+    }
+    if s.get(j) == Some(&u16::from(b'.')) && digit(j + 1) {
+        j += 1;
+        while digit(j) {
+            j += 1;
+        }
+    }
+    Some((j - i, crate::jsnum::string_to_number(&String::from_utf16_lossy(&s[i..j]))))
+}
+
+fn unit_text(u: Option<&u16>) -> String {
+    u.map_or_else(|| "undefined".into(), |u| String::from_utf16_lossy(&[*u]))
+}
+
+/// `parseGroup`: a run of elements and bracketed groups, each with its count, to `close`.
+fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usize), V> {
+    let upper = |u: u16| (u16::from(b'A')..=u16::from(b'Z')).contains(&u);
+    let lower = |u: u16| (u16::from(b'a')..=u16::from(b'z')).contains(&u);
+    let unbalanced = || err(ErrorCode::Value, "Unbalanced brackets in formula");
+    let mut mass = 0.0;
+    while i < s.len() {
+        let ch = s[i];
+        if Some(ch) == close {
+            return Ok((mass, i));
+        }
+        if ch == u16::from(b'(') || ch == u16::from(b'[') {
+            let shut = u16::from(if ch == u16::from(b'(') { b')' } else { b']' });
+            let (inner, at) = parse_group(s, i + 1, Some(shut))?;
+            if s.get(at) != Some(&shut) {
+                return Err(unbalanced());
+            }
+            let count = count_at(s, at + 1);
+            mass += inner * count.map_or(1.0, |c| c.1);
+            i = at + 1 + count.map_or(0, |c| c.0);
+            continue;
+        }
+        if !upper(ch) {
+            return Err(err(ErrorCode::Value, format!("Unexpected \"{}\" in formula", unit_text(Some(&ch)))));
+        }
+        let two = s.get(i + 1).is_some_and(|&u| lower(u));
+        let sym = String::from_utf16_lossy(&s[i..i + 1 + usize::from(two)]);
+        let mut el = element(&sym);
+        let mut len = sym.len();
+        if el.is_none() && two {
+            if let Some(one) = element(&sym[..1]) {
+                el = Some(one);
+                len = 1;
+            }
+        }
+        let Some((_, weight)) = el else {
+            return Err(err(ErrorCode::Name, format!("Unknown element \"{sym}\"")));
+        };
+        let count = count_at(s, i + len);
+        mass += weight * count.map_or(1.0, |c| c.1);
+        i += len + count.map_or(0, |c| c.0);
+    }
+    if close.is_some() {
+        return Err(unbalanced());
+    }
+    Ok((mass, i))
+}
+
+/// `hydrateSegments`: split at `·`, `•`, `*`, and at a `.` that starts a hydrate (CuSO4.5H2O), not one inside a
+/// segment's leading multiplier.
+fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
+    let digit = |u: u16| (u16::from(b'0')..=u16::from(b'9')).contains(&u);
+    let starts_hydrate = |t: &[u16]| {
+        let mut j = t.iter().take_while(|&&u| digit(u)).count();
+        if t.get(j) == Some(&u16::from(b'.')) && t.get(j + 1).is_some_and(|&u| digit(u)) {
+            j += 1 + t[j + 1..].iter().take_while(|&&u| digit(u)).count();
+        }
+        t.get(j).is_some_and(|&u| (u16::from(b'A')..=u16::from(b'Z')).contains(&u))
+    };
+    let mut out = Vec::new();
+    let mut start = 0;
+    for i in 0..s.len() {
+        let ch = s[i];
+        let in_multiplier = i > start && s[start..i].iter().all(|&u| digit(u));
+        let after_close = i > 0 && (s[i - 1] == u16::from(b')') || s[i - 1] == u16::from(b']') || digit(s[i - 1]));
+        let hydrate_dot = ch == u16::from(b'.') && !in_multiplier && after_close && starts_hydrate(&s[i + 1..]);
+        if ch == 0xb7 || ch == 0x2022 || ch == u16::from(b'*') || hydrate_dot {
+            out.push(&s[start..i]);
+            start = i + 1;
+        }
+    }
+    out.push(&s[start..]);
+    out
+}
+
+/// `molarMass`: each hydrate segment's leading multiplier times its formula's mass.
+fn molar_mass(input: &str) -> V {
+    let s: Vec<u16> = input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
+    if s.is_empty() {
+        return err(ErrorCode::Value, "Type a chemical formula, such as H2O");
+    }
+    let mut total = 0.0;
+    for seg in hydrate_segments(&s) {
+        let lead = count_at(seg, 0);
+        let body = &seg[lead.map_or(0, |c| c.0)..];
+        if body.is_empty() {
+            return err(ErrorCode::Value, "A formula segment is empty");
+        }
+        match parse_group(body, 0, None) {
+            Ok((mass, _)) => total += lead.map_or(1.0, |c| c.1) * mass,
+            Err(e) => return e,
+        }
+    }
+    V::Num(total)
+}
+
+fn molar_mass_node(c: &mut Call) -> Answer {
+    let lit = match c.string_literal("formula") {
+        V::Undef | V::Null => V::str(""),
+        v => v,
+    };
+    let result = match c.read_input("formula", lit) {
+        V::List(_) => err(ErrorCode::Value, "Molar Mass reads one formula, not a list"),
+        e if e.is_sol_error() => e,
+        V::Str(f) if !crate::jsnum::js_trim(&f).is_empty() => molar_mass(&f),
+        _ => V::Null,
+    };
+    c.show("cachedResult", result.clone());
+    Ok(vec![("result".into(), result)])
+}
+
+/// `PHYS_CONSTANTS`: CODATA 2018, SI units.
+fn physics_constant(c: &mut Call) -> Answer {
+    let v = match c.field_str("op", "c") {
+        "c" => 299792458.0,
+        "G" => 6.67430e-11,
+        "h" => 6.62607015e-34,
+        "hbar" => 1.054571817e-34,
+        "g0" => 9.80665,
+        "atm" => 101325.0,
+        "e" => 1.602176634e-19,
+        "eps0" => 8.8541878128e-12,
+        "mu0" => 1.25663706212e-6,
+        "ke" => 8.9875517923e9,
+        "z0" => 376.730313668,
+        "faraday" => 96485.33212,
+        "me" => 9.1093837015e-31,
+        "mp" => 1.67262192369e-27,
+        "mn" => 1.67492749804e-27,
+        "a0" => 5.29177210903e-11,
+        "rydberg" => 10973731.56816,
+        "na" => 6.02214076e23,
+        "kb" => 1.380649e-23,
+        "rgas" => 8.314462618,
+        "sigma" => 5.670374419e-8,
+        "wien" => 2.897771955e-3,
+        _ => return Err(super::frames::thrown("Cannot read properties of undefined (reading 'value')")),
+    };
+    Ok(vec![("value".into(), V::Num(v))])
+}
 // ─── Astronomy ─────────────────────────────────────────────────────────────────
 
 const RAD: f64 = PI / 180.0;

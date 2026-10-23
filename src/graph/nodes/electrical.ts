@@ -4,7 +4,7 @@ import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
 import { listIn, numIn, numOut } from "./shared";
 import { type SolError } from "../errorValue";
-import { decodeResistor, type ESeriesOp } from "./electricalOps";
+import { type ESeriesOp } from "./electricalOps";
 
 export class ParallelCombineNode extends ClassicPreset.Node {
   label: string;
@@ -87,16 +87,7 @@ export class ResistorCodeNode extends ClassicPreset.Node {
     this.addOutput("tolerance", numOut("± %"));
   }
 
-  data() {
-    const L = this.stringLiterals;
-    const r = decodeResistor(L.b1, L.b2, L.b3, L.mult, L.tol, this.bands === "5");
-    if ("code" in (r as object)) {
-      this.cachedOhms = this.cachedTol = r as SolError;
-      return { ohms: r as SolError, tolerance: r as SolError };
-    }
-    const { ohms, tolerance } = r as { ohms: number; tolerance: number };
-    this.cachedOhms = ohms;
-    this.cachedTol = tolerance;
-    return { ohms, tolerance };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { ohms: number | SolError; tolerance: number | SolError };
   }
 }

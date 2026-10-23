@@ -1,4 +1,5 @@
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { PassthroughSpec } from "./passthrough";
 import type { UnitSuffix } from "../unitFormat";
@@ -216,7 +217,7 @@ export class RandBetweenNode extends ClassicPreset.Node {
   cachedResult: number | null = null;
   literals: Record<string, number> = { bound1: 0, bound2: 1 };
   // The raw roll re-rolls only when the recalc generation advances; the bounds apply live on every call.
-  private rawRoll = Math.random();
+  rawRoll = Math.random();
   private lastRollGen = -1;
   width = 180;
   height = 200;
@@ -232,7 +233,7 @@ export class RandBetweenNode extends ClassicPreset.Node {
   static coreFields = ["rawRoll"];
 
   /** The roll is drawn here; `body` scales it to the bounds. */
-  data(inputs: { bound1?: number[]; bound2?: number[] }) {
+  data(inputs: Record<string, unknown[] | undefined>) {
     const gen = getRecalcGen();
     if (this.lastRollGen !== gen) {
       this.rawRoll = Math.random();
@@ -241,11 +242,7 @@ export class RandBetweenNode extends ClassicPreset.Node {
     return this.body(inputs);
   }
 
-  body(inputs: { bound1?: number[]; bound2?: number[] }) {
-    const bound1 = readInput(inputs.bound1, this.literals.bound1 ?? 0);
-    const bound2 = readInput(inputs.bound2, this.literals.bound2 ?? 1);
-    if (bound1 === null || bound2 === null) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = bound1 + this.rawRoll * (bound2 - bound1);
-    return { result: this.cachedResult };
+  body(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }

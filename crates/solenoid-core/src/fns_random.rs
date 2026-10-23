@@ -148,7 +148,7 @@ fn randarray(a: &[V]) -> V {
 }
 
 /// `DIST_SPECS`, in its order: each family's group, whether it has an inverse, and its parameters' defaults.
-const FAMILIES: &[(&str, bool, bool, &[f64])] = &[
+pub(crate) const FAMILIES: &[(&str, bool, bool, &[f64])] = &[
     ("normal", true, true, &[0.0, 1.0]),
     ("normal-s", true, true, &[]),
     ("phi", true, false, &[]),
@@ -235,7 +235,7 @@ fn binom_sample_walk(us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
 }
 
 /// `sampleQuantiles`: many draws' quantiles in draw order; a discrete family sweeps its CDF once over the sorted draws.
-fn sample_quantiles(key: &str, continuous: bool, inverse: bool, us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
+pub(crate) fn sample_quantiles(key: &str, continuous: bool, inverse: bool, us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
     if key == "binom" {
         return binom_sample_walk(us, ps);
     }

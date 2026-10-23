@@ -8,7 +8,6 @@ import { worldClockRows, worldClockFrame } from "../timeZone";
 import { callCore } from "../coreValues";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
-import { wallClockSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
@@ -37,10 +36,8 @@ export class TodayNowNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date"));
   }
 
-  data() {
-    const serial = wallClockSerial(new Date(), this.op === "today");
-    this.cachedResult = serial;
-    return { result: serial };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: number };
   }
 }
 

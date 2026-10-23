@@ -1,6 +1,6 @@
 // [[C68]]
 import { ClassicPreset } from "rete";
-import { sourceHasLayer } from "../svgLayer";
+import { nodeOnCore } from "../nodeOnCore";
 import { sanitizeSvg } from "../svgSanitize";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
@@ -384,12 +384,7 @@ export class SvgPickerNode extends ClassicPreset.Node {
     return this.body();
   }
 
-  body(): { chart: SvgValue | null; layer: string | null } {
-    const source = this.source;
-    const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
-    const chart: SvgValue | null = source
-      ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
-      : null;
-    return { chart, layer };
+  body(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { chart: SvgValue | null; layer: string | null };
   }
 }

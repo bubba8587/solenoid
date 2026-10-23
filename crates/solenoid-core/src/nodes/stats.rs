@@ -14,6 +14,7 @@ use std::rc::Rc;
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "RankPercentileNode" => rank_percentile(c),
+        "DistributionsNode" => distributions(c),
         "CorrelNode" => correl(c),
         "StandardizeNode" => standardize(c),
         "CovarianceNode" => covariance(c),
@@ -807,4 +808,142 @@ fn linest(c: &mut Call) -> Answer {
         }
         None => outs(c, V::Null, V::Null, V::Null),
     }
+}
+
+// ─── Distributions (distribution.ts) ────────────────────────────────────────────
+
+/// `DIST_SPECS`' x socket and parameter sockets, by family.
+fn dist_keys(op: &str) -> Option<(&'static str, &'static [&'static str])> {
+    Some(match op {
+        "normal" | "lognorm" => ("x", &["mean", "stdev"]),
+        "normal-s" => ("z", &[]),
+        "phi" | "gauss" => ("x", &[]),
+        "t" | "chisq" => ("x", &["df"]),
+        "f" => ("x", &["df1", "df2"]),
+        "beta" | "gamma" | "weibull" => ("x", &["alpha", "beta"]),
+        "expon" => ("x", &["lambda"]),
+        "binom" => ("k", &["n", "p"]),
+        "poisson" => ("k", &["lambda"]),
+        "hypgeom" => ("k", &["n", "M", "N"]),
+        "negbinom" => ("k", &["r", "p"]),
+        _ => return None,
+    })
+}
+
+/// `DIST_FX`: the formula functions a family's forms share with the card ([[C17]] shareImpl): dist, inv, rt.
+fn dist_fx(op: &str) -> (Option<&'static str>, Option<&'static str>, Option<&'static str>) {
+    match op {
+        "normal" => (Some("NORM.DIST"), Some("NORM.INV"), None),
+        "normal-s" => (Some("NORM.S.DIST"), Some("NORM.S.INV"), None),
+        "chisq" => (Some("CHISQ.DIST"), Some("CHISQ.INV"), Some("CHISQ.DIST.RT")),
+        "f" => (Some("F.DIST"), Some("F.INV"), Some("F.DIST.RT")),
+        "gamma" => (Some("GAMMA.DIST"), None, None),
+        "lognorm" => (Some("LOGNORM.DIST"), Some("LOGNORM.INV"), None),
+        "weibull" => (Some("WEIBULL.DIST"), None, None),
+        "expon" => (Some("EXPON.DIST"), None, None),
+        "binom" => (Some("BINOM.DIST"), Some("BINOM.INV"), None),
+        "poisson" => (Some("POISSON.DIST"), None, None),
+        "hypgeom" => (Some("HYPGEOM.DIST"), None, None),
+        "negbinom" => (Some("NEGBINOM.DIST"), None, None),
+        _ => (None, None, None),
+    }
+}
+
+/// `distCall`: the formula call a family's form makes, where it has one.
+fn dist_call(op: &str, form: &str, v: &V, ps: &[V]) -> Option<(&'static str, Vec<V>)> {
+    let (dist, inv, rt) = dist_fx(op);
+    let with_v = |name: &'static str| {
+        let mut args = vec![v.clone()];
+        args.extend(ps.iter().cloned());
+        (name, args)
+    };
+    match form {
+        "cdf" | "pdf" | "pmf" => dist.map(|d| {
+            let (name, mut args) = with_v(d);
+            args.push(V::Bool(form == "cdf"));
+            (name, args)
+        }),
+        "inv" => inv.map(|i| {
+            if op == "binom" {
+                let mut args = ps.to_vec();
+                args.push(v.clone());
+                (i, args)
+            } else {
+                with_v(i)
+            }
+        }),
+        "rt" => rt.map(with_v),
+        _ => None,
+    }
+}
+
+fn dist_form(form: &str) -> crate::dists::Form {
+    use crate::dists::Form;
+    match form {
+        "pdf" => Form::Pdf,
+        "pmf" => Form::Pmf,
+        "2t" => Form::TwoTail,
+        "rt" => Form::RightTail,
+        "inv" => Form::Inv,
+        "inv2t" => Form::Inv2t,
+        "invrt" => Form::InvRt,
+        _ => Form::Cdf,
+    }
+}
+
+fn distributions(c: &mut Call) -> Answer {
+    let op = c.field_str("op", "normal").to_string();
+    let form = c.field_str("form", "cdf").to_string();
+    let Some((x_key, params)) = dist_keys(&op) else {
+        return Err(super::frames::thrown("Cannot read properties of undefined (reading 'params')"));
+    };
+    let read = |c: &Call, k: &str| c.read_input(k, c.literal(k));
+    let ps: Vec<V> = params.iter().map(|k| read(c, k)).collect();
+    let result = if form == "sample" {
+        let count = c.read_num("count", 100.0);
+        if matches!(count, V::Null) || ps.iter().any(|v| matches!(v, V::Null)) {
+            V::Null
+        } else {
+            let head = |v: &V| match v {
+                V::List(items) => match items.first() {
+                    None | Some(V::Null | V::Undef) => 0.0,
+                    Some(x) => crate::excel_functions::js_number_of(x),
+                },
+                v => crate::excel_functions::js_number_of(v),
+            };
+            let n = crate::jsnum::math_min(100_000.0, crate::jsnum::math_max(0.0, math_round(head(&count))));
+            let nums: Vec<f64> = ps.iter().map(head).collect();
+            let seed = c.field("sampleSeed").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as u32;
+            let mut rng = crate::planners::mulberry32(seed);
+            let us: Vec<f64> = (0..if n.is_nan() { 0 } else { n as usize }).map(|_| rng()).collect();
+            let &(_, continuous, inverse, _) = crate::fns_random::FAMILIES.iter().find(|f| f.0 == op).unwrap_or(&("", true, false, &[]));
+            list(crate::fns_random::sample_quantiles(&op, continuous, inverse, &us, &nums).into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())
+        }
+    } else {
+        let first_key = if form.starts_with("inv") { "prob" } else { x_key };
+        let mut args = vec![read(c, first_key)];
+        args.extend(ps);
+        let f = dist_form(&form);
+        broadcast_err(&args, |o| {
+            let ps: Vec<V> = o[1..].iter().map(|&v| v.clone()).collect();
+            let r = match dist_call(&op, &form, o[0], &ps) {
+                Some((name, args)) => core_call(name, &args),
+                None => {
+                    let nums: Vec<f64> = ps.iter().map(crate::excel_functions::js_number_of).collect();
+                    match crate::dists::compute(&op, f, crate::excel_functions::js_number_of(o[0]), &nums) {
+                        Ok(Some(n)) => V::Num(n),
+                        _ => V::Null,
+                    }
+                }
+            };
+            match r {
+                e if e.is_sol_error() => e,
+                V::Num(n) if n.is_finite() => V::Num(n),
+                // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
+                _ => err(ErrorCode::Domain, "A parameter is outside the distribution's domain"),
+            }
+        })
+    };
+    c.show("cachedResult", result.clone());
+    Ok(vec![("result".into(), result)])
 }
