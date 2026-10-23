@@ -60,11 +60,11 @@ describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a mi
     const t = performance.now();
     for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) {
       expect(call(name, 1, Infinity)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order of at most 1,000,000` });
-      for (const n of [-Infinity, -1, -1e12, "-1e12"]) {
+      for (const n of [-Infinity, -1, -1e12]) {
         expect(call(name, 1, n)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order of 0 or more` });
       }
-      // Text reads as every number text does, so "Infinity" is not a number ([[C117]] usNumberText); Formula.js would read it as one.
-      expect(call(name, 1, "-Infinity")).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });
+      // Text is never an order, numeric or not ([[C131]] noTextGuessing); Formula.js would read both as numbers.
+      for (const n of ["-1e12", "-Infinity"]) expect(call(name, 1, n)).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });
     }
     expect(performance.now() - t).toBeLessThan(500);
   });
@@ -89,10 +89,11 @@ describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per p
 });
 
 describe("IFS reads its tests as IF does (FX is wrong)", () => {
-  it("text counts only as TRUE or FALSE; other text is #VALUE!", () => {
-    expect(call("IFS", "FALSE", 1, true, 2)).toBe(2);
-    const r = call("IFS", "text", 1, true, 2);
-    expect(isSolError(r) && r.code).toBe("#VALUE!");
+  it("a text test is #VALUE!, even \"FALSE\" ([[C131]] noTextGuessing)", () => {
+    for (const t of ["FALSE", "text"]) {
+      const r = call("IFS", t, 1, true, 2);
+      expect(isSolError(r) && r.code).toBe("#VALUE!");
+    }
   });
 });
 

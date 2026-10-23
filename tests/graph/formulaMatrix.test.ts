@@ -277,8 +277,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("FILTER by mask — Excel's include-array form", () => {
     // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
     // with wired comparison values) — a different mechanism from Excel's computed
-    // boolean mask, so [[C17]] shareImpl's node-equality doesn't apply term-for-term here; the
-    // shared ground is filterByMask (listOps), which this pins directly.
+    // boolean mask, so [[C17]] shareImpl's node-equality doesn't apply term-for-term here.
     const x = [1, 5, 2, 9];
     expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
     expect(ev("FILTER(x, m)", { x, m: [true, false, true, false] })).toEqual([1, 2]);
@@ -290,9 +289,10 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
 
   it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
     const x = [1, 5, 2, 9];
-    // Text other than TRUE/FALSE is not a condition: #VALUE!, not a silent FALSE.
+    // Text is not a condition, even "TRUE" ([[C131]] noTextGuessing): #VALUE!, not a silent FALSE.
     expect(code(ev("FILTER(x, m)", { x, m: [true, "yes", true, false] }))).toBe("#VALUE!");
-    expect(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] })).toEqual([1, 2]);
+    expect(code(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] }))).toBe("#VALUE!");
+    expect(ev("FILTER(x, m)", { x, m: [true, false, 1, 0] })).toEqual([1, 2]);
     // A blank include cell keeps nothing.
     expect(ev("FILTER(x, m)", { x, m: [true, null, true, false] })).toEqual([1, 2]);
     // The include array is read whole, so its error is the answer; a data error stays in its cell.

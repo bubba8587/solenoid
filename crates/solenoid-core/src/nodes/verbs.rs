@@ -10,7 +10,7 @@ use super::list::{frame_cell_of, infer_column, truthy};
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::{js_string_of, logical_or_type_error, V};
+use crate::excel_functions::{js_string_of, V};
 use crate::frame::{FrameCell, FrameColumn, FrameValue};
 use crate::frame_verbs::{apply_verb, compile_filter, format_frame_cell, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp};
 use crate::jsnum::{js_lower, js_trim};
@@ -498,10 +498,10 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
                 .map(|v| match v {
                     V::Null | V::Undef => V::Null,
                     V::Err(_) => v.clone(),
-                    v => match logical_or_type_error(v, &place) {
+                    v => match crate::value_kinds::logical_or_type_error(&core_cell(v), &place) {
                         Ok(Some(b)) => V::Bool(b),
                         Ok(None) => V::Null,
-                        Err(e) => e,
+                        Err(e) => V::err(e),
                     },
                 })
                 .collect()

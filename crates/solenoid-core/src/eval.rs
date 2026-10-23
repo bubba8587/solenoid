@@ -354,15 +354,14 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
     apply_op(op, a, b)
 }
 
-/// `-x`, `+x`: JavaScript's unary coercion.
+/// `-x`, `+x`: JavaScript's unary coercion, which never reads text ([[C131]] noTextGuessing).
 fn js_unary(v: &V) -> f64 {
-    match v {
-        V::Num(n) => *n,
-        V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) => crate::jsnum::string_to_number(s),
-        V::List(_) => crate::jsnum::string_to_number(&crate::excel_functions::js_string_of(v)),
-        _ => f64::NAN,
-    }
+    crate::excel_functions::to_f64_js(if matches!(v, V::Null) { &V::Undef } else { v })
+}
+
+/// The answer an operator gives text ([[C131]] noTextGuessing).
+fn text_operand() -> V {
+    V::err(sol_error(ErrorCode::Value, "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"))
 }
 
 const ETA_HOSTS: [&str; 6] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"];
@@ -635,6 +634,7 @@ impl Eval<'_> {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
                     V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
+                    V::Str(_) => text_operand(),
                     other => V::Num(if neg { -js_unary(other) } else { js_unary(other) }),
                 };
                 if is_arr(&a) {
@@ -651,6 +651,7 @@ impl Eval<'_> {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
                     V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
+                    V::Str(_) => text_operand(),
                     other => V::Num(js_unary(other) / 100.0),
                 };
                 if is_arr(&a) {
@@ -1059,6 +1060,9 @@ impl Eval<'_> {
                 }
                 // JS's Math.max: NaN stays NaN, so a NaN side passes the cap and builds nothing.
                 let js_max = |a: f64, b: f64| if a.is_nan() { a } else { a.max(b) };
+                if crate::excel_functions::holds_text(&arg(0)) || crate::excel_functions::holds_text(&arg(1)) {
+                    return crate::excel_functions::value_err("MAKEARRAY");
+                }
                 let side = |v: &V| js_max(js_unary(v).floor(), 0.0);
                 let (r, c) = (side(&arg(0)), side(&arg(1)));
                 // Each side counts as at least one, so a zero side can't hide a huge other one.

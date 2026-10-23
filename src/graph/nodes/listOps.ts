@@ -3,7 +3,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, type UnitCell, forAggregateUnits, isAffineDisplay, tagDim, unitError, READINGS_ADD } from "../unitValue";
 import { dimEqual, dimPow, isDimensionless } from "../dimension";
-import { forAggregate, ifTest, isMissing } from "../valueKinds";
+import { forAggregate, isMissing } from "../valueKinds";
 import { compareStrings } from "../stringOrder";
 import { iterMin, iterMax } from "./mathUtils";
 
@@ -310,17 +310,6 @@ export function sortList(arr: readonly Cell[], desc = false): Cell[] {
 
 export function sortByKeys<T>(arr: readonly T[], by: readonly unknown[], desc = false): (T | null)[] {
   return sortedIndex(by, Math.max(arr.length, by.length), desc).map((i) => (i < arr.length ? arr[i] : null));
-}
-
-/** FILTER's include array read as IF reads a condition ([[E10]] pickVsAggregateErrors: the mask is read whole, so its first error is the answer). A blank keeps nothing. */
-export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[] | SolError {
-  const keep: boolean[] = [];
-  for (const m of mask) {
-    const t = ifTest(m);
-    if (isSolError(t)) return t;
-    keep.push(t === true);
-  }
-  return arr.filter((_, i) => keep[i]);
 }
 
 // ─── Table sorts, filters and uniques ([[D85]] columnsStayColumns: a list is one row) ──────────

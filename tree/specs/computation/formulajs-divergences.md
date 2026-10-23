@@ -38,7 +38,11 @@ These match the Math node's own compute.
 
 ## Logic
 
-- **IFS** reads each test with `ifTest`, IF's reading, which the IFS card shares: text counts only as TRUE or FALSE, and other text is `#VALUE!`. Formula.js takes any truthy JavaScript value, so `IFS("FALSE", 1)` answered 1.
+- **IFS** reads each test with `ifTest`, IF's reading, which the IFS card shares: text is `#VALUE!`, even `"TRUE"` ([[C131]] noTextGuessing). Formula.js takes any truthy JavaScript value, so `IFS("FALSE", 1)` answered 1.
+
+## Text arguments
+
+- Formula.js's `parseNumber` read numeric text as a number (`ABS("5")` was 5, `SUMSQ` summed `"5"`), its `parseDate` read date text (`EDATE("2024-01-31", 1)`), and its SUM `parseFloat`ed a text argument. Every body ported from it answers `#VALUE!` for text where it needs a number or a date, and SUM skips text ([[C131]] noTextGuessing, [[formula-language#Text is text]]).
 
 ## Statistics
 

@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
-use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string, string_to_number};
+use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -779,7 +779,8 @@ fn js_add(acc: Acc, v: &V) -> Acc {
 fn acc_number(acc: Acc) -> f64 {
     match acc {
         Acc::Num(n) => n,
-        Acc::Str(s) => string_to_number(&s),
+        // Text joined into the sum is never read back as a number ([[C131]] noTextGuessing).
+        Acc::Str(_) => f64::NAN,
     }
 }
 
@@ -832,6 +833,8 @@ fn regression_pair(ys: &V, xs: &V) -> Result<(Vec<V>, Vec<V>), V> {
     if let Some(e) = first_error(&xs_list).or_else(|| first_error(&ys_list)) {
         return Err(e);
     }
+    no_text(&ys_list, "Known Ys")?;
+    no_text(&xs_list, "Known Xs")?;
     let (mut ox, mut oy) = (Vec::new(), Vec::new());
     for (a, b) in xs_list.iter().zip(&ys_list) {
         if matches!(a, V::Null) || matches!(b, V::Null) {
@@ -848,6 +851,7 @@ fn regression_targets(target: &V) -> Result<Vec<f64>, V> {
     if let Some(e) = first_error(&l) {
         return Err(e);
     }
+    no_text(&l, "New Xs")?;
     Ok(l.iter().filter(|v| !matches!(v, V::Null)).map(js_number).collect())
 }
 
@@ -861,17 +865,18 @@ fn slope_through_origin(xs: &[V], ys: &[f64]) -> Option<f64> {
     (!xs.is_empty() && sxx > 0.0).then(|| sxy / sxx)
 }
 
-/// excelFunctions.ts `isTrue`.
+/// excelFunctions.ts `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
         V::Num(n) => *n == 1.0,
-        V::Str(s) => {
-            let t = js_trim(s);
-            t.eq_ignore_ascii_case("true") || t == "1"
-        }
         _ => false,
     }
+}
+
+/// `#VALUE!` where a regression's list holds text, which is never read as a number ([[C131]] noTextGuessing).
+fn no_text(l: &[V], what: &str) -> Result<(), V> {
+    if l.iter().any(crate::excel_functions::holds_text) { Err(err(ErrorCode::Value, format!("{what} need numbers"))) } else { Ok(()) }
 }
 
 fn nonpositive_y() -> V {
