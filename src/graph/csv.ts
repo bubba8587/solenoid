@@ -9,14 +9,14 @@ export interface CsvOptions {
   keepBlankLines?: boolean;
 }
 
-/** Every row the text reads as, on the core (`csv.rs`): fields split as Papa Parse split them, `\r\n` and `\r` read as
- *  `\n`, a leading BOM dropped, a final newline a terminator. */
+/** Every row the text reads as, on the core (`csv.rs`, the `csv` crate): `\r\n` and `\r` read as `\n`, a leading BOM
+ *  dropped, a final newline a terminator. */
 export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
   return wasmCsvRows(text, !!opts.detectDelimiter, !!opts.keepBlankLines);
 }
 
-/** Rows as CSV text with a header row, on the core: a field holding a comma, quote, newline or BOM, or with a space at
- *  either end, quoted; lines ended by `\r\n`. */
+/** Rows as CSV text with a header row, on the core: a field holding a comma, quote or line break quoted; every line
+ *  ended by `\r\n`. */
 export function unparseCsv(fields: readonly string[], rows: readonly (readonly string[])[]): string {
   return wasmInvokeSync<string>("engine_csv_text", { fields, rows });
 }

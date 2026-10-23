@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 ryu-js = "1"
+csv = "1.4"
 qrcodegen = "1.8"
 regress = { path = "../vendor/regress", default-features = false, features = ["std", "utf16", "no-property-escapes"] }
 

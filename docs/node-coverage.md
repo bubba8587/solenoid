@@ -429,7 +429,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
   - It is a desktop-only local read (no network gate). On web it shows "Reading a vault is available in the desktop app only", except for the demo vault. `statVaultFile` backs created / modified.
 - **Import Obsidian Note**: see *Obsidian* below.
 - **Write File** (CSV / JSON / Text): disk writes fire only from the node's Run button ([[C38]] sinkRunButtonOnly). The format is an argument ([[C26]] opArgDistinct).
-  - CSV is written as Papa Parse wrote it, on the core (`unparseCsv`, `csv.rs`), each cell formatted as displayed, text cells neutralized against spreadsheet formula injection ([[C103]] untrustedContentSeams).
+  - CSV is written by the `csv` crate on the core (`unparseCsv`, `csv.rs`), each cell formatted as displayed, text cells neutralized against spreadsheet formula injection ([[C103]] untrustedContentSeams).
   - JSON is an array of row records, the shape Web Source reads back; only dates (ISO, a time kept) and error cells become strings.
   - Text writes a wired string verbatim (Schedule's `mspdi` Project XML), so the input becomes a string socket in that mode; switching across that boundary retypes it and prunes the cable.
   - A lazy upstream is read in full only at Run. Browse picks a path in a Save dialog without writing.

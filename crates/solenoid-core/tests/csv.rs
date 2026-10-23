@@ -1,5 +1,5 @@
-//! [[C103]] untrustedContentSeams: the core's CSV reader and writer answer as Papa Parse and the TS typing did
-//! (`fixtures/core/csv-rows.json.gz`, `csv-frames.json.gz`, `csv-sources.json.gz`, `csv-unparse.json.gz`, frozen by
+//! [[C103]] untrustedContentSeams: the core's CSV reader and writer answer as frozen (`fixtures/core/csv-rows.json.gz`,
+//! `csv-frames.json.gz`, `csv-sources.json.gz`, `csv-unparse.json.gz`, recorded through the callers by
 //! `tests/graph/coreCsv.test.ts`).
 
 use serde_json::Value as Json;
