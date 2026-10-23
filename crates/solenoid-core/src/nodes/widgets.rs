@@ -73,16 +73,6 @@ fn frame_of(columns: Vec<Column>) -> V {
     V::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
 }
 
-/// JS `a + b`: text where either side reads as text (an object reads as its `String`), else numbers.
-fn js_add(a: &V, b: &V) -> V {
-    let texty = |v: &V| !matches!(v, V::Num(_) | V::Bool(_) | V::Null | V::Undef);
-    if texty(a) || texty(b) {
-        V::str(&format!("{}{}", js_string_of(a), js_string_of(b)))
-    } else {
-        V::Num(js_number_of(a) + js_number_of(b))
-    }
-}
-
 // ─── Value Input, Slider ────────────────────────────────────────────────────────
 
 /// `applyFcUnit` on one typed number: the FC unit's base value, a custom unit its own dimension.
@@ -469,6 +459,9 @@ fn color_blend(c: &mut Call) -> Answer {
         if matches!(raw, V::Null) {
             return None;
         }
+        if matches!(raw, V::Err(_)) {
+            return Some(Err(raw));
+        }
         let text = js_string_of(&raw);
         let s = js_trim(&text);
         Some(parse_color(s).ok_or_else(|| err(ErrorCode::Value, format!("{label} isn't a color: \"{s}\""))))
@@ -515,7 +508,7 @@ fn constant(c: &mut Call) -> Answer {
         "zero" | "false" => 0.0,
         "one" | "true" => 1.0,
         "neg-one" => -1.0,
-        _ => return Err(super::frames::thrown("Cannot read properties of undefined (reading 'value')")),
+        op => return Ok(vec![("value".into(), err(ErrorCode::Value, format!("Unknown constant \"{op}\"")))]),
     };
     Ok(vec![("value".into(), V::Num(v))])
 }
@@ -702,10 +695,12 @@ fn cable_switch(c: &mut Call) -> Answer {
 fn rand_between(c: &mut Call) -> Answer {
     let roll = init_num(c, "rawRoll", f64::NAN);
     let (b1, b2) = (c.read_num("bound1", 0.0), c.read_num("bound2", 1.0));
-    let out = if matches!(b1, V::Null) || matches!(b2, V::Null) {
-        V::Null
-    } else {
-        js_add(&b1, &V::Num(roll * (js_number_of(&b2) - js_number_of(&b1))))
+    let out = match (&b1, &b2) {
+        (V::Null, _) | (_, V::Null) => V::Null,
+        (V::Err(_), _) => b1.clone(),
+        (_, V::Err(_)) => b2.clone(),
+        (V::Num(lo), V::Num(hi)) => V::Num(lo + roll * (hi - lo)),
+        _ => err(ErrorCode::Value, "Bound 1 and Bound 2 must be numbers"),
     };
     c.show("cachedResult", out.clone());
     Ok(vec![("result".into(), out)])

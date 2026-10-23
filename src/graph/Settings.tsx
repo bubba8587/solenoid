@@ -100,6 +100,30 @@ function SegmentRow({ field }: { field: SettingField }) {
   );
 }
 
+function SliderRow({ field }: { field: SettingField }) {
+  const value = Number(settingsStore.get(field.key));
+  const { min, max, step } = field.range ?? { min: 0, max: 10, step: 1 };
+  return (
+    <label className="solenoid-settings__row">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">{field.label}</span>
+        {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
+      </span>
+      <span className="solenoid-settings__slider">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => settingsStore.set(field.key, Number(e.target.value) as never)}
+        />
+        <span className="solenoid-settings__slider-value">{field.show ? field.show(value) : value}</span>
+      </span>
+    </label>
+  );
+}
+
 function FolderRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const desktop = isDesktop();
@@ -365,6 +389,7 @@ function AiSection() {
 function renderField(f: SettingField): ReactNode {
   return f.type === "folder" ? <FolderRow key={f.key} field={f} />
     : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
+    : f.type === "slider" ? <SliderRow key={f.key} field={f} />
     : f.type === "text" ? <TextRow key={f.key} field={f} />
     : <Toggle key={f.key} field={f} />;
 }

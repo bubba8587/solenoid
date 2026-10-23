@@ -202,6 +202,9 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
         return number_to_string(n);
     }
     let s = to_fixed(n, d.decimals).unwrap_or_default();
+    if !s.contains('.') {
+        return if s == "-0" { "0".into() } else { s };
+    }
     // `.replace(/\.?0+$/, "")`.
     let kept = s.trim_end_matches('0');
     let kept = if kept.len() < s.len() { kept.strip_suffix('.').unwrap_or(kept) } else { &s };
