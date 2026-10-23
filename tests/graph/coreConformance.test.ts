@@ -293,6 +293,17 @@ describe("formula dimensions answer as frozen", () => {
 
 type AffCase = { src: string; points: string[]; lists: string[]; bare: string[]; fns: Record<string, [string[], string]>; want: unknown };
 
+// The formula trees the editor's walkers read (variables, LaTeX, steps), first frozen from the TypeScript parser.
+describe("the parser answers its frozen trees", () => {
+  const trees = readFrozen<{ src: string; want: unknown }>("formula-trees");
+  const sorted = (v: unknown): unknown =>
+    Array.isArray(v) ? v.map(sorted) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, sorted(x)])) : v;
+  it(`${trees.length} formulas`, () => {
+    const parse = (src: string) => (src.trim() ? sorted(wasmInvokeSync("engine_formula_parse", { expr: src })) : null);
+    expect(replay("formula-trees", trees, (c) => parse(c.src), (a, b) => same(a, sorted(b)))).toEqual([]);
+  });
+});
+
 describe("affine weights answer as frozen", () => {
   const affineCases = readFrozen<AffCase>("affine-weights");
   it(`${affineCases.length} formulas, as text and as a tree`, () => {
