@@ -1,21 +1,12 @@
 // [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isPurePassthroughNode } from "./passthrough";
-import { isUnitCell, matrixUnitOf, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
+import { nodeOnCore } from "../nodeOnCore";
+import { staysOffCore } from "./display";
 import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
-
-/** The unit a value already carries: a scalar or list's first dimensioned cell, or a matrix's grid unit. */
-function heldUnit(v: unknown): Pick<UnitCell, "dim" | "display"> | null {
-  if (isUnitCell(v)) return v;
-  if (Array.isArray(v) && !Array.isArray(v[0])) {
-    for (const c of v) if (isUnitCell(c)) return c;
-  }
-  return matrixUnitOf(v) ?? null;
-}
 
 class MutableSocket extends SolenoidSocket {
   constructor(type: SocketDataType) { super(type); }
@@ -47,6 +38,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
     in: "The format applies to the box feeding this input, and clears when it's disconnected.",
     out: "The unit rides the value out, and the display format follows it across downstream passthrough boxes.",
   };
+  /** The Convert this FC feeds names its from-unit at run time, which no save keeps. */
+  static coreFields = ["dictatedFromUnit"] as const;
 
   label: string;
   hostNodeId: string;
@@ -313,16 +306,14 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.socketKey = "";
   }
 
-  data(inputs: { in?: unknown[] }): { out: unknown } {
-    const val = inputs.in?.[0] ?? null;
-    const cell = heldUnit(val);
-    const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
-    const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
-    if (dictated && this.unit === "none") this.unit = dictated;
-    this.lockedByConvert = dictated !== "" && this.unit === dictated;
-    this.forwarding = !!cell && !this.lockedByConvert;
-    if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
-    this.unitLocked = this.lockedByConvert || this.forwarding;
-    return { out: applyFcUnit(val, this.unit, this.customUnit) };
+  data(inputs: Record<string, unknown[] | undefined>): { out: unknown } {
+    const raw = inputs.in?.[0];
+    // A value the core can't take back holds no unit: the card reads it as a blank and hands it on.
+    const out = staysOffCore(raw) ? (nodeOnCore(this, { ...inputs, in: [null] }), { out: raw }) : (nodeOnCore(this, inputs) as { out: unknown });
+    this.unit = this.adoptedUnit;
+    return out;
   }
+
+  /** The unit the card shows: the Convert's from-unit, else the one the value carries in. The card keeps it. */
+  adoptedUnit = "none";
 }

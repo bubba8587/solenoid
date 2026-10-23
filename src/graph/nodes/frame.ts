@@ -7,7 +7,7 @@ import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, 
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame, coerceFrameCell } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
 import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
@@ -25,10 +25,10 @@ import { logicalOrTypeError } from "../valueKinds";
 import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
-  frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
+  frameFromInputText, parseFrameSource, frameSourceToText,
   formatFrameCell, isCubeValue, isFrameValue, inferColumn,
   cubeRowCount, frameFromRows, cubeFromColumns,
-  type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
+  type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
   pivotFrame,
@@ -58,7 +58,7 @@ import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
-import { tagFrameCellUnit, tagCubeCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
+import { tagFrameCellUnit, tagCubeCellUnit, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -146,8 +146,6 @@ export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef 
 
 export const lambdaSocketName = (key: string): string => `λ${key.replace(/^fn/, "")}`;
 
-type CompiledColumnExpr = { evaluator: ExprEvaluator; vars: string[]; refs: string[] };
-
 export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
@@ -157,7 +155,6 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** Hiding keeps the text but makes it inert, so read `activeLayout`, never `stringLiterals.layout`. */
   layoutHidden: boolean;
   lambdaKeys: string[] = [];
-  private _builtFrom: string | undefined;
   // Reserves the full default card (header, both add rows, the capped preview) so Tidy never stacks a neighbor into it.
   width = 240; height = 280;
 
@@ -193,9 +190,7 @@ export class FrameInputNode extends ClassicPreset.Node {
     }
   }
 
-  private _exprCache = new Map<string, CompiledColumnExpr | null>();
-
-  private _computedFrom: { text: string; lams: unknown[]; stamp: number } | null = null;
+  private _built: { text: string; lams: unknown[]; stamp: number } | null = null;
 
   private _parsed: { text: string; source: ReturnType<typeof parseFrameSource>; shape?: Shape } | null = null;
 
@@ -209,135 +204,24 @@ export class FrameInputNode extends ClassicPreset.Node {
     return (parsed.shape ??= shapeOfFrameValue(frameFromInputText(this.frameText)));
   }
 
+  /** The frame, built again only when the text, a wired λ or a TODAY/NOW recalculation changes it. */
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    const source = this.parsedSource().source;
-    const isComputed = (c: FrameSourceColumn) => !!c.expr;
-    if (!source.some(isComputed)) {
-      if (!this.cachedResult || this._builtFrom !== this.frameText) {
-        this.cachedResult = frameFromInputText(this.frameText);
-        this._builtFrom = this.frameText;
-      }
-      return { frame: this.cachedResult };
-    }
     const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
     const stamp = volatileStamp([this.frameText, ...lams.map((l) => (isLambdaValue(l) ? l.expr : ""))].join("\n"));
-    if (
-      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText && this._computedFrom.stamp === stamp &&
-      this._computedFrom.lams.length === lams.length &&
-      this._computedFrom.lams.every((v, i) => Object.is(v, lams[i]))
-    ) {
+    const b = this._built;
+    if (this.cachedResult && b && b.text === this.frameText && b.stamp === stamp && b.lams.length === lams.length && b.lams.every((v, i) => Object.is(v, lams[i]))) {
       return { frame: this.cachedResult };
     }
-
-    const base = deriveFrame(source);
-    const frame: FrameValue = {
-      __frame: true,
-      columns: base.columns.map((col, i) =>
-        isComputed(source[i]) ? { name: col.name, type: "number" as FrameColType, values: [] } : col),
-    };
-    const nameToIdx = new Map(source.map((c, i) => [c.name, i] as const));
-    const remaining = new Set(source.map((c, i) => (isComputed(c) ? i : -1)).filter((i) => i >= 0));
-    const lamByName = new Map(this.lambdaKeys.map((k, j) => [lambdaSocketName(k), lams[j]] as const));
-    const compiled = new Map<string, CompiledColumnExpr | null>();
-    const exprAt = (i: number) => {
-      const text = source[i].expr!;
-      let entry = compiled.get(text);
-      if (entry === undefined) {
-        entry = this._exprCache.get(text);
-        if (entry === undefined) {
-          const evaluator = compileEvaluator(text);
-          const vars = evaluator ? extractVariables(text) : [];
-          entry = evaluator ? { evaluator, vars, refs: [...new Set([...vars, ...calledNames(text)])] } : null;
-        }
-        compiled.set(text, entry);
-      }
-      return entry;
-    };
-    const rowCount = () => frame.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-    const fill = (i: number, cell: FrameCell) =>
-      (frame.columns[i] = { name: source[i].name, type: "number", values: Array(rowCount()).fill(cell) });
-
-    let progress = true;
-    while (progress && remaining.size > 0) {
-      progress = false;
-      for (const i of [...remaining]) {
-        const c = source[i];
-        const bare = lamByName.has(c.expr!.trim());
-        const ex = bare ? null : exprAt(i);
-        const used = bare ? [c.expr!.trim()] : (ex?.refs ?? []).filter((n) => lamByName.has(n) && !nameToIdx.has(n));
-        const usedLams = used.map((n) => lamByName.get(n)).filter(isLambdaValue);
-        const lam = bare ? (usedLams[0] ?? null) : null;
-        const deps = [
-          ...(lam ? lam.params : ex ? [...ex.vars, ...rowRefNames(c.expr!)] : []),
-          ...usedLams.flatMap((l) => [...(l.expr ? rowRefNames(l.expr) : []), ...(l.captured ?? [])]),
-        ];
-        if (deps.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })) continue;
-        remaining.delete(i);
-        progress = true;
-        if (usedLams.length < used.length) {
-          fill(i, null);
-          continue;
-        }
-        if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
-        const captures = lambdaCaptures(usedLams);
-        const plan = planColumnUnits<FrameCell>(
-          lam ? lambdaDefinition(lam) : exprDefinition(c.expr!, lamByName),
-          frame,
-          { authored: c.unit ? columnUnitFromSpec(c.unit) : null, sideValue: (n) => captures.get(n) },
-        );
-        if (isSolError(plan)) { fill(i, plan); continue; }
-        const inPlan = (l: unknown) => (isLambdaValue(l) ? lambdaInPlan(l, plan) : l);
-        const planned = { __frame: true, columns: plan.table.columns } as FrameValue;
-        // A wired λ runs in the engine too: its body crosses as text with its captures ([[C130]] rustCore).
-        const onEngine = lam
-          ? computeColumnOnEngine(planned, "", rowCount(), {
-            bare: lambdaInPlan(lam, plan),
-            sideValue: (p, kind) => solError("#REF!", kind === "var" ? `No column "${p}": a table λ's side values ride its captures` : `No column "${p}"`),
-          })
-          : computeColumnOnEngine(planned, c.expr!, rowCount(), {
-            sideValue: (p) => solError("#REF!", `No column "${p}"`),
-            lambdas: Object.fromEntries(usedLams.map((l, k) => [used[k], lambdaInPlan(l, plan)])),
-          });
-        const r = onEngine ?? computeColumnCells(
-          plan.table,
-          lam
-            ? { kind: "lambda", lam: lambdaInPlan(lam, plan) }
-            : { kind: "expr", evaluator: ex!.evaluator, vars: [...ex!.vars, ...used.filter((n) => !ex!.vars.includes(n))] },
-          {
-            sideValue: (p, kind) => (!lam && lamByName.has(p)
-              ? inPlan(lamByName.get(p))
-              : solError("#REF!", lam && kind === "var"
-                ? `No column "${p}": a table λ's side values ride its captures`
-                : `No column "${p}"`)),
-          },
-        );
-        if (isSolError(r)) {
-          fill(i, r);
-        } else {
-          const done = plan.finish(r.cells);
-          // Take only inferColumn's type: its constructed column coerces cells and would mangle per-row SolErrors.
-          const type = computedColumnType(c.name, done.cells, frame, lam ? lam.expr : c.expr);
-          frame.columns[i] = {
-            name: c.name, type, values: done.cells,
-            ...(type === "number" && done.unit ? { unit: done.unit } : {}),
-          };
-        }
-      }
-    }
-    if (remaining.size > 0) {
-      const cycle = [...remaining].map((i) => source[i].name).join(" → ");
-      const err = solError("#REF!", `Circular computed columns: ${cycle}`);
-      const n = rowCount();
-      for (const i of remaining) {
-        frame.columns[i] = { name: source[i].name, type: "number", values: Array(n).fill(err) };
-      }
-    }
-    this._exprCache = compiled;
-    this.cachedResult = frame;
-    this._builtFrom = undefined;
-    this._computedFrom = { text: this.frameText, lams, stamp };
-    return { frame };
+    this.lambdaCaptures = lams.map((l) => (isLambdaValue(l) ? [...(l.capturedValues ?? [])] : []));
+    const out = nodeOnCore(this, inputs) as { frame: FrameValue };
+    this.cachedResult = out.frame;
+    this._built = { text: this.frameText, lams, stamp };
+    return out;
   }
+
+  /** Each wired λ's captured values with their units: a λ on the card wire carries only the numbers its body reads. */
+  static coreFields = ["lambdaCaptures"] as const;
+  lambdaCaptures: unknown[][] = [];
 }
 
 // ─── DISTINCT ────────────────────────────────────────────────────────────────

@@ -1,25 +1,21 @@
 // [[B11]]
 import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
-import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
-import { parseChartOptions, chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
+import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
 export { histogram2d, type Histogram2d } from "./visualOps";
-import { recordNumberText } from "../chartValue";
 import type {
-  ChartValue, KpiPayload, ScalePayload, SankeyPayload, RecordPayload, RecordField, RecordSize, RecordDeck, XYPayload, ChartRef,
+  ChartValue, KpiPayload, ScalePayload, SankeyPayload, RecordPayload, XYPayload, ChartRef,
 } from "../chartValue";
 import type { SolError } from "../errorValue";
-import { columnUnitLabel } from "../unitColumn";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameHint } from "../frameHint";
-import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
-import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
-import { planCards, PROFILE_ROWS } from "../cardLayout";
-import { isDateStyle } from "../formatAnnotationStore";
+import { displayDecimals } from "../components/format";
+import { settingsStore } from "../settingsStore";
 
 import type { SparklineOp } from "./visualOps";
 export type { SparklineOp };
@@ -693,65 +689,7 @@ export const RECORD_OP_META = {
   list:    { label: "List" },
 } satisfies Record<RecordOp, { label: string; keywords?: string }>;
 
-function readCardSize(optStr: string | null): RecordSize | undefined {
-  const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
-  return m ? (m[1].toLowerCase() as RecordSize) : undefined;
-}
-function readClamp(optStr: string | null): boolean {
-  return !!optStr && /(?:^|;)\s*clamp\s*=\s*(on|true|yes|1)\b/i.test(optStr);
-}
-
-export const RECORD_CARD_CAP = 60;
-
-/** A cell as every Record view shows it: a number column's number stays raw for `recordNumberText`, anything else is its formatted text. */
-function recordCell(col: FrameColumn, r: number): number | string | null {
-  const v = col.values[r] ?? null;
-  if (v === null) return null;
-  if (typeof v === "number" && col.type === "number") return v;
-  const f = formatFrameCell(col.type, v, col.format);
-  return f === null ? null : String(f);
-}
-
-function recordShownText(col: FrameColumn, r: number): string {
-  const v = recordCell(col, r);
-  return v === null ? "" : typeof v === "number" ? (col.format && !isDateStyle(col.format.format) ? recordNumberText(v, col.format) : String(v)) : v;
-}
-
-// [[C114]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
-function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
-  const total = cols[0]?.values.length ?? 0;
-  const profiled = Math.min(total, PROFILE_ROWS);
-  const rawText = (col: FrameColumn, r: number): string => {
-    const v = col.values[r] ?? null;
-    if (v === null) return "";
-    if (isSolError(v)) return v.code;
-    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-    return String(v);
-  };
-  const names = cols.map((c) => (c.unit ? `${c.name} (${columnUnitLabel(c.unit)})` : c.name));
-  const chipCols = cols.flatMap((c, i) => (c.type === "string" && c.format?.chip ? [i] : []));
-  const plan = planCards(cols.map((c, i) => ({
-    name: names[i],
-    type: c.type,
-    cells: Array.from({ length: profiled }, (_, r) => rawText(c, r)),
-    shown: Array.from({ length: profiled }, (_, r) => recordShownText(c, r)),
-    chip: chipCols.includes(i),
-  })));
-  const rows = drawn.map((r) => cols.map((c) => recordCell(c, r)));
-  return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows, rowNumbers: drawn.map((r) => r + 1) };
-}
-
-/** The 0-based rows `picks` names, in its order: 1-based, negative counts from the end (CHOOSEROWS), out of range dropped; no picks is every row. */
-export function recordRows(picked: unknown, total: number): number[] {
-  const want = typeof picked === "number" ? [picked] : Array.isArray(picked) ? picked : null;
-  if (!want) return Array.from({ length: total }, (_, i) => i);
-  return want.flatMap((p) => {
-    if (typeof p !== "number" || !Number.isFinite(p)) return [];
-    const n = Math.round(p);
-    const at = n < 0 ? total + n : n - 1;
-    return at >= 0 && at < total ? [at] : [];
-  });
-}
+type RecordInputs = { frame?: unknown[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] };
 
 export class RecordNode extends ClassicPreset.Node {
   static inputRoles = { rows: picks() };
@@ -801,91 +739,19 @@ export class RecordNode extends ClassicPreset.Node {
     else if (this.inputs.layout) this.removeInput("layout");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const fv = await readFrame(inputs.frame?.[0] ?? null);
-    const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
-    const order = recordRows(readRole<unknown>(this, "rows", inputs.rows), cols[0]?.values.length ?? 0);
-    const total = order.length;
-    let index = 0;
-    if (this.op === "detail" && total > 0) {
-      index = clamp(Math.round(this.literals.page ?? 1), 1, total);
-      this.literals.page = index;
-    }
-    const layIn = this.op === "cards" ? null : readInput(inputs.layout, this.stringLiterals.layout ?? null);
-    const layStr = typeof layIn === "string" ? layIn : null;
-    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(optStr);
-    const size = readCardSize(optStr);
-    const clampTiles = readClamp(optStr);
+  /** The display settings a number nobody formatted shows by ([[D94]] oneNumberDisplay), which the Cards plan reads. */
+  static coreFields = ["numberDisplay"] as const;
+  get numberDisplay(): { decimals: number; sciAbove: string } {
+    return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };
+  }
 
-    const byIn = this.op === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
-    const byKey = typeof byIn === "string" ? byIn.trim().toLowerCase() : "";
-    const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
-
-    const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
-    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string; title?: boolean }): RecordField => {
-      const label = col
-        ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
-        : name;
-      const shown = col && rowIdx !== null ? recordCell(col, rowIdx) : null;
-      const image = typeof shown === "string" ? recordImageSrc(shown) : null;
-      const format = typeof shown === "number" && col?.format ? col.format : null;
-      const f: RecordField = { label, value: shown, ...(format ? { format } : {}), ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
-      if (shown === null && at.hint) f.hint = at.hint;
-      return f;
-    };
-    const placed = layStr && layStr.trim() !== "" ? parseRecordLayout(layStr) : [];
-    const stackCols = cols.filter((c) => !(this.op === "board" && c === byCol));
-    const cardAt = (rowIdx: number | null): RecordField[] =>
-      placed.length > 0
-        ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), rowIdx, p))
-        : stackCols.map((c, i) => field(c.name, c, rowIdx, { row: i + 1, col: 1, rowSpan: 1, colSpan: 1 }));
-    const ncols = placed.length > 0 ? Math.max(...placed.map((p) => p.col + p.colSpan - 1)) : 1;
-
-    let cards: RecordField[][] = [];
-    let lanes: RecordPayload["lanes"];
-    let more = 0;
-    let deck: RecordDeck | undefined;
-    const drawn = order.slice(0, RECORD_CARD_CAP);
-    if (this.op === "detail") {
-      cards = [cardAt(index >= 1 ? order[index - 1] : null)];
-    } else if (this.op === "cards") {
-      deck = recordDeck(cols, drawn);
-      more = total - drawn.length;
-    } else if (this.op === "gallery" || this.op === "list") {
-      cards = drawn.map((r) => cardAt(r));
-      more = total - drawn.length;
-    } else if (byCol) {
-      const laneList: NonNullable<RecordPayload["lanes"]> = [];
-      const laneOf = new Map<string, number>();
-      for (const r of drawn) {
-        const cell = recordCell(byCol, r);
-        const lane = typeof cell === "number" ? { label: "", value: cell, format: byCol.format } : { label: cell ?? "—" };
-        const key = typeof cell === "number" ? `#${cell}` : `$${lane.label}`;
-        let li = laneOf.get(key);
-        if (li === undefined) { li = laneList.length; laneOf.set(key, li); laneList.push({ ...lane, cards: [] }); }
-        laneList[li].cards.push(cards.length);
-        cards.push(cardAt(r));
-      }
-      lanes = laneList;
-      more = total - drawn.length;
-    }
-
-    const payload: RecordPayload = {
-      kind: "record", view: this.op, cols: ncols, cards,
-      ...(deck ? { deck } : {}),
-      ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
-      ...(size ? { size } : {}),
-      ...(clampTiles ? { clamp: true } : {}),
-      index, total,
-    };
-    const chart: ChartValue = {
-      __chart: true, op: "record", values: null, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Record",
-    };
-    this.cachedChart = chart;
-    return { chart };
+  /** Reads a frame ref through the backend first; Detail's pager keeps the page it lands on. */
+  async data(inputs: RecordInputs): Promise<{ chart: ChartValue }> {
+    const fv = await readFrame((inputs.frame?.[0] ?? null) as FrameInput | null);
+    const out = nodeOnCore(this, inputs.frame ? { ...inputs, frame: [fv] } : inputs) as { chart: ChartValue };
+    const p = out.chart.payload as RecordPayload;
+    if (this.op === "detail" && p.total > 0) this.literals.page = p.index;
+    return out;
   }
 }
 

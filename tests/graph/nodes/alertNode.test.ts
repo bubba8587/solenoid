@@ -102,4 +102,26 @@ describe("AlertNode", () => {
     expect(alertStore.list().length).toBe(1);
     expect(alertStore.list()[0].message).toBe("Alert: 1 above 100");
   });
+
+  it("answers a status per mode, list by list", () => {
+    const status = (condition: "range" | "equals" | "boolean" | "text", inputs: Record<string, unknown[]>) =>
+      new AlertNode({ condition }).data(inputs as never).result;
+    expect(status("equals", { value: [[1, 2, 3]], target: [2] })).toEqual([0, 1, 0]);
+    expect(status("equals", { value: [[1, 2]], target: [[1, 3, 5]] })).toEqual([1, 0, null]);
+    expect(status("equals", { value: ["2"], target: [2] })).toBe(0);
+    expect(status("equals", {})).toBe(0);
+    expect(status("boolean", { value: [[true, 1, 0, 5, false, null]] })).toEqual([1, 1, 0, 0, 0, null]);
+    expect(status("boolean", { value: [null] })).toBeNull();
+    expect(status("boolean", {})).toBe(0);
+    expect(status("range", { value: [[-1, 50, 101]], low: [[0, 60, 0]], high: [100] })).toEqual([1, 1, 2]);
+    expect(status("range", { value: [5], low: [null] })).toBeNull();
+    expect(status("range", { value: [Infinity] })).toBe(2);
+    expect(status("text", { text: ["fatal error"], match: ["Error"] })).toBe(0);
+    expect(status("text", { text: ["abc"], match: [""] })).toBe(0);
+    expect(status("text", { text: [null], match: ["a"] })).toBeNull();
+    expect(status("text", { text: ["abc"] })).toBe(0);
+    expect(status("text", { text: [["a", "b"]], match: ["b"] })).toBe(1);
+    expect(status("text", { text: [["ab", "c"]], match: ["b"] })).toBe(0);
+    expect(status("text", { text: ["a,b"], match: [["a", "b"]] })).toBe(1);
+  });
 });

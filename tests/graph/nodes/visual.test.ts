@@ -5,7 +5,7 @@ import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
   HistogramNode, type Histogram2d,
-  RecordNode, recordRows, parseRecordLayout, recordImageSrc,
+  RecordNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
@@ -665,11 +665,15 @@ describe("Record node", () => {
     expect(p.deck?.rowNumbers).toEqual([4, 1]);
   });
 
-  it("recordRows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", () => {
-    expect(recordRows(undefined, 3)).toEqual([0, 1, 2]);
-    expect(recordRows(2, 3)).toEqual([1]);
-    expect(recordRows([3, 1, 1], 3)).toEqual([2, 0, 0]);
-    expect(recordRows([-1, 0, 4, 2.4, "x"], 3)).toEqual([2, 1]);
+  it("Rows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", async () => {
+    const f = frame([{ name: "Item", type: "string", values: ["a", "b", "c"] }]);
+    const n = new RecordNode({ op: "cards" });
+    const picked = async (rows?: unknown) =>
+      ((await n.data({ frame: [f], ...(rows === undefined ? {} : { rows: [rows] }) })).chart.payload as RecordPayload).deck?.rowNumbers;
+    expect(await picked()).toEqual([1, 2, 3]);
+    expect(await picked(2)).toEqual([2]);
+    expect(await picked([3, 1, 1])).toEqual([3, 1, 1]);
+    expect(await picked([-1, 0, 4, 2.4, "x"])).toEqual([3, 2]);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {

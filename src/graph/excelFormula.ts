@@ -348,22 +348,6 @@ export function exprYieldsDate(expr: string, isDateName: (name: string) => boole
   return isDate(ast);
 }
 
-export function calledNames(expr: string): string[] {
-  const ast = parseExpr(expr);
-  if (!ast) return [];
-  const out = new Set<string>();
-  const walk = (n: Ast): void => {
-    switch (n.t) {
-      case "call": out.add(n.name); n.args.forEach(walk); break;
-      case "apply": walk(n.fn); n.args.forEach(walk); break;
-      case "unary": case "percent": walk(n.arg); break;
-      case "bin": walk(n.l); walk(n.r); break;
-    }
-  };
-  walk(ast);
-  return [...out];
-}
-
 function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
     case "atcol": if (!bound.has(n.name)) out.add(n.name); break;

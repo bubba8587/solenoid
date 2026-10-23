@@ -132,17 +132,6 @@ export function exactFcUnitId(u: Unit): string | undefined {
   return undefined;
 }
 
-export function fcUnitIdForUnit(u: Unit): string | undefined {
-  let sameDim: string | undefined;
-  for (const ann of UNIT_ANNOTATIONS) {
-    const cand = fcUnitToUnit(ann.id);
-    if (!cand || !dimEqual(cand.dim, u.dim)) continue;
-    if (Math.abs(cand.scale - u.scale) < 1e-12 && (cand.offset ?? 0) === (u.offset ?? 0)) return ann.id;
-    if (sameDim === undefined) sameDim = ann.id;
-  }
-  return sameDim;
-}
-
 setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
 setDisplayOffsetResolver((id) => fcUnitToUnit(id)?.offset ?? null);
 setDisplayDimResolver((id) => fcUnitToUnit(id)?.dim ?? null);

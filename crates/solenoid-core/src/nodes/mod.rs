@@ -12,6 +12,7 @@ use std::rc::Rc;
 mod complex;
 mod control;
 mod date;
+mod docs;
 mod finance;
 mod formula;
 mod frames;
@@ -226,6 +227,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| frames::run(kind, c))
         .or_else(|| formula::run(kind, c))
         .or_else(|| sched::run(kind, c))
+        .or_else(|| docs::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or

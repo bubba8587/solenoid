@@ -221,6 +221,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
+    adoptedUnit: "The unit the Format Controller's last compute settled on, which it writes to `unit`; re-derived on every compute",
+    lambdaCaptures: "Frame Input's wired λs' captured values with their units, for the core; re-read from the cables on every compute",
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",

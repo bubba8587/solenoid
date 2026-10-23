@@ -6,6 +6,7 @@
 #![allow(clippy::needless_range_loop, reason = "the matrix bodies index rows and columns as the math writes them")]
 
 pub mod binary;
+pub mod card_helpers;
 pub mod convert_units;
 pub mod date_ops;
 pub mod date_parse;
