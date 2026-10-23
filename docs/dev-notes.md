@@ -97,14 +97,17 @@ specific item.
 - **The TS engine is gone** (2026-10-23, branch `delete-ts-engine`, [[D99]] rustIsSpec step 3): the evaluator and its
   fallback, the parser, Formula.js and every TS function body, the pack functions' JavaScript (now `fns_packs.rs`),
   the computed-column row path, the JS frame verbs and their backend, and Settings ▸ Rust engine. Polars' fallback is
-  the core in wasm. What the TS keeps: the editor's walkers over the core's tree, the units and formats a verb leaves
-  (`frameSchema.ts`), the popups' footer profile (the Obsidian plugin runs without the core). Before the parser went,
+  the core in wasm. What the TS keeps: the editor's walkers over the core's tree, the popups' footer profile (the Obsidian plugin runs without the core). Before the parser went,
   its trees were checked against the core's on all 49k fixture formulas (`formula-trees`). Answers that moved:
   free-text dates only chrono-node read are not dates; a lone surrogate reads as U+FFFD (Distinct merges halves);
   a formula over a value with a unit it doesn't take is #VALUE!; the old bail sites answer errors (a 1,000,000-term
   distribution #DOMAIN!, DB/DDB past a million periods #DOMAIN!); the cumulative HYPGEOM.DIST sums only its Hoeffding
   window, so `HYPGEOM.DIST(1e8, 2e8, 4e8, 8e8, TRUE)` is 0.5 where it was #DOMAIN!. Tests that pinned Formula.js
   against itself went; the rest call the core (`tests/graph/coreFunction.ts`, `coreVerbs.ts`).
+- **Units and formats ride in the core's frames** (branch `frame-units`, [[C25]] firstClassUnits): `FrameColumn`
+  carries a `ColumnUnit` and the format annotation, and each verb decides its own (`frame_verbs.rs`); `frameSchema.ts`,
+  the zero-row shadow run per op and the unit-scale lowering are gone, and the corpus pins units and formats. Answer
+  moved: a semi or anti join keeps the left columns' units and formats (the old rule dropped them).
 - **vitest's fsModuleCache hid a new seed from the local suite** while CI failed on it; CLAUDE.md says to clear it.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).

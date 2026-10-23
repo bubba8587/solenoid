@@ -23,7 +23,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
 - Gone so far: the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
   the pack functions' JavaScript, the JS frame verbs and their backend, the card bodies ([[node-bodies]]), the
   statistics kernels (`statsOps.ts`) and the table popups' footer profile. The TS keeps the editor's walkers over the
-  core's tree (variables, LaTeX, steps), the units and formats a verb leaves (`frameSchema.ts`), and the op modules the
+  core's tree (variables, LaTeX, steps) and the op modules the
   components and the canvas still read.
 - The JavaScript semantics the frozen answers carry stay ported, because they decided those answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
@@ -36,8 +36,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
 - A function's dispatch facts, argument roles and empty-slot readings live in `data/call_traits.json` (first frozen
   from the TS's call table; the tests read it through `tests/graph/callTraits.ts`). The names the editor offers come
   from the core (`engine_function_names`); the TS keeps only each name's arity and signature hint
-  (`excelFunctions.ts`, `formulaSignatureTable.ts`). Unit scales are still lowered into a verb (`withUnitScales`,
-  `pivotUnits`, `frameSchema.ts`).
+  (`excelFunctions.ts`, `formulaSignatureTable.ts`).
 - Correctness rests on the conformance checks, not review:
   - `tests/graph/coreConformance.test.ts` replays the frozen answers in `fixtures/core/`: every function body on random
     and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines, 6k parser trees (checked
@@ -75,7 +74,7 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 
 | Surface | Where | Evidence |
 | --- | --- | --- |
-| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm, on the web and desktop alike. The units and formats a verb leaves ride in the TS (`frameSchema.ts`): a verb's output schema is the core's answer over no rows with them laid back on | the corpus natively; frozen verb pipelines; the verb tests through `tests/graph/coreVerbs.ts` |
+| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm, on the web and desktop alike, units and formats included: a frame's columns carry them into the core and each verb decides its own | the corpus natively; frozen verb pipelines; the verb tests through `tests/graph/coreVerbs.ts` |
 | A cube's row verbs (sort, filter, distinct, head, window) | the card bodies (`nodes/verbs.rs`): the scalar columns run through the frame verb, which answers the rows they keep or the window's column, and the nested cells ride along by them; list conditions read the nested cells | the frozen card cases (`fixtures/core/nodes/`) |
 | The formula parser, for the evaluator and the editor (`parseFormula`, `engine_formula_parse`) | `excel_formula.rs` | 6k frozen trees (`formula-trees`) |
 | The evaluator (`evalAst`): operators, broadcasting, argument roles, the IFERROR family, `routeCall`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen formulas; the whole suite |
