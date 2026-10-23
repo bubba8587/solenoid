@@ -440,13 +440,13 @@ export function attachPivotLayout(frame: FrameValue, wire: unknown): void {
   setPivotLayout(frame, layout);
 }
 
+/** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
 function adoptPivot(frame: FrameValue, p: PivotWire): void {
   attachPivotLayout(frame, pivotWireOnto(frame, p));
 }
 
-/** PIVOTBY on the Rust engine when it's loaded and on, synchronously: the frame, its body columns in their units, and
- *  the layout as `attachPivotLayout` takes it; null where the oracle should run it. */
-export function pivotOnCore(f: FrameValue, spec: PivotSpec): { frame: FrameValue; layout: unknown } | null {
+/** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
+export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
   return onCore(() => {
     if (!wasmEngineLoaded() || !wasmEngineOn() || !crossesWhole(f)) return null;
     const { scales, units } = pivotUnits(f, spec);
@@ -456,20 +456,13 @@ export function pivotOnCore(f: FrameValue, spec: PivotSpec): { frame: FrameValue
       out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
       const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
       const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
-      return { frame, layout: pivotWireOnto(frame, { layout, units, schema: f }) };
+      adoptPivot(frame, { layout, units, schema: f });
+      return frame;
     } finally {
       wasmInvokeSync("engine_drop", { handle: src });
       if (out) wasmInvokeSync("engine_drop", { handle: out });
     }
   }, null);
-}
-
-/** `pivotOnCore` with its layout kept beside the frame. */
-export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
-  const r = pivotOnCore(f, spec);
-  if (!r) return null;
-  attachPivotLayout(r.frame, r.layout);
-  return r.frame;
 }
 
 type SideValue = (name: string, kind: "var" | "row") => unknown;

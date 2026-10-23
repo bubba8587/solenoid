@@ -197,7 +197,7 @@ describe("Slicer", () => {
     expect(none.n.cachedColumns).toEqual([]);
     expect(none.n.cachedUniqueValues).toEqual([]);
     const empty: FrameValue = { __frame: true, columns: [] };
-    expect((await slice(empty)).out).toBe(empty);
+    expect((await slice(empty)).out).toEqual(empty);
     const lazyEmpty = await slice(await lazy({ __frame: true, columns: [] }), { selectedValues: [1] });
     expect(lazyEmpty.n.cachedUniqueValues).toEqual([]);
   });
@@ -269,7 +269,7 @@ describe("PIVOTBY beyond the field filter", () => {
 
   it("a wired blank list answers nothing, a missing value field passes the frame", async () => {
     expect((await pivot().data({ frame: [sales], rowFields: [null], values: [["Amount"]] })).frame).toBeNull();
-    expect((await pivot().data({ frame: [sales], values: [["Gone"]] })).frame).toBe(sales);
+    expect((await pivot().data({ frame: [sales], values: [["Gone"]] })).frame).toEqual(sales);
     expect((await pivot().data({})).frame).toBeNull();
   });
 

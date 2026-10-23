@@ -43,7 +43,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, pivotOnCore, attachPivotLayout, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploadFrame, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, attachPivotLayout, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -175,14 +175,6 @@ export function relinked(out: FrameRef, from: readonly FrameRef[]): FrameRef {
 }
 
 type LazyOut = FrameRef | FrameValue | CubeValue | SolError | null;
-
-/** `passFrame` in a body: a frame the shell uploaded passes as its ref, which comes back as the frame; a ref plans an
- *  empty drop, so the card never drops the handle its input holds. */
-function passRef(inputs: Inputs, key: string): FrameRef {
-  const ref = inputs[key]![0] as FrameRef;
-  if ((inputs.uploaded as string[] | undefined)?.includes(key)) return ref;
-  return { __frameRef: ref.__frameRef, __plan: [...ref.__plan, { kind: "drop", columns: [] }] };
-}
 
 /** What a stacking body (Append, Bind Columns) answers: one frame, or the inputs, in order, for the shell to stack. */
 type StackRequest = { frame?: FrameRef | null; stack?: string[] };
@@ -548,17 +540,7 @@ export class JoinNode extends ClassicPreset.Node {
   }
 
   body(inputs: Inputs): JoinRequest {
-    const left = inputs.left?.[0] ?? null;
-    const right = inputs.right?.[0] ?? null;
-    const lkRaw = readInput(inputs.leftKey as string[] | undefined, this.stringLiterals.leftKey ?? "");
-    const rkRaw = readInput(inputs.rightKey as string[] | undefined, this.stringLiterals.rightKey ?? "");
-    // Only the as-of join reads `tolerance`, so a wired blank must not blank the other joins.
-    const tolerance = this.how === "asof" ? readInput(inputs.tolerance as number[] | undefined, this.literals.tolerance) : undefined;
-    if (lkRaw === null || rkRaw === null || tolerance === null) return { frame: null };
-    const lk = lkRaw.trim();
-    const rk = rkRaw.trim() || lk;
-    if (left == null || right == null || (lk === "" && this.how !== "cross")) return { frame: null };
-    return { leftKey: lk, rightKey: rk, how: this.how, asofDirection: this.asofDirection, asofTolerance: tolerance };
+    return nodeOnCore(this, inputs) as JoinRequest;
   }
 }
 
@@ -711,23 +693,6 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
 // ─── PIVOT / UNPIVOT ───────────────────────────────────────────────────────────
 
-// The one stringification for filter keys, so the editor's excluded keys match the cells.
-function pivotCellKey(v: FrameCell): string {
-  if (v == null) return "";
-  if (isSolError(v)) return v.code;
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-  return String(v);
-}
-function distinctKeys(values: readonly FrameCell[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const v of values) {
-    const k = pivotCellKey(v);
-    if (!seen.has(k)) { seen.add(k); out.push(k); if (out.length >= 200) break; }
-  }
-  return out;
-}
-
 export class PivotNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
@@ -741,7 +706,7 @@ export class PivotNode extends ClassicPreset.Node {
   rowSort = 0;
   colSort = 0;
   relativeTo = 0;
-  // Per field, the value keys (`pivotCellKey`) to hide; ANDed with the wired `filter` mask.
+  // Per field, the value keys to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
@@ -832,59 +797,7 @@ export class PivotNode extends ClassicPreset.Node {
   /** Over a value: the answer. Over a ref: given its schema, the columns to read (`read`); given them (`columns`),
    *  the answer, which passes the ref on (a plan) where there is nothing to pivot. */
   body(inputs: Inputs): PivotAnswer {
-    const raw = inputs.frame?.[0] ?? null;
-    if (isFrameRef(raw)) {
-      const schema = inputs.schema?.[0] as FrameValue | SolError | null;
-      if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
-      if (!inputs.columns) {
-        const have = new Set(schema.columns.map((c) => c.name));
-        const wanted = new Set<string>();
-        for (const key of ["rowFields", "colFields", "values"] as const) for (const n of readColumnList(inputs[key] as string[][] | undefined) ?? []) if (have.has(n)) wanted.add(n);
-        for (const key of ["rowFields", "colFields", "values"] as const) for (const n of csvList(this.stringLiterals[key])) if (have.has(n)) wanted.add(n);
-        for (const n of [...Object.keys(this.filterExclude), ...this.detailFields]) if (have.has(n)) wanted.add(n);
-        return { read: [...wanted] };
-      }
-      const cols = inputs.columns[0] as FrameValue | SolError;
-      if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
-      const byName = new Map(cols.columns.map((c) => [c.name, c]));
-      this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
-      const slice: FrameValue = { __frame: true, columns: schema.columns.map((c) => byName.get(c.name) ?? { name: c.name, type: c.type, values: [] }) };
-      return this.computePivot(slice, raw, inputs);
-    }
-    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") as FrameValue : raw as FrameValue | null;
-    if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
-    this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
-    return this.computePivot(f, f, inputs);
-  }
-
-  /** The pivot reads its saved fields as the shell prunes them to the frame's columns (`fieldNames`). */
-  private computePivot(f: FrameValue, source: FrameInput, inputs: Inputs): PivotAnswer {
-    const valid = new Set(f.columns.map((c) => c.name));
-    const answer = (frame: PivotAnswer["frame"]): PivotAnswer => ({ frame, fieldNames: [...valid] });
-    const rowRaw = readColumnList(inputs.rowFields as string[][] | undefined);
-    const colRaw = readColumnList(inputs.colFields as string[][] | undefined);
-    const valRaw = readColumnList(inputs.values as string[][] | undefined);
-    if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return answer(null); }
-    const rowFields = rowRaw.filter((n) => valid.has(n));
-    const colFields = colRaw.filter((n) => valid.has(n));
-    const values = valRaw.filter((n) => valid.has(n));
-    if (values.length === 0) {
-      if (isFrameRef(source)) return answer({ __frameRef: source.__frameRef, __plan: [...source.__plan, { kind: "drop", columns: [] }] });
-      this.cachedResult = f; return answer(f);
-    }
-    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
-    const spec: PivotSpec = {
-      rowFields, colFields, values, funcs,
-      rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
-      rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
-      filter: this.combineFilter(f, valid, (inputs.filter as (boolean | null)[][] | undefined)?.[0]),
-      details: this.detailFields.filter((n) => valid.has(n)),
-    };
-    const out = runVerb(() => pivotOnCore(f, spec) ?? { frame: pivotFrame(f, spec), layout: undefined });
-    if (isSolError(out)) { this.cachedResult = out; return answer(out); }
-    if (out.layout !== undefined) this.pivotWire = out.layout;
-    this.cachedResult = out.frame;
-    return answer(out.frame);
+    return nodeOnCore(this, inputs) as PivotAnswer;
   }
 
   private pruneTo(out: PivotAnswer): void {
@@ -902,22 +815,6 @@ export class PivotNode extends ClassicPreset.Node {
     for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];
     for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
     if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
-  }
-
-  private combineFilter(f: FrameValue, valid: Set<string>, wired?: (boolean | null)[]): (boolean | null)[] | undefined {
-    const active = Object.entries(this.filterExclude).filter(([name, ks]) => valid.has(name) && ks && ks.length > 0);
-    if (active.length === 0) return wired;
-    const sets = active.map(([name, ks]) => ({ keys: ks, col: f.columns.find((c) => c.name === name) }));
-    const n = frameRowCount(f);
-    const mask: (boolean | null)[] = [];
-    for (let i = 0; i < n; i++) {
-      let keep = true;
-      for (const { keys, col } of sets) {
-        if (col && keys.includes(pivotCellKey(col.values[i] ?? null))) { keep = false; break; }
-      }
-      mask.push(keep && (wired ? wired[i] === true : true));
-    }
-    return mask;
   }
 }
 
@@ -1061,10 +958,7 @@ export class AppendNode extends ClassicPreset.Node {
   }
 
   body(inputs: Inputs): StackRequest {
-    const keys = this.valueInputKeys().filter((k) => inputs[k]?.[0] != null);
-    if (keys.length === 0) return { frame: null };
-    if (keys.length === 1) return { frame: passRef(inputs, keys[0]) };
-    return { stack: keys };
+    return nodeOnCore(this, inputs) as StackRequest;
   }
 }
 
@@ -1130,10 +1024,7 @@ export class BindColumnsNode extends ClassicPreset.Node {
   }
 
   body(inputs: Inputs): StackRequest {
-    const keys = this.valueInputKeys().filter((k) => inputs[k]?.[0] != null);
-    if (keys.length === 0) return { frame: null };
-    if (keys.length === 1) return { frame: passRef(inputs, keys[0]) };
-    return { stack: keys };
+    return nodeOnCore(this, inputs) as StackRequest;
   }
 }
 

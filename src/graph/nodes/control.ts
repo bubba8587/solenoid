@@ -6,10 +6,9 @@ import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
-import { isFrameValue, getColumn, frameRowCount, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
+import type { FrameValue, FrameColType } from "../frame";
 import { collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
 import { beginPass, emitFrame, relinked } from "./frame";
-import type { FilterCond, FrameOp } from "../frameVerbs";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
@@ -19,7 +18,6 @@ import { isSolError, type SolError } from "../errorValue";
 import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
-import { compareStrings } from "../stringOrder";
 
 export type SlicerCell = number | string;
 
@@ -368,29 +366,6 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
-  const uniq = [...new Set(values.filter((v): v is SlicerCell => v !== null && v !== ""))];
-  uniq.sort((a, b) => (typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b))));
-  return uniq;
-}
-
-function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: readonly SlicerCell[]): FrameValue {
-  const rows = frameRowCount(frame);
-  const keep: number[] = [];
-  for (let i = 0; i < rows; i++) {
-    const v = col.values[i];
-    if (v !== null && v !== undefined && sel.includes(v as SlicerCell)) keep.push(i);
-  }
-  return {
-    __frame: true,
-    columns: frame.columns.map((c) => ({
-      ...c,
-      values: keep.map((i) => c.values[i] ?? null),
-      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined,
-    })),
-  };
-}
-
 export class SlicerNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
@@ -447,32 +422,7 @@ export class SlicerNode extends ClassicPreset.Node {
 
   /** Over a ref: the column to read (`read`), or, given it (`column`), the answer. Over a value: the answer. */
   body(inputs: Record<string, unknown[] | undefined>): { result?: FrameRef | FrameValue | SolError | null; read?: string } {
-    const raw = inputs.frame?.[0] ?? null;
-    if (isFrameRef(raw)) {
-      const schema = inputs.schema?.[0];
-      const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
-      const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
-      if (colName && !inputs.column) return { read: colName };
-      const read = inputs.column?.[0] as FrameValue | SolError | null | undefined;
-      const col = isFrameValue(read) ? read.columns[0] ?? null : read ?? null;
-      this.cachedColumns = colNames;
-      if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
-      else this.cachedUniqueValues = [];
-      if (col && isSolError(col)) return { result: col };
-      const plan = (op: FrameOp): FrameRef => ({ __frameRef: raw.__frameRef, __plan: [...raw.__plan, op] });
-      if (!colName || this.selectedValues.length === 0) return { result: plan({ kind: "drop", columns: [] }) };
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true }));
-      return { result: plan({ kind: "filterMulti", combine: "or", conditions }) };
-    }
-
-    const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
-    this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
-    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return { result: frame }; }
-    const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
-    this.cachedColumnType = col.type;
-    this.cachedUniqueValues = slicerUniques(col.values);
-    if (this.selectedValues.length === 0) return { result: frame };
-    return { result: filterFrameByMembership(frame, col, this.selectedValues) };
+    return nodeOnCore(this, inputs) as { result?: FrameRef | FrameValue | SolError | null; read?: string };
   }
 }
 
