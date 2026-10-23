@@ -3676,7 +3676,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -3690,8 +3696,7 @@
     "orderDir": "asc",
     "fn": "cumsum",
     "column": "t",
-    "as": "out",
-    "readingScale": 1
+    "as": "out"
    },
    "expect": {
     "columns": [
@@ -3726,7 +3731,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "out",
@@ -3788,7 +3799,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -3803,7 +3820,6 @@
     "fn": "rolling_sum",
     "column": "t",
     "as": "out",
-    "readingScale": 1,
     "n": 2
    },
    "expect": {
@@ -3839,7 +3855,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "out",
@@ -3901,7 +3923,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -3915,8 +3943,7 @@
     "orderDir": "asc",
     "fn": "group_sum",
     "column": "t",
-    "as": "out",
-    "readingScale": 1
+    "as": "out"
    },
    "expect": {
     "columns": [
@@ -3951,7 +3978,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "out",
@@ -4013,7 +4046,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -4027,8 +4066,7 @@
     "orderDir": "asc",
     "fn": "share",
     "column": "t",
-    "as": "out",
-    "readingScale": 1
+    "as": "out"
    },
    "expect": {
     "columns": [
@@ -4063,7 +4101,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "out",
@@ -4125,7 +4169,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -4139,8 +4189,7 @@
     "orderDir": "asc",
     "fn": "pct_change",
     "column": "t",
-    "as": "out",
-    "readingScale": 1
+    "as": "out"
    },
    "expect": {
     "columns": [
@@ -4175,7 +4224,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "out",
@@ -4237,7 +4292,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       }
      ]
     }
@@ -4251,8 +4312,7 @@
     "orderDir": "asc",
     "fn": "diff",
     "column": "t",
-    "as": "out",
-    "readingScale": 0.5555555555555556
+    "as": "out"
    },
    "expect": {
     "columns": [
@@ -4287,7 +4347,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degF"
+      }
      },
      {
       "name": "out",
@@ -4298,7 +4364,12 @@
        null,
        null,
        1.9444444444444446
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       }
+      }
      }
     ]
    }
@@ -4339,7 +4410,13 @@
         null,
         68,
         71.5
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       }
      ]
     }
@@ -4354,7 +4431,6 @@
     "fn": "rolling_avg",
     "column": "t",
     "as": "out",
-    "readingScale": 0.5555555555555556,
     "n": 2
    },
    "expect": {
@@ -4390,7 +4466,13 @@
        null,
        68,
        71.5
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degF"
+      }
      },
      {
       "name": "out",
@@ -4401,7 +4483,13 @@
        null,
        null,
        69.75
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degF"
+      }
      }
     ]
    }
@@ -4726,6 +4814,182 @@
        4.1000000000000005,
        null,
        0.10000000000000069
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the other columns keep their units and formats; a rank carries no unit, a running sum the column's",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "k"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "d",
+    "as": "run"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "a"
+      ],
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 2,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "run",
+      "type": "number",
+      "values": [
+       4,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "a rank over a unit column carries no unit",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "rank",
+    "column": "d",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       2,
+       1
       ]
      }
     ]

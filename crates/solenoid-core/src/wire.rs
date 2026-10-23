@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::{json, Map, Value as Json};
 
 use crate::error_value::{ErrorCode, SolError};
-use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
+use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub fn decode_cell(v: &Json) -> FrameCell {
     match v {
@@ -76,6 +76,10 @@ pub struct WireColumn {
     #[serde(rename = "type")]
     pub ty: FrameColType,
     pub values: Vec<Json>,
+    #[serde(default)]
+    pub unit: Option<Json>,
+    #[serde(default)]
+    pub format: Option<Json>,
 }
 
 #[derive(Deserialize)]
@@ -88,13 +92,31 @@ pub fn wire_to_frame(w: WireFrame) -> FrameValue {
         columns: w
             .columns
             .into_iter()
-            .map(|c| FrameColumn::new(c.name, c.ty, c.values.iter().map(decode_cell).collect()))
+            .map(|c| FrameColumn {
+                unit: c.unit.as_ref().and_then(ColumnUnit::from_json).map(Rc::new),
+                format: c.format.map(Rc::new),
+                ..FrameColumn::new(c.name, c.ty, c.values.iter().map(decode_cell).collect())
+            })
             .collect(),
     }
 }
 
 pub fn column_to_wire(c: &FrameColumn) -> Json {
-    json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() })
+    column_meta(
+        json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }),
+        c,
+    )
+}
+
+/// A column's entry with its unit and format beside the rest.
+pub fn column_meta(mut entry: Json, c: &FrameColumn) -> Json {
+    if let Some(u) = &c.unit {
+        entry["unit"] = u.to_json();
+    }
+    if let Some(f) = &c.format {
+        entry["format"] = f.as_ref().clone();
+    }
+    entry
 }
 
 pub fn error_to_wire(e: &SolError) -> Json {

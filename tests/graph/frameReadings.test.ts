@@ -1,10 +1,9 @@
 // [[C25]] firstClassUnits, [[C130]] rustCore: readings on an offset scale (°C, °F) through
-// the frame and cube verbs answer as a formula does. Both engines are held to the values by
-// the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
+// the frame and cube verbs answer as a formula does. The corpus (fixtures/frame-verbs) holds the
+// core to the values and units; this file pins them through the cards and the wasm build.
 import { describe, it, expect } from "vitest";
 import { type FrameOp } from "../../src/graph/frameOps";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, withUnitScales } from "./coreVerbs";
-import { lowerForEngine } from "../../src/graph/frameBackend";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
@@ -117,36 +116,12 @@ describe("Window over readings", () => {
   });
 });
 
-describe("the native engine gets the reading scale on the op", () => {
-  it("withUnitScales names a °F column's scale and leaves a linear one alone", () => {
-    const f = frame({ name: "t", type: "number", values: [], unit: unit("degF") }, { name: "d", type: "number", values: [], unit: unit("km") });
-    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
-    expect(op.aggs[0].readingScale).toBeCloseTo(5 / 9, 15);
-    expect(op.aggs[1].readingScale).toBeUndefined();
-  });
-
-  it("a variance over a scaled linear unit names the unit's scale; nothing else does", () => {
-    const f = frame({ name: "d", type: "number", values: [], unit: unit("km") }, { name: "m", type: "number", values: [], unit: unit("m") });
-    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [
-      { column: "d", op: "var", as: "v" }, { column: "d", op: "stdev", as: "s" }, { column: "m", op: "varp", as: "w" },
-    ] }) as Extract<FrameOp, { kind: "groupBy" }>;
-    expect(op.aggs.map((a) => a.unitScale)).toEqual([1000, undefined, undefined]);
-    expect(op.aggs.every((a) => a.readingScale === undefined)).toBe(true);
-  });
-
-  it("lowerForEngine reads each op against the schema it meets, through a rename", () => {
-    const { wire, schema } = lowerForEngine(temps("degC"), [
-      { kind: "rename", map: { t: "temp" } },
-      { kind: "window", partitionBy: ["k"], fn: "diff", column: "temp", as: "d" },
-    ]);
-    expect((wire[1] as { readingScale?: number }).readingScale).toBe(1);
-    expect(schema!.columns.find((c) => c.name === "d")!.unit).toEqual(K);
-  });
-
-  it("the oracle honors an explicit scale on a unitless frame, as the corpus runs it", () => {
-    const bare = frame({ name: "t", type: "number", values: [50, 59] });
-    const out = applyVerb(bare, { kind: "window", partitionBy: [], fn: "diff", column: "t", as: "d", readingScale: 5 / 9 });
-    expect(col(out, "d").values[1]).toBeCloseTo(5, 12);
+describe("each verb reads the unit of the column it meets", () => {
+  it("through a rename", () => {
+    const renamed = applyVerb(temps("degC"), { kind: "rename", map: { t: "temp" } });
+    const out = applyVerb(renamed, { kind: "window", partitionBy: ["k"], fn: "diff", column: "temp", as: "d" } as FrameOp);
+    expect(col(out, "d").unit).toEqual(K);
+    expect(col(out, "temp").unit?.display).toBe("degC");
   });
 });
 

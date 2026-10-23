@@ -1,21 +1,222 @@
-{ "verb": "drop",
-  "cases": [
-    { "name": "removes the named column",
-      "frames": { "in": { "columns": [
-        { "name": "a", "type": "number", "values": [1, 2] },
-        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
-      "op": { "kind": "drop", "columns": ["a"] },
-      "expect": { "columns": [
-        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
-    { "name": "an unknown column is IGNORED (drop's documented contrast with select)",
-      "frames": { "in": { "columns": [
-        { "name": "a", "type": "number", "values": [1] } ] } },
-      "op": { "kind": "drop", "columns": ["nope"] },
-      "expect": { "columns": [
-        { "name": "a", "type": "number", "values": [1] } ] } },
-    { "name": "dropping every column leaves an empty frame",
-      "frames": { "in": { "columns": [
-        { "name": "a", "type": "number", "values": [1] } ] } },
-      "op": { "kind": "drop", "columns": ["a"] },
-      "expect": { "columns": [] } }
-  ] }
+{
+ "verb": "drop",
+ "cases": [
+  {
+   "name": "removes the named column",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ]
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "values": [
+        "x",
+        "y"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "drop",
+    "columns": [
+     "a"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "b",
+      "type": "string",
+      "values": [
+       "x",
+       "y"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown column is IGNORED (drop's documented contrast with select)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "drop",
+    "columns": [
+     "nope"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "dropping every column leaves an empty frame",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "drop",
+    "columns": [
+     "a"
+    ]
+   },
+   "expect": {
+    "columns": []
+   }
+  },
+  {
+   "name": "the columns left keep their units and formats",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "b",
+        "a",
+        "b"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        30,
+        10,
+        null
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      },
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "drop",
+    "columns": [
+     "k",
+     "n"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       30,
+       10,
+       null
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

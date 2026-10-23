@@ -138,7 +138,7 @@ describe("the Allocator seed's Headroom column", () => {
 });
 
 // The unit rule is the precedent: a derived column carries the source column's format
-// exactly where `frameSchema.ts` carries its unit tag.
+// exactly where the verb carries its unit (the core's `frame_verbs.rs`).
 describe("a DERIVED column carries the format only where it carries the unit", () => {
   it("Add Index: the index column carries nothing, the existing ones keep theirs", async () => {
     const input = new FrameInputNode({

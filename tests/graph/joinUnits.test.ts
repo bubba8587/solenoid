@@ -1,6 +1,6 @@
 // [[C25]] firstClassUnits: a join reads the right key in the left key's unit.
 import { describe, it, expect } from "vitest";
-import { joinFrames, joinKeyTransform, bindColumns } from "./coreVerbs";
+import { joinFrames, bindColumns } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { relateFramesToCube, frameRowCount, type FrameColumn, type FrameValue } from "../../src/graph/frame";
@@ -42,26 +42,32 @@ describe("join keys with units", () => {
   });
 
   it("two currencies are #UNIT!", () => {
-    const e = thrown(() => joinKeyTransform(
-      { name: "p", type: "number", values: [], unit: unit("$") },
-      { name: "p", type: "number", values: [], unit: unit("€") },
+    const e = thrown(() => joinFrames(
+      frame({ name: "p", type: "number", values: [1], unit: unit("$") }),
+      frame({ name: "p", type: "number", values: [1], unit: unit("€") }),
+      { leftKey: "p", rightKey: "p", how: "inner" },
     ));
     expect(isSolError(e) && e.code).toBe("#UNIT!");
   });
 
-  it("same unit, or a unit on one side only, needs no transform", () => {
-    const km = { name: "d", type: "number" as const, values: [], unit: unit("km") };
-    expect(joinKeyTransform(km, km)).toBeNull();
-    expect(joinKeyTransform(km, { name: "d", type: "number", values: [] })).toBeNull();
+  it("a unit on one side only reads the keys as they are", () => {
+    const km = frame({ name: "d", type: "number", values: [5], unit: unit("km") });
+    const bare = frame({ name: "d", type: "number", values: [5] }, { name: "v", type: "number", values: [1] });
+    expect(joinFrames(km, bare, { leftKey: "d", rightKey: "d", how: "left" }).columns[1].values).toEqual([1]);
   });
 
-  it("a temperature key carries an offset", () => {
-    const t = joinKeyTransform(
-      { name: "t", type: "number", values: [], unit: unit("K") },
-      { name: "t", type: "number", values: [], unit: unit("degC") },
-    );
-    expect(t!.scale).toBeCloseTo(1);
-    expect(t!.offset).toBeCloseTo(273.15);
+  it("a temperature key carries an offset: 0 °C matches 273.15 K", () => {
+    const k = frame({ name: "t", type: "number", values: [273.15, 300], unit: unit("K") });
+    const c = frame({ name: "t", type: "number", values: [0], unit: unit("degC") }, { name: "v", type: "string", values: ["freeze"] });
+    expect(joinFrames(k, c, { leftKey: "t", rightKey: "t", how: "left" }).columns[1].values).toEqual(["freeze", null]);
+  });
+
+  it("a semi or anti join keeps the left columns' units", () => {
+    const left = frame({ name: "d", type: "number", values: [5, 6], unit: unit("km") });
+    const right = frame({ name: "d", type: "number", values: [5000], unit: unit("m") });
+    for (const how of ["semi", "anti"] as const) {
+      expect(joinFrames(left, right, { leftKey: "d", rightKey: "d", how }).columns[0].unit?.display).toBe("km");
+    }
   });
 });
 

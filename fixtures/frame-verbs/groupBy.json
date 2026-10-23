@@ -1920,7 +1920,13 @@
         26,
         30,
         null
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degC"
+       }
       }
      ]
     }
@@ -1934,50 +1940,42 @@
      {
       "column": "t",
       "op": "sum",
-      "as": "sum",
-      "readingScale": 1
+      "as": "sum"
      },
      {
       "column": "t",
       "op": "product",
-      "as": "product",
-      "readingScale": 1
+      "as": "product"
      },
      {
       "column": "t",
       "op": "avg",
-      "as": "avg",
-      "readingScale": 1
+      "as": "avg"
      },
      {
       "column": "t",
       "op": "min",
-      "as": "min",
-      "readingScale": 1
+      "as": "min"
      },
      {
       "column": "t",
       "op": "max",
-      "as": "max",
-      "readingScale": 1
+      "as": "max"
      },
      {
       "column": "t",
       "op": "median",
-      "as": "median",
-      "readingScale": 1
+      "as": "median"
      },
      {
       "column": "t",
       "op": "mode",
-      "as": "mode",
-      "readingScale": 1
+      "as": "mode"
      },
      {
       "column": "t",
       "op": "count",
-      "as": "count",
-      "readingScale": 1
+      "as": "count"
      }
     ]
    },
@@ -2021,7 +2019,13 @@
       "values": [
        22.833333333333332,
        30
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "min",
@@ -2029,7 +2033,13 @@
       "values": [
        20,
        30
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "max",
@@ -2037,7 +2047,13 @@
       "values": [
        26,
        30
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "median",
@@ -2045,7 +2061,13 @@
       "values": [
        22.5,
        30
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "mode",
@@ -2053,7 +2075,13 @@
       "values": [
        20,
        30
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       },
+       "display": "degC"
+      }
      },
      {
       "name": "count",
@@ -2091,7 +2119,13 @@
         26,
         30,
         null
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       }
      ]
     }
@@ -2105,26 +2139,22 @@
      {
       "column": "t",
       "op": "stdev",
-      "as": "stdev",
-      "readingScale": 0.5555555555555556
+      "as": "stdev"
      },
      {
       "column": "t",
       "op": "stdevp",
-      "as": "stdevp",
-      "readingScale": 0.5555555555555556
+      "as": "stdevp"
      },
      {
       "column": "t",
       "op": "var",
-      "as": "var",
-      "readingScale": 0.5555555555555556
+      "as": "var"
      },
      {
       "column": "t",
       "op": "varp",
-      "as": "varp",
-      "readingScale": 0.5555555555555556
+      "as": "varp"
      }
     ]
    },
@@ -2144,7 +2174,12 @@
       "values": [
        1.6743649370393634,
        null
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       }
+      }
      },
      {
       "name": "stdevp",
@@ -2152,7 +2187,12 @@
       "values": [
        1.3671132463179076,
        0
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       }
+      }
      },
      {
       "name": "var",
@@ -2160,7 +2200,12 @@
       "values": [
        2.803497942386832,
        null
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 2
+       }
+      }
      },
      {
       "name": "varp",
@@ -2168,7 +2213,12 @@
       "values": [
        1.8689986282578879,
        0
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 2
+       }
+      }
      }
     ]
    }
@@ -2196,7 +2246,13 @@
         3,
         2,
         6
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       }
       }
      ]
     }
@@ -2210,14 +2266,12 @@
      {
       "column": "d",
       "op": "var",
-      "as": "var",
-      "unitScale": 1000
+      "as": "var"
      },
      {
       "column": "d",
       "op": "varp",
-      "as": "varp",
-      "unitScale": 1000
+      "as": "varp"
      },
      {
       "column": "d",
@@ -2247,7 +2301,12 @@
       "values": [
        2000000,
        8000000
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 2
+       }
+      }
      },
      {
       "name": "varp",
@@ -2255,7 +2314,12 @@
       "values": [
        1000000,
        4000000
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 2
+       }
+      }
      },
      {
       "name": "stdevp",
@@ -2263,7 +2327,13 @@
       "values": [
        1,
        2
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
      },
      {
       "name": "sum",
@@ -2271,7 +2341,13 @@
       "values": [
        4,
        8
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
      }
     ]
    }
@@ -2483,7 +2559,13 @@
         {
          "__err": "#N/A"
         }
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       }
      ]
     }
@@ -2497,14 +2579,12 @@
      {
       "column": "t",
       "op": "sum",
-      "as": "s",
-      "readingScale": 1
+      "as": "s"
      },
      {
       "column": "t",
       "op": "stdev",
-      "as": "sd",
-      "readingScale": 0.5555555555555556
+      "as": "sd"
      }
     ]
    },
@@ -2533,7 +2613,12 @@
        {
         "__err": "#N/A"
        }
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       }
+      }
      }
     ]
    }
@@ -2608,6 +2693,133 @@
       "name": "s",
       "type": "number",
       "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a key keeps its unit but not its format; an aggregate takes its own unit and no format",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        1,
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        2,
+        4,
+        5
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "w",
+      "op": "sum",
+      "as": "s"
+     },
+     {
+      "column": "w",
+      "op": "count",
+      "as": "c"
+     },
+     {
+      "column": "w",
+      "op": "varp",
+      "as": "v"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      }
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       6,
+       5
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       2,
+       1
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       0
+      ],
+      "unit": {
+       "dim": {
+        "mass": 2
+       }
+      }
      }
     ]
    }

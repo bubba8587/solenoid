@@ -1068,18 +1068,10 @@ fn window_cube(
         }
     }
     let mut cols = Vec::new();
-    let mut scale = None;
-    let mut col_unit = None;
     for name in &read {
         let (col, unit) = scalar_column(cube, name)?;
-        if *name == column {
-            let display = unit.as_ref().and_then(|u| u.get("display")).and_then(Json::as_str).filter(|d| !d.is_empty());
-            scale = display
-                .filter(|d| affine_display(d))
-                .map(|d| crate::unit_catalog::fc_unit_to_unit(d).map_or(1.0, |u| u.scale));
-            col_unit = unit;
-        }
-        cols.push(col);
+        let unit = unit.filter(|_| *name == column).as_ref().and_then(crate::frame::ColumnUnit::from_json);
+        cols.push(col.with_unit(unit.map(Rc::new)));
     }
     let mut op = json!({ "kind": "window", "partitionBy": texts(keys), "orderDir": "asc", "fn": agg, "as": out_name });
     if !order_by.is_empty() {
@@ -1094,13 +1086,10 @@ fn window_cube(
             other => to_json(other),
         };
     }
-    if let Some(s) = scale {
-        op["readingScale"] = Json::from(s);
-    }
     let out = on_core(cube_row_count(cube), cols, op)?;
     let Some(last) = out.columns.last() else { return Ok(V::Cube(Rc::new(cube.clone()))) };
     let mut kept: Vec<CubeColumn> = cube.columns.iter().filter(|c| c.name != last.name).cloned().collect();
-    let unit = if column.is_empty() { None } else { window_unit(agg, col_unit.as_ref(), scale) };
+    let unit = last.unit.as_ref().map(|u| u.to_json());
     let cells = last
         .values
         .iter()
@@ -1109,40 +1098,4 @@ fn window_cube(
         .collect();
     kept.push(CubeColumn { name: last.name.clone(), cells, ty: Some(last.ty), format: None });
     Ok(cube_from_columns(kept))
-}
-
-/// `windowFrame`'s `readingPlan` unit ([[C25]] firstClassUnits): the unit a window's output takes over a column in
-/// `unit`, with `scale` set where the column holds readings on an offset scale.
-fn window_unit(agg: &str, unit: Option<&Json>, scale: Option<f64>) -> Option<Json> {
-    let unit = unit?;
-    let keeps = matches!(
-        agg,
-        "cumsum"
-            | "cumavg"
-            | "cummin"
-            | "cummax"
-            | "lag"
-            | "lead"
-            | "diff"
-            | "rolling_sum"
-            | "rolling_avg"
-            | "rolling_min"
-            | "rolling_max"
-            | "group_sum"
-            | "group_avg"
-            | "group_min"
-            | "group_max"
-            | "first"
-            | "last"
-    );
-    if scale.is_none() {
-        return keeps.then(|| unit.clone());
-    }
-    if matches!(agg, "cumsum" | "rolling_sum" | "group_sum" | "share" | "pct_change") {
-        return None;
-    }
-    if agg == "diff" {
-        return Some(json!({ "dim": unit.get("dim").cloned().unwrap_or_else(|| json!({ "temperature": 1 })) }));
-    }
-    keeps.then(|| unit.clone())
 }

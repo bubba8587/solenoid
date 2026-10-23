@@ -197,6 +197,72 @@
      }
     ]
    }
+  },
+  {
+   "name": "the index carries nothing; the other columns keep their units and formats",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "addIndex",
+    "name": "i",
+    "start": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     }
+    ]
+   }
   }
  ]
 }

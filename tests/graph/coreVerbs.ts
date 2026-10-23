@@ -1,6 +1,5 @@
 // [[D99]] rustIsSpec
-// The frame verbs as the tests call them, run on the core in wasm at once: a verb's cells from the engine, its units
-// and formats from `frameSchema.ts`, as the app's backend lays them on.
+// The frame verbs as the tests call them, run on the core in wasm at once, cells, units and formats alike.
 import type { FrameCell, FrameColType, FrameValue, CubeValue } from "../../src/graph/frame";
 import type { ChartValue, LadderPayload } from "../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
@@ -8,45 +7,29 @@ import { NestNode, UnnestNode, DecisionMatrixNode, DecisionSensitivityNode, Choi
 import type {
   AggOp, AggSpec, DecisionNormalize, FilterCombine, FilterCond, FilterOp, FrameOp, JoinOpts, LookupMatchMode, LookupSearchMode, PivotSpec, WindowSpec,
 } from "../../src/graph/frameOps";
-import { onCoreFrames, encodeOpCells, lowerForEngine, pivotOnEngine, frameFnOnCore } from "../../src/graph/frameBackend";
-import { joinKeyTransform, opMeta, joinMeta, appendMeta, bindMeta, withMeta } from "../../src/graph/frameSchema";
+import { onCoreFrames, encodeOpCells, pivotOnEngine, frameFnOnCore } from "../../src/graph/frameBackend";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import { summarizeColumns, type ColSummary, type FooterColType } from "../../src/graph/components/tableFooterStats";
 
-export { joinKeyTransform, withUnitScales } from "../../src/graph/frameSchema";
 export { distinctColumnValues } from "../../src/graph/components/TablePopup";
 
 export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
-  if (op.kind === "formats") return { __frame: true, columns: withMeta(f.columns.map((c) => ({ ...c })), opMeta(f, op, f.columns.length)) };
   if (op.kind === "pivot") {
     const out = pivotOnEngine(f, op);
     if (!out) throw new Error("the core trapped");
     return out;
   }
-  const { wire } = lowerForEngine(f, [op]);
-  const out = onCoreFrames([f], ([h]) => wasmInvokeSync<string>("engine_apply", { handle: h, op: encodeOpCells(wire[0]) }));
-  return { __frame: true, columns: withMeta(out.columns, opMeta(f, wire[0], out.columns.length)) };
+  return onCoreFrames([f], ([h]) => wasmInvokeSync<string>("engine_apply", { handle: h, op: encodeOpCells(op) }));
 }
 
-export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
-  let wireOpts = opts;
-  if (opts.how !== "cross" && opts.rightKeyScale === undefined && opts.rightKeyOffset === undefined) {
-    const t = joinKeyTransform(left.columns.find((c) => c.name === opts.leftKey), right.columns.find((c) => c.name === opts.rightKey));
-    if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
-  }
-  const out = onCoreFrames([left, right], ([l, r]) => wasmInvokeSync<string>("engine_join", { left: l, right: r, opts: wireOpts }));
-  return { __frame: true, columns: withMeta(out.columns, joinMeta(left, right, wireOpts)) };
-}
+export const joinFrames = (left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue =>
+  onCoreFrames([left, right], ([l, r]) => wasmInvokeSync<string>("engine_join", { left: l, right: r, opts }));
 
-export function appendFrames(frames: readonly FrameValue[]): FrameValue {
-  const out = onCoreFrames(frames, (handles) => wasmInvokeSync<string>("engine_append", { handles }));
-  return { __frame: true, columns: withMeta(out.columns, appendMeta(frames)) };
-}
+export const appendFrames = (frames: readonly FrameValue[]): FrameValue =>
+  onCoreFrames(frames, (handles) => wasmInvokeSync<string>("engine_append", { handles }));
 
-export function bindColumns(frames: readonly FrameValue[]): FrameValue {
-  const out = onCoreFrames(frames, (handles) => wasmInvokeSync<string>("engine_bind_columns", { handles }));
-  return { __frame: true, columns: withMeta(out.columns, bindMeta(frames)) };
-}
+export const bindColumns = (frames: readonly FrameValue[]): FrameValue =>
+  onCoreFrames(frames, (handles) => wasmInvokeSync<string>("engine_bind_columns", { handles }));
 
 export function sampleFrame(f: FrameValue, n: number): FrameValue {
   let same = false;

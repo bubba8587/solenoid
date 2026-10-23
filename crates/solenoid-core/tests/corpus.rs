@@ -32,6 +32,11 @@ fn columns_match(actual: &Json, expected: &Json) -> Result<(), String> {
         if ac["name"] != ec["name"] || ac["type"] != ec["type"] {
             return Err(format!("column {} {} vs expected {} {}", ac["name"], ac["type"], ec["name"], ec["type"]));
         }
+        for meta in ["unit", "format"] {
+            if ac.get(meta) != ec.get(meta) {
+                return Err(format!("column {} {meta} {} vs expected {}", ac["name"], ac[meta], ec[meta]));
+            }
+        }
         let (av, ev) = (ac["values"].as_array().unwrap(), ec["values"].as_array().unwrap());
         if av.len() != ev.len() || !av.iter().zip(ev).all(|(x, y)| cells_equal(&decode_cell(x), &decode_cell(y))) {
             return Err(format!("column {}: {} vs expected {}", ac["name"], json!(av), json!(ev)));

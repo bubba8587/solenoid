@@ -12,7 +12,7 @@ import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorVa
 
 const CORPUS_DIR = path.resolve(__dirname, "../../fixtures/frame-verbs");
 
-interface WireColumn { name: string; type: FrameColumn["type"]; values: FrameCell[] }
+interface WireColumn { name: string; type: FrameColumn["type"]; values: FrameCell[]; unit?: FrameColumn["unit"]; format?: FrameColumn["format"] }
 interface CorpusCase {
   name: string;
   frames: Record<string, { columns: WireColumn[] }>;
@@ -59,12 +59,11 @@ const decodeInputCell = (v: unknown): FrameCell => {
 function brand(wire: { columns: WireColumn[] }): FrameValue {
   return {
     __frame: true,
-    columns: wire.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(decodeInputCell) })),
+    columns: wire.columns.map((c) => ({ ...c, values: c.values.map(decodeInputCell) })),
   };
 }
 
-/** Structural view for comparison: name/type/values only (unit/raw are
- *  node-side extras the corpus doesn't exercise). Negative zero normalizes to
+/** Structural view for comparison: name, type, unit, format and values (`raw` stays out). Negative zero normalizes to
  *  0: JSON cannot write -0 (JSON.stringify(-0) is "0"), so the wire — and
  *  therefore the corpus format — loses the sign of zero at the same boundary
  *  production frames do; the Rust runner's frames_equal compares f64 `==`
@@ -83,6 +82,7 @@ function dump(f: FrameValue): WireColumn[] {
       if (isSolError(v)) return { __err: v.code } as unknown as FrameCell;
       return v;
     }),
+    ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
   }));
 }
 

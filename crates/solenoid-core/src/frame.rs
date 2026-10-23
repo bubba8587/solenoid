@@ -1,11 +1,15 @@
-// [[C130]] rustCore
+// [[C130]] rustCore, [[C25]] firstClassUnits
 //! Port of `src/graph/frame.ts` (the frame model and the helpers the verbs use).
 
 use std::rc::Rc;
 
+use serde_json::{json, Value as Json};
+
 use crate::error_value::SolError;
 use crate::jsnum::js_trim;
 use crate::spelled::spelled;
+use crate::unit_catalog::fc_unit_to_unit;
+use crate::unit_dims::{dim_equal, Dim};
 
 spelled! {
     /// `FrameColType`.
@@ -47,16 +51,82 @@ impl FrameCell {
     }
 }
 
+/// `ColumnUnit`: a number column's dimension and the display unit its cells are typed in.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ColumnUnit {
+    pub dim: Dim,
+    pub display: Option<String>,
+}
+
+impl ColumnUnit {
+    /// The unit as the TS writes it, `{dim, display?}`; `None` where it isn't one.
+    pub fn from_json(j: &Json) -> Option<ColumnUnit> {
+        let dim = j.get("dim")?.as_object()?.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect();
+        Some(ColumnUnit { dim, display: j.get("display").and_then(Json::as_str).map(String::from) })
+    }
+
+    pub fn to_json(&self) -> Json {
+        let dim: serde_json::Map<String, Json> =
+            self.dim.iter().map(|(k, v)| (k.clone(), crate::wire::encode_cell(&FrameCell::Num(*v)))).collect();
+        match &self.display {
+            Some(d) => json!({ "dim": dim, "display": d }),
+            None => json!({ "dim": dim }),
+        }
+    }
+
+    fn shown(&self) -> Option<&str> {
+        self.display.as_deref().filter(|d| !d.is_empty())
+    }
+
+    /// `readingScaleOf`: the display scale of an offset unit (°C 1, °F 5/9), else `None`.
+    pub fn reading_scale(&self) -> Option<f64> {
+        let u = fc_unit_to_unit(self.shown()?);
+        u.as_ref().and_then(|u| u.offset).filter(|o| *o != 0.0)?;
+        Some(u.map_or(1.0, |u| u.scale))
+    }
+
+    /// `linearScaleOf`: the display scale of a linear unit other than its base (km 1000), else `None`.
+    pub fn linear_scale(&self) -> Option<f64> {
+        let u = fc_unit_to_unit(self.shown()?)?;
+        if u.offset.is_some_and(|o| o != 0.0) || u.scale == 1.0 {
+            return None;
+        }
+        Some(u.scale)
+    }
+}
+
+/// `sameColumnUnit`.
+pub fn same_column_unit(a: Option<&ColumnUnit>, b: Option<&ColumnUnit>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => dim_equal(&a.dim, &b.dim) && a.shown().unwrap_or("") == b.shown().unwrap_or(""),
+        (a, b) => a.is_none() && b.is_none(),
+    }
+}
+
+/// A column: its cells, and the unit and display format that travel with them ([[C25]] firstClassUnits, [[C118]]
+/// formatTravelsWithValue). The format is the TS's `FormatAnnotation`, which the core carries without reading.
 #[derive(Clone, Debug)]
 pub struct FrameColumn {
     pub name: String,
     pub ty: FrameColType,
     pub values: Rc<Vec<FrameCell>>,
+    pub unit: Option<Rc<ColumnUnit>>,
+    pub format: Option<Rc<Json>>,
 }
 
 impl FrameColumn {
     pub fn new(name: impl Into<String>, ty: FrameColType, values: Vec<FrameCell>) -> FrameColumn {
-        FrameColumn { name: name.into(), ty, values: Rc::new(values) }
+        FrameColumn { name: name.into(), ty, values: Rc::new(values), unit: None, format: None }
+    }
+
+    /// Other cells under this column's name, type, unit and format.
+    pub fn with_values(&self, values: Vec<FrameCell>) -> FrameColumn {
+        FrameColumn { values: Rc::new(values), ..self.clone() }
+    }
+
+    pub fn with_unit(mut self, unit: Option<Rc<ColumnUnit>>) -> FrameColumn {
+        self.unit = unit;
+        self
     }
 
     /// `cellAt`: past the column's end reads blank.

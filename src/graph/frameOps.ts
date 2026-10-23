@@ -20,10 +20,7 @@ export interface FilterCond { column: string; op: FilterOp; value: FrameCell; ma
 export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
 export type FilterCombine = "and" | "or";
 
-/** `readingScale` marks the column as readings on an offset scale (°C 1, °F 5/9); `unitScale` is a linear unit's
- *  scale (km 1000), which a variance needs to land in base SI. The engines see no units, so the lowering names both
- *  (`withUnitScales`). */
-export interface AggSpec { column: string; op: AggOp; as: string; readingScale?: number; unitScale?: number }
+export interface AggSpec { column: string; op: AggOp; as: string }
 
 export interface PivotSpec {
   rowFields: readonly string[];
@@ -48,8 +45,6 @@ export type WindowFn =
   | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last";
 
 export interface WindowSpec {
-  /** As on `AggSpec`: the column holds readings on an offset scale. */
-  readingScale?: number;
   partitionBy: string[];
   orderBy?: string;
   orderDir?: "asc" | "desc";
@@ -103,8 +98,6 @@ export interface JoinOpts {
   leftKey: string; rightKey: string; how: JoinHow;
   asofDirection?: AsofDirection;
   asofTolerance?: number;
-  rightKeyScale?: number;
-  rightKeyOffset?: number;
 }
 
 export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";

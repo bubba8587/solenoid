@@ -16,7 +16,7 @@ use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, Frame
 use crate::frame_verbs::{
     append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp,
 };
-use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
+use crate::wire::{column_meta, column_to_wire, encode_cell, wire_to_frame, WireFrame};
 
 #[derive(Default)]
 struct Store {
@@ -79,7 +79,7 @@ fn preview_of(f: &FrameValue, n: usize) -> Json {
     let rows: Vec<Json> =
         (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
     json!({
-        "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.as_str() })).collect::<Vec<_>>(),
+        "schema": f.columns.iter().map(|c| column_meta(json!({ "name": c.name, "type": c.ty.as_str() }), c)).collect::<Vec<_>>(),
         "rows": rows,
         "rowCount": row_count,
         "truncated": row_count > take,
@@ -103,7 +103,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let mut layout = None;
             for (k, op) in ops.iter().enumerate() {
                 f = Rc::new(match op {
-                    FrameOp::Pivot(spec) if k + 1 == ops.len() => {
+                    FrameOp::Pivot(spec) if ops[k + 1..].iter().all(|o| matches!(o, FrameOp::Formats { .. })) => {
                         let (out, l) = pivot_frame(&f, spec)?;
                         layout = Some(l);
                         out
@@ -363,6 +363,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 as_: String,
                 #[serde(rename = "type")]
                 ty: FrameColType,
+                #[serde(default)]
+                unit: Option<Json>,
+                #[serde(default)]
+                format: Option<Json>,
             }
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
@@ -372,7 +376,13 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     .iter()
                     .find(|c| c.name == p.column)
                     .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
-                columns.push(FrameColumn { name: p.as_, ty: p.ty, values: c.values.clone() });
+                columns.push(FrameColumn {
+                    name: p.as_,
+                    ty: p.ty,
+                    values: c.values.clone(),
+                    unit: p.unit.as_ref().and_then(crate::frame::ColumnUnit::from_json).map(Rc::new),
+                    format: p.format.map(Rc::new),
+                });
             }
             Ok(json!(register(FrameValue { columns })))
         }

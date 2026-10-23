@@ -4,6 +4,8 @@
 import init, { initSync, __wbg_reset, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_core.js";
 const wasmUrl = new URL("./engineWasm/solenoid_core_bg.wasm", import.meta.url);
 import { toSolError } from "./errorValue";
+import type { ColumnUnit } from "./unitValue";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 let _ready: Promise<boolean> | null = null;
 let _loaded = false;
@@ -90,7 +92,7 @@ export async function wasmInvoke<T>(command: string, args?: Record<string, unkno
 /** A frame's cells in the engine's columnar hand-off (crates/solenoid-core/src/binary.rs). */
 export interface BinaryCells {
   /** A `raw` entry is the source text of the column before it. */
-  schema: { name: string; type: string; len: number; raw?: boolean }[];
+  schema: { name: string; type: string; len: number; raw?: boolean; unit?: ColumnUnit; format?: FormatAnnotation }[];
   tags: Uint8Array;
   nums: Float64Array;
   strs: string;

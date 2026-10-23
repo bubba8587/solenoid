@@ -3,6 +3,7 @@
 //! collect, column, preview). Every cell has a tag; numbers ride a dense `f64` buffer (so NaN,
 //! the infinities and -0 cross as themselves); text rides one string, cut by UTF-16 lengths.
 //! An error cell is its code and message in the text, its JS reference (or NaN) in the numbers.
+//! A column's unit and format ride in its schema entry.
 
 use std::rc::Rc;
 
@@ -10,7 +11,7 @@ use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
+use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub const TAG_NULL: u8 = 0;
 pub const TAG_NUM: u8 = 1;
@@ -25,6 +26,10 @@ struct SchemaColumn {
     #[serde(rename = "type")]
     ty: FrameColType,
     len: usize,
+    #[serde(default)]
+    unit: Option<Json>,
+    #[serde(default)]
+    format: Option<Json>,
 }
 
 #[derive(Default)]
@@ -92,7 +97,11 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
             });
         }
         at = end;
-        columns.push(FrameColumn::new(c.name, c.ty, values));
+        columns.push(FrameColumn {
+            unit: c.unit.as_ref().and_then(ColumnUnit::from_json).map(Rc::new),
+            format: c.format.map(Rc::new),
+            ..FrameColumn::new(c.name, c.ty, values)
+        });
     }
     Ok(FrameValue { columns })
 }
@@ -116,7 +125,7 @@ impl Columnar {
         let mut out = Columnar::default();
         for c in columns {
             let n = limit.map_or(c.values.len(), |l| l.min(c.values.len()));
-            out.schema.push(json!({ "name": c.name, "type": c.ty.as_str(), "len": n }));
+            out.schema.push(crate::wire::column_meta(json!({ "name": c.name, "type": c.ty.as_str(), "len": n }), c));
             for v in &c.values[..n] {
                 match v {
                     FrameCell::Null => {

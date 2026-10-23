@@ -665,6 +665,122 @@
     "delimiter": ","
    },
    "expectError": "#REF!"
+  },
+  {
+   "name": "the parts carry nothing; the columns around them keep their units and formats",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a-b",
+        "c"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "s",
+    "delimiter": "-"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "s 1",
+      "type": "string",
+      "values": [
+       "a",
+       "c"
+      ]
+     },
+     {
+      "name": "s 2",
+      "type": "string",
+      "values": [
+       "b",
+       null
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     }
+    ]
+   }
   }
  ]
 }

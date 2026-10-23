@@ -5,8 +5,6 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
 import type { AggOp, FrameOp, JoinOpts, PivotSpec } from "./frameOps";
-import { withUnitScales, joinKeyTransform, pivotUnits, opMeta, joinMeta, appendMeta, bindMeta, withMeta, type ColumnMeta } from "./frameSchema";
-import type { ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
 import { coreValue, errorRef, errorFromCore, toWellFormed, engineClock, readReply } from "./coreValues";
@@ -235,7 +233,8 @@ function decodeWireCell(v: WireCell): unknown {
 // The columnar hand-off's tags (crates/solenoid-core/src/binary.rs).
 const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5;
 
-function encodeBinary(frame: FrameValue): BinaryCells {
+/** A frame's cells for the core, with each column's unit and format unless `meta` is false. */
+function encodeBinary(frame: FrameValue, meta = true): BinaryCells {
   const total = frame.columns.reduce((n, c) => n + c.values.length, 0);
   const tags = new Uint8Array(total);
   const nums = new Float64Array(total);
@@ -254,7 +253,10 @@ function encodeBinary(frame: FrameValue): BinaryCells {
     }
   }
   return {
-    schema: frame.columns.map((c) => ({ name: c.name, type: c.type, len: c.values.length })),
+    schema: frame.columns.map((c) => ({
+      name: c.name, type: c.type, len: c.values.length,
+      ...(meta && c.unit ? { unit: c.unit } : {}), ...(meta && c.format ? { format: c.format } : {}),
+    })),
     tags, nums, strs: parts.join(""), lens: Uint32Array.from(lens),
   };
 }
@@ -280,7 +282,7 @@ function decodeBinary(b: BinaryCells): FrameColumn[] {
       }
     }
     if (c.raw) out[out.length - 1].raw = values as string[];
-    else out.push({ name: c.name, type: c.type as FrameColType, values });
+    else out.push({ name: c.name, type: c.type as FrameColType, values, ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}) });
   }
   return out;
 }
@@ -303,10 +305,6 @@ const wasmBulk = {
 };
 const readBulk = (handle: FrameHandle, column?: string, limit?: number) => wasmBulk.read(handle, column, limit)!;
 
-function schemaOnly(frame: FrameValue): FrameValue {
-  return { __frame: true, columns: frame.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: [] })) };
-}
-
 /** Frames through the wasm core at once: sourced, `run` over their handles, its frame read back and every handle
  *  dropped. Throws what the core refuses. */
 export function onCoreFrames(inputs: readonly FrameValue[], run: (handles: string[]) => string): FrameValue {
@@ -321,50 +319,14 @@ export function onCoreFrames(inputs: readonly FrameValue[], run: (handles: strin
   }
 }
 
-/** The schema a verb leaves: its columns as the core answers it over no rows, with the units and formats laid back on
- *  (`frameSchema.ts`). Null where the verb refuses the schema. */
-function shadowOnCore(inputs: readonly FrameValue[], meta: (out: number) => ColumnMeta[], run: (handles: string[]) => string): FrameValue | null {
-  return onCore(() => {
-    try {
-      const f = onCoreFrames(inputs.map(schemaOnly), run);
-      return { __frame: true, columns: withMeta(f.columns, meta(f.columns.length)) } as FrameValue;
-    } catch {
-      return null;
-    }
-  }, null);
-}
-
-const joinShadow = (l: FrameValue, r: FrameValue, opts: JoinOpts) =>
-  shadowOnCore([l, r], () => joinMeta(l, r, opts), ([a, b]) => wasmInvokeSync<string>("engine_join", { left: a, right: b, opts }));
-const appendShadow = (fs: FrameValue[]) => shadowOnCore(fs, () => appendMeta(fs), (handles) => wasmInvokeSync<string>("engine_append", { handles }));
-const bindShadow = (fs: FrameValue[]) => shadowOnCore(fs, () => bindMeta(fs), (handles) => wasmInvokeSync<string>("engine_bind_columns", { handles }));
-
-/** Bind's output schema, for a card's shape. */
-export const bindSchema = (frames: FrameValue[]): FrameValue | null => bindShadow(frames);
-
-/** The engine's layout, the units its body columns take, and the frame it read, whose columns lend their formats to the
- *  Details columns ([[C128]] pivotDetails). */
-interface PivotWire { layout: unknown; units: (ColumnUnit | undefined)[]; schema: FrameValue | null }
-
-/** The units the engine's pivot body columns take, put on its frame, and its layout with the Details columns'
- *  formats, its cells still as the wire carries them. */
-function pivotWireOnto(frame: FrameValue, p: PivotWire): unknown {
-  const w = p.layout as PivotLayout | null;
-  if (!w) return null;
-  w.cols.forEach((c, bi) => {
-    const col = frame.columns[w.rowFields.length + bi];
-    const unit = p.units[c.value];
-    if (col && unit) col.unit = unit;
-  });
-  if (!w.details) return w;
-  return {
-    ...w,
-    details: w.details.map((d) => {
-      const format = p.schema?.columns.find((c) => c.name === d.name)?.format;
-      return format ? { ...d, format } : d;
-    }),
-  };
-}
+/** Bind's output schema, for a card's shape; null where the core refuses it. */
+export const bindSchema = (frames: FrameValue[]): FrameValue | null => onCore(() => {
+  try {
+    return onCoreFrames(frames, (handles) => wasmInvokeSync<string>("engine_bind_columns", { handles }));
+  } catch {
+    return null;
+  }
+}, null);
 
 /** A pivot layout as the engine wrote it, its cells read back, kept beside the frame it laid out. */
 export function attachPivotLayout(frame: FrameValue, wire: unknown): void {
@@ -376,23 +338,17 @@ export function attachPivotLayout(frame: FrameValue, wire: unknown): void {
   setPivotLayout(frame, layout);
 }
 
-/** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
-function adoptPivot(frame: FrameValue, p: PivotWire): void {
-  attachPivotLayout(frame, pivotWireOnto(frame, p));
-}
-
 /** PIVOTBY on the Rust engine, synchronously; null where the core trapped. */
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
   return onCore(() => {
     if (!wasmEngineLoaded()) return null;
-    const { scales, units } = pivotUnits(f, spec);
     const src = wasmSourceBin(encodeBinary(f));
     let out: string | undefined;
     try {
-      out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
+      out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec } });
       const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
       const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
-      adoptPivot(frame, { layout, units, schema: f });
+      attachPivotLayout(frame, layout);
       return frame;
     } finally {
       wasmInvokeSync("engine_drop", { handle: src });
@@ -469,7 +425,7 @@ export function frameFnOnCore(name: string, frames: readonly FrameValue[], args:
     if (!wasmEngineLoaded()) return null;
     const wire = args.map((a) => coreValue(a));
     if (wire.includes(undefined)) return null;
-    const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
+    const handles = frames.map((f) => wasmSourceBin(encodeBinary(f, false)));
     let out: string | undefined;
     try {
       const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string; ref?: number } }>(
@@ -499,7 +455,7 @@ export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number,
     const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
     if (!inputs) return null;
     const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
-    const src = wasmSourceBin(encodeBinary(frame));
+    const src = wasmSourceBin(encodeBinary(frame, false));
     let out: string | undefined;
     try {
       const r = wasmInvokeSync<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>(
@@ -538,40 +494,16 @@ export async function assembleOnEngine(
   parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue,
 ): Promise<FrameRef> {
   const be = frameBackend() as EngineBackend;
-  return wrapRef(await be.assemble(parts, schemaOnly(schema)));
-}
-
-/** Each op against the schema it will meet, so a reading column's aggregates reach the
- *  unit-blind engine with their reading scale, and the result's schema shadow. */
-/** The ops as an engine takes them, and the schema they leave. A `formats` op only touches the schema. */
-export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
-  let s = schema;
-  const wire: FrameOp[] = [];
-  for (const op of ops) {
-    const lowered = s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } as FrameOp : withUnitScales(s, op)) : op;
-    if (op.kind !== "formats") wire.push(lowered);
-    const cur = s;
-    if (!cur) continue;
-    s = op.kind === "formats"
-      ? { __frame: true, columns: cur.columns.map((c, i, all) => ({ name: c.name, type: c.type, values: [], ...opMeta(cur, op, all.length)[i] })) }
-      : shadowOnCore([cur], (n) => opMeta(cur, lowered, n), ([h]) => wasmInvokeSync<string>("engine_apply", { handle: h, op: encodeOpCells(lowered) }));
-  }
-  return { wire, schema: s };
+  const metaOf = (as: string) => {
+    const c = schema.columns.find((s) => s.name === as);
+    return { ...(c?.unit ? { unit: c.unit } : {}), ...(c?.format ? { format: c.format } : {}) };
+  };
+  return wrapRef(await be.assemble(parts.map((p) => ({ ...p, ...metaOf(p.as) }))));
 }
 
 /** A lazy node's output with its own column format picks laid over it ([[D41]] formatFlowsDownstream). */
 export function refWithFormats(ref: FrameRef, formats: Record<string, FormatAnnotation>): FrameRef {
   return extendRef(ref, { kind: "formats", formats });
-}
-
-function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
-  if (!schema) return cols;
-  const byName = new Map(schema.columns.map((c) => [c.name, c] as const));
-  return cols.map((c) => {
-    const s = byName.get(c.name);
-    if (!s || s.type !== c.type) return c;
-    return { ...c, ...(s.unit ? { unit: s.unit } : {}), ...(s.format ? { format: s.format } : {}) };
-  });
 }
 
 /** An op's own cells (a filter's value) in wire form, so an error, NaN or infinity crosses as itself. */
@@ -581,80 +513,51 @@ export function encodeOpCells(op: FrameOp): FrameOp {
   return op;
 }
 
-/** The Rust core in wasm behind handles, on the web and desktop alike ([[C130]] rustCore). */
+/** The Rust core in wasm behind handles, on the web and desktop alike ([[C130]] rustCore). A frame's units and formats
+ *  live in the core beside its cells; each verb decides its own. */
 class EngineBackend implements FrameBackend {
   async computeColumn(handle: FrameHandle, args: Record<string, unknown>): Promise<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }> {
-    const r = await wasmInvoke<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>("engine_compute_column", { handle, ...args });
-    if (r.handle) this.remember(r.handle as FrameHandle, null);
-    return r;
+    return wasmInvoke<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>("engine_compute_column", { handle, ...args });
   }
 
-  async assemble(parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue): Promise<FrameHandle> {
-    const h = await (wasmInvoke<string>("engine_assemble", { parts }) as Promise<FrameHandle>);
-    return this.remember(h, schema);
+  async assemble(parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[]): Promise<FrameHandle> {
+    return wasmInvoke<string>("engine_assemble", { parts }) as Promise<FrameHandle>;
   }
 
-  private schemas = new Map<string, FrameValue | null>();
-  private pivots = new Map<string, PivotWire>();
+  /** The layout of each frame a chain ending in a pivot laid out. */
+  private pivots = new Map<string, unknown>();
 
-  /** After a chain ending in a pivot, the engine's layout for the result. */
-  private async rememberPivot(h: FrameHandle, before: FrameValue | null, op: FrameOp | undefined): Promise<void> {
-    if (op?.kind !== "pivot") return;
-    const layout = await wasmInvoke<unknown>("engine_pivot_layout", { handle: h });
-    this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [], schema: before });
-  }
-
-  private remember(handle: FrameHandle, schema: FrameValue | null): FrameHandle {
-    this.schemas.set(handle, schema);
-    return handle;
-  }
-
-  private schemaOf(handle: FrameHandle): FrameValue | null {
-    return this.schemas.get(handle) ?? null;
+  private async rememberPivot(h: FrameHandle, op: FrameOp | undefined): Promise<void> {
+    if (op?.kind === "pivot") this.pivots.set(h, await wasmInvoke<unknown>("engine_pivot_layout", { handle: h }));
   }
 
   async source(frame: FrameValue): Promise<FrameHandle> {
-    return this.remember(wasmBulk.source(frame), schemaOnly(frame));
+    return wasmBulk.source(frame);
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    if (op.kind === "formats") return this.applyMany(handle, [op]);
-    const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
-    const h = await (wasmInvoke<string>("engine_apply", { handle, op: encodeOpCells(wire[0]) }) as Promise<FrameHandle>);
-    await this.rememberPivot(h, this.schemaOf(handle), op);
-    return this.remember(h, schema);
+    const h = await (wasmInvoke<string>("engine_apply", { handle, op: encodeOpCells(op) }) as Promise<FrameHandle>);
+    await this.rememberPivot(h, op);
+    return h;
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
-    const h = await (wasmInvoke<string>("engine_apply_many", { handle, ops: wire.map(encodeOpCells) }) as Promise<FrameHandle>);
-    let last = ops.length - 1;
-    while (last >= 0 && ops[last].kind === "formats") last--;
-    if (ops[last]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, last)).schema, ops[last]);
-    return this.remember(h, schema);
+    const h = await (wasmInvoke<string>("engine_apply_many", { handle, ops: ops.map(encodeOpCells) }) as Promise<FrameHandle>);
+    const verbs = ops.filter((op) => op.kind !== "formats");
+    await this.rememberPivot(h, verbs[verbs.length - 1]);
+    return h;
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
-    const l = this.schemaOf(left), r = this.schemaOf(right);
-    let wireOpts = opts;
-    if (l && r && opts.how !== "cross" && opts.rightKeyScale === undefined && opts.rightKeyOffset === undefined) {
-      const t = joinKeyTransform(l.columns.find((c) => c.name === opts.leftKey), r.columns.find((c) => c.name === opts.rightKey));
-      if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
-    }
-    const h = await (wasmInvoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
-    return this.remember(h, l && r ? joinShadow(l, r, wireOpts) : null);
+    return wasmInvoke<string>("engine_join", { left, right, opts }) as Promise<FrameHandle>;
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    const h = await (wasmInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
-    const ss = handles.map((x) => this.schemaOf(x));
-    return this.remember(h, ss.every(Boolean) ? appendShadow(ss as FrameValue[]) : null);
+    return wasmInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>;
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    const h = await (wasmInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
-    const ss = handles.map((x) => this.schemaOf(x));
-    return this.remember(h, ss.every(Boolean) ? bindShadow(ss as FrameValue[]) : null);
+    return wasmInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>;
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
@@ -663,33 +566,29 @@ class EngineBackend implements FrameBackend {
     const rows: FrameCell[][] = [];
     for (let i = 0; i < take; i++) rows.push(r.columns.map((c) => (i < c.values.length ? c.values[i] : null)));
     return {
-      schema: withSchemaMeta(r.columns.map((c) => ({ name: c.name, type: c.type })), this.schemaOf(handle)),
+      schema: r.columns.map(({ values: _v, raw: _r, ...c }) => c),
       rows, rowCount: r.rowCount, truncated: r.rowCount > take,
     };
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
-    const frame: FrameValue = { __frame: true, columns: withSchemaMeta(readBulk(handle).columns, this.schemaOf(handle)) };
-    const pivot = this.pivots.get(handle);
-    if (pivot) adoptPivot(frame, pivot);
+    const frame: FrameValue = { __frame: true, columns: readBulk(handle).columns };
+    const layout = this.pivots.get(handle);
+    if (layout) attachPivotLayout(frame, layout);
     return frame;
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
-    const r = wasmBulk.read(handle, name);
-    return r ? withSchemaMeta(r.columns, this.schemaOf(handle))[0] : null;
+    return wasmBulk.read(handle, name)?.columns[0] ?? null;
   }
 
   drop(handle: FrameHandle): void {
-    this.schemas.delete(handle);
     this.pivots.delete(handle);
     void wasmInvoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
-    const r = await (wasmInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
-    if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
-    return r;
+    return wasmInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>;
   }
 }
 

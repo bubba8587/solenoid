@@ -402,6 +402,126 @@
     "name": "x"
    },
    "expectError": "#REF!"
+  },
+  {
+   "name": "the merged column carries nothing; the others keep their units and formats",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "a",
+       "type": "string",
+       "values": [
+        "x",
+        "y"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "b",
+       "type": "string",
+       "values": [
+        "p",
+        "q"
+       ]
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "a",
+     "b"
+    ],
+    "separator": "-",
+    "name": "ab"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "ab",
+      "type": "string",
+      "values": [
+       "x-p",
+       "y-q"
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     }
+    ]
+   }
   }
  ]
 }

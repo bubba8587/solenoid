@@ -8,7 +8,8 @@ use super::stats::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{ErrorCode, SolError};
 use crate::excel_functions::V;
-use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
+use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
+use crate::frame_verbs::{agg_unit, agg_unit_plan, aggregate_group, AggOp};
 use crate::jsnum::{js_trim, math_max, math_round};
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
@@ -66,13 +67,17 @@ pub(crate) fn card_cell(c: &FrameCell) -> V {
     crate::excel_formula::cell_to_v(c)
 }
 
-/// The card's frame as the core computes on it: names, types and cells (units, formats and typed text stay behind).
+/// The card's frame as the core computes on it: names, types, cells, units and formats (typed text stays behind).
 pub(crate) fn to_core(f: &Frame) -> FrameValue {
     FrameValue {
         columns: f
             .columns
             .iter()
-            .map(|c| FrameColumn::new(c.name.clone(), c.ty, c.values.iter().map(core_cell).collect()))
+            .map(|c| FrameColumn {
+                unit: c.unit.as_ref().and_then(crate::frame::ColumnUnit::from_json).map(Rc::new),
+                format: c.format.clone().filter(|j| !j.is_null()).map(Rc::new),
+                ..FrameColumn::new(c.name.clone(), c.ty, c.values.iter().map(core_cell).collect())
+            })
             .collect(),
     }
 }
@@ -2203,69 +2208,8 @@ pub(crate) fn matrix_cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
     (mags, unit.map(cell_column_unit))
 }
 
-fn unit_dim(unit: &Json) -> crate::unit_dims::Dim {
-    unit.get("dim")
-        .and_then(Json::as_object)
-        .map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect())
-        .unwrap_or_default()
-}
-
-fn unit_display(unit: Option<&Json>) -> Option<&str> {
-    unit?.get("display").and_then(Json::as_str).filter(|d| !d.is_empty())
-}
-
 pub(crate) fn affine_display(d: &str) -> bool {
     crate::unit_catalog::fc_unit_to_unit(d).and_then(|u| u.offset).is_some_and(|o| o != 0.0)
-}
-
-pub(crate) enum Plan {
-    Keep,
-    Scale(f64),
-    Refuse(V),
-}
-
-/// `aggUnitPlan`: how an aggregate answers over a column in `unit` ([[C25]] firstClassUnits): its cells, and its unit.
-pub(crate) fn agg_unit_plan(op: &str, unit: Option<&Json>) -> (Plan, Option<Json>) {
-    use crate::unit_value::{unit_error, READINGS_ADD, READINGS_SCALE};
-    let refused = match op {
-        "sum" => Some(READINGS_ADD),
-        "product" | "percentof" => Some(READINGS_SCALE),
-        _ => None,
-    };
-    let delta = match op {
-        "stdev" | "stdevp" => Some(1),
-        "var" | "varp" => Some(2),
-        _ => None,
-    };
-    let keeps = matches!(op, "sum" | "avg" | "min" | "max" | "median" | "mode" | "first" | "last");
-    let pow = |dim: crate::unit_dims::Dim, k: f64| json!({ "dim": dim_json(&dim.into_iter().map(|(a, e)| (a, e * k)).collect()) });
-    let display = unit_display(unit);
-    let scale =
-        display.filter(|d| affine_display(d)).map(|d| crate::unit_catalog::fc_unit_to_unit(d).map_or(1.0, |u| u.scale));
-    let kept = unit.filter(|_| keeps || delta == Some(1)).cloned();
-    let Some(scale) = scale else {
-        if delta != Some(2) {
-            return (Plan::Keep, kept);
-        }
-        let linear = display
-            .and_then(crate::unit_catalog::fc_unit_to_unit)
-            .map(|u| u.scale)
-            .filter(|s| *s != 1.0)
-            .unwrap_or(1.0);
-        let k = linear * linear;
-        return (if k == 1.0 { Plan::Keep } else { Plan::Scale(k) }, unit.map(|u| pow(unit_dim(u), 2.0)));
-    };
-    if let Some(r) = refused {
-        return (Plan::Refuse(V::err(unit_error(r))), None);
-    }
-    match delta {
-        None => (Plan::Keep, kept),
-        Some(d) => {
-            let dim =
-                unit.map(unit_dim).unwrap_or_else(|| crate::unit_dims::Dim::from([("temperature".to_string(), 1.0)]));
-            (Plan::Scale(if d == 2 { scale * scale } else { scale }), Some(pow(dim, d as f64)))
-        }
-    }
 }
 
 /// `typedColumn` as text: each filled cell as the text it reads.
@@ -2345,23 +2289,15 @@ fn cube_rollup(c: &mut Call) -> Answer {
             rolled.push(V::Null);
             continue;
         };
-        let unit = read.as_ref().ok().and_then(|r| r.2.clone());
-        let (plan, plan_unit) = agg_unit_plan(&agg, unit.as_ref());
+        let unit = read.as_ref().ok().and_then(|r| r.2.as_ref()).and_then(ColumnUnit::from_json).map(Rc::new);
+        let op = agg.parse::<AggOp>().ok();
+        let plan_unit = op.and_then(|o| agg_unit(o, unit.as_ref())).map(|u| u.to_json());
         let r = match read {
             Err(e) => e,
             Ok((values, ty, _)) => {
                 let cells: Vec<FrameCell> = values.iter().map(core_cell).collect();
-                let op: crate::frame_verbs::AggOp =
-                    agg.parse().map_err(|_| err(ErrorCode::Name, format!("Unknown aggregation \"{agg}\"")))?;
-                let v = card_cell(&crate::frame_verbs::aggregate_group(&cells, op, ty));
-                match plan {
-                    Plan::Keep => v,
-                    Plan::Scale(k) => match v {
-                        V::Num(n) if n.is_finite() => V::Num(n * k),
-                        other => other,
-                    },
-                    Plan::Refuse(e) => e,
-                }
+                let op = op.ok_or_else(|| err(ErrorCode::Name, format!("Unknown aggregation \"{agg}\"")))?;
+                card_cell(&agg_unit_plan(op, unit.as_deref()).cell(aggregate_group(&cells, op, ty)))
             }
         };
         if matches!(r, V::Str(_)) {

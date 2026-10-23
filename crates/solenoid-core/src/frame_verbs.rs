@@ -1,6 +1,8 @@
 // [[C130]] rustCore
 //! Port of `src/graph/frameVerbs.ts`: the frame verbs the backend runs (every `FrameOp` but
 //! pivot, plus join, append, bindColumns and sampling). Same names, same order of operations.
+//! Each verb also decides the unit and format its columns carry ([[C25]] firstClassUnits, [[D41]]
+//! formatFlowsDownstream): a column that keeps its cells keeps them; the rest are below, verb by verb.
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -14,13 +16,18 @@ use serde_json::{json, Value as Json};
 
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
+use crate::frame::{
+    frame_row_count, make_headers, same_column_unit, ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue,
+};
 use crate::js_sort::js_sort_by;
 use crate::jsnum::{
     compare_utf16, js_lower, js_string, js_trim, math_round, number_to_string, to_number, trunc_count, truthy,
 };
 use crate::spelled::{spelled, Wire};
 use crate::string_order::compare_strings;
+use crate::unit_catalog::fc_unit_to_unit;
+use crate::unit_dims::{dim_equal, dim_pow};
+use crate::unit_lists::format_dim;
 use crate::unit_value::{round_at_larger_term, unit_error, READINGS_ADD, READINGS_SCALE};
 use crate::value_kinds::{decimal_from_text, for_aggregate, guard_finite, logical_or_type_error, AggregatePrep};
 use crate::wire::{de_cell, encode_cell};
@@ -184,10 +191,6 @@ pub struct AggSpec {
     pub op: Wire<AggOp>,
     #[serde(rename = "as")]
     pub as_: String,
-    #[serde(rename = "readingScale", default)]
-    pub reading_scale: Option<f64>,
-    #[serde(rename = "unitScale", default)]
-    pub unit_scale: Option<f64>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -206,8 +209,6 @@ fn null_cell() -> FrameCell {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct WindowSpec {
-    #[serde(rename = "readingScale", default)]
-    pub reading_scale: Option<f64>,
     #[serde(rename = "partitionBy")]
     pub partition_by: Vec<String>,
     #[serde(rename = "orderBy", default)]
@@ -306,9 +307,9 @@ pub enum FrameOp {
     },
     #[serde(rename = "mergeColumns")]
     MergeColumns { columns: Vec<String>, separator: String, name: String },
-    /// Display formats only, which the TS keeps beside the frame; the cells pass through.
+    /// Display formats laid on by name; the cells and units pass through.
     #[serde(rename = "formats")]
-    Formats {},
+    Formats { formats: serde_json::Map<String, Json> },
 }
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────────
@@ -325,10 +326,17 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
 }
 
 pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
+    frame(f.columns.iter().map(|c| c.with_values(indices.iter().map(|&i| c.cell_at(i).clone()).collect())).collect())
+}
+
+fn with_formats(f: &FrameValue, formats: &serde_json::Map<String, Json>) -> FrameValue {
     frame(
         f.columns
             .iter()
-            .map(|c| FrameColumn::new(c.name.clone(), c.ty, indices.iter().map(|&i| c.cell_at(i).clone()).collect()))
+            .map(|c| match formats.get(&c.name) {
+                Some(ann) => FrameColumn { format: Some(Rc::new(ann.clone())), ..c.clone() },
+                None => c.clone(),
+            })
             .collect(),
     )
 }
@@ -856,8 +864,9 @@ fn raw_aggregate(nums: &[f64], op: AggOp) -> Option<f64> {
 }
 
 // ─── Units through an aggregate ([[C25]] firstClassUnits) ───
-// The engine sees no units: the TS lowers an op over readings to name its reading scale, and a
-// variance over a scaled linear unit its scale (`withUnitScales`).
+// As in a formula: a spread keeps a linear unit and a variance squares it, in base SI as VAR's is. Readings on an
+// offset scale (°C, °F) have no sum, product or share (#UNIT!); a spread is a delta in kelvin (var a squared one); the
+// averages and picks stay readings.
 
 fn agg_readings_refused(op: AggOp) -> Option<&'static str> {
     match op {
@@ -875,14 +884,14 @@ fn agg_readings_delta(op: AggOp) -> Option<u8> {
     }
 }
 
-enum ReadingPlan {
+pub(crate) enum ReadingPlan {
     Identity,
     Scale(f64),
     Refuse(Rc<SolError>),
 }
 
 impl ReadingPlan {
-    fn cell(&self, v: FrameCell) -> FrameCell {
+    pub(crate) fn cell(&self, v: FrameCell) -> FrameCell {
         match self {
             ReadingPlan::Identity => v,
             ReadingPlan::Scale(k) => match v {
@@ -894,18 +903,13 @@ impl ReadingPlan {
     }
 }
 
-fn reading_plan(
-    given: Option<f64>,
-    refused: Option<&str>,
-    delta: Option<u8>,
-    given_linear: Option<f64>,
-) -> ReadingPlan {
-    match given {
+fn reading_plan(unit: Option<&ColumnUnit>, refused: Option<&str>, delta: Option<u8>) -> ReadingPlan {
+    match unit.and_then(ColumnUnit::reading_scale) {
         None => {
             if delta != Some(2) {
                 return ReadingPlan::Identity;
             }
-            let k = given_linear.unwrap_or(1.0).powi(2);
+            let k = unit.and_then(ColumnUnit::linear_scale).unwrap_or(1.0).powi(2);
             if k == 1.0 {
                 ReadingPlan::Identity
             } else {
@@ -925,8 +929,32 @@ fn reading_plan(
     }
 }
 
-fn agg_unit_plan(op: AggOp, reading_scale: Option<f64>, unit_scale: Option<f64>) -> ReadingPlan {
-    reading_plan(reading_scale, agg_readings_refused(op), agg_readings_delta(op), unit_scale)
+/// How an aggregate's cells answer over a column in `unit`.
+pub(crate) fn agg_unit_plan(op: AggOp, unit: Option<&ColumnUnit>) -> ReadingPlan {
+    reading_plan(unit, agg_readings_refused(op), agg_readings_delta(op))
+}
+
+/// The unit an aggregate's or a window's column takes over a column in `unit`.
+fn plan_unit(unit: Option<&Rc<ColumnUnit>>, refused: bool, delta: Option<u8>, keeps: bool) -> Option<Rc<ColumnUnit>> {
+    let u = unit?;
+    let kept = (keeps || delta == Some(1)).then(|| u.clone());
+    let power = |k: u8| Some(Rc::new(ColumnUnit { dim: dim_pow(&u.dim, f64::from(k)), display: None }));
+    if u.reading_scale().is_none() {
+        return if delta == Some(2) { power(2) } else { kept };
+    }
+    if refused {
+        return None;
+    }
+    match delta {
+        None => kept,
+        Some(d) => power(d),
+    }
+}
+
+/// The unit an aggregate's column takes over a column in `unit`.
+pub(crate) fn agg_unit(op: AggOp, unit: Option<&Rc<ColumnUnit>>) -> Option<Rc<ColumnUnit>> {
+    let keeps = matches!(op, AggOp::Sum | AggOp::Avg | AggOp::Min | AggOp::Max | AggOp::Median | AggOp::Mode);
+    plan_unit(unit, agg_readings_refused(op).is_some(), agg_readings_delta(op), keeps)
 }
 
 pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<FrameValue> {
@@ -938,12 +966,13 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
         .iter()
         .map(|c| {
             FrameColumn::new(c.name.clone(), c.ty, buckets.iter().map(|rows| c.cell_at(rows[0]).clone()).collect())
+                .with_unit(c.unit.clone())
         })
         .collect();
     for (spec, col) in agg_cols {
         let op = known_agg(&spec.op)?;
         let preserves = matches!(op, AggOp::Min | AggOp::Max);
-        let plan = agg_unit_plan(op, spec.reading_scale, spec.unit_scale);
+        let plan = agg_unit_plan(op, col.unit.as_deref());
         let mut values = Vec::with_capacity(buckets.len());
         for rows in &buckets {
             let cells: Vec<FrameCell> = rows.iter().map(|&i| col.cell_at(i).clone()).collect();
@@ -955,7 +984,10 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
                 .map(|v| if let FrameCell::Num(n) = v { FrameCell::Bool(n != 0.0) } else { v })
                 .collect();
         }
-        out.push(FrameColumn::new(spec.as_.clone(), if preserves { col.ty } else { FrameColType::Number }, values));
+        out.push(
+            FrameColumn::new(spec.as_.clone(), if preserves { col.ty } else { FrameColType::Number }, values)
+                .with_unit(agg_unit(op, col.unit.as_ref())),
+        );
     }
     let names: Vec<String> = out.iter().map(|c| c.name.clone()).collect();
     let unique = make_headers(&names, out.len());
@@ -998,10 +1030,30 @@ pub struct JoinOpts {
     pub asof_direction: Option<AsofDirection>,
     #[serde(rename = "asofTolerance", default)]
     pub asof_tolerance: Option<f64>,
-    #[serde(rename = "rightKeyScale", default)]
-    pub right_key_scale: Option<f64>,
-    #[serde(rename = "rightKeyOffset", default)]
-    pub right_key_offset: Option<f64>,
+}
+
+/// The scale and offset that read a right join key in the left key's unit; `None` where none is needed. Keys of
+/// different dimensions, or money in different currencies, never match: #UNIT!.
+fn join_key_transform(left: &FrameColumn, right: &FrameColumn) -> Res<Option<(f64, f64)>> {
+    let (Some(lu), Some(ru)) = (left.unit.as_deref(), right.unit.as_deref()) else { return Ok(None) };
+    if same_column_unit(Some(lu), Some(ru)) {
+        return Ok(None);
+    }
+    let is_currency = |u: &ColumnUnit| dim_equal(&u.dim, &[("currency".to_string(), 1.0)].into());
+    let display = |u: &ColumnUnit| u.display.clone().unwrap_or_default();
+    if !dim_equal(&lu.dim, &ru.dim) || (is_currency(lu) && display(lu) != display(ru)) {
+        let name = |u: &ColumnUnit| u.display.clone().unwrap_or_else(|| format_dim(&u.dim));
+        return Err(sol_error(
+            ErrorCode::Unit,
+            format!("Join keys measure different things ({} and {}). Convert one key first", name(lu), name(ru)),
+        ));
+    }
+    let affine = |u: &ColumnUnit| {
+        let x = u.display.as_deref().and_then(fc_unit_to_unit);
+        (x.as_ref().map_or(1.0, |x| x.scale), x.and_then(|x| x.offset).unwrap_or(0.0))
+    };
+    let ((la, lb), (ra, rb)) = (affine(lu), affine(ru));
+    Ok(Some((ra / la, (rb - lb) / la)))
 }
 
 /// A right key read in the left key's unit, rounded at the 15th significant digit of the larger term.
@@ -1054,11 +1106,11 @@ fn assemble_join_output(
                 _ => FrameCell::Null,
             })
             .collect();
-        out.push(FrameColumn::new(names[ci].clone(), c.ty, values));
+        out.push(FrameColumn { name: names[ci].clone(), ..c.with_values(values) });
     }
     for (ri, c) in right_non_key.iter().enumerate() {
         let values = pairs.iter().map(|&(_, r)| r.map_or(FrameCell::Null, |r| c.cell_at(r).clone())).collect();
-        out.push(FrameColumn::new(names[left.columns.len() + ri].clone(), c.ty, values));
+        out.push(FrameColumn { name: names[left.columns.len() + ri].clone(), ..c.with_values(values) });
     }
     Ok(frame(out))
 }
@@ -1149,7 +1201,7 @@ pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
                 values.push(c.cell_at(i).clone());
             }
         }
-        out.push(FrameColumn::new(names[ci].clone(), c.ty, values));
+        out.push(FrameColumn { name: names[ci].clone(), ..c.with_values(values) });
     }
     for (ri, c) in right.columns.iter().enumerate() {
         let mut values = Vec::with_capacity(ln * rn);
@@ -1158,7 +1210,7 @@ pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
                 values.push(c.cell_at(j).clone());
             }
         }
-        out.push(FrameColumn::new(names[left.columns.len() + ri].clone(), c.ty, values));
+        out.push(FrameColumn { name: names[left.columns.len() + ri].clone(), ..c.with_values(values) });
     }
     frame(out)
 }
@@ -1177,9 +1229,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
         ));
     }
     let scaled_right;
-    let right = if opts.right_key_scale.is_some() || opts.right_key_offset.is_some() {
-        let scale = opts.right_key_scale.unwrap_or(1.0);
-        let offset = opts.right_key_offset.unwrap_or(0.0);
+    let right = if let Some((scale, offset)) = join_key_transform(lk, rk0)? {
         if (scale != 1.0 || offset != 0.0) && rk0.ty == FrameColType::Number {
             let values =
                 rk0.values
@@ -1192,7 +1242,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
                         }
                     })
                     .collect();
-            let clean = FrameColumn::new(rk0.name.clone(), rk0.ty, values);
+            let clean = FrameColumn::new(rk0.name.clone(), rk0.ty, values).with_unit(lk.unit.clone());
             scaled_right = frame(
                 right.columns.iter().map(|c| if std::ptr::eq(c, rk0) { clean.clone() } else { c.clone() }).collect(),
             );
@@ -1303,23 +1353,20 @@ pub fn unpivot_frame(
         .iter()
         .zip(id_vals)
         .enumerate()
-        .map(|(k, (c, values))| FrameColumn::new(names[k].clone(), c.ty, values))
+        .map(|(k, (c, values))| FrameColumn::new(names[k].clone(), c.ty, values).with_unit(c.unit.clone()))
         .collect();
     out.push(FrameColumn::new(names[id_cols.len()].clone(), FrameColType::String, var_vals));
-    out.push(FrameColumn::new(
-        names[id_cols.len() + 1].clone(),
-        val_cols.first().map_or(FrameColType::Number, |c| c.ty),
-        val_vals,
-    ));
+    let first_unit = val_cols.first().and_then(|c| c.unit.clone());
+    let shared = val_cols.iter().all(|c| same_column_unit(c.unit.as_deref(), first_unit.as_deref()));
+    out.push(
+        FrameColumn::new(
+            names[id_cols.len() + 1].clone(),
+            val_cols.first().map_or(FrameColType::Number, |c| c.ty),
+            val_vals,
+        )
+        .with_unit(if shared { first_unit } else { None }),
+    );
     Ok(frame(out))
-}
-
-#[derive(Deserialize, Clone, Debug, Default)]
-pub struct ValueScale {
-    #[serde(rename = "readingScale", default)]
-    pub reading_scale: Option<f64>,
-    #[serde(rename = "unitScale", default)]
-    pub unit_scale: Option<f64>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -1346,9 +1393,6 @@ pub struct PivotSpec {
     /// their source rows; the output never changes with them.
     #[serde(default)]
     pub details: Option<Vec<String>>,
-    /// Wire-only: each value field's reading and linear unit scales, as `withUnitScales` lowers an aggregate's.
-    #[serde(rename = "valueScales", default)]
-    pub value_scales: Option<Vec<ValueScale>>,
 }
 
 type Tuple = Vec<FrameCell>;
@@ -1797,13 +1841,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
     }
     let body_names = make_headers(&raw_headers, raw_headers.len());
-    let no_scale = ValueScale::default();
-    let plans: Vec<ReadingPlan> = (0..v_n)
-        .map(|v| {
-            let s = spec.value_scales.as_ref().and_then(|x| x.get(v)).unwrap_or(&no_scale);
-            agg_unit_plan(funcs[v], s.reading_scale, s.unit_scale)
-        })
-        .collect();
+    let plans: Vec<ReadingPlan> = (0..v_n).map(|v| agg_unit_plan(funcs[v], val_cols[v].unit.as_deref())).collect();
     for (bi, (co, v)) in body_specs.iter().enumerate() {
         let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
@@ -1814,7 +1852,10 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         for ro in &row_out {
             values.push(plans[*v].cell(cell_value(*v, &ro.span, &co.span)));
         }
-        out_cols.push(FrameColumn::new(body_names[bi].clone(), ty, values));
+        out_cols.push(
+            FrameColumn::new(body_names[bi].clone(), ty, values)
+                .with_unit(agg_unit(funcs[*v], val_cols[*v].unit.as_ref())),
+        );
     }
 
     let tuple_json = |t: &[FrameCell]| Json::Array(t.iter().map(encode_cell).collect());
@@ -1822,7 +1863,11 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         .iter()
         .map(|n| {
             let c = require_column(f, n)?;
-            Ok(json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
+            let mut d = json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() });
+            if let Some(format) = &c.format {
+                d["format"] = format.as_ref().clone();
+            }
+            Ok(d)
         })
         .collect::<Res<_>>()?;
     let mut layout = json!({
@@ -1890,7 +1935,12 @@ pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
                     }
                 }
                 let ty = type_of[&name];
-                FrameColumn::new(name, ty, values)
+                let held: Vec<&FrameColumn> =
+                    frames.iter().filter_map(|f| f.columns.iter().find(|c| c.name == name)).collect();
+                let unit =
+                    held[0].unit.clone().filter(|u| held.iter().all(|c| same_column_unit(c.unit.as_deref(), Some(u))));
+                let format = held[0].format.clone().filter(|_| held.iter().all(|c| c.format == held[0].format));
+                FrameColumn { unit, format, ..FrameColumn::new(name, ty, values) }
             })
             .collect(),
     ))
@@ -1903,7 +1953,7 @@ pub fn bind_columns(frames: &[&FrameValue]) -> FrameValue {
     frame(
         all.iter()
             .zip(names)
-            .map(|(c, name)| FrameColumn::new(name, c.ty, (0..rows).map(|r| c.cell_at(r).clone()).collect()))
+            .map(|(c, name)| FrameColumn { name, ..c.with_values((0..rows).map(|r| c.cell_at(r).clone()).collect()) })
             .collect(),
     )
 }
@@ -1956,7 +2006,7 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::AddIndex { name, start } => Ok(add_index_column(f, name, *start)),
         FrameOp::SplitColumn { column, delimiter, into } => split_column(f, column, delimiter, into.as_deref()),
         FrameOp::MergeColumns { columns, separator, name } => merge_columns(f, columns, separator, name),
-        FrameOp::Formats {} => Ok(f.clone()),
+        FrameOp::Formats { formats } => Ok(with_formats(f, formats)),
     }
 }
 
@@ -1989,7 +2039,7 @@ pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: FillDir) -> Res<Fram
             } else {
                 values.iter_mut().rev().for_each(&mut step);
             }
-            FrameColumn::new(col.name.clone(), col.ty, values)
+            col.with_values(values)
         })
         .collect();
     Ok(frame(cols))
@@ -2059,7 +2109,7 @@ pub fn replace_values(
                         }
                     })
                     .collect();
-                return FrameColumn::new(col.name.clone(), col.ty, values);
+                return col.with_values(values);
             }
             let Some(replacement) = coerce_replacement(col.ty, replace_with) else {
                 return col.clone();
@@ -2081,7 +2131,7 @@ pub fn replace_values(
                     }
                 })
                 .collect();
-            FrameColumn::new(col.name.clone(), col.ty, values)
+            col.with_values(values)
         })
         .collect();
     Ok(frame(cols))
@@ -2112,7 +2162,7 @@ pub fn slice_rows(f: &FrameValue, mode: SliceMode, n: f64, to: Option<f64>) -> F
             .map(|c| {
                 let len = c.values.len();
                 let (s, e) = (start.min(len), end.min(len));
-                FrameColumn::new(c.name.clone(), c.ty, c.values[s..e].to_vec())
+                c.with_values(c.values[s..e].to_vec())
             })
             .collect(),
     )
@@ -2237,6 +2287,31 @@ impl WindowFn {
                 | WindowFn::PercentRank
                 | WindowFn::Ntile
                 | WindowFn::CumCount
+        )
+    }
+
+    /// Whether its column takes the unit of the column it reads.
+    fn keeps_unit(self) -> bool {
+        use WindowFn::*;
+        matches!(
+            self,
+            CumSum
+                | CumAvg
+                | CumMin
+                | CumMax
+                | Lag
+                | Lead
+                | Diff
+                | RollingSum
+                | RollingAvg
+                | RollingMin
+                | RollingMax
+                | GroupSum
+                | GroupAvg
+                | GroupMin
+                | GroupMax
+                | First
+                | Last
         )
     }
 
@@ -2491,17 +2566,17 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     };
     let trimmed = js_trim(&spec.as_);
     let name = if trimmed.is_empty() { func.as_str().to_string() } else { trimmed.to_string() };
-    let plan = if val_col.is_some() {
-        reading_plan(
-            spec.reading_scale,
-            func.readings_refused(),
-            if func == WindowFn::Diff { Some(1) } else { None },
-            None,
-        )
-    } else {
-        ReadingPlan::Identity
+    let delta = if func == WindowFn::Diff { Some(1) } else { None };
+    let plan = match val_col {
+        Some(vc) => reading_plan(vc.unit.as_deref(), func.readings_refused(), delta),
+        None => ReadingPlan::Identity,
     };
+    let unit = spec
+        .column
+        .as_ref()
+        .and_then(|n| f.columns.iter().find(|c| &c.name == n))
+        .and_then(|c| plan_unit(c.unit.as_ref(), func.readings_refused().is_some(), delta, func.keeps_unit()));
     let mut columns: Vec<FrameColumn> = f.columns.iter().filter(|c| c.name != name).cloned().collect();
-    columns.push(FrameColumn::new(name, out_type, out.into_iter().map(|v| plan.cell(v)).collect()));
+    columns.push(FrameColumn::new(name, out_type, out.into_iter().map(|v| plan.cell(v)).collect()).with_unit(unit));
     Ok(frame(columns))
 }

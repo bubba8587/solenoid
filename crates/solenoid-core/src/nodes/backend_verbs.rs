@@ -6,9 +6,7 @@
 //! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
 //! and shows its layout (`pivotWire`) for the shell to keep beside the frame.
 
-use super::frames::{
-    affine_display, agg_unit_plan, core_cell, first, from_core, json_num, str_input, to_core, trimmed,
-};
+use super::frames::{core_cell, first, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;
 use super::stats::first_raw;
 use super::verbs::{column_list, flat_column, nullish, plan, uploaded};
@@ -16,7 +14,7 @@ use super::{kit, list, Answer, Call, Column, Cube, Frame};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameCell;
 use crate::frame_verbs::{compile_filter, pivot_frame, FilterOp, PivotSpec};
-use crate::jsnum::{js_trim, number_to_string};
+use crate::jsnum::number_to_string;
 use crate::string_order::compare_strings;
 use serde_json::{json, Map, Value as Json};
 use std::collections::HashSet;
@@ -362,25 +360,6 @@ fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<V
     )
 }
 
-/// A unit's display, where it has one.
-fn display_of(unit: Option<&Json>) -> Option<&str> {
-    unit?.get("display").and_then(Json::as_str).filter(|d| !d.is_empty())
-}
-
-/// `readingScaleOf` and `linearScaleOf`: how the unit-blind pivot reads a value field in its unit.
-fn value_scale(unit: Option<&Json>) -> Json {
-    let mut s = Map::new();
-    if let Some(d) = display_of(unit) {
-        let scale = crate::unit_catalog::fc_unit_to_unit(d).map(|u| u.scale);
-        if affine_display(d) {
-            s.insert("readingScale".into(), json_num(scale.unwrap_or(1.0)));
-        } else if let Some(k) = scale.filter(|k| *k != 1.0) {
-            s.insert("unitScale".into(), json_num(k));
-        }
-    }
-    Json::Object(s)
-}
-
 /// The layout's numbers as JS reads them back: an integer as an integer, -0 tagged.
 fn js_numbers(j: Json) -> Json {
     match j {
@@ -529,18 +508,11 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
         values.iter().map(|n| fields.funcs.get(n).and_then(Json::as_str).unwrap_or(&agg).to_string()).collect();
     let num = |key: &str| json_num(c.field(key).and_then(Json::as_f64).unwrap_or(0.0));
     let filter = combine_filter(f, &fields.exclude, &first_raw(c, "filter"));
-    // `pivotUnits`: each value field's scales and the unit its body columns take, by its place among the named ones.
-    let named: Vec<&String> = values.iter().filter(|n| !js_trim(n).is_empty()).collect();
-    let unit_of = |n: &str| f.columns.iter().find(|k| k.name == n).and_then(|k| k.unit.as_ref());
-    let func_at = |i: usize| funcs.get(i).or(funcs.first()).map_or("sum", String::as_str);
-    let scales: Vec<Json> = named.iter().map(|n| value_scale(unit_of(n))).collect();
-    let units: Vec<Option<Json>> =
-        named.iter().enumerate().map(|(i, n)| agg_unit_plan(func_at(i), unit_of(n)).1).collect();
     let mut spec = json!({
         "rowFields": row_fields, "colFields": col_fields, "values": values, "funcs": funcs,
         "rowTotalDepth": num("rowTotalDepth"), "colTotalDepth": num("colTotalDepth"),
         "rowSort": num("rowSort"), "colSort": num("colSort"), "relativeTo": num("relativeTo"),
-        "details": fields.details, "valueScales": scales,
+        "details": fields.details,
     });
     if let Some(m) = filter {
         spec["filter"] = Json::Array(m.into_iter().map(|b| b.map_or(Json::Null, Json::Bool)).collect());
@@ -558,25 +530,10 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
         }
     };
     let mut frame = from_core(&out);
-    let row_keys = layout.get("rowFields").and_then(Json::as_array).map_or(0, Vec::len);
-    for (bi, col) in layout.get("cols").and_then(Json::as_array).into_iter().flatten().enumerate() {
-        let unit = col.get("value").and_then(Json::as_u64).and_then(|v| units.get(v as usize)).cloned().flatten();
-        if let (Some(k), Some(u)) = (frame.columns.get_mut(row_keys + bi), unit) {
-            k.unit = Some(u);
-        }
+    for (k, core) in frame.columns.iter_mut().zip(&out.columns) {
+        k.unit = core.unit.as_ref().map(|u| u.to_json());
     }
-    let mut layout = js_numbers(layout);
-    if let Some(details) = layout.get_mut("details").and_then(Json::as_array_mut) {
-        for d in details {
-            let name = d.get("name").and_then(Json::as_str).unwrap_or("");
-            if let Some(fmt) =
-                f.columns.iter().find(|k| k.name == name).and_then(|k| k.format.clone()).filter(|j| !j.is_null())
-            {
-                d["format"] = fmt;
-            }
-        }
-    }
-    c.show("pivotWire", V::Json(Rc::new(layout)));
+    c.show("pivotWire", V::Json(Rc::new(js_numbers(layout))));
     let frame = V::Frame(Rc::new(frame));
     c.show("cachedResult", frame.clone());
     answer(frame)

@@ -755,7 +755,13 @@
         26,
         30,
         null
-       ]
+       ],
+       "unit": {
+        "dim": {
+         "temperature": 1
+        },
+        "display": "degF"
+       }
       }
      ]
     }
@@ -772,8 +778,7 @@
        {
         "column": "t",
         "op": "stdevp",
-        "as": "spread",
-        "readingScale": 0.5555555555555556
+        "as": "spread"
        }
       ]
      },
@@ -799,7 +804,12 @@
       "type": "number",
       "values": [
        1.3671132463179076
-      ]
+      ],
+      "unit": {
+       "dim": {
+        "temperature": 1
+       }
+      }
      }
     ]
    }
@@ -920,6 +930,176 @@
       "type": "number",
       "values": [
        6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the row verbs keep every column's unit and format",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "b",
+        "a",
+        "b"
+       ],
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ],
+       "unit": {
+        "dim": {
+         "length": 1
+        },
+        "display": "km"
+       },
+       "format": {
+        "format": "decimal",
+        "unit": "none",
+        "decimalDigits": 1,
+        "decimalMode": "places"
+       }
+      },
+      {
+       "name": "w",
+       "type": "number",
+       "values": [
+        30,
+        10,
+        null
+       ],
+       "unit": {
+        "dim": {
+         "mass": 1
+        },
+        "display": "kg"
+       }
+      },
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        7,
+        8,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "fillBlanks",
+      "columns": [
+       "w"
+      ],
+      "dir": "down"
+     },
+     {
+      "kind": "replaceValues",
+      "column": "n",
+      "find": "9",
+      "replaceWith": "90",
+      "mode": "cell"
+     },
+     {
+      "kind": "filter",
+      "column": "d",
+      "op": "gt",
+      "value": 1
+     },
+     {
+      "kind": "distinct"
+     },
+     {
+      "kind": "dropBlankRows",
+      "mode": "any"
+     },
+     {
+      "kind": "sliceRows",
+      "mode": "first",
+      "n": 5
+     },
+     {
+      "kind": "head",
+      "n": 5
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "b",
+       "b"
+      ],
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 2,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       3,
+       2
+      ],
+      "unit": {
+       "dim": {
+        "length": 1
+       },
+       "display": "km"
+      },
+      "format": {
+       "format": "decimal",
+       "unit": "none",
+       "decimalDigits": 1,
+       "decimalMode": "places"
+      }
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       30,
+       10
+      ],
+      "unit": {
+       "dim": {
+        "mass": 1
+       },
+       "display": "kg"
+      }
+     },
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       7,
+       90
       ]
      }
     ]
