@@ -13,6 +13,7 @@ export function initPackFormulas(): void {
   for (const name of PACK_FORMULA_OWNER.keys()) delete FUNCTION_ARITY[name];
   PACK_FORMULA_OWNER.clear();
   PACK_FORMULA_META.clear();
+  cachedVersion = -1;
   for (const p of allPacks()) {
     for (const f of p.formulas ?? []) {
       const name = f.name.toUpperCase();
