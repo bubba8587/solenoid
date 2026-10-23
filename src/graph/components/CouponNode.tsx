@@ -1,5 +1,5 @@
-import type { CouponNode as CouponNodeType, CouponOp } from "../rete-nodes";
-import { COUPON_OP_META } from "../rete-nodes";
+import type { CouponNode as CouponNodeType, CouponOp } from "../nodeClasses";
+import { COUPON_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

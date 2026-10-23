@@ -1,6 +1,6 @@
 // [[C66]] scriptNode, [[C95]] commitOnEnter
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ScriptNode as ScriptNodeType } from "../rete-nodes";
+import type { ScriptNode as ScriptNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

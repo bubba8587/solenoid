@@ -1,5 +1,5 @@
 // [[B11]]
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphSocket } from "../graphModel";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, BASIS_DOC } from "./shared";
 import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
@@ -37,7 +37,7 @@ export const BITWISE_OP_META = {
   bitrshift: { label: "BITRSHIFT", description: "Shifts `A`'s bits right by `B` places. Each place halves it, dropping low bits (`⌊A ÷ 2ᴮ⌋`). Excel: `BITRSHIFT`." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
-export class BitwiseNode extends ClassicPreset.Node {
+export class BitwiseNode extends GraphNode {
   label: string;
   op: BitwiseOp;
   cachedResult: number | null = null;
@@ -87,7 +87,7 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
   };
 })();
 
-export class DepreciationNode extends ClassicPreset.Node {
+export class DepreciationNode extends GraphNode {
   unitAware = true;
   label: string;
   op: DepreciationOp;
@@ -193,7 +193,7 @@ export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "dates", label: "Dated" },
 ];
 
-export class NPVNode extends ClassicPreset.Node {
+export class NPVNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
@@ -234,7 +234,7 @@ export class NPVNode extends ClassicPreset.Node {
 
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
-export class IRRNode extends ClassicPreset.Node {
+export class IRRNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
@@ -276,7 +276,7 @@ export const MIRR_META = {
   description: "Modified `IRR`: accounts for cost of capital and reinvestment rate. Excel: `MIRR`.",
 };
 
-export class MirrNode extends ClassicPreset.Node {
+export class MirrNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
@@ -307,7 +307,7 @@ export const FVSCHEDULE_META = {
   description: "Future value of principal after a schedule of compound interest rates. Excel: `FVSCHEDULE`.",
 };
 
-export class FvScheduleNode extends ClassicPreset.Node {
+export class FvScheduleNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     schedule: "Each rate compounds in order. A blank cell counts as zero interest for that period.",
@@ -337,7 +337,7 @@ export const ISPMT_META = {
   description: "Interest paid in a given period of a straight-line-principal loan. Excel: `ISPMT`.",
 };
 
-export class IspmtNode extends ClassicPreset.Node {
+export class IspmtNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
@@ -371,7 +371,7 @@ export const DOLLAR_OP_META = {
   dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, `1.0625` → `1.02` in 32nds). Excel: `DOLLARFR`." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
-export class DollarNode extends ClassicPreset.Node {
+export class DollarNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     fraction: "The denominator of the fraction, such as 32 for prices in 32nds.",
   };
@@ -406,11 +406,12 @@ function keysDroppedBy(before: string[], after: string[]): string[] {
   return before.filter((k) => !keep.has(k));
 }
 
-function reshapeInputs(node: ClassicPreset.Node, after: string[], make: (key: string) => ClassicPreset.Input<ClassicPreset.Socket>): void {
+function reshapeInputs(node: GraphNode, after: string[], make: (key: string) => GraphInput<GraphSocket>): void {
   for (const k of Object.keys(node.inputs)) if (!after.includes(k)) node.removeInput(k);
-  const ordered: typeof node.inputs = {};
-  for (const k of after) ordered[k] = node.inputs[k] ?? make(k);
-  node.inputs = ordered;
+  for (const k of after) {
+    if (node.hasInput(k)) node.moveInputLast(k);
+    else node.addInput(k, make(k));
+  }
 }
 
 // ─── Discount securities: ONE card ───────────────────────────────────────────
@@ -430,7 +431,7 @@ export const DISCOUNT_SECURITY_META: Record<DiscountSecurityOp, { label: string;
   yieldmat:   { group: "Interest at maturity", label: "YIELDMAT", keys: ["issue", "rate", "pr", "basis"], description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
 };
 
-const DISCOUNT_SECURITY_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const DISCOUNT_SECURITY_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   settle:     () => dateIn("Settlement date"),
   maturity:   () => dateIn("Maturity date"),
   issue:      () => dateIn("Issue date"),
@@ -447,7 +448,7 @@ function discountSecurityKeys(op: DiscountSecurityOp): string[] {
   return ["settle", "maturity", ...DISCOUNT_SECURITY_META[op].keys];
 }
 
-export class DiscountSecurityNode extends ClassicPreset.Node {
+export class DiscountSecurityNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     pr: "Per $100 of face value.",
@@ -499,7 +500,7 @@ export const COUPON_OP_META = {
   coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: `COUPNUM`." },
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
-export class CouponNode extends ClassicPreset.Node {
+export class CouponNode extends GraphNode {
   static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -546,7 +547,7 @@ function accruedInterestKeys(op: AccruedInterestOp): string[] {
   return ACCRUED_INTEREST_KEYS.filter((k) => k !== "frequency" || op === "periodic");
 }
 
-export class AccruedInterestNode extends ClassicPreset.Node {
+export class AccruedInterestNode extends GraphNode {
   unitAware = true;
   static inputRoles = { basis: setting(0), frequency: setting(2) };
   static socketDocs: Record<string, string> = {
@@ -612,7 +613,7 @@ const PAYMENT_BREAKDOWN_RANGE_KEYS  = ["rate", "nper", "pv", "start", "end"];
 function paymentBreakdownKeys(op: PaymentBreakdownOp): string[] {
   return op === "ipmt" || op === "ppmt" ? [...PAYMENT_BREAKDOWN_SINGLE_KEYS] : [...PAYMENT_BREAKDOWN_RANGE_KEYS];
 }
-const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   rate:  () => numIn("Rate"),
   per:   () => numIn("Period"),
   nper:  () => numIn("Nper"),
@@ -622,7 +623,7 @@ const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<Classic
   end:   () => numIn("End period"),
 };
 
-export class PaymentBreakdownNode extends ClassicPreset.Node {
+export class PaymentBreakdownNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
@@ -669,7 +670,7 @@ export const DURATION_OP_META = {
   mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: `MDURATION`." },
 } satisfies Record<DurationOp, { label: string; description: string }>;
 
-export class DurationNode extends ClassicPreset.Node {
+export class DurationNode extends GraphNode {
   static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -712,7 +713,7 @@ export const BOND_PRICING_META: Record<BondPricingOp, { label: string; descripti
   oddlyield: { group: "Odd last coupon",  label: "ODDLYIELD", keys: ["lastinterest", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
 };
 
-const BOND_PRICING_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+const BOND_PRICING_INPUTS: Record<string, () => GraphInput<GraphSocket>> = {
   settle:       () => dateIn("Settlement date"),
   maturity:     () => dateIn("Maturity date"),
   issue:        () => dateIn("Issue date"),
@@ -729,7 +730,7 @@ function bondPricingKeys(op: BondPricingOp): string[] {
   return ["settle", "maturity", ...BOND_PRICING_META[op].keys];
 }
 
-export class BondPricingNode extends ClassicPreset.Node {
+export class BondPricingNode extends GraphNode {
   static inputRoles = { frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     issue: "Left unwired, the issue date falls back to the settlement date.",
@@ -770,7 +771,7 @@ export class BondPricingNode extends ClassicPreset.Node {
 
 
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
-export class AmortizationNode extends ClassicPreset.Node {
+export class AmortizationNode extends GraphNode {
   unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate PER PERIOD: a 6% annual loan paid monthly is 0.005 here, with nper in months.",
@@ -817,7 +818,7 @@ export function amortizationFrame(rate: number, nper: number, pv: number, fv: nu
 }
 
 // ─── RETURNS (return-series quant one-liners) ────────────────────────────────
-export class ReturnsNode extends ClassicPreset.Node {
+export class ReturnsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
     rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",

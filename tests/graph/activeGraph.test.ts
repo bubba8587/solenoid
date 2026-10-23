@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs, getEditor } from "../../src/graph/process";
 import {
@@ -22,9 +22,9 @@ import {
 // an autosave while drilled in would write the subgraph OVER the document. This test
 // locks that split at the resolver boundary.
 
-function fakeEditor(ids: string[]): NodeEditor<Schemes> {
+function fakeEditor(ids: string[]): GraphEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
-  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as GraphEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 const subView = { sub: true } as unknown as View;
@@ -66,7 +66,7 @@ describe("activeGraph resolver", () => {
   it("a node in a closed composite on an owned canvas resolves to that composite's editor, not main", () => {
     const inner = fakeEditor(["deep"]);
     const scene = fakeEditor(["c1"]);
-    (scene.getNode("c1") as unknown as { internalEditor: NodeEditor<Schemes> }).internalEditor = inner;
+    (scene.getNode("c1") as unknown as { internalEditor: GraphEditor<Schemes> }).internalEditor = inner;
     const off = registerOwnedGraph({ editor: scene, view: fakeView });
     try { expect(getOwningEditor("deep")).toBe(inner); } finally { off(); }
     expect(getOwningEditor("deep")).toBe(main);
@@ -109,7 +109,7 @@ describe("a main-graph node retypes on its own surface while a drill-in is open 
     const rerendered: string[] = [];
     const mainView = { rerenderNode: async (id: string) => { rerendered.push(id); } } as unknown as View;
     const drillView = { rerenderNode: async () => { throw new Error("the drill-in view must not be touched"); } } as unknown as View;
-    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as NodeEditor<Schemes>;
+    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as GraphEditor<Schemes>;
     setEditorRefs(owner, {} as never, mainView);
     setActiveGraph({ editor: sub, view: drillView });
     seq.literals.count = 2; seq.literals.cols = 2;

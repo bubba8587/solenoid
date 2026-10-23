@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter
 import { useEffect, useRef, useState } from "react";
-import type { ImageNode as ImageNodeType } from "../rete-nodes";
+import type { ImageNode as ImageNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { hydrateImageAsset } from "../imageAssets";

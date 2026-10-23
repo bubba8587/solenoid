@@ -1,4 +1,4 @@
-import type { BuildCubeNode as BuildCubeNodeType, NestJoinNode as NestJoinNodeType, CubeColumnsNode as CubeColumnsNodeType, CubeRollupNode as CubeRollupNodeType } from "../rete-nodes";
+import type { BuildCubeNode as BuildCubeNodeType, NestJoinNode as NestJoinNodeType, CubeColumnsNode as CubeColumnsNodeType, CubeRollupNode as CubeRollupNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { CubeDisplay } from "./CubeDisplay";

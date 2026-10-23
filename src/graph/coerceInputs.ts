@@ -1,5 +1,5 @@
 // [[C25]], [[D43]], [[D36]] nullSkippedNotZero, [[C24]] arraySemantics
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { declaredTypeOf, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
@@ -322,7 +322,7 @@ export function wrapNodeData(node: NodeLike) {
 }
 
 /** Install before the error guard's pipe and before any node is added. */
-export function installInputCoercion(editor: NodeEditor<Schemes>) {
+export function installInputCoercion(editor: GraphEditor<Schemes>) {
   editor.addPipe((context) => {
     if (context.type === "nodecreated") {
       wrapNodeData(context.data as unknown as NodeLike);

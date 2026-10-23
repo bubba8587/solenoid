@@ -1,6 +1,6 @@
 // [[C10]] socketLattice (canConnect gates the pair)
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "../graphModel";
 import { connectionDialog } from "../connectionDialogStore";
 import { listEndpoints, findEndpoint, type Endpoint } from "../nodeNames";
 import { fuzzyScore } from "../fuzzy";
@@ -180,7 +180,7 @@ export function ConnectionDialog() {
     }
     try {
       await editor.addConnection(
-        new ClassicPreset.Connection(srcNode, src.socketKey, tgtNode, tgt.socketKey) as unknown as SolenoidConnection,
+        new GraphConnection(srcNode, src.socketKey, tgtNode, tgt.socketKey) as unknown as SolenoidConnection,
       );
       await processGraph();
     } catch { /* the connectioncreate pipe vetoed it */ }

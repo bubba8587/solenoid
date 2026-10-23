@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import type { MergePlotsNode as MergePlotsNodeType } from "../rete-nodes";
+import type { MergePlotsNode as MergePlotsNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { InlineInputs } from "./inlineInput";

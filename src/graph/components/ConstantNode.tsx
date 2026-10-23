@@ -1,4 +1,4 @@
-import { ConstantNode as ConstantNodeType, ConstantOp, CONSTANTS } from "../rete-nodes";
+import { ConstantNode as ConstantNodeType, ConstantOp, CONSTANTS } from "../nodeClasses";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS: { value: ConstantOp; label: string }[] = Object.entries(CONSTANTS).map(

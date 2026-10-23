@@ -1,8 +1,9 @@
 // [[B12]] losslessSaves, [[C118]] formatTravelsWithValue
 import { describe, it, expect, beforeEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
-import * as Nodes from "../../src/graph/rete-nodes";
-import { FormatControllerNode } from "../../src/graph/rete-nodes";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import * as Nodes from "../../src/graph/nodeClasses";
+import { FormatControllerNode } from "../../src/graph/nodeClasses";
 import { formatAnnotationStore } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/personal-finance.json";
 
@@ -12,7 +13,7 @@ import seed from "../../src/graph/seedGraphs/personal-finance.json";
 // FC), then dockSelf + a final refresh — and assert each money FC's `format`
 // AND the annotation it writes both end at "currency_usd" (no silent reset to
 // "auto", which is the reported "Auto dropdown but currency value" desync).
-type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 type SavedNode = { id: string; type: string; init?: Record<string, unknown> };
 type SavedConn = { source: string; sourceOutput: string; target: string; targetInput: string };
 
@@ -25,10 +26,10 @@ describe("personal-finance FC formats survive the full load order", () => {
   });
 
   it("every money FC keeps currency_usd (node + annotation)", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
-    const byId = new Map<string, ClassicPreset.Node>();
+    const editor = new GraphEditor() as unknown as AnyEditor;
+    const byId = new Map<string, GraphNode>();
     for (const sn of seed.nodes as SavedNode[]) {
-      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
+      const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => GraphNode>)[sn.type];
       const node = new Ctor({ ...sn.init });
       byId.set(sn.id, node);
       await editor.addNode(node as never);
@@ -49,7 +50,7 @@ describe("personal-finance FC formats survive the full load order", () => {
     for (const sc of seed.connections as SavedConn[]) {
       const s = byId.get(sc.source), t = byId.get(sc.target);
       if (!s || !t) continue;
-      await editor.addConnection(new ClassicPreset.Connection(s as never, sc.sourceOutput, t as never, sc.targetInput) as never);
+      await editor.addConnection(new GraphConnection(s as never, sc.sourceOutput, t as never, sc.targetInput) as never);
       refreshAllFcs(); // mimic Canvas connectioncreated pipe
     }
     for (const n of editor.getNodes()) if (n instanceof FormatControllerNode) n.dockSelf(editor as never);

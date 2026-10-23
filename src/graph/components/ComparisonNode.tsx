@@ -1,4 +1,4 @@
-import { COMPARISON_OP_META, type ComparisonOp, type ComparisonNode as ComparisonNodeType } from "../rete-nodes";
+import { COMPARISON_OP_META, type ComparisonOp, type ComparisonNode as ComparisonNodeType } from "../nodeClasses";
 import { makeOpNodeComponent } from "./standardNode";
 
 // Glyph first: the symbol is the faster read on the card.

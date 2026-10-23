@@ -3,7 +3,7 @@
 // loaded once per module cache.
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../../src/graph/dataflowEngine";
+import { graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../../src/graph/graphEditor";
 import { loadWasmEngineSync, wasmEngineLoaded } from "../../src/graph/engineWasm";
 
 if (!graphEngineLoaded()) loadGraphEngineSync(fs.readFileSync(graphWasmUrl));

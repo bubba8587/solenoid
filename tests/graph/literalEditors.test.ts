@@ -4,7 +4,7 @@ import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
   cellKindOf, convertCellKind,
 } from "../../src/graph/literalEditors";
-import { CubeInputNode } from "../../src/graph/rete-nodes";
+import { CubeInputNode } from "../../src/graph/nodeClasses";
 import { extractInit } from "../../src/graph/nodeInit";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";

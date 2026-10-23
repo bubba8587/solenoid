@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { HISTOGRAM_MODE_META } from "../rete-nodes";
-import type { HistogramNode as HistogramNodeType, HistogramMode } from "../rete-nodes";
+import { HISTOGRAM_MODE_META } from "../nodeClasses";
+import type { HistogramNode as HistogramNodeType, HistogramMode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";

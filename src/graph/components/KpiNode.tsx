@@ -1,4 +1,4 @@
-import type { KpiNode as KpiNodeType } from "../rete-nodes";
+import type { KpiNode as KpiNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ChartFigure } from "./chartView";

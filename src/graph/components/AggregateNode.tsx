@@ -1,5 +1,5 @@
-import type { AggregateNode as AggregateNodeType, ReduceOp } from "../rete-nodes";
-import { REDUCE_OP_META } from "../rete-nodes";
+import type { AggregateNode as AggregateNodeType, ReduceOp } from "../nodeClasses";
+import { REDUCE_OP_META } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

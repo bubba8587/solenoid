@@ -1,4 +1,4 @@
-import type { SaveTimesNode as SaveTimesNodeType } from "../rete-nodes";
+import type { SaveTimesNode as SaveTimesNodeType } from "../nodeClasses";
 import { saveToDisk } from "../fileSession";
 import { requestRecalc } from "../process";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

@@ -1,7 +1,8 @@
 // [[D52]]
 import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../../src/graph/graphModel";
 import type { Schemes } from "../../../src/graph/schemes";
 import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
@@ -17,11 +18,11 @@ import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
 import { ComparisonNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
@@ -244,7 +245,7 @@ describe("CompositeNode shell", () => {
     // `init`; on load it does `new Ctor({ ...sn.init })` then (for a Composite)
     // `node.hydrate(reg)`. Reproduce exactly that, with no composite-specific
     // code on either side beyond what's already in copyPaste.ts.
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
 
     const reloaded = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(reloaded.label).toBe("Adder");
@@ -419,7 +420,7 @@ describe("CompositeNode Scenarios run mode", () => {
     const id1 = c.addScenario();
     c.setScenarioOverride(id1, inAId, 42);
 
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.scenarios).toHaveLength(1);
     expect(clone.scenarios[0].overrides[inAId]).toBe(42);
@@ -478,7 +479,7 @@ describe("CompositeNode Data Table run mode", () => {
     const { c, inAId } = await makeAdder();
     c.setDataTableValues(inAId, [7, 8, 9]);
 
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.dataTableValues[inAId]).toEqual([7, 8, 9]);
 
@@ -583,7 +584,7 @@ describe("CompositeNode Simulation run mode", () => {
 
   it("simulationSteps round-trips through extractInit", async () => {
     const { c } = await makePopulationModel(7);
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.simulationSteps).toBe(7);
   });
@@ -665,7 +666,7 @@ describe("CompositeNode Simulation run mode", () => {
   it("the stop-when config round-trips through extractInit", async () => {
     const { c, popOutId } = await makePopulationModel(10);
     c.stopWhenPortId = popOutId; c.stopWhenOp = "ge"; c.stopWhenValue = 130;
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.stopWhenPortId).toBe(popOutId);
     expect(clone.stopWhenOp).toBe("ge");
@@ -780,7 +781,7 @@ describe("CompositeNode By-Row run mode", () => {
 
   it("byRowPortId round-trips through extractInit", async () => {
     const { c, aId } = await makeDoubler();
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.byRowPortId).toBe(aId);
   });
@@ -935,7 +936,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("a never-solved heavy composite fetches through the engine without throwing", async () => {
     const { c } = await makeAdder();
     const { DataflowEngine } = await import("../../../src/graph/dataflowEngine");
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(c as unknown as Schemes["Node"]);
@@ -1020,7 +1021,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("goalSeek round-trips through extractInit (deep-copied, not aliased)", async () => {
     const { c, inAId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 42 });
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.goalSeek).toEqual({ inputPortId: inAId, outputPortId: outId, target: 42 });
     clone.setGoalSeek({ target: 0 });
@@ -1053,7 +1054,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("goalSeek solver params round-trip through extractInit", async () => {
     const { c, inAId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 1, maxIterations: 20, tolerance: 1e-3, boundsLo: -5, boundsHi: 5 });
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.goalSeek).toMatchObject({ maxIterations: 20, tolerance: 1e-3, boundsLo: -5, boundsHi: 5 });
   });
@@ -1148,7 +1149,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   it("monteCarlo config round-trips through extractInit; marker uncertainty rides the internal snapshot", async () => {
     const { c } = await makeAdder(15, "uniform");
     c.setMonteCarlo({ samples: 250, seed: 3 });
-    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const init = extractInit(c as unknown as GraphNode);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     await clone.hydrate(ctorRegistry());
     expect(clone.monteCarlo).toEqual({ samples: 250, seed: 3 });
@@ -1224,7 +1225,7 @@ describe("CompositeNode manual refresh mode", () => {
     // extractInit → new → hydrate is the exact path persistence.ts and paste take, so a
     // fresh load starts unsolved: no solve on load ([[D52]] compositesHoldUntilSolve).
     const src = (await makePassthrough()).c;
-    const loaded = new CompositeNode(extractInit(src as unknown as ClassicPreset.Node) as ConstructorParameters<typeof CompositeNode>[0]);
+    const loaded = new CompositeNode(extractInit(src as unknown as GraphNode) as ConstructorParameters<typeof CompositeNode>[0]);
     await loaded.hydrate(ctorRegistry());
     const inId = loaded.inputPorts[0].id;
     const outId = loaded.outputPorts[0].id;

@@ -1,7 +1,7 @@
 // [[B11]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
@@ -28,7 +28,7 @@ export const SPARKLINE_OP_META = {
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
-export class SparklineNode extends ClassicPreset.Node {
+export class SparklineNode extends GraphNode {
   label: string;
   op: SparklineOp;
   chartOptions: ChartOptions = {};
@@ -71,7 +71,7 @@ export const CHART_OP_META = {
   funnel:    { label: "Funnel",   group: "Categorical" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 
-export class ChartNode extends ClassicPreset.Node {
+export class ChartNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
@@ -123,7 +123,7 @@ export class ChartNode extends ClassicPreset.Node {
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
 
-export class MergePlotsNode extends ClassicPreset.Node {
+export class MergePlotsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     options: "key=value pairs separated by semicolons, or a Chart Builder. Styles the merged plot's axes and title; each series keeps its own color and marker size.",
   };
@@ -163,7 +163,7 @@ export class MergePlotsNode extends ClassicPreset.Node {
   addValueInput(): string {
     const key = `p${this.nextInputId}`;
     this.addPlotWithKey(key);
-    keepInputLast(this, "options");
+    this.moveInputLast("options");
     return key;
   }
 
@@ -184,7 +184,7 @@ export const HISTOGRAM_MODE_META = {
   "2d": { label: "2-D", description: "Bin paired X and Y numbers into a grid, drawn as a density plot. numpy `histogram2d`." },
 } satisfies Record<HistogramMode, { label: string; description: string }>;
 
-export class HistogramNode extends ClassicPreset.Node {
+export class HistogramNode extends GraphNode {
   static inputRoles = { bins: setting(10), ybins: setting(10) };
   label: string;
   mode: HistogramMode;
@@ -249,7 +249,7 @@ export class HistogramNode extends ClassicPreset.Node {
 
 const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]";
 
-export class MermaidNode extends ClassicPreset.Node {
+export class MermaidNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   cachedSource = "";
@@ -277,7 +277,7 @@ export const GAUGE_STYLE_META = {
 } satisfies Record<GaugeStyle, { label: string }>;
 export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_STYLE_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
 
-export class GaugeNode extends ClassicPreset.Node {
+export class GaugeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "Dial reads it as a fraction of one, so 0.75 shows as 75 percent on a dial fixed at 0 to 100 percent; Bar plots it on the 0 to Max track.",
     target: "Bar only: the target tick on the track.",
@@ -335,7 +335,7 @@ export class GaugeNode extends ClassicPreset.Node {
 
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 
-export class KpiNode extends ClassicPreset.Node {
+export class KpiNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { value: 0, prev: 0, goodUp: 1 };
   stringLiterals: Record<string, string> = { unit: "" };
@@ -370,7 +370,7 @@ export const PROPORTION_OP_META = {
 } satisfies Record<ProportionLayout, { label: string }>;
 export const PROPORTION_LAYOUT_OPTIONS = Object.entries(PROPORTION_OP_META).map(([value, m]) => ({ value: value as ProportionLayout, label: m.label }));
 
-export class ProportionNode extends ClassicPreset.Node {
+export class ProportionNode extends GraphNode {
   label: string;
   op: ProportionLayout = "treemap";
   stringLiterals: Record<string, string> = {};
@@ -406,7 +406,7 @@ export class ProportionNode extends ClassicPreset.Node {
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
-export class SankeyNode extends ClassicPreset.Node {
+export class SankeyNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -438,7 +438,7 @@ export class SankeyNode extends ClassicPreset.Node {
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
 
-export class HeatmapNode extends ClassicPreset.Node {
+export class HeatmapNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "A frame's number columns are the heatmap's columns, and a first column of text or dates names the rows. A plain table plots as it stands.",
     options: "key=value pairs separated by semicolons, or a Chart Builder. Reads seaborn's heatmap names: cmap, center, vmin, vmax, annot, fmt, cbar, plus aspect and origin.",
@@ -483,7 +483,7 @@ export const SURFACE_VIEW_OP_META = {
   contour: { label: "Flat", description: "The same table drawn flat: filled height bands with iso-lines." },
 } satisfies Record<SurfaceViewOp, { label: string; description: string }>;
 
-export class SurfaceNode extends ClassicPreset.Node {
+export class SurfaceNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     xs: "One X coordinate per column; unwired means 1, 2, 3…",
     ys: "One Y coordinate per row; unwired means 1, 2, 3…",
@@ -527,7 +527,7 @@ export class SurfaceNode extends ClassicPreset.Node {
     } else if (this.inputs.levels) {
       this.removeInput("levels");
     }
-    keepInputLast(this, "options");
+    this.moveInputLast("options");
     this.height = next === "contour" ? 240 : 220;
   }
 
@@ -540,7 +540,7 @@ export class SurfaceNode extends ClassicPreset.Node {
 
 // ─── Waterfall ────────────────────────────────────────────────────────────────
 
-export class WaterfallNode extends ClassicPreset.Node {
+export class WaterfallNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Each value is a signed change from the previous bar, and a computed Total bar is appended at the end.",
   };
@@ -574,7 +574,7 @@ export class WaterfallNode extends ClassicPreset.Node {
 
 // ─── Candlestick ──────────────────────────────────────────────────────────────
 
-export class CandlestickNode extends ClassicPreset.Node {
+export class CandlestickNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The date column is optional. With exactly four columns all four read as open, high, low, close and rows are numbered instead.",
   };
@@ -611,7 +611,7 @@ export class CandlestickNode extends ClassicPreset.Node {
 
 // ─── Boxplot ──────────────────────────────────────────────────────────────────
 
-export class BoxplotNode extends ClassicPreset.Node {
+export class BoxplotNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     values: "Each numeric column draws as its own box and other columns are skipped. A plain list draws a single box.",
   };
@@ -646,7 +646,7 @@ export class BoxplotNode extends ClassicPreset.Node {
 
 // ─── Calendar heatmap ─────────────────────────────────────────────────────────
 
-export class CalendarHeatmapNode extends ClassicPreset.Node {
+export class CalendarHeatmapNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -691,7 +691,7 @@ export const RECORD_OP_META = {
 
 type RecordInputs = { frame?: unknown[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] };
 
-export class RecordNode extends ClassicPreset.Node {
+export class RecordNode extends GraphNode {
   static inputRoles = { rows: picks() };
   static socketDocs: Record<string, string> = {
     rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
@@ -757,7 +757,7 @@ export class RecordNode extends ClassicPreset.Node {
 
 // ─── Vector field (quiver) ────────────────────────────────────────────────────
 
-export class QuiverNode extends ClassicPreset.Node {
+export class QuiverNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -784,7 +784,7 @@ export class QuiverNode extends ClassicPreset.Node {
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
-export class ChartBuilderNode extends ClassicPreset.Node {
+export class ChartBuilderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Feeds any figure's Options input. Only the fields given a value are included.",
   };

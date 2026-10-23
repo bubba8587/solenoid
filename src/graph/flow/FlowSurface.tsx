@@ -55,7 +55,7 @@ import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
-import { CompositeNode, GroupNode, FormatControllerNode } from "../rete-nodes";
+import { CompositeNode, GroupNode, FormatControllerNode } from "../nodeClasses";
 import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
 import { isolateStore } from "../isolateStore";

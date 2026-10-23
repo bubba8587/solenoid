@@ -1,29 +1,31 @@
 // [[D102]] graphOnCore
 // The engine's own contract, as the app reads it: values cross by reference, a node's throw reaches the fetch as
-// itself, a reset mid-fetch rejects with Cancelled, and the mirror follows the editor.
+// itself, a reset mid-fetch rejects with Cancelled, and nodes added before `use` are registered.
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
-import { Cancelled, DataflowEngine, engineOf } from "../../src/graph/dataflowEngine";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { DataflowEngine, engineOf } from "../../src/graph/dataflowEngine";
+import { Cancelled } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 
 type Data = (inputs: Record<string, unknown[]>) => unknown;
 
-class N extends ClassicPreset.Node {
+class N extends GraphNode {
   constructor(public run: Data, inputs: string[] = [], outputs: string[] = ["out"]) {
     super("n");
-    for (const k of inputs) this.addInput(k, new ClassicPreset.Input(new ClassicPreset.Socket("s"), k, true));
-    for (const k of outputs) this.addOutput(k, new ClassicPreset.Output(new ClassicPreset.Socket("s")));
+    for (const k of inputs) this.addInput(k, new GraphInput(new GraphSocket("s"), k, true));
+    for (const k of outputs) this.addOutput(k, new GraphOutput(new GraphSocket("s")));
   }
   data(inputs: Record<string, unknown[]>) { return this.run(inputs); }
 }
 
 async function graph() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const add = async (n: N) => { await editor.addNode(n as unknown as Schemes["Node"]); return n; };
   const wire = (a: N, out: string, b: N, input: string) =>
-    editor.addConnection(new ClassicPreset.Connection(a, out, b, input) as unknown as Schemes["Connection"]);
+    editor.addConnection(new GraphConnection(a, out, b, input) as unknown as Schemes["Connection"]);
   return { editor, engine, add, wire };
 }
 
@@ -78,12 +80,12 @@ describe("DataflowEngine on the graph core", () => {
   });
 
   it("mirrors what the editor held before it was attached, and what leaves it", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const a = new N(() => ({ out: 2 }));
     const b = new N((i) => ({ out: ((i.x?.[0] ?? 0) as number) * 10 }), ["x"]);
     await editor.addNode(a as unknown as Schemes["Node"]);
     await editor.addNode(b as unknown as Schemes["Node"]);
-    await editor.addConnection(new ClassicPreset.Connection(a, "out", b, "x") as unknown as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(a, "out", b, "x") as unknown as Schemes["Connection"]);
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     expect(engineOf(editor)).toBe(engine);

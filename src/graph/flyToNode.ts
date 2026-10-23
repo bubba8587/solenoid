@@ -1,15 +1,15 @@
 // [[C88]] collapsedGroupCard
 import { zoomAt } from "./zoomAt";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 
 import { getOwningEditor, getOwningView } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
 import { dockedNodeStore } from "./dockedNodeStore";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import type { Schemes } from "./schemes";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-export function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
+export function resolveVisibleTarget(editor: GraphEditor<Schemes>, nodeId: string): string {
   let targetId = nodeId;
   const seen = new Set<string>();
   while (groupCollapseStore.isNodeHidden(targetId) && !seen.has(targetId)) {
@@ -26,7 +26,7 @@ export function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string
 }
 
 // A collapsed group still carries its expanded size, so pass a sizeless ref and zoomAt uses the rendered box.
-function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"] | null {
+function visibleRef(editor: GraphEditor<Schemes>, nodeId: string): Schemes["Node"] | null {
   const targetId = resolveVisibleTarget(editor, nodeId);
   const node = editor.getNode(targetId);
   if (!node) return null;

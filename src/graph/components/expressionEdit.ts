@@ -1,5 +1,5 @@
 // [[C15]] matricesInFormulas
-import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../rete-nodes";
+import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { LinestNode as LinestNodeType, FitOp } from "../rete-nodes";
-import { FIT_OP_OPTIONS } from "../rete-nodes";
+import type { LinestNode as LinestNodeType, FitOp } from "../nodeClasses";
+import { FIT_OP_OPTIONS } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";

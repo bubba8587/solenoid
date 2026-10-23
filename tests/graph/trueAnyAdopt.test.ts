@@ -1,18 +1,18 @@
 // [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
-import { ClassicPreset } from "rete";
+import { GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
 import { extractInit } from "../../src/graph/nodeInit";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
 import { CableSwitchNode } from "../../src/graph/nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/nodeClasses";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "../../src/graph/sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
 // getNodes/getNode/getConnections and mutates sockets in place.
 type Conn = { source: string; sourceOutput: string; target: string; targetInput: string };
-function makeEditor(nodes: ClassicPreset.Node[], conns: Conn[]): AdoptEditor {
+function makeEditor(nodes: GraphNode[], conns: Conn[]): AdoptEditor {
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
   return {
     getNodes: () => nodes as never[],
@@ -21,17 +21,17 @@ function makeEditor(nodes: ClassicPreset.Node[], conns: Conn[]): AdoptEditor {
   };
 }
 
-const dt = (sock: ClassicPreset.Socket | undefined) =>
+const dt = (sock: GraphSocket | undefined) =>
   sock instanceof SolenoidSocket ? sock.dataType : undefined;
 
-function numSource(): ClassicPreset.Node {
-  const n = new ClassicPreset.Node("Num");
-  n.addOutput("value", new ClassicPreset.Output(numberSocket));
+function numSource(): GraphNode {
+  const n = new GraphNode("Num");
+  n.addOutput("value", new GraphOutput(numberSocket));
   return n;
 }
-function strSource(): ClassicPreset.Node {
-  const n = new ClassicPreset.Node("Text");
-  n.addOutput("value", new ClassicPreset.Output(stringSocket));
+function strSource(): GraphNode {
+  const n = new GraphNode("Text");
+  n.addOutput("value", new GraphOutput(stringSocket));
   return n;
 }
 
@@ -145,8 +145,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   });
 
   it("an element-preserving op (Reverse) FORWARDS its input's type through to its output", () => {
-    const src = new ClassicPreset.Node("Dates");
-    src.addOutput("out", new ClassicPreset.Output(dateListSocket));
+    const src = new GraphNode("Dates");
+    src.addOutput("out", new GraphOutput(dateListSocket));
     const rev = new ReverseNode();
     const ed = makeEditor([src, rev], [
       { source: src.id, sourceOutput: "out", target: rev.id, targetInput: "list" },
@@ -162,8 +162,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   it("INDEX: the Array input adopts, and an unknown frame's whole-row slice is a frame", () => {
     // A bare frame OUTPUT with no resolvable shape behind it (a CSV / Web Source):
     // with no Column named, the extraction is the whole row — still a frame.
-    const src = new ClassicPreset.Node("Frame");
-    src.addOutput("frame", new ClassicPreset.Output(frameSocket));
+    const src = new GraphNode("Frame");
+    src.addOutput("frame", new GraphOutput(frameSocket));
     const idx = new ListIndexNode();
     const ed = makeEditor([src, idx], [
       { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
@@ -233,8 +233,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   // whole), so any blank axis types the output `cube` — only a single CELL
   // (Row and Column both given) is genuinely unknowable.
   it("INDEX over a CUBE: whole-axis slices type as cube; only a single cell is the placeholder", () => {
-    const src = new ClassicPreset.Node("Cube");
-    src.addOutput("cube", new ClassicPreset.Output(cubeSocket));
+    const src = new GraphNode("Cube");
+    src.addOutput("cube", new GraphOutput(cubeSocket));
     const idx = new ListIndexNode();
     const ed = makeEditor([src, idx], [
       { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
@@ -290,8 +290,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   // the stale glyph the author caught on a collapsed group's edge socket).
   it("Sort By / Group Lists keys / Set / Concat / Interleave forward the element type", () => {
     const strList = () => {
-      const n = new ClassicPreset.Node("Strs");
-      n.addOutput("out", new ClassicPreset.Output(strListSocket));
+      const n = new GraphNode("Strs");
+      n.addOutput("out", new GraphOutput(strListSocket));
       return n;
     };
     const s1 = strList(), s2 = strList();
@@ -332,10 +332,10 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // The 2-D rung of the append ladder, mirroring Concat Lists above. A list wired to
     // an `anytable` row already adopts at the input's rank (strlist → strtable), so the
     // `agree` over the rows settles on strtable whichever rank the rows arrive at.
-    const strs = new ClassicPreset.Node("Strs");
-    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
-    const tbl = new ClassicPreset.Node("StrTable");
-    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+    const strs = new GraphNode("Strs");
+    strs.addOutput("out", new GraphOutput(strListSocket));
+    const tbl = new GraphNode("StrTable");
+    tbl.addOutput("out", new GraphOutput(strTableSocket));
 
     for (const stack of [new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const [k0, k1] = stack.valueInputKeys();
@@ -345,8 +345,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       ]));
       expect(dt(stack.outputs.result?.socket)).toBe("strtable");
       // A disagreeing row keeps the neutral rung — the selector rule, unchanged.
-      const nums = new ClassicPreset.Node("Nums");
-      nums.addOutput("out", new ClassicPreset.Output(dateListSocket));
+      const nums = new GraphNode("Nums");
+      nums.addOutput("out", new GraphOutput(dateListSocket));
       reconcileTrueAnyTypes(makeEditor([strs, nums, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
         { source: nums.id, sourceOutput: "out", target: stack.id, targetInput: k1 },
@@ -359,16 +359,16 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
   });
 
   it("rank-CROSSING reshapes project the element family onto the output's rank", () => {
-    const strs = new ClassicPreset.Node("Strs");
-    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
+    const strs = new GraphNode("Strs");
+    strs.addOutput("out", new GraphOutput(strListSocket));
     const wrap = new TableReshapeNode({ op: "wraprows" });
     reconcileTrueAnyTypes(makeEditor([strs, wrap], [
       { source: strs.id, sourceOutput: "out", target: wrap.id, targetInput: "list" },
     ]));
     expect(dt(wrap.outputs.result?.socket)).toBe("strtable"); // strlist in → strtable out
 
-    const tbl = new ClassicPreset.Node("StrTable");
-    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+    const tbl = new GraphNode("StrTable");
+    tbl.addOutput("out", new GraphOutput(strTableSocket));
     const flat = new TableReshapeNode({ op: "torow" });
     const flatKey = Object.keys(flat.inputs)[0];
     reconcileTrueAnyTypes(makeEditor([tbl, flat], [
@@ -388,8 +388,8 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 // NA() is always a tagged error, which formats as an error under any type (abstain).
 describe("agree vote — unknowable vetoes, NA() abstains", () => {
   const trueAnySource = () => {
-    const n = new ClassicPreset.Node("Lookupish");
-    n.addOutput("value", new ClassicPreset.Output(new SolenoidSocket("trueany")));
+    const n = new GraphNode("Lookupish");
+    n.addOutput("value", new GraphOutput(new SolenoidSocket("trueany")));
     return n;
   };
 

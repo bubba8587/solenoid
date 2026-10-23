@@ -1,5 +1,5 @@
-import { HYPOTHESIS_TEST_OP_META } from "../rete-nodes";
-import type { HypothesisTestNode as HypothesisTestNodeType, HypothesisTestOp } from "../rete-nodes";
+import { HYPOTHESIS_TEST_OP_META } from "../nodeClasses";
+import type { HypothesisTestNode as HypothesisTestNodeType, HypothesisTestOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

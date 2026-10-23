@@ -1,6 +1,6 @@
 // [[C73]] inspectorIsStatic
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphNode, GraphSocket } from "../graphModel";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
@@ -33,12 +33,12 @@ function frRowsFor(catalogType: string | null): FnRefRow[] {
   return _frByType.get(catalogType) ?? [];
 }
 
-type AnyNode = ClassicPreset.Node & {
+type AnyNode = GraphNode & {
   label?: string;
   selected?: boolean;
 };
 
-function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: ClassicPreset.Socket } | undefined): ReactNode {
+function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: GraphSocket } | undefined): ReactNode {
   const t = port?.socket instanceof SolenoidSocket ? port.socket.dataType : null;
   const doc = socketDocFor(node, key);
   const hint = frameHintFor(node, key);

@@ -1,4 +1,4 @@
-import type { RandBetweenNode } from "../rete-nodes";
+import type { RandBetweenNode } from "../nodeClasses";
 import { makeNodeComponent } from "./standardNode";
 
 export const RandBetweenComponent = makeNodeComponent<RandBetweenNode>(

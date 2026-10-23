@@ -1,7 +1,7 @@
 // [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/rete-nodes";
+import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/nodeClasses";
 import { type JoinOpts } from "../../../src/graph/frameOps";
 import { joinFrames } from "../coreVerbs";
 import { shapeOfJoin } from "../../../src/graph/frameShape";

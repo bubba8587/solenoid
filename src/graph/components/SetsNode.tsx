@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge, [[C26]] opArgDistinct
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
-import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
+import type { SetsNode as SetNodeType, SetOpAll } from "../nodeClasses";
+import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { descriptionText } from "../descriptionMd";
 import { useKatexRender } from "./katexLoader";

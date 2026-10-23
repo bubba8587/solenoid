@@ -1,13 +1,13 @@
 // [[B12]] losslessSaves
 import { flushDrafts } from "./draftFlush";
 import { isDesktop } from "./fileBridge";
-import { ClassicPreset } from "rete";
+import { GraphConnection, GraphNode } from "./graphModel";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./rete-nodes";
+import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./nodeClasses";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
@@ -212,16 +212,16 @@ async function rebuildGraph(
   const reg = ctorRegistry();
   const idMap = new Map<string, string>();
   _lastLoadIdMap = idMap;
-  const created: ClassicPreset.Node[] = [];
+  const created: GraphNode[] = [];
   const placeholdered: string[] = [];
 
   const unknownIds = new Set(g.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
   const phSockets = deriveMissingNodeSockets(unknownIds, g.connections ?? []);
 
-  const toBuild: Array<{ node: ClassicPreset.Node; x: number; y: number }> = [];
+  const toBuild: Array<{ node: GraphNode; x: number; y: number }> = [];
   for (const sn of g.nodes) {
     const Ctor = reg.get(sn.type);
-    let node: ClassicPreset.Node;
+    let node: GraphNode;
     if (!Ctor) {
       node = placeholderFor(sn, phSockets.get(sn.id));
       placeholdered.push(sn.type);
@@ -261,7 +261,7 @@ async function rebuildGraph(
     if (!src || !tgt) continue;
     try {
       await editor.addConnection(
-        new ClassicPreset.Connection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection,
+        new GraphConnection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection,
       );
     } catch {
     }

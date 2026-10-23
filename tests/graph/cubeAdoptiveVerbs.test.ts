@@ -1,6 +1,6 @@
 // [[C10]]
 import { describe, it, expect } from "vitest";
-import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/rete-nodes";
+import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/nodeClasses";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { cubeFromColumns, flatCubeToFrame, isFrameValue, isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
@@ -127,7 +127,7 @@ describe("a vault-shaped cube (list columns beside scalar ones) reaches the aggr
   ]);
 
   it("PIVOTBY offers the scalar columns as fields and pivots on them", async () => {
-    const { PivotNode } = await import("../../src/graph/rete-nodes");
+    const { PivotNode } = await import("../../src/graph/nodeClasses");
     const p = new PivotNode();
     const out = await p.data({ frame: [vault], rowFields: [["status"]], colFields: [[]], values: [["hours"]] });
     expect(p.sourceColumns.map((c) => c.name)).toEqual(["status", "hours"]);
@@ -135,7 +135,7 @@ describe("a vault-shaped cube (list columns beside scalar ones) reaches the aggr
   });
 
   it("SUMIFS sums a cube's column by a condition", async () => {
-    const { SumIfsNode } = await import("../../src/graph/rete-nodes");
+    const { SumIfsNode } = await import("../../src/graph/nodeClasses");
     const s = new SumIfsNode();
     s.stringLiterals.values = "hours"; s.stringLiterals.column0 = "status"; s.stringLiterals.value0 = "open";
     expect(s.data({ frame: [vault] }).result).toBe(6);

@@ -6,12 +6,12 @@ import { afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../../src/graph/graphModel";
 import type { Settings } from "../../src/graph/settingsStore";
 
 // Imported only when recording, so a plain run's setup loads nothing of the app.
 const app = process.env.FREEZE_NODES ? {
-  ...(await import("rete")),
+  ...(await import("../../src/graph/graphModel")),
   ...(await import("../../src/graph/nodeCtorRegistry")),
   ...(await import("../../src/graph/copyPaste")),
   ...(await import("../../src/graph/sockets")),
@@ -22,7 +22,7 @@ const app = process.env.FREEZE_NODES ? {
   ...(await import("../../src/graph/settingsStore")),
   ...(await import("../../src/graph/errorValue")),
 } : null;
-const { ClassicPreset: Classic, ctorRegistry, coreInit, adopted, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
+const { GraphNode: BaseNode, ctorRegistry, coreInit, adopted, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
 
 const DIR = path.resolve(__dirname, "../../.dev/node-calls");
 const ONLY = process.env.FREEZE_NODES === "1" ? null : new Set((process.env.FREEZE_NODES ?? "").split(","));
@@ -70,7 +70,7 @@ const PER_CLASS = 2500;
 const counts = new Map<string, number>();
 const written = new Set<string>();
 
-function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
+function record(lines: string[], node: GraphNode, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
   const kind = node.constructor.name;
   if (ONLY && !ONLY.has(kind)) return;
   if ((counts.get(kind) ?? 0) >= PER_CLASS) return;
@@ -156,14 +156,14 @@ function patch(lines: string[]): void {
   const inFlight = new WeakSet<object>();
   const seen = new Set<object>();
   for (const ctor of ctorRegistry().values()) {
-    for (let proto = ctor.prototype; proto && proto !== Classic.Node.prototype; proto = Object.getPrototypeOf(proto)) {
+    for (let proto = ctor.prototype; proto && proto !== BaseNode.prototype; proto = Object.getPrototypeOf(proto)) {
       // A class whose data() is an async shell around a pure `body()` (a lazy verb resolving its frames to backend
       // refs first) freezes the body, the part that moves to the core.
       const method = Object.prototype.hasOwnProperty.call(proto, "body") ? "body" : "data";
       if (seen.has(proto) || !Object.prototype.hasOwnProperty.call(proto, method)) continue;
       seen.add(proto);
-      const body = proto[method] as (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) => unknown;
-      proto[method] = function (this: ClassicPreset.Node, inputs: Record<string, unknown[]>) {
+      const body = proto[method] as (this: GraphNode, inputs: Record<string, unknown[]>) => unknown;
+      proto[method] = function (this: GraphNode, inputs: Record<string, unknown[]>) {
         // A subclass calling super.data() is one call of the outer body.
         if (inFlight.has(this)) return body.call(this, inputs);
         const before = ownFields(this);

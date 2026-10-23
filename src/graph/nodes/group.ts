@@ -1,7 +1,7 @@
 // [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[C112]] noOverlapsEver
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 
-export class GroupNode extends ClassicPreset.Node {
+export class GroupNode extends GraphNode {
   label: string;
   members: string[];      // the authoritative set ([[C86]] membershipByGesture)
   color: string;

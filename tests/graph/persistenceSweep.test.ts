@@ -1,6 +1,6 @@
 // [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../../src/graph/graphModel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/nodeInit";
 
@@ -16,8 +16,8 @@ import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src
 
 type AnyNode = Record<string, unknown>;
 
-function rebuild(n1: ClassicPreset.Node): ClassicPreset.Node {
-  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
+function rebuild(n1: GraphNode): GraphNode {
+  const Ctor = n1.constructor as new (init?: Record<string, unknown>) => GraphNode;
   const n2 = new Ctor(extractInit(n1));
   // The load and paste paths restore the literal maps after construction; mirror that.
   const a = n1 as unknown as AnyNode, b = n2 as unknown as AnyNode;
@@ -39,8 +39,8 @@ describe("persistence fixed-point sweep (every catalog node)", () => {
   it("extractInit is a fixed point through one construct cycle", () => {
     const broken: string[] = [];
     for (const [type, entry] of entries) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; } // constructability is catalogRegistry.test's job
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; } // constructability is catalogRegistry.test's job
       try {
         const init1 = extractInit(n1);
         const init2 = extractInit(rebuild(n1));
@@ -55,8 +55,8 @@ describe("persistence fixed-point sweep (every catalog node)", () => {
   it("perturbed booleans and literals survive the cycle", () => {
     const broken: string[] = [];
     for (const [type, entry] of entries) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; }
       const a = n1 as unknown as AnyNode;
       // Flip every captured boolean own-field.
       for (const key of Object.keys(a)) {
@@ -108,8 +108,8 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   it("JSON.parse(JSON.stringify(init)) equals init for every catalog node", () => {
     const broken: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n1: ClassicPreset.Node;
-      try { n1 = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n1: GraphNode;
+      try { n1 = entry.create() as GraphNode; } catch { continue; }
       try {
         const init = extractInit(n1);
         expect(JSON.parse(JSON.stringify(init)), `catalog type "${type}"`).toEqual(init);
@@ -125,8 +125,8 @@ describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload reb
   it("every row-growing catalog node reloads with its live input order", () => {
     const moved: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const a = n as unknown as { addValueInput?: () => void; addValuePair?: () => void };
       const grow = a.addValuePair ?? a.addValueInput;
       if (typeof grow !== "function") continue;
@@ -145,8 +145,8 @@ describe("literal values never enter init", () => {
   it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
     const leaked: string[] = [];
     for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
-      let n: ClassicPreset.Node;
-      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let n: GraphNode;
+      try { n = entry.create() as GraphNode; } catch { continue; }
       const a = n as unknown as AnyNode;
       const lits = { ...((a.literals as object) ?? {}), ...((a.stringLiterals as object) ?? {}) } as Record<string, unknown>;
       for (const k of Object.keys(lits)) {
@@ -344,8 +344,8 @@ describe("[[B12]] losslessSaves — the size-owner set is exactly the declared l
     const adopts: string[] = [];
     const shouldButDoesnt: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
-      let inst: ClassicPreset.Node;
-      try { inst = entry.create() as ClassicPreset.Node; } catch { continue; }
+      let inst: GraphNode;
+      try { inst = entry.create() as GraphNode; } catch { continue; }
       const Ctor = inst.constructor as new (init?: Record<string, unknown>) => AnyNode;
       let probe: AnyNode;
       try { probe = new Ctor({ width: 777, height: 555 }); } catch { continue; }

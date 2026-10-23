@@ -1,6 +1,6 @@
 // [[C38]] sinkRunButtonOnly, [[B11]] maximalMerge, [[C26]] opArgDistinct
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
+import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
 import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
 import { getVaultRoot } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";

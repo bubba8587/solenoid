@@ -11,7 +11,7 @@ import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
-import { loadGraphEngine } from "./graph/dataflowEngine";
+import { loadGraphEngine } from "./graph/graphEditor";
 import { loadWasmEngine } from "./graph/engineWasm";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
@@ -132,7 +132,7 @@ if (import.meta.env.DEV) {
   import("./graph/devHarness");
 }
 
-// Not wrapped in <React.StrictMode>: its double-invoked mount races rete's async editor init, leaving two elements per socket.
+// Not wrapped in <React.StrictMode>: its double-invoked mount races the async editor init, leaving two elements per socket.
 // A backend that fails to start still renders, on the TS; the rejection reaches the unhandled-rejection notice.
 void backendReady.finally(() => ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">

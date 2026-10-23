@@ -1,5 +1,5 @@
 // [[B11]], [[D46]] freezeVolatilePerCalc
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numListIn, numListOut, type BroadcastResult } from "./shared";
 import { DIST_SPECS, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
@@ -14,7 +14,7 @@ function inputKeysFor(op: DistKey, form: DistForm): string[] {
   return [firstKeyFor(op, form), ...spec.params.map((p) => p.key)];
 }
 
-export class DistributionsNode extends ClassicPreset.Node {
+export class DistributionsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     k: "The count rounds down to a whole number.",
     result: "A value or parameter outside the distribution's domain gives a blank, not an error.",

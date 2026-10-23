@@ -1,4 +1,4 @@
-import type { ShuffleNode } from "../rete-nodes";
+import type { ShuffleNode } from "../nodeClasses";
 import { makeNodeComponent } from "./standardNode";
 
 export const ShuffleComponent = makeNodeComponent<ShuffleNode>(

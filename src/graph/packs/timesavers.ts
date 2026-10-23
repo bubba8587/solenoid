@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
-import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../rete-nodes";
+import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [

@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[B11]] maximalMerge
-// Must not import rete: excelFunctions.ts registers the distribution formulas straight on `DIST_SPECS[key].compute`.
+// Must not import the graph model: excelFunctions.ts registers the distribution formulas straight on `DIST_SPECS[key].compute`.
 import {
   stdNormCDF,
   normSInv,

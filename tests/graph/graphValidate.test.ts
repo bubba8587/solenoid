@@ -5,6 +5,7 @@
 // the bottom is that guard: every shipped seed, validated both as JSON and
 // through its text form, must come back clean.
 
+import type { GraphNode } from "../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -203,7 +204,7 @@ describe("catalog sweep", () => {
     for (const [type, leaf] of FLAT_CATALOG) {
       let inst;
       try {
-        inst = leaf.create() as import("rete").ClassicPreset.Node;
+        inst = leaf.create() as GraphNode;
       } catch {
         continue;
       }

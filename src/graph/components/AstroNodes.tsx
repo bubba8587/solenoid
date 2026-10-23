@@ -2,7 +2,7 @@ import {
   SolarPositionNode as SolarPositionNodeType,
   SunriseSunsetNode as SunriseSunsetNodeType,
   MoonPhaseNode as MoonPhaseNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 

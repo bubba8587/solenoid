@@ -2,7 +2,7 @@
 import { getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
-import { ChoiceLadderNode } from "../rete-nodes";
+import { ChoiceLadderNode } from "../nodeClasses";
 import type { ChartValue } from "../chartValue";
 import { nextChoices, type LadderAction } from "../nodes/ladderOps";
 

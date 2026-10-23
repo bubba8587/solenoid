@@ -1,6 +1,6 @@
 // [[D54]]
 import { describe, it, expect } from "vitest";
-import { EarnedValueNode } from "../../../src/graph/rete-nodes";
+import { EarnedValueNode } from "../../../src/graph/nodeClasses";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { cubeFromColumns, isFrameValue, type CubeCell, type FrameValue } from "../../../src/graph/frame";
 

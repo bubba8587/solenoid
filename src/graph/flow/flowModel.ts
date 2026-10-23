@@ -1,10 +1,11 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../graphEditor";
+import { GraphConnection } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
-import * as Nodes from "../rete-nodes";
+import * as Nodes from "../nodeClasses";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
@@ -35,7 +36,7 @@ export type SavedGraphLite = {
 };
 
 export type FlowModel = {
-  editor: NodeEditor<Schemes>;
+  editor: GraphEditor<Schemes>;
   engine: DataflowEngine<Schemes>;
 };
 
@@ -46,7 +47,7 @@ export function resolveCtor(type: string): NodeCtor | undefined {
 }
 
 export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -76,7 +77,7 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     const target = byId.get(c.target);
     if (!source || !target) continue;
     await editor.addConnection(
-      new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
+      new GraphConnection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
     );
   }
   return { editor, engine };
@@ -119,7 +120,7 @@ export async function connect(
     }
   }
   await m.editor.addConnection(
-    new ClassicPreset.Connection(sourceNode, sourceOutput, targetNode, targetInput) as Schemes["Connection"],
+    new GraphConnection(sourceNode, sourceOutput, targetNode, targetInput) as Schemes["Connection"],
   );
   return true;
 }

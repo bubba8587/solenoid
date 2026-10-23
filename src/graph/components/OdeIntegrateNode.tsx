@@ -1,4 +1,4 @@
-import type { OdeIntegrateNode as OdeIntegrateNodeType } from "../rete-nodes";
+import type { OdeIntegrateNode as OdeIntegrateNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere (installed by the surface, once), [[C52]] visibleSelection
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { processGraph, requestRecalc, notifyGraphChanged } from "./process";
 import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
@@ -15,7 +15,7 @@ import { frStore } from "./frStore";
 import { settingsPanel } from "./settingsStore";
 import { keyUnderModal } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
-import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
+import { ConduitNode, AngleDialNode, GroupNode } from "./nodeClasses";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
 import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
@@ -34,7 +34,7 @@ import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
 
 export interface CanvasKeyboardDeps {
-  editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
+  editorRef: MutableRefObject<GraphEditor<Schemes> | null>;
   viewRef: MutableRefObject<View | null>;
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;

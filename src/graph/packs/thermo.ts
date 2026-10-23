@@ -1,7 +1,7 @@
 // [[C51]] formulaNaming
 // SI throughout: kelvin where the physics needs an absolute temperature, °C only where the correlation is °C-native.
 
-import { IsaAtmosphereNode, AntoineNode } from "../rete-nodes";
+import { IsaAtmosphereNode, AntoineNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { THERMO_PACK_FORMULAS } from "./thermoFormulas";
 

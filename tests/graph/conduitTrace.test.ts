@@ -1,6 +1,7 @@
 // [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
 import { resolveTypedSource, reconcileConduitTypes, conduitPath, type PathConn } from "../../src/graph/conduitTrace";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../../src/graph/nodes/conduit";
 import type { Schemes } from "../../src/graph/schemes";
@@ -8,7 +9,7 @@ import { dateSocket, numberSocket } from "../../src/graph/sockets";
 
 // A tiny fake editor: just getNode + getConnections, the surface resolveTypedSource
 // reads. Real ConduitNode instances so the `instanceof` gate fires.
-function makeEditor(nodes: Record<string, ClassicPreset.Node>, conns: Array<{ source: string; sourceOutput: string; target: string; targetInput: string }>) {
+function makeEditor(nodes: Record<string, GraphNode>, conns: Array<{ source: string; sourceOutput: string; target: string; targetInput: string }>) {
   return {
     getNode: (id: string) => nodes[id],
     getConnections: () => conns,
@@ -17,8 +18,8 @@ function makeEditor(nodes: Record<string, ClassicPreset.Node>, conns: Array<{ so
 
 describe("resolveTypedSource — Conduit type tracing", () => {
   it("a direct (non-conduit) source returns its own socket", () => {
-    const src = new ClassicPreset.Node("Src");
-    src.addOutput("result", new ClassicPreset.Output(dateSocket));
+    const src = new GraphNode("Src");
+    src.addOutput("result", new GraphOutput(dateSocket));
     const ed = makeEditor({ [src.id]: src }, []);
     const r = resolveTypedSource(ed, src.id, "result");
     expect(r.socket).toBe(dateSocket);
@@ -27,8 +28,8 @@ describe("resolveTypedSource — Conduit type tracing", () => {
   });
 
   it("traces a Conduit output lane back to the feeding source's socket (date stays date)", () => {
-    const dateSrc = new ClassicPreset.Node("Date");
-    dateSrc.addOutput("result", new ClassicPreset.Output(dateSocket));
+    const dateSrc = new GraphNode("Date");
+    dateSrc.addOutput("result", new GraphOutput(dateSocket));
     const cond = new ConduitNode({});
     const ed = makeEditor(
       { [dateSrc.id]: dateSrc, [cond.id]: cond },
@@ -43,8 +44,8 @@ describe("resolveTypedSource — Conduit type tracing", () => {
   });
 
   it("traces through CHAINED conduits", () => {
-    const numSrc = new ClassicPreset.Node("Num");
-    numSrc.addOutput("value", new ClassicPreset.Output(numberSocket));
+    const numSrc = new GraphNode("Num");
+    numSrc.addOutput("value", new GraphOutput(numberSocket));
     const c1 = new ConduitNode({});
     const c2 = new ConduitNode({});
     const ed = makeEditor(
@@ -71,13 +72,13 @@ describe("resolveTypedSource — Conduit type tracing", () => {
 
 describe("conduitPath — the whole run a cable belongs to", () => {
   // Same fake editor, but connections carry ids (conduitPath returns id lists).
-  function pathEditor(nodes: Record<string, ClassicPreset.Node>, conns: PathConn[]) {
+  function pathEditor(nodes: Record<string, GraphNode>, conns: PathConn[]) {
     return { getNode: (id: string) => nodes[id], getConnections: () => conns };
   }
   const plainNode = (name: string) => {
-    const n = new ClassicPreset.Node(name);
-    n.addOutput("out", new ClassicPreset.Output(numberSocket));
-    n.addInput("in", new ClassicPreset.Input(numberSocket));
+    const n = new GraphNode(name);
+    n.addOutput("out", new GraphOutput(numberSocket));
+    n.addInput("in", new GraphInput(numberSocket));
     return n;
   };
 
@@ -175,11 +176,11 @@ describe("conduitPath — the whole run a cable belongs to", () => {
 
 describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
   async function build() {
-    const editor = new NodeEditor<Schemes>();
-    const dateSrc = new ClassicPreset.Node("Date") as unknown as Schemes["Node"];
-    dateSrc.addOutput("result", new ClassicPreset.Output(dateSocket));
-    const numSrc = new ClassicPreset.Node("Num") as unknown as Schemes["Node"];
-    numSrc.addOutput("value", new ClassicPreset.Output(numberSocket));
+    const editor = new GraphEditor<Schemes>();
+    const dateSrc = new GraphNode("Date") as unknown as Schemes["Node"];
+    dateSrc.addOutput("result", new GraphOutput(dateSocket));
+    const numSrc = new GraphNode("Num") as unknown as Schemes["Node"];
+    numSrc.addOutput("value", new GraphOutput(numberSocket));
     const cond = new ConduitNode({}) as unknown as Schemes["Node"];
     for (const n of [dateSrc, numSrc, cond]) await editor.addNode(n);
     return { editor, dateSrc, numSrc, cond };
@@ -187,8 +188,8 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
 
   it("out lane adopts date / number; an unwired lane stays any", async () => {
     const { editor, dateSrc, numSrc, cond } = await build();
-    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(2)) as Schemes["Connection"]);
-    await editor.addConnection(new ClassicPreset.Connection(numSrc, "value", cond, conduitInKey(0)) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(dateSrc, "result", cond, conduitInKey(2)) as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(numSrc, "value", cond, conduitInKey(0)) as Schemes["Connection"]);
 
     const changed = reconcileConduitTypes(editor);
     expect(changed).toBe(true);
@@ -200,7 +201,7 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
 
   it("reverts a lane to any when its feed is removed", async () => {
     const { editor, dateSrc, cond } = await build();
-    const conn = new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"];
+    const conn = new GraphConnection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"];
     await editor.addConnection(conn);
     reconcileConduitTypes(editor);
 

@@ -61,7 +61,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "obsidian-plugin/man
 const pin = (names) => Object.fromEntries(names.map((n) => [n, installed(n)]));
 const dependencies = pin([
   "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
-  "chrono-node", "knap", "react", "react-dom", "rete", "yaml",
+  "chrono-node", "knap", "react", "react-dom", "yaml",
 ]);
 const devDependencies = pin([
   "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",

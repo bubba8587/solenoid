@@ -4,7 +4,7 @@
 import { SEEDS, clearAndLoadSeed } from "./seeds";
 import { getEditor, getView } from "./process";
 import { autoArrange } from "./canvasCommands";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode } from "./nodeClasses";
 import { autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
 import { standoffStore, settleStandoffs } from "./standoffs";

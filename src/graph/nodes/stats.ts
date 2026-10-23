@@ -1,5 +1,5 @@
 // [[B11]], [[C17]] shareImpl
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { listIn, listOut, numIn, numOut, numListIn, numListOut, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rolesFrom, required, setting } from "../inputRoles";
 import type { Shape } from "../frameShape";
@@ -58,7 +58,7 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
   percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
 };
 
-export class RankPercentileNode extends ClassicPreset.Node {
+export class RankPercentileNode extends GraphNode {
   static inputRoles = { ...rolesFrom("LARGE", { k: 1 }), ...rolesFrom("PERCENTILE", { p: 1 }), ...rolesFrom("QUARTILE", { q: 1 }), ...rolesFrom("PERCENTRANK", { significance: 2 }), ...rolesFrom("RANK", { order: 2 }) };
   static socketDocs: Record<string, string> = {
     significance: "The rank truncates to this many digits. It does not round.",
@@ -123,7 +123,7 @@ export const CORREL_OP_META = {
   kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy `kendalltau`, R `cor` with `method = kendall`." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
-export class CorrelNode extends ClassicPreset.Node {
+export class CorrelNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
   };
@@ -149,7 +149,7 @@ export class CorrelNode extends ClassicPreset.Node {
 }
 
 // ─── Standardize ──────────────────────────────────────────────────────────────
-export class StandardizeNode extends ClassicPreset.Node {
+export class StandardizeNode extends GraphNode {
   label: string;
   cachedResult: number | (number | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { value: 0, mean: 0, stdev: 1 };
@@ -177,7 +177,7 @@ export const COVARIANCE_OP_META = {
   samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by **n−1**. For a sample of a bigger population. Excel: `COVARIANCE.S`." },
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
-export class CovarianceNode extends ClassicPreset.Node {
+export class CovarianceNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     x: "Pairs with Y by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
   };
@@ -209,7 +209,7 @@ export const FISHER_OP_META = {
   fisherinv: { label: "FISHERINV", description: "Inverse Fisher: `tanh(x)`. Excel: `FISHERINV`." },
 } satisfies Record<FisherOp, { label: string; description: string }>;
 
-export class FisherNode extends ClassicPreset.Node {
+export class FisherNode extends GraphNode {
   label: string;
   op: FisherOp;
   cachedResult: number | (number | SolError | null)[] | SolError | null = null;
@@ -239,7 +239,7 @@ export const REGRESSION_OP_META = {
   steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: `STEYX`." },
 } satisfies Record<RegressionOp, { label: string; description: string }>;
 
-export class RegressionNode extends ClassicPreset.Node {
+export class RegressionNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
   };
@@ -273,7 +273,7 @@ export const FORECAST_OP_META = {
 } as const;
 export type ForecastOp = keyof typeof FORECAST_OP_META;
 
-export class ForecastNode extends ClassicPreset.Node {
+export class ForecastNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
   };
@@ -303,7 +303,7 @@ export class ForecastNode extends ClassicPreset.Node {
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
-export class ModeNode extends ClassicPreset.Node {
+export class ModeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "One mode arrives as a number. Tied modes arrive together as a sorted list.",
   };
@@ -327,7 +327,7 @@ export class ModeNode extends ClassicPreset.Node {
 
 // ─── TrimMean ─────────────────────────────────────────────────────────────────
 
-export class TrimMeanNode extends ClassicPreset.Node {
+export class TrimMeanNode extends GraphNode {
   static inputRoles = rolesFrom("TRIMMEAN", { percent: 1 });
   static socketDocs: Record<string, string> = {
     percent: "A fraction from 0 to 1, not a whole-number percent. Half of the trimmed count comes off each end.",
@@ -354,7 +354,7 @@ export class TrimMeanNode extends ClassicPreset.Node {
 
 // ─── Frequency ────────────────────────────────────────────────────────────────
 
-export class FrequencyNode extends ClassicPreset.Node {
+export class FrequencyNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     bins: "Bins sort ascending before counting, and each holds values up to and including its bound.",
     result: "One count per bin plus a final count of everything above the last bin.",
@@ -387,7 +387,7 @@ export const CONFIDENCE_OP_META = {
   t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: `CONFIDENCE.T`." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
-export class ConfidenceNode extends ClassicPreset.Node {
+export class ConfidenceNode extends GraphNode {
   label: string;
   op: ConfidenceOp;
   cachedResult: number | null = null;
@@ -482,7 +482,7 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
   },
 };
 
-export class HypothesisTestNode extends ClassicPreset.Node {
+export class HypothesisTestNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     sigma: "Left unset, the sample's own standard deviation is used. A wired blank instead blanks the result.",
   };
@@ -554,7 +554,7 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 
 
-export class InterpolateNode extends ClassicPreset.Node {
+export class InterpolateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     ys: "In LIST mode pairs with Known Xs by position (a pair blank on either side is dropped); in GRID mode one Y coordinate per row, unwired means 1, 2, 3…",
     new_xs: "A query outside the known range clamps to the nearest end. Nothing extrapolates.",
@@ -620,7 +620,7 @@ export const FIT_OP_OPTIONS: { value: FitOp; label: string; title?: string }[] =
   { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ: m, b and R² on the log scale. Excel: LOGEST" },
 ];
 
-export class LinestNode extends ClassicPreset.Node {
+export class LinestNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored. Exponential: every Y must be > 0.",
   };
@@ -658,7 +658,7 @@ export class LinestNode extends ClassicPreset.Node {
 
 // ─── BINOM.DIST.RANGE ────────────────────────────────────────────────────────
 
-export class BinomDistRangeNode extends ClassicPreset.Node {
+export class BinomDistRangeNode extends GraphNode {
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { n: 10, p: 0.5, lo: 0, hi: 10 };
@@ -681,7 +681,7 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
 
 // ─── PROB ─────────────────────────────────────────────────────────────────────
 
-export class ProbNode extends ClassicPreset.Node {
+export class ProbNode extends GraphNode {
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { lo: 0, hi: 1 };
@@ -703,7 +703,7 @@ export class ProbNode extends ClassicPreset.Node {
 }
 
 // ─── FORECAST (ETS) — Holt–Winters ────────────────────────────────────────────
-export class EtsForecastNode extends ClassicPreset.Node {
+export class EtsForecastNode extends GraphNode {
   static inputRoles = { horizon: required, season: setting(1) };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first: monthly sales, daily visits. Blanks are dropped.",
@@ -743,7 +743,7 @@ export const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
   uniform: "Uniform", beta: "Beta", poisson: "Poisson",
 };
 
-export class FitDistributionNode extends ClassicPreset.Node {
+export class FitDistributionNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     list: "A sample of values. Families whose support the data leaves (a negative value for Lognormal, a non-integer for Poisson) are skipped, not errors.",
     ranking: "Every family the data supports, best AIC first: family, parameters (the Distribution node's own), log-likelihood, AIC, KS distance.",
@@ -787,7 +787,7 @@ export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; descr
   stl:            { label: "STL",            description: "Seasonal-Trend by Loess (R `stl`, periodic): a loess trend with no blank ends and an exactly-periodic seasonal. Additive." },
 };
 
-export class DecomposeNode extends ClassicPreset.Node {
+export class DecomposeNode extends GraphNode {
   static inputRoles = { period: required };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
@@ -820,7 +820,7 @@ export class DecomposeNode extends ClassicPreset.Node {
 
 // ─── ODE Integrate (RK4) — scipy solve_ivp / R deSolve ─────────────────────────
 
-export class OdeIntegrateNode extends ClassicPreset.Node {
+export class OdeIntegrateNode extends GraphNode {
   static inputRoles = { steps: setting(100) };
   static socketDocs: Record<string, string> = {
     y0: "The value of y at t0.",

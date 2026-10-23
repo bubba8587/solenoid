@@ -1,14 +1,14 @@
 // [[C15]] matricesInFormulas, [[C51]] formulaNaming
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../graphModel";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { closeParens } from "../closeParens";
-import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
-import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
+import { nodeKindOf, NODE_KIND_ACCENTS } from "../nodeClasses";
+import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../nodeClasses";
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { cableValueStore } from "../cableValueStore";
@@ -47,7 +47,7 @@ function setVarDesc(node: { id: string; varDescriptions: Record<string, string> 
   void getOwningView(node.id)?.rerenderNode(node.id);
 }
 
-function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
+function formulaHostOf(node: GraphNode | undefined): FormulaHost | null {
   if (!node) return null;
   const label = nodeDisplayName(node);
   const typeName = node.constructor.name;

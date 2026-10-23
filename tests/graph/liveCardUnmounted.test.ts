@@ -1,6 +1,7 @@
 // [[C23]] calcModes
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import { CompositeNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
@@ -19,7 +20,7 @@ async function manualCompositeWith(inner: Schemes["Node"], srcOut = Object.keys(
   const out = new CompositeOutputNode({ label: "X" });
   await c.internalEditor.addNode(inner);
   await c.internalEditor.addNode(out as unknown as Schemes["Node"]);
-  await c.internalEditor.addConnection(new ClassicPreset.Connection(inner, srcOut as never, out, "value" as never) as Schemes["Connection"]);
+  await c.internalEditor.addConnection(new GraphConnection(inner, srcOut as never, out, "value" as never) as Schemes["Connection"]);
   c.addOutputPort({ label: "X", tier: "basic", internalNodeId: out.id });
   return c;
 }
@@ -67,9 +68,9 @@ describe("a heavy composite holding a live card", () => {
   });
 
   it("a Solve that runs out of rounds while fetches still land stays stale", async () => {
-    class Restless extends ClassicPreset.Node {
+    class Restless extends GraphNode {
       runs = 0;
-      constructor() { super("Restless"); this.addOutput("value", new ClassicPreset.Output(new ClassicPreset.Socket("number"))); }
+      constructor() { super("Restless"); this.addOutput("value", new GraphOutput(new GraphSocket("number"))); }
       data() { this.runs++; fetchInBackground(this.id, Promise.resolve()); return { value: this.runs }; }
     }
     const card = new Restless();
@@ -143,7 +144,7 @@ describe("auto-refresh runs from the card's data(), not its component", () => {
   it("a card inside a composite refreshes on its cadence, and a deleted one stops", async () => {
     vi.useFakeTimers();
     // An owned graph, not the main editor: the refresh's processGraph then has no pass to run.
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const unregister = registerOwnedGraph({ editor, view: {} as View });
 
     const card = new WebSourceNode({ url: "", refreshMinutes: 1 });

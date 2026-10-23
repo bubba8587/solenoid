@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ClassicPreset } from "rete";
+import { GraphInput } from "../../src/graph/graphModel";
 import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, SolenoidSocket, AdoptiveSocket, type SocketDataType } from "../../src/graph/sockets";
 import * as shared from "../../src/graph/nodes/shared";
 import { familyOf } from "../../src/graph/formatModel";
@@ -180,7 +180,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
           // The asterisk in the table means "adoptive" — hold it to that.
           const starred = new RegExp(`\`${name}\`\\\\?\\*`).test(cell);
           expect(s instanceof AdoptiveSocket, `${name} adoptive marking`).toBe(starred);
-          expect(port instanceof ClassicPreset.Input ? "in" : "out").toBe(side);
+          expect(port instanceof GraphInput ? "in" : "out").toBe(side);
         }
       }
     }

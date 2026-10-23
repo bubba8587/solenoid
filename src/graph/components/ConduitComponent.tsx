@@ -3,14 +3,14 @@ import { SocketComponent } from "./SocketComponent";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { ClassicPreset } from "rete";
+import { GraphConnection } from "../graphModel";
 import {
   ConduitNode as ConduitNodeType,
   CONDUIT_MAX_LANES,
   conduitInKey,
   conduitOutKey,
   conduitSeqTaken,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import type { SolenoidConnection, SolenoidNode } from "../schemes";
 import { cableAngleStore } from "../cableAngleStore";
 import {
@@ -207,7 +207,7 @@ export function ConduitComponent({ data }: Props) {
     for (let i = 0; i < n; i++) {
       try {
         await editor.addConnection(
-          new ClassicPreset.Connection(node, conduitOutKey(i), next, conduitInKey(i)) as SolenoidConnection,
+          new GraphConnection(node, conduitOutKey(i), next, conduitInKey(i)) as SolenoidConnection,
         );
       } catch { /* incompatible / duplicate — skip */ }
     }

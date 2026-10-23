@@ -1,5 +1,5 @@
 // [[C69]], [[C70]], [[C71]]
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut } from "./shared";
 import { type SolError } from "../errorValue";
 import { type CubeValue, type FrameValue } from "../frame";
@@ -37,7 +37,7 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
 
 export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
 
-export class ScheduleNode extends ClassicPreset.Node {
+export class ScheduleNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task: Task, Duration in days (blank or 0 is a milestone) and Predecessors, the tasks it waits on. A Tasks cell holding a table makes the row a summary. Start, Finish, Deadline, Complete, Manual, Project and the calendar columns are optional; Help lists them under Plans.",
     start: "The project start. Unwired, the schedule starts today.",

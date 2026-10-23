@@ -1,5 +1,5 @@
 // [[C10]] socketLattice
-import { ClassicPreset } from "rete";
+import { GraphSocket } from "./graphModel";
 
 export type SocketDataType =
   | "number"
@@ -257,30 +257,38 @@ export function canConnect(out: SocketDataType, inp: SocketDataType): boolean {
   return accepts(inp, out);
 }
 
-export class SolenoidSocket extends ClassicPreset.Socket {
+export class SolenoidSocket extends GraphSocket {
   constructor(public readonly dataType: SocketDataType) {
     super(dataType);
   }
-  isCompatibleWith(socket: ClassicPreset.Socket): boolean {
+  isCompatibleWith(socket: GraphSocket): boolean {
     return (
       socket instanceof SolenoidSocket &&
       areCompatible(this.dataType, socket.dataType)
     );
   }
-  canConnectTo(input: ClassicPreset.Socket): boolean {
+  canConnectTo(input: GraphSocket): boolean {
     return input instanceof SolenoidSocket && canConnect(this.dataType, input.dataType);
   }
 }
 
+/** A socket retyped in place; its declared rung follows, so the core's port type does too. */
 export class MutableSocket extends SolenoidSocket {
+  protected get renames(): boolean { return true; }
   setType(type: SocketDataType): void {
     (this as unknown as { dataType: SocketDataType }).dataType = type;
+    this.rename(type);
   }
 }
 
+/** Adopts a cable's type to color the port; its declared rung stays `base`. */
 export class AdoptiveSocket extends MutableSocket {
   constructor(public readonly base: SocketDataType = "trueany") {
     super(base);
+  }
+  protected get renames(): boolean { return false; }
+  setType(type: SocketDataType): void {
+    (this as unknown as { dataType: SocketDataType }).dataType = type;
   }
 }
 

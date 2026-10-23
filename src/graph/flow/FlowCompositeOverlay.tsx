@@ -5,7 +5,7 @@ import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
 import { FlowSurface, type SurfaceHooks } from "./FlowSurface";
 import { getDrillStack, recordNow, scheduleRecord, syncPositionsToComp } from "./drillStack";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../nodeClasses";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";

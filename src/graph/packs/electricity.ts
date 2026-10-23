@@ -1,7 +1,7 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
 
-import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../rete-nodes";
+import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { ELECTRICITY_PACK_FORMULAS } from "./electricityFormulas";
 

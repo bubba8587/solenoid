@@ -2,8 +2,8 @@
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, withLockedGroupsPinned } from "../../src/graph/groupLogic";
-import { GroupNode } from "../../src/graph/rete-nodes";
-import type { NodeEditor } from "rete";
+import { GroupNode } from "../../src/graph/nodeClasses";
+import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 
 // Regression: dragging a group whose members are ALSO selected moved the members
@@ -11,7 +11,7 @@ import type { Schemes } from "../../src/graph/schemes";
 // group. The drag/drop callers pass skipSelected=true so a selected member, already
 // carried by the selector, isn't moved again; a programmatic push leaves it off.
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 function harness(selected: Set<string>) {
   const start: Record<string, { x: number; y: number }> = {

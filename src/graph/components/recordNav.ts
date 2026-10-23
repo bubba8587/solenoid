@@ -1,7 +1,7 @@
 // [[B11]] maximalMerge
 import { getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
-import { RecordNode } from "../rete-nodes";
+import { RecordNode } from "../nodeClasses";
 import type { ChartValue } from "../chartValue";
 import { clamp } from "../nodes/mathUtils";
 

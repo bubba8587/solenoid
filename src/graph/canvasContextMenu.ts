@@ -1,8 +1,8 @@
 // [[C98]] paletteMirrorsMenubar (the one menu model)
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
-import { ConduitNode, FormatControllerNode, GroupNode, CompositeNode } from "./rete-nodes";
+import { ConduitNode, FormatControllerNode, GroupNode, CompositeNode } from "./nodeClasses";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
 import { standoffStore } from "./standoffs";
@@ -41,12 +41,12 @@ export function socketTargetAt(container: HTMLElement, e: Point): SocketContextT
 }
 
 /** The Attach Format Controller menu, or null: it adds a node, so a locked canvas never offers it. */
-export function socketMenuFor(editor: NodeEditor<Schemes>, sock: SocketContextTarget | null, locked: boolean): SocketContextTarget | null {
+export function socketMenuFor(editor: GraphEditor<Schemes>, sock: SocketContextTarget | null, locked: boolean): SocketContextTarget | null {
   return sock && !locked && canAttachFc(editor, sock.nodeId) ? sock : null;
 }
 
 /** Null on a locked canvas: every cable item edits, and resolving the target would select the cable. */
-export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point, locked = false): CableContextTarget | null {
+export function cableTargetFor(editor: GraphEditor<Schemes>, clickedConnId: string, e: Point, locked = false): CableContextTarget | null {
   if (locked || cableGhostStore.isGhost(clickedConnId)) return null;
   const conns = editor.getConnections();
   const expand = (id: string): string[] => {
@@ -72,7 +72,7 @@ export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: strin
   return { connIds, screenX: e.clientX, screenY: e.clientY };
 }
 
-export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point, locked = false): NodeContextTarget | null {
+export function nodeTargetFor(editor: GraphEditor<Schemes>, clickedId: string, e: Point, locked = false): NodeContextTarget | null {
   const clickedNode = editor.getNode(clickedId);
   if (!clickedNode) return null;
   const selectedIds = editor.getNodes()

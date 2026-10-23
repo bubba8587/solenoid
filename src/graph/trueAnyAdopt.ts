@@ -1,16 +1,16 @@
 // [[C10]] socketLattice
-import type { ClassicPreset } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphSocket } from "./graphModel";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";
 import { makeFrameShapeResolver, type FrameShapeResolver } from "./frameShapeResolver";
 import { reconcileConduitTypes } from "./conduitTrace";
-import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 
 interface AdoptNode {
   id: string;
-  inputs?: Record<string, { socket?: ClassicPreset.Socket } | undefined>;
-  outputs?: Record<string, { socket?: ClassicPreset.Socket } | undefined>;
+  inputs?: Record<string, { socket?: GraphSocket } | undefined>;
+  outputs?: Record<string, { socket?: GraphSocket } | undefined>;
 }
 export interface AdoptEditor {
   getNodes(): AdoptNode[];
@@ -80,7 +80,7 @@ export function reconcileTrueAnyTypes(editor: AdoptEditor): Set<string> {
   return all;
 }
 
-export function settleWildcardTypes(editor: NodeEditor<Schemes>): { conduitChanged: boolean; adopted: Set<string> } {
+export function settleWildcardTypes(editor: GraphEditor<Schemes>): { conduitChanged: boolean; adopted: Set<string> } {
   let conduitChanged = false;
   const adopted = new Set<string>();
   for (let round = 0; round < 8; round++) {

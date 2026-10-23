@@ -1,12 +1,12 @@
 // [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast.
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { requestConfirm } from "./confirmStore";
 import { settingsStore } from "./settingsStore";
 import { cableSelectionStore } from "./cableState";
-import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
+import { ConduitNode, FormatControllerNode, GroupNode } from "./nodeClasses";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
@@ -25,7 +25,7 @@ import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNo
 const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {
-  editor: NodeEditor<Schemes>;
+  editor: GraphEditor<Schemes>;
   view: View;
   ensureElk: () => Promise<Elk | null>;
   repositionDockedTo: (hostId: string) => void;
@@ -513,7 +513,7 @@ function wiredLanes(n: ConduitNode, conns: readonly Schemes["Connection"][]): { 
 }
 
 export function makeCleanupFn(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   view: View,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {

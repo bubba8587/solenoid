@@ -1,5 +1,5 @@
-import { PAYMENT_TIMING_META } from "../rete-nodes";
-import type { AmortizationNode as AmortizationNodeType, PaymentTiming } from "../rete-nodes";
+import { PAYMENT_TIMING_META } from "../nodeClasses";
+import type { AmortizationNode as AmortizationNodeType, PaymentTiming } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

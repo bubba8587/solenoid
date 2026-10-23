@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { ExpressionNode as ExpressionNodeType } from "../rete-nodes";
+import type { ExpressionNode as ExpressionNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

@@ -1,4 +1,4 @@
-import type { IFErrorNode as IFErrorNodeType, IFErrorMode } from "../rete-nodes";
+import type { IFErrorNode as IFErrorNodeType, IFErrorMode } from "../nodeClasses";
 import { makeOpNodeComponent } from "./standardNode";
 
 const MODES: Record<IFErrorMode, { label: string }> = {

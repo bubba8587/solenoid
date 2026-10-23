@@ -1,11 +1,11 @@
 import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../graphModel";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
   CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
-} from "../rete-nodes";
-import { PROPORTION_LAYOUT_OPTIONS } from "../rete-nodes";
+} from "../nodeClasses";
+import { PROPORTION_LAYOUT_OPTIONS } from "../nodeClasses";
 import type { ChartValue, ChartPayload } from "../chartValue";
 import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
@@ -20,7 +20,7 @@ import { getOwningView } from "../activeGraph";
 
 // One shared card for every figure node; the figure comes from ChartFigure, so a card and a Report embed render identically.
 
-type FigureNode = ClassicPreset.Node & {
+type FigureNode = GraphNode & {
   id: string;
   cachedChart: ChartValue | SolError | null;
   width: number;

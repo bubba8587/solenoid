@@ -21,7 +21,7 @@ import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
 import { drawnCableStore } from "../drawnCables";
 import { settingsStore } from "../settingsStore";
-import { ConduitNode } from "../rete-nodes";
+import { ConduitNode } from "../nodeClasses";
 import { IS_COARSE, stopDragStart } from "../coarse";
 
 export type SolFlowEdge = Edge<Record<string, unknown>, "cable">;

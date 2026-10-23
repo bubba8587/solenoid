@@ -1,12 +1,12 @@
 // [[C76]] formulaPackDefault
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut } from "./shared";
 import { type SolError } from "../errorValue";
 import { PIPE_ROUGHNESS } from "./fluidsOps";
 
-export class ColebrookNode extends ClassicPreset.Node {
+export class ColebrookNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { re: 100000, rr: 0.0001 };
   cachedResult: number | SolError | null = null;
@@ -28,7 +28,7 @@ export class ColebrookNode extends ClassicPreset.Node {
 
 const ROUGHNESS_BY_ID = new Map(PIPE_ROUGHNESS.map((r) => [r.id, r]));
 
-export class PipeRoughnessNode extends ClassicPreset.Node {
+export class PipeRoughnessNode extends GraphNode {
   label: string;
   material: string;
   literals: Record<string, number> = {};

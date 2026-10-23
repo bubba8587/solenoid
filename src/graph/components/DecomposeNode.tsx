@@ -1,5 +1,5 @@
-import { DECOMPOSE_MODEL_META } from "../rete-nodes";
-import type { DecomposeNode as DecomposeNodeType, DecomposeModel } from "../rete-nodes";
+import { DECOMPOSE_MODEL_META } from "../nodeClasses";
+import type { DecomposeNode as DecomposeNodeType, DecomposeModel } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";

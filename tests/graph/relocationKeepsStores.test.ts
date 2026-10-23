@@ -1,7 +1,8 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, afterEach } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
@@ -30,7 +31,7 @@ function fakeView(): View {
 
 /** A drill-in level: its own gate, and the shared `noderemoved` settle on its pipe. */
 function drillLevel() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   editor.use(new DataflowEngine<Schemes>());
   const view = fakeView();
   const gate = { up: false };
@@ -52,7 +53,7 @@ describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () 
     const disp = new DisplayNode();
     const fc = new FormatControllerNode({});
     for (const n of [num, disp, fc]) await editor.addNode(n as SolenoidNode);
-    await editor.addConnection(new ClassicPreset.Connection(num, "value", disp, "in") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(num, "value", disp, "in") as Schemes["Connection"]);
     fc.hostNodeId = num.id; fc.socketKey = "value"; fc.side = "output";
     fc.dockSelf(editor as never);
     nodeNameStore.rename(num.id, "rate");

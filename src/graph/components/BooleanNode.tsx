@@ -3,7 +3,7 @@ import {
   BooleanOpNode as BooleanOpNodeType,
   BooleanOp,
   BOOLEAN_OP_META,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { processGraph } from "../process";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, OpSelect, ValueDisplay, type NodeProps } from "./nodeKit";

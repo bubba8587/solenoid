@@ -3,7 +3,7 @@ import type { Pack, PackPlacement } from "./packShared";
 import {
   KMeansNode, PcaNode, LogisticNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
-} from "../rete-nodes";
+} from "../nodeClasses";
 
 // Catalog type strings must not change: saves and formula names key on them.
 const PATH = ["Packs", "Data Science"];

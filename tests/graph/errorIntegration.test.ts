@@ -1,6 +1,7 @@
 // [[D35]]
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -20,11 +21,11 @@ import { IsTestNode } from "../../src/graph/nodes/logic";
 // invariant SolenoidConnection (Connection<Node, Node>) won't accept directly —
 // erase the endpoint types the way the real graph does.
 function connect(
-  editor: NodeEditor<Schemes>,
-  src: ClassicPreset.Node, srcOut: string, tgt: ClassicPreset.Node, tgtIn: string,
+  editor: GraphEditor<Schemes>,
+  src: GraphNode, srcOut: string, tgt: GraphNode, tgtIn: string,
 ) {
   return editor.addConnection(
-    new ClassicPreset.Connection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
+    new GraphConnection(src, srcOut, tgt, tgtIn) as Schemes["Connection"],
   );
 }
 
@@ -33,7 +34,7 @@ function connect(
 // error-value guard (outer). These cover the seed's cases that a bare node.data()
 // can't: the coercion #SHAPE! path and an error riding a cable into a consumer.
 function makeEditor() {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   installInputCoercion(editor);                 // wraps data() first (inner)
   editor.addPipe((ctx) => {                      // wraps data() second (outer)
     if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
@@ -109,7 +110,7 @@ describe("error propagation through the engine", () => {
 
 describe("dependency loops (#CIRC!)", () => {
   it("loopMembers flags only the true loop, not its neighbors", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     editor.use(new DataflowEngine<Schemes>());
     const a = new ArithmeticNode({ op: "add" });
     const b = new ArithmeticNode({ op: "add" });

@@ -1,5 +1,5 @@
 // [[C101]] onePatchPath, [[C38]] sinkRunButtonOnly
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
@@ -63,7 +63,7 @@ function nowSerial(): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 86400000 + 25569;
 }
 
-export class WriteObsidianNode extends ClassicPreset.Node {
+export class WriteObsidianNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     in: "The Document to write as a note. Only Run writes; the node loads disarmed.",
     path: "The note to write: a vault-relative path, or a bare name without .md. A leading folder overrides the subfolder.",

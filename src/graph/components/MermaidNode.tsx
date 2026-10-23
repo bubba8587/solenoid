@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { MermaidNode as MermaidNodeType } from "../rete-nodes";
+import type { MermaidNode as MermaidNodeType } from "../nodeClasses";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { collapseStore } from "../collapseStore";

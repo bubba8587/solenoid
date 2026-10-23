@@ -2,7 +2,7 @@
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
 import { allTopEditors } from "./activeGraph";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { docMetaStore } from "./docMetaStore";
@@ -91,10 +91,10 @@ function clearTimer(id: string): void {
   _timers.delete(id);
 }
 
-function hasDeep(editor: NodeEditor<Schemes>, id: string): boolean {
+function hasDeep(editor: GraphEditor<Schemes>, id: string): boolean {
   if (editor.getNode(id)) return true;
   return editor.getNodes().some((n) => {
-    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
     return !!inner && hasDeep(inner, id);
   });
 }

@@ -1,4 +1,4 @@
-import type { UniqueNode as UniqueNodeType } from "../rete-nodes";
+import type { UniqueNode as UniqueNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";

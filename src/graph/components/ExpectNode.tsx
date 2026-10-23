@@ -1,6 +1,6 @@
 // [[C28]] literalsIffEditable
 import { useEffect, useState } from "react";
-import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
+import type { ExpectNode as ExpectNodeType } from "../nodeClasses";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ResultDisplay } from "./ResultDisplay";

@@ -1,5 +1,5 @@
 // [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { collapseStore } from "./collapseStore";
@@ -24,7 +24,7 @@ export interface SavedNodeBody {
   sections?: Record<string, boolean>;
 }
 
-export function savedNodeBody(n: ClassicPreset.Node): SavedNodeBody {
+export function savedNodeBody(n: GraphNode): SavedNodeBody {
   const body: SavedNodeBody = n instanceof PlaceholderNode
     ? { type: n.missingType, init: { ...n.savedInit } }
     : { type: n.constructor.name, init: extractInit(n) };

@@ -1,5 +1,5 @@
 // [[C17]], [[D54]]
-// Must not import a module that reaches rete; chrono-node and errorValue are headless.
+// Must not import a module that reaches the graph model; chrono-node and errorValue are headless.
 import * as chrono from "chrono-node";
 import { solError, isSolError, type SolError } from "../errorValue";
 

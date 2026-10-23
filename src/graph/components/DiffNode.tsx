@@ -1,4 +1,4 @@
-import type { DiffNode, DiffMode } from "../rete-nodes";
+import type { DiffNode, DiffMode } from "../nodeClasses";
 import { makeToggleNodeComponent } from "./standardNode";
 
 export const DiffComponent = makeToggleNodeComponent<DiffNode, DiffMode>(

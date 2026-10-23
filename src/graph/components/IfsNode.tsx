@@ -1,4 +1,4 @@
-import type { IfsNode } from "../rete-nodes";
+import type { IfsNode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";

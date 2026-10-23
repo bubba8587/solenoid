@@ -6,7 +6,7 @@ import * as path from "node:path";
 // ─── Source-scan enforcement for the grep-shaped rules (tree/decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
 // failed when a NEW file forgot them, which is precisely the shape of every Origin incident. These scans close the completeness half the same way
-// formulaPathIsReteFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
+// formulaPathIsGraphFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
 // The scans are LINE-BASED with `//` comments stripped — crude but exactly as
@@ -169,7 +169,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|forAggregateUnits)\s*\(/;
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
-    "nodes/listOps.ts": "a rete-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
+    "nodes/listOps.ts": "a graph-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));

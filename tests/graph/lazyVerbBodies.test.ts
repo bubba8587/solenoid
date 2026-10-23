@@ -3,7 +3,7 @@
 // extended, a pass-through hands back what came in, and a Cube runs its verb on its cells. The sweep drives each
 // card over its ops and settings, so the recorder freezes each body on the inputs that matter.
 import { describe, it, expect, beforeEach } from "vitest";
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../../src/graph/graphModel";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { useWasmBackend, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
 import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
@@ -64,13 +64,13 @@ const dupes: CubeValue = cubeFromColumns([
   { name: "tags", cells: [["a"], ["a"], ["a"], [], [], ["b", "c"], ["b", "c"], ["b", "c"]] },
 ]);
 
-type Card = ClassicPreset.Node & {
+type Card = GraphNode & {
   data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>>;
   stringLiterals?: Record<string, string>;
   literals?: Record<string, number>;
 };
 
-function card<T extends ClassicPreset.Node>(n: T): T & Card {
+function card<T extends GraphNode>(n: T): T & Card {
   wrapNodeData(n as never);
   return n as T & Card;
 }
@@ -136,7 +136,7 @@ function rng(seed: number): () => number {
 }
 
 type Spec = {
-  make: () => ClassicPreset.Node;
+  make: () => GraphNode;
   cubes?: boolean;
   fields?: Record<string, readonly unknown[]>;
   strs?: string[];

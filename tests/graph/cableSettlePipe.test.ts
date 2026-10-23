@@ -1,7 +1,8 @@
 // [[B3]] sameNodeEverywhere, [[B11]] maximalMerge
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
@@ -14,14 +15,14 @@ afterEach(() => { vi.unstubAllGlobals(); });
 const view = { rerenderNode: async () => {}, rerenderCables: async () => {} } as unknown as View;
 
 async function scene(stack: Partial<CableSettleStack>) {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const s: CableSettleStack = { editor, view, ...stack };
   installCableSettlePipe(s);
   const num = new ValueInputNode({ value: "2" });
   const fc = new FormatControllerNode();
   await editor.addNode(num);
   await editor.addNode(fc);
-  const wire = () => editor.addConnection(new ClassicPreset.Connection(num, "value", fc, "in") as SolenoidConnection);
+  const wire = () => editor.addConnection(new GraphConnection(num, "value", fc, "in") as SolenoidConnection);
   return { fc, wire };
 }
 

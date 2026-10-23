@@ -1,7 +1,7 @@
 // [[C88]] collapsedGroupCard
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import type { SolenoidNode } from "../schemes";
-import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";
+import { GroupNode, NoteNode, nodeAccent } from "../nodeClasses";
 import { groupCollapseStore } from "../groupCollapse";
 import { themeAccent, resolveColor } from "../palette";
 import "./Minimap.css";

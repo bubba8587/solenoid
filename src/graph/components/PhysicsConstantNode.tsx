@@ -1,4 +1,4 @@
-import { PhysicsConstantNode as PhysicsConstantNodeType } from "../rete-nodes";
+import { PhysicsConstantNode as PhysicsConstantNodeType } from "../nodeClasses";
 import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 

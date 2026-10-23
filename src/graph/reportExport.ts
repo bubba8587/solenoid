@@ -1,7 +1,7 @@
 // [[C68]] knapIsTheDocumentSyntax
 import DOMPurify from "dompurify";
 import { getEditor } from "./process";
-import { NoteNode, ReportNode } from "./rete-nodes";
+import { NoteNode, ReportNode } from "./nodeClasses";
 import { nodeDisplayNames } from "./nodeNames";
 import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay";
 import { isDocumentValue } from "./documentValue";

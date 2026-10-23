@@ -1,7 +1,7 @@
 // [[C10]] socketLattice, [[B12]] losslessSaves
 import { describe, it, expect, beforeAll } from "vitest";
-import { ClassicPreset } from "rete";
-import * as Nodes from "../../src/graph/rete-nodes";
+import { GraphNode, GraphSocket } from "../../src/graph/graphModel";
+import * as Nodes from "../../src/graph/nodeClasses";
 import { SolenoidSocket, canConnect } from "../../src/graph/sockets";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
@@ -31,8 +31,8 @@ const seedModules = import.meta.glob("../../src/graph/seedGraphs/*.json", { eage
   string, { default?: SavedGraph } & SavedGraph
 >;
 
-type Port = { socket?: ClassicPreset.Socket };
-type AnyNode = ClassicPreset.Node & {
+type Port = { socket?: GraphSocket };
+type AnyNode = GraphNode & {
   inputs: Record<string, Port | undefined>;
   outputs: Record<string, Port | undefined>;
 };

@@ -5,7 +5,7 @@ import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { connectionVersionStore } from "../graphSignals";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "../graphEditor";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { nodeDomWeight } from "../nodes/kind";
@@ -25,13 +25,13 @@ import "./htmlCanvasLayer.css";
 const RENDERER_MIN_NODES = 100;
 const HOLD_ZOOM = 0.4;
 
-const graphDomWeight = (ed: NodeEditor<Schemes>): number => {
+const graphDomWeight = (ed: GraphEditor<Schemes>): number => {
   let w = 0;
   for (const n of ed.getNodes()) w += nodeDomWeight(n);
   return w;
 };
 
-export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>; view: View }) {
+export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: { editor: GraphEditor<Schemes>; view: View }) {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   const [domWeight, setDomWeight] = useState(() => graphDomWeight(editor));

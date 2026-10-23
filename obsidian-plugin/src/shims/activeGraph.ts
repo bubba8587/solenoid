@@ -1,12 +1,8 @@
 // [[C107]] obsidianPlugin
-import type { ClassicPreset, NodeEditor } from "rete";
+import type { GraphEditor } from "../../../src/graph/graphEditor";
+import type { Schemes } from "../../../src/graph/schemes";
 
-type Editor = NodeEditor<{
-  Node: ClassicPreset.Node;
-  Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
-}>;
-
-export function getOwningEditor(_nodeId: string): Editor | null {
+export function getOwningEditor(_nodeId: string): GraphEditor<Schemes> | null {
   return null;
 }
 

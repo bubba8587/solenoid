@@ -1,6 +1,6 @@
 // [[C17]]
 // Frame and cube slicing stay in the node: frame.ts imports the socket lattice, and `tagFrameCellUnit` arrives as an argument
-// because unitColumn.ts reaches rete through unitBridge.
+// because unitColumn.ts reaches the graph model through unitBridge.
 
 import { isSolError, solError, type SolError } from "../errorValue";
 import { matrixUnitOf, type ColumnUnit } from "../unitValue";

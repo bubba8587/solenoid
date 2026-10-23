@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { anyListIn, lambdaOut, readInput } from "./shared";
 import { extractVariables, atColNames } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
@@ -28,7 +28,7 @@ export function perRowParamClashes(params: string[], expr: string): string[] {
   return params.filter((p) => bare.has(p) && at.has(p));
 }
 
-export class LambdaNode extends ClassicPreset.Node {
+export class LambdaNode extends GraphNode {
   unitAware = true;
   label: string;
   params: string;

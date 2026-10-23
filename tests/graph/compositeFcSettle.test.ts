@@ -1,7 +1,8 @@
 // [[B11]] maximalMerge, [[D41]] formatFlowsDownstream, [[B12]] losslessSaves
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
@@ -57,7 +58,7 @@ describe("a composite's FCs settle without a drill-in", () => {
   });
 
   it("a data()-time prune in a closed composite re-types the FC", async () => {
-    const main = new NodeEditor<Schemes>();
+    const main = new GraphEditor<Schemes>();
     main.use(new DataflowEngine<Schemes>());
     setEditorRefs(main, new DataflowEngine<Schemes>(), {} as View);
     const c = new CompositeNode();
@@ -66,7 +67,7 @@ describe("a composite's FCs settle without a drill-in", () => {
     const fc = new FormatControllerNode({});
     await c.internalEditor.addNode(num as SolenoidNode);
     await c.internalEditor.addNode(fc as SolenoidNode);
-    await c.internalEditor.addConnection(new ClassicPreset.Connection(num, "value", fc, "in") as SolenoidConnection);
+    await c.internalEditor.addConnection(new GraphConnection(num, "value", fc, "in") as SolenoidConnection);
     expect(fc.socketDataType).not.toBe("trueany");
 
     await dropInputCables(fc.id, ["in"]);
@@ -77,7 +78,7 @@ describe("a composite's FCs settle without a drill-in", () => {
 
 describe("dockSelf", () => {
   it("leaves an FC free when its host is not in the editor", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const fc = new FormatControllerNode({ hostNodeId: "stale", socketKey: "value", side: "output" });
     await editor.addNode(fc as SolenoidNode);
     fc.dockSelf(editor as never);

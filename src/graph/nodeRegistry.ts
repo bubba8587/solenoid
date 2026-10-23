@@ -1,7 +1,7 @@
 // [[A1]] visualGraphCalculator
 
 import type { Emit } from "./components/nodeKit";
-import { ClassicPreset } from "rete";
+import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
@@ -78,7 +78,7 @@ import {
   PlaceholderNode,
   ExpectNode,
   TornadoNode,
-} from "./rete-nodes";
+} from "./nodeClasses";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
@@ -162,11 +162,11 @@ import {
 import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent } from "./components/PackToolNodes";
 
 export type AnyNodeComponent = JSXElementConstructor<{
-  data: ClassicPreset.Node & { width?: number; height?: number };
+  data: GraphNode & { width?: number; height?: number };
   emit: Emit;
 }>;
 
-type NodeCtor = abstract new (...args: never[]) => ClassicPreset.Node;
+type NodeCtor = abstract new (...args: never[]) => GraphNode;
 
 const comp = (c: unknown) => c as unknown as AnyNodeComponent;
 

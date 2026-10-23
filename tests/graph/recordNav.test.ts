@@ -1,6 +1,7 @@
 // [[A1]]
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { RecordNode } from "../../src/graph/nodes/visual";
@@ -9,14 +10,14 @@ import type { FrameValue } from "../../src/graph/frame";
 
 // B3: the Record card popup pages with ←/→ + on-screen prev/next. recordNavTarget gates
 // WHEN the pager is offered: a Detail view whose picked rows number more than one.
-const sock = new (class extends ClassicPreset.Socket {})("any");
+const sock = new (class extends GraphSocket {})("any");
 const frameOf = (n: number): FrameValue => ({
   __frame: true,
   columns: [{ name: "Item", type: "string", values: Array.from({ length: n }, (_, i) => `r${i}`) }],
 });
 
 async function setup(op: "detail" | "cards" | "gallery" | "list", rows = 3) {
-  const editor = new NodeEditor<Schemes>();
+  const editor = new GraphEditor<Schemes>();
   const rec = new RecordNode({ op });
   await editor.addNode(rec as never);
   await rec.data({ frame: [frameOf(rows)] }); // populates cachedChart.payload.total
@@ -42,10 +43,10 @@ describe("recordNavTarget — when the Record pager (prev/next) is offered", () 
 
   it("the pager steps its own page: Rows picks the set it steps through, so a wired list still pages", async () => {
     const { editor, rec } = await setup("detail", 5);
-    const src = new ClassicPreset.Node("Src");
-    src.addOutput("out", new ClassicPreset.Output(sock, "o"));
+    const src = new GraphNode("Src");
+    src.addOutput("out", new GraphOutput(sock, "o"));
     await editor.addNode(src as never);
-    await editor.addConnection(new ClassicPreset.Connection(src as never, "out", rec as never, "rows") as never);
+    await editor.addConnection(new GraphConnection(src as never, "out", rec as never, "rows") as never);
     await rec.data({ frame: [frameOf(5)], rows: [[2, 4]] });
     expect(recordNavTarget(rec.id)).toBe(rec.id);
     await rec.data({ frame: [frameOf(5)], rows: [3] });

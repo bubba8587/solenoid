@@ -1,7 +1,7 @@
 // [[C52]] visibleSelection, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast
 
 import type { View } from "./view";
-import { GroupNode, ConduitNode } from "./rete-nodes";
+import { GroupNode, ConduitNode } from "./nodeClasses";
 import { bumpStackOrder } from "./graphSignals";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
 import { getActiveEditor as getEditor, getActiveView as getView, getOwningView } from "./activeGraph";
@@ -13,9 +13,9 @@ import { notifyGraphChanged } from "./process";
 import { settingsStore } from "./settingsStore";
 import { measuredBox, type NodeBox } from "./nodeSize";
 import type { Schemes } from "./schemes";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 type Box = NodeBox;
 
 function selectedNodeIds(editor: Editor): string[] {
@@ -227,15 +227,6 @@ export function restackOrder(
   return out;
 }
 
-/** Rewrites the editor's node order, which is the stacking order: RF draws cards in it and the save keeps it.
- *  rete has no reorder call and `getNodes()` returns a copy, so this writes its `nodes` array in place. */
-export function reorderEditorNodes(editor: Editor, order: readonly string[]): void {
-  const nodes = (editor as unknown as { nodes: Schemes["Node"][] }).nodes;
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  if (order.length !== nodes.length || order.some((id) => !byId.has(id))) return;
-  nodes.splice(0, nodes.length, ...order.map((id) => byId.get(id)!));
-}
-
 // Groups, Conduits and cards stack in separate bands (flowModel.nodeZIndex), so only a card of the same kind is in the way.
 const stackBand = (n: Schemes["Node"] | undefined) => (n instanceof GroupNode ? 2 : n instanceof ConduitNode ? 1 : 0);
 
@@ -259,7 +250,7 @@ export function stackSelection(move: StackMove, ids?: readonly string[]): void {
   };
   const next = restackOrder(order, selected, move, overlaps);
   if (next.every((id, i) => id === order[i])) return;
-  reorderEditorNodes(editor, next);
+  editor.reorderNodes(next);
   bumpStackOrder();
   notifyGraphChanged();
 }

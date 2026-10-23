@@ -1,6 +1,7 @@
 // [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection } from "../../src/graph/graphModel";
 import { makeFrameShapeResolver } from "../../src/graph/frameShapeResolver";
 import { FrameInputNode, SortFrameNode, DecisionMatrixNode } from "../../src/graph/nodes/frame";
 import { NoteNode } from "../../src/graph/nodes/annotation";
@@ -11,16 +12,16 @@ import type { Schemes } from "../../src/graph/schemes";
 
 const FRAME_TEXT = "Name, Qty\nA, 1\nB, 2";
 
-async function chain(mid: (e: NodeEditor<Schemes>) => Promise<{ node: Schemes["Node"]; inKey: string; outKey: string }>) {
-  const editor = new NodeEditor<Schemes>();
+async function chain(mid: (e: GraphEditor<Schemes>) => Promise<{ node: Schemes["Node"]; inKey: string; outKey: string }>) {
+  const editor = new GraphEditor<Schemes>();
   const src = new FrameInputNode() as unknown as Schemes["Node"];
   (src as unknown as FrameInputNode).frameText = FRAME_TEXT;
   await editor.addNode(src);
   const m = await mid(editor);
-  await editor.addConnection(new ClassicPreset.Connection(src, "frame", m.node, m.inKey) as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(src, "frame", m.node, m.inKey) as Schemes["Connection"]);
   const sort = new SortFrameNode() as unknown as Schemes["Node"];
   await editor.addNode(sort);
-  await editor.addConnection(new ClassicPreset.Connection(m.node, m.outKey, sort, "frame") as Schemes["Connection"]);
+  await editor.addConnection(new GraphConnection(m.node, m.outKey, sort, "frame") as Schemes["Connection"]);
   const r = makeFrameShapeResolver(editor as never);
   return { direct: r.outShape(src.id, "frame"), viaMid: r.outShape(m.node.id, m.outKey), downstream: r.outShape(sort.id, "frame") };
 }
@@ -60,7 +61,7 @@ describe("frame SHAPE survives a passthrough (Bug B)", () => {
 
 describe("frame PRODUCERS carry their column types into the static shape", () => {
   it("a Note frame frontmatter key resolves to its typed columns", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const note = new NoteNode({ body: "---\nt:\n  - {Name: A, Qty: 1}\n  - {Name: B, Qty: 2}\n---" }) as unknown as Schemes["Node"];
     await editor.addNode(note);
     const s = makeFrameShapeResolver(editor as never).outShape(note.id, "t");
@@ -68,13 +69,13 @@ describe("frame PRODUCERS carry their column types into the static shape", () =>
   });
 
   it("Decision Matrix types the label string first, Score/Rank number (breakdown adds criteria)", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const src = new FrameInputNode() as unknown as Schemes["Node"];
     (src as unknown as FrameInputNode).frameText = "Option, A, B\nx, 1, 2\ny, 3, 4";
     await editor.addNode(src);
     const dm = new DecisionMatrixNode({ detail: "breakdown" }) as unknown as Schemes["Node"];
     await editor.addNode(dm);
-    await editor.addConnection(new ClassicPreset.Connection(src, "frame", dm, "frame") as Schemes["Connection"]);
+    await editor.addConnection(new GraphConnection(src, "frame", dm, "frame") as Schemes["Connection"]);
     const s = makeFrameShapeResolver(editor as never).outShape(dm.id, "frame");
     expect(s?.columns).toEqual([
       { name: "Option", type: "string" },

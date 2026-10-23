@@ -1,4 +1,5 @@
-import { NodeEditor, type ClassicPreset } from "rete";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import type { GraphNode } from "../../../src/graph/graphModel";
 import { DataflowEngine } from "../../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidNode } from "../../../src/graph/schemes";
 import type { View } from "../../../src/graph/view";
@@ -7,8 +8,8 @@ import { setSelectNode, setUnselectAllNodes } from "../../../src/graph/canvasCom
 import { copySelected, pasteClipboard } from "../../../src/graph/copyPaste";
 
 /** The card a copy and paste of `src` puts on a fresh canvas, through the real clipboard path. */
-export async function pasteCopy<T extends ClassicPreset.Node>(src: T): Promise<T> {
-  const editor = new NodeEditor<Schemes>();
+export async function pasteCopy<T extends GraphNode>(src: T): Promise<T> {
+  const editor = new GraphEditor<Schemes>();
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const view = {

@@ -13,11 +13,11 @@ import type {
   TakeDropNode as TakeDropNodeType, TakeDropOp,
   ExpandNode as ExpandNodeType,
   TableInfoNode as TableInfoNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { dropInputCables } from "./cablePrune";
 import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";

@@ -1,4 +1,4 @@
-import { ColebrookNode as ColebrookNodeType } from "../rete-nodes";
+import { ColebrookNode as ColebrookNodeType } from "../nodeClasses";
 import { makeNodeComponent } from "./standardNode";
 
 export const ColebrookComponent =

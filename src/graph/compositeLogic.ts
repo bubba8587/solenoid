@@ -1,9 +1,9 @@
 // [[C77]] compositeIsSubgraph
 import type { View } from "./view";
-import { ClassicPreset } from "rete";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import { GraphConnection } from "./graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
-import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./rete-nodes";
+import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./nodeClasses";
 import { installErrorGuards } from "./errorValue";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
@@ -14,7 +14,7 @@ import { standoffStore } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor, editScopeFor } from "./activeGraph";
 
-type Editor = NodeEditor<Schemes>;
+type Editor = GraphEditor<Schemes>;
 
 function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
@@ -51,7 +51,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
   const scope = editScopeFor(editor);
   scope.begin(); // relocated, not deleted: the gate keeps their stores
   try {
-    // rete requires a node's connections removed before the node.
+    // A node leaves after its cables, as the editor removes them in clear().
     for (const c of [...internalConns, ...incoming, ...outgoing]) {
       await editor.removeConnection(c.id);
     }
@@ -68,7 +68,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       const t = composite.internalEditor.getNode(c.target);
       if (!s || !t) continue;
       await composite.internalEditor.addConnection(
-        new ClassicPreset.Connection(s, c.sourceOutput, t, c.targetInput) as SolenoidConnection,
+        new GraphConnection(s, c.sourceOutput, t, c.targetInput) as SolenoidConnection,
       );
     }
 
@@ -84,7 +84,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       await composite.internalEditor.addNode(marker as SolenoidNode);
       installErrorGuards(marker);
       await composite.internalEditor.addConnection(
-        new ClassicPreset.Connection(marker, "value", target, c.targetInput) as SolenoidConnection,
+        new GraphConnection(marker, "value", target, c.targetInput) as SolenoidConnection,
       );
       const tPos = composite.internalPositions[c.target];
       if (tPos) composite.internalPositions[marker.id] = { x: tPos.x - 220, y: tPos.y };
@@ -92,7 +92,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
         label: portLabel, internalNodeId: marker.id, exposure: "exposed", tier: "basic",
       });
       await editor.addConnection(
-        new ClassicPreset.Connection(outerSource, c.sourceOutput, composite, portId) as SolenoidConnection,
+        new GraphConnection(outerSource, c.sourceOutput, composite, portId) as SolenoidConnection,
       );
     }
 
@@ -108,14 +108,14 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       await composite.internalEditor.addNode(marker as SolenoidNode);
       installErrorGuards(marker);
       await composite.internalEditor.addConnection(
-        new ClassicPreset.Connection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
+        new GraphConnection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );
       const sPos = composite.internalPositions[c.source];
       const sBox = nodeBox(view, c.source); // the relocated node's box may be gone, so width falls back
       if (sPos) composite.internalPositions[marker.id] = { x: sPos.x + (sBox?.w ?? 220) + 80, y: sPos.y };
       const portId = composite.addOutputPort({ label: portLabel, internalNodeId: marker.id, tier: "basic" });
       await editor.addConnection(
-        new ClassicPreset.Connection(composite, portId, outerTarget, c.targetInput) as SolenoidConnection,
+        new GraphConnection(composite, portId, outerTarget, c.targetInput) as SolenoidConnection,
       );
     }
 
@@ -171,7 +171,7 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
       if (!s || !t) continue;
       try {
         await editor.addConnection(
-          new ClassicPreset.Connection(s, c.sourceOutput, t, c.targetInput) as SolenoidConnection,
+          new GraphConnection(s, c.sourceOutput, t, c.targetInput) as SolenoidConnection,
         );
       } catch { /* incompatible after an internal edit — dropped */ }
     }
@@ -186,7 +186,7 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
           if (!s || !t) continue;
           try {
             await editor.addConnection(
-              new ClassicPreset.Connection(s, o.sourceOutput, t, f.targetInput) as SolenoidConnection,
+              new GraphConnection(s, o.sourceOutput, t, f.targetInput) as SolenoidConnection,
             );
           } catch { /* dropped */ }
         }
@@ -203,7 +203,7 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
         if (!s || !t) continue;
         try {
           await editor.addConnection(
-            new ClassicPreset.Connection(s, feed.sourceOutput, t, o.targetInput) as SolenoidConnection,
+            new GraphConnection(s, feed.sourceOutput, t, o.targetInput) as SolenoidConnection,
           );
         } catch { /* dropped */ }
       }

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { SankeyNode as SankeyNodeType } from "../rete-nodes";
+import type { SankeyNode as SankeyNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";

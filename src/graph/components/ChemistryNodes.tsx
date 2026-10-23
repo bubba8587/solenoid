@@ -1,7 +1,7 @@
 import {
   ElementNode as ElementNodeType,
   MolarMassNode as MolarMassNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { ELEMENT_BY_SYMBOL } from "../nodes/chemistryOps";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";

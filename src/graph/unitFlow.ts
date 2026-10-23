@@ -1,14 +1,14 @@
 // [[C25]], [[D41]], [[D43]]
-import type { ClassicPreset } from "rete";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
+import type { GraphConnection, GraphNode } from "./graphModel";
 import { type FormatAnnotation, isDateStyle } from "./formatAnnotationStore";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
 import { formatCarryForOutput } from "./nodes/formatCarry";
 
-type AnyEditor = NodeEditor<{
-  Node: ClassicPreset.Node;
-  Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
+type AnyEditor = GraphEditor<{
+  Node: GraphNode;
+  Connection: GraphConnection<GraphNode, GraphNode>;
 }>;
 
 type ConvertLike = { fromUnit: string; toUnit: string };
@@ -104,7 +104,7 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     return carriedFormat(n, nodeId, outKey);
   }
   function carriedFormat(
-    n: ClassicPreset.Node | undefined,
+    n: GraphNode | undefined,
     nodeId: string,
     outKey: string,
   ): FormatAnnotation | undefined {

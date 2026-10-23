@@ -1,4 +1,4 @@
-import type { ChooseNode } from "../rete-nodes";
+import type { ChooseNode } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";

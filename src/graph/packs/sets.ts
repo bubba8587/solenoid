@@ -1,5 +1,5 @@
 // [[C51]] formulaNaming
-import { IsInNode, TallyNode } from "../rete-nodes";
+import { IsInNode, TallyNode } from "../nodeClasses";
 import type { Pack } from "./packShared";
 import { SETS_PACK_FORMULAS } from "./setsFormulas";
 

@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { PassthroughSpec } from "./passthrough";
@@ -11,7 +11,7 @@ import { type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { formatScalar } from "../components/format";
 
-export class DisplayNode extends ClassicPreset.Node {
+export class DisplayNode extends GraphNode {
   label: string;
   cachedValue: number | number[] | number[][] | string | string[] | FrameValue | CubeValue | LambdaValue | SolError | null = null;
   unitSuffix: UnitSuffix = "none";
@@ -63,7 +63,7 @@ type AlertInputs = {
   match?: string[];
 };
 
-export class AlertNode extends ClassicPreset.Node {
+export class AlertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "A blank arriving on the cable makes the status unknown, and an unknown status never fires the alert.",
     result: "The status is 0 when calm and 1 when triggered. Out of range instead emits 1 below Low and 2 above High.",
@@ -173,7 +173,7 @@ function isAlerting(result: number | number[]): boolean {
   return Array.isArray(result) ? result.some(isAlertMet) : isAlertMet(result);
 }
 
-export class RandBetweenNode extends ClassicPreset.Node {
+export class RandBetweenNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "A fresh draw comes only from Recalculate. Changing a bound rescales the current draw.",
   };

@@ -1,5 +1,5 @@
 // [[D54]], [[B11]] maximalMerge
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
@@ -21,12 +21,12 @@ import { clamp } from "./mathUtils";
 
 export type SlicerCell = number | string | boolean;
 
-export class CableSwitchNode extends ClassicPreset.Node {
+export class CableSwitchNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     out: "One mode routes the active input through unchanged, keeping its type and unit. Many mode collects the checked inputs into a cube of name and value rows.",
   };
   label: string;
-  /** Not named `selected`, which is rete's node-selection flag. */
+  /** Not named `selected`, which is GraphNode's selection flag. */
   activeIndex: number;
   titles: Record<string, string>;
   multiSelect: boolean;
@@ -45,7 +45,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
     this.multiSelect = init?.multiSelect ?? false;
     this.selectedKeys = [...(init?.selectedKeys ?? [])];
     this.outSocket.setType(this.multiSelect ? "cube" : "trueany");
-    this.addOutput("out", new ClassicPreset.Output(this.outSocket, "Out"));
+    this.addOutput("out", new GraphOutput(this.outSocket, "Out"));
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
     } else {
@@ -54,7 +54,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(new AdoptiveSocket()));
+    this.addInput(key, new GraphInput(new AdoptiveSocket()));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -98,7 +98,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 }
 
-export class AngleDialNode extends ClassicPreset.Node {
+export class AngleDialNode extends GraphNode {
   label: string;
   value: number;   // degrees, 0–359
   step: number;
@@ -110,7 +110,7 @@ export class AngleDialNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Angle Dial";
     this.value = init?.value ?? 0;
     this.step  = init?.step  ?? 15;
-    this.addOutput("value", new ClassicPreset.Output(numberSocket, "Degrees"));
+    this.addOutput("value", new GraphOutput(numberSocket, "Degrees"));
   }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
@@ -185,7 +185,7 @@ export function carryValueText(text: string, to: ValueInputOp): string {
 }
 
 /** One typed value of any scalar type, with its display format and unit set on the card itself ([[C118]] formatTravelsWithValue). */
-export class ValueInputNode extends ClassicPreset.Node {
+export class ValueInputNode extends GraphNode {
   label: string;
   op: ValueInputOp;
   value: string;
@@ -260,7 +260,7 @@ export class ValueInputNode extends ClassicPreset.Node {
     this.grouping = init?.grouping ?? true;
     this.negativeStyle = init?.negativeStyle ?? "minus";
     this.scaleMode = init?.scaleMode ?? "none";
-    this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.op), "Value"));
+    this.addOutput("value", new GraphOutput(valueSocketFor(this.op), "Value"));
   }
 
   /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. A type never used this session gets the text carried by meaning. */
@@ -322,7 +322,7 @@ export class ValueInputNode extends ClassicPreset.Node {
   }
 }
 
-export class DateRangeNode extends ClassicPreset.Node {
+export class DateRangeNode extends GraphNode {
   label: string;
   literals: Record<string, number>;
   width  = 190;
@@ -342,7 +342,7 @@ export class DateRangeNode extends ClassicPreset.Node {
   }
 }
 
-export class XYPadNode extends ClassicPreset.Node {
+export class XYPadNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     x: "Normalized 0 to 1.",
     y: "Normalized 0 to 1.",
@@ -366,7 +366,7 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-export class SlicerNode extends ClassicPreset.Node {
+export class SlicerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
   };
@@ -453,7 +453,7 @@ export function pointsToFrame(pts: ReadonlyArray<readonly [number, number]>): Fr
   };
 }
 
-export class PointPlotterNode extends ClassicPreset.Node {
+export class PointPlotterNode extends GraphNode {
   label: string;
   pointsText = "";
   cachedResult: FrameValue | null = null;
@@ -547,7 +547,7 @@ export function curveToFrame(xs: number[], values: number[]): FrameValue {
   };
 }
 
-export class CurveNode extends ClassicPreset.Node {
+export class CurveNode extends GraphNode {
   label: string;
   pointsText = "0, 0\n1, 1";
   cachedResult: FrameValue | null = null;
@@ -598,7 +598,7 @@ export function paintGridToText(grid: ReadonlyArray<ReadonlyArray<number | null>
 
 export const gridPainterDim = (v: number): number => clamp(Math.round(v), 1, 64);
 
-export class GridPainterNode extends ClassicPreset.Node {
+export class GridPainterNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Unpainted cells read as null, not zero.",
   };

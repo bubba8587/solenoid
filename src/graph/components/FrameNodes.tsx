@@ -48,9 +48,9 @@ import type {
   ReplaceMode,
   HeaderOp,
   BlankRowMode,
-} from "../rete-nodes";
-import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
-import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
+} from "../nodeClasses";
+import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../nodeClasses";
+import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../nodeClasses";
 import { VALUELESS_FILTER_OPS } from "../frameOps";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
@@ -99,11 +99,11 @@ import type { LadderAction } from "../nodes/ladderOps";
 import "./ladderView.css";
 import { isSolError } from "../errorValue";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
-import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
+import type { GetColumnReadAs, AddColumnAddAs } from "../nodeClasses";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
-import { ALLOCATE_MODE_META } from "../rete-nodes";
+import { ALLOCATE_MODE_META } from "../nodeClasses";
 import type { AllocateMode } from "../nodes/allocateOps";
 import type { PayoffOrder } from "../nodes/payoffOps";
 import { PAYOFF_ORDER_META } from "../nodes/frame";

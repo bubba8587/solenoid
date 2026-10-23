@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphInput, GraphNode } from "../graphModel";
 import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
@@ -34,7 +34,7 @@ function strScalar(
 
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
 
-export class PromoNode extends ClassicPreset.Node {
+export class PromoNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
   static coreFields = ["roll"];
@@ -77,7 +77,7 @@ export const TEXT_TRANSFORM_OP_META = {
   slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
-export class TextTransformNode extends ClassicPreset.Node {
+export class TextTransformNode extends GraphNode {
   label: string;
   op: TextTransformOp;
   cachedText: CellResult<string> = null;
@@ -105,7 +105,7 @@ export const PAD_SIDE_META = {
   center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python `center`, R `str_pad` `side = both`." },
 } satisfies Record<PadSide, { label: string; description: string }>;
 
-export class PadTextNode extends ClassicPreset.Node {
+export class PadTextNode extends GraphNode {
   static inputRoles = { ...rolesFrom("PADTEXT", { width: 1 }), fill: setting("") };
   static socketDocs: Record<string, string> = {
     width: "Target length in characters; text already that long passes through unchanged.",
@@ -133,7 +133,7 @@ export class PadTextNode extends ClassicPreset.Node {
   }
 }
 
-export class TruncateTextNode extends ClassicPreset.Node {
+export class TruncateTextNode extends GraphNode {
   static inputRoles = { ...rolesFrom("TRUNCATETEXT", { width: 1 }), ellipsis: setting("…") };
   static socketDocs: Record<string, string> = {
     width:    "Maximum length in characters, the ellipsis included.",
@@ -161,7 +161,7 @@ export class TruncateTextNode extends ClassicPreset.Node {
 
 // ─── Wrap Text (no Excel equivalent; R str_wrap, Python textwrap.wrap) ─────────
 
-export class WrapTextNode extends ClassicPreset.Node {
+export class WrapTextNode extends GraphNode {
   static inputRoles = rolesFrom("WRAPTEXT", { width: 1 });
   static socketDocs: Record<string, string> = {
     width: "Maximum line length in characters; a single word longer than this still takes its own line.",
@@ -187,7 +187,7 @@ export class WrapTextNode extends ClassicPreset.Node {
 
 // ─── LEN ──────────────────────────────────────────────────────────────────────
 
-export class TextLenNode extends ClassicPreset.Node {
+export class TextLenNode extends GraphNode {
   label: string;
   cachedResult: BroadcastResult = null;
   stringLiterals: Record<string, string> = { text: "" };
@@ -207,7 +207,7 @@ export class TextLenNode extends ClassicPreset.Node {
 
 // ─── CONCAT ───────────────────────────────────────────────────────────────────
 
-export class ConcatNode extends ClassicPreset.Node {
+export class ConcatNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
   stringLiterals: Record<string, string> = {};
@@ -228,7 +228,7 @@ export class ConcatNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(this.valueSocket));
+    this.addInput(key, new GraphInput(this.valueSocket));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -259,7 +259,7 @@ export const TEXT_SLICE_OP_META = {
   mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based). Excel: `MID`." },
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
-export class TextSliceNode extends ClassicPreset.Node {
+export class TextSliceNode extends GraphNode {
   static inputRoles = { n: setting(1), ...rolesFrom("MID", { start: 1, len: 2 }) };
   static socketDocs: Record<string, string> = {
     n: "Read by LEFT and RIGHT: the number of characters to take.",
@@ -299,7 +299,7 @@ export const TEXT_FIND_OP_META = {
   search: { label: "SEARCH", description: "1-based position of `find_text` in `within_text` (case-insensitive; `?` matches one character, `*` any run, `~` before either matches it as typed). `#VALUE!` if not found. Excel: `SEARCH`." },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
-export class TextFindNode extends ClassicPreset.Node {
+export class TextFindNode extends GraphNode {
   static inputRoles = { start: setting(1) };
   static socketDocs: Record<string, string> = {
     start: "Counting starts at 1. The position found is still measured from the start of the whole text.",
@@ -329,7 +329,7 @@ export class TextFindNode extends ClassicPreset.Node {
 
 // ─── SUBSTITUTE ───────────────────────────────────────────────────────────────
 
-export class SubstituteNode extends ClassicPreset.Node {
+export class SubstituteNode extends GraphNode {
   static inputRoles = { instance: setting(0) };
   static socketDocs: Record<string, string> = {
     old_text: "Matches are case sensitive.",
@@ -359,7 +359,7 @@ export class SubstituteNode extends ClassicPreset.Node {
 
 // ─── REPLACE ─────────────────────────────────────────────────────────────────
 
-export class TextReplaceNode extends ClassicPreset.Node {
+export class TextReplaceNode extends GraphNode {
   static inputRoles = rolesFrom("REPLACE", { start: 1, num_chars: 2 });
   static socketDocs: Record<string, string> = {
     start: "Position 1 is the first character.",
@@ -390,7 +390,7 @@ export class TextReplaceNode extends ClassicPreset.Node {
 
 // ─── REPT ─────────────────────────────────────────────────────────────────────
 
-export class ReptNode extends ClassicPreset.Node {
+export class ReptNode extends GraphNode {
   static inputRoles = rolesFrom("REPT", { times: 1 });
   label: string;
   cachedText: CellResult<string> = null;
@@ -415,7 +415,7 @@ export class ReptNode extends ClassicPreset.Node {
 
 export type CharCodeOp = "char" | "code";
 
-export class CharCodeNode extends ClassicPreset.Node {
+export class CharCodeNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     code: "Accepts the full Unicode range. Excel's CHAR stops at 255. A code below 1 or past 1114111 is #VALUE!.",
   };
@@ -454,7 +454,7 @@ export const TEXTJOIN_IGNORE_EMPTY_META: Record<TextJoinIgnoreEmpty, string> = {
   ignore:  "Ignore empty strings (1)",
 };
 
-export class TextJoinNode extends ClassicPreset.Node {
+export class TextJoinNode extends GraphNode {
   static inputRoles = rolesFrom("TEXTJOIN", { delimiter: 0 });
   label: string;
   ignoreEmpty: TextJoinIgnoreEmpty;
@@ -478,7 +478,7 @@ export class TextJoinNode extends ClassicPreset.Node {
 
 // ─── TEXTSPLIT ────────────────────────────────────────────────────────────────
 
-export class TextSplitNode extends ClassicPreset.Node {
+export class TextSplitNode extends GraphNode {
   // The card has no row delimiter, so a blank delimiter leaves nothing to split by.
   static inputRoles = { delimiter: required };
   static socketDocs: Record<string, string> = {
@@ -510,7 +510,7 @@ export const TEXT_AFTER_BEFORE_OP_META = {
   before: { label: "TEXTBEFORE", description: "Text before an occurrence of the delimiter, counted from the start, or from the end when negative. Blank if not found. Excel: `TEXTBEFORE`." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
-export class TextAfterBeforeNode extends ClassicPreset.Node {
+export class TextAfterBeforeNode extends GraphNode {
   static inputRoles = rolesFrom("TEXTAFTER", { instance: 2, if_not_found: 5 });
   static socketDocs: Record<string, string> = {
     instance: "Which occurrence: 1 is the first, 2 the second, -1 the last. Blank means 1.",
@@ -547,7 +547,7 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
 
 // ─── EXACT ────────────────────────────────────────────────────────────────────
 
-export class ExactNode extends ClassicPreset.Node {
+export class ExactNode extends GraphNode {
   label: string;
   cachedResult: CellResult<boolean> = null;
   stringLiterals: Record<string, string> = { a: "", b: "" };
@@ -570,7 +570,7 @@ export class ExactNode extends ClassicPreset.Node {
 
 export const URL_ENCODE_LABEL: Record<UrlEncodeOp, string> = { encode: "ENCODEURL", decode: "DECODEURL", base64: "ENCODEBASE64", unbase64: "DECODEBASE64" };
 
-export class UrlEncodeNode extends ClassicPreset.Node {
+export class UrlEncodeNode extends GraphNode {
   label: string;
   op: UrlEncodeOp;
   cachedText: CellResult<string> = null;
@@ -593,7 +593,7 @@ export class UrlEncodeNode extends ClassicPreset.Node {
 // ─── TEMPLATE ────────────────────────────────────────────────────────────────
 
 
-export class TemplateNode extends ClassicPreset.Node {
+export class TemplateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     template: "{name} inserts the input of that name, and {name:0.00} formats it with an Excel TEXT code. {{ and }} print braces. Each new name adds an input.",
     result: "One string, or a list when any placeholder is fed a list, with the rest repeating.",
@@ -640,7 +640,7 @@ export class TemplateNode extends ClassicPreset.Node {
 
 // ─── HASH / UUID ─────────────────────────────────────────────────────────────
 
-export class HashNode extends ClassicPreset.Node {
+export class HashNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Lowercase hex of the UTF-8 text; the same text always hashes the same, so hashed keys still join.",
   };
@@ -663,7 +663,7 @@ export class HashNode extends ClassicPreset.Node {
   }
 }
 
-export class UuidNode extends ClassicPreset.Node {
+export class UuidNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
   private lastGen = -1;
@@ -694,7 +694,7 @@ export class UuidNode extends ClassicPreset.Node {
 
 export type RomanArabicOp = "roman" | "arabic";
 
-export class RomanArabicNode extends ClassicPreset.Node {
+export class RomanArabicNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     number: "1 to 3999: Roman numerals cannot express values outside this range.",
   };
@@ -732,7 +732,7 @@ export const FIXED_NO_COMMAS_META: Record<FixedNoCommas, string> = {
   no_commas: "No thousand separators (1)",
 };
 
-export class FixedNode extends ClassicPreset.Node {
+export class FixedNode extends GraphNode {
   static inputRoles = rolesFrom("FIXED", { decimals: 1 });
   label: string;
   noCommas: FixedNoCommas;
@@ -766,7 +766,7 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
 };
 
 
-export class RegexNode extends ClassicPreset.Node {
+export class RegexNode extends GraphNode {
   static inputRoles = { occurrence: setting(0) };
   static socketDocs: Record<string, string> = {
     pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
@@ -799,7 +799,7 @@ export class RegexNode extends ClassicPreset.Node {
 
 // ─── DOLLAR (format number as currency string) ────────────────────────────────
 
-export class FormatDollarNode extends ClassicPreset.Node {
+export class FormatDollarNode extends GraphNode {
   static inputRoles = rolesFrom("DOLLAR", { decimals: 1 });
   label: string;
   cachedText: CellResult<string> = null;
@@ -822,7 +822,7 @@ export class FormatDollarNode extends ClassicPreset.Node {
 
 // ─── Reverse Text (Timesavers pack) ───────────────────────────────────────────
 
-export class ReverseTextNode extends ClassicPreset.Node {
+export class ReverseTextNode extends GraphNode {
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
@@ -846,7 +846,7 @@ import type { SimilarityMethod } from "./textOps";
 export type { SimilarityMethod } from "./textOps";
 
 
-export class SpellNumberNode extends ClassicPreset.Node {
+export class SpellNumberNode extends GraphNode {
   label: string;
   mode: "words" | "ordinal" = "words";
   cachedText: CellResult<string> = null;
@@ -880,7 +880,7 @@ export const SIMILARITY_METHOD_META = {
   levenshtein:  { label: "Edit distance",       description: "The raw Levenshtein distance: how many inserts, deletes or substitutions turn one into the other." },
 } satisfies Record<SimilarityMethod, { label: string; description: string }>;
 
-export class TextSimilarityNode extends ClassicPreset.Node {
+export class TextSimilarityNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     result: "Case-sensitive. Run both sides through LOWER / Clean Whitespace first when case and spacing shouldn't count.",
   };
@@ -904,7 +904,7 @@ export class TextSimilarityNode extends ClassicPreset.Node {
   }
 }
 
-export class FuzzyMatchNode extends ClassicPreset.Node {
+export class FuzzyMatchNode extends GraphNode {
   static inputRoles = rolesFrom("FUZZYMATCH", { threshold: 2 });
   static socketDocs: Record<string, string> = {
     threshold: "0–1. A needle whose best candidate scores below it answers #N/A instead of a bad guess; 0 always picks the closest.",

@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
-import type { ClassicPreset } from "rete";
+import type { GraphNode } from "../graphModel";
 import { repositionDockedNodes } from "../canvasCommands";
 import { toggleNodeCollapsed } from "../selectionOps";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { connectionVersionStore } from "../graphSignals";
-import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
+import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../nodeClasses";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
@@ -143,16 +143,16 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // An override (the FC's mismatch red, its socket color) still needs theme adjusting; nodeAccent is already resolved.
   const accent = accentOverride
     ? themeAccent(accentOverride, mode)
-    : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
+    : node ? nodeAccent(node as unknown as GraphNode, mode) : undefined;
   const groupColor = useSyncExternalStore(groupMembershipStore.subscribe, () => (node ? groupMembershipStore.color(node.id) : undefined));
 
   useSyncExternalStore(
     nodeSizeStore.subscribe,
     () => (node ? nodeSizeStore.get(node.id) : undefined),
   );
-  const resizable = !!node && nodeResizable(node as unknown as ClassicPreset.Node);
-  const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
-  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
+  const resizable = !!node && nodeResizable(node as unknown as GraphNode);
+  const wide = !collapsed && !!node && nodeWide(node as unknown as GraphNode);
+  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as GraphNode);
   // Clamped to the current content's minimum: the grip clamps only live drags, and a Display sized for a scalar may now show a chart.
   const stored = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
   const min = stored && node ? nodeSizeStore.getMin(node.id) : undefined;

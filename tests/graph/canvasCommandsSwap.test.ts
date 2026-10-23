@@ -1,6 +1,7 @@
 // [[A1]], [[B3]]
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphNode } from "../../src/graph/graphModel";
 import type { Schemes } from "../../src/graph/schemes";
 import { setDeleteSelected, deleteSelected, swapDeleteSlot, setRepositionDocked, repositionDockedNodes, swapRepositionDockedSlot } from "../../src/graph/canvasCommands";
 
@@ -9,21 +10,21 @@ import { setDeleteSelected, deleteSelected, swapDeleteSlot, setRepositionDocked,
 // the button deletes from MAIN. This pins the swap + restore, mirroring swapArrangeSlots /
 // swapSelectionSlots. (E2 — compositeToolbarReroute.)
 
-function emptier(editor: NodeEditor<Schemes>) {
+function emptier(editor: GraphEditor<Schemes>) {
   return async () => {
     for (const n of editor.getNodes()) await editor.removeNode(n.id);
   };
 }
-async function withNode(editor: NodeEditor<Schemes>) {
-  const n = new ClassicPreset.Node("N") as unknown as Schemes["Node"];
+async function withNode(editor: GraphEditor<Schemes>) {
+  const n = new GraphNode("N") as unknown as Schemes["Node"];
   await editor.addNode(n);
   return n.id;
 }
 
 describe("swapDeleteSlot — the delete verb follows the active surface", () => {
   it("deleteSelected() targets the drill-in editor while swapped, MAIN again after restore", async () => {
-    const main = new NodeEditor<Schemes>();
-    const drill = new NodeEditor<Schemes>();
+    const main = new GraphEditor<Schemes>();
+    const drill = new GraphEditor<Schemes>();
     await withNode(main);
     await withNode(drill);
     setDeleteSelected(emptier(main)); // main FlowCanvas registers its editor

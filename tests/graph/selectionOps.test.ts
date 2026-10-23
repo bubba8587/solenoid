@@ -1,10 +1,10 @@
 // [[C52]], [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { NodeEditor } from "rete";
-import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, restackOrder, reorderEditorNodes, type Placed } from "../../src/graph/selectionOps";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, restackOrder, type Placed } from "../../src/graph/selectionOps";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { setGraphChanged } from "../../src/graph/process";
-import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
+import { GroupNode, DisplayNode } from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
 import { standoffStore } from "../../src/graph/standoffs";
 
@@ -103,7 +103,7 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
 
 describe("expandMoveSet", () => {
   it("never carries a position-locked group; its members still move on their own", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const m = new DisplayNode();
     await editor.addNode(m as never);
     const g = new GroupNode({ members: [m.id] });
@@ -116,7 +116,7 @@ describe("expandMoveSet", () => {
   });
 
   it("leaves a standoff partner hidden in a collapsed group where it is", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const loose = new DisplayNode();
     const member = new DisplayNode();
     await editor.addNode(loose as never);
@@ -167,19 +167,20 @@ describe("restackOrder", () => {
   });
 });
 
-describe("reorderEditorNodes", () => {
+describe("GraphEditor.reorderNodes", () => {
   it("rewrites the order getNodes returns, the one the save and RF read", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const a = new DisplayNode(), b = new DisplayNode(), c = new DisplayNode();
     for (const n of [a, b, c]) await editor.addNode(n);
-    reorderEditorNodes(editor, [c.id, a.id, b.id]);
+    expect(editor.reorderNodes([c.id, a.id, b.id])).toBe(true);
     expect(editor.getNodes().map((n) => n.id)).toEqual([c.id, a.id, b.id]);
+    expect(editor.coreIds().nodes).toEqual([c.id, a.id, b.id]);
   });
   it("ignores an order that doesn't name every node exactly", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const a = new DisplayNode(), b = new DisplayNode();
     for (const n of [a, b]) await editor.addNode(n);
-    reorderEditorNodes(editor, [b.id]);
+    expect(editor.reorderNodes([b.id])).toBe(false);
     expect(editor.getNodes().map((n) => n.id)).toEqual([a.id, b.id]);
   });
 });

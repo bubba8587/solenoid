@@ -1,6 +1,6 @@
 // [[D54]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
-import { EarnedValueNode } from "../../../src/graph/rete-nodes";
+import { EarnedValueNode } from "../../../src/graph/nodeClasses";
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { cubeFromColumns, isFrameValue, type FrameValue, type CubeCell } from "../../../src/graph/frame";
 import { columnUnitFromSpec, tagFrameCellUnit } from "../../../src/graph/unitColumn";

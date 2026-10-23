@@ -1,5 +1,5 @@
 // [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { nodeOnCore } from "../nodeOnCore";
@@ -11,7 +11,7 @@ export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 
 type ExpectInputs = Record<string, unknown[] | undefined>;
 
-export class ExpectNode extends ClassicPreset.Node {
+export class ExpectNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     out: "The value passes through unchanged even when a check fails. A failure badges the node and raises an alert.",
     min: "A value with a unit is checked in the unit it shows. A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",

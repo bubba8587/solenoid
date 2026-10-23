@@ -1,8 +1,8 @@
-import type { GroupListsNode as GroupListsNodeType } from "../rete-nodes";
+import type { GroupListsNode as GroupListsNodeType } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
-import type { GroupByOp } from "../rete-nodes";
-import { GROUP_BY_OP_META } from "../rete-nodes";
+import type { GroupByOp } from "../nodeClasses";
+import { GROUP_BY_OP_META } from "../nodeClasses";
 import { FrameDisplay } from "./FrameDisplay";
 
 // Derived from GROUP_BY_OP_META — the table the search rows read too.

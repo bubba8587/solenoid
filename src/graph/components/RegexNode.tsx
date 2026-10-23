@@ -1,9 +1,9 @@
-import type { RegexNode as RegexNodeType } from "../rete-nodes";
-import { REGEX_OP_META } from "../rete-nodes";
+import type { RegexNode as RegexNodeType } from "../nodeClasses";
+import { REGEX_OP_META } from "../nodeClasses";
 import { InlineInputs, useDraftCommit } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { processGraph } from "../process";
-import type { RegexOp } from "../rete-nodes";
+import type { RegexOp } from "../nodeClasses";
 import { stopDragStart } from "../coarse";
 
 // Derived from REGEX_OP_META — the table the search rows read too.

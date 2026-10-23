@@ -1,6 +1,6 @@
 // [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
+import type { SvgPickerNode as SvgPickerNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { resolveLayer, elementName, sourceHasLayer } from "../svgLayer";

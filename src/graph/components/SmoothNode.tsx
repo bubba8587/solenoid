@@ -1,5 +1,5 @@
-import { SMOOTH_OP_META } from "../rete-nodes";
-import type { SmoothNode as SmoothNodeType, SmoothOp } from "../rete-nodes";
+import { SMOOTH_OP_META } from "../nodeClasses";
+import type { SmoothNode as SmoothNodeType, SmoothOp } from "../nodeClasses";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";

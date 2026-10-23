@@ -1,7 +1,8 @@
 // [[A1]], [[B3]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { ClassicPreset, NodeEditor } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { processGraph, setEditorRefs, requestRecalc, graphSettled } from "../../src/graph/process";
@@ -14,17 +15,17 @@ import { calcModeStore } from "../../src/graph/calcModeStore";
 // real singleton processGraph with a stub view whose render step re-enters — exactly what a
 // node's mount/render effect (the Conduit) does under a synchronous render.
 
-class Src extends ClassicPreset.Node {
+class Src extends GraphNode {
   constructor(label: string) {
     super(label);
-    this.addOutput("out", new ClassicPreset.Output(new ClassicPreset.Socket("s")));
+    this.addOutput("out", new GraphOutput(new GraphSocket("s")));
   }
   data() { return { out: 1 }; }
 }
 
 describe("processGraph is single-flight (a mid-pass recompute coalesces, never nests)", () => {
   it("graphSettled waits out the rerun a coalesced call queued", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
@@ -53,7 +54,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
   });
 
   it("a recompute fired during the render phase runs no nested pass, and settles as one rerun", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
@@ -88,7 +89,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
   });
 
   it("a coalesced FORCED call (F9 during a pass) stays forced — manual mode's gate must not swallow the rerun", async () => {
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
@@ -120,7 +121,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     class Probe extends Src {
       data() { seen.push(calcModeStore.sketchActive()); return { out: 1 }; }
     }
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Probe("p") as unknown as Schemes["Node"]);
@@ -144,7 +145,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
   });
 
   it("an edit inside a composite made during a pass still marks the composite on the rerun", async () => {
-    const inner = new NodeEditor<Schemes>();
+    const inner = new GraphEditor<Schemes>();
     const innerNode = new Src("inner");
     await inner.addNode(innerNode as unknown as Schemes["Node"]);
     class Owner extends Src {
@@ -152,7 +153,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
       marks = 0;
       markInternalEdit() { this.marks++; }
     }
-    const editor = new NodeEditor<Schemes>();
+    const editor = new GraphEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     const owner = new Owner("owner");

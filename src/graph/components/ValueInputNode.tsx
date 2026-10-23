@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[C95]] commitOnEnter
 import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
-import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../rete-nodes";
+import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../nodeClasses";
 import { NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS, type FormatStyleId, type TextCase, type TextAlign, type LogicalStyle, type DecimalMode, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor, groupingApplies, negativeApplies, scaleApplies } from "../formatModel";
 import { processGraph } from "../process";

@@ -1,6 +1,6 @@
 // [[A1]], [[C23]] calcModes, [[D46]] freezeVolatilePerCalc (getRecalcGen)
 import type { View } from "./view";
-import type { NodeEditor } from "rete";
+import type { GraphEditor } from "./graphEditor";
 import type { DataflowEngine } from "./dataflowEngine";
 import { cableValueStore } from "./cableValueStore";
 import { seedLoopErrors } from "./graphCompute";
@@ -12,12 +12,12 @@ import { clearCollectMemo } from "./frameBackend";
 import { resolveTrigModes } from "./trigMode";
 import type { Schemes } from "./schemes";
 
-let _editor: NodeEditor<Schemes> | null = null;
+let _editor: GraphEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
 let _view: View | null = null;
 
 export function setEditorRefs(
-  editor: NodeEditor<Schemes>,
+  editor: GraphEditor<Schemes>,
   engine: DataflowEngine<Schemes>,
   view: View,
 ) {
@@ -183,18 +183,18 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
 }
 
 // Duck-typed on `internalEditor`: composite.ts imports this module, so importing it would cycle.
-function findCompositeOwner(editor: NodeEditor<Schemes>, innerId: string): string | null {
+function findCompositeOwner(editor: GraphEditor<Schemes>, innerId: string): string | null {
   for (const n of editor.getNodes()) {
-    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
     if (!inner) continue;
     if (inner.getNode(innerId) || findCompositeOwner(inner, innerId)) return n.id;
   }
   return null;
 }
 
-function markInternalEditChain(editor: NodeEditor<Schemes>, innerId: string): boolean {
+function markInternalEditChain(editor: GraphEditor<Schemes>, innerId: string): boolean {
   for (const n of editor.getNodes()) {
-    const c = n as unknown as { internalEditor?: NodeEditor<Schemes>; markInternalEdit?: () => void };
+    const c = n as unknown as { internalEditor?: GraphEditor<Schemes>; markInternalEdit?: () => void };
     if (!c.internalEditor) continue;
     if (c.internalEditor.getNode(innerId) || markInternalEditChain(c.internalEditor, innerId)) {
       c.markInternalEdit?.();

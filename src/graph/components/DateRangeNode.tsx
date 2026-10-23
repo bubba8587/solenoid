@@ -1,4 +1,4 @@
-import type { DateRangeNode as DateRangeNodeType } from "../rete-nodes";
+import type { DateRangeNode as DateRangeNodeType } from "../nodeClasses";
 import { serialToJsDate, jsDateToSerial } from "../nodes/date";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";

@@ -1,4 +1,4 @@
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, type CellResult, type BroadcastResult } from "./shared";
 import type { SolError } from "../errorValue";
 import type { Cx } from "../cxValue";
@@ -6,7 +6,7 @@ import { nodeOnCore } from "../nodeOnCore";
 
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
-export class ComplexFromNode extends ClassicPreset.Node {
+export class ComplexFromNode extends GraphNode {
   label: string;
   cachedResult: CellResult<Cx> = null;
   literals: Record<string, number> = { re: 0, im: 0 };
@@ -25,7 +25,7 @@ export class ComplexFromNode extends ClassicPreset.Node {
   }
 }
 
-export class ComplexUnpackNode extends ClassicPreset.Node {
+export class ComplexUnpackNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     arg: "The angle is in radians, between −π and π.",
   };
@@ -76,7 +76,7 @@ export const COMPLEX_UNARY_OP_META: Record<ComplexUnaryOp, { label: string; desc
   csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: `IMCSCH`." },
 };
 
-export class ComplexUnaryNode extends ClassicPreset.Node {
+export class ComplexUnaryNode extends GraphNode {
   label: string;
   op: ComplexUnaryOp;
   cachedResult: CellResult<Cx> = null;
@@ -104,7 +104,7 @@ export const COMPLEX_BINARY_OP_META: Record<ComplexBinaryOp, { label: string; de
   div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: `IMDIV`." },
 };
 
-export class ComplexBinaryNode extends ClassicPreset.Node {
+export class ComplexBinaryNode extends GraphNode {
   label: string;
   op: ComplexBinaryOp;
   cachedResult: CellResult<Cx> = null;
@@ -124,7 +124,7 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
   }
 }
 
-export class ComplexPowerNode extends ClassicPreset.Node {
+export class ComplexPowerNode extends GraphNode {
   label: string;
   cachedResult: CellResult<Cx> = null;
   literals: Record<string, number> = { n: 2 };
@@ -143,7 +143,7 @@ export class ComplexPowerNode extends ClassicPreset.Node {
   }
 }
 
-export class PolyRootsNode extends ClassicPreset.Node {
+export class PolyRootsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     coeffs: "Highest degree first: 1, −6, 11, −6 is x³ − 6x² + 11x − 6. Leading zeros are ignored.",
     roots: "All roots as complex numbers, conjugate pairs included.",
@@ -167,7 +167,7 @@ export class PolyRootsNode extends ClassicPreset.Node {
   }
 }
 
-export class QuadraticRootsNode extends ClassicPreset.Node {
+export class QuadraticRootsNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { a: 1, b: 0, c: 1 };
   cachedX1: CellResult<Cx> = null;

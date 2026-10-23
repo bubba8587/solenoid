@@ -15,7 +15,7 @@ import type {
   HolidaysNode as HolidaysNodeType,
   FxNode as FxNodeType,
   VaultFolderNode as VaultFolderNodeType,
-} from "../rete-nodes";
+} from "../nodeClasses";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
@@ -45,7 +45,7 @@ import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotes
 import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getOwningView } from "../activeGraph";
-import { FX_MODE_META, type FxMode } from "../rete-nodes";
+import { FX_MODE_META, type FxMode } from "../nodeClasses";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {

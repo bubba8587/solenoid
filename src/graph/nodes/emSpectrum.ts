@@ -1,11 +1,11 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl
 
-import { ClassicPreset } from "rete";
+import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut, strOut } from "./shared";
 import { type SolError } from "../errorValue";
 
-export class EmSpectrumNode extends ClassicPreset.Node {
+export class EmSpectrumNode extends GraphNode {
   label: string;
   literals: Record<string, number> = { freq: 5e14 };
   cachedBand: string | SolError | null = null;

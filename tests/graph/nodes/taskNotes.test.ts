@@ -1,6 +1,6 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
-import { TaskNotesNode } from "../../../src/graph/rete-nodes";
+import { TaskNotesNode } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { isCubeValue, isFrameValue } from "../../../src/graph/frame";
 

@@ -1,4 +1,4 @@
-import type { RleNode } from "../rete-nodes";
+import type { RleNode } from "../nodeClasses";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

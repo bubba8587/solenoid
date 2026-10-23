@@ -1,5 +1,5 @@
 // [[C17]] shareImpl
-// Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag rete into the formula path).
+// Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag the graph model into the formula path).
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 

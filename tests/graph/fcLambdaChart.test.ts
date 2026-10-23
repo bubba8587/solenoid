@@ -5,7 +5,8 @@
 // not duck-typed mocks — so a change to the FC or resolver that drops the new
 // fields fails here.
 import { describe, it, expect } from "vitest";
-import { NodeEditor, ClassicPreset } from "rete";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { LambdaNode, isLambdaValue } from "../../src/graph/nodes/lambda";
 import { DisplayNode } from "../../src/graph/nodes/display";
@@ -14,10 +15,10 @@ import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { formatAnnotationStore } from "../../src/graph/formatAnnotationStore";
 import { insertFcInline, removeFcInline } from "../../src/graph/fcDocking";
 
-type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
-const connect = async (e: AnyEditor, s: ClassicPreset.Node, sOut: string, t: ClassicPreset.Node, tIn: string) =>
-  e.addConnection(new ClassicPreset.Connection(s as never, sOut, t as never, tIn) as never);
+const connect = async (e: AnyEditor, s: GraphNode, sOut: string, t: GraphNode, tIn: string) =>
+  e.addConnection(new GraphConnection(s as never, sOut, t as never, tIn) as never);
 
 // DisplayNode's resolution order, verbatim (DisplayNode.tsx).
 function displayAnn(editor: AnyEditor, displayId: string) {
@@ -31,13 +32,13 @@ function displayAnn(editor: AnyEditor, displayId: string) {
 
 describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
   it("Lambda → FC → Display: the Display resolves the FC's lambdaView", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const lam = new LambdaNode();
     const fc = new FormatControllerNode();
     const disp = new DisplayNode();
     for (const n of [lam, fc, disp]) await editor.addNode(n as never);
-    await connect(editor, lam as unknown as ClassicPreset.Node, "result", fc, "in");
-    await connect(editor, fc, "out", disp as unknown as ClassicPreset.Node, "in");
+    await connect(editor, lam as unknown as GraphNode, "result", fc, "in");
+    await connect(editor, fc, "out", disp as unknown as GraphNode, "in");
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("lambda");
     fc.lambdaView = "katex";
@@ -52,13 +53,13 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
   });
 
   it("Display → trailing FC: the Display resolves lambdaView from AHEAD (downstreamAnnotation path)", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const lam = new LambdaNode();
     const disp = new DisplayNode();
     const fc = new FormatControllerNode();
     for (const n of [lam, disp, fc]) await editor.addNode(n as never);
-    await connect(editor, lam as unknown as ClassicPreset.Node, "result", disp as unknown as ClassicPreset.Node, "in");
-    await connect(editor, disp as unknown as ClassicPreset.Node, "out", fc, "in");
+    await connect(editor, lam as unknown as GraphNode, "result", disp as unknown as GraphNode, "in");
+    await connect(editor, disp as unknown as GraphNode, "out", fc, "in");
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("lambda");
     fc.lambdaView = "mono";
@@ -71,12 +72,12 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
   });
 
   it("the REAL attach flow — Display wired first, FC right-click-attached to the λ output (dockSelf + insertFcInline)", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const lam = new LambdaNode();
     const disp = new DisplayNode();
     for (const n of [lam, disp]) await editor.addNode(n as never);
     // The pre-existing cable the user already had.
-    await connect(editor, lam as unknown as ClassicPreset.Node, "result", disp as unknown as ClassicPreset.Node, "in");
+    await connect(editor, lam as unknown as GraphNode, "result", disp as unknown as GraphNode, "in");
 
     // attachFormatController's sequence (canvasActions.ts): construct docked,
     // add, dockSelf (adopts the type + refreshes), splice inline.
@@ -111,15 +112,15 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
   });
 
   it("un-splicing a hand-wired (undocked) FC bridges around it instead of eating the downstream cable", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const lam = new LambdaNode();
     const d1 = new DisplayNode();
     const d2 = new DisplayNode();
     const fc = new FormatControllerNode(); // hand-wired inline, never docked
     for (const n of [lam, d1, d2, fc]) await editor.addNode(n as never);
-    await connect(editor, lam as unknown as ClassicPreset.Node, "result", d1 as unknown as ClassicPreset.Node, "in");
-    await connect(editor, d1 as unknown as ClassicPreset.Node, "out", fc, "in");
-    await connect(editor, fc, "out", d2 as unknown as ClassicPreset.Node, "in");
+    await connect(editor, lam as unknown as GraphNode, "result", d1 as unknown as GraphNode, "in");
+    await connect(editor, d1 as unknown as GraphNode, "out", fc, "in");
+    await connect(editor, fc, "out", d2 as unknown as GraphNode, "in");
 
     // The drag-dock re-home un-splices FIRST (Canvas nodedragged) — with no host
     // this used to delete the fc→d2 cable outright and reconnect nothing.
@@ -131,13 +132,13 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
   });
 
   it("Chart → FC → Display: the Display resolves the FC's chartFontScale", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
+    const editor = new GraphEditor() as unknown as AnyEditor;
     const chart = new ChartNode();
     const fc = new FormatControllerNode();
     const disp = new DisplayNode();
     for (const n of [chart, fc, disp]) await editor.addNode(n as never);
-    await connect(editor, chart as unknown as ClassicPreset.Node, "chart", fc, "in");
-    await connect(editor, fc, "out", disp as unknown as ClassicPreset.Node, "in");
+    await connect(editor, chart as unknown as GraphNode, "chart", fc, "in");
+    await connect(editor, fc, "out", disp as unknown as GraphNode, "in");
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("chart");
     fc.chartFontScale = 1.5;
