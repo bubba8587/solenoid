@@ -813,12 +813,16 @@ export class PivotNode extends ClassicPreset.Node {
         const read = isSolError(cols) ? cols : { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
         out = this.body({ ...inputs, schema: [schema], columns: [read] });
       }
-      if (isFrameRef(out.frame)) return emitFrame(this, beginPass(this), relinked(out.frame, [raw]));
+      if (isFrameRef(out.frame)) {
+        this.pruneTo(out);
+        return emitFrame(this, beginPass(this), relinked(out.frame, [raw]));
+      }
       return this.adopt(out);
     })() as unknown as { frame: FrameValue | SolError | null };
   }
 
   private adopt(out: PivotAnswer): { frame: FrameValue | SolError | null } {
+    this.pruneTo(out);
     const wire = this.pivotWire;
     this.pivotWire = undefined;
     if (wire !== undefined && isFrameValue(out.frame)) attachPivotLayout(out.frame, wire);
@@ -853,52 +857,55 @@ export class PivotNode extends ClassicPreset.Node {
     return this.computePivot(f, f, inputs);
   }
 
+  /** The pivot reads its saved fields as the shell prunes them to the frame's columns (`fieldNames`). */
   private computePivot(f: FrameValue, source: FrameInput, inputs: Inputs): PivotAnswer {
     const valid = new Set(f.columns.map((c) => c.name));
-    this.pruneFieldsTo(valid);
+    const answer = (frame: PivotAnswer["frame"]): PivotAnswer => ({ frame, fieldNames: [...valid] });
     const rowRaw = readColumnList(inputs.rowFields as string[][] | undefined);
     const colRaw = readColumnList(inputs.colFields as string[][] | undefined);
     const valRaw = readColumnList(inputs.values as string[][] | undefined);
-    if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return answer(null); }
     const rowFields = rowRaw.filter((n) => valid.has(n));
     const colFields = colRaw.filter((n) => valid.has(n));
     const values = valRaw.filter((n) => valid.has(n));
     if (values.length === 0) {
-      if (isFrameRef(source)) return { frame: { __frameRef: source.__frameRef, __plan: [...source.__plan, { kind: "drop", columns: [] }] } };
-      this.cachedResult = f; return { frame: f };
+      if (isFrameRef(source)) return answer({ __frameRef: source.__frameRef, __plan: [...source.__plan, { kind: "drop", columns: [] }] });
+      this.cachedResult = f; return answer(f);
     }
     const funcs = values.map((name) => this.funcs[name] ?? this.agg);
     const spec: PivotSpec = {
       rowFields, colFields, values, funcs,
       rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
-      filter: this.combineFilter(f, (inputs.filter as (boolean | null)[][] | undefined)?.[0]),
-      details: this.detailFields,
+      filter: this.combineFilter(f, valid, (inputs.filter as (boolean | null)[][] | undefined)?.[0]),
+      details: this.detailFields.filter((n) => valid.has(n)),
     };
     const out = runVerb(() => pivotOnCore(f, spec) ?? { frame: pivotFrame(f, spec), layout: undefined });
-    if (isSolError(out)) { this.cachedResult = out; return { frame: out }; }
+    if (isSolError(out)) { this.cachedResult = out; return answer(out); }
     if (out.layout !== undefined) this.pivotWire = out.layout;
     this.cachedResult = out.frame;
-    return { frame: out.frame };
+    return answer(out.frame);
   }
 
-  /** Saved field names the input no longer has are dropped; a changed field is a new object, so the card sees it. */
+  private pruneTo(out: PivotAnswer): void {
+    if (out.fieldNames) this.pruneFieldsTo(new Set(out.fieldNames));
+  }
+
+  /** Saved field names the input no longer has are dropped. */
   private pruneFieldsTo(valid: Set<string>): void {
-    let lits: Record<string, string> | null = null;
     for (const key of ["rowFields", "colFields", "values"] as const) {
       const cur = this.stringLiterals[key] ?? "";
       if (cur.trim() === "") continue;
       const next = listLiteralText(csvList(cur).filter((n) => n !== "" && valid.has(n)));
-      if (next !== cur) (lits ??= { ...this.stringLiterals })[key] = next;
+      if (next !== cur) this.stringLiterals[key] = next;
     }
-    if (lits) this.stringLiterals = lits;
-    if (Object.keys(this.funcs).some((k) => !valid.has(k))) this.funcs = Object.fromEntries(Object.entries(this.funcs).filter(([k]) => valid.has(k)));
-    if (Object.keys(this.filterExclude).some((k) => !valid.has(k))) this.filterExclude = Object.fromEntries(Object.entries(this.filterExclude).filter(([k]) => valid.has(k)));
+    for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];
+    for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
     if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
   }
 
-  private combineFilter(f: FrameValue, wired?: (boolean | null)[]): (boolean | null)[] | undefined {
-    const active = Object.entries(this.filterExclude).filter(([, ks]) => ks && ks.length > 0);
+  private combineFilter(f: FrameValue, valid: Set<string>, wired?: (boolean | null)[]): (boolean | null)[] | undefined {
+    const active = Object.entries(this.filterExclude).filter(([name, ks]) => valid.has(name) && ks && ks.length > 0);
     if (active.length === 0) return wired;
     const sets = active.map(([name, ks]) => ({ keys: ks, col: f.columns.find((c) => c.name === name) }));
     const n = frameRowCount(f);
@@ -914,8 +921,9 @@ export class PivotNode extends ClassicPreset.Node {
   }
 }
 
-/** What a Pivot body answers: the frame (a plan passing a ref on), or the columns of a ref it reads first. */
-type PivotAnswer = { frame?: FrameRef | FrameValue | SolError | null; read?: string[] };
+/** What a Pivot body answers: the frame (a plan passing a ref on) and the frame's column names, to which the shell
+ *  prunes the saved fields; or the columns of a ref it reads first. */
+type PivotAnswer = { frame?: FrameRef | FrameValue | SolError | null; read?: string[]; fieldNames?: string[] };
 
 export class UnpivotNode extends ClassicPreset.Node {
   label: string;
