@@ -19,7 +19,7 @@ import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMod
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
 
-export type SlicerCell = number | string;
+export type SlicerCell = number | string | boolean;
 
 export class CableSwitchNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {

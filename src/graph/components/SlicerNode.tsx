@@ -10,6 +10,7 @@ import "./SlicerNode.css";
 import { stopDragStart } from "../coarse";
 
 function label(v: SlicerCell): string {
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   return typeof v === "number" ? formatScalar(v) : v;
 }
 
