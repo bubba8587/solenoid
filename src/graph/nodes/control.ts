@@ -1,11 +1,12 @@
 // [[D54]], [[B11]] maximalMerge
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
-import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
+import { isFrameValue, getColumn, frameRowCount, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
 import { runFrameUnary, collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
 import { beginPass, passFrame, emitFrame } from "./frame";
 import type { FilterCond } from "../frameVerbs";
@@ -14,9 +15,8 @@ import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
-import { applyFcUnit } from "../unitBridge";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
 import { compareStrings } from "../stringOrder";
@@ -96,22 +96,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const keys = Object.keys(this.inputs);
-    if (this.multiSelect) {
-      const chosen = keys.filter((k) => this.selectedKeys.includes(k));
-      if (chosen.length === 0) { this.cachedValue = null; return { out: null }; }
-      const cube = cubeFromColumns([
-        { name: "name", cells: chosen.map((k) => this.titleFor(k)) },
-        { name: "value", cells: chosen.map((k) => (inputs[k]?.[0] ?? null) as CubeCell) },
-      ]);
-      this.cachedValue = cube;
-      return { out: cube };
-    }
-    const idx = keys.length ? clamp(this.activeIndex, 0, keys.length - 1) : 0;
-    const key = keys[idx];
-    const v = key ? (inputs[key]?.[0] ?? null) : null;
-    this.cachedValue = v ?? null;
-    return { out: v ?? null };
+    return nodeOnCore(this, inputs) as { out: unknown };
   }
 }
 
@@ -130,8 +115,8 @@ export class AngleDialNode extends ClassicPreset.Node {
     this.addOutput("value", new ClassicPreset.Output(numberSocket, "Degrees"));
   }
 
-  data() {
-    return { value: this.value };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { value: number };
   }
 }
 
@@ -322,28 +307,20 @@ export class ValueInputNode extends ClassicPreset.Node {
     };
   }
 
+  /** A date reads here, where a relative phrase alerts when it re-resolves to a new day; every other type is `body`. */
   data(): { value: unknown } {
-    if (this.op !== "date") this.lastRelative = null;
-    this.cachedValue = this.compute();
+    if (this.op !== "date") {
+      this.lastRelative = null;
+      return this.body();
+    }
+    const r = resolveDateText(this, this.value, this.lastRelative);
+    this.lastRelative = r.last;
+    this.cachedValue = r.result;
     return { value: this.cachedValue };
   }
 
-  private compute(): unknown {
-    switch (this.op) {
-      case "string":  return this.value;
-      case "logical": return /^true$/i.test(this.value.trim());
-      case "date": {
-        const r = resolveDateText(this, this.value, this.lastRelative);
-        this.lastRelative = r.last;
-        return r.result;
-      }
-      case "number": {
-        const t = this.value.trim();
-        const n = t === "" ? 0 : Number(t);
-        if (!Number.isFinite(n)) return solError("#VALUE!", `"${t}" isn't a number`);
-        return applyFcUnit(n, this.unit, this.customUnit);
-      }
-    }
+  body(inputs: Record<string, unknown[] | undefined> = {}): { value: unknown } {
+    return nodeOnCore(this, inputs) as { value: unknown };
   }
 }
 
@@ -362,11 +339,8 @@ export class DateRangeNode extends ClassicPreset.Node {
     this.addOutput("end",   dateOut("End"));
   }
 
-  data(): { start: number | null; end: number | null } {
-    let start = this.literals.start ?? 0;
-    let end = this.literals.end ?? 0;
-    if (start > 0 && end > 0 && start > end) [start, end] = [end, start];
-    return { start: start > 0 ? start : null, end: end > 0 ? end : null };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { start: number | null; end: number | null };
   }
 }
 
@@ -389,8 +363,8 @@ export class XYPadNode extends ClassicPreset.Node {
     this.addOutput("y", numOut("Y"));
   }
 
-  data(): { x: number; y: number } {
-    return { x: this.literals.fx ?? 0.5, y: this.literals.fy ?? 0.5 };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { x: number; y: number };
   }
 }
 
@@ -536,10 +510,8 @@ export class PointPlotterNode extends ClassicPreset.Node {
     return shapeOfFrameValue(pointsToFrame([]));
   }
 
-  data(): { result: FrameValue } {
-    const frame = pointsToFrame(parsePoints(this.pointsText));
-    this.cachedResult = frame;
-    return { result: frame };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: FrameValue };
   }
 }
 
@@ -632,12 +604,10 @@ export class CurveNode extends ClassicPreset.Node {
     return shapeOfFrameValue(curveToFrame([], []));
   }
 
-  data(): { result: FrameValue } {
+  /** The sample count is saved clamped, so it is written here before the body reads it. */
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
     this.literals.samples = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
-    const { values, xs } = sampleCurve(this.pointsText, this.literals.xmin ?? 0, this.literals.xmax ?? 1, this.literals.samples);
-    const frame = curveToFrame(xs, values);
-    this.cachedResult = frame;
-    return { result: frame };
+    return nodeOnCore(this, inputs) as { result: FrameValue };
   }
 }
 
@@ -683,11 +653,10 @@ export class GridPainterNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Matrix"));
   }
 
-  data(): { result: (number | null)[][] } {
-    const rows = gridPainterDim(this.literals.rows ?? 6);
-    const cols = gridPainterDim(this.literals.cols ?? 8);
-    this.literals.rows = rows;
-    this.literals.cols = cols;
-    return { result: parsePaintGrid(this.tableText, rows, cols) };
+  /** The size is saved clamped, so it is written here before the body reads it. */
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    this.literals.rows = gridPainterDim(this.literals.rows ?? 6);
+    this.literals.cols = gridPainterDim(this.literals.cols ?? 8);
+    return nodeOnCore(this, inputs) as { result: (number | null)[][] };
   }
 }

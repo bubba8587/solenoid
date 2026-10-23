@@ -24,16 +24,16 @@ import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue"
 import { logicalOrTypeError } from "../valueKinds";
 import {
   colTypeForSocket,
-  splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
+  getColumn, addColumn, frameRowCount, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
+  formatFrameCell, isCubeValue, isFrameValue, inferColumn,
   cubeRowCount, frameFromRows, cubeFromColumns,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
 import {
   pivotFrame,
-  decisionSensitivity, flipPoints, allocateFrame,
-  promoteHeaders, demoteHeaders,
+  allocateFrame,
+  demoteHeaders,
   reconcileFrames,
   VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
   sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
@@ -82,13 +82,6 @@ function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
   return widenToFrame(v);
-}
-
-function cubeToScalarFrame(cube: CubeValue): FrameValue {
-  const columns = cube.columns
-    .filter((c) => c.cells.every((cell) => !Array.isArray(cell) && !isFrameValue(cell) && !isCubeValue(cell)))
-    .map((c) => inferColumn(c.name, c.cells));
-  return { __frame: true, columns };
 }
 
 /** What the unit and date rules read of a row table: each column's name, type and unit. */
@@ -1422,28 +1415,9 @@ export class HeadersNode extends ClassicPreset.Node {
     return shapeOfFrameValue(demoteHeaders(emptyFrameOf(input)));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => headersOnCore(f, this.action === "promote") ?? (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
-}
-
-/** Promote or demote headers on the core; a promoted column keeps its unit and format, and one carrying source text
- *  stays on the TS, which slices it. */
-function headersOnCore(f: FrameValue, promote: boolean): FrameValue | null {
-  if (promote && f.columns.some((c) => c.raw)) return null;
-  const r = frameFnOnCore(promote ? "promoteHeaders" : "demoteHeaders", [f]);
-  if (!r || !("frame" in r)) return null;
-  if (!promote || r.frame.columns.length !== f.columns.length) return r.frame;
-  return { __frame: true, columns: r.frame.columns.map((c, i) => ({ ...f.columns[i], name: c.name, values: c.values })) };
-}
-
-/** A frame function's answer on the core, where it answers a frame that needs nothing carried over. */
-function frameOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []): FrameValue | null {
-  const r = frameFnOnCore(name, frames, args);
-  return r && "frame" in r ? r.frame : null;
 }
 
 export type BlankRowMode = "all" | "any";
@@ -1601,14 +1575,8 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     ] };
   }
 
-  data(inputs: { scores?: (FrameValue | null)[]; scenarios?: (FrameValue | null)[] }) {
-    const scores = inputs.scores?.[0] ?? null;
-    const scenarios = inputs.scenarios?.[0] ?? null;
-    if (!scores || (!scenarios && this.mode === "scenarios")) { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = runVerb(() => (this.mode === "flips"
-      ? frameOnCore("flipPoints", scenarios ? [scores, scenarios] : [scores], [this.normalize]) ?? flipPoints(scores, scenarios, this.normalize)
-      : decisionSensitivity(scores, scenarios!, this.normalize)));
-    return { cube: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | FrameValue | SolError | null };
   }
 }
 
@@ -1798,8 +1766,6 @@ function payoffColumns(f: FrameValue): { balCol?: FrameColumn; aprCol?: FrameCol
   return { balCol, aprCol, minCol };
 }
 
-const moneyOf = (c: FrameColumn | undefined) => ({ ...(c?.unit ? { unit: c.unit } : {}), ...(c?.format ? { format: c.format } : {}) });
-
 export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
   const nameCol = f.columns.find((c) => c.type === "string");
   const { balCol, aprCol, minCol } = payoffColumns(f);
@@ -1899,50 +1865,17 @@ export class SettleNode extends ClassicPreset.Node {
     return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
   }
 
-  data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
-    const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
-    const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
-      if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
-      this.cachedResult = r.transfers; this.cachedNet = r.net;
-      return { transfers: r.transfers, net: r.net };
-    };
-    // A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a coercion #VALUE!.
-    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
-    if (this.mode === "transactions") {
-      const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
-      if (!cube) return none();
-      return emit(runVerb(() => settleLedgerOnCore(cube) ?? settleLedgerCube(cube)));
-    }
-    const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
-    if (!f) return none();
-    return emit(runVerb(() => settleOnCore(f, this.split) ?? settleFrame(f, this.split)));
+  /** A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a
+   *  coercion #VALUE!; the canvas says which, so it is read here and `body` settles. */
+  data(inputs: Record<string, unknown[] | undefined>) {
+    if (!this.inGhosted()) return this.body(inputs);
+    this.cachedResult = null; this.cachedNet = null;
+    return { transfers: null, net: null };
   }
-}
 
-/** A ledger settled on the core over its scalar cells; a column of unit cells crosses as their numbers, named so they
- *  read as amounts only. A list or a column mixing units with other cells stays with the TS. */
-function settleLedgerOnCore(cube: CubeValue): { transfers: FrameValue; net: FrameValue } | null {
-  const units: string[] = [];
-  const columns: FrameColumn[] = [];
-  for (const c of cube.columns) {
-    const unit = c.cells.some(isUnitCell);
-    if (unit) {
-      if (!c.cells.every((v) => v == null || isUnitCell(v))) return null;
-      units.push(c.name);
-    }
-    const values: FrameCell[] = [];
-    for (const v of c.cells) {
-      if (Array.isArray(v)) return null;
-      values.push(isUnitCell(v) ? v.value : isFrameValue(v) || isCubeValue(v) ? null : (v as FrameCell));
-    }
-    columns.push({ name: c.name, type: "string", values });
+  body(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { transfers: FrameValue | SolError | null; net: FrameValue | SolError | null };
   }
-  const out = frameOnCore("settleLedger", [{ __frame: true, columns }], [units]);
-  if (!out || out.columns.length !== 8) return null;
-  const unit = ledgerMoney(ledgerAmountColumn(cube)?.cells ?? []);
-  const money = unit ? { unit } : {};
-  const cols = out.columns.map((c, k) => (k === 2 || k > 3 ? { ...c, ...money } : c));
-  return { transfers: { __frame: true, columns: cols.slice(0, 3) }, net: { __frame: true, columns: cols.slice(3) } };
 }
 
 const ledgerNorm = (s: string) => s.trim().toLowerCase();
@@ -2029,15 +1962,6 @@ function settleColumns(f: FrameValue): { shareCol?: FrameColumn; paidCol?: Frame
   const nums = f.columns.filter((c) => c.type === "number");
   const shareCol = byName("share", "weight", "shares");
   return { shareCol, paidCol: byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol) };
-}
-
-/** Totals settled on the core: it answers the transfers and the net table side by side; the amounts carry Paid's money. */
-function settleOnCore(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } | null {
-  const out = frameOnCore("settleFrame", [f], [split]);
-  if (!out || out.columns.length !== 8) return null;
-  const money = moneyOf(settleColumns(f).paidCol);
-  const cols = out.columns.map((c, k) => (k === 2 || k > 3 ? { ...c, ...money } : c));
-  return { transfers: { __frame: true, columns: cols.slice(0, 3) }, net: { __frame: true, columns: cols.slice(3) } };
 }
 
 export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
@@ -2258,34 +2182,8 @@ export class SplitFrameNode extends ClassicPreset.Node {
     if (out) out.socket = splitMatrixOutput(next).socket;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedMatrix = null; this.cachedHeaders = null; this.cachedMixed = false; return { matrix: null, headers: null }; }
-    const cols = this.colType === "all" ? f.columns : f.columns.filter((c) => c.type === this.colType);
-    const headers = cols.map((c) => c.name);
-
-    if (this.colType === "string") {
-      const rows = frameRowCount({ __frame: true, columns: cols });
-      const matrix: (number | string)[][] | null = cols.length
-        ? Array.from({ length: rows }, (_, i) =>
-            cols.map((c) => {
-              const v = c.values[i];
-              return typeof v === "string" ? v : isSolError(v) ? v.code : v == null ? "" : String(v);
-            }))
-        : null;
-      this.cachedMatrix = matrix;
-      this.cachedHeaders = headers;
-      this.cachedMixed = false;
-      return { matrix, headers };
-    }
-
-    const sub: FrameValue = { __frame: true, columns: cols };
-    const r = frameFnOnCore("splitFrame", [sub]);
-    const matrix = r && !("frame" in r) ? (r.value as [number[][] | null, string[]])[0] : splitFrame(sub).matrix;
-    this.cachedMatrix = matrix;
-    this.cachedHeaders = headers;
-    this.cachedMixed = frameHasTextColumns(sub);
-    return { matrix, headers };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { matrix: (number | string)[][] | null; headers: string[] | null };
   }
 }
 
@@ -2806,11 +2704,8 @@ export class DescribeNode extends ClassicPreset.Node {
     return ctx.wired("frame") ? shapeOfFrameValue(describeFrame(emptyFrameOf({ columns: [] }))) : null;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => frameOnCore("describeFrame", [f]) ?? describeFrame(f));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
@@ -2844,11 +2739,8 @@ export class CorrMatrixNode extends ClassicPreset.Node {
     return input ? shapeOfFrameValue(correlationMatrix(emptyFrameOf(input), this.method)) : null;
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => frameOnCore("correlationMatrix", [f], [this.method]) ?? correlationMatrix(f, this.method));
-    return { frame: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
 }
 
@@ -2929,20 +2821,6 @@ export function pcaOutputs({ names, rows, kept, total }: ReturnType<typeof numer
   };
 }
 
-/** The core answers Scores, Loadings and Explained side by side; a null value is no fit. */
-function pcaOnCore(f: FrameValue, standardize: boolean): PcaOutputs | null | undefined {
-  const r = frameFnOnCore("pca", [f], [standardize]);
-  if (!r) return undefined;
-  if (!("frame" in r)) return null;
-  const cols = r.frame.columns;
-  const d = (cols.length - 2) / 2;
-  return {
-    scores: { __frame: true, columns: cols.slice(0, d) },
-    loadings: { __frame: true, columns: cols.slice(d, 2 * d + 1) },
-    explained: cols[2 * d + 1].values as number[],
-  };
-}
-
 export class PcaNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
@@ -2967,18 +2845,8 @@ export class PcaNode extends ClassicPreset.Node {
     this.addOutput("explained", numListOut("Explained"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const blank = () => { this.cachedScores = null; this.cachedLoadings = null; this.cachedExplained = null; return { scores: null, loadings: null, explained: null }; };
-    if (!f) return blank();
-    const { names, rows, kept, total } = numericRows(f);
-    if (names.length === 0) { const e = solError("#VALUE!", "PCA needs at least one number column"); this.cachedScores = e; this.cachedLoadings = null; this.cachedExplained = null; return { scores: e, loadings: null, explained: null }; }
-    const r = pcaOnCore(f, this.standardize) ?? pcaOutputs({ names, rows, kept, total }, this.standardize);
-    if (!r) return blank();
-    this.cachedScores = r.scores;
-    this.cachedLoadings = r.loadings;
-    this.cachedExplained = r.explained;
-    return { scores: r.scores, loadings: r.loadings, explained: r.explained };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { scores: FrameValue | SolError | null; loadings: FrameValue | null; explained: number[] | null };
   }
 }
 

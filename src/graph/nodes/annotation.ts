@@ -1,6 +1,6 @@
 // [[C68]]
 import { ClassicPreset } from "rete";
-import { sourceHasLayer } from "../svgLayer";
+import { nodeOnCore } from "../nodeOnCore";
 import { sanitizeSvg } from "../svgSanitize";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
@@ -364,6 +364,10 @@ export class SvgPickerNode extends ClassicPreset.Node {
 
   private cleanSource = "";
 
+  /** The chart's height crosses under its own name: a frozen call leaves the card's layout fields out. */
+  static coreFields = ["chartHeight"];
+  get chartHeight(): number { return this.height; }
+
   /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
   get source(): string {
     const raw = this.stringLiterals.source ?? "";
@@ -374,12 +378,13 @@ export class SvgPickerNode extends ClassicPreset.Node {
     return this.cleanSource;
   }
 
+  /** The markup is scrubbed here (`source`), in the browser; `body` reads it scrubbed. */
   data(): { chart: SvgValue | null; layer: string | null } {
-    const source = this.source;
-    const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
-    const chart: SvgValue | null = source
-      ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
-      : null;
-    return { chart, layer };
+    void this.source;
+    return this.body();
+  }
+
+  body(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { chart: SvgValue | null; layer: string | null };
   }
 }

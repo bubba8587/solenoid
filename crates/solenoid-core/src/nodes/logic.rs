@@ -15,6 +15,7 @@ use std::rc::Rc;
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "ComparisonNode" => comparison(c),
+        "NaNode" => Ok(vec![("result".into(), err(ErrorCode::NotAvailable, "Not available"))]),
         "BetweenNode" => between(c),
         "IsCloseNode" => is_close(c),
         "IfNode" => if_node(c),

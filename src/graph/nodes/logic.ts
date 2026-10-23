@@ -348,9 +348,8 @@ export class NaNode extends ClassicPreset.Node {
     this.addOutput("result", staticTrueAnyOut("N/A"));
   }
 
-  data() {
-    // Must stay a tagged #N/A: only a SolError is catchable by IFERROR and IFNA.
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { result: SolError };
   }
 }
 

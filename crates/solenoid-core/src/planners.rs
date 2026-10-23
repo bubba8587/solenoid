@@ -464,7 +464,7 @@ fn numeric_rows(f: &FrameValue, cols: &[usize]) -> (Vec<Vec<f64>>, Vec<usize>, u
 }
 
 /// `monteCarlo.ts`' `mulberry32`.
-fn mulberry32(seed: u32) -> impl FnMut() -> f64 {
+pub(crate) fn mulberry32(seed: u32) -> impl FnMut() -> f64 {
     let mut a = seed;
     move || {
         a = a.wrapping_add(0x6d2b_79f5);

@@ -1,6 +1,7 @@
 // [[C76]] formulaPackDefault, [[C25]] firstClassUnits
 
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { numOut } from "./shared";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { PHYS_CONSTANTS, type PhysConstOp } from "./physicsConstantsOps";
@@ -18,8 +19,8 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
     this.addOutput("value", numOut("Value"));
   }
 
-  data() {
-    return { value: PHYS_CONSTANTS[this.op].value };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { value: number };
   }
 
   /** A custom suffix, because units like J·s are not Format Controller unit ids. */

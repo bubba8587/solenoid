@@ -87,6 +87,8 @@ pub(crate) fn js_max(a: f64, b: f64) -> f64 {
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
+        "UuidNode" => uuid(c),
+        "PromoNode" => promo(c),
         "TextTransformNode" => {
             let name = match c.field_str("op", "upper") {
                 "lower" => "LOWER",
@@ -863,4 +865,33 @@ fn cast(c: &mut Call) -> Answer {
     }
     c.show("cachedResult", cast_display(&scalar, &target));
     Ok(vec![("result".into(), scalar)])
+}
+
+// ─── UUID and Promo, over what their shells drew ([[D46]] freezeVolatilePerCalc) ─
+
+fn uuid(c: &mut Call) -> Answer {
+    let generated = match c.field("generated").map(super::decode) {
+        Some(V::Str(s)) => V::Str(s),
+        _ => V::Undef,
+    };
+    c.show("cachedText", generated.clone());
+    Ok(vec![("result".into(), generated)])
+}
+
+const PROMO_LINES: [&str; 7] = [
+    "Solenoid: wire it, don't write it. ⚡",
+    "Spreadsheets, but the formulas have shapes now.",
+    "No more =SUM(A1:A8). Just plug it in.",
+    "Every cell wishes it were a node.",
+    "Built with Excel envy and React. 🔌",
+    "If you can chart it, you can wire it.",
+    "Ctrl+Z is a love language.",
+];
+
+fn promo(c: &mut Call) -> Answer {
+    let roll = c.field("roll").and_then(serde_json::Value::as_f64).unwrap_or(f64::NAN);
+    let at = (roll * PROMO_LINES.len() as f64).floor();
+    let line = if at >= 0.0 && at < PROMO_LINES.len() as f64 { V::str(PROMO_LINES[at as usize]) } else { V::Undef };
+    c.show("cachedText", line.clone());
+    Ok(vec![("value".into(), line)])
 }

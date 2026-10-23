@@ -43,7 +43,8 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
   for (const key of INIT_FIELD_ORDER) {
-    if (key in n && n[key] !== undefined) init[key] = n[key];
+    // A method is no field: a lazy verb's `body()` shares the name of a Note's saved `body`.
+    if (key in n && n[key] !== undefined && typeof n[key] !== "function") init[key] = n[key];
   }
   if (n.funcs && typeof n.funcs === "object") {
     init.funcs = { ...(n.funcs as object) };

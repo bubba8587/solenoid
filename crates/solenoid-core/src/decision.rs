@@ -102,7 +102,7 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
     }
 }
 
-fn round4(n: f64) -> f64 {
+pub(crate) fn round4(n: f64) -> f64 {
     let r = math_round(n * 1e4) / 1e4;
     if r == 0.0 { 0.0 } else { r }
 }
@@ -135,7 +135,7 @@ pub(crate) fn criterion_row_index(f: &FrameValue) -> HashMap<String, usize> {
     m
 }
 
-fn num_or_null(v: &FrameCell) -> Option<f64> {
+pub(crate) fn num_or_null(v: &FrameCell) -> Option<f64> {
     match v {
         FrameCell::Bool(b) => Some(f64::from(u8::from(*b))),
         v => finite(v),
@@ -154,7 +154,7 @@ fn parse_normalize(v: &FrameCell) -> Option<Normalize> {
     }
 }
 
-fn norm_overrides(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> HashMap<String, Normalize> {
+pub(crate) fn norm_overrides(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> HashMap<String, Normalize> {
     let crit = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let mut out = HashMap::new();
     let Some(norm) = f.columns.iter().enumerate().find(|(i, c)| Some(*i) != crit && crit_key(&c.name) == "norm").map(|(_, c)| c) else {
@@ -170,11 +170,11 @@ fn norm_overrides(f: &FrameValue, criteria: &[String], rows: &HashMap<String, us
 
 #[derive(Clone, Copy)]
 pub struct Bound {
-    at_least: Option<f64>,
-    at_most: Option<f64>,
+    pub(crate) at_least: Option<f64>,
+    pub(crate) at_most: Option<f64>,
 }
 
-fn bounds_from(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> Res<Option<Vec<Bound>>> {
+pub(crate) fn bounds_from(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> Res<Option<Vec<Bound>>> {
     let lo = f.columns.iter().find(|c| crit_key(&c.name) == "at least");
     let hi = f.columns.iter().find(|c| crit_key(&c.name) == "at most");
     if lo.is_none() && hi.is_none() {
@@ -200,7 +200,7 @@ fn bounds_from(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize
         .map(Some)
 }
 
-fn weight_columns(f: &FrameValue) -> Vec<&FrameColumn> {
+pub(crate) fn weight_columns(f: &FrameValue) -> Vec<&FrameColumn> {
     f.columns.iter().filter(|c| c.ty == FrameColType::Number && !matches!(crit_key(&c.name).as_str(), "at least" | "at most")).collect()
 }
 
@@ -357,7 +357,7 @@ pub(crate) fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize
     })
 }
 
-fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, breakdown: bool, failed: &[Vec<String>]) -> Res<FrameValue> {
+pub(crate) fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, breakdown: bool, failed: &[Vec<String>]) -> Res<FrameValue> {
     let rows = frame_row_count(f);
     let pass: Vec<usize> = (0..rows).filter(|&i| failed[i].is_empty()).collect();
     let out_: Vec<usize> = (0..rows).filter(|&i| !failed[i].is_empty()).collect();

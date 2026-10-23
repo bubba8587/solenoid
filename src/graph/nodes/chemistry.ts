@@ -1,9 +1,10 @@
 // [[C76]] formulaPackDefault, [[C25]] firstClassUnits
 
 import { ClassicPreset } from "rete";
-import { numOut, strIn, readInput } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, type ElementMeta } from "./chemistryOps";
+import { nodeOnCore } from "../nodeOnCore";
+import { numOut, strIn } from "./shared";
+import { type SolError } from "../errorValue";
+import { ELEMENTS, ELEMENT_BY_SYMBOL, type ElementMeta } from "./chemistryOps";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 
 /** Rows 1–7 are the main body, row 8 the visual gap, rows 9–10 the detached f-block. */
@@ -56,9 +57,8 @@ export class ElementNode extends ClassicPreset.Node {
     this.addOutput("number", numOut("Z"));
   }
 
-  data() {
-    const el = ELEMENT_BY_SYMBOL.get(this.symbol)!;
-    return { mass: el.mass, number: el.n };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { mass: number; number: number };
   }
 
   annotationFor(outKey: string): FormatAnnotation | undefined {
@@ -80,12 +80,7 @@ export class MolarMassNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("g/mol"));
   }
 
-  data(inputs: { formula?: string[] }) {
-    const f: unknown = readInput(inputs.formula, this.stringLiterals.formula ?? "");
-    const result = Array.isArray(f) ? solError("#VALUE!", "Molar Mass reads one formula, not a list")
-      : isSolError(f) ? f
-      : typeof f === "string" && f.trim() ? molarMass(f) : null;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }

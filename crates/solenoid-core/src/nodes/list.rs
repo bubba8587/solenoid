@@ -21,6 +21,7 @@ const MAX_GENERATED: f64 = 1_000_000.0;
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "SeriesNode" => series(c),
+        "ShuffleNode" => shuffle(c),
         "ListLengthNode" => list_length(c),
         "SortNode" => sort(c),
         "ReverseNode" => reverse(c),
@@ -1633,4 +1634,50 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
         }
     }).collect())).collect();
     if h == 1 { out.into_iter().next().unwrap_or(V::Null) } else { list(out) }
+}
+
+// ─── Shuffle, over the keys its shell drew ([[D46]] freezeVolatilePerCalc) ──────
+
+/// `weightedShuffleKey`: an exponential draw's key, so a heavier weight tends to land earlier.
+fn weighted_shuffle_key(u: f64, weight: f64) -> f64 {
+    if !(weight > 0.0) || !weight.is_finite() {
+        return f64::INFINITY;
+    }
+    let uu = if u <= 0.0 { f64::EPSILON } else if u >= 1.0 { 1.0 - f64::EPSILON } else { u };
+    -crate::fdlibm::log(uu) / weight
+}
+
+fn shuffle(c: &mut Call) -> Answer {
+    let arr: Vec<V> = match c.wired("list").and_then(|w| w.first()) {
+        Some(V::List(items)) => items.as_ref().clone(),
+        Some(V::Str(s)) => s.chars().map(|ch| V::str(&ch.to_string())).collect(),
+        _ => Vec::new(),
+    };
+    let held: Vec<f64> = c.field("keys").and_then(serde_json::Value::as_array).map(|a| a.iter().map(|k| k.as_f64().unwrap_or(f64::NAN)).collect()).unwrap_or_default();
+    let weights = match c.wired("weights").and_then(|w| w.first()) {
+        Some(V::List(w)) => Some(w.clone()),
+        _ => None,
+    };
+    let refuse = |c: &mut Call, e: V| {
+        c.show("cachedList", list(Vec::new()));
+        Ok(vec![("result".into(), e)])
+    };
+    let key_at = |i: usize| held.get(i).copied().unwrap_or(f64::NAN);
+    let keys: Vec<f64> = match &weights {
+        Some(w) => {
+            if w.len() < arr.len() {
+                return refuse(c, err(ErrorCode::Shape, format!("The weights list has {} values but the list has {}", w.len(), arr.len())));
+            }
+            if !(0..arr.len()).any(|i| matches!(w.get(i), Some(V::Num(x)) if *x > 0.0)) {
+                return refuse(c, err(ErrorCode::Value, "The weights are all zero, so nothing can be drawn"));
+            }
+            (0..held.len()).map(|i| weighted_shuffle_key(key_at(i), if let Some(V::Num(x)) = w.get(i) { *x } else { 0.0 })).collect()
+        }
+        None => held.clone(),
+    };
+    let mut pairs: Vec<(V, f64)> = arr.into_iter().enumerate().map(|(i, v)| (v, keys.get(i).copied().unwrap_or(f64::NAN))).collect();
+    crate::decision::sort_by_num(&mut pairs, |a, b| a.1 - b.1);
+    let order = list(pairs.into_iter().map(|p| p.0).collect());
+    c.show("cachedList", order.clone());
+    Ok(vec![("result".into(), order)])
 }

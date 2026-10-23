@@ -53,6 +53,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
             })
         }
         "DateDiffNode" => date_diff(c),
+        "TodayNowNode" => core_call(if c.field_str("op", "today") == "today" { "TODAY" } else { "NOW" }, &[]),
         "DateAddNode" => {
             let name = if c.field_str("op", "edate") == "edate" { "EDATE" } else { "EOMONTH" };
             let args = [first(c, "start"), c.read_num("months", 0.0)];

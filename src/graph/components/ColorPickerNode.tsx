@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { colord } from "colord";
+import { colord, extend } from "colord";
+import namesPlugin from "colord/plugins/names";
 import type { ColorPickerNode as ColorPickerNodeType, ColorMode, ColorFormat } from "../rete-nodes";
 import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -8,6 +9,9 @@ import { processGraph } from "../process";
 import { useDraftCommit } from "./inlineInput";
 import "./ColorPickerNode.css";
 import { stopDragStart } from "../coarse";
+
+// The hex field reads a CSS colour name ("tomato") as the card's body on the core does.
+extend([namesPlugin]);
 
 const MODE_OPTS = [
   { value: "rgb", label: "RGB", title: "Red / Green / Blue, 0–255" },

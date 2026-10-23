@@ -21,7 +21,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import type { AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, weightedShuffleKey, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, frameRowCount, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell } from "../frame";
 
@@ -1357,28 +1357,21 @@ export class ShuffleNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
+  static coreFields = ["keys"];
+
+  /** The keys are drawn here; `body` orders the list by them. */
   data(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
-    const arr = [...(inputs.list?.[0] ?? [])];
+    const n = [...(inputs.list?.[0] ?? [])].length;
     const gen = getRecalcGen();
-    if (this.lastGen !== gen || this.keys.length !== arr.length) {
-      this.keys = arr.map(() => Math.random());
+    if (this.lastGen !== gen || this.keys.length !== n) {
+      this.keys = Array.from({ length: n }, () => Math.random());
       this.lastGen = gen;
     }
-    const w = inputs.weights?.[0];
-    if (Array.isArray(w) && w.length < arr.length) {
-      this.cachedList = [];
-      return { result: solError("#SHAPE!", `The weights list has ${w.length} values but the list has ${arr.length}`) };
-    }
-    if (Array.isArray(w) && !arr.some((_, i) => typeof w[i] === "number" && (w[i] as number) > 0)) {
-      this.cachedList = [];
-      return { result: solError("#VALUE!", "The weights are all zero, so nothing can be drawn") };
-    }
-    const keys = Array.isArray(w)
-      ? this.keys.map((u, i) => weightedShuffleKey(u, typeof w[i] === "number" ? (w[i] as number) : 0))
-      : this.keys;
-    const order = shuffleList(arr, keys);
-    this.cachedList = order;
-    return { result: order };
+    return this.body(inputs);
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: unknown[] | SolError };
   }
 }
 
