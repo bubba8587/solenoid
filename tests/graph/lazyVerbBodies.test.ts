@@ -5,13 +5,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ClassicPreset } from "rete";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
-import { resetFrameBackendToJs, readFrame, uploadFrame, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
+import { resetFrameBackendToJs, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
 import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { solError } from "../../src/graph/errorValue";
 import { applyFcUnit } from "../../src/graph/unitBridge";
+import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import {
   DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, ColumnsNode, GroupByFrameNode, UnpivotNode, RenameNode,
-  SplitColumnNode, AddIndexNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, DropBlankRowsNode, WindowNode,
+  SplitColumnNode, AddIndexNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, DropBlankRowsNode, WindowNode, GetColumnNode,
   HEAD_OP_META, COLUMNS_OP_META, AGG_OP_META, BLANK_ROW_OP_META, WINDOW_FN_META,
 } from "../../src/graph/nodes/frame";
 
@@ -42,6 +43,18 @@ const odd: CubeValue = cubeFromColumns([
   { name: "sub", cells: [sub0, sub1, sub0, null, sub1, sub0] },
   { name: "Tags", cells: [["Work", "home"], ["home"], ["Work", "home"], [], null, ["x"]] },
 ]);
+
+// A unit column, numbers and dates as text, logicals and an error cell, for Get Column's readings.
+const metered: FrameValue = {
+  __frame: true,
+  columns: [
+    { name: "len", type: "number", values: [1.5, null, 3, NaN], unit: columnUnitFromSpec("km")! },
+    { name: "txt", type: "string", values: ["12", "x", "", " 2024-01-15 "] },
+    { name: "day", type: "date", values: [45000, null, 45001.5, 45002] },
+    { name: "ok", type: "logical", values: [true, false, null, true] },
+    { name: "bad", type: "number", values: [1, solError("#N/A", "gone"), 2, 3] },
+  ],
+};
 
 // Rows equal cell by cell, a NaN apart from a blank, -0 as 0, a unit by its display: what Distinct keys on.
 const dupes: CubeValue = cubeFromColumns([
@@ -130,6 +143,7 @@ type Spec = {
   nums?: string[];
   anys?: string[];
   pairs?: boolean;
+  frames?: () => Promise<unknown[]>;
 };
 
 const SPECS: Record<string, Spec> = {
@@ -147,10 +161,14 @@ const SPECS: Record<string, Spec> = {
   ReplaceValues: { make: () => new ReplaceValuesNode(), fields: { mode: ["cell", "substring"] }, strs: ["column"], anys: ["find", "replace"] },
   MergeColumns: { make: () => new MergeColumnsNode(), lists: ["columns"], strs: ["separator", "name"] },
   DropBlankRows: { make: () => new DropBlankRowsNode(), fields: { mode: Object.keys(BLANK_ROW_OP_META) } },
+  GetColumn: {
+    make: () => new GetColumnNode(), cubes: true, fields: { readAs: ["number", "text", "date", "logical"] }, strs: ["name"],
+    frames: async () => [metered, metered, await uploadFrame(metered), 7, [1, 2], [[1, "a"], [2, "b"]]],
+  },
   Window: { make: () => new WindowNode(), cubes: true, fields: { agg: Object.keys(WINDOW_FN_META) }, lists: ["keys"], strs: ["orderBy", "column", "name"], nums: ["n"] },
 };
 
-const NAMES = ["Rep", "Region", "Amount", "When", "Code", "", "  Amount ", "Nope", "Tags", "2", "t", "d", "Mixed", "Flag", "sub"];
+const NAMES = ["Rep", "Region", "Amount", "When", "Code", "", "  Amount ", "Nope", "Tags", "2", "t", "d", "Mixed", "Flag", "sub", "len", "txt", "day", "ok", "bad", "1"];
 const FILTER_OPS = ["gt", "gte", "lt", "lte", "eq", "neq", "contains", "startsWith", "endsWith", "isblank", "notblank", "iserror", "noterror", "listContains", "listContainsAny", "listContainsAll", "listEmpty"];
 const VALUES: unknown[] = ["60", "Ada", "a", "", " ", "-", "x,y", "home", "work, home", "20", 100, 0, true, null];
 const NUMS: unknown[] = [0, 1, 2, 3, 10, -1, 2.5, 1e9, null];
@@ -162,8 +180,8 @@ describe("every lazy verb over its ops and settings", () => {
       const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)];
       const names = () => NAMES.filter(() => r() < 0.3);
       const ref = await uploadFrame(sales) as FrameRef;
-      const planned = (await card(new DistinctNode()).data({ frame: [sales] })).frame;
-      const sources: unknown[] = [sales, ref, planned, null, ...(spec.cubes ? [cube, cube, odd, odd, odd, dupes] : [])];
+      const planned = await runFrameUnary(sales, { kind: "distinct" });
+      const sources: unknown[] = [sales, ref, planned, null, ...(spec.cubes ? [cube, cube, odd, odd, odd, dupes] : []), ...(await spec.frames?.() ?? [])];
       for (let i = 0; i < (spec.cubes ? 160 : 80); i++) {
         const n = spec.make() as Card & Record<string, unknown>;
         for (const [k, vs] of Object.entries(spec.fields ?? {})) n[k] = pick(vs);
@@ -191,8 +209,8 @@ describe("every lazy verb over its ops and settings", () => {
         const src = pick(sources);
         if (src !== null || r() < 0.5) inputs.frame = [src];
         // A plan naming a column the frame lacks fails where the card previews it, which the error guard shows.
-        const out = await card(n).data(inputs).catch((e: unknown) => ({ frame: e }));
-        expect(out).toHaveProperty("frame");
+        const out = await Promise.resolve().then(() => card(n).data(inputs)).catch((e: unknown) => ({ frame: e }));
+        expect(out).toBeTypeOf("object");
       }
     });
   }

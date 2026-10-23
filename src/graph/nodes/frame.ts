@@ -2358,10 +2358,23 @@ export class GetColumnNode extends ClassicPreset.Node {
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
+  /** A ref's column is read from the backend first, and the body reads it as `column`: one column, an error or none. */
   data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
     const gen = ++this._gen;
     const f = inputs.frame?.[0] ?? null;
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
+    if (!isFrameRef(f) || typeof name !== "string" || name.trim() === "") return this.body(inputs);
+    // The engine awaits a promise-returning data(); the cast keeps the sync signature.
+    return (async () => {
+      const col = await materialize(readRefColumn(f, name));
+      if (gen !== this._gen) return { values: null };
+      return this.body({ ...inputs, column: [col && !isSolError(col) ? { __frame: true, columns: [col] } : col] });
+    })() as unknown as { values: GetColumnValues };
+  }
+
+  body(inputs: Record<string, unknown[] | undefined>): { values: GetColumnValues } {
+    const f = inputs.frame?.[0] ?? null;
+    const name = readInput(inputs.name as string[] | undefined, this.stringLiterals.name ?? "");
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
     if (isCubeValue(f)) {
       const cc = f.columns.find((c) => c.name === name);
@@ -2374,18 +2387,13 @@ export class GetColumnNode extends ClassicPreset.Node {
       }
       return { values: this.readColumn(inferColumn(name, cc.cells)) };
     }
-    const fr: FrameInput = isFrameValue(f) || isFrameRef(f) ? f : widenToFrame(f);
-    // The engine awaits a promise-returning data(); the cast keeps the sync signature.
-    if (isFrameRef(fr)) {
-      return (async () => {
-        const col = await materialize(readRefColumn(fr, name));
-        if (gen !== this._gen) return { values: null };
-        if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
-        if (!col) { this.cachedResult = null; return { values: null }; }
-        return { values: this.readColumn(col) };
-      })() as unknown as { values: GetColumnValues };
+    if (isFrameRef(f)) {
+      const col = (inputs.column?.[0] ?? null) as FrameValue | SolError | null;
+      if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
+      if (!col) { this.cachedResult = null; return { values: null }; }
+      return { values: this.readColumn(col.columns[0]) };
     }
-    const col = columnOnCore(fr, name);
+    const col = columnOnCore(isFrameValue(f) ? f : widenToFrame(f), name);
     if (!col) { this.cachedResult = null; return { values: null }; }
     return { values: this.readColumn(col) };
   }
