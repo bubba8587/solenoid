@@ -1,7 +1,7 @@
 // [[C130]] rustCore
 //! Port of `src/graph/valueKinds.ts` (the parts the frame verbs use).
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::FrameCell;
 use crate::jsnum::{js_string, js_trim};
 

@@ -99,7 +99,10 @@ fn calendar_skips_weekends_and_holidays_in_index_space() {
     assert_eq!(c.index_ceil(s(2026, 1, 3)).unwrap(), 0.0);
     assert_eq!(c.index_floor(s(2026, 1, 3)).unwrap(), -1.0);
     assert_eq!(c.count_between(mon(), s(2026, 1, 9)).unwrap(), 4.0);
-    assert_eq!(c.non_working_spans(mon(), s(2026, 1, 13)), vec![(s(2026, 1, 7), s(2026, 1, 7)), (s(2026, 1, 10), s(2026, 1, 11))]);
+    assert_eq!(
+        c.non_working_spans(mon(), s(2026, 1, 13)),
+        vec![(s(2026, 1, 7), s(2026, 1, 7)), (s(2026, 1, 10), s(2026, 1, 11))]
+    );
 }
 
 #[test]
@@ -121,7 +124,10 @@ fn a_chain_starts_the_next_working_day_with_float_and_critical() {
     assert_eq!(iso(o.project_finish), "2026-01-09");
     assert_eq!(by(&o, "B").driving.as_deref(), Some("A"));
     let l = &o.links[0];
-    assert_eq!((l.from.as_str(), l.to.as_str(), l.ty, l.lag, l.driving, l.critical, l.violated), ("A", "B", LinkType::FS, 0.0, true, true, false));
+    assert_eq!(
+        (l.from.as_str(), l.to.as_str(), l.ty, l.lag, l.driving, l.critical, l.violated),
+        ("A", "B", LinkType::FS, 0.0, true, true, false)
+    );
     assert_eq!(o.links.len(), 1);
 }
 
@@ -140,10 +146,37 @@ fn the_kitchen_diamond_with_a_holiday() {
             after("Final inspection", 0.0, &["Countertops"]),
         ])
     });
-    assert_eq!(isos(&o, |x| x.start), ["2026-01-05", "2026-01-07", "2026-01-07", "2026-01-12", "2026-01-14", "2026-01-14", "2026-01-21", "2026-01-27"]);
-    assert_eq!(isos(&o, |x| x.finish), ["2026-01-06", "2026-01-09", "2026-01-08", "2026-01-13", "2026-01-15", "2026-01-20", "2026-01-27", "2026-01-27"]);
+    assert_eq!(
+        isos(&o, |x| x.start),
+        [
+            "2026-01-05",
+            "2026-01-07",
+            "2026-01-07",
+            "2026-01-12",
+            "2026-01-14",
+            "2026-01-14",
+            "2026-01-21",
+            "2026-01-27"
+        ]
+    );
+    assert_eq!(
+        isos(&o, |x| x.finish),
+        [
+            "2026-01-06",
+            "2026-01-09",
+            "2026-01-08",
+            "2026-01-13",
+            "2026-01-15",
+            "2026-01-20",
+            "2026-01-27",
+            "2026-01-27"
+        ]
+    );
     assert_eq!(o.tasks.iter().map(|x| x.float).collect::<Vec<_>>(), [0.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0]);
-    assert_eq!(o.tasks.iter().map(|x| x.critical).collect::<Vec<_>>(), [true, true, false, true, false, true, true, true]);
+    assert_eq!(
+        o.tasks.iter().map(|x| x.critical).collect::<Vec<_>>(),
+        [true, true, false, true, false, true, true, true]
+    );
     assert_eq!(by(&o, "Electrical rough-in").free_float, 1.0);
     assert_eq!(by(&o, "Drywall").driving.as_deref(), Some("Plumbing rough-in"));
     assert_eq!(o.holidays, [s(2026, 1, 19)]);
@@ -209,14 +242,19 @@ fn start_is_a_floor_finish_a_ceiling_deadline_a_flag() {
 
 #[test]
 fn manual_pins_and_still_drives_and_a_broken_link_is_flagged() {
-    let o = run(vec![after("A", 5.0, &[]), PlanTask { manual: true, start: Some(s(2026, 1, 6)), ..after("B", 2.0, &["A"]) }, after("C", 1.0, &["B"])]);
+    let o = run(vec![
+        after("A", 5.0, &[]),
+        PlanTask { manual: true, start: Some(s(2026, 1, 6)), ..after("B", 2.0, &["A"]) },
+        after("C", 1.0, &["B"]),
+    ]);
     assert_eq!(iso(by(&o, "B").start), "2026-01-06");
     assert_eq!(iso(by(&o, "B").finish), "2026-01-07");
     assert_eq!(iso(by(&o, "C").start), "2026-01-08");
     assert!(o.links.iter().find(|l| l.to == "B").unwrap().violated);
     assert!(has(&o, "Broken link", "B"));
     assert!(has(&o, "Manual", "B"));
-    let p = run(vec![PlanTask { manual: true, start: Some(mon()), finish: Some(s(2026, 1, 9)), ..after("A", 1.0, &[]) }]);
+    let p =
+        run(vec![PlanTask { manual: true, start: Some(mon()), finish: Some(s(2026, 1, 9)), ..after("A", 1.0, &[]) }]);
     assert_eq!(by(&p, "A").duration, 1.0);
     assert_eq!(iso(by(&p, "A").finish), "2026-01-09");
 }
@@ -228,7 +266,10 @@ fn nesting_rolls_up_and_links_to_a_parent_bound_every_leaf() {
         after("C", 1.0, &["Phase 1"]),
         parent("Phase 2", &["C"], vec![after("D", 1.0, &[]), after("E", 2.0, &[])]),
     ]);
-    assert_eq!(o.tasks.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(), ["Phase 1", "A", "B", "C", "Phase 2", "D", "E"]);
+    assert_eq!(
+        o.tasks.iter().map(|x| x.name.as_str()).collect::<Vec<_>>(),
+        ["Phase 1", "A", "B", "C", "Phase 2", "D", "E"]
+    );
     assert_eq!(o.tasks.iter().map(|x| x.level).collect::<Vec<_>>(), [0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0]);
     assert_eq!(o.tasks.iter().map(|x| x.wbs.as_str()).collect::<Vec<_>>(), ["1", "1.1", "1.2", "2", "3", "3.1", "3.2"]);
     let p1 = by(&o, "Phase 1");
@@ -242,7 +283,10 @@ fn nesting_rolls_up_and_links_to_a_parent_bound_every_leaf() {
     assert_eq!(by(&o, "D").float, 1.0);
     assert!(by(&o, "Phase 2").critical);
     assert_eq!(by(&o, "Phase 2").float, 0.0);
-    assert_eq!(o.links.iter().map(|l| format!("{}→{}", l.from, l.to)).collect::<Vec<_>>(), ["A→B", "Phase 1→C", "C→Phase 2"]);
+    assert_eq!(
+        o.links.iter().map(|l| format!("{}→{}", l.from, l.to)).collect::<Vec<_>>(),
+        ["A→B", "Phase 1→C", "C→Phase 2"]
+    );
     assert!(o.links[2].driving);
 }
 
@@ -250,7 +294,11 @@ fn nesting_rolls_up_and_links_to_a_parent_bound_every_leaf() {
 fn a_finished_task_is_never_critical() {
     let o = run_with(ScheduleInput {
         status_date: Some(s(2026, 1, 8)),
-        ..input(vec![PlanTask { complete: Some(50.0), ..after("A", 4.0, &[]) }, after("B", 2.0, &["A"]), PlanTask { complete: Some(100.0), ..after("C", 1.0, &[]) }])
+        ..input(vec![
+            PlanTask { complete: Some(50.0), ..after("A", 4.0, &[]) },
+            after("B", 2.0, &["A"]),
+            PlanTask { complete: Some(100.0), ..after("C", 1.0, &[]) },
+        ])
     });
     assert!(!by(&o, "C").critical);
     assert_eq!(by(&o, "C").free_float, 0.0);
@@ -302,7 +350,10 @@ fn structural_failures_name_a_member() {
 #[test]
 fn an_empty_plan_a_weekend_start_and_a_milestone() {
     assert!(run(vec![]).tasks.is_empty());
-    let o = run_with(ScheduleInput { start: s(2026, 1, 10), ..input(vec![after("Kickoff", 0.0, &[]), after("A", 1.0, &["Kickoff"])]) });
+    let o = run_with(ScheduleInput {
+        start: s(2026, 1, 10),
+        ..input(vec![after("Kickoff", 0.0, &[]), after("A", 1.0, &["Kickoff"])])
+    });
     assert_eq!(isos(&o, |x| x.start), ["2026-01-12", "2026-01-12"]);
     assert_eq!(isos(&o, |x| x.finish), ["2026-01-12", "2026-01-12"]);
 }
@@ -323,13 +374,26 @@ fn properties_on_a_random_dag() {
             for j in 0..i {
                 if rnd() < 0.3 {
                     let ty = types[(rnd() * 4.0).floor() as usize];
-                    preds.push(Dependency { task: format!("T{j}"), ty, lag: (rnd() * 5.0).floor() - 1.0, elapsed: None });
+                    preds.push(Dependency {
+                        task: format!("T{j}"),
+                        ty,
+                        lag: (rnd() * 5.0).floor() - 1.0,
+                        elapsed: None,
+                    });
                 }
             }
-            tasks.push(PlanTask { name: format!("T{i}"), duration: Some((rnd() * 6.0).floor()), predecessors: preds, ..PlanTask::default() });
+            tasks.push(PlanTask {
+                name: format!("T{i}"),
+                duration: Some((rnd() * 6.0).floor()),
+                predecessors: preds,
+                ..PlanTask::default()
+            });
         }
         let working_days = rnd() < 0.5;
-        let o = run_with(ScheduleInput { calendar: CalendarSpec { working_days, holidays: holidays(&[s(2026, 1, 19)]), ..CalendarSpec::default() }, ..input(tasks) });
+        let o = run_with(ScheduleInput {
+            calendar: CalendarSpec { working_days, holidays: holidays(&[s(2026, 1, 19)]), ..CalendarSpec::default() },
+            ..input(tasks)
+        });
         for l in &o.links {
             let (a, b) = (by(&o, &l.from), by(&o, &l.to));
             assert!(!l.violated);
@@ -353,7 +417,10 @@ fn predecessor_text_writes_types_lags_and_elapsed() {
         Dependency { task: "C".into(), ty: LinkType::FS, lag: -1.0, elapsed: None },
     ];
     assert_eq!(predecessor_text(&deps), "A, B SS+2, C FS-1");
-    assert_eq!(predecessor_text(&[Dependency { task: "A".into(), ty: LinkType::FS, lag: 2.0, elapsed: Some(true) }]), "A FS+2ed");
+    assert_eq!(
+        predecessor_text(&[Dependency { task: "A".into(), ty: LinkType::FS, lag: 2.0, elapsed: Some(true) }]),
+        "A FS+2ed"
+    );
 }
 
 #[test]
@@ -385,14 +452,22 @@ fn mermaid_excludes_sections_tags_and_exclusive_ends() {
 #[test]
 fn a_milestone_with_a_typed_start_inside_a_phase_sits_on_it() {
     let wed = s(2026, 1, 14);
-    let out = run(vec![parent("Phase", &[], vec![after("A", 3.0, &[]), PlanTask { start: Some(wed), ..after("M", 0.0, &[]) }])]);
+    let out = run(vec![parent(
+        "Phase",
+        &[],
+        vec![after("A", 3.0, &[]), PlanTask { start: Some(wed), ..after("M", 0.0, &[]) }],
+    )]);
     assert_eq!(iso(by(&out, "M").start), "2026-01-14");
     assert_eq!(iso(by(&out, "M").finish), "2026-01-14");
 }
 
 #[test]
 fn a_done_part_that_rounds_to_nothing_moves_whole() {
-    let out = run_with(ScheduleInput { status_date: Some(mon() + 7.0), split_in_progress: Some(true), ..input(vec![PlanTask { complete: Some(10.0), ..after("A", 3.0, &[]) }]) });
+    let out = run_with(ScheduleInput {
+        status_date: Some(mon() + 7.0),
+        split_in_progress: Some(true),
+        ..input(vec![PlanTask { complete: Some(10.0), ..after("A", 3.0, &[]) }])
+    });
     let a = by(&out, "A");
     assert!(a.segments.is_none());
     assert!(a.start > mon() + 7.0);
@@ -430,7 +505,10 @@ fn minutes_map_through_the_working_day_and_back() {
     assert_eq!(intervals_for_hours(10.0), [(480.0, 1080.0)]);
     assert_eq!(intervals_for_hours(20.0), [(240.0, 1440.0)]);
     assert_eq!(intervals_for_hours(24.0), [(0.0, 1440.0)]);
-    assert_eq!(Calendar::new(mon(), &CalendarSpec { intervals: Some(vec![(540.0, 780.0)]), ..minutes() }).units_per_day, 240.0);
+    assert_eq!(
+        Calendar::new(mon(), &CalendarSpec { intervals: Some(vec![(540.0, 780.0)]), ..minutes() }).units_per_day,
+        240.0
+    );
 }
 
 fn run_minutes(tasks: Vec<PlanTask>) -> ScheduleOutput {
@@ -451,7 +529,8 @@ fn minutes_an_fs_successor_starts_the_same_afternoon() {
 
 #[test]
 fn minutes_whole_day_tasks_agree_with_days_mode() {
-    let tasks = || vec![after("A", 2.0, &[]), after("B", 3.0, &["A"]), after("C", 1.0, &["A"]), after("M", 0.0, &["B", "C"])];
+    let tasks =
+        || vec![after("A", 2.0, &[]), after("B", 3.0, &["A"]), after("C", 1.0, &["A"]), after("M", 0.0, &["B", "C"])];
     let m = run_minutes(tasks());
     let d = run(tasks());
     for x in &d.tasks {
@@ -467,12 +546,19 @@ fn minutes_whole_day_tasks_agree_with_days_mode() {
 
 #[test]
 fn minutes_a_half_day_lag_a_clock_deadline_and_the_status_date() {
-    let o = run_minutes(vec![after("A", 1.0, &[]), PlanTask { deadline: Some(mon() + 1.0 + 15.0 / 24.0), ..t("B", 1.0, &[P::L("A", LinkType::FS, 0.5)]) }]);
+    let o = run_minutes(vec![
+        after("A", 1.0, &[]),
+        PlanTask { deadline: Some(mon() + 1.0 + 15.0 / 24.0), ..t("B", 1.0, &[P::L("A", LinkType::FS, 0.5)]) },
+    ]);
     assert_eq!(stamp(by(&o, "B").start), "2026-01-06 13:00");
     assert_eq!(stamp(by(&o, "B").finish), "2026-01-07 12:00");
     assert!(by(&o, "B").late);
     assert_eq!(by(&o, "B").float, -0.75);
-    let st = run_with(ScheduleInput { calendar: minutes(), status_date: Some(s(2026, 1, 6)), ..input(vec![PlanTask { complete: Some(50.0), ..after("A", 2.0, &[]) }]) });
+    let st = run_with(ScheduleInput {
+        calendar: minutes(),
+        status_date: Some(s(2026, 1, 6)),
+        ..input(vec![PlanTask { complete: Some(50.0), ..after("A", 2.0, &[]) }])
+    });
     assert_eq!(stamp(by(&st, "A").finish), "2026-01-07 17:00");
 }
 
@@ -484,7 +570,10 @@ fn own(cal: TaskCalendar, task: PlanTask) -> PlanTask {
 
 #[test]
 fn a_task_on_its_own_week_and_links_across_calendars_by_instant() {
-    let o = run(vec![after("A", 4.0, &[]), own(TaskCalendar { weekend_code: Some(7.0), ..TaskCalendar::default() }, after("B", 2.0, &["A"]))]);
+    let o = run(vec![
+        after("A", 4.0, &[]),
+        own(TaskCalendar { weekend_code: Some(7.0), ..TaskCalendar::default() }, after("B", 2.0, &["A"])),
+    ]);
     assert_eq!(iso(by(&o, "A").finish), "2026-01-08");
     assert_eq!(iso(by(&o, "B").start), "2026-01-11");
     assert_eq!(iso(by(&o, "B").finish), "2026-01-12");
@@ -493,7 +582,10 @@ fn a_task_on_its_own_week_and_links_across_calendars_by_instant() {
 
 #[test]
 fn a_task_holiday_is_its_own() {
-    let o = run(vec![own(TaskCalendar { holidays: holidays(&[s(2026, 1, 6)]), ..TaskCalendar::default() }, after("A", 3.0, &[])), after("B", 3.0, &[])]);
+    let o = run(vec![
+        own(TaskCalendar { holidays: holidays(&[s(2026, 1, 6)]), ..TaskCalendar::default() }, after("A", 3.0, &[])),
+        after("B", 3.0, &[]),
+    ]);
     assert_eq!(iso(by(&o, "A").finish), "2026-01-08");
     assert_eq!(iso(by(&o, "B").finish), "2026-01-07");
 }
@@ -505,7 +597,10 @@ fn elapsed_durations_and_lags_count_every_day() {
         ..input(vec![
             PlanTask { elapsed: true, ..after("Cure", 3.0, &[]) },
             after("A", 1.0, &["Cure"]),
-            PlanTask { predecessors: vec![Dependency { task: "A".into(), ty: LinkType::FS, lag: 2.0, elapsed: Some(true) }], ..after("B", 1.0, &[]) },
+            PlanTask {
+                predecessors: vec![Dependency { task: "A".into(), ty: LinkType::FS, lag: 2.0, elapsed: Some(true) }],
+                ..after("B", 1.0, &[])
+            },
         ])
     });
     assert_eq!(iso(by(&o, "Cure").start), "2026-01-09");
@@ -516,7 +611,13 @@ fn elapsed_durations_and_lags_count_every_day() {
 
 #[test]
 fn per_task_hours_in_minutes_mode() {
-    let o = run_minutes(vec![own(TaskCalendar { intervals: Some(vec![(480.0, 720.0)]), ..TaskCalendar::default() }, after("Short", 1.0, &[])), after("Next", 0.5, &["Short"])]);
+    let o = run_minutes(vec![
+        own(
+            TaskCalendar { intervals: Some(vec![(480.0, 720.0)]), ..TaskCalendar::default() },
+            after("Short", 1.0, &[]),
+        ),
+        after("Next", 0.5, &["Short"]),
+    ]);
     assert_eq!(stamp(by(&o, "Short").finish), "2026-01-05 12:00");
     assert_eq!(stamp(by(&o, "Next").start), "2026-01-05 13:00");
     assert_eq!(stamp(by(&o, "Next").finish), "2026-01-05 17:00");
@@ -524,11 +625,19 @@ fn per_task_hours_in_minutes_mode() {
 
 #[test]
 fn alap_starts_late_is_critical_and_a_deadline_pulls_it_earlier() {
-    let o = run(vec![after("A", 5.0, &[]), PlanTask { alap: true, ..after("Order", 1.0, &[]) }, after("Install", 1.0, &["A", "Order"])]);
+    let o = run(vec![
+        after("A", 5.0, &[]),
+        PlanTask { alap: true, ..after("Order", 1.0, &[]) },
+        after("Install", 1.0, &["A", "Order"]),
+    ]);
     assert_eq!(iso(by(&o, "Order").start), "2026-01-09");
     assert!(by(&o, "Order").critical);
     assert!(by(&o, "Order").alap);
-    let d = run(vec![after("A", 5.0, &[]), PlanTask { alap: true, deadline: Some(s(2026, 1, 7)), ..after("Order", 1.0, &[]) }, after("Install", 1.0, &["A", "Order"])]);
+    let d = run(vec![
+        after("A", 5.0, &[]),
+        PlanTask { alap: true, deadline: Some(s(2026, 1, 7)), ..after("Order", 1.0, &[]) },
+        after("Install", 1.0, &["A", "Order"]),
+    ]);
     assert_eq!(iso(by(&d, "Order").start), "2026-01-07");
     assert!(!by(&d, "Order").late);
     let asap = run(vec![after("A", 5.0, &[]), after("Order", 1.0, &[]), after("Install", 1.0, &["A", "Order"])]);
@@ -538,11 +647,24 @@ fn alap_starts_late_is_critical_and_a_deadline_pulls_it_earlier() {
 
 #[test]
 fn longest_path_marks_the_driving_chain() {
-    let tasks = || vec![after("A", 1.0, &[]), PlanTask { start: Some(s(2026, 1, 12)), ..after("B", 2.0, &["A"]) }, after("C", 3.0, &[]), after("End", 0.0, &["B", "C"])];
+    let tasks = || {
+        vec![
+            after("A", 1.0, &[]),
+            PlanTask { start: Some(s(2026, 1, 12)), ..after("B", 2.0, &["A"]) },
+            after("C", 3.0, &[]),
+            after("End", 0.0, &["B", "C"]),
+        ]
+    };
     let crit = |o: &ScheduleOutput| o.tasks.iter().map(|x| x.critical).collect::<Vec<_>>();
     assert_eq!(crit(&run(tasks())), [false, true, false, true]);
     assert_eq!(crit(&run_with(ScheduleInput { longest_path: true, ..input(tasks()) })), [false, true, false, true]);
-    let due = || vec![after("A", 1.0, &[]), PlanTask { deadline: Some(s(2026, 1, 6)), ..after("B", 1.0, &["A"]) }, after("C", 5.0, &[])];
+    let due = || {
+        vec![
+            after("A", 1.0, &[]),
+            PlanTask { deadline: Some(s(2026, 1, 6)), ..after("B", 1.0, &["A"]) },
+            after("C", 5.0, &[]),
+        ]
+    };
     assert_eq!(crit(&run(due())), [true, true, true]);
     assert_eq!(crit(&run_with(ScheduleInput { longest_path: true, ..input(due()) })), [false, false, true]);
 }
@@ -565,7 +687,10 @@ fn work_divides_by_the_calendar_hours() {
         calendar: ten,
         ..input(vec![
             PlanTask { duration: None, work: Some(40.0), ..after("A", 0.0, &[]) },
-            own(TaskCalendar { intervals: Some(vec![(480.0, 720.0)]), ..TaskCalendar::default() }, PlanTask { duration: None, work: Some(40.0), ..after("B", 0.0, &[]) }),
+            own(
+                TaskCalendar { intervals: Some(vec![(480.0, 720.0)]), ..TaskCalendar::default() },
+                PlanTask { duration: None, work: Some(40.0), ..after("B", 0.0, &[]) },
+            ),
         ])
     });
     assert_eq!(by(&o, "A").duration, 4.0);
@@ -582,7 +707,8 @@ fn progress_splits_a_started_task_around_the_status_date() {
     let segs: Vec<(String, String)> = a.segments.as_ref().unwrap().iter().map(|(x, y)| (iso(*x), iso(*y))).collect();
     assert_eq!(segs, [("2026-01-05".into(), "2026-01-06".into()), ("2026-01-09".into(), "2026-01-12".into())]);
     assert_eq!(iso(by(&o, "B").start), "2026-01-13");
-    let c = run_with(ScheduleInput { status_date: Some(s(2026, 1, 8)), split_in_progress: Some(false), ..input(tasks()) });
+    let c =
+        run_with(ScheduleInput { status_date: Some(s(2026, 1, 8)), split_in_progress: Some(false), ..input(tasks()) });
     assert!(by(&c, "A").segments.is_none());
     assert_eq!(iso(by(&c, "A").start), "2026-01-07");
     assert_eq!(iso(by(&c, "A").finish), "2026-01-12");
@@ -592,7 +718,10 @@ fn progress_splits_a_started_task_around_the_status_date() {
 fn an_actual_start_pins_the_early_start() {
     let o = run_with(ScheduleInput {
         status_date: Some(s(2026, 1, 6)),
-        ..input(vec![after("A", 3.0, &[]), PlanTask { actual_start: Some(s(2026, 1, 6)), complete: Some(50.0), ..after("B", 2.0, &["A"]) }])
+        ..input(vec![
+            after("A", 3.0, &[]),
+            PlanTask { actual_start: Some(s(2026, 1, 6)), complete: Some(50.0), ..after("B", 2.0, &["A"]) },
+        ])
     });
     assert_eq!(iso(by(&o, "B").start), "2026-01-06");
     assert!(o.links[0].violated);
@@ -601,7 +730,10 @@ fn an_actual_start_pins_the_early_start() {
 
 #[test]
 fn unstarted_and_finished_tasks_ignore_the_status_date() {
-    let o = run_with(ScheduleInput { status_date: Some(s(2026, 1, 20)), ..input(vec![PlanTask { complete: Some(100.0), ..after("A", 2.0, &[]) }, after("B", 2.0, &["A"])]) });
+    let o = run_with(ScheduleInput {
+        status_date: Some(s(2026, 1, 20)),
+        ..input(vec![PlanTask { complete: Some(100.0), ..after("A", 2.0, &[]) }, after("B", 2.0, &["A"])])
+    });
     assert_eq!(iso(by(&o, "A").finish), "2026-01-06");
     assert!(by(&o, "A").segments.is_none());
     assert_eq!(iso(by(&o, "B").start), "2026-01-07");
@@ -611,14 +743,20 @@ fn unstarted_and_finished_tasks_ignore_the_status_date() {
 
 #[test]
 fn serials_stay_whole_days_across_a_dst_switch() {
-    let o = run_with(ScheduleInput { start: s(2026, 3, 2), ..input(vec![after("A", 10.0, &[]), after("B", 10.0, &["A"]), after("C", 10.0, &["B"])]) });
+    let o = run_with(ScheduleInput {
+        start: s(2026, 3, 2),
+        ..input(vec![after("A", 10.0, &[]), after("B", 10.0, &["A"]), after("C", 10.0, &["B"])])
+    });
     assert!(o.tasks.iter().all(|x| x.start.fract() == 0.0 && x.finish.fract() == 0.0));
     assert_eq!(iso(o.tasks[2].finish), "2026-04-10");
 }
 
 #[test]
 fn a_lag_honours_the_calendar() {
-    let o = run_with(ScheduleInput { start: s(2026, 1, 9), ..input(vec![after("A", 1.0, &[]), t("B", 1.0, &[P::L("A", LinkType::FS, 2.0)])]) });
+    let o = run_with(ScheduleInput {
+        start: s(2026, 1, 9),
+        ..input(vec![after("A", 1.0, &[]), t("B", 1.0, &[P::L("A", LinkType::FS, 2.0)])])
+    });
     assert_eq!(iso(o.tasks[1].start), "2026-01-14");
 }
 
@@ -645,7 +783,11 @@ fn mermaid_ends_are_exclusive() {
 
 #[test]
 fn a_walk_past_the_date_range_is_an_error_at_once() {
-    for tasks in [vec![after("A", 3e6, &[])], vec![after("A", 1e9, &[])], vec![after("A", 1.0, &[]), t("B", 1.0, &[P::L("A", LinkType::FS, -1e9)])]] {
+    for tasks in [
+        vec![after("A", 3e6, &[])],
+        vec![after("A", 1e9, &[])],
+        vec![after("A", 1.0, &[]), t("B", 1.0, &[P::L("A", LinkType::FS, -1e9)])],
+    ] {
         assert!(schedule(&input(tasks)).is_err());
     }
 }
@@ -655,7 +797,10 @@ fn a_walk_past_the_date_range_is_an_error_at_once() {
 #[test]
 fn mspdi_writes_a_midnight_minutes_finish_on_the_day_it_ended() {
     let o = run_minutes(vec![after("A", 1.0, &[])]);
-    let xml = write_mspdi(&o, &MspdiOptions { title: Some("T"), hours_per_day: None, format_iso: &iso, minutes: true, holidays: None });
+    let xml = write_mspdi(
+        &o,
+        &MspdiOptions { title: Some("T"), hours_per_day: None, format_iso: &iso, minutes: true, holidays: None },
+    );
     assert!(xml.contains("<Finish>2026-01-05T17:00:00</Finish>"));
     assert!(xml.contains("<Start>2026-01-05T08:00:00</Start>"));
 }
@@ -670,11 +815,20 @@ fn mspdi_writes_a_start_floor_with_its_date() {
             ..input(vec![after("A", 2.0, &[]), PlanTask { start: Some(floor), ..after("B", 1.0, &["A"]) }])
         });
         assert!(o.tasks[1].floored);
-        let xml = write_mspdi(&o, &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: minutes_mode, holidays: None });
+        let xml = write_mspdi(
+            &o,
+            &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: minutes_mode, holidays: None },
+        );
         assert!(xml.contains("<ConstraintType>4</ConstraintType><ConstraintDate>2026-03-11T08:00:00</ConstraintDate>"));
     }
-    let o = run_with(ScheduleInput { start: s(2026, 3, 2), ..input(vec![after("A", 5.0, &[]), PlanTask { start: Some(s(2026, 3, 3)), ..after("B", 1.0, &["A"]) }]) });
+    let o = run_with(ScheduleInput {
+        start: s(2026, 3, 2),
+        ..input(vec![after("A", 5.0, &[]), PlanTask { start: Some(s(2026, 3, 3)), ..after("B", 1.0, &["A"]) }])
+    });
     assert!(!o.tasks[1].floored);
-    let xml = write_mspdi(&o, &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: false, holidays: None });
+    let xml = write_mspdi(
+        &o,
+        &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: false, holidays: None },
+    );
     assert!(xml.contains("<ConstraintDate>2026-03-03T08:00:00</ConstraintDate>"));
 }

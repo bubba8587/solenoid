@@ -13,7 +13,9 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, string_to_number};
-use crate::schedule::{self as engine, CalendarSpec, Dependency, LinkType, PlanTask, ScheduleOutput, ScheduledTask, TaskCalendar};
+use crate::schedule::{
+    self as engine, CalendarSpec, Dependency, LinkType, PlanTask, ScheduleOutput, ScheduledTask, TaskCalendar,
+};
 use serde_json::{json, Map, Value as Json};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -163,8 +165,25 @@ const ACTIVE_NAMES: &[&str] = &["active", "included"];
 const REPEAT_NAMES: &[&str] = &["repeat", "occurrences", "times"];
 const EVERY_NAMES: &[&str] = &["every", "every (days)", "interval", "period"];
 const KNOWN_NAMES: &[&[&str]] = &[
-    TASK_NAMES, PRED_NAMES, CHILD_NAMES, START_NAMES, FINISH_NAMES, DEADLINE_NAMES, MANUAL_NAMES, COMPLETE_NAMES, GROUP_NAMES, ALAP_NAMES,
-    ACTUAL_NAMES, ELAPSED_NAMES, TASK_WEEKEND_NAMES, TASK_HOURS_NAMES, TASK_HOLIDAY_NAMES, WORK_NAMES, UNITS_NAMES, ACTIVE_NAMES, REPEAT_NAMES,
+    TASK_NAMES,
+    PRED_NAMES,
+    CHILD_NAMES,
+    START_NAMES,
+    FINISH_NAMES,
+    DEADLINE_NAMES,
+    MANUAL_NAMES,
+    COMPLETE_NAMES,
+    GROUP_NAMES,
+    ALAP_NAMES,
+    ACTUAL_NAMES,
+    ELAPSED_NAMES,
+    TASK_WEEKEND_NAMES,
+    TASK_HOURS_NAMES,
+    TASK_HOLIDAY_NAMES,
+    WORK_NAMES,
+    UNITS_NAMES,
+    ACTIVE_NAMES,
+    REPEAT_NAMES,
     EVERY_NAMES,
 ];
 const LINK_SUCC_NAMES: &[&str] = &["successor", "task", "to"];
@@ -216,7 +235,10 @@ fn read_predecessors(v: Option<&V>, task_name: &str) -> Rd<Vec<Dependency>> {
             let type_col = find_column(&t, TYPE_NAMES, None).map(|i| &t.columns[i]);
             let lag_col = find_column(&t, LAG_NAMES, None).map(|i| &t.columns[i]);
             let Some(name_col) = name_col.map(|i| &t.columns[i]) else {
-                return Err(value_err(format!("Schedule: task \"{task_name}\" has a Predecessors table with no Predecessor or Task column")).into());
+                return Err(value_err(format!(
+                    "Schedule: task \"{task_name}\" has a Predecessors table with no Predecessor or Task column"
+                ))
+                .into());
             };
             let mut out = Vec::new();
             for i in 0..rows_of(&t) {
@@ -230,7 +252,10 @@ fn read_predecessors(v: Option<&V>, task_name: &str) -> Rd<Vec<Dependency>> {
                 };
                 let lag = lag_of(cell(lag_col, i));
                 if !lag.is_finite() {
-                    return Err(value_err(format!("Schedule: task \"{task_name}\" waits on \"{task}\" with a lag that is not a number")).into());
+                    return Err(value_err(format!(
+                        "Schedule: task \"{task_name}\" waits on \"{task}\" with a lag that is not a number"
+                    ))
+                    .into());
                 }
                 let elapsed_col = find_column(&t, ELAPSED_NAMES, None).map(|k| &t.columns[k]);
                 let elapsed = elapsed_col.is_some() && read_logical(cell(elapsed_col, i));
@@ -283,9 +308,14 @@ fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
         Some(V::Str(s)) if s.is_empty() => Ok(None),
         Some(V::Num(n)) if n.is_finite() => Ok(Some(*n)),
         Some(V::Str(s)) => match parse_date_text(s) {
-            Err(Fail::Sol(e)) => Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}")).into()),
+            Err(Fail::Sol(e)) => {
+                Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}"))
+                    .into())
+            }
             Err(js) => Err(js),
-            Ok(d) if !d.is_finite() => Err(value_err(format!("Schedule: task \"{task}\" has a {column} that is not a date: {s}")).into()),
+            Ok(d) if !d.is_finite() => {
+                Err(value_err(format!("Schedule: task \"{task}\" has a {column} that is not a date: {s}")).into())
+            }
             Ok(d) => Ok(Some(d)),
         },
         _ => Ok(None),
@@ -297,8 +327,15 @@ fn check_active(v: Option<&V>, task: &str) -> Rd<()> {
     match v {
         None | Some(V::Null | V::Bool(_)) => Ok(()),
         Some(V::Num(n)) if n.is_finite() => Ok(()),
-        Some(V::Err(e)) => Err(sol_error(e.code, format!("Schedule: task \"{task}\" has an Active that is an error")).into()),
-        Some(V::Str(s)) if js_trim(s).is_empty() || ["true", "yes", "y", "1", "on", "false", "no", "n", "0", "off"].contains(&norm(s).as_str()) => Ok(()),
+        Some(V::Err(e)) => {
+            Err(sol_error(e.code, format!("Schedule: task \"{task}\" has an Active that is an error")).into())
+        }
+        Some(V::Str(s))
+            if js_trim(s).is_empty()
+                || ["true", "yes", "y", "1", "on", "false", "no", "n", "0", "off"].contains(&norm(s).as_str()) =>
+        {
+            Ok(())
+        }
         _ => Err(value_err(format!("Schedule: task \"{task}\" has an Active that is neither true nor false")).into()),
     }
 }
@@ -338,7 +375,8 @@ struct Level {
 }
 
 fn holds_plan(v: &V) -> bool {
-    is_table(v) && as_cube(v).is_some_and(|c| find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))).is_some())
+    is_table(v)
+        && as_cube(v).is_some_and(|c| find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))).is_some())
 }
 
 /// `predecessorCell`.
@@ -347,12 +385,32 @@ fn predecessor_cell(deps: &[Dependency], typed: bool) -> V {
         return list(deps.iter().map(|d| V::str(&d.task)).collect());
     }
     let mut cols = vec![
-        CubeColumn { name: "Predecessor".into(), cells: deps.iter().map(|d| V::str(&d.task)).collect(), ty: Some(FrameColType::String), format: None },
-        CubeColumn { name: "Type".into(), cells: deps.iter().map(|d| V::str(d.ty.as_str())).collect(), ty: Some(FrameColType::String), format: None },
-        CubeColumn { name: "Lag".into(), cells: deps.iter().map(|d| V::Num(d.lag)).collect(), ty: Some(FrameColType::Number), format: None },
+        CubeColumn {
+            name: "Predecessor".into(),
+            cells: deps.iter().map(|d| V::str(&d.task)).collect(),
+            ty: Some(FrameColType::String),
+            format: None,
+        },
+        CubeColumn {
+            name: "Type".into(),
+            cells: deps.iter().map(|d| V::str(d.ty.as_str())).collect(),
+            ty: Some(FrameColType::String),
+            format: None,
+        },
+        CubeColumn {
+            name: "Lag".into(),
+            cells: deps.iter().map(|d| V::Num(d.lag)).collect(),
+            ty: Some(FrameColType::Number),
+            format: None,
+        },
     ];
     if deps.iter().any(|d| d.elapsed == Some(true)) {
-        cols.push(CubeColumn { name: "Elapsed".into(), cells: deps.iter().map(|d| V::Bool(d.elapsed == Some(true))).collect(), ty: Some(FrameColType::Logical), format: None });
+        cols.push(CubeColumn {
+            name: "Elapsed".into(),
+            cells: deps.iter().map(|d| V::Bool(d.elapsed == Some(true))).collect(),
+            ty: Some(FrameColType::Logical),
+            format: None,
+        });
     }
     super::frames::cube_from_columns(cols)
 }
@@ -378,7 +436,8 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         return Err(value_err("Schedule needs a Task column (text) naming each task").into());
     };
     let pred = find(PRED_NAMES);
-    let children = find_column(&c, CHILD_NAMES, Some(&|i, col: &CubeColumn| Some(i) != pred && col.cells.iter().any(holds_plan)));
+    let children =
+        find_column(&c, CHILD_NAMES, Some(&|i, col: &CubeColumn| Some(i) != pred && col.cells.iter().any(holds_plan)));
     let work = find(WORK_NAMES);
     let fallback = |i: usize, col: &CubeColumn| {
         i != task
@@ -476,9 +535,15 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
                 col_of("Predecessors", pred_cells, None),
             ];
             if let Some(b) = base {
-                gen.push(col_of("Start", (0..n).map(|k| V::Num(b + k as f64 * every)).collect(), Some(FrameColType::Date)));
+                gen.push(col_of(
+                    "Start",
+                    (0..n).map(|k| V::Num(b + k as f64 * every)).collect(),
+                    Some(FrameColType::Date),
+                ));
             }
-            let V::Cube(gen) = super::frames::cube_from_columns(gen) else { unreachable!("cube_from_columns makes a cube") };
+            let V::Cube(gen) = super::frames::cube_from_columns(gen) else {
+                unreachable!("cube_from_columns makes a cube")
+            };
             let (level, sub) = read_level(gen, hours)?;
             kids = Some(sub);
             child_level = Some(level);
@@ -486,7 +551,8 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         child_levels.push(child_level);
         let work_cell = num(at(cols.work, i));
         let units_cell = num(at(cols.units, i));
-        let has_duration = !matches!(at(duration, i), None | Some(V::Null)) && !matches!(at(duration, i), Some(V::Str(s)) if s.is_empty());
+        let has_duration = !matches!(at(duration, i), None | Some(V::Null))
+            && !matches!(at(duration, i), Some(V::Str(s)) if s.is_empty());
         let task_duration = if kids.is_some() {
             0.0
         } else if has_duration || work_cell.is_none() {
@@ -504,7 +570,10 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         let start = read_date(at(cols.start, i), &name, "Start")?;
         let finish = read_date(at(cols.finish, i), &name, "Finish")?;
         let deadline = read_date(at(cols.deadline, i), &name, "Deadline")?;
-        let group = at(cols.group, i).filter(|g| !nullish(g)).map(|g| js_trim(&js_string_of(g)).to_string()).filter(|g| !g.is_empty());
+        let group = at(cols.group, i)
+            .filter(|g| !nullish(g))
+            .map(|g| js_trim(&js_string_of(g)).to_string())
+            .filter(|g| !g.is_empty());
         let actual_start = read_date(at(cols.actual, i), &name, "Actual start")?;
         tasks.push(PlanTask {
             name: name.clone(),
@@ -560,7 +629,10 @@ fn inactive_names(level: &Level, out: &mut HashSet<String>) {
 fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<String>) -> Rd<()> {
     let find = |names: &[&str]| links.columns.iter().position(|c| names.contains(&norm(&c.name).as_str()));
     let (Some(succ_col), Some(pred_col)) = (find(LINK_SUCC_NAMES), find(LINK_PRED_NAMES)) else {
-        return Err(value_err("Schedule: the Links frame needs a Successor (or Task, To) column and a Predecessor (or From) column").into());
+        return Err(value_err(
+            "Schedule: the Links frame needs a Successor (or Task, To) column and a Predecessor (or From) column",
+        )
+        .into());
     };
     let (type_col, lag_col) = (find(TYPE_NAMES), find(LAG_NAMES));
     fn collect(ts: &[PlanTask], path: &mut Vec<usize>, out: &mut HashMap<String, Vec<usize>>) {
@@ -575,7 +647,9 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
     }
     let mut by_name = HashMap::new();
     collect(tasks, &mut Vec::new(), &mut by_name);
-    let value = |col: Option<usize>, i: usize| col.and_then(|k| links.columns[k].values.get(i)).filter(|v| !matches!(v, V::Undef));
+    let value = |col: Option<usize>, i: usize| {
+        col.and_then(|k| links.columns[k].values.get(i)).filter(|v| !matches!(v, V::Undef))
+    };
     let rows = links.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
     for i in 0..rows {
         let succ = js_trim(&js_str(value(Some(succ_col), i))).to_string();
@@ -588,15 +662,23 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
             if inactive.contains(&key) {
                 continue;
             }
-            return Err(value_err(format!("Schedule: the Links frame names task \"{succ}\", which isn't in the plan")).into());
+            return Err(
+                value_err(format!("Schedule: the Links frame names task \"{succ}\", which isn't in the plan")).into()
+            );
         };
         let raw = link_type(value(type_col, i));
         let Some(ty) = LinkType::parse(&raw) else {
-            return Err(value_err(format!("Schedule: the Links frame links \"{succ}\" with type \"{raw}\"; use FS, SS, FF or SF")).into());
+            return Err(value_err(format!(
+                "Schedule: the Links frame links \"{succ}\" with type \"{raw}\"; use FS, SS, FF or SF"
+            ))
+            .into());
         };
         let lag = lag_of(value(lag_col, i));
         if !lag.is_finite() {
-            return Err(value_err(format!("Schedule: the Links frame links \"{succ}\" with a lag that is not a number")).into());
+            return Err(value_err(format!(
+                "Schedule: the Links frame links \"{succ}\" with a lag that is not a number"
+            ))
+            .into());
         }
         let mut list: &mut [PlanTask] = tasks;
         let (last, head) = path.split_last().expect("a path names a task");
@@ -611,11 +693,28 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
 const DATETIME_FORMAT: &str = "DD-MMM-YYYY HH:mm";
 
 /// `writeLevel`: the level's cube with its computed columns.
-fn write_level(level: &Level, by_name: &HashMap<String, &ScheduledTask>, nested: bool, minutes: bool, merged: bool) -> V {
-    let rows: Vec<Option<&ScheduledTask>> = level.names.iter().zip(&level.inactive).map(|(n, off)| if *off { None } else { by_name.get(&js_lower(n).into_owned()).copied() }).collect();
+fn write_level(
+    level: &Level,
+    by_name: &HashMap<String, &ScheduledTask>,
+    nested: bool,
+    minutes: bool,
+    merged: bool,
+) -> V {
+    let rows: Vec<Option<&ScheduledTask>> = level
+        .names
+        .iter()
+        .zip(&level.inactive)
+        .map(|(n, off)| if *off { None } else { by_name.get(&js_lower(n).into_owned()).copied() })
+        .collect();
     let cells = |f: &dyn Fn(&ScheduledTask) -> V| -> Vec<V> { rows.iter().map(|t| t.map_or(V::Null, f)).collect() };
-    let date_format = minutes.then(|| json!({ "format": "date_custom", "customPattern": DATETIME_FORMAT, "unit": "none" }));
-    let dated = |name: &str, cells: Vec<V>| CubeColumn { name: name.into(), cells, ty: Some(FrameColType::Date), format: date_format.clone() };
+    let date_format =
+        minutes.then(|| json!({ "format": "date_custom", "customPattern": DATETIME_FORMAT, "unit": "none" }));
+    let dated = |name: &str, cells: Vec<V>| CubeColumn {
+        name: name.into(),
+        cells,
+        ty: Some(FrameColType::Date),
+        format: date_format.clone(),
+    };
     let typed = |name: &str, ty: FrameColType, cells: Vec<V>| col_of(name, cells, Some(ty));
     let opt_str = |s: &Option<String>| s.as_deref().map_or(V::Null, V::str);
     let mut appended: Vec<CubeColumn> = vec![
@@ -635,7 +734,10 @@ fn write_level(level: &Level, by_name: &HashMap<String, &ScheduledTask>, nested:
         appended.push(col_of(
             "Segments",
             cells(&|t| match &t.segments {
-                Some(s) => super::frames::cube_from_columns(vec![dated("Start", s.iter().map(|x| V::Num(x.0)).collect()), dated("Finish", s.iter().map(|x| V::Num(x.1)).collect())]),
+                Some(s) => super::frames::cube_from_columns(vec![
+                    dated("Start", s.iter().map(|x| V::Num(x.0)).collect()),
+                    dated("Finish", s.iter().map(|x| V::Num(x.1)).collect()),
+                ]),
                 None => V::Null,
             }),
             None,
@@ -655,7 +757,10 @@ fn write_level(level: &Level, by_name: &HashMap<String, &ScheduledTask>, nested:
     }
     let child = |l: &Level| write_level(l, by_name, nested, minutes, merged);
     if level.cols.children.is_none() && level.child_levels.iter().any(Option::is_some) {
-        appended.insert(0, col_of("Tasks", level.child_levels.iter().map(|l| l.as_ref().map_or(V::Null, child)).collect(), None));
+        appended.insert(
+            0,
+            col_of("Tasks", level.child_levels.iter().map(|l| l.as_ref().map_or(V::Null, child)).collect(), None),
+        );
     }
     let taken: HashSet<&str> = appended.iter().map(|c| c.name.as_str()).collect();
     let mut rebuilt: Vec<CubeColumn> = Vec::new();
@@ -665,15 +770,27 @@ fn write_level(level: &Level, by_name: &HashMap<String, &ScheduledTask>, nested:
             continue;
         }
         let cells: Vec<V> = if is(level.cols.children) {
-            col.cells.iter().enumerate().map(|(i, v)| level.child_levels.get(i).and_then(Option::as_ref).map_or_else(|| v.clone(), child)).collect()
+            col.cells
+                .iter()
+                .enumerate()
+                .map(|(i, v)| level.child_levels.get(i).and_then(Option::as_ref).map_or_else(|| v.clone(), child))
+                .collect()
         } else if is(level.cols.pred) {
             let written = predecessor_column(&preds);
-            col.cells.iter().enumerate().map(|(i, v)| if rows.get(i).is_some_and(Option::is_some) { written[i].clone() } else { v.clone() }).collect()
+            col.cells
+                .iter()
+                .enumerate()
+                .map(|(i, v)| if rows.get(i).is_some_and(Option::is_some) { written[i].clone() } else { v.clone() })
+                .collect()
         } else if is(level.cols.duration) {
-            col.cells.iter().enumerate().map(|(i, v)| match rows.get(i).copied().flatten() {
-                Some(t) if t.summary => V::Num(t.duration),
-                _ => v.clone(),
-            }).collect()
+            col.cells
+                .iter()
+                .enumerate()
+                .map(|(i, v)| match rows.get(i).copied().flatten() {
+                    Some(t) if t.summary => V::Num(t.duration),
+                    _ => v.clone(),
+                })
+                .collect()
         } else {
             col.cells.clone()
         };
@@ -801,8 +918,11 @@ fn wired_first(c: &Call, key: &str) -> Option<V> {
 }
 
 fn schedule_card(c: &mut Call) -> Answer {
-    const FIELDS: [&str; 6] = ["cachedResult", "cachedFinish", "cachedGantt", "cachedDiagnostics", "cachedOutput", "cachedMspdi"];
-    let outs = |v: &V| -> Vec<(String, V)> { ["cube", "finish", "diagnostics", "gantt", "mspdi"].iter().map(|k| (k.to_string(), v.clone())).collect() };
+    const FIELDS: [&str; 6] =
+        ["cachedResult", "cachedFinish", "cachedGantt", "cachedDiagnostics", "cachedOutput", "cachedMspdi"];
+    let outs = |v: &V| -> Vec<(String, V)> {
+        ["cube", "finish", "diagnostics", "gantt", "mspdi"].iter().map(|k| (k.to_string(), v.clone())).collect()
+    };
     let tasks = slot(c, "tasks");
     let start = wired_first(c, "start").unwrap_or_else(today);
     let (V::Cube(tasks), V::Num(start)) = (&tasks, &start) else {
@@ -831,7 +951,11 @@ fn schedule_card(c: &mut Call) -> Answer {
     let critical = c.field_str("criticalPaths", "one").to_string();
     let split = c.field_str("progress", "split") != "move";
     let hpd = js_arith(&hours_in);
-    let hours = if truthy(&hours_in) && hpd > 0.0 { Hours { n: hpd, is_num: matches!(hours_in, V::Num(_)) } } else { Hours { n: 8.0, is_num: true } };
+    let hours = if truthy(&hours_in) && hpd > 0.0 {
+        Hours { n: hpd, is_num: matches!(hours_in, V::Num(_)) }
+    } else {
+        Hours { n: 8.0, is_num: true }
+    };
     let run = || -> Rd<(V, f64, V, V, Json, String)> {
         let (level, mut plan) = read_level(tasks.clone(), hours)?;
         if let Some(l) = &links {
@@ -843,7 +967,13 @@ fn schedule_card(c: &mut Call) -> Answer {
         let input = engine::ScheduleInput {
             tasks: plan,
             start,
-            calendar: CalendarSpec { working_days: working, weekend_code: Some(weekend_code), holidays: holidays.clone(), minutes, intervals: Some(engine::intervals_for_hours(hours.n)) },
+            calendar: CalendarSpec {
+                working_days: working,
+                weekend_code: Some(weekend_code),
+                holidays: holidays.clone(),
+                minutes,
+                intervals: Some(engine::intervals_for_hours(hours.n)),
+            },
             status_date: status,
             critical_slack: None,
             multiple_critical_paths: critical == "many",
@@ -851,13 +981,30 @@ fn schedule_card(c: &mut Call) -> Answer {
             split_in_progress: Some(split),
         };
         let out = engine::schedule(&input).map_err(|e| value_err(format!("Schedule: {}", e.message)))?;
-        let by_name: HashMap<String, &ScheduledTask> = out.tasks.iter().map(|t| (js_lower(&t.name).into_owned(), t)).collect();
+        let by_name: HashMap<String, &ScheduledTask> =
+            out.tasks.iter().map(|t| (js_lower(&t.name).into_owned(), t)).collect();
         let nested = out.tasks.iter().any(|t| t.summary);
         let cube = write_level(&level, &by_name, nested, minutes, links.is_some());
         let none: Vec<Option<f64>> = Vec::new();
         let mspdi_holidays = if working { holidays.as_deref() } else { Some(none.as_slice()) };
-        let mspdi = engine::write_mspdi(&out, &engine::MspdiOptions { title: Some("Schedule"), hours_per_day: Some(hours.n), format_iso: &iso, minutes, holidays: mspdi_holidays });
-        Ok((cube, out.project_finish, V::str(&engine::mermaid_gantt(&out, iso)), diagnostics_frame(&out), output_json(&out), mspdi))
+        let mspdi = engine::write_mspdi(
+            &out,
+            &engine::MspdiOptions {
+                title: Some("Schedule"),
+                hours_per_day: Some(hours.n),
+                format_iso: &iso,
+                minutes,
+                holidays: mspdi_holidays,
+            },
+        );
+        Ok((
+            cube,
+            out.project_finish,
+            V::str(&engine::mermaid_gantt(&out, iso)),
+            diagnostics_frame(&out),
+            output_json(&out),
+            mspdi,
+        ))
     };
     match run() {
         Ok((cube, finish, gantt, diagnostics, output, mspdi)) => {
@@ -868,7 +1015,13 @@ fn schedule_card(c: &mut Call) -> Answer {
             c.show("cachedDiagnostics", diagnostics.clone());
             c.show("cachedOutput", V::Json(Rc::new(output)));
             c.show("cachedMspdi", mspdi.clone());
-            Ok(vec![("cube".into(), cube), ("finish".into(), V::Num(finish)), ("diagnostics".into(), diagnostics), ("gantt".into(), gantt), ("mspdi".into(), mspdi)])
+            Ok(vec![
+                ("cube".into(), cube),
+                ("finish".into(), V::Num(finish)),
+                ("diagnostics".into(), diagnostics),
+                ("gantt".into(), gantt),
+                ("mspdi".into(), mspdi),
+            ])
         }
         Err(Fail::Sol(e)) => {
             let e = V::err(e);
@@ -897,7 +1050,9 @@ fn deps_of(v: Option<&V>) -> Vec<Dependency> {
             let t = as_cube(v).expect("a table");
             let mut names = vec!["predecessor"];
             names.extend_from_slice(TASK_NAMES);
-            let Some(name_col) = gantt_col(&t, &names).or_else(|| t.columns.iter().find(|x| has_text(x))) else { return Vec::new() };
+            let Some(name_col) = gantt_col(&t, &names).or_else(|| t.columns.iter().find(|x| has_text(x))) else {
+                return Vec::new();
+            };
             let (type_col, lag_col) = (gantt_col(&t, TYPE_NAMES), gantt_col(&t, LAG_NAMES));
             let mut out = Vec::new();
             for i in 0..rows_of(&t) {
@@ -910,7 +1065,11 @@ fn deps_of(v: Option<&V>) -> Vec<Dependency> {
                     Some(n) => n,
                     None => {
                         let n = cell(lag_col, i).map_or(0.0, to_number);
-                        if n.is_nan() || n == 0.0 { 0.0 } else { n }
+                        if n.is_nan() || n == 0.0 {
+                            0.0
+                        } else {
+                            n
+                        }
                     }
                 };
                 out.push(Dependency { task, ty, lag, elapsed: None });
@@ -951,7 +1110,13 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
     let pred = gantt_col(c, PRED_NAMES);
     let is_pred = |x: &CubeColumn| pred.is_some_and(|p| std::ptr::eq(p, x));
     let children = gantt_col(c, CHILD_NAMES).or_else(|| {
-        c.columns.iter().find(|x| !is_pred(x) && norm(&x.name) != "segments" && x.cells.iter().any(|v| is_table(v) && as_cube(v).is_some_and(|t| gantt_col(&t, TASK_NAMES).is_some())))
+        c.columns.iter().find(|x| {
+            !is_pred(x)
+                && norm(&x.name) != "segments"
+                && x.cells
+                    .iter()
+                    .any(|v| is_table(v) && as_cube(v).is_some_and(|t| gantt_col(&t, TASK_NAMES).is_some()))
+        })
     });
     let active = gantt_col(c, ACTIVE_NAMES);
     for i in 0..rows_of(c) {
@@ -981,7 +1146,11 @@ fn gantt_date(v: Option<&V>) -> Rd<Option<f64>> {
 }
 
 fn link_violated(d: &Dependency, pred: &Row, succ: &Row) -> bool {
-    let (Some(ps), Some(pf), Some(ss), Some(sf)) = (pred.num("start"), pred.num("finish"), succ.num("start"), succ.num("finish")) else { return false };
+    let (Some(ps), Some(pf), Some(ss), Some(sf)) =
+        (pred.num("start"), pred.num("finish"), succ.num("start"), succ.num("finish"))
+    else {
+        return false;
+    };
     if d.lag < 0.0 {
         return false;
     }
@@ -1055,12 +1224,18 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
             }
             "columns" => {
                 const COLUMNS: [&str; 7] = ["name", "start", "finish", "duration", "float", "complete", "predecessors"];
-                let cols: Vec<Json> = val.split(',').map(|s| js_lower(js_trim(s)).into_owned()).filter(|s| COLUMNS.contains(&s.as_str())).map(Json::String).collect();
+                let cols: Vec<Json> = val
+                    .split(',')
+                    .map(|s| js_lower(js_trim(s)).into_owned())
+                    .filter(|s| COLUMNS.contains(&s.as_str()))
+                    .map(Json::String)
+                    .collect();
                 if !cols.is_empty() {
                     v.insert(key, Json::Array(cols));
                 }
             }
-            "critical" | "baseline" | "arrows" | "today" | "status" | "weekends" | "group_by" | "labels" | "minutes" | "histogram" => {
+            "critical" | "baseline" | "arrows" | "today" | "status" | "weekends" | "group_by" | "labels"
+            | "minutes" | "histogram" => {
                 if let Some(b) = to_bool(val) {
                     v.insert(key, Json::Bool(b));
                 }
@@ -1099,7 +1274,11 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
     let mut predecessor_text = Map::new();
     for (ri, r) in rows.iter().enumerate() {
         let (Some(start), Some(finish)) = (r.num("start"), r.num("finish")) else {
-            return Err(value_err(format!("Gantt: \"{}\" has no Start or Finish; it needs a Schedule node's output", r.name)).into());
+            return Err(value_err(format!(
+                "Gantt: \"{}\" has no Start or Finish; it needs a Schedule node's output",
+                r.name
+            ))
+            .into());
         };
         let summary = read_logical(r.get("summary")) || rows.get(ri + 1).is_some_and(|n| n.level == r.level + 1.0);
         let dur = r.num("duration").or_else(|| r.num("days"));
@@ -1130,7 +1309,11 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             let empty = Vec::new();
             let ss = gantt_col(&sc, &["start"]).map_or(&empty, |c| &c.cells);
             let sf = gantt_col(&sc, &["finish"]).map_or(&empty, |c| &c.cells);
-            let parts: Vec<Json> = ss.iter().enumerate().filter_map(|(k, a)| Some(json!([json_num(num(Some(a))?), json_num(num(sf.get(k))?)]))).collect();
+            let parts: Vec<Json> = ss
+                .iter()
+                .enumerate()
+                .filter_map(|(k, a)| Some(json!([json_num(num(Some(a))?), json_num(num(sf.get(k))?)])))
+                .collect();
             if parts.len() > 1 {
                 t.insert("segments".into(), Json::Array(parts));
             }
@@ -1190,11 +1373,19 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
         }
     }
     let project_start = if starts.is_empty() { o.today } else { starts.iter().copied().fold(f64::INFINITY, math_min) };
-    let project_finish = if finishes.is_empty() { project_start } else { finishes.iter().copied().fold(f64::NEG_INFINITY, math_max) };
-    let spec = CalendarSpec { working_days: true, weekend_code: Some(o.weekend_code), holidays: o.holidays.clone(), minutes: false, intervals: None };
+    let project_finish =
+        if finishes.is_empty() { project_start } else { finishes.iter().copied().fold(f64::NEG_INFINITY, math_max) };
+    let spec = CalendarSpec {
+        working_days: true,
+        weekend_code: Some(o.weekend_code),
+        holidays: o.holidays.clone(),
+        minutes: false,
+        intervals: None,
+    };
     let cal = engine::Calendar::new(project_start, &spec);
     const PAD: f64 = 14.0;
-    let pairs = |xs: Vec<(f64, f64)>| Json::Array(xs.into_iter().map(|(a, b)| json!([json_num(a), json_num(b)])).collect());
+    let pairs =
+        |xs: Vec<(f64, f64)>| Json::Array(xs.into_iter().map(|(a, b)| json!([json_num(a), json_num(b)])).collect());
     let nums = |xs: Vec<f64>| Json::Array(xs.into_iter().map(json_num).collect());
     let mut view = Map::new();
     if any_clock {
@@ -1325,7 +1516,18 @@ fn metrics_for(bac: f64, bcws: f64, bcwp: f64, acwp: f64) -> Metrics {
         Some(c) if c > 0.0 => bac / c,
         _ => bac,
     };
-    Metrics { bcws, bcwp, acwp, sv: bcwp - bcws, cv: bcwp - acwp, spi: ratio(bcwp, bcws), cpi, eac, vac: bac - eac, tcpi: ratio(bac - bcwp, bac - acwp) }
+    Metrics {
+        bcws,
+        bcwp,
+        acwp,
+        sv: bcwp - bcws,
+        cv: bcwp - acwp,
+        spi: ratio(bcwp, bcws),
+        cpi,
+        eac,
+        vac: bac - eac,
+        tcpi: ratio(bac - bcwp, bac - acwp),
+    }
 }
 
 /// `plannedFraction`: how much of the planned span the status date has reached, in working days.
@@ -1363,19 +1565,29 @@ fn earned_value_card(c: &mut Call) -> Answer {
         _ => return empty(c, V::Null),
     };
     let bcube = as_cube(&slot(c, "baseline"));
-    let cost_name = match c.read_input("cost", match c.string_literal("cost") {
-        V::Undef | V::Null => V::str(""),
-        v => v,
-    }) {
+    let cost_name = match c.read_input(
+        "cost",
+        match c.string_literal("cost") {
+            V::Undef | V::Null => V::str(""),
+            v => v,
+        },
+    ) {
         V::Null | V::Undef => String::new(),
         v => super::frames::trimmed(&v, "(intermediate value)")?,
     };
     const TASK: [&str; 3] = ["task", "name", "title"];
     const COST: [&str; 3] = ["cost", "budget", "bac"];
     let task_col = ev_col(&scube, &TASK).or_else(|| scube.columns.iter().find(|x| has_text(x)));
-    let Some(task_col) = task_col else { return empty(c, V::err(value_err("Earned Value needs a Task column naming each task"))) };
+    let Some(task_col) = task_col else {
+        return empty(c, V::err(value_err("Earned Value needs a Task column naming each task")));
+    };
     let complete_col = ev_col(&scube, &["complete", "% complete", "percent complete", "done", "progress"]);
-    let named = |t: &Cube| -> Option<usize> { (!cost_name.is_empty()).then(|| ev_col(t, &[cost_name.as_str()])).flatten().map(|col| t.columns.iter().position(|x| std::ptr::eq(x, col)).unwrap_or(0)) };
+    let named = |t: &Cube| -> Option<usize> {
+        (!cost_name.is_empty())
+            .then(|| ev_col(t, &[cost_name.as_str()]))
+            .flatten()
+            .map(|col| t.columns.iter().position(|x| std::ptr::eq(x, col)).unwrap_or(0))
+    };
     let cost_col = named(&scube).map(|i| &scube.columns[i]).or_else(|| ev_col(&scube, &COST));
     let actual_col = ev_col(&scube, &["actual cost", "actual", "acwp", "spent"]);
     let (s_start, s_finish) = (ev_col(&scube, &["start"]), ev_col(&scube, &["finish", "end"]));
@@ -1408,16 +1620,31 @@ fn earned_value_card(c: &mut Call) -> Answer {
             (Some(bi), Some(bc)) => date_of(cell(Some(bc), bi)),
             _ => date_of(cell(sc, i)),
         };
-        let actual_cost = actual_col.and_then(|ac| cell(Some(ac), i).filter(|v| !nullish(v)).map(|v| magnitude(Some(v))));
-        tasks.push(EvTask { name, cost, complete, planned_start: planned(b_start, s_start), planned_finish: planned(b_finish, s_finish), actual_cost });
+        let actual_cost =
+            actual_col.and_then(|ac| cell(Some(ac), i).filter(|v| !nullish(v)).map(|v| magnitude(Some(v))));
+        tasks.push(EvTask {
+            name,
+            cost,
+            complete,
+            planned_start: planned(b_start, s_start),
+            planned_finish: planned(b_finish, s_finish),
+            actual_cost,
+        });
     }
     let weekend_code = js_arith(&read_or(c, "weekend_code", 1.0));
-    let spec = CalendarSpec { working_days: true, weekend_code: Some(weekend_code), holidays: holiday_list(&slot(c, "holidays")), minutes: false, intervals: None };
+    let spec = CalendarSpec {
+        working_days: true,
+        weekend_code: Some(weekend_code),
+        holidays: holiday_list(&slot(c, "holidays")),
+        minutes: false,
+        intervals: None,
+    };
     let cal = engine::Calendar::new(status, &spec);
     let mut rows: Vec<(String, Metrics)> = Vec::new();
     for t in &tasks {
         let bac = t.cost;
-        let bcws = bac * planned_fraction(t.planned_start, t.planned_finish, status, &cal).map_err(|e| thrown(&e.message))?;
+        let bcws =
+            bac * planned_fraction(t.planned_start, t.planned_finish, status, &cal).map_err(|e| thrown(&e.message))?;
         let bcwp = bac * (t.complete / 100.0);
         let acwp = t.actual_cost.unwrap_or(bcwp);
         rows.push((t.name.clone(), metrics_for(bac, bcws, bcwp, acwp)));
@@ -1436,7 +1663,14 @@ fn earned_value_card(c: &mut Call) -> Answer {
     };
     let of = |f: &dyn Fn(&Metrics) -> V| rows.iter().map(|(_, m)| f(m)).collect::<Vec<V>>();
     let frame = frame_v(vec![
-        Column { name: "Task".into(), ty: FrameColType::String, values: rows.iter().map(|(n, _)| V::str(n)).collect(), unit: None, format: None, raw: None },
+        Column {
+            name: "Task".into(),
+            ty: FrameColType::String,
+            values: rows.iter().map(|(n, _)| V::str(n)).collect(),
+            unit: None,
+            format: None,
+            raw: None,
+        },
         money_col("BCWS", of(&|m| V::Num(m.bcws))),
         money_col("BCWP", of(&|m| V::Num(m.bcwp))),
         money_col("ACWP", of(&|m| V::Num(m.acwp))),
@@ -1483,11 +1717,15 @@ fn scan_lambda(c: &mut Call) -> Answer {
     let out: Vec<V> = m
         .iter()
         .map(|row| {
-            list(row.iter().map(|x| {
-                i += 1.0;
-                acc = body.call(&ev, &[acc.clone(), x.clone(), V::Num(i)]);
-                result_cell(&acc)
-            }).collect())
+            list(
+                row.iter()
+                    .map(|x| {
+                        i += 1.0;
+                        acc = body.call(&ev, &[acc.clone(), x.clone(), V::Num(i)]);
+                        result_cell(&acc)
+                    })
+                    .collect(),
+            )
         })
         .collect();
     lambda_done(c, list(out), None)
@@ -1548,7 +1786,10 @@ fn ode_integrate(c: &mut Call) -> Answer {
             super::frames::num_column("t", ts.into_iter().map(V::Num).collect()),
             super::frames::num_column("y", ys.into_iter().map(V::Num).collect()),
         ]),
-        None => V::err(sol_error(ErrorCode::Domain, "The integration diverged or the derivative was undefined on the interval")),
+        None => V::err(sol_error(
+            ErrorCode::Domain,
+            "The integration diverged or the derivative was undefined on the interval",
+        )),
     };
     c.show("cachedResult", solution.clone());
     Ok(vec![("solution".into(), solution)])

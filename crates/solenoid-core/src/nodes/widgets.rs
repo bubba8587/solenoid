@@ -11,7 +11,9 @@ use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_number_of, js_parse_float, js_string_of, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string, string_to_number, to_fixed};
+use crate::jsnum::{
+    is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string, string_to_number, to_fixed,
+};
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
 
@@ -59,10 +61,15 @@ fn literal_num(c: &Call, key: &str, dflt: f64) -> f64 {
     js_number_of(&literal_or(c, key, V::Num(dflt)))
 }
 
-
 /// `clamp` (mathUtils.ts): NaN passes through.
 fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
-    if v < lo { lo } else if v > hi { hi } else { v }
+    if v < lo {
+        lo
+    } else if v > hi {
+        hi
+    } else {
+        v
+    }
 }
 
 fn num_column(name: &str, values: Vec<V>) -> Column {
@@ -151,11 +158,22 @@ fn round_to(n: f64, digits: i32) -> f64 {
 
 /// colord's `clamp(n, lo, hi)`: NaN reads as `lo`.
 fn cclamp(n: f64, lo: f64, hi: f64) -> f64 {
-    if n > hi { hi } else if n > lo { n } else { lo }
+    if n > hi {
+        hi
+    } else if n > lo {
+        n
+    } else {
+        lo
+    }
 }
 
 fn clamp_rgba(c: Rgba) -> Rgba {
-    Rgba { r: cclamp(c.r, 0.0, 255.0), g: cclamp(c.g, 0.0, 255.0), b: cclamp(c.b, 0.0, 255.0), a: cclamp(c.a, 0.0, 1.0) }
+    Rgba {
+        r: cclamp(c.r, 0.0, 255.0),
+        g: cclamp(c.g, 0.0, 255.0),
+        b: cclamp(c.b, 0.0, 255.0),
+        a: cclamp(c.a, 0.0, 1.0),
+    }
 }
 
 fn round_rgba(c: Rgba) -> Rgba {
@@ -165,7 +183,11 @@ fn round_rgba(c: Rgba) -> Rgba {
 /// colord's `clampHue`.
 fn clamp_hue(h: f64) -> f64 {
     let h = if h.is_finite() { h % 360.0 } else { 0.0 };
-    if h < 0.0 { h + 360.0 } else { h }
+    if h < 0.0 {
+        h + 360.0
+    } else {
+        h
+    }
 }
 
 fn hsv_to_rgba(h: f64, s: f64, v: f64, a: f64) -> Rgba {
@@ -208,7 +230,12 @@ fn parse_hex(s: &str) -> Option<Rgba> {
             b: 17.0 * hex_digit(b[3]),
             a: if b.len() == 5 { round_to(17.0 * hex_digit(b[4]) / 255.0, 2) } else { 1.0 },
         }),
-        7 | 9 => Some(Rgba { r: pair(1), g: pair(3), b: pair(5), a: if b.len() == 9 { round_to(pair(7) / 255.0, 2) } else { 1.0 } }),
+        7 | 9 => Some(Rgba {
+            r: pair(1),
+            g: pair(3),
+            b: pair(5),
+            a: if b.len() == 9 { round_to(pair(7) / 255.0, 2) } else { 1.0 },
+        }),
         _ => None,
     }
 }
@@ -246,7 +273,8 @@ impl<'a> Scan<'a> {
         let mut i = usize::from(matches!(b.first(), Some(b'+' | b'-')));
         let int = b[i..].iter().take_while(|c| c.is_ascii_digit()).count();
         i += int;
-        let frac = if b.get(i) == Some(&b'.') { b[i + 1..].iter().take_while(|c| c.is_ascii_digit()).count() } else { 0 };
+        let frac =
+            if b.get(i) == Some(&b'.') { b[i + 1..].iter().take_while(|c| c.is_ascii_digit()).count() } else { 0 };
         if frac > 0 {
             i += 1 + frac;
         } else if int == 0 {
@@ -305,7 +333,12 @@ fn parse_rgb(s: &str, spaced: bool) -> Option<Rgba> {
         return None;
     }
     let chan = |(n, pct): (f64, bool)| if pct { n / (100.0 / 255.0) } else { n };
-    Some(clamp_rgba(Rgba { r: chan(ch[0]), g: chan(ch[1]), b: chan(ch[2]), a: if alpha.1 { alpha.0 / 100.0 } else { alpha.0 } }))
+    Some(clamp_rgba(Rgba {
+        r: chan(ch[0]),
+        g: chan(ch[1]),
+        b: chan(ch[2]),
+        a: if alpha.1 { alpha.0 / 100.0 } else { alpha.0 },
+    }))
 }
 
 /// `hsla?(h[unit], s%, l%[, a])` or `hsla?(h[unit] s% l%[ / a])`.
@@ -373,7 +406,11 @@ fn parse_color(text: &str) -> Option<Rgba> {
         .or_else(|| parse_hsl(s, true))
         .or_else(|| {
             let name = js_lower(s);
-            let hex = if name == "transparent" { Some("#0000") } else { CSS_NAMES.iter().find(|(n, _)| *n == name).map(|(_, h)| *h) };
+            let hex = if name == "transparent" {
+                Some("#0000")
+            } else {
+                CSS_NAMES.iter().find(|(n, _)| *n == name).map(|(_, h)| *h)
+            };
             hex.and_then(parse_hex).map(round_rgba)
         })
 }
@@ -391,7 +428,11 @@ fn to_hex(c: Rgba) -> String {
 fn to_rgb_string(c: Rgba) -> String {
     let c = round_rgba(c);
     let (r, g, b) = (number_to_string(c.r), number_to_string(c.g), number_to_string(c.b));
-    if c.a < 1.0 { format!("rgba({r}, {g}, {b}, {})", number_to_string(c.a)) } else { format!("rgb({r}, {g}, {b})") }
+    if c.a < 1.0 {
+        format!("rgba({r}, {g}, {b}, {})", number_to_string(c.a))
+    } else {
+        format!("rgb({r}, {g}, {b})")
+    }
 }
 
 /// colord's object parsers' test of a channel: a number, or text that isn't empty.
@@ -433,18 +474,50 @@ fn blend(mode: &str, a: f64, b: f64) -> f64 {
         "mix" => (a + b) / 2.0,
         "multiply" => a * b,
         "screen" => a + b - a * b,
-        "overlay" => if a <= 0.5 { 2.0 * a * b } else { 1.0 - 2.0 * (1.0 - a) * (1.0 - b) },
+        "overlay" => {
+            if a <= 0.5 {
+                2.0 * a * b
+            } else {
+                1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+            }
+        }
         "soft-light" => {
             let d = if a <= 0.25 { ((16.0 * a - 12.0) * a + 4.0) * a } else { a.sqrt() };
-            if b <= 0.5 { a - (1.0 - 2.0 * b) * a * (1.0 - a) } else { a + (2.0 * b - 1.0) * (d - a) }
+            if b <= 0.5 {
+                a - (1.0 - 2.0 * b) * a * (1.0 - a)
+            } else {
+                a + (2.0 * b - 1.0) * (d - a)
+            }
         }
-        "hard-light" => if b <= 0.5 { 2.0 * a * b } else { 1.0 - 2.0 * (1.0 - a) * (1.0 - b) },
+        "hard-light" => {
+            if b <= 0.5 {
+                2.0 * a * b
+            } else {
+                1.0 - 2.0 * (1.0 - a) * (1.0 - b)
+            }
+        }
         "darken" => math_min(a, b),
         "lighten" => math_max(a, b),
         "difference" => (a - b).abs(),
         "exclusion" => a + b - 2.0 * a * b,
-        "dodge" => if a == 0.0 { 0.0 } else if b >= 1.0 { 1.0 } else { math_min(1.0, a / (1.0 - b)) },
-        "burn" => if a >= 1.0 { 1.0 } else if b <= 0.0 { 0.0 } else { 1.0 - math_min(1.0, (1.0 - a) / b) },
+        "dodge" => {
+            if a == 0.0 {
+                0.0
+            } else if b >= 1.0 {
+                1.0
+            } else {
+                math_min(1.0, a / (1.0 - b))
+            }
+        }
+        "burn" => {
+            if a >= 1.0 {
+                1.0
+            } else if b <= 0.0 {
+                0.0
+            } else {
+                1.0 - math_min(1.0, (1.0 - a) / b)
+            }
+        }
         _ => f64::NAN,
     }
 }
@@ -472,7 +545,8 @@ fn color_blend(c: &mut Call) -> Answer {
         (Some(Ok(a)), Some(Ok(b))) => {
             let mode = c.field_str("mode", "mix");
             let (a, b) = (round_rgba(a), round_rgba(b));
-            let ch = |x: f64, y: f64| math_round(math_min(1.0, math_max(0.0, blend(mode, x / 255.0, y / 255.0))) * 255.0);
+            let ch =
+                |x: f64, y: f64| math_round(math_min(1.0, math_max(0.0, blend(mode, x / 255.0, y / 255.0))) * 255.0);
             V::str(&to_hex(clamp_rgba(Rgba { r: ch(a.r, b.r), g: ch(a.g, b.g), b: ch(a.b, b.b), a: 1.0 })))
         }
         _ => V::Null,
@@ -599,11 +673,18 @@ fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 {
         let (mut lo, mut hi) = (0, n - 1);
         while hi - lo > 1 {
             let mid = (lo + hi) >> 1;
-            if xs[mid] <= x { lo = mid } else { hi = mid }
+            if xs[mid] <= x {
+                lo = mid
+            } else {
+                hi = mid
+            }
         }
         let t = (x - xs[lo]) / h[lo];
         let (t2, t3) = (t * t, t * t * t);
-        ys[lo] * (2.0 * t3 - 3.0 * t2 + 1.0) + h[lo] * m[lo] * (t3 - 2.0 * t2 + t) + ys[lo + 1] * (-2.0 * t3 + 3.0 * t2) + h[lo] * m[lo + 1] * (t3 - t2)
+        ys[lo] * (2.0 * t3 - 3.0 * t2 + 1.0)
+            + h[lo] * m[lo] * (t3 - 2.0 * t2 + t)
+            + ys[lo + 1] * (-2.0 * t3 + 3.0 * t2)
+            + h[lo] * m[lo + 1] * (t3 - t2)
     }
 }
 
@@ -619,7 +700,8 @@ fn curve(c: &mut Call) -> Answer {
     let (mut xs, mut values) = (Vec::new(), Vec::new());
     if !pts.is_empty() {
         let n = clamp(math_round(samples), 2.0, 1000.0);
-        let f = monotone_cubic(&pts.iter().map(|p| p.0).collect::<Vec<_>>(), &pts.iter().map(|p| p.1).collect::<Vec<_>>());
+        let f =
+            monotone_cubic(&pts.iter().map(|p| p.0).collect::<Vec<_>>(), &pts.iter().map(|p| p.1).collect::<Vec<_>>());
         let mut i = 0.0;
         while i < n {
             let x = xmin + ((xmax - xmin) * i) / (n - 1.0);
@@ -665,18 +747,37 @@ fn cable_switch(c: &mut Call) -> Answer {
         Some(v) => v.clone(),
     };
     let out = if c.field("multiSelect").and_then(Json::as_bool).unwrap_or(false) {
-        let selected: Vec<&str> = c.field("selectedKeys").and_then(Json::as_array).map(|a| a.iter().filter_map(Json::as_str).collect()).unwrap_or_default();
-        let chosen: Vec<(usize, &String)> = keys.iter().enumerate().filter(|(_, k)| selected.contains(&k.as_str())).collect();
+        let selected: Vec<&str> = c
+            .field("selectedKeys")
+            .and_then(Json::as_array)
+            .map(|a| a.iter().filter_map(Json::as_str).collect())
+            .unwrap_or_default();
+        let chosen: Vec<(usize, &String)> =
+            keys.iter().enumerate().filter(|(_, k)| selected.contains(&k.as_str())).collect();
         if chosen.is_empty() {
             V::Null
         } else {
             let title = |i: usize, k: &str| {
                 let t = c.field("titles").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", js_trim);
-                if t.is_empty() { format!("Input {}", i + 1) } else { t.to_string() }
+                if t.is_empty() {
+                    format!("Input {}", i + 1)
+                } else {
+                    t.to_string()
+                }
             };
             cube_from_columns(vec![
-                CubeColumn { name: "name".into(), cells: chosen.iter().map(|(i, k)| V::str(&title(*i, k))).collect(), ty: None, format: None },
-                CubeColumn { name: "value".into(), cells: chosen.iter().map(|(_, k)| first(c, k)).collect(), ty: None, format: None },
+                CubeColumn {
+                    name: "name".into(),
+                    cells: chosen.iter().map(|(i, k)| V::str(&title(*i, k))).collect(),
+                    ty: None,
+                    format: None,
+                },
+                CubeColumn {
+                    name: "value".into(),
+                    cells: chosen.iter().map(|(_, k)| first(c, k)).collect(),
+                    ty: None,
+                    format: None,
+                },
             ])
         }
     } else {
@@ -719,7 +820,10 @@ fn decode_entities(text: &str) -> String {
         let (body_len, decoded) = if b.first() == Some(&b'#') && b.get(1).is_some_and(u8::is_ascii_digit) {
             let n = b[1..].iter().take_while(|c| c.is_ascii_digit()).count();
             (1 + n, Some(string_to_number(&tail[1..1 + n])))
-        } else if b.first() == Some(&b'#') && matches!(b.get(1), Some(b'x' | b'X')) && b.get(2).is_some_and(u8::is_ascii_hexdigit) {
+        } else if b.first() == Some(&b'#')
+            && matches!(b.get(1), Some(b'x' | b'X'))
+            && b.get(2).is_some_and(u8::is_ascii_hexdigit)
+        {
             let n = b[2..].iter().take_while(|c| c.is_ascii_hexdigit()).count();
             let code = tail[2..2 + n].chars().fold(0.0, |acc, ch| acc * 16.0 + f64::from(ch.to_digit(16).unwrap_or(0)));
             (2 + n, Some(code))
@@ -733,7 +837,9 @@ fn decode_entities(text: &str) -> String {
         }
         let whole = &rest[at..at + body_len + 2];
         match decoded {
-            Some(code) if code <= f64::from(0x10ffff_u32) => out.push(char::from_u32(code as u32).unwrap_or('\u{fffd}')),
+            Some(code) if code <= f64::from(0x10ffff_u32) => {
+                out.push(char::from_u32(code as u32).unwrap_or('\u{fffd}'))
+            }
             Some(_) => out.push_str(whole),
             None => {
                 let named = match tail[..body_len].to_ascii_lowercase().as_str() {
@@ -770,7 +876,12 @@ fn source_has_layer(source: &str, name: &str) -> bool {
             continue;
         }
         let mut p = Scan { s: source, at: next };
-        let attr = ["inkscape:label", "data-name", "aria-label", "id"].iter().any(|a| p.rest().starts_with(a) && { p.at += a.len(); true });
+        let attr = ["inkscape:label", "data-name", "aria-label", "id"].iter().any(|a| {
+            p.rest().starts_with(a) && {
+                p.at += a.len();
+                true
+            }
+        });
         if attr {
             p.ws();
             if p.rest().starts_with('=') {
@@ -817,35 +928,152 @@ fn svg_picker(c: &mut Call) -> Answer {
 
 /// The CSS colour names colord's names plugin reads.
 const CSS_NAMES: &[(&str, &str)] = &[
-    ("white", "#ffffff"), ("bisque", "#ffe4c4"), ("blue", "#0000ff"), ("cadetblue", "#5f9ea0"), ("chartreuse", "#7fff00"),
-    ("chocolate", "#d2691e"), ("coral", "#ff7f50"), ("antiquewhite", "#faebd7"), ("aqua", "#00ffff"), ("azure", "#f0ffff"),
-    ("whitesmoke", "#f5f5f5"), ("papayawhip", "#ffefd5"), ("plum", "#dda0dd"), ("blanchedalmond", "#ffebcd"), ("black", "#000000"),
-    ("gold", "#ffd700"), ("goldenrod", "#daa520"), ("gainsboro", "#dcdcdc"), ("cornsilk", "#fff8dc"), ("cornflowerblue", "#6495ed"),
-    ("burlywood", "#deb887"), ("aquamarine", "#7fffd4"), ("beige", "#f5f5dc"), ("crimson", "#dc143c"), ("cyan", "#00ffff"),
-    ("darkblue", "#00008b"), ("darkcyan", "#008b8b"), ("darkgoldenrod", "#b8860b"), ("darkkhaki", "#bdb76b"), ("darkgray", "#a9a9a9"),
-    ("darkgreen", "#006400"), ("darkgrey", "#a9a9a9"), ("peachpuff", "#ffdab9"), ("darkmagenta", "#8b008b"), ("darkred", "#8b0000"),
-    ("darkorchid", "#9932cc"), ("darkorange", "#ff8c00"), ("darkslateblue", "#483d8b"), ("gray", "#808080"), ("darkslategray", "#2f4f4f"),
-    ("darkslategrey", "#2f4f4f"), ("deeppink", "#ff1493"), ("deepskyblue", "#00bfff"), ("wheat", "#f5deb3"), ("firebrick", "#b22222"),
-    ("floralwhite", "#fffaf0"), ("ghostwhite", "#f8f8ff"), ("darkviolet", "#9400d3"), ("magenta", "#ff00ff"), ("green", "#008000"),
-    ("dodgerblue", "#1e90ff"), ("grey", "#808080"), ("honeydew", "#f0fff0"), ("hotpink", "#ff69b4"), ("blueviolet", "#8a2be2"),
-    ("forestgreen", "#228b22"), ("lawngreen", "#7cfc00"), ("indianred", "#cd5c5c"), ("indigo", "#4b0082"), ("fuchsia", "#ff00ff"),
-    ("brown", "#a52a2a"), ("maroon", "#800000"), ("mediumblue", "#0000cd"), ("lightcoral", "#f08080"), ("darkturquoise", "#00ced1"),
-    ("lightcyan", "#e0ffff"), ("ivory", "#fffff0"), ("lightyellow", "#ffffe0"), ("lightsalmon", "#ffa07a"), ("lightseagreen", "#20b2aa"),
-    ("linen", "#faf0e6"), ("mediumaquamarine", "#66cdaa"), ("lemonchiffon", "#fffacd"), ("lime", "#00ff00"), ("khaki", "#f0e68c"),
-    ("mediumseagreen", "#3cb371"), ("limegreen", "#32cd32"), ("mediumspringgreen", "#00fa9a"), ("lightskyblue", "#87cefa"),
-    ("lightblue", "#add8e6"), ("midnightblue", "#191970"), ("lightpink", "#ffb6c1"), ("mistyrose", "#ffe4e1"), ("moccasin", "#ffe4b5"),
-    ("mintcream", "#f5fffa"), ("lightslategray", "#778899"), ("lightslategrey", "#778899"), ("navajowhite", "#ffdead"), ("navy", "#000080"),
-    ("mediumvioletred", "#c71585"), ("powderblue", "#b0e0e6"), ("palegoldenrod", "#eee8aa"), ("oldlace", "#fdf5e6"),
-    ("paleturquoise", "#afeeee"), ("mediumturquoise", "#48d1cc"), ("mediumorchid", "#ba55d3"), ("rebeccapurple", "#663399"),
-    ("lightsteelblue", "#b0c4de"), ("mediumslateblue", "#7b68ee"), ("thistle", "#d8bfd8"), ("tan", "#d2b48c"), ("orchid", "#da70d6"),
-    ("mediumpurple", "#9370db"), ("purple", "#800080"), ("pink", "#ffc0cb"), ("skyblue", "#87ceeb"), ("springgreen", "#00ff7f"),
-    ("palegreen", "#98fb98"), ("red", "#ff0000"), ("yellow", "#ffff00"), ("slateblue", "#6a5acd"), ("lavenderblush", "#fff0f5"),
-    ("peru", "#cd853f"), ("palevioletred", "#db7093"), ("violet", "#ee82ee"), ("teal", "#008080"), ("slategray", "#708090"),
-    ("slategrey", "#708090"), ("aliceblue", "#f0f8ff"), ("darkseagreen", "#8fbc8f"), ("darkolivegreen", "#556b2f"),
-    ("greenyellow", "#adff2f"), ("seagreen", "#2e8b57"), ("seashell", "#fff5ee"), ("tomato", "#ff6347"), ("silver", "#c0c0c0"),
-    ("sienna", "#a0522d"), ("lavender", "#e6e6fa"), ("lightgreen", "#90ee90"), ("orange", "#ffa500"), ("orangered", "#ff4500"),
-    ("steelblue", "#4682b4"), ("royalblue", "#4169e1"), ("turquoise", "#40e0d0"), ("yellowgreen", "#9acd32"), ("salmon", "#fa8072"),
-    ("saddlebrown", "#8b4513"), ("sandybrown", "#f4a460"), ("rosybrown", "#bc8f8f"), ("darksalmon", "#e9967a"),
-    ("lightgoldenrodyellow", "#fafad2"), ("snow", "#fffafa"), ("lightgrey", "#d3d3d3"), ("lightgray", "#d3d3d3"), ("dimgray", "#696969"),
-    ("dimgrey", "#696969"), ("olivedrab", "#6b8e23"), ("olive", "#808000"),
+    ("white", "#ffffff"),
+    ("bisque", "#ffe4c4"),
+    ("blue", "#0000ff"),
+    ("cadetblue", "#5f9ea0"),
+    ("chartreuse", "#7fff00"),
+    ("chocolate", "#d2691e"),
+    ("coral", "#ff7f50"),
+    ("antiquewhite", "#faebd7"),
+    ("aqua", "#00ffff"),
+    ("azure", "#f0ffff"),
+    ("whitesmoke", "#f5f5f5"),
+    ("papayawhip", "#ffefd5"),
+    ("plum", "#dda0dd"),
+    ("blanchedalmond", "#ffebcd"),
+    ("black", "#000000"),
+    ("gold", "#ffd700"),
+    ("goldenrod", "#daa520"),
+    ("gainsboro", "#dcdcdc"),
+    ("cornsilk", "#fff8dc"),
+    ("cornflowerblue", "#6495ed"),
+    ("burlywood", "#deb887"),
+    ("aquamarine", "#7fffd4"),
+    ("beige", "#f5f5dc"),
+    ("crimson", "#dc143c"),
+    ("cyan", "#00ffff"),
+    ("darkblue", "#00008b"),
+    ("darkcyan", "#008b8b"),
+    ("darkgoldenrod", "#b8860b"),
+    ("darkkhaki", "#bdb76b"),
+    ("darkgray", "#a9a9a9"),
+    ("darkgreen", "#006400"),
+    ("darkgrey", "#a9a9a9"),
+    ("peachpuff", "#ffdab9"),
+    ("darkmagenta", "#8b008b"),
+    ("darkred", "#8b0000"),
+    ("darkorchid", "#9932cc"),
+    ("darkorange", "#ff8c00"),
+    ("darkslateblue", "#483d8b"),
+    ("gray", "#808080"),
+    ("darkslategray", "#2f4f4f"),
+    ("darkslategrey", "#2f4f4f"),
+    ("deeppink", "#ff1493"),
+    ("deepskyblue", "#00bfff"),
+    ("wheat", "#f5deb3"),
+    ("firebrick", "#b22222"),
+    ("floralwhite", "#fffaf0"),
+    ("ghostwhite", "#f8f8ff"),
+    ("darkviolet", "#9400d3"),
+    ("magenta", "#ff00ff"),
+    ("green", "#008000"),
+    ("dodgerblue", "#1e90ff"),
+    ("grey", "#808080"),
+    ("honeydew", "#f0fff0"),
+    ("hotpink", "#ff69b4"),
+    ("blueviolet", "#8a2be2"),
+    ("forestgreen", "#228b22"),
+    ("lawngreen", "#7cfc00"),
+    ("indianred", "#cd5c5c"),
+    ("indigo", "#4b0082"),
+    ("fuchsia", "#ff00ff"),
+    ("brown", "#a52a2a"),
+    ("maroon", "#800000"),
+    ("mediumblue", "#0000cd"),
+    ("lightcoral", "#f08080"),
+    ("darkturquoise", "#00ced1"),
+    ("lightcyan", "#e0ffff"),
+    ("ivory", "#fffff0"),
+    ("lightyellow", "#ffffe0"),
+    ("lightsalmon", "#ffa07a"),
+    ("lightseagreen", "#20b2aa"),
+    ("linen", "#faf0e6"),
+    ("mediumaquamarine", "#66cdaa"),
+    ("lemonchiffon", "#fffacd"),
+    ("lime", "#00ff00"),
+    ("khaki", "#f0e68c"),
+    ("mediumseagreen", "#3cb371"),
+    ("limegreen", "#32cd32"),
+    ("mediumspringgreen", "#00fa9a"),
+    ("lightskyblue", "#87cefa"),
+    ("lightblue", "#add8e6"),
+    ("midnightblue", "#191970"),
+    ("lightpink", "#ffb6c1"),
+    ("mistyrose", "#ffe4e1"),
+    ("moccasin", "#ffe4b5"),
+    ("mintcream", "#f5fffa"),
+    ("lightslategray", "#778899"),
+    ("lightslategrey", "#778899"),
+    ("navajowhite", "#ffdead"),
+    ("navy", "#000080"),
+    ("mediumvioletred", "#c71585"),
+    ("powderblue", "#b0e0e6"),
+    ("palegoldenrod", "#eee8aa"),
+    ("oldlace", "#fdf5e6"),
+    ("paleturquoise", "#afeeee"),
+    ("mediumturquoise", "#48d1cc"),
+    ("mediumorchid", "#ba55d3"),
+    ("rebeccapurple", "#663399"),
+    ("lightsteelblue", "#b0c4de"),
+    ("mediumslateblue", "#7b68ee"),
+    ("thistle", "#d8bfd8"),
+    ("tan", "#d2b48c"),
+    ("orchid", "#da70d6"),
+    ("mediumpurple", "#9370db"),
+    ("purple", "#800080"),
+    ("pink", "#ffc0cb"),
+    ("skyblue", "#87ceeb"),
+    ("springgreen", "#00ff7f"),
+    ("palegreen", "#98fb98"),
+    ("red", "#ff0000"),
+    ("yellow", "#ffff00"),
+    ("slateblue", "#6a5acd"),
+    ("lavenderblush", "#fff0f5"),
+    ("peru", "#cd853f"),
+    ("palevioletred", "#db7093"),
+    ("violet", "#ee82ee"),
+    ("teal", "#008080"),
+    ("slategray", "#708090"),
+    ("slategrey", "#708090"),
+    ("aliceblue", "#f0f8ff"),
+    ("darkseagreen", "#8fbc8f"),
+    ("darkolivegreen", "#556b2f"),
+    ("greenyellow", "#adff2f"),
+    ("seagreen", "#2e8b57"),
+    ("seashell", "#fff5ee"),
+    ("tomato", "#ff6347"),
+    ("silver", "#c0c0c0"),
+    ("sienna", "#a0522d"),
+    ("lavender", "#e6e6fa"),
+    ("lightgreen", "#90ee90"),
+    ("orange", "#ffa500"),
+    ("orangered", "#ff4500"),
+    ("steelblue", "#4682b4"),
+    ("royalblue", "#4169e1"),
+    ("turquoise", "#40e0d0"),
+    ("yellowgreen", "#9acd32"),
+    ("salmon", "#fa8072"),
+    ("saddlebrown", "#8b4513"),
+    ("sandybrown", "#f4a460"),
+    ("rosybrown", "#bc8f8f"),
+    ("darksalmon", "#e9967a"),
+    ("lightgoldenrodyellow", "#fafad2"),
+    ("snow", "#fffafa"),
+    ("lightgrey", "#d3d3d3"),
+    ("lightgray", "#d3d3d3"),
+    ("dimgray", "#696969"),
+    ("dimgrey", "#696969"),
+    ("olivedrab", "#6b8e23"),
+    ("olive", "#808000"),
 ];

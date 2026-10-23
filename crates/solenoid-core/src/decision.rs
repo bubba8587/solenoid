@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string};
 
@@ -33,7 +33,15 @@ impl Normalize {
 /// `Array.prototype.sort` over a numeric comparator, exact for V8 below 64 items.
 pub(crate) fn sort_by_num<T: Clone>(v: &mut Vec<T>, mut cmp: impl FnMut(&T, &T) -> f64) {
     if crate::js_sort::v8_sort_short(v, &mut cmp).is_none() {
-        crate::js_sort::js_sort_by(v, |a, b| if cmp(a, b) < 0.0 { Ordering::Less } else if cmp(a, b) > 0.0 { Ordering::Greater } else { Ordering::Equal });
+        crate::js_sort::js_sort_by(v, |a, b| {
+            if cmp(a, b) < 0.0 {
+                Ordering::Less
+            } else if cmp(a, b) > 0.0 {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
     }
 }
 
@@ -59,16 +67,22 @@ fn median_of(mut known: Vec<f64>) -> f64 {
 fn criterion_scores(c: &FrameColumn, rows: usize) -> Vec<f64> {
     let cells: Vec<&FrameCell> = (0..rows).map(|i| c.cell_at(i)).collect();
     if c.ty == FrameColType::Logical {
-        return cells.iter().map(|v| match v {
-            FrameCell::Bool(true) => 1.0,
-            v => finite(v).unwrap_or(0.0),
-        }).collect();
+        return cells
+            .iter()
+            .map(|v| match v {
+                FrameCell::Bool(true) => 1.0,
+                v => finite(v).unwrap_or(0.0),
+            })
+            .collect();
     }
     let median = median_of(cells.iter().filter_map(|v| finite(v)).collect());
-    cells.iter().map(|v| match v {
-        FrameCell::Bool(b) => f64::from(u8::from(*b)),
-        v => finite(v).unwrap_or(median),
-    }).collect()
+    cells
+        .iter()
+        .map(|v| match v {
+            FrameCell::Bool(b) => f64::from(u8::from(*b)),
+            v => finite(v).unwrap_or(median),
+        })
+        .collect()
 }
 
 fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
@@ -76,7 +90,11 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
         Normalize::None => vals,
         Normalize::Max => {
             let denom = vals.iter().fold(0.0, |m, v| math_max(m, v.abs()));
-            if denom == 0.0 { vals.iter().map(|_| 0.0).collect() } else { vals.iter().map(|v| v / denom).collect() }
+            if denom == 0.0 {
+                vals.iter().map(|_| 0.0).collect()
+            } else {
+                vals.iter().map(|v| v / denom).collect()
+            }
         }
         Normalize::Range => {
             let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -88,7 +106,11 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
                     hi = v;
                 }
             }
-            if hi > lo { vals.iter().map(|v| (v - lo) / (hi - lo)).collect() } else { vals.iter().map(|_| 0.0).collect() }
+            if hi > lo {
+                vals.iter().map(|v| (v - lo) / (hi - lo)).collect()
+            } else {
+                vals.iter().map(|_| 0.0).collect()
+            }
         }
         Normalize::Rank => {
             let n = vals.len();
@@ -104,7 +126,11 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
 
 pub(crate) fn round4(n: f64) -> f64 {
     let r = math_round(n * 1e4) / 1e4;
-    if r == 0.0 { 0.0 } else { r }
+    if r == 0.0 {
+        0.0
+    } else {
+        r
+    }
 }
 
 /// `decisionColumns`: the first text column labels the options; every other number or logical column is a criterion.
@@ -154,10 +180,16 @@ fn parse_normalize(v: &FrameCell) -> Option<Normalize> {
     }
 }
 
-pub(crate) fn norm_overrides(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> HashMap<String, Normalize> {
+pub(crate) fn norm_overrides(
+    f: &FrameValue,
+    criteria: &[String],
+    rows: &HashMap<String, usize>,
+) -> HashMap<String, Normalize> {
     let crit = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let mut out = HashMap::new();
-    let Some(norm) = f.columns.iter().enumerate().find(|(i, c)| Some(*i) != crit && crit_key(&c.name) == "norm").map(|(_, c)| c) else {
+    let Some(norm) =
+        f.columns.iter().enumerate().find(|(i, c)| Some(*i) != crit && crit_key(&c.name) == "norm").map(|(_, c)| c)
+    else {
         return out;
     };
     for name in criteria {
@@ -174,7 +206,11 @@ pub struct Bound {
     pub(crate) at_most: Option<f64>,
 }
 
-pub(crate) fn bounds_from(f: &FrameValue, criteria: &[String], rows: &HashMap<String, usize>) -> Res<Option<Vec<Bound>>> {
+pub(crate) fn bounds_from(
+    f: &FrameValue,
+    criteria: &[String],
+    rows: &HashMap<String, usize>,
+) -> Res<Option<Vec<Bound>>> {
     let lo = f.columns.iter().find(|c| crit_key(&c.name) == "at least");
     let hi = f.columns.iter().find(|c| crit_key(&c.name) == "at most");
     if lo.is_none() && hi.is_none() {
@@ -201,7 +237,10 @@ pub(crate) fn bounds_from(f: &FrameValue, criteria: &[String], rows: &HashMap<St
 }
 
 pub(crate) fn weight_columns(f: &FrameValue) -> Vec<&FrameColumn> {
-    f.columns.iter().filter(|c| c.ty == FrameColType::Number && !matches!(crit_key(&c.name).as_str(), "at least" | "at most")).collect()
+    f.columns
+        .iter()
+        .filter(|c| c.ty == FrameColType::Number && !matches!(crit_key(&c.name).as_str(), "at least" | "at most"))
+        .collect()
 }
 
 pub struct Resolved {
@@ -215,7 +254,11 @@ pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> R
     let Some(wf) = wf else { return Ok(Resolved { weights: None, overrides: HashMap::new(), bounds: None }) };
     let rows = criterion_row_index(wf);
     let nums = weight_columns(wf);
-    let weight_col = nums.iter().find(|c| matches!(crit_key(&c.name).as_str(), "weight" | "weights" | "value")).or(nums.first()).copied();
+    let weight_col = nums
+        .iter()
+        .find(|c| matches!(crit_key(&c.name).as_str(), "weight" | "weights" | "value"))
+        .or(nums.first())
+        .copied();
     let bounds = bounds_from(wf, criteria, &rows)?;
     let weights = criteria
         .iter()
@@ -232,7 +275,8 @@ pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> R
                 }
                 _ => None,
             };
-            let screen_only = r.is_some() && bounds.as_ref().and_then(|b| b.get(j)).is_some_and(|b| b.at_least.is_some() || b.at_most.is_some());
+            let screen_only = r.is_some()
+                && bounds.as_ref().and_then(|b| b.get(j)).is_some_and(|b| b.at_least.is_some() || b.at_most.is_some());
             Ok(v.unwrap_or(if screen_only { 0.0 } else { 1.0 }))
         })
         .collect::<Res<Vec<f64>>>()?;
@@ -245,7 +289,11 @@ fn plain_number(v: f64) -> String {
     match s.split_once('.') {
         Some((int, frac)) => {
             let frac = frac.trim_end_matches('0');
-            if frac.is_empty() { int.to_string() } else { format!("{int}.{frac}") }
+            if frac.is_empty() {
+                int.to_string()
+            } else {
+                format!("{int}.{frac}")
+            }
         }
         None => s,
     }
@@ -291,7 +339,13 @@ pub(crate) fn filled_in(f: &FrameValue, skip: &[String]) -> Vec<Vec<String>> {
 }
 
 pub(crate) fn frame_rows(f: &FrameValue, rows: &[usize]) -> FrameValue {
-    FrameValue { columns: f.columns.iter().map(|c| FrameColumn::new(c.name.clone(), c.ty, rows.iter().map(|&i| c.cell_at(i).clone()).collect())).collect() }
+    FrameValue {
+        columns: f
+            .columns
+            .iter()
+            .map(|c| FrameColumn::new(c.name.clone(), c.ty, rows.iter().map(|&i| c.cell_at(i).clone()).collect()))
+            .collect(),
+    }
 }
 
 pub(crate) struct Scores {
@@ -305,7 +359,12 @@ pub(crate) struct Scores {
     pub(crate) scores: Vec<f64>,
 }
 
-pub(crate) fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize: Normalize, overrides: &HashMap<String, Normalize>) -> Res<Scores> {
+pub(crate) fn decision_scores(
+    f: &FrameValue,
+    weights: Option<&[f64]>,
+    normalize: Normalize,
+    overrides: &HashMap<String, Normalize>,
+) -> Res<Scores> {
     let rows = frame_row_count(f);
     let (label, criteria) = decision_columns(f);
     if criteria.is_empty() {
@@ -357,7 +416,13 @@ pub(crate) fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize
     })
 }
 
-pub(crate) fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, breakdown: bool, failed: &[Vec<String>]) -> Res<FrameValue> {
+pub(crate) fn rank_options(
+    f: &FrameValue,
+    r: &Resolved,
+    normalize: Normalize,
+    breakdown: bool,
+    failed: &[Vec<String>],
+) -> Res<FrameValue> {
     let rows = frame_row_count(f);
     let pass: Vec<usize> = (0..rows).filter(|&i| failed[i].is_empty()).collect();
     let out_: Vec<usize> = (0..rows).filter(|&i| !failed[i].is_empty()).collect();
@@ -372,7 +437,8 @@ pub(crate) fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, b
     } else {
         None
     };
-    let mut order: Vec<(f64, usize, usize)> = pass.iter().enumerate().map(|(k, &row)| (ds.unwrap().scores[k], k, row)).collect();
+    let mut order: Vec<(f64, usize, usize)> =
+        pass.iter().enumerate().map(|(k, &row)| (ds.unwrap().scores[k], k, row)).collect();
     sort_by_num(&mut order, |a, b| b.0 - a.0);
     let mut rank: Vec<f64> = Vec::with_capacity(order.len());
     for (n, o) in order.iter().enumerate() {
@@ -387,18 +453,44 @@ pub(crate) fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, b
     if breakdown {
         for (j, name) in all.criteria.iter().enumerate() {
             let ds = ds.unwrap_or(&all);
-            out.push(FrameColumn::new(name.clone(), FrameColType::Number, order.iter().map(|o| FrameCell::Num(round4(ds.contrib[j][o.1]))).chain(nulls(out_.len())).collect()));
+            out.push(FrameColumn::new(
+                name.clone(),
+                FrameColType::Number,
+                order.iter().map(|o| FrameCell::Num(round4(ds.contrib[j][o.1]))).chain(nulls(out_.len())).collect(),
+            ));
         }
     }
-    out.push(FrameColumn::new("Score", FrameColType::Number, order.iter().map(|o| FrameCell::Num(o.0)).chain(nulls(out_.len())).collect()));
-    out.push(FrameColumn::new("Rank", FrameColType::Number, rank.iter().map(|&r| FrameCell::Num(r)).chain(nulls(out_.len())).collect()));
+    out.push(FrameColumn::new(
+        "Score",
+        FrameColType::Number,
+        order.iter().map(|o| FrameCell::Num(o.0)).chain(nulls(out_.len())).collect(),
+    ));
+    out.push(FrameColumn::new(
+        "Rank",
+        FrameColType::Number,
+        rank.iter().map(|&r| FrameCell::Num(r)).chain(nulls(out_.len())).collect(),
+    ));
     if !out_.is_empty() {
-        out.push(FrameColumn::new("Ruled out by", FrameColType::String, nulls(order.len()).chain(out_.iter().map(|&i| FrameCell::str(&failed[i].join(", ")))).collect()));
+        out.push(FrameColumn::new(
+            "Ruled out by",
+            FrameColType::String,
+            nulls(order.len()).chain(out_.iter().map(|&i| FrameCell::str(&failed[i].join(", ")))).collect(),
+        ));
     }
     let fills = filled_in(f, &[]);
     if pass.iter().any(|&i| !fills[i].is_empty()) {
-        let text = |i: usize| if !fills[i].is_empty() && failed[i].is_empty() { FrameCell::str(&fills[i].join(", ")) } else { FrameCell::Null };
-        out.push(FrameColumn::new("Filled in", FrameColType::String, order.iter().map(|o| text(o.2)).chain(nulls(out_.len())).collect()));
+        let text = |i: usize| {
+            if !fills[i].is_empty() && failed[i].is_empty() {
+                FrameCell::str(&fills[i].join(", "))
+            } else {
+                FrameCell::Null
+            }
+        };
+        out.push(FrameColumn::new(
+            "Filled in",
+            FrameColType::String,
+            order.iter().map(|o| text(o.2)).chain(nulls(out_.len())).collect(),
+        ));
     }
     let names = make_headers(&out.iter().map(|c| c.name.clone()).collect::<Vec<_>>(), out.len());
     Ok(FrameValue { columns: out.into_iter().zip(names).map(|(c, name)| FrameColumn { name, ..c }).collect() })
@@ -409,7 +501,12 @@ pub(crate) fn criteria_names(f: &FrameValue) -> Vec<String> {
 }
 
 /// The Decision Matrix node's reading: `resolveDecisionWeights` over the Weights, then `decisionMatrix`.
-pub fn decision_matrix(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Res<FrameValue> {
+pub fn decision_matrix(
+    f: &FrameValue,
+    wf: Option<&FrameValue>,
+    normalize: Normalize,
+    breakdown: bool,
+) -> Res<FrameValue> {
     let r = resolve_weights(wf, &criteria_names(f))?;
     let failed = decision_screen(f, r.bounds.as_deref());
     rank_options(f, &r, normalize, breakdown, &failed)
@@ -428,7 +525,8 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
         return Err(sol_error(ErrorCode::Value, "Decision Matrix needs at least one numeric criterion column"));
     }
     let r = resolve_weights(wf, &criteria)?;
-    let w: Vec<f64> = (0..criteria.len()).map(|j| r.weights.as_ref().and_then(|w| w.get(j)).copied().unwrap_or(1.0)).collect();
+    let w: Vec<f64> =
+        (0..criteria.len()).map(|j| r.weights.as_ref().and_then(|w| w.get(j)).copied().unwrap_or(1.0)).collect();
     let failed = decision_screen(f, r.bounds.as_deref());
     let pass: Vec<usize> = (0..failed.len()).filter(|&i| failed[i].is_empty()).collect();
     let ds = decision_scores(&frame_rows(f, &pass), Some(&w), normalize, &r.overrides)?;
@@ -471,8 +569,24 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
         sort_by_num(&mut xs, |a, b| a.t.abs() - b.t.abs());
         xs.first().copied()
     };
-    let less = |r: &(f64, Option<Flip>, Option<Flip>)| if r.0 == 0.0 { None } else if r.0 < 0.0 { r.2 } else { r.1 };
-    let more = |r: &(f64, Option<Flip>, Option<Flip>)| if r.0 == 0.0 { nearer(r.1, r.2) } else if r.0 < 0.0 { r.1 } else { r.2 };
+    let less = |r: &(f64, Option<Flip>, Option<Flip>)| {
+        if r.0 == 0.0 {
+            None
+        } else if r.0 < 0.0 {
+            r.2
+        } else {
+            r.1
+        }
+    };
+    let more = |r: &(f64, Option<Flip>, Option<Flip>)| {
+        if r.0 == 0.0 {
+            nearer(r.1, r.2)
+        } else if r.0 < 0.0 {
+            r.1
+        } else {
+            r.2
+        }
+    };
     let at = |f: Option<Flip>| f.map_or(FrameCell::Null, |f| FrameCell::Num(math_round(f.t * 100.0) / 100.0));
     let who = |f: Option<Flip>| if n == 0 { FrameCell::Null } else { labels[pass[f.map_or(win, |f| f.who)]].clone() };
     Ok(FrameValue {
@@ -499,7 +613,11 @@ fn clamp_range(v: f64, lo: f64, hi: f64) -> f64 {
 
 fn read_weights(weights: &[f64]) -> Vec<f64> {
     let w: Vec<f64> = weights.iter().map(|&x| if x.is_finite() && x > 0.0 { x } else { 0.0 }).collect();
-    if sum(&w) > 0.0 { w } else { weights.iter().map(|_| 1.0).collect() }
+    if sum(&w) > 0.0 {
+        w
+    } else {
+        weights.iter().map(|_| 1.0).collect()
+    }
 }
 
 fn allocate_budget(mins: &[f64], maxs: &[f64], weights: &[f64], budget: f64) -> Vec<f64> {
@@ -511,7 +629,9 @@ fn allocate_budget(mins: &[f64], maxs: &[f64], weights: &[f64], budget: f64) -> 
         return maxs.to_vec();
     }
     let w = read_weights(weights);
-    let at = |lambda: f64| -> Vec<f64> { (0..n).map(|i| if w[i] > 0.0 { clamp_range(lambda * w[i], mins[i], maxs[i]) } else { mins[i] }).collect() };
+    let at = |lambda: f64| -> Vec<f64> {
+        (0..n).map(|i| if w[i] > 0.0 { clamp_range(lambda * w[i], mins[i], maxs[i]) } else { mins[i] }).collect()
+    };
     // `[...new Set(…)]`: SameValueZero, first seen kept.
     let mut breaks: Vec<f64> = Vec::new();
     for i in 0..n {
@@ -578,7 +698,13 @@ fn allocate_min_target(mins: &[f64], maxs: &[f64], weights: &[f64], target: f64)
         }
     }
     let most = sum(&maxs.iter().enumerate().map(|(i, m)| w[i] * m).collect::<Vec<_>>());
-    Err(sol_error(ErrorCode::Value, format!("The target is out of reach: the most is {}", number_to_string(crate::unit_value::to_precision(most, 12)))))
+    Err(sol_error(
+        ErrorCode::Value,
+        format!(
+            "The target is out of reach: the most is {}",
+            number_to_string(crate::unit_value::to_precision(most, 12))
+        ),
+    ))
 }
 
 fn allocate_proportional(mins: &[f64], maxs: &[f64], weights: &[f64]) -> Vec<f64> {
@@ -615,7 +741,8 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
     let as_num = |cell: &FrameCell, what: &str| -> Res<f64> {
         match cell {
             FrameCell::Err(e) => Err((**e).clone()),
-            c => finite(c).ok_or_else(|| sol_error(ErrorCode::Value, format!("Allocator: every {what} must be a number"))),
+            c => finite(c)
+                .ok_or_else(|| sol_error(ErrorCode::Value, format!("Allocator: every {what} must be a number"))),
         }
     };
     let (mut mins, mut maxs, mut weights, mut names) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
@@ -643,9 +770,17 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
     let total = sum(&alloc);
     Ok(FrameValue {
         columns: vec![
-            FrameColumn::new(name_col.map_or("Category".to_string(), |c| f.columns[c].name.clone()), FrameColType::String, names),
+            FrameColumn::new(
+                name_col.map_or("Category".to_string(), |c| f.columns[c].name.clone()),
+                FrameColType::String,
+                names,
+            ),
             FrameColumn::new("Allocation", FrameColType::Number, alloc.iter().map(|&a| FrameCell::Num(a)).collect()),
-            FrameColumn::new("Share", FrameColType::Number, alloc.iter().map(|&a| FrameCell::Num(if total > 0.0 { a / total } else { 0.0 })).collect()),
+            FrameColumn::new(
+                "Share",
+                FrameColType::Number,
+                alloc.iter().map(|&a| FrameCell::Num(if total > 0.0 { a / total } else { 0.0 })).collect(),
+            ),
         ],
     })
 }

@@ -7,9 +7,16 @@ use std::collections::{HashMap, HashSet};
 
 const HIGH_FLOAT_DAYS: f64 = 44.0;
 
-pub fn diagnose(tasks: &[ScheduledTask], links: &[ScheduleLink], status_date: Option<f64>, long_task: f64) -> Vec<Diagnostic> {
+pub fn diagnose(
+    tasks: &[ScheduledTask],
+    links: &[ScheduleLink],
+    status_date: Option<f64>,
+    long_task: f64,
+) -> Vec<Diagnostic> {
     let mut out = Vec::new();
-    let mut push = |check: &str, task: &str, detail: String| out.push(Diagnostic { check: check.into(), task: task.into(), detail });
+    let mut push = |check: &str, task: &str, detail: String| {
+        out.push(Diagnostic { check: check.into(), task: task.into(), detail })
+    };
     let lower = |s: &str| js_lower(s).into_owned();
     let with_ancestors = |name: &str| -> Vec<String> {
         let i = tasks.iter().position(|t| t.name == name);
@@ -81,7 +88,16 @@ pub fn diagnose(tasks: &[ScheduledTask], links: &[ScheduleLink], status_date: Op
     }
     for l in links {
         if l.lag < 0.0 {
-            push("Lead", &l.to, format!("{} before {} {}", days(-l.lag), l.from, if l.ty == LinkType::FS { "finishes" } else { "starts" }));
+            push(
+                "Lead",
+                &l.to,
+                format!(
+                    "{} before {} {}",
+                    days(-l.lag),
+                    l.from,
+                    if l.ty == LinkType::FS { "finishes" } else { "starts" }
+                ),
+            );
         } else if l.lag > 0.0 {
             push("Lag", &l.to, format!("{} after {}", days(l.lag), l.from));
         }
@@ -111,16 +127,25 @@ fn label(s: &str) -> String {
         }
     }
     let t = js_trim(&out);
-    if t.is_empty() { "task".into() } else { t.to_string() }
+    if t.is_empty() {
+        "task".into()
+    } else {
+        t.to_string()
+    }
 }
 
 const WEEKDAY_NAMES: [&str; 7] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 pub fn mermaid_gantt(out: &ScheduleOutput, format_iso: impl Fn(f64) -> String) -> String {
-    let mut lines: Vec<String> = vec!["gantt".into(), "    dateFormat YYYY-MM-DD".into(), "    axisFormat %d %b".into()];
+    let mut lines: Vec<String> =
+        vec!["gantt".into(), "    dateFormat YYYY-MM-DD".into(), "    axisFormat %d %b".into()];
     if !out.weekend.is_empty() {
         let std = out.weekend.len() == 2 && out.weekend.contains(&0.0) && out.weekend.contains(&6.0);
-        let mut days: Vec<String> = if std { vec!["weekends".into()] } else { out.weekend.iter().map(|d| WEEKDAY_NAMES[*d as usize].to_string()).collect() };
+        let mut days: Vec<String> = if std {
+            vec!["weekends".into()]
+        } else {
+            out.weekend.iter().map(|d| WEEKDAY_NAMES[*d as usize].to_string()).collect()
+        };
         days.extend(out.holidays.iter().map(|h| format_iso(*h)));
         lines.push(format!("    excludes {}", days.join(", ")));
     }
@@ -143,7 +168,13 @@ pub fn mermaid_gantt(out: &ScheduleOutput, format_iso: impl Fn(f64) -> String) -
             }
             let tags: Vec<&str> = [
                 if t.milestone { "milestone" } else { "" },
-                if t.complete >= 100.0 { "done" } else if t.complete > 0.0 { "active" } else { "" },
+                if t.complete >= 100.0 {
+                    "done"
+                } else if t.complete > 0.0 {
+                    "active"
+                } else {
+                    ""
+                },
                 if t.critical { "crit" } else { "" },
             ]
             .into_iter()
@@ -204,7 +235,11 @@ pub struct MspdiOptions<'a> {
 
 fn pad2(n: f64) -> String {
     let s = number_to_string(n);
-    if s.len() < 2 { format!("0{s}") } else { s }
+    if s.len() < 2 {
+        format!("0{s}")
+    } else {
+        s
+    }
 }
 
 pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
@@ -250,7 +285,10 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
     ];
     for d in 1..=7 {
         let off = out.weekend.contains(&f64::from(d - 1));
-        lines.push(format!("    <WeekDay><DayType>{d}</DayType><DayWorking>{}</DayWorking></WeekDay>", if off { 0 } else { 1 }));
+        lines.push(format!(
+            "    <WeekDay><DayType>{d}</DayType><DayWorking>{}</DayWorking></WeekDay>",
+            if off { 0 } else { 1 }
+        ));
     }
     lines.push("  </WeekDays>".into());
     if !holidays.is_empty() {
@@ -266,11 +304,21 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
     }
     lines.push("  </Calendar></Calendars>".into());
     lines.push("  <Tasks>".into());
-    lines.push(format!("    <Task><UID>0</UID><ID>0</ID><Name>{title}</Name><OutlineLevel>0</OutlineLevel><Summary>1</Summary></Task>"));
+    lines.push(format!(
+        "    <Task><UID>0</UID><ID>0</ID><Name>{title}</Name><OutlineLevel>0</OutlineLevel><Summary>1</Summary></Task>"
+    ));
     for (i, t) in out.tasks.iter().enumerate() {
         let uid = i + 1;
         let tenths = |days: f64| number_to_string(math_round(days * h * 60.0 * 10.0));
-        let constraint = if t.alap { 1 } else if t.manual { 2 } else if t.start_floor.is_some() { 4 } else { 0 };
+        let constraint = if t.alap {
+            1
+        } else if t.manual {
+            2
+        } else if t.start_floor.is_some() {
+            4
+        } else {
+            0
+        };
         let mut f: Vec<String> = vec![
             format!("<UID>{uid}</UID>"),
             format!("<ID>{uid}</ID>"),

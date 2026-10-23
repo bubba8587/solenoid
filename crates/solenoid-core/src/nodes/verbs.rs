@@ -5,14 +5,19 @@
 //! the ref it was given. A Cube runs its verb on its cells here, the scalar columns through the core's frame verbs.
 //! Get Column and SUMIFS read cells: the shell reads a ref's columns from the backend and hands them in.
 
-use super::frames::{card_cell, core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame};
+use super::frames::{
+    affine_display, card_cell, core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list,
+    select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame,
+};
 use super::list::{frame_cell_of, infer_column, truthy};
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::{FrameCell, FrameColumn, FrameValue};
-use crate::frame_verbs::{apply_verb, compile_filter, format_frame_cell, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp};
+use crate::frame_verbs::{
+    apply_verb, compile_filter, format_frame_cell, require_text_column, slice_bounds, FilterOp, SliceMode, TaggedOp,
+};
 use crate::jsnum::{js_lower, js_trim};
 use serde_json::{json, Map, Value as Json};
 use std::rc::Rc;
@@ -66,7 +71,11 @@ pub(crate) fn uploaded(c: &Call, key: &str) -> bool {
 /// `passFrame`: a frame the shell uploaded passes as the ref it was given, which the shell hands back as the frame;
 /// a ref passes as a new ref planning nothing more, so the card never drops the handle its input holds.
 fn pass(c: &Call, f: &V) -> V {
-    if uploaded(c, "frame") { f.clone() } else { plan(f, json!({ "kind": "drop", "columns": [] })) }
+    if uploaded(c, "frame") {
+        f.clone()
+    } else {
+        plan(f, json!({ "kind": "drop", "columns": [] }))
+    }
 }
 
 fn texts(names: &[String]) -> Json {
@@ -77,7 +86,9 @@ fn texts(names: &[String]) -> Json {
 pub(crate) fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V> {
     match c.read_input(key, V::List(Rc::new(Vec::new()))) {
         V::Null => Ok(None),
-        V::List(items) => Ok(Some(items.iter().filter_map(|v| if let V::Str(s) = v { Some(s.to_string()) } else { None }).collect())),
+        V::List(items) => {
+            Ok(Some(items.iter().filter_map(|v| if let V::Str(s) = v { Some(s.to_string()) } else { None }).collect()))
+        }
         _ => Err(thrown("v.filter is not a function")),
     }
 }
@@ -228,7 +239,8 @@ fn filter(c: &mut Call) -> Answer {
     }
     let list: Vec<Json> = conds.iter().map(Cond::to_json).collect();
     let kept = plan(&f, json!({ "kind": "filterMulti", "combine": combine, "conditions": list }));
-    let dropped = plan(&f, json!({ "kind": "filterMulti", "combine": combine, "conditions": list, "complement": true }));
+    let dropped =
+        plan(&f, json!({ "kind": "filterMulti", "combine": combine, "conditions": list, "complement": true }));
     Ok(vec![("frame".into(), kept), ("dropped".into(), dropped)])
 }
 
@@ -238,7 +250,8 @@ fn columns(c: &mut Call) -> Answer {
     let Some(cols) = cols.filter(|_| !nullish(&f)) else { return one(V::Null) };
     let op = c.field_str("op", "keep").to_string();
     if let V::Cube(k) = &f {
-        let r = if op == "keep" && cols.is_empty() { Ok(f.clone()) } else { select_cube_columns(k, &cols, op == "drop") };
+        let r =
+            if op == "keep" && cols.is_empty() { Ok(f.clone()) } else { select_cube_columns(k, &cols, op == "drop") };
         return cube_answer(c, r);
     }
     if op == "drop" {
@@ -268,7 +281,11 @@ fn unpivot(c: &mut Call) -> Answer {
     if nullish(&f) {
         return one(V::Null);
     }
-    one(if vals.is_empty() { pass(c, &f) } else { plan(&f, json!({ "kind": "unpivot", "idColumns": texts(&ids), "valueColumns": texts(&vals) })) })
+    one(if vals.is_empty() {
+        pass(c, &f)
+    } else {
+        plan(&f, json!({ "kind": "unpivot", "idColumns": texts(&ids), "valueColumns": texts(&vals) }))
+    })
 }
 
 /// A wired list's items as JS indexes them: a list's own, text's UTF-16 units.
@@ -303,12 +320,18 @@ fn split_column(c: &mut Call) -> Answer {
     let column = str_input(c, "column", "");
     let delimiter = str_input(c, "delimiter", "");
     let into = column_list(c, "into")?;
-    let Some(into) = into.filter(|_| !nullish(&f) && !matches!(column, V::Null) && !matches!(delimiter, V::Null)) else { return one(V::Null) };
+    let Some(into) = into.filter(|_| !nullish(&f) && !matches!(column, V::Null) && !matches!(delimiter, V::Null))
+    else {
+        return one(V::Null);
+    };
     let column = trimmed(&column, "columnRaw")?;
     one(if column.is_empty() {
         pass(c, &f)
     } else {
-        plan(&f, json!({ "kind": "splitColumn", "column": column, "delimiter": to_json(&delimiter), "into": texts(&into) }))
+        plan(
+            &f,
+            json!({ "kind": "splitColumn", "column": column, "delimiter": to_json(&delimiter), "into": texts(&into) }),
+        )
     })
 }
 
@@ -342,7 +365,10 @@ fn replace_values(c: &mut Call) -> Answer {
         return one(V::Null);
     }
     let mode = c.field_str("mode", "cell").to_string();
-    one(plan(&f, json!({ "kind": "replaceValues", "column": to_json(&column), "find": find, "replaceWith": replace, "mode": mode })))
+    one(plan(
+        &f,
+        json!({ "kind": "replaceValues", "column": to_json(&column), "find": find, "replaceWith": replace, "mode": mode }),
+    ))
 }
 
 fn merge_columns(c: &mut Call) -> Answer {
@@ -350,12 +376,17 @@ fn merge_columns(c: &mut Call) -> Answer {
     let cols = column_list(c, "columns")?;
     let separator = str_input(c, "separator", "");
     let name = str_input(c, "name", "");
-    let Some(cols) = cols.filter(|_| !nullish(&f) && !matches!(separator, V::Null) && !matches!(name, V::Null)) else { return one(V::Null) };
+    let Some(cols) = cols.filter(|_| !nullish(&f) && !matches!(separator, V::Null) && !matches!(name, V::Null)) else {
+        return one(V::Null);
+    };
     let cols = trimmed_names(cols);
     one(if cols.len() < 2 {
         pass(c, &f)
     } else {
-        plan(&f, json!({ "kind": "mergeColumns", "columns": texts(&cols), "separator": to_json(&separator), "name": to_json(&name) }))
+        plan(
+            &f,
+            json!({ "kind": "mergeColumns", "columns": texts(&cols), "separator": to_json(&separator), "name": to_json(&name) }),
+        )
     })
 }
 
@@ -399,8 +430,26 @@ const WINDOW_LABELS: [(&str, &str); 26] = [
 ];
 
 const WINDOW_NEEDS_COLUMN: [&str; 20] = [
-    "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff", "pct_change", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
-    "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+    "cumsum",
+    "cumavg",
+    "cummin",
+    "cummax",
+    "lag",
+    "lead",
+    "diff",
+    "pct_change",
+    "rolling_sum",
+    "rolling_avg",
+    "rolling_min",
+    "rolling_max",
+    "group_sum",
+    "group_avg",
+    "group_min",
+    "group_max",
+    "group_count",
+    "share",
+    "first",
+    "last",
 ];
 const WINDOW_NEEDS_N: [&str; 7] = ["lag", "lead", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max", "ntile"];
 
@@ -490,7 +539,17 @@ fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
 fn read_column(c: &mut Call, col: &Column) -> Answer {
     let read_as = c.field_str("readAs", "number").to_string();
     let out: Vec<V> = match read_as.as_str() {
-        "text" => col.values.iter().map(|v| if matches!(v, V::Null | V::Undef) { V::str("") } else { V::str(&format_frame_cell(col.ty, &core_cell(v))) }).collect(),
+        "text" => col
+            .values
+            .iter()
+            .map(|v| {
+                if matches!(v, V::Null | V::Undef) {
+                    V::str("")
+                } else {
+                    V::str(&format_frame_cell(col.ty, &core_cell(v)))
+                }
+            })
+            .collect(),
         "logical" => {
             let place = format!("Get Column \"{}\"", col.name);
             col.values
@@ -538,9 +597,14 @@ fn get_column(c: &mut Call) -> Answer {
     let V::Str(name) = name else { return values_answer(c, V::Null, V::Null) };
     match &f {
         V::Cube(k) => {
-            let Some(cc) = k.columns.iter().find(|col| *col.name == *name) else { return values_answer(c, V::Null, V::Null) };
+            let Some(cc) = k.columns.iter().find(|col| *col.name == *name) else {
+                return values_answer(c, V::Null, V::Null);
+            };
             if cc.cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))) {
-                let e = err(ErrorCode::Shape, format!("\"{name}\" has list or table cells; Get Column reads a scalar column"));
+                let e = err(
+                    ErrorCode::Shape,
+                    format!("\"{name}\" has list or table cells; Get Column reads a scalar column"),
+                );
                 return values_answer(c, V::Null, e);
             }
             read_column(c, &infer_column(&name, &cc.cells))
@@ -576,7 +640,11 @@ struct Source {
 
 impl Source {
     fn find(&self, name: &str) -> Option<&Column> {
-        if self.by_position { column_named(&self.columns, name) } else { self.columns.iter().find(|c| c.name == name) }
+        if self.by_position {
+            column_named(&self.columns, name)
+        } else {
+            self.columns.iter().find(|c| c.name == name)
+        }
     }
 
     fn rows(&self) -> usize {
@@ -593,7 +661,14 @@ fn sum_ifs(c: &mut Call) -> Answer {
                 .filter(|col| !col.cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))))
                 .map(|col| {
                     let (fc, unit) = flat_column(&k, col);
-                    Column { name: fc.name.clone(), ty: fc.ty, values: fc.values.iter().map(card_cell).collect(), unit, format: col.format.clone(), raw: None }
+                    Column {
+                        name: fc.name.clone(),
+                        ty: fc.ty,
+                        values: fc.values.iter().map(card_cell).collect(),
+                        unit,
+                        format: col.format.clone(),
+                        raw: None,
+                    }
                 })
                 .collect(),
             by_position: true,
@@ -633,7 +708,8 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
             (s.key.clone(), format!("value{id}"), op, match_case)
         })
         .collect();
-    let values: Vec<FrameCell> = pairs.iter().map(|(_, v, _, _)| FrameCell::str(&filter_value(c, v).unwrap_or_default())).collect();
+    let values: Vec<FrameCell> =
+        pairs.iter().map(|(_, v, _, _)| FrameCell::str(&filter_value(c, v).unwrap_or_default())).collect();
     let mut crits = Vec::new();
     for ((col_key, _, op_name, match_case), val) in pairs.iter().zip(&values) {
         let name = filter_value(c, col_key).unwrap_or_default();
@@ -643,7 +719,9 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         if name.is_empty() || (!valueless && blank_value) {
             continue;
         }
-        let Some(col) = src.find(name) else { return Ok(err(ErrorCode::Ref, format!("No column \"{name}\" in the frame"))) };
+        let Some(col) = src.find(name) else {
+            return Ok(err(ErrorCode::Ref, format!("No column \"{name}\" in the frame")));
+        };
         let op: FilterOp = op_name.parse().map_err(|_| thrown(&format!("unknown filter op {op_name}")))?;
         if let Err(e) = require_text_column(op, col.ty, name) {
             return Ok(V::err(e));
@@ -682,7 +760,9 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     if vname.is_empty() {
         return Ok(V::Null);
     }
-    let Some(vcol) = src.find(vname) else { return Ok(err(ErrorCode::Ref, format!("No column \"{vname}\" in the frame"))) };
+    let Some(vcol) = src.find(vname) else {
+        return Ok(err(ErrorCode::Ref, format!("No column \"{vname}\" in the frame")));
+    };
     let kept: Vec<&V> = passing.iter().map(|&i| vcol.values.get(i).unwrap_or(&V::Null)).collect();
     if let Some(e) = kept.iter().find(|v| matches!(v, V::Err(_))) {
         return Ok((*e).clone());
@@ -690,7 +770,8 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     let nums: Vec<f64> = kept.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
     // The cells are as typed in the column's unit; readings have no sum, as SUMIFS in a formula ([[C25]]).
     let unit = vcol.unit.as_ref();
-    let reading = unit.and_then(|u| u.get("display")).and_then(Json::as_str).is_some_and(|d| !d.is_empty() && affine_display(d));
+    let reading =
+        unit.and_then(|u| u.get("display")).and_then(Json::as_str).is_some_and(|d| !d.is_empty() && affine_display(d));
     if op == "sumifs" && reading {
         return Ok(V::err(crate::unit_value::unit_error(crate::unit_value::READINGS_ADD)));
     }
@@ -703,8 +784,14 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         "sumifs" => tag(sum()),
         "averageifs" if nums.is_empty() => err(ErrorCode::DivZero, "No rows matched the criteria"),
         "averageifs" => tag(sum() / nums.len() as f64),
-        "minifs" => tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }) }),
-        "maxifs" => tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m }) }),
+        "minifs" => {
+            tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }) })
+        }
+        "maxifs" => tag(if nums.is_empty() {
+            0.0
+        } else {
+            nums.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m })
+        }),
         _ => V::Undef,
     })
 }
@@ -720,15 +807,29 @@ fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>),
         return Err(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")));
     };
     if col.cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))) {
-        return Err(sol_error(ErrorCode::Shape, format!("\"{name}\" has list or table cells; this needs a scalar column")));
+        return Err(sol_error(
+            ErrorCode::Shape,
+            format!("\"{name}\" has list or table cells; this needs a scalar column"),
+        ));
     }
     Ok(flat_column(cube, col))
 }
 
 /// `flatCubeToFrame`'s column: cells in one unit read in it, cells that disagree as base SI with no unit.
 pub(crate) fn flat_column(cube: &Cube, col: &CubeColumn) -> (FrameColumn, Option<Json>) {
-    let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) { matrix_cells_from_list(&col.cells) } else { (col.cells.clone(), None) };
-    let cells: Vec<FrameCell> = if unit.is_some() { mags } else { col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect() }.iter().map(core_cell).collect();
+    let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) {
+        matrix_cells_from_list(&col.cells)
+    } else {
+        (col.cells.clone(), None)
+    };
+    let cells: Vec<FrameCell> = if unit.is_some() {
+        mags
+    } else {
+        col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect()
+    }
+    .iter()
+    .map(core_cell)
+    .collect();
     let typed = crate::frame_fns::typed_column(col.name.clone(), &cells, cube_row_count(cube), col.ty);
     let unit = unit.filter(|_| typed.ty == crate::frame::FrameColType::Number);
     (typed, unit)
@@ -736,7 +837,11 @@ pub(crate) fn flat_column(cube: &Cube, col: &CubeColumn) -> (FrameColumn, Option
 
 /// The frame verb `op` over `cols` beside the row numbers, on the core.
 fn on_core(rows: usize, cols: Vec<FrameColumn>, op: Json) -> Result<FrameValue, SolError> {
-    let numbers = FrameColumn::new(CUBE_ROW, crate::frame::FrameColType::Number, (0..rows).map(|i| FrameCell::Num(i as f64)).collect());
+    let numbers = FrameColumn::new(
+        CUBE_ROW,
+        crate::frame::FrameColType::Number,
+        (0..rows).map(|i| FrameCell::Num(i as f64)).collect(),
+    );
     let flat = FrameValue { columns: std::iter::once(numbers).chain(cols).collect() };
     let op: TaggedOp = serde_json::from_value(op).map_err(|e| sol_error(ErrorCode::Error, e.to_string()))?;
     apply_verb(&flat, &op.0)
@@ -746,7 +851,9 @@ fn on_core(rows: usize, cols: Vec<FrameColumn>, op: Json) -> Result<FrameValue, 
 fn rows_on_core(rows: usize, cols: Vec<FrameColumn>, op: Json) -> Result<Vec<usize>, SolError> {
     let out = on_core(rows, cols, op)?;
     let at = out.columns.iter().find(|c| c.name == CUBE_ROW);
-    Ok(at.map(|c| c.values.iter().map(|v| if let FrameCell::Num(n) = v { *n as usize } else { usize::MAX }).collect()).unwrap_or_default())
+    Ok(at
+        .map(|c| c.values.iter().map(|v| if let FrameCell::Num(n) = v { *n as usize } else { usize::MAX }).collect())
+        .unwrap_or_default())
 }
 
 fn sort_cube(cube: &Cube, by: &str, dir: &str) -> Result<V, SolError> {
@@ -831,7 +938,13 @@ fn select_cube_columns(cube: &Cube, names: &[String], drop: bool) -> Result<V, S
     }
     let cols = names
         .iter()
-        .map(|n| cube.columns.iter().find(|c| &c.name == n).cloned().ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{n}\" not found"))))
+        .map(|n| {
+            cube.columns
+                .iter()
+                .find(|c| &c.name == n)
+                .cloned()
+                .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{n}\" not found")))
+        })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(cube_from_columns(cols))
 }
@@ -849,7 +962,10 @@ fn passes_list_filter(cell: &V, op: &str, value: &str, match_case: bool) -> bool
     let fold = |s: &str| if match_case { s.to_string() } else { js_lower(s).into_owned() };
     let has = |needle: &str| {
         let needle = fold(needle);
-        items.iter().any(|it| !matches!(it, V::List(_) | V::Frame(_) | V::Cube(_) | V::Null | V::Undef) && fold(&js_string_of(it)) == needle)
+        items.iter().any(|it| {
+            !matches!(it, V::List(_) | V::Frame(_) | V::Cube(_) | V::Null | V::Undef)
+                && fold(&js_string_of(it)) == needle
+        })
     };
     if op == "listContains" {
         return has(js_trim(value));
@@ -868,7 +984,9 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
     if conds.is_empty() {
         return Ok(if complement { select_cube_rows(cube, &[]) } else { V::Cube(Rc::new(cube.clone())) });
     }
-    let parse = |op: &str| op.parse::<FilterOp>().map_err(|_| sol_error(ErrorCode::Value, format!("unknown filter op \"{op}\"")));
+    let parse = |op: &str| {
+        op.parse::<FilterOp>().map_err(|_| sol_error(ErrorCode::Value, format!("unknown filter op \"{op}\"")))
+    };
     // A list condition reads nested cells, which the core's frame doesn't hold.
     if !conds.iter().any(|d| LIST_OPS.contains(&d.op.as_str())) {
         let mut names: Vec<&str> = Vec::new();
@@ -883,7 +1001,11 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
             require_text_column(parse(&d.op)?, cols[at].ty, &d.column)?;
         }
         let list: Vec<Json> = conds.iter().map(Cond::to_json).collect();
-        let rows = rows_on_core(cube_row_count(cube), cols, json!({ "kind": "filterMulti", "combine": combine, "conditions": list, "complement": complement }))?;
+        let rows = rows_on_core(
+            cube_row_count(cube),
+            cols,
+            json!({ "kind": "filterMulti", "combine": combine, "conditions": list, "complement": complement }),
+        )?;
         return Ok(select_cube_rows(cube, &rows));
     }
     enum Test<'a> {
@@ -913,7 +1035,9 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
         let mut kept = all;
         for (d, t) in conds.iter().zip(tests.iter_mut()) {
             let pass = match t {
-                Test::List(cells) => passes_list_filter(cells.get(i).unwrap_or(&V::Null), &d.op, &d.value, d.match_case),
+                Test::List(cells) => {
+                    passes_list_filter(cells.get(i).unwrap_or(&V::Null), &d.op, &d.value, d.match_case)
+                }
                 Test::Scalar(col, pass) => pass(col.cell_at(i))?,
             };
             if pass != all {
@@ -928,7 +1052,15 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
     Ok(select_cube_rows(cube, &keep))
 }
 
-fn window_cube(cube: &Cube, keys: &[String], order_by: &str, agg: &str, column: &str, out_name: &str, n: Option<&V>) -> Result<V, SolError> {
+fn window_cube(
+    cube: &Cube,
+    keys: &[String],
+    order_by: &str,
+    agg: &str,
+    column: &str,
+    out_name: &str,
+    n: Option<&V>,
+) -> Result<V, SolError> {
     let mut read: Vec<&str> = Vec::new();
     for k in keys.iter().map(String::as_str).chain([order_by, column]) {
         if !k.is_empty() && !read.contains(&k) {
@@ -942,7 +1074,9 @@ fn window_cube(cube: &Cube, keys: &[String], order_by: &str, agg: &str, column: 
         let (col, unit) = scalar_column(cube, name)?;
         if *name == column {
             let display = unit.as_ref().and_then(|u| u.get("display")).and_then(Json::as_str).filter(|d| !d.is_empty());
-            scale = display.filter(|d| affine_display(d)).map(|d| crate::unit_catalog::fc_unit_to_unit(d).map_or(1.0, |u| u.scale));
+            scale = display
+                .filter(|d| affine_display(d))
+                .map(|d| crate::unit_catalog::fc_unit_to_unit(d).map_or(1.0, |u| u.scale));
             col_unit = unit;
         }
         cols.push(col);
@@ -967,7 +1101,12 @@ fn window_cube(cube: &Cube, keys: &[String], order_by: &str, agg: &str, column: 
     let Some(last) = out.columns.last() else { return Ok(V::Cube(Rc::new(cube.clone()))) };
     let mut kept: Vec<CubeColumn> = cube.columns.iter().filter(|c| c.name != last.name).cloned().collect();
     let unit = if column.is_empty() { None } else { window_unit(agg, col_unit.as_ref(), scale) };
-    let cells = last.values.iter().map(card_cell).map(|v| unit.as_ref().map_or_else(|| v.clone(), |u| tag_cell_unit(&v, u))).collect();
+    let cells = last
+        .values
+        .iter()
+        .map(card_cell)
+        .map(|v| unit.as_ref().map_or_else(|| v.clone(), |u| tag_cell_unit(&v, u)))
+        .collect();
     kept.push(CubeColumn { name: last.name.clone(), cells, ty: Some(last.ty), format: None });
     Ok(cube_from_columns(kept))
 }
@@ -978,8 +1117,23 @@ fn window_unit(agg: &str, unit: Option<&Json>, scale: Option<f64>) -> Option<Jso
     let unit = unit?;
     let keeps = matches!(
         agg,
-        "cumsum" | "cumavg" | "cummin" | "cummax" | "lag" | "lead" | "diff" | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
-            | "group_sum" | "group_avg" | "group_min" | "group_max" | "first" | "last"
+        "cumsum"
+            | "cumavg"
+            | "cummin"
+            | "cummax"
+            | "lag"
+            | "lead"
+            | "diff"
+            | "rolling_sum"
+            | "rolling_avg"
+            | "rolling_min"
+            | "rolling_max"
+            | "group_sum"
+            | "group_avg"
+            | "group_min"
+            | "group_max"
+            | "first"
+            | "last"
     );
     if scale.is_none() {
         return keeps.then(|| unit.clone());

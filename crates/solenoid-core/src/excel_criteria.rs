@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_max as js_max, math_min as js_min};
 use crate::string_order::compare_strings;
@@ -41,14 +41,8 @@ struct Criterion {
     wild: Option<Vec<Wild>>,
 }
 
-const PREFIX: [(&str, Op); 6] = [
-    ("<>", Op::Neq),
-    (">=", Op::Gte),
-    ("<=", Op::Lte),
-    ("=", Op::Eq),
-    (">", Op::Gt),
-    ("<", Op::Lt),
-];
+const PREFIX: [(&str, Op); 6] =
+    [("<>", Op::Neq), (">=", Op::Gte), ("<=", Op::Lte), ("=", Op::Eq), (">", Op::Gt), ("<", Op::Lt)];
 
 /// `wildcardSource` compiled: `?` one unit, `*` any run, `~` takes the next unit literally; and whether it has a
 /// wildcard.
@@ -188,18 +182,17 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
         let (_, m, d) = crate::date_serial::civil_from_days((ms / 86_400_000.0).floor() as i64);
         // `new Date` rolls 2024-02-30 over to March: a day the month does not have is not a date.
         let rolled = rest.len() == 6 && d != num(&rest[3..]);
-        return if rolled || m != num(rest) { DateReading::NotADate } else { DateReading::Serial(ms / 86_400_000.0 + 25569.0) };
+        return if rolled || m != num(rest) {
+            DateReading::NotADate
+        } else {
+            DateReading::Serial(ms / 86_400_000.0 + 25569.0)
+        };
     }
     if let Some((a, rest)) = split_num(b, 1, 2) {
-        if let Some((bn, rest)) = rest
-            .split_first()
-            .filter(|(c, _)| matches!(c, b'-' | b'/' | b'.'))
-            .and_then(|(_, r)| split_num(r, 1, 2))
+        if let Some((bn, rest)) =
+            rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.')).and_then(|(_, r)| split_num(r, 1, 2))
         {
-            if let Some((_, year)) = rest
-                .split_first()
-                .filter(|(c, _)| matches!(c, b'-' | b'/' | b'.'))
-            {
+            if let Some((_, year)) = rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.')) {
                 if year.len() == 4 && ascii_digits(year) && a <= 12 && bn <= 12 && a != bn {
                     return DateReading::Ambiguous(sol_error(
                         ErrorCode::Ambiguous,
@@ -231,7 +224,11 @@ fn chrono_reading(t: &str) -> DateReading {
     if b.len() > 10 && b[10].is_ascii_whitespace() {
         if let DateReading::Serial(d) = parse_date(&t[..10]) {
             let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
-            if !d.is_nan() && rest.len() > 3 && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and")) && rest.as_bytes()[3].is_ascii_whitespace() {
+            if !d.is_nan()
+                && rest.len() > 3
+                && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and"))
+                && rest.as_bytes()[3].is_ascii_whitespace()
+            {
                 return DateReading::NotADate;
             }
         }
@@ -245,7 +242,9 @@ fn chrono_reading(t: &str) -> DateReading {
 /// back as `parseDate` reads it (`Date.UTC` of the local fields). `None` for any other shape.
 fn iso_date_time(t: &str) -> Option<DateReading> {
     let b = t.as_bytes();
-    let digits = |from: usize, max: usize| b.get(from..).map_or(0, |r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count());
+    let digits = |from: usize, max: usize| {
+        b.get(from..).map_or(0, |r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count())
+    };
     let num = |r: std::ops::Range<usize>| f64::from(b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0')));
     let word = |i: usize| b.get(i).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_');
     if digits(0, 5) != 4 || b.get(4) != Some(&b'-') {
@@ -300,7 +299,13 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
             let hours = sign * num(i + 1..i + 3) * 60.0;
             i += 3;
             let colon = usize::from(b.get(i) == Some(&b':'));
-            let om = if digits(i + colon, 2) == 2 { let v = num(i + colon..i + colon + 2); i += colon + 2; v } else { 0.0 };
+            let om = if digits(i + colon, 2) == 2 {
+                let v = num(i + colon..i + colon + 2);
+                i += colon + 2;
+                v
+            } else {
+                0.0
+            };
             // As chrono adds them: `-00:30` is +30, since -0 is not below 0.
             offset = Some(if hours < 0.0 { hours - om } else { hours + om });
         }
@@ -318,7 +323,8 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
     let mut rest = &t[i..];
     if clock.is_none() && !tail(rest) {
         let gap = rest.trim_start_matches(is_js_space);
-        let gap = gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_js_space);
+        let gap =
+            gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_js_space);
         if gap.len() == rest.len() {
             return None;
         }
@@ -357,9 +363,30 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
 /// lacks is no date. None for anything else.
 fn month_name_little_endian(t: &str) -> Option<DateReading> {
     const MONTHS: [(&str, u32); 24] = [
-        ("january", 1), ("february", 2), ("march", 3), ("april", 4), ("may", 5), ("june", 6), ("july", 7), ("august", 8),
-        ("september", 9), ("october", 10), ("november", 11), ("december", 12), ("jan", 1), ("feb", 2), ("mar", 3),
-        ("apr", 4), ("jun", 6), ("jul", 7), ("aug", 8), ("sep", 9), ("sept", 9), ("oct", 10), ("nov", 11), ("dec", 12),
+        ("january", 1),
+        ("february", 2),
+        ("march", 3),
+        ("april", 4),
+        ("may", 5),
+        ("june", 6),
+        ("july", 7),
+        ("august", 8),
+        ("september", 9),
+        ("october", 10),
+        ("november", 11),
+        ("december", 12),
+        ("jan", 1),
+        ("feb", 2),
+        ("mar", 3),
+        ("apr", 4),
+        ("jun", 6),
+        ("jul", 7),
+        ("aug", 8),
+        ("sep", 9),
+        ("sept", 9),
+        ("oct", 10),
+        ("nov", 11),
+        ("dec", 12),
     ];
     let b = t.as_bytes();
     let sep = |c: &u8| matches!(c, b'-' | b'/' | b' ');
@@ -550,23 +577,18 @@ fn time_expression(s: &str) -> Option<(f64, &str)> {
     if hour == 24 {
         return None;
     }
-    let ms = ((f64::from(hour) * 60.0 + f64::from(min)) * 60.0 + f64::from(second.unwrap_or(0))) * 1000.0 + f64::from(milli.unwrap_or(0));
+    let ms = ((f64::from(hour) * 60.0 + f64::from(min)) * 60.0 + f64::from(second.unwrap_or(0))) * 1000.0
+        + f64::from(milli.unwrap_or(0));
     Some((ms, rest))
 }
 
 /// A run of `min..=max` leading ASCII digits as a number, and the rest.
 fn split_num(b: &[u8], min: usize, max: usize) -> Option<(u32, &[u8])> {
-    let n = b
-        .iter()
-        .take(max)
-        .take_while(|c| c.is_ascii_digit())
-        .count();
+    let n = b.iter().take(max).take_while(|c| c.is_ascii_digit()).count();
     if n < min || b.get(n).is_some_and(u8::is_ascii_digit) {
         return None;
     }
-    let v = b[..n]
-        .iter()
-        .fold(0u32, |acc, c| acc * 10 + u32::from(c - b'0'));
+    let v = b[..n].iter().fold(0u32, |acc, c| acc * 10 + u32::from(c - b'0'));
     Some((v, &b[n..]))
 }
 
@@ -576,13 +598,7 @@ enum Parsed {
 }
 
 fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
-    let plain = |op, value| {
-        Parsed::Crit(Criterion {
-            op,
-            value,
-            wild: None,
-        })
-    };
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None });
     match raw {
         V::Null | V::Undef => return plain(Op::Eq, Value::Null),
         V::Num(n) => return plain(Op::Eq, Value::Num(*n)),
@@ -615,16 +631,9 @@ fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
             _ => {}
         }
     }
-    let wild = if matches!(op, Op::Eq | Op::Neq) {
-        wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>())
-    } else {
-        None
-    };
-    Parsed::Crit(Criterion {
-        op,
-        value: Value::Str(unescape(rest)),
-        wild,
-    })
+    let wild =
+        if matches!(op, Op::Eq | Op::Neq) { wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>()) } else { None };
+    Parsed::Crit(Criterion { op, value: Value::Str(unescape(rest)), wild })
 }
 
 fn cmp(op: Op, c: f64) -> bool {
@@ -704,10 +713,7 @@ pub fn as_range(v: &V) -> Rc<Vec<V>> {
 
 pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V {
     if pairs.is_empty() {
-        return V::err(sol_error(
-            ErrorCode::Value,
-            "At least one criteria range and criterion is needed",
-        ));
+        return V::err(sol_error(ErrorCode::Value, "At least one criteria range and criterion is needed"));
     }
     let mut crits = Vec::with_capacity(pairs.len());
     for (range, raw) in pairs {
@@ -723,7 +729,10 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         {
             return V::err(sol_error(
                 ErrorCode::Type,
-                format!("\"{}\" compares numbers, but its range holds text. Cast the range to numbers first.", js_string_of(raw)),
+                format!(
+                    "\"{}\" compares numbers, but its range holds text. Cast the range to numbers first.",
+                    js_string_of(raw)
+                ),
             ));
         }
         crits.push(c);
@@ -735,11 +744,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
     let mut kept: Vec<f64> = Vec::new();
     let mut count = 0usize;
     for i in 0..n {
-        if !pairs
-            .iter()
-            .zip(&crits)
-            .all(|((r, _), c)| criterion_matches(&r[i], c))
-        {
+        if !pairs.iter().zip(&crits).all(|((r, _), c)| criterion_matches(&r[i], c)) {
             continue;
         }
         count += 1;
@@ -754,30 +759,19 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
     match kind {
         Kind::Count => V::Num(count as f64),
         Kind::Sum => V::Num(total()),
-        Kind::Average if kept.is_empty() => {
-            V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria"))
-        }
+        Kind::Average if kept.is_empty() => V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria")),
         Kind::Average => V::Num(total() / kept.len() as f64),
         Kind::Min => V::Num(kept.iter().copied().reduce(js_min).unwrap_or(0.0)),
         Kind::Max => V::Num(kept.iter().copied().reduce(js_max).unwrap_or(0.0)),
     }
 }
 
-
-
-
 /// `ifsPairs`: the arguments after the values as range, criterion pairs.
 pub type Pair = (Rc<Vec<V>>, V);
 
 pub fn ifs_pairs(rest: &[V]) -> Result<Vec<Pair>, V> {
     if rest.is_empty() || !rest.len().is_multiple_of(2) {
-        return Err(V::err(sol_error(
-            ErrorCode::Value,
-            "Criteria come in range, criterion pairs",
-        )));
+        return Err(V::err(sol_error(ErrorCode::Value, "Criteria come in range, criterion pairs")));
     }
-    Ok(rest
-        .chunks(2)
-        .map(|p| (as_range(&p[0]), p[1].clone()))
-        .collect())
+    Ok(rest.chunks(2).map(|p| (as_range(&p[0]), p[1].clone())).collect())
 }

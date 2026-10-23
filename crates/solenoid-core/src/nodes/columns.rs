@@ -6,7 +6,9 @@
 //! there too: the text's key order is JS's.
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
-use super::frames::{cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed, widen_to_frame};
+use super::frames::{
+    cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed, widen_to_frame,
+};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::{LambdaV, RowColumn};
@@ -48,7 +50,12 @@ impl TableColumn {
 pub(crate) fn frame_table(columns: &[Column]) -> Vec<TableColumn> {
     columns
         .iter()
-        .map(|c| TableColumn { row: RowColumn { name: c.name.clone(), values: c.values.clone(), whole: None }, ty: c.ty, unit: c.unit.clone(), unit_error: None })
+        .map(|c| TableColumn {
+            row: RowColumn { name: c.name.clone(), values: c.values.clone(), whole: None },
+            ty: c.ty,
+            unit: c.unit.clone(),
+            unit_error: None,
+        })
         .collect()
 }
 
@@ -134,16 +141,30 @@ fn text_values(cells: &[V]) -> Vec<V> {
 fn scalar_read(col: &CubeColumn, rows: usize, u: &Result<Option<(Json, bool)>, V>) -> TableColumn {
     let cells: Vec<V> = (0..rows).map(|i| cube_cell(col, i)).collect();
     let read = super::list::infer_column(&col.name, &cells);
-    let column = |ty: FrameColType, values: Vec<V>| TableColumn { row: RowColumn { name: col.name.clone(), values, whole: None }, ty, unit: None, unit_error: None };
+    let column = |ty: FrameColType, values: Vec<V>| TableColumn {
+        row: RowColumn { name: col.name.clone(), values, whole: None },
+        ty,
+        unit: None,
+        unit_error: None,
+    };
     if col.ty == Some(FrameColType::String) && read.ty != FrameColType::String {
         return column(FrameColType::String, text_values(&cells.iter().map(shown_magnitude).collect::<Vec<_>>()));
     }
-    let ty = if col.ty == Some(FrameColType::Date) && read.ty == FrameColType::Number { FrameColType::Date } else { read.ty };
+    let ty = if col.ty == Some(FrameColType::Date) && read.ty == FrameColType::Number {
+        FrameColType::Date
+    } else {
+        read.ty
+    };
     if ty != FrameColType::Number {
         return column(ty, read.values);
     }
     let values = match u {
-        Ok(Some((_, true))) => read.values.iter().zip(&cells).map(|(v, c)| if let V::Unit(x) = c { V::Num(x.value) } else { v.clone() }).collect(),
+        Ok(Some((_, true))) => read
+            .values
+            .iter()
+            .zip(&cells)
+            .map(|(v, c)| if let V::Unit(x) = c { V::Num(x.value) } else { v.clone() })
+            .collect(),
         _ => read.values,
     };
     with_unit(column(ty, values), u)
@@ -161,14 +182,25 @@ fn item_magnitude(v: &V, base: bool) -> V {
 /// `atRef`: how a formula names this row's cell of the column.
 fn at_ref(name: &str) -> String {
     let mut chars = name.chars();
-    let ident = chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_') && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
-    if ident { format!("@{name}") } else { format!("@[{name}]") }
+    let ident = chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
+    if ident {
+        format!("@{name}")
+    } else {
+        format!("@[{name}]")
+    }
 }
 
 /// `stackedRows`: a column of lists read whole is its rows stacked, one list per row, padded with blanks.
 fn stacked_rows(name: &str, values: &[V]) -> V {
     if values.iter().any(|v| matches!(v, V::List(l) if l.iter().any(|x| matches!(x, V::List(_))))) {
-        return err(ErrorCode::Shape, format!("\"{name}\" holds a grid in a row, so it has no single table to read. Use {} to read this row's.", at_ref(name)));
+        return err(
+            ErrorCode::Shape,
+            format!(
+                "\"{name}\" holds a grid in a row, so it has no single table to read. Use {} to read this row's.",
+                at_ref(name)
+            ),
+        );
     }
     let rows: Vec<Vec<V>> = values
         .iter()
@@ -179,10 +211,14 @@ fn stacked_rows(name: &str, values: &[V]) -> V {
         })
         .collect();
     let width = rows.iter().map(Vec::len).max().unwrap_or(0).max(1);
-    list(rows.into_iter().map(|mut r| {
-        r.resize(width, V::Null);
-        list(r)
-    }).collect())
+    list(
+        rows.into_iter()
+            .map(|mut r| {
+                r.resize(width, V::Null);
+                list(r)
+            })
+            .collect(),
+    )
 }
 
 /// `cubeRowTable`: scalar columns as typed columns, a column of lists by each row's list and whole as its stacked
@@ -260,7 +296,9 @@ fn tag_cube_cell(v: V) -> V {
                     V::List(ys) => list(
                         ys.iter()
                             .map(|y| match y {
-                                V::List(_) => err(ErrorCode::Shape, "A row's answer can be a list or a grid, not deeper"),
+                                V::List(_) => {
+                                    err(ErrorCode::Shape, "A row's answer can be a list or a grid, not deeper")
+                                }
                                 y => tag_cell(y.clone()),
                             })
                             .collect(),
@@ -299,8 +337,21 @@ pub(crate) fn called_names(ast: &Ast, out: &mut Vec<String>) {
 
 /// The functions whose answer is a date (`EXCEL_IMPL_META[name].returns === "date"`), the packs' among them.
 const DATE_FUNCTIONS: &[&str] = &[
-    "EOMONTH", "TODAY", "NOW", "DATE", "EDATE", "DATEVALUE", "WORKDAY", "WORKDAY.INTL", "TIMEZONECONVERT", "COUPNCD", "COUPPCD",
-    "FROMEPOCH", "DATETRUNC", "SUNRISE", "SUNSET",
+    "EOMONTH",
+    "TODAY",
+    "NOW",
+    "DATE",
+    "EDATE",
+    "DATEVALUE",
+    "WORKDAY",
+    "WORKDAY.INTL",
+    "TIMEZONECONVERT",
+    "COUPNCD",
+    "COUPPCD",
+    "FROMEPOCH",
+    "DATETRUNC",
+    "SUNRISE",
+    "SUNSET",
 ];
 
 /// `exprYieldsDate`: a date column or a date function, shifted by days, is a date.
@@ -331,12 +382,24 @@ fn aliased<'a>(alias: &'a [(String, String)], name: &'a str) -> &'a str {
 }
 
 /// `computedColumnType`: the type the cells read as, a number column a date where the formula shifts a date.
-pub(crate) fn computed_column_type(name: &str, cells: &[V], columns: &[TableColumn], definition: Option<&Ast>, alias: &[(String, String)]) -> FrameColType {
+pub(crate) fn computed_column_type(
+    name: &str,
+    cells: &[V],
+    columns: &[TableColumn],
+    definition: Option<&Ast>,
+    alias: &[(String, String)],
+) -> FrameColType {
     let ty = super::list::infer_column(name, cells).ty;
     match definition {
         Some(ast) if ty == FrameColType::Number => {
-            let is_date = |n: &str| columns.iter().find(|c| c.name() == aliased(alias, n)).is_some_and(|c| c.ty == FrameColType::Date);
-            if yields_date(ast, &is_date) { FrameColType::Date } else { ty }
+            let is_date = |n: &str| {
+                columns.iter().find(|c| c.name() == aliased(alias, n)).is_some_and(|c| c.ty == FrameColType::Date)
+            };
+            if yields_date(ast, &is_date) {
+                FrameColType::Date
+            } else {
+                ty
+            }
         }
         _ => ty,
     }
@@ -368,7 +431,8 @@ pub(crate) fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn
 
 /// A column's unit (`ColumnUnit`) as the wire writes it, an integral exponent as an integer.
 pub(crate) fn unit_json(dim: &Dim, display: Option<&str>) -> Json {
-    let dim: serde_json::Map<String, Json> = dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), super::frames::json_num(*e))).collect();
+    let dim: serde_json::Map<String, Json> =
+        dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), super::frames::json_num(*e))).collect();
     let mut o = serde_json::Map::new();
     o.insert("dim".into(), Json::Object(dim));
     if let Some(d) = display {
@@ -485,7 +549,11 @@ fn side_unit(name: &str, v: &V) -> Result<Option<United>, V> {
             None => first = Some((u.dim.clone(), u.display.clone())),
             Some((dim, display)) => {
                 if !dim_equal(dim, &u.dim) {
-                    return Err(unit_err(format!("{name} holds mixed units: {} and {}.", format_dim(dim), format_dim(&u.dim))));
+                    return Err(unit_err(format!(
+                        "{name} holds mixed units: {} and {}.",
+                        format_dim(dim),
+                        format_dim(&u.dim)
+                    )));
                 }
                 if u.display != *display {
                     mixed = true;
@@ -493,18 +561,26 @@ fn side_unit(name: &str, v: &V) -> Result<Option<United>, V> {
             }
         }
     }
-    Ok(first.map(|(dim, display)| United { dim, display: if mixed { None } else { display }, list: matches!(v, V::List(_)) }))
+    Ok(first.map(|(dim, display)| United {
+        dim,
+        display: if mixed { None } else { display },
+        list: matches!(v, V::List(_)),
+    }))
 }
 
 /// `exactFcUnitId`: the FC id whose scale and offset are exactly the unit's.
 fn exact_fc_unit_id(dim: &Dim, scale: f64) -> Option<&'static str> {
     crate::card_helpers::UNIT_ANNOTATIONS.iter().map(|(id, ..)| *id).find(|id| {
-        crate::unit_catalog::fc_unit_to_unit(id).is_some_and(|c| dim_equal(&c.dim, dim) && (c.scale - scale).abs() <= 1e-9 * scale.abs() && c.offset.unwrap_or(0.0) == 0.0)
+        crate::unit_catalog::fc_unit_to_unit(id).is_some_and(|c| {
+            dim_equal(&c.dim, dim) && (c.scale - scale).abs() <= 1e-9 * scale.abs() && c.offset.unwrap_or(0.0) == 0.0
+        })
     })
 }
 
 fn is_affine_display(id: Option<&str>) -> bool {
-    id.filter(|i| !i.is_empty()).and_then(crate::unit_catalog::fc_unit_to_unit).is_some_and(|u| u.offset.is_some_and(|o| o != 0.0))
+    id.filter(|i| !i.is_empty())
+        .and_then(crate::unit_catalog::fc_unit_to_unit)
+        .is_some_and(|u| u.offset.is_some_and(|o| o != 0.0))
 }
 
 /// `convert`: a number from one unit to another of its dimension.
@@ -529,7 +605,11 @@ pub(crate) struct UnitPlan {
 
 impl UnitPlan {
     pub(crate) fn side(&self, v: &V) -> V {
-        if self.shown { shown_of(v) } else { base_of(v) }
+        if self.shown {
+            shown_of(v)
+        } else {
+            base_of(v)
+        }
     }
 
     /// `finish`: the cells in the result column's unit, and that unit.
@@ -541,11 +621,17 @@ impl UnitPlan {
             (None, unit) => (scaled, unit.as_ref().map(json)),
             (Some(a), None) => (scaled, Some(json(a))),
             (Some(a), Some(r)) => {
-                let resolve = |u: &UnitParts| {
-                    u.1.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit).unwrap_or(crate::unit_catalog::Unit { dim: u.0.clone(), scale: 1.0, offset: None })
-                };
+                let resolve =
+                    |u: &UnitParts| {
+                        u.1.as_deref()
+                            .and_then(crate::unit_catalog::fc_unit_to_unit)
+                            .unwrap_or(crate::unit_catalog::Unit { dim: u.0.clone(), scale: 1.0, offset: None })
+                    };
                 let (from, to) = (resolve(r), resolve(a));
-                (scaled.iter().map(|c| map_numbers(c, &|n| convert_between(n, &from, &to).unwrap_or(n))).collect(), Some(json(a)))
+                (
+                    scaled.iter().map(|c| map_numbers(c, &|n| convert_between(n, &from, &to).unwrap_or(n))).collect(),
+                    Some(json(a)),
+                )
             }
         }
     }
@@ -560,12 +646,22 @@ impl UnitPlan {
 /// units. Where every united input shows a linear unit the formula runs on the shown numbers and the answer keeps
 /// their composed display; else it runs in base SI. An authored unit wins, and a clash with it is `#UNIT!`.
 pub(crate) fn plan_column_units(
-    def: Option<&Definition>, columns: &[TableColumn], alias: &[(String, String)], side: &dyn Fn(&str) -> V, authored: Option<Json>,
+    def: Option<&Definition>,
+    columns: &[TableColumn],
+    alias: &[(String, String)],
+    side: &dyn Fn(&str) -> V,
+    authored: Option<Json>,
 ) -> Result<UnitPlan, V> {
     use crate::unit_dims::{dim_eval_with_code, dim_mul, dim_pow, is_dimensionless, AffScope, Codes};
     use crate::unit_lists::format_dim;
     let authored = authored.map(|a| column_unit_parts(&a)).filter(|(d, _)| !is_dimensionless(d));
-    let plain = |columns: &[TableColumn]| UnitPlan { columns: columns.to_vec(), shown: true, scale: 1.0, unit: None, authored: authored.clone() };
+    let plain = |columns: &[TableColumn]| UnitPlan {
+        columns: columns.to_vec(),
+        shown: true,
+        scale: 1.0,
+        unit: None,
+        authored: authored.clone(),
+    };
     let Some(def) = def else { return Ok(plain(columns)) };
     let mut united: Vec<(String, United)> = Vec::new();
     let mut bare: Vec<String> = Vec::new();
@@ -576,7 +672,11 @@ pub(crate) fn plan_column_units(
                 if let Some(e) = &col.unit_error {
                     return Err(e.clone());
                 }
-                col.unit.as_ref().map(column_unit_parts).filter(|(d, _)| !is_dimensionless(d)).map(|(dim, display)| United { dim, display, list: true })
+                col.unit
+                    .as_ref()
+                    .map(column_unit_parts)
+                    .filter(|(d, _)| !is_dimensionless(d))
+                    .map(|(dim, display)| United { dim, display, list: true })
             }
             None => side_unit(&n, &side(&n))?,
         };
@@ -590,7 +690,10 @@ pub(crate) fn plan_column_units(
     }
     let env: std::collections::BTreeMap<String, Dim> = united.iter().map(|(n, u)| (n.clone(), u.dim.clone())).collect();
     let currency: Dim = [("currency".to_string(), 1.0)].into_iter().collect();
-    let codes: Codes = united.iter().filter_map(|(n, u)| u.display.clone().filter(|_| dim_equal(&u.dim, &currency)).map(|d| (n.clone(), d))).collect();
+    let codes: Codes = united
+        .iter()
+        .filter_map(|(n, u)| u.display.clone().filter(|_| dim_equal(&u.dim, &currency)).map(|d| (n.clone(), d)))
+        .collect();
     let r = match dim_eval_with_code(&def.ast, &env, &codes, Some(&def.fns)) {
         Err(e) => return Err(V::err(e)),
         Ok(None) => return Ok(plain(columns)),
@@ -615,12 +718,16 @@ pub(crate) fn plan_column_units(
     let first_display = inputs[0].display.clone();
     let shared_id = inputs.iter().all(|u| u.display == first_display).then_some(first_display).flatten();
     let shared = shared_id.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);
-    let shared_affine = shared.filter(|s| s.offset.is_some_and(|o| o != 0.0) && inputs.iter().all(|u| dim_equal(&u.dim, &s.dim)));
+    let shared_affine =
+        shared.filter(|s| s.offset.is_some_and(|o| o != 0.0) && inputs.iter().all(|u| dim_equal(&u.dim, &s.dim)));
     let mut point: Option<u8> = None;
     if shared_affine.is_some() || inputs.iter().all(|u| is_affine_display(u.display.as_deref())) {
         let names: Vec<String> = united.iter().map(|(n, _)| n.clone()).collect();
         let lists: Vec<String> = united.iter().filter(|(_, u)| u.list).map(|(n, _)| n.clone()).collect();
-        point = Some(crate::unit_dims::affine_weight(&def.ast, &AffScope::new(&names, &lists, &bare, &def.fns)).map_err(V::err)?);
+        point = Some(
+            crate::unit_dims::affine_weight(&def.ast, &AffScope::new(&names, &lists, &bare, &def.fns))
+                .map_err(V::err)?,
+        );
     }
     let mut result: Option<(f64, Option<UnitParts>)> = None;
     let mut shown = false;
@@ -632,15 +739,23 @@ pub(crate) fn plan_column_units(
             Some(d) => (sa.scale, Some((d.clone(), None))),
         });
     } else if inputs.iter().all(|u| {
-        u.display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit).is_some_and(|l| l.offset.is_none_or(|o| o == 0.0) && dim_equal(&l.dim, &u.dim))
+        u.display
+            .as_deref()
+            .and_then(crate::unit_catalog::fc_unit_to_unit)
+            .is_some_and(|l| l.offset.is_none_or(|o| o == 0.0) && dim_equal(&l.dim, &u.dim))
     }) {
-        let disp_env: std::collections::BTreeMap<String, Dim> =
-            united.iter().map(|(n, u)| (n.clone(), [(format!("⟨{}⟩", u.display.as_deref().unwrap_or("")), 1.0)].into_iter().collect())).collect();
+        let disp_env: std::collections::BTreeMap<String, Dim> = united
+            .iter()
+            .map(|(n, u)| {
+                (n.clone(), [(format!("⟨{}⟩", u.display.as_deref().unwrap_or("")), 1.0)].into_iter().collect())
+            })
+            .collect();
         if let Ok(Some(rd)) = dim_eval_with_code(&def.ast, &disp_env, &Codes::new(), Some(&def.fns)) {
             shown = true;
             let mut scale = 1.0;
             let mut dim = Dim::new();
-            let axes: Vec<(String, f64)> = rd.dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), *e)).collect();
+            let axes: Vec<(String, f64)> =
+                rd.dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), *e)).collect();
             let id_of = |axis: &str| axis.trim_start_matches('⟨').trim_end_matches('⟩').to_string();
             for (axis, e) in &axes {
                 let Some(u) = crate::unit_catalog::fc_unit_to_unit(&id_of(axis)) else { continue };
@@ -669,7 +784,13 @@ pub(crate) fn plan_column_units(
         columns
             .iter()
             .map(|c| {
-                let u = c.unit.as_ref().map(column_unit_parts).filter(|(d, _)| !is_dimensionless(d)).and_then(|(_, d)| d).and_then(|d| crate::unit_catalog::fc_unit_to_unit(&d));
+                let u = c
+                    .unit
+                    .as_ref()
+                    .map(column_unit_parts)
+                    .filter(|(d, _)| !is_dimensionless(d))
+                    .and_then(|(_, d)| d)
+                    .and_then(|d| crate::unit_catalog::fc_unit_to_unit(&d));
                 match u {
                     Some(u) if !(u.scale == 1.0 && u.offset.is_none_or(|o| o == 0.0)) => {
                         let to_base = |n: f64| n * u.scale + u.offset.unwrap_or(0.0);
@@ -692,8 +813,13 @@ pub(crate) fn plan_column_units(
 
 /// What a column computes over its table: its cells (`tag`ged) and side inputs, or the error that stops it.
 fn run_cells(
-    table: &[TableColumn], spec: crate::eval::ColumnSpec, sides: rustc_hash::FxHashMap<String, V>, row_sides: rustc_hash::FxHashMap<String, V>,
-    reserved: &[&str], alias: &[(String, String)], tag: fn(V) -> V,
+    table: &[TableColumn],
+    spec: crate::eval::ColumnSpec,
+    sides: rustc_hash::FxHashMap<String, V>,
+    row_sides: rustc_hash::FxHashMap<String, V>,
+    reserved: &[&str],
+    alias: &[(String, String)],
+    tag: fn(V) -> V,
 ) -> Result<(Vec<V>, Vec<String>), V> {
     let inputs = crate::eval::ColumnInputs {
         table: crate::eval::Table::Rows(table.iter().map(|c| &c.row).collect()),
@@ -729,7 +855,10 @@ fn pinned_type(c: &Call) -> Option<FrameColType> {
 }
 
 fn bindings(c: &Call) -> Vec<(String, String)> {
-    c.field("bindings").and_then(Json::as_object).map(|o| o.iter().filter_map(|(k, v)| v.as_str().map(|t| (k.clone(), t.to_string()))).collect()).unwrap_or_default()
+    c.field("bindings")
+        .and_then(Json::as_object)
+        .map(|o| o.iter().filter_map(|(k, v)| v.as_str().map(|t| (k.clone(), t.to_string()))).collect())
+        .unwrap_or_default()
 }
 
 /// The name and placement inputs: `nameRaw.trim() || "computed"` and `(afterRaw ?? "").trim()`.
@@ -748,7 +877,13 @@ fn name_and_after(c: &Call) -> Result<Option<(String, String)>, V> {
 
 /// `addColumn` with a computed column's unit (`null` drops a replaced column's): the columns, and whether it
 /// replaced one.
-fn add_column(columns: &[Column], name: &str, values: Vec<V>, ty: FrameColType, unit: Option<Json>) -> (Vec<Column>, usize, bool) {
+fn add_column(
+    columns: &[Column],
+    name: &str,
+    values: Vec<V>,
+    ty: FrameColType,
+    unit: Option<Json>,
+) -> (Vec<Column>, usize, bool) {
     let (clean, _) = parse_column_unit_from_header(name);
     let unit = unit.filter(|_| ty == FrameColType::Number);
     let mut cols = columns.to_vec();
@@ -770,7 +905,12 @@ fn add_column(columns: &[Column], name: &str, values: Vec<V>, ty: FrameColType, 
 }
 
 /// The new column moved right after `after`, unless it replaced one.
-fn placed<T>(mut cols: Vec<T>, replaced: bool, after: &str, name_of: impl Fn(&T) -> &str) -> Result<(Vec<T>, usize), V> {
+fn placed<T>(
+    mut cols: Vec<T>,
+    replaced: bool,
+    after: &str,
+    name_of: impl Fn(&T) -> &str,
+) -> Result<(Vec<T>, usize), V> {
     let last = cols.len() - 1;
     if after.is_empty() || replaced {
         return Ok((cols, last));
@@ -785,7 +925,14 @@ fn placed<T>(mut cols: Vec<T>, replaced: bool, after: &str, name_of: impl Fn(&T)
 
 /// `cubeWithColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items included, and a
 /// replaced column keeps its place and format.
-fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, after: &str, unit: Option<&Json>) -> Result<V, V> {
+fn cube_with_column(
+    cube: &Cube,
+    name: &str,
+    cells: Vec<V>,
+    ty: FrameColType,
+    after: &str,
+    unit: Option<&Json>,
+) -> Result<V, V> {
     let (clean, _) = parse_column_unit_from_header(name);
     let cells = match unit {
         Some(u) if ty == FrameColType::Number => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
@@ -841,11 +988,14 @@ fn computed_column(c: &mut Call) -> Answer {
     let ast = if lam.is_none() { crate::excel_formula::parse_formula(&expr) } else { None };
     if lam.is_none() {
         if js_trim(&expr).is_empty() {
-            return empty(c, match (&cube, &frame) {
-                (Some(cb), _) => V::Cube(cb.clone()),
-                (_, Some(f)) => V::Frame(f.clone()),
-                _ => V::Null,
-            });
+            return empty(
+                c,
+                match (&cube, &frame) {
+                    (Some(cb), _) => V::Cube(cb.clone()),
+                    (_, Some(f)) => V::Frame(f.clone()),
+                    _ => V::Null,
+                },
+            );
         }
         if ast.is_none() {
             return empty(c, err(ErrorCode::Value, "The formula does not parse"));
@@ -894,7 +1044,8 @@ fn computed_column(c: &mut Call) -> Answer {
     // On the engine's columnar hand-off a frame's cell is a number, text, a logical, an error or blank.
     if lam.is_none() && cube.is_none() && alias.is_empty() {
         for col in &mut run_table {
-            col.row.values = col.row.values.iter().map(|v| super::frames::card_cell(&super::frames::core_cell(v))).collect();
+            col.row.values =
+                col.row.values.iter().map(|v| super::frames::card_cell(&super::frames::core_cell(v))).collect();
         }
     }
     let has_col = |p: &str| run_table.iter().any(|t| t.name() == p);
@@ -921,27 +1072,28 @@ fn computed_column(c: &mut Call) -> Answer {
         (None, None) => unreachable!("a formula column parses here"),
     };
     let tag: fn(V) -> V = if cube.is_some() { tag_cube_cell } else { tag_cell };
-    let computed = run_cells(&run_table, spec, sides, row_sides, &RESERVED, &alias, tag).and_then(|(cells, mut side_vars)| {
-        // A wired λ's `@` reads past its captures grow side inputs too, as `rowRefs` does for a formula.
-        if let Some(l) = &lam {
-            let captured = l.captured.clone().unwrap_or_default();
-            for p in body_refs.iter().filter(|p| !captured.contains(p)) {
-                if RESERVED.contains(&p.as_str()) {
-                    continue;
-                }
-                if let Some((_, target)) = alias.iter().find(|(k, _)| k == p) {
-                    if !has_col(target) {
-                        return Err(err(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to")));
+    let computed =
+        run_cells(&run_table, spec, sides, row_sides, &RESERVED, &alias, tag).and_then(|(cells, mut side_vars)| {
+            // A wired λ's `@` reads past its captures grow side inputs too, as `rowRefs` does for a formula.
+            if let Some(l) = &lam {
+                let captured = l.captured.clone().unwrap_or_default();
+                for p in body_refs.iter().filter(|p| !captured.contains(p)) {
+                    if RESERVED.contains(&p.as_str()) {
+                        continue;
                     }
-                    continue;
-                }
-                if !has_col(p) && !side_vars.contains(p) {
-                    side_vars.push(p.clone());
+                    if let Some((_, target)) = alias.iter().find(|(k, _)| k == p) {
+                        if !has_col(target) {
+                            return Err(err(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to")));
+                        }
+                        continue;
+                    }
+                    if !has_col(p) && !side_vars.contains(p) {
+                        side_vars.push(p.clone());
+                    }
                 }
             }
-        }
-        Ok((cells, side_vars))
-    });
+            Ok((cells, side_vars))
+        });
     let (cells, side_vars) = match computed {
         Err(e) => {
             c.show("sideVars", list(Vec::new()));
@@ -1023,7 +1175,9 @@ fn cube_input(c: &mut Call) -> Answer {
         _ => Rc::new(Cube::default()),
     };
     let exprs: Vec<Option<String>> = match c.wired("exprs") {
-        Some([V::List(items), ..]) => items.iter().map(|e| if let V::Str(s) = e { Some(s.to_string()) } else { None }).collect(),
+        Some([V::List(items), ..]) => {
+            items.iter().map(|e| if let V::Str(s) = e { Some(s.to_string()) } else { None }).collect()
+        }
         _ => Vec::new(),
     };
     let mut cols: Vec<CubeColumn> = cube.columns.clone();
@@ -1066,7 +1220,9 @@ fn cube_input(c: &mut Call) -> Answer {
                 fill(&mut cols, i, err(ErrorCode::Value, "The formula does not parse"));
                 continue;
             };
-            let V::Cube(arranged) = cube_from_columns(cols.clone()) else { unreachable!("cube_from_columns makes a cube") };
+            let V::Cube(arranged) = cube_from_columns(cols.clone()) else {
+                unreachable!("cube_from_columns makes a cube")
+            };
             let table = cube_row_table(&arranged);
             let def = Definition { ast: ast.clone(), fns: Default::default() };
             let plan = match plan_column_units(Some(&def), &table, &[], &|_| V::Undef, None) {
@@ -1078,9 +1234,25 @@ fn cube_input(c: &mut Call) -> Answer {
             };
             let missing = |p: &str| err(ErrorCode::Ref, format!("No column \"{p}\""));
             let has_col = |p: &str| plan.columns.iter().any(|t| t.name() == p);
-            let sides = crate::eval::variables(ast).into_iter().filter(|p| !has_col(p)).map(|p| (p.clone(), missing(&p))).collect();
-            let row_sides = crate::eval::row_refs(ast).into_iter().filter(|p| !has_col(p)).map(|p| (p.clone(), missing(&p))).collect();
-            let cells = match run_cells(&plan.columns, crate::eval::ColumnSpec::Expr { ast, lambdas: &[] }, sides, row_sides, &[], &[], tag_cube_cell) {
+            let sides = crate::eval::variables(ast)
+                .into_iter()
+                .filter(|p| !has_col(p))
+                .map(|p| (p.clone(), missing(&p)))
+                .collect();
+            let row_sides = crate::eval::row_refs(ast)
+                .into_iter()
+                .filter(|p| !has_col(p))
+                .map(|p| (p.clone(), missing(&p)))
+                .collect();
+            let cells = match run_cells(
+                &plan.columns,
+                crate::eval::ColumnSpec::Expr { ast, lambdas: &[] },
+                sides,
+                row_sides,
+                &[],
+                &[],
+                tag_cube_cell,
+            ) {
                 Ok((cells, _)) => cells,
                 Err(e) => {
                     fill(&mut cols, i, e);
@@ -1088,7 +1260,8 @@ fn cube_input(c: &mut Call) -> Answer {
                 }
             };
             let (cells, unit) = plan.finish(cells);
-            let ty = cube_cells_type(&cells).unwrap_or_else(|| computed_column_type(&cols[i].name, &cells, &table, Some(ast), &[]));
+            let ty = cube_cells_type(&cells)
+                .unwrap_or_else(|| computed_column_type(&cols[i].name, &cells, &table, Some(ast), &[]));
             let cells = match unit.as_ref().filter(|_| ty == FrameColType::Number) {
                 Some(u) => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
                 None => cells,

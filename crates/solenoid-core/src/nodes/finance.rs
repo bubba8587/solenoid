@@ -2,10 +2,10 @@
 //! depreciation, cash flows, securities, coupons, bonds, payments and returns. A card reads its money as its formula
 //! does, and a money answer carries that currency.
 
-use crate::error_value::ErrorCode;
 use super::kit::{core_call, guard_finite};
 use super::stats::{finite_num, first, js_num, nullish, or, read_role, Role};
 use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_pow, V};
 use crate::finance_ops::{self as f, Cell, CouponOp, Fin, SecurityDiscOp};
 use crate::finance_units::currency_clash;
@@ -45,7 +45,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "CouponNode" => coupon(c),
         "AccruedInterestNode" => {
             let periodic = c.field_str("op", "periodic") != "maturity";
-            money_card(c, if periodic { "ACCRINT" } else { "ACCRINTM" }, &["par"], true, |c| accrued_interest(c, periodic))
+            money_card(c, if periodic { "ACCRINT" } else { "ACCRINTM" }, &["par"], true, |c| {
+                accrued_interest(c, periodic)
+            })
         }
         "PaymentBreakdownNode" => {
             let op = c.field_str("op", "ipmt").to_string();
@@ -114,7 +116,15 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
     let mut code: Option<String> = None;
     let mut seen = false;
     let mut fail: Option<V> = None;
-    fn read(v: &V, name: &str, key: &str, is_money: bool, code: &mut Option<String>, seen: &mut bool, fail: &mut Option<V>) -> V {
+    fn read(
+        v: &V,
+        name: &str,
+        key: &str,
+        is_money: bool,
+        code: &mut Option<String>,
+        seen: &mut bool,
+        fail: &mut Option<V>,
+    ) -> V {
         if fail.is_some() {
             return v.clone();
         }
@@ -130,7 +140,10 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
                     return v.clone();
                 }
                 if !dim_equal(&u.dim, &currency()) {
-                    *fail = Some(V::err(unit_error(&format!("{name}'s money arguments take a currency, not {}.", format_dim(&u.dim)))));
+                    *fail = Some(V::err(unit_error(&format!(
+                        "{name}'s money arguments take a currency, not {}.",
+                        format_dim(&u.dim)
+                    ))));
                     return v.clone();
                 }
                 if let Some(d) = &u.display {
@@ -257,7 +270,9 @@ fn npv(c: &mut Call, dated: bool) -> V {
         }
         return match dated_prep(&first(c, "list"), &first(c, "dates")) {
             Err(e) => e,
-            Ok(Some((values, dates))) if !values.is_empty() && !dates.is_empty() => core_call("XNPV", &[rate, list(values), list(dates)]),
+            Ok(Some((values, dates))) if !values.is_empty() && !dates.is_empty() => {
+                core_call("XNPV", &[rate, list(values), list(dates)])
+            }
             Ok(_) => V::Null,
         };
     }
@@ -391,7 +406,14 @@ fn discount_security(c: &mut Call, op: &str) -> V {
                 return V::Null;
             }
             if op == "disc" {
-                fin(f::security_disc(SecurityDiscOp::Disc, serial(&s), serial(&m), js_num(&a), js_num(&b), js_num(&basis)))
+                fin(f::security_disc(
+                    SecurityDiscOp::Disc,
+                    serial(&s),
+                    serial(&m),
+                    js_num(&a),
+                    js_num(&b),
+                    js_num(&basis),
+                ))
             } else {
                 core_call(&op.to_uppercase(), &[s, m, a, b, basis])
             }
@@ -404,7 +426,14 @@ fn discount_security(c: &mut Call, op: &str) -> V {
                 return V::Null;
             }
             if op == "pricedisc" {
-                fin(f::price_disc(true, serial(&s), serial(&m), js_num(&rate_or_price), js_num(&redemption), js_num(&basis)))
+                fin(f::price_disc(
+                    true,
+                    serial(&s),
+                    serial(&m),
+                    js_num(&rate_or_price),
+                    js_num(&redemption),
+                    js_num(&basis),
+                ))
             } else {
                 core_call("YIELDDISC", &[s, m, rate_or_price, redemption, basis])
             }
@@ -465,13 +494,23 @@ fn accrued_interest(c: &mut Call, periodic: bool) -> V {
 fn payment_breakdown(c: &mut Call, op: &str) -> V {
     let ty = if c.field_str("paymentTiming", "end") == "beg" { 1.0 } else { 0.0 };
     if op == "ipmt" || op == "ppmt" {
-        let vals = [c.read_num("rate", 0.0), c.read_num("per", 1.0), c.read_num("nper", 0.0), c.read_num("pv", 0.0), c.read_num("fv", 0.0)];
+        let vals = [
+            c.read_num("rate", 0.0),
+            c.read_num("per", 1.0),
+            c.read_num("nper", 0.0),
+            c.read_num("pv", 0.0),
+            c.read_num("fv", 0.0),
+        ];
         if vals.iter().any(|v| matches!(v, V::Null)) {
             return V::Null;
         }
         let [rate, per, nper, pv, fv] = vals.map(|v| js_num(&v));
         let pmt = if rate.abs() < 1e-12 {
-            if nper != 0.0 { -(pv + fv) / nper } else { 0.0 }
+            if nper != 0.0 {
+                -(pv + fv) / nper
+            } else {
+                0.0
+            }
         } else {
             let r_n = js_pow(1.0 + rate, nper);
             -(pv * r_n + fv) * rate / ((1.0 + rate * ty) * (r_n - 1.0))
@@ -493,7 +532,13 @@ fn payment_breakdown(c: &mut Call, op: &str) -> V {
         let r = if op == "ipmt" { ipmt } else { pmt - ipmt };
         return if r.is_finite() { V::Num(r) } else { V::Null };
     }
-    let vals = [c.read_num("rate", 0.0), c.read_num("nper", 0.0), c.read_num("pv", 0.0), c.read_num("start", 1.0), c.read_num("end", 1.0)];
+    let vals = [
+        c.read_num("rate", 0.0),
+        c.read_num("nper", 0.0),
+        c.read_num("pv", 0.0),
+        c.read_num("start", 1.0),
+        c.read_num("end", 1.0),
+    ];
     if vals.iter().any(|v| matches!(v, V::Null)) {
         return V::Null;
     }
@@ -549,7 +594,11 @@ fn bond_pricing(c: &mut Call) -> Answer {
         if matches!(issue, V::Null) {
             return answer(c, V::Null);
         }
-        let args = if odd_first { vec![s, m, issue, fl, rate, yp, redemption, freq] } else { vec![s, m, fl, rate, yp, redemption, freq] };
+        let args = if odd_first {
+            vec![s, m, issue, fl, rate, yp, redemption, freq]
+        } else {
+            vec![s, m, fl, rate, yp, redemption, freq]
+        };
         core_call(&op.to_uppercase(), &args)
     } else {
         core_call(&op.to_uppercase(), &[s, m, rate, yp, redemption, freq])

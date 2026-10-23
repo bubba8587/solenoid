@@ -12,8 +12,16 @@ use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{to_precision, unit_error, READINGS_ADD};
 
 const BASE_DIMS: [(&str, &str); 10] = [
-    ("length", "m"), ("mass", "kg"), ("time", "s"), ("current", "A"), ("temperature", "K"),
-    ("amount", "mol"), ("luminous", "cd"), ("angle", "rad"), ("currency", "¤"), ("information", "bit"),
+    ("length", "m"),
+    ("mass", "kg"),
+    ("time", "s"),
+    ("current", "A"),
+    ("temperature", "K"),
+    ("amount", "mol"),
+    ("luminous", "cd"),
+    ("angle", "rad"),
+    ("currency", "¤"),
+    ("information", "bit"),
 ];
 const CUSTOM_DIM_PREFIX: &str = "custom:";
 
@@ -49,7 +57,9 @@ pub fn format_dim(dim: &Dim) -> String {
         .iter()
         .filter_map(|(k, sym)| dim.get(*k).filter(|&&e| e != 0.0).map(|&e| (sym.to_string(), e)))
         .collect();
-    axes.extend(sorted_keys(dim).into_iter().filter_map(|k| k.strip_prefix(CUSTOM_DIM_PREFIX).map(|s| (s.to_string(), dim[k]))));
+    axes.extend(
+        sorted_keys(dim).into_iter().filter_map(|k| k.strip_prefix(CUSTOM_DIM_PREFIX).map(|s| (s.to_string(), dim[k]))),
+    );
     let (mut pos, mut neg) = (Vec::new(), Vec::new());
     for (sym, e) in axes {
         if e == 0.0 {
@@ -57,14 +67,26 @@ pub fn format_dim(dim: &Dim) -> String {
         }
         let mag = e.abs();
         let term = if mag == 1.0 { sym } else { format!("{sym}^{}", number_to_string(mag)) };
-        if e > 0.0 { pos.push(term) } else { neg.push(term) }
+        if e > 0.0 {
+            pos.push(term)
+        } else {
+            neg.push(term)
+        }
     }
     let pos = if pos.is_empty() { "1".to_string() } else { pos.join("·") };
-    if neg.is_empty() { pos } else { format!("{pos}/{}", neg.join("·")) }
+    if neg.is_empty() {
+        pos
+    } else {
+        format!("{pos}/{}", neg.join("·"))
+    }
 }
 
 fn dim_of(v: &V) -> Dim {
-    if let V::Unit(u) = v { u.dim.clone() } else { Dim::new() }
+    if let V::Unit(u) = v {
+        u.dim.clone()
+    } else {
+        Dim::new()
+    }
 }
 
 fn magnitude_of(v: &V) -> f64 {
@@ -115,7 +137,11 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
                 display = Some(u.clone());
             }
             Some(first) if !dim_equal(first, &d) => {
-                return Err(unit_error(&format!("Can't aggregate mixed units: {} and {}.", format_dim(first), format_dim(&d))));
+                return Err(unit_error(&format!(
+                    "Can't aggregate mixed units: {} and {}.",
+                    format_dim(first),
+                    format_dim(&d)
+                )));
             }
             _ => {}
         }
@@ -137,9 +163,16 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
             Some(s) if s != 1.0 => face * s,
             _ => face,
         };
-        if bare_is_reading { base + d.offset.unwrap_or(0.0) } else { base }
+        if bare_is_reading {
+            base + d.offset.unwrap_or(0.0)
+        } else {
+            base
+        }
     };
-    let nums = present.iter().map(|v| if is_dimensionless(&dim_of(v)) { adopt(magnitude_of(v)) } else { magnitude_of(v) }).collect();
+    let nums = present
+        .iter()
+        .map(|v| if is_dimensionless(&dim_of(v)) { adopt(magnitude_of(v)) } else { magnitude_of(v) })
+        .collect();
     Ok(Prep { dim: dim.unwrap_or_default(), display, nums })
 }
 
@@ -148,7 +181,15 @@ pub fn tag_dim(value: f64, dim: Dim, display: Option<String>) -> V {
     if is_dimensionless(&dim) {
         return V::Num(value);
     }
-    V::Unit(Rc::new(UnitCell { value, dim, display: display.filter(|d| !d.is_empty()), ratio: false, scale: None, offset: None, unit_dim: None }))
+    V::Unit(Rc::new(UnitCell {
+        value,
+        dim,
+        display: display.filter(|d| !d.is_empty()),
+        ratio: false,
+        scale: None,
+        offset: None,
+        unit_dim: None,
+    }))
 }
 
 /// `running`: a list of one unit runs on its magnitudes and keeps the unit, as Reduce does: a product's power grows
@@ -182,7 +223,8 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
     let out = running_plain(op, &mags, window);
     let w = window.map(math_round).filter(|&w| w >= 1.0).map_or(usize::MAX, |w| w.min(usize::MAX as f64) as usize);
     let counted: Vec<usize> = mags.iter().map(|v| usize::from(matches!(v, V::Num(n) if n.is_finite()))).collect();
-    let display = if is_affine && op == RunOp::Stdev { None } else { prep.display.as_ref().and_then(|d| d.display.clone()) };
+    let display =
+        if is_affine && op == RunOp::Stdev { None } else { prep.display.as_ref().and_then(|d| d.display.clone()) };
     list(
         out.into_iter()
             .enumerate()

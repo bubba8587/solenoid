@@ -59,7 +59,14 @@ pub fn v8_sort_short<T>(v: &mut [T], mut cmp: impl FnMut(&T, &T) -> f64) -> Opti
     if n < 2 {
         return Some(());
     }
-    let mut c = |a: &T, b: &T| { let o = cmp(a, b); if o.is_nan() { 0.0 } else { o } };
+    let mut c = |a: &T, b: &T| {
+        let o = cmp(a, b);
+        if o.is_nan() {
+            0.0
+        } else {
+            o
+        }
+    };
     let descending = c(&v[1], &v[0]) < 0.0;
     let mut run = 2;
     while run < n {
@@ -76,7 +83,11 @@ pub fn v8_sort_short<T>(v: &mut [T], mut cmp: impl FnMut(&T, &T) -> f64) -> Opti
         let (mut left, mut right) = (0, start);
         while left < right {
             let mid = left + ((right - left) >> 1);
-            if c(&v[start], &v[mid]) < 0.0 { right = mid } else { left = mid + 1 }
+            if c(&v[start], &v[mid]) < 0.0 {
+                right = mid
+            } else {
+                left = mid + 1
+            }
         }
         v[left..=start].rotate_right(1);
     }

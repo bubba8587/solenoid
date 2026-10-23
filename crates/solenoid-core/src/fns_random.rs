@@ -95,7 +95,11 @@ fn randbetween(bottom: &V, top: &V) -> V {
 /// `arrayCount`: a generated array's row or column count, truncated, and `#VALUE!` below 0 or unreadable.
 pub(crate) fn array_count(n: f64) -> Result<f64, V> {
     let k = n.trunc();
-    if k >= 0.0 { Ok(k) } else { Err(err(ErrorCode::Value, "RANDARRAY needs a count of 0 or more")) }
+    if k >= 0.0 {
+        Ok(k)
+    } else {
+        Err(err(ErrorCode::Value, "RANDARRAY needs a count of 0 or more"))
+    }
 }
 
 /// `randArrayRange`: RANDARRAY's bounds check.
@@ -138,7 +142,14 @@ fn randarray(a: &[V]) -> V {
         return bad;
     }
     if r * c > MAX_GENERATED {
-        return err(ErrorCode::Overflow, format!("RANDARRAY count {} exceeds the {} element limit", number_to_string(r * c), number_to_string(MAX_GENERATED)));
+        return err(
+            ErrorCode::Overflow,
+            format!(
+                "RANDARRAY count {} exceeds the {} element limit",
+                number_to_string(r * c),
+                number_to_string(MAX_GENERATED)
+            ),
+        );
     }
     let flat: Vec<V> = (0..(r * c) as usize).map(|_| V::Num(rand_array_draw(random(), lo, hi, whole))).collect();
     if c == 1.0 || flat.is_empty() {
@@ -174,7 +185,11 @@ fn at(key: &str, form: Form, v: f64, ps: &[f64]) -> Option<f64> {
 
 fn clamp_draw(u: f64) -> f64 {
     let hi = if u.is_nan() || 1.0 - 1e-12 < u { 1.0 - 1e-12 } else { u };
-    if hi.is_nan() || 1e-12 > hi { 1e-12 } else { hi }
+    if hi.is_nan() || 1e-12 > hi {
+        1e-12
+    } else {
+        hi
+    }
 }
 
 /// `sampleQuantile`: one draw's quantile.
@@ -240,7 +255,10 @@ pub(crate) fn sample_quantiles(key: &str, continuous: bool, inverse: bool, us: &
         return binom_sample_walk(us, ps);
     }
     if inverse || continuous {
-        return us.iter().map(|&u| sample_quantile(key, continuous, inverse, u, ps).filter(|v| v.is_finite())).collect();
+        return us
+            .iter()
+            .map(|&u| sample_quantile(key, continuous, inverse, u, ps).filter(|v| v.is_finite()))
+            .collect();
     }
     let uu: Vec<f64> = us.iter().map(|&u| clamp_draw(u)).collect();
     let mut out = vec![None; us.len()];
@@ -282,7 +300,11 @@ fn randdist(a: &[V]) -> V {
     if !count.is_finite() {
         return crate::excel_functions::value_err("RANDDIST");
     }
-    let ps: Vec<f64> = defaults.iter().enumerate().map(|(i, d)| if blank(arg(a, i + 2)) { *d } else { to_num(arg(a, i + 2)) }).collect();
+    let ps: Vec<f64> = defaults
+        .iter()
+        .enumerate()
+        .map(|(i, d)| if blank(arg(a, i + 2)) { *d } else { to_num(arg(a, i + 2)) })
+        .collect();
     if ps.iter().any(|v| v.is_nan()) {
         return crate::excel_functions::value_err("RANDDIST");
     }
@@ -329,7 +351,9 @@ mod tests {
         let n = |x: f64| V::Num(x);
         assert!(matches!(randarray(&[n(0.0)]), V::List(l) if l.is_empty()));
         assert!(matches!(randarray(&[n(2.9)]), V::List(l) if l.len() == 2));
-        assert!(matches!(randarray(&[n(2.0), n(3.0)]), V::List(l) if l.len() == 2 && matches!(&l[0], V::List(r) if r.len() == 3)));
+        assert!(
+            matches!(randarray(&[n(2.0), n(3.0)]), V::List(l) if l.len() == 2 && matches!(&l[0], V::List(r) if r.len() == 3))
+        );
         for bad in [vec![n(-1.0)], vec![n(2.0), n(-1.0)], vec![n(2.0), n(1.0), n(5.0), n(1.0)]] {
             assert!(matches!(randarray(&bad), V::Err(e) if e.code == ErrorCode::Value));
         }

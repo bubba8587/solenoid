@@ -2,17 +2,47 @@
 //! The complex-number bodies (`cxValue.ts` and the IM* registrations in `excelFunctions.ts`), with the text
 //! similarity ones (`textOps.ts`), the list padders and BIN (`listOps.ts`) and TIMEZONECONVERT (`timeZone.ts`).
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_pow, js_string_of, math_hypot, throw, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, expm1, log, sin};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "COMPLEX", "IMABS", "IMAGINARY", "IMARGUMENT", "IMCONJUGATE", "IMCOS", "IMCOSH", "IMCOT", "IMCSC", "IMCSCH", "IMDIV",
-    "IMEXP", "IMLN", "IMLOG10", "IMLOG2", "IMPOWER", "IMPRODUCT", "IMREAL", "IMSEC", "IMSECH", "IMSIN", "IMSINH", "IMSQRT",
-    "IMSUB", "IMSUM", "IMTAN", "LEVENSHTEIN", "FUZZYMATCH", "SIMILARITY", "PADLEFT", "PADRIGHT", "REPEAT",
-    "TIMEZONECONVERT", "BIN",
+    "COMPLEX",
+    "IMABS",
+    "IMAGINARY",
+    "IMARGUMENT",
+    "IMCONJUGATE",
+    "IMCOS",
+    "IMCOSH",
+    "IMCOT",
+    "IMCSC",
+    "IMCSCH",
+    "IMDIV",
+    "IMEXP",
+    "IMLN",
+    "IMLOG10",
+    "IMLOG2",
+    "IMPOWER",
+    "IMPRODUCT",
+    "IMREAL",
+    "IMSEC",
+    "IMSECH",
+    "IMSIN",
+    "IMSINH",
+    "IMSQRT",
+    "IMSUB",
+    "IMSUM",
+    "IMTAN",
+    "LEVENSHTEIN",
+    "FUZZYMATCH",
+    "SIMILARITY",
+    "PADLEFT",
+    "PADRIGHT",
+    "REPEAT",
+    "TIMEZONECONVERT",
+    "BIN",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -232,7 +262,10 @@ fn to_cx(v: &V, name: &str) -> Result<Cx, V> {
         V::Cx(re, im) => Ok((*re, *im)),
         V::Num(n) => Ok((*n, 0.0)),
         V::Str(s) => parse_cx(s).ok_or_else(|| {
-            V::err(sol_error(ErrorCode::Value, format!("{name}: \"{s}\" is not a complex number. Write it as \"a+bi\"")))
+            V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name}: \"{s}\" is not a complex number. Write it as \"a+bi\""),
+            ))
         }),
         _ => Err(V::err(sol_error(ErrorCode::Type, format!("{name} expects a complex number")))),
     }
@@ -344,7 +377,8 @@ fn sim_method(m: &V) -> Option<Sim> {
     if is_nullish(m) {
         return Some(Sim::Ratio);
     }
-    let k: String = js_lower(js_trim(&js_string_of(m))).chars().map(|c| if c == '-' || is_js_space(c) { '_' } else { c }).collect();
+    let k: String =
+        js_lower(js_trim(&js_string_of(m))).chars().map(|c| if c == '-' || is_js_space(c) { '_' } else { c }).collect();
     match k.as_str() {
         "ratio" => Some(Sim::Ratio),
         "damerau" => Some(Sim::Damerau),
@@ -465,7 +499,10 @@ fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {
     }
     let k = math_round(count);
     if k > MAX_GENERATED {
-        return V::err(sol_error(ErrorCode::Overflow, format!("{name} count {} exceeds the 1000000 element limit", number_to_string(k))));
+        return V::err(sol_error(
+            ErrorCode::Overflow,
+            format!("{name} count {} exceeds the 1000000 element limit", number_to_string(k)),
+        ));
     }
     V::List(std::rc::Rc::new(make()))
 }
@@ -476,12 +513,17 @@ fn pad_list(arr: Vec<V>, n: f64, fill: V, left: bool) -> Vec<V> {
         return arr;
     }
     let pad = vec![fill; target as usize - arr.len()];
-    if left { pad.into_iter().chain(arr).collect() } else { arr.into_iter().chain(pad).collect() }
+    if left {
+        pad.into_iter().chain(arr).collect()
+    } else {
+        arr.into_iter().chain(pad).collect()
+    }
 }
 
 /// `binIndex`: each value's count of break edges at or below it.
 fn bin_index(arr: &[V], breaks: &[V]) -> Vec<V> {
-    let mut edges: Vec<f64> = breaks.iter().filter_map(|v| if let V::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
+    let mut edges: Vec<f64> =
+        breaks.iter().filter_map(|v| if let V::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
     edges.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     arr.iter()
         .map(|v| match v {
@@ -503,10 +545,16 @@ fn convert_zone(serial: f64, from: &str, to: &str) -> V {
     }
     let (from, to) = (js_trim(from), js_trim(to));
     if !is_valid_zone(from) {
-        return V::err(sol_error(ErrorCode::Value, format!("Unknown time zone \"{from}\". Use an IANA name like America/New_York.")));
+        return V::err(sol_error(
+            ErrorCode::Value,
+            format!("Unknown time zone \"{from}\". Use an IANA name like America/New_York."),
+        ));
     }
     if !is_valid_zone(to) {
-        return V::err(sol_error(ErrorCode::Value, format!("Unknown time zone \"{to}\". Use an IANA name like Asia/Tokyo.")));
+        return V::err(sol_error(
+            ErrorCode::Value,
+            format!("Unknown time zone \"{to}\". Use an IANA name like Asia/Tokyo."),
+        ));
     }
     const MS_PER_DAY: f64 = 86_400_000.0;
     let run = || -> Result<f64, ZoneError> {
@@ -527,12 +575,18 @@ pub fn call(name: &str, a: &[V]) -> V {
     match name {
         "LEVENSHTEIN" => V::Num(text_similarity(&to_str(arg(a, 0)), &to_str(arg(a, 1)), Sim::Levenshtein)),
         "SIMILARITY" => match sim_method(arg(a, 2)) {
-            None => V::err(sol_error(ErrorCode::Domain, "SIMILARITY method must be ratio, damerau, jaro_winkler or levenshtein")),
+            None => V::err(sol_error(
+                ErrorCode::Domain,
+                "SIMILARITY method must be ratio, damerau, jaro_winkler or levenshtein",
+            )),
             Some(m) => V::Num(text_similarity(&to_str(arg(a, 0)), &to_str(arg(a, 1)), m)),
         },
         "FUZZYMATCH" => {
             let Some(m) = sim_method(arg(a, 3)) else {
-                return V::err(sol_error(ErrorCode::Domain, "FUZZYMATCH method must be ratio, damerau or jaro_winkler"));
+                return V::err(sol_error(
+                    ErrorCode::Domain,
+                    "FUZZYMATCH method must be ratio, damerau or jaro_winkler",
+                ));
             };
             let m = if m == Sim::Levenshtein { Sim::Ratio } else { m };
             let threshold = if is_nullish(arg(a, 2)) { 0.6 } else { js_number(arg(a, 2)) };
@@ -546,7 +600,10 @@ pub fn call(name: &str, a: &[V]) -> V {
                     }
                 }
             }
-            best.map_or_else(|| V::err(sol_error(ErrorCode::NotAvailable, "No candidate is similar enough")), |(t, _)| t)
+            best.map_or_else(
+                || V::err(sol_error(ErrorCode::NotAvailable, "No candidate is similar enough")),
+                |(t, _)| t,
+            )
         }
         "PADLEFT" | "PADRIGHT" => {
             let n = js_number(arg(a, 1));

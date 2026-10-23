@@ -8,11 +8,11 @@ use std::rc::Rc;
 
 use crate::frame::FrameColumn;
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
+use crate::excel_formula::{Ast, BinOp, UnaryOp};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
 use rustc_hash::FxHashMap;
-use crate::excel_formula::{Ast, BinOp, UnaryOp};
 
 pub type Env = FxHashMap<String, V>;
 
@@ -142,8 +142,9 @@ thread_local! {
 /// The names the call table resolves, sorted: with `callable`, only those no refusal blocks (a retired spelling
 /// resolves, so a bare one is that function, but answers its #NAME? when called).
 pub fn function_names(callable: bool) -> Vec<String> {
-    let mut names: Vec<String> =
-        TRAITS.with(|t| t.iter().filter(|(_, v)| v.resolves && (!callable || v.refusal.is_none())).map(|(k, _)| k.clone()).collect());
+    let mut names: Vec<String> = TRAITS.with(|t| {
+        t.iter().filter(|(_, v)| v.resolves && (!callable || v.refusal.is_none())).map(|(k, _)| k.clone()).collect()
+    });
     names.sort();
     names
 }
@@ -206,13 +207,20 @@ fn collapse_singleton_rank(v: &V) -> V {
 
 /// The length a JS row reports: a non-array row has none, which no index is below.
 fn row_len(r: &V) -> Option<usize> {
-    if let V::List(cells) = r { Some(cells.len()) } else { None }
+    if let V::List(cells) = r {
+        Some(cells.len())
+    } else {
+        None
+    }
 }
 
 /// `mapCells`: the function over each cell of its arguments, by the broadcast-rules table.
 pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
     if argv.iter().any(too_deep) {
-        return V::err(sol_error(ErrorCode::Shape, "A value nested deeper than a 2-D matrix isn't a thing formulas compute on"));
+        return V::err(sol_error(
+            ErrorCode::Shape,
+            "A value nested deeper than a 2-D matrix isn't a thing formulas compute on",
+        ));
     }
     let args: Vec<V> = argv.iter().map(collapse_singleton_rank).collect();
     let rank = args.iter().map(rank_of).max().unwrap_or(0);
@@ -234,7 +242,12 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
         }
         return V::List(Rc::new(out));
     }
-    let rows = args.iter().filter(|a| is_matrix(a)).filter_map(|m| if let V::List(r) = m { Some(r.len()) } else { None }).max().unwrap_or(0);
+    let rows = args
+        .iter()
+        .filter(|a| is_matrix(a))
+        .filter_map(|m| if let V::List(r) = m { Some(r.len()) } else { None })
+        .max()
+        .unwrap_or(0);
     let col_singleton: Vec<bool> = args
         .iter()
         .map(|a| is_matrix(a) && matches!(a, V::List(rs) if rs.iter().all(|r| row_len(r) == Some(1))))
@@ -266,7 +279,11 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
                 let ri = if rs.len() == 1 { 0 } else { i };
                 let row = rs.get(ri)?;
                 let cj = if col_singleton[k] { 0 } else { j };
-                if let V::List(cells) = row { cells.get(cj).cloned() } else { None }
+                if let V::List(cells) = row {
+                    cells.get(cj).cloned()
+                } else {
+                    None
+                }
             }
             V::List(l) => l.get(j).cloned(),
             other => Some(other.clone()),
@@ -296,7 +313,11 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
             let s = crate::jsnum::to_fixed(n, 4.0).unwrap_or_default();
             // `.replace(/\.?0+$/, "")`
             let t = s.trim_end_matches('0');
-            if t.len() < s.len() { t.strip_suffix('.').unwrap_or(t).to_string() } else { s }
+            if t.len() < s.len() {
+                t.strip_suffix('.').unwrap_or(t).to_string()
+            } else {
+                s
+            }
         }
     };
     if re.is_nan() || im.is_nan() {
@@ -311,7 +332,11 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
     if re == 0.0 {
         return if im < 0.0 { format!("-{i}") } else { i };
     }
-    if im < 0.0 { format!("{r} - {i}") } else { format!("{r} + {i}") }
+    if im < 0.0 {
+        format!("{r} - {i}")
+    } else {
+        format!("{r} + {i}")
+    }
 }
 
 fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
@@ -329,8 +354,13 @@ fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
             let eq = matches!((a, b), (V::Cx(ar, ai), V::Cx(br, bi)) if ar == br && ai == bi);
             V::Bool(if op == BinOp::Eq { eq } else { !eq })
         }
-        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => V::err(sol_error(ErrorCode::Type, "Complex numbers have no order. Compare their IMABS values instead")),
-        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
+        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+            V::err(sol_error(ErrorCode::Type, "Complex numbers have no order. Compare their IMABS values instead"))
+        }
+        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error(
+            ErrorCode::Type,
+            "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV",
+        )),
     }
 }
 
@@ -349,7 +379,10 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
         return apply_cx_op(op, a, b);
     }
     if matches!(a, V::Lambda(_)) || matches!(b, V::Lambda(_)) {
-        return V::err(sol_error(ErrorCode::Type, "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers"));
+        return V::err(sol_error(
+            ErrorCode::Type,
+            "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers",
+        ));
     }
     apply_op(op, a, b)
 }
@@ -361,7 +394,10 @@ fn js_unary(v: &V) -> f64 {
 
 /// The answer an operator gives text ([[C131]] noTextGuessing).
 fn text_operand() -> V {
-    V::err(sol_error(ErrorCode::Value, "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"))
+    V::err(sol_error(
+        ErrorCode::Value,
+        "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE",
+    ))
 }
 
 const ETA_HOSTS: [&str; 6] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"];
@@ -436,7 +472,10 @@ impl<'a> RowCtx<'a> {
     }
 
     fn reserved_err(key: &str) -> V {
-        V::err(sol_error(ErrorCode::Ref, format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
+        V::err(sol_error(
+            ErrorCode::Ref,
+            format!("\"{key}\" is a reserved input name. Rename the variable or the column"),
+        ))
     }
 
     /// `wholeOf`: a column as a one-column table, or its own whole read, built once.
@@ -455,7 +494,9 @@ impl<'a> RowCtx<'a> {
     /// A wired list with one value per row reads as a column beside the table's ([[D85]] columnsStayColumns).
     fn aligned(&self, v: V) -> V {
         match &v {
-            V::List(l) if l.len() == self.rows && self.rows > 1 && !l.iter().any(is_arr) => list(l.iter().map(|x| list(vec![x.clone()])).collect()),
+            V::List(l) if l.len() == self.rows && self.rows > 1 && !l.iter().any(is_arr) => {
+                list(l.iter().map(|x| list(vec![x.clone()])).collect())
+            }
             _ => v,
         }
     }
@@ -467,10 +508,20 @@ impl<'a> RowCtx<'a> {
         if fresh {
             let n = self.rows;
             let err = if items.iter().any(is_arr) {
-                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
+                Some(V::err(sol_error(
+                    ErrorCode::Shape,
+                    format!("@{key} reads one value per row, and a matrix has no single this-row value"),
+                )))
             } else if items.len() != n {
                 let l = items.len();
-                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
+                Some(V::err(sol_error(
+                    ErrorCode::Shape,
+                    format!(
+                        "@{key}: {l} value{} for {n} row{}",
+                        if l == 1 { "" } else { "s" },
+                        if n == 1 { "" } else { "s" }
+                    ),
+                )))
             } else {
                 None
             };
@@ -502,7 +553,6 @@ impl<'a> RowCtx<'a> {
         self.aligned(self.row_sides.get(key).cloned().unwrap_or(V::Undef))
     }
 }
-
 
 /// `Object.is` over the values a range call's memo compares: a list or error by identity, the rest by value.
 fn same(a: &V, b: &V) -> bool {
@@ -558,7 +608,8 @@ struct Memo {
 
 impl Memo {
     fn answers(&self, name: &str, argv: &[V]) -> Option<V> {
-        (self.name == name && self.args.len() == argv.len() && self.args.iter().zip(argv).all(|(a, b)| same(a, b))).then(|| self.answer.clone())
+        (self.name == name && self.args.len() == argv.len() && self.args.iter().zip(argv).all(|(a, b)| same(a, b)))
+            .then(|| self.answer.clone())
     }
 }
 
@@ -574,13 +625,22 @@ impl Eval<'_> {
     fn site(&self, raw: &str, args: &[Ast]) -> Rc<Site> {
         let key = raw.as_ptr();
         if let Some(s) = self.sites.borrow().get(&key) {
-            if s.raw == raw && s.empty.len() == args.len() && s.empty.iter().zip(args).all(|(e, a)| *e == matches!(a, Ast::Blank)) {
+            if s.raw == raw
+                && s.empty.len() == args.len()
+                && s.empty.iter().zip(args).all(|(e, a)| *e == matches!(a, Ast::Blank))
+            {
                 return s.clone();
             }
         }
         let name = raw.to_uppercase();
         let empty: Vec<bool> = args.iter().map(|a| matches!(a, Ast::Blank)).collect();
-        let site = Rc::new(Site { raw: raw.to_string(), traits: traits(&name), any_empty: empty.contains(&true), empty, name });
+        let site = Rc::new(Site {
+            raw: raw.to_string(),
+            traits: traits(&name),
+            any_empty: empty.contains(&true),
+            empty,
+            name,
+        });
         self.sites.borrow_mut().insert(key, site.clone());
         site
     }
@@ -588,7 +648,10 @@ impl Eval<'_> {
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
-            V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+            V::Lambda(_) => V::err(sol_error(
+                ErrorCode::Value,
+                "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY",
+            )),
             V::Fx(code) => V::err(fx_error_to_sol(code)),
             other => other,
         }
@@ -613,7 +676,10 @@ impl Eval<'_> {
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
             Ast::AtCol(name) => match self.row {
-                None => V::err(sol_error(ErrorCode::Ref, "@ reads the current row, so it only works inside a computed column")),
+                None => V::err(sol_error(
+                    ErrorCode::Ref,
+                    "@ reads the current row, so it only works inside a computed column",
+                )),
                 Some(row) => match row.column(name) {
                     Some(c) => c.cell(row.cursor.get()),
                     None => match env.get(name) {
@@ -623,7 +689,10 @@ impl Eval<'_> {
                 },
             },
             Ast::WholeCol(name) => match self.row {
-                None => V::err(sol_error(ErrorCode::Ref, "[column] reads a whole table column, so it only works inside a computed column")),
+                None => V::err(sol_error(
+                    ErrorCode::Ref,
+                    "[column] reads a whole table column, so it only works inside a computed column",
+                )),
                 Some(row) => row.whole(name),
             },
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
@@ -633,7 +702,10 @@ impl Eval<'_> {
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
+                    V::Cx(..) => V::err(sol_error(
+                        ErrorCode::Type,
+                        "Operators don't work on complex numbers. Use IMSUB(0, z) to negate",
+                    )),
                     V::Str(_) => text_operand(),
                     other => V::Num(if neg { -js_unary(other) } else { js_unary(other) }),
                 };
@@ -650,7 +722,10 @@ impl Eval<'_> {
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
+                    V::Cx(..) => V::err(sol_error(
+                        ErrorCode::Type,
+                        "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))",
+                    )),
                     V::Str(_) => text_operand(),
                     other => V::Num(js_unary(other) / 100.0),
                 };
@@ -683,7 +758,10 @@ impl Eval<'_> {
                 }
                 let p = lam.params.len();
                 if p > 0 && argv.len() != p {
-                    return V::err(sol_error(ErrorCode::Value, format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                    return V::err(sol_error(
+                        ErrorCode::Value,
+                        format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len()),
+                    ));
                 }
                 self.call_lambda(&lam, &argv)
             }
@@ -731,7 +809,10 @@ impl Eval<'_> {
             }
             let p = bound.params.len();
             if p > 0 && argv.len() != p {
-                return V::err(sol_error(ErrorCode::Value, format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                return V::err(sol_error(
+                    ErrorCode::Value,
+                    format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len()),
+                ));
             }
             return self.call_lambda(&bound, &argv);
         }
@@ -751,7 +832,10 @@ impl Eval<'_> {
                 }
                 // [[D77]] constantsAlwaysWin
                 if constant_value(p).is_some() {
-                    return V::err(sol_error(ErrorCode::Name, format!("{p} is a constant, so it can't name a LAMBDA parameter")));
+                    return V::err(sol_error(
+                        ErrorCode::Name,
+                        format!("{p} is a constant, so it can't name a LAMBDA parameter"),
+                    ));
                 }
                 params.push(p.clone());
             }
@@ -763,7 +847,9 @@ impl Eval<'_> {
             });
             return V::Lambda(Rc::new(LambdaV { params, body: Some(body), env: env.clone(), ..Default::default() }));
         }
-        let Some(t) = site.traits.as_deref() else { return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))) };
+        let Some(t) = site.traits.as_deref() else {
+            return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
+        };
         if let Some(r) = &t.refusal {
             return V::err(sol_error(r.code, r.message.as_str()));
         }
@@ -791,7 +877,8 @@ impl Eval<'_> {
             return e.1.clone();
         }
         let any_arr = argv.iter().any(is_arr);
-        let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
+        let lifted: Vec<usize> =
+            if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
         if lifted.is_empty() {
             if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == Kind::Range || t.fast.memo_shaper) {
                 let key = args.as_ptr();
@@ -808,7 +895,9 @@ impl Eval<'_> {
         }
         let cols: Vec<V> = lifted.iter().map(|&i| argv[i].clone()).collect();
         map_cells(&cols, &mut |cells| {
-            if let Some(bad) = cells.iter().enumerate().find(|&(k, v)| selects.is_none_or(|s| s(lifted[k])) && v.is_err()) {
+            if let Some(bad) =
+                cells.iter().enumerate().find(|&(k, v)| selects.is_none_or(|s| s(lifted[k])) && v.is_err())
+            {
                 return bad.1.clone();
             }
             if cells.iter().any(is_missing) {
@@ -833,24 +922,39 @@ impl Eval<'_> {
         }
         if !t.matrix_args && argv.iter().any(is_matrix) {
             if t.prep == Prep::Positional {
-                return V::err(sol_error(ErrorCode::Shape, format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
+                return V::err(sol_error(
+                    ErrorCode::Shape,
+                    format!("{name} over a matrix isn't supported yet. Wire the matrix through its node"),
+                ));
             }
             if t.kind == Kind::Range {
                 argv = argv.into_iter().map(|a| if is_matrix(&a) { flat1(&a) } else { a }).collect();
             } else if t.kind == Kind::Whole || !t.known {
-                return V::err(sol_error(ErrorCode::Shape, format!("{name} works on values and 1-D lists, not a 2-D matrix")));
+                return V::err(sol_error(
+                    ErrorCode::Shape,
+                    format!("{name} works on values and 1-D lists, not a 2-D matrix"),
+                ));
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
-            return V::err(sol_error(ErrorCode::Type, format!("{name} doesn't compute on complex numbers. Use the IM* family")));
+            return V::err(sol_error(
+                ErrorCode::Type,
+                format!("{name} doesn't compute on complex numbers. Use the IM* family"),
+            ));
         }
         match t.kind {
             Kind::Whole => {
-                if !t.nullable_ok && argv.iter().enumerate().any(|(i, a)| is_missing(a) && !settled.get(i).copied().unwrap_or(false)) {
+                if !t.nullable_ok
+                    && argv.iter().enumerate().any(|(i, a)| is_missing(a) && !settled.get(i).copied().unwrap_or(false))
+                {
                     return V::Null;
                 }
                 let r = self.dispatch(name, Some(t), &argv);
-                if column { as_column(r) } else { r }
+                if column {
+                    as_column(r)
+                } else {
+                    r
+                }
             }
             Kind::Range => {
                 let args = match prep_range_args(t.prep, argv) {
@@ -859,7 +963,10 @@ impl Eval<'_> {
                 };
                 let flat_owned: Vec<V>;
                 let flat: &[V] = if args.iter().any(|a| matches!(a, V::List(_))) {
-                    flat_owned = args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect();
+                    flat_owned = args
+                        .iter()
+                        .flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] })
+                        .collect();
                     &flat_owned
                 } else {
                     &args
@@ -868,7 +975,10 @@ impl Eval<'_> {
                 // past a table would reach a flat reader as a list among its numbers.
                 let in_place = crate::excel_functions::reads_lists(name);
                 if !in_place && flat.iter().any(is_arr) {
-                    return V::err(sol_error(ErrorCode::Value, format!("{name} reads values and tables, not lists nested inside a table")));
+                    return V::err(sol_error(
+                        ErrorCode::Value,
+                        format!("{name} reads values and tables, not lists nested inside a table"),
+                    ));
                 }
                 match self.dispatch(name, Some(t), if in_place { &args } else { flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, flat),
@@ -891,27 +1001,49 @@ impl Eval<'_> {
                 if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
                     return e.clone();
                 }
-                let whole = V::List(Rc::new(items.iter().filter(|v| !matches!(v, V::Null | V::Undef)).cloned().collect()));
+                let whole =
+                    V::List(Rc::new(items.iter().filter(|v| !matches!(v, V::Null | V::Undef)).cloned().collect()));
                 let rest: Vec<V> = argv.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, v)| v.clone()).collect();
-                let blanks: Vec<bool> = (0..argv.len()).filter(|&i| i != w).map(|i| blank_slots.get(i).copied().unwrap_or(false)).collect();
-                return self.broadcast_with(&rest, &blanks, t.inspects_null, &|args: &[V]| {
-                    let mut full: Vec<V> = args[..w.min(args.len())].to_vec();
-                    full.push(whole.clone());
-                    full.extend_from_slice(&args[w.min(args.len())..]);
-                    self.dispatch(name, Some(t), &full)
-                }, None);
+                let blanks: Vec<bool> =
+                    (0..argv.len()).filter(|&i| i != w).map(|i| blank_slots.get(i).copied().unwrap_or(false)).collect();
+                return self.broadcast_with(
+                    &rest,
+                    &blanks,
+                    t.inspects_null,
+                    &|args: &[V]| {
+                        let mut full: Vec<V> = args[..w.min(args.len())].to_vec();
+                        full.push(whole.clone());
+                        full.extend_from_slice(&args[w.min(args.len())..]);
+                        self.dispatch(name, Some(t), &full)
+                    },
+                    None,
+                );
             }
         }
-        self.broadcast_with(argv, blank_slots, t.inspects_null, &|args: &[V]| self.dispatch(name, Some(t), args), t.fast.selects)
+        self.broadcast_with(
+            argv,
+            blank_slots,
+            t.inspects_null,
+            &|args: &[V]| self.dispatch(name, Some(t), args),
+            t.fast.selects,
+        )
     }
 
-    fn broadcast_with(&self, argv: &[V], blank_slots: &[bool], inspects_null: bool, f: &dyn Fn(&[V]) -> V, selects: Option<fn(usize) -> bool>) -> V {
+    fn broadcast_with(
+        &self,
+        argv: &[V],
+        blank_slots: &[bool],
+        inspects_null: bool,
+        f: &dyn Fn(&[V]) -> V,
+        selects: Option<fn(usize) -> bool>,
+    ) -> V {
         let call = |args: &[V]| match f(args) {
             V::Num(r) => guard(r, args),
             r => r,
         };
         if !argv.iter().any(is_arr) {
-            let blank = argv.iter().enumerate().any(|(i, v)| is_missing(v) && !blank_slots.get(i).copied().unwrap_or(false));
+            let blank =
+                argv.iter().enumerate().any(|(i, v)| is_missing(v) && !blank_slots.get(i).copied().unwrap_or(false));
             return if !inspects_null && blank { V::Null } else { call(argv) };
         }
         let len = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max().unwrap_or(0);
@@ -942,7 +1074,10 @@ impl Eval<'_> {
             return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
         }
         if argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name) {
-            return V::err(sol_error(ErrorCode::Shape, format!("{name} works on values and 1-D lists, not a 2-D matrix")));
+            return V::err(sol_error(
+                ErrorCode::Shape,
+                format!("{name} works on values and 1-D lists, not a 2-D matrix"),
+            ));
         }
         call_caught(name, argv)
     }
@@ -950,13 +1085,21 @@ impl Eval<'_> {
     /// MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY (excelFunctions.ts), which call their LAMBDA back.
     fn host(&self, name: &str, a: &[V]) -> V {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(V::Undef);
-        let last = if name == "MAP" { a.last().cloned().unwrap_or(V::Undef) } else { arg(if matches!(name, "MAKEARRAY" | "REDUCE" | "SCAN" | "GROUPBY") { 2 } else { 1 }) };
+        let last = if name == "MAP" {
+            a.last().cloned().unwrap_or(V::Undef)
+        } else {
+            arg(if matches!(name, "MAKEARRAY" | "REDUCE" | "SCAN" | "GROUPBY") { 2 } else { 1 })
+        };
         let V::Lambda(lam) = last else {
             return V::err(sol_error(ErrorCode::Value, format!("{name} needs a LAMBDA as its last argument")));
         };
         // `etaFn`: a function named bare gets only the arguments that mean something to it.
         let call = |args: &[V], meaningful: usize| -> V {
-            if lam.eta.is_some() { self.call_lambda(&lam, &args[..meaningful.min(args.len())]) } else { self.call_lambda(&lam, args) }
+            if lam.eta.is_some() {
+                self.call_lambda(&lam, &args[..meaningful.min(args.len())])
+            } else {
+                self.call_lambda(&lam, args)
+            }
         };
         let absent = |v: &V| matches!(v, V::Null | V::Undef);
         // `oneValue`: the LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
@@ -971,7 +1114,12 @@ impl Eval<'_> {
                     [c] => Some(c.clone()),
                     _ => None,
                 };
-                cell.unwrap_or_else(|| V::err(sol_error(ErrorCode::Shape, format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
+                cell.unwrap_or_else(|| {
+                    V::err(sol_error(
+                        ErrorCode::Shape,
+                        format!("{name}'s LAMBDA answers one value for each {each}, not a list"),
+                    ))
+                })
             }
             other => other,
         };
@@ -987,11 +1135,27 @@ impl Eval<'_> {
                 let shaped: Vec<Vec<Vec<V>>> = arrays.iter().map(|v| as_rows(v).unwrap_or_default()).collect();
                 let rows = shaped.iter().map(Vec::len).max().unwrap_or(0);
                 let cols = shaped.iter().flatten().map(Vec::len).max().unwrap_or(0);
-                let cell_at = |k: usize, i: usize, j: usize| shaped.get(k).and_then(|m| m.get(i)).and_then(|r| r.get(j)).cloned().unwrap_or(V::Null);
+                let cell_at = |k: usize, i: usize, j: usize| {
+                    shaped.get(k).and_then(|m| m.get(i)).and_then(|r| r.get(j)).cloned().unwrap_or(V::Null)
+                };
                 let out: Vec<Vec<V>> = (0..rows)
                     .map(|i| {
                         (0..cols)
-                            .map(|j| one("cell", call(&[cell_at(0, i, j), cell_at(1, i, j), cell_at(2, i, j), V::Num((i + 1) as f64), V::Num((j + 1) as f64)], arrays.len())))
+                            .map(|j| {
+                                one(
+                                    "cell",
+                                    call(
+                                        &[
+                                            cell_at(0, i, j),
+                                            cell_at(1, i, j),
+                                            cell_at(2, i, j),
+                                            V::Num((i + 1) as f64),
+                                            V::Num((j + 1) as f64),
+                                        ],
+                                        arrays.len(),
+                                    ),
+                                )
+                            })
                             .collect()
                     })
                     .collect();
@@ -1005,7 +1169,16 @@ impl Eval<'_> {
                 None => V::Null,
                 Some(m) => {
                     let cols = m.iter().map(Vec::len).max().unwrap_or(0);
-                    list((0..cols).map(|j| one("column", call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1))).collect())
+                    list(
+                        (0..cols)
+                            .map(|j| {
+                                one(
+                                    "column",
+                                    call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1),
+                                )
+                            })
+                            .collect(),
+                    )
                 }
             },
             "REDUCE" => {
@@ -1068,10 +1241,31 @@ impl Eval<'_> {
                 // Each side counts as at least one, so a zero side can't hide a huge other one.
                 let cells = js_max(r, 1.0) * js_max(c, 1.0);
                 if cells > MAX_GENERATED {
-                    return V::err(sol_error(ErrorCode::Overflow, format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
+                    return V::err(sol_error(
+                        ErrorCode::Overflow,
+                        format!(
+                            "MAKEARRAY count {} exceeds the 1000000 element limit",
+                            crate::jsnum::number_to_string(cells)
+                        ),
+                    ));
                 }
                 let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
-                list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
+                list(
+                    (0..r as usize)
+                        .map(|i| {
+                            list(
+                                (0..c as usize)
+                                    .map(|j| {
+                                        one(
+                                            "cell",
+                                            self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]),
+                                        )
+                                    })
+                                    .collect(),
+                            )
+                        })
+                        .collect(),
+                )
             }
             "GROUPBY" => {
                 if absent(&arg(0)) || absent(&arg(1)) {
@@ -1082,7 +1276,8 @@ impl Eval<'_> {
                     other => vec![other],
                 };
                 let (ks, vs) = (items(arg(0)), items(arg(1)));
-                let mut index: std::collections::HashMap<crate::fns_matrix::Key, usize> = std::collections::HashMap::new();
+                let mut index: std::collections::HashMap<crate::fns_matrix::Key, usize> =
+                    std::collections::HashMap::new();
                 let mut groups: Vec<(V, Vec<V>)> = Vec::new();
                 for (k, v) in ks.iter().zip(&vs) {
                     match index.get(&crate::fns_matrix::set_key(k)) {
@@ -1108,7 +1303,9 @@ fn list(items: Vec<V>) -> V {
 fn as_rows(v: &V) -> Option<Vec<Vec<V>>> {
     match v {
         V::Null | V::Undef => None,
-        V::List(rs) if is_matrix(v) => Some(rs.iter().map(|r| if let V::List(c) = r { c.as_ref().clone() } else { Vec::new() }).collect()),
+        V::List(rs) if is_matrix(v) => {
+            Some(rs.iter().map(|r| if let V::List(c) = r { c.as_ref().clone() } else { Vec::new() }).collect())
+        }
         V::List(l) => Some(vec![l.as_ref().clone()]),
         other => Some(vec![vec![other.clone()]]),
     }
@@ -1125,7 +1322,11 @@ fn like_input(v: &V, mut rows: Vec<Vec<V>>) -> V {
 /// `Array.prototype.flat()`, one level.
 fn flat1(v: &V) -> V {
     match v {
-        V::List(l) => list(l.iter().flat_map(|x| if let V::List(inner) = x { inner.as_ref().clone() } else { vec![x.clone()] }).collect()),
+        V::List(l) => list(
+            l.iter()
+                .flat_map(|x| if let V::List(inner) = x { inner.as_ref().clone() } else { vec![x.clone()] })
+                .collect(),
+        ),
         other => other.clone(),
     }
 }
@@ -1204,26 +1405,36 @@ fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
         }
     }
     Ok(match prep {
-        Prep::Zero => argv.into_iter().map(|a| match a {
-            V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
-            other => other,
-        }).collect(),
+        Prep::Zero => argv
+            .into_iter()
+            .map(|a| match a {
+                V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
+                other => other,
+            })
+            .collect(),
         Prep::Paired => {
-            let lens: Vec<usize> = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
+            let lens: Vec<usize> =
+                argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
             let Some(&n) = lens.iter().min() else { return Ok(argv) };
-            let keep: Vec<usize> = (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
+            let keep: Vec<usize> =
+                (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
             if keep.len() == n {
                 return Ok(argv);
             }
-            argv.into_iter().map(|a| match a {
-                V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
-                other => other,
-            }).collect()
+            argv.into_iter()
+                .map(|a| match a {
+                    V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
+                    other => other,
+                })
+                .collect()
         }
-        Prep::Default => argv.into_iter().map(|a| match a {
-            V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
-            other => other,
-        }).collect(),
+        Prep::Default => argv
+            .into_iter()
+            .map(|a| match a {
+                V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
+                other => other,
+            })
+            .collect(),
         Prep::Raw | Prep::Positional => argv,
     })
 }
@@ -1240,9 +1451,11 @@ fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Op
         settled[i] = true;
         *v = apply_role(role, v, &|| format!("{name}: argument {}", i + 1), true);
     }
-    let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
+    let group: Vec<usize> =
+        (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
     if !group.is_empty() && group.iter().all(|&i| matches!(argv[i], V::Undef)) {
-        argv[group[0]] = V::err(sol_error(ErrorCode::Syntax, format!("{name}: no positions given, and they have no default")));
+        argv[group[0]] =
+            V::err(sol_error(ErrorCode::Syntax, format!("{name}: no positions given, and they have no default")));
     }
     Some(settled)
 }
@@ -1272,24 +1485,44 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
                 V::List(rows) if is_matrix(v) => list(
                     rows.iter()
                         .map(|r| match r {
-                            V::List(cells) => list(cells.iter().map(|x| if matches!(x, V::Null | V::Undef) {
+                            V::List(cells) => list(
+                                cells
+                                    .iter()
+                                    .map(|x| {
+                                        if matches!(x, V::Null | V::Undef) {
+                                            V::err(sol_error(
+                                                ErrorCode::Syntax,
+                                                format!("A position in {} is blank", label()),
+                                            ))
+                                        } else {
+                                            x.clone()
+                                        }
+                                    })
+                                    .collect(),
+                            ),
+                            V::Null | V::Undef => {
                                 V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label())))
-                            } else {
-                                x.clone()
-                            }).collect()),
-                            V::Null | V::Undef => V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label()))),
+                            }
                             other => other.clone(),
                         })
                         .collect(),
                 ),
                 V::List(l) => {
                     let kept: Vec<V> = l.iter().filter(|x| !matches!(x, V::Null | V::Undef)).cloned().collect();
-                    if kept.is_empty() { V::Undef } else { list(kept) }
+                    if kept.is_empty() {
+                        V::Undef
+                    } else {
+                        list(kept)
+                    }
                 }
                 V::Null | V::Undef => V::Undef,
                 other => other.clone(),
             };
-            if matches!(out, V::Undef) && *required && !picks_optional { no_default() } else { out }
+            if matches!(out, V::Undef) && *required && !picks_optional {
+                no_default()
+            } else {
+                out
+            }
         }
     }
 }
@@ -1302,7 +1535,9 @@ fn is_eta_name(a: &Ast) -> bool {
 
 fn lambda_scope(args: &[Ast], bound: &[String]) -> Vec<String> {
     let mut inner = bound.to_vec();
-    inner.extend(args[..args.len() - 1].iter().filter_map(|a| if let Ast::Name(n) = a { Some(n.clone()) } else { None }));
+    inner.extend(
+        args[..args.len() - 1].iter().filter_map(|a| if let Ast::Name(n) = a { Some(n.clone()) } else { None }),
+    );
     inner
 }
 
@@ -1418,7 +1653,10 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     let compiled = match hit {
         Some(c) => c,
         None => {
-            let c = Rc::new(Compiled { ast: crate::excel_formula::parse_formula(src)?, eval: Eval { memo_calls: true, ..Eval::default() } });
+            let c = Rc::new(Compiled {
+                ast: crate::excel_formula::parse_formula(src)?,
+                eval: Eval { memo_calls: true, ..Eval::default() },
+            });
             FORMULAS.with(|f| {
                 let mut f = f.borrow_mut();
                 if f.len() == FORMULAS_KEPT {
@@ -1452,10 +1690,12 @@ pub fn decode_value(j: &serde_json::Value) -> V {
     use serde_json::Value as Json;
     match j {
         Json::Array(items) => list(items.iter().map(decode_value).collect()),
-        Json::Object(o) if o.contains_key("__ref") => o["__ref"].as_u64().and_then(|id| HELD.with(|h| h.borrow().get(&id).cloned())).unwrap_or_else(|| {
-            MISSING.with(|m| m.set(true));
-            V::Undef
-        }),
+        Json::Object(o) if o.contains_key("__ref") => {
+            o["__ref"].as_u64().and_then(|id| HELD.with(|h| h.borrow().get(&id).cloned())).unwrap_or_else(|| {
+                MISSING.with(|m| m.set(true));
+                V::Undef
+            })
+        }
         Json::Object(o) if o.contains_key("__def") => {
             let v = decode_value(&o["v"]);
             if let Some(id) = o["__def"].as_u64() {
@@ -1477,7 +1717,11 @@ pub fn decode_value(j: &serde_json::Value) -> V {
                 Some(V::Num(n)) => n,
                 _ => f64::NAN,
             };
-            let dim = w.get("dim").and_then(Json::as_object).map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect()).unwrap_or_default();
+            let dim = w
+                .get("dim")
+                .and_then(Json::as_object)
+                .map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect())
+                .unwrap_or_default();
             V::Unit(Rc::new(crate::unit_dims::UnitCell {
                 value: num(w.get("value")),
                 dim,
@@ -1485,7 +1729,10 @@ pub fn decode_value(j: &serde_json::Value) -> V {
                 ratio: w.get("ratio").and_then(Json::as_bool).unwrap_or(false),
                 scale: w.get("scale").filter(|j| !j.is_null()).map(|j| num(Some(j))),
                 offset: w.get("offset").filter(|j| !j.is_null()).map(|j| num(Some(j))),
-                unit_dim: w.get("udim").and_then(Json::as_object).map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect()),
+                unit_dim: w
+                    .get("udim")
+                    .and_then(Json::as_object)
+                    .map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect()),
             }))
         }
         Json::Object(o) if o.contains_key("__lambda") => {
@@ -1493,8 +1740,15 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             if let Some(name) = w.get("eta").and_then(Json::as_str) {
                 return V::Lambda(Rc::new(LambdaV { eta: Some(name.to_uppercase()), ..Default::default() }));
             }
-            let strs = |k: &str| -> Vec<String> { w.get(k).and_then(Json::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default() };
-            let values = |k: &str| -> Option<Vec<V>> { w.get(k).and_then(Json::as_array).map(|a| a.iter().map(decode_value).collect()) };
+            let strs = |k: &str| -> Vec<String> {
+                w.get(k)
+                    .and_then(Json::as_array)
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                    .unwrap_or_default()
+            };
+            let values = |k: &str| -> Option<Vec<V>> {
+                w.get(k).and_then(Json::as_array).map(|a| a.iter().map(decode_value).collect())
+            };
             let (params, captured) = (strs("params"), strs("captured"));
             let units = values("capturedValues").unwrap_or_default();
             // A λ frozen before its values crossed with their units carries only the ones its body reads.
@@ -1507,7 +1761,16 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             };
             let env: Env = captured.iter().cloned().zip(read.into_iter().chain(std::iter::repeat(V::Undef))).collect();
             let descriptions = w.get("descriptions").filter(|d| d.is_object()).map(|d| Rc::new(d.clone()));
-            V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured), src: Some(src.to_string()), units, descriptions }))
+            V::Lambda(Rc::new(LambdaV {
+                params,
+                body: Some(Rc::new(body)),
+                env: Rc::new(env),
+                eta: None,
+                captured: Some(captured),
+                src: Some(src.to_string()),
+                units,
+                descriptions,
+            }))
         }
         _ => cell_to_v(&crate::wire::decode_cell(j)),
     }
@@ -1544,7 +1807,11 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
 
 /// `runColumn` with each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a
 /// list (`tagCubeComputedCell`).
-pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
+pub fn column_with<C>(
+    spec: ColumnSpec,
+    inp: ColumnInputs,
+    tag: fn(V) -> C,
+) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
     let cols: FxHashMap<&str, Col> = match &inp.table {
         Table::Frame(f) => f.columns.iter().map(|c| (c.name.as_str(), Col::Frame(c))).collect(),
         Table::Rows(cs) => cs.iter().map(|c| (c.name.as_str(), Col::Row(c))).collect(),
@@ -1594,7 +1861,10 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
             continue;
         }
         if ctx.reserved.contains(p) {
-            return Err(sol_error(ErrorCode::Ref, format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
+            return Err(sol_error(
+                ErrorCode::Ref,
+                format!("\"{p}\" is a reserved input name. Rename the variable or the column"),
+            ));
         }
         side_vars.push(p.clone());
         binds.push(Bind::Side(ctx.aligned(side(p))));
@@ -1636,10 +1906,19 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
                 }
             }
             // Every binding is a whole column or a side value, so one env serves every row.
-            let env: Env = params.iter().zip(&binds).map(|(p, b)| (p.clone(), match b {
-                Bind::Col(c) => ctx.whole_of(*c),
-                Bind::Side(v) => v.clone(),
-            })).collect();
+            let env: Env = params
+                .iter()
+                .zip(&binds)
+                .map(|(p, b)| {
+                    (
+                        p.clone(),
+                        match b {
+                            Bind::Col(c) => ctx.whole_of(*c),
+                            Bind::Side(v) => v.clone(),
+                        },
+                    )
+                })
+                .collect();
             let env = Rc::new(env);
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
@@ -1652,12 +1931,19 @@ pub fn column_with<C>(spec: ColumnSpec, inp: ColumnInputs, tag: fn(V) -> C) -> R
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
                 rows.at(i);
-                let argv: Vec<V> = binds.iter().map(|b| match b {
-                    Bind::Col(c) => c.cell(i),
-                    Bind::Side(v) => v.clone(),
-                }).collect();
+                let argv: Vec<V> = binds
+                    .iter()
+                    .map(|b| match b {
+                        Bind::Col(c) => c.cell(i),
+                        Bind::Side(v) => v.clone(),
+                    })
+                    .collect();
                 // A parameter's error cell answers the row before the body runs.
-                let err = binds.iter().zip(&argv).find(|(b, v)| matches!(b, Bind::Col(_)) && v.is_sol_error()).map(|(_, v)| v.clone());
+                let err = binds
+                    .iter()
+                    .zip(&argv)
+                    .find(|(b, v)| matches!(b, Bind::Col(_)) && v.is_sol_error())
+                    .map(|(_, v)| v.clone());
                 let v = match err {
                     Some(e) => e,
                     None => ev.call_lambda(lam, &argv),

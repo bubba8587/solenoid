@@ -2,11 +2,11 @@
 //! its inputs and wrapped in their units; `nodes/equation.ts` with `equationSolve.ts`: the Equation card and Time
 //! Value of Money (`nodes/finance.ts`), a relation solved for its one unwired variable.
 
-use crate::error_value::ErrorCode;
-use crate::excel_formula::{BinOp, UnaryOp};
 use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env};
 use crate::excel_formula::{parse_formula, Ast};
+use crate::excel_formula::{BinOp, UnaryOp};
 use crate::excel_functions::{fx_error_to_sol, js_pow, V};
 use crate::jsnum::{js_trim, number_to_string};
 use crate::unit_catalog::fc_unit_to_unit;
@@ -29,7 +29,11 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 /// A formula over named values as `compileEvaluator` runs it; `Err` where the evaluation throws.
 fn evaluate(src: &str, env: Env) -> Result<V, ()> {
     let v = crate::eval::formula(src, env).ok_or(())?;
-    if crate::excel_functions::take_thrown().is_some() { Err(()) } else { Ok(v) }
+    if crate::excel_functions::take_thrown().is_some() {
+        Err(())
+    } else {
+        Ok(v)
+    }
 }
 
 /// The label a unit id shows (`UNIT_ANNOTATIONS`), trimmed.
@@ -100,8 +104,12 @@ pub(crate) fn read_in_declared_unit(v: &V, id: &str) -> V {
         other => other.clone(),
     };
     let V::List(items) = v else { return one(v) };
-    let out: Vec<V> = items.iter().map(|c| if let V::List(row) = c { list(row.iter().map(one).collect()) } else { one(c) }).collect();
-    let first_err = out.iter().flat_map(|c| if let V::List(row) = c { row.as_ref().clone() } else { vec![c.clone()] }).find(V::is_sol_error);
+    let out: Vec<V> =
+        items.iter().map(|c| if let V::List(row) = c { list(row.iter().map(one).collect()) } else { one(c) }).collect();
+    let first_err = out
+        .iter()
+        .flat_map(|c| if let V::List(row) = c { row.as_ref().clone() } else { vec![c.clone()] })
+        .find(V::is_sol_error);
     first_err.unwrap_or_else(|| list(out))
 }
 
@@ -222,7 +230,12 @@ fn expression(c: &mut Call) -> Answer {
         return expression_done(c, e, Some("Evaluation error"), false);
     };
     let result = match &raw {
-        V::List(items) => list(items.iter().map(|e| if let V::List(row) = e { list(row.iter().map(tag_result).collect()) } else { tag_result(e) }).collect()),
+        V::List(items) => list(
+            items
+                .iter()
+                .map(|e| if let V::List(row) = e { list(row.iter().map(tag_result).collect()) } else { tag_result(e) })
+                .collect(),
+        ),
         _ => tag_result(&raw),
     };
     expression_done(c, result, None, true)
@@ -266,7 +279,9 @@ fn count_occurrences(n: &Ast, name: &str) -> usize {
         Ast::Name(x) => usize::from(x == name),
         Ast::Bin { l, r, .. } => count_occurrences(l, name) + count_occurrences(r, name),
         Ast::Call { args, .. } => args.iter().map(|a| count_occurrences(a, name)).sum(),
-        Ast::Apply { func, args } => count_occurrences(func, name) + args.iter().map(|a| count_occurrences(a, name)).sum::<usize>(),
+        Ast::Apply { func, args } => {
+            count_occurrences(func, name) + args.iter().map(|a| count_occurrences(a, name)).sum::<usize>()
+        }
         Ast::Unary { arg, .. } | Ast::Percent(arg) => count_occurrences(arg, name),
         _ => 0,
     }
@@ -421,7 +436,11 @@ fn jmax(xs: &[f64]) -> f64 {
 }
 
 fn jsign(x: f64) -> f64 {
-    if x == 0.0 || x.is_nan() { x } else { x.signum() }
+    if x == 0.0 || x.is_nan() {
+        x
+    } else {
+        x.signum()
+    }
 }
 
 struct Quad {
@@ -473,7 +492,11 @@ fn solve_quadratic(q: &Quad) -> Roots {
     let bb = if b == 0.0 || b.is_nan() { 1.0 } else { b };
     let qq = -(b + jsign(bb) * s) / 2.0;
     let (r1, r2) = (qq / a, c / qq);
-    if r1 < r2 { Roots::Two(r1, r2) } else { Roots::Two(r2, r1) }
+    if r1 < r2 {
+        Roots::Two(r1, r2)
+    } else {
+        Roots::Two(r2, r1)
+    }
 }
 
 fn root_holds(q: &Quad, residual: &dyn Fn(f64) -> Option<f64>, x: f64) -> bool {
@@ -587,7 +610,10 @@ fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
     }
     match best {
         Some(b) => V::Num(b),
-        None => err(ErrorCode::Solve, "No solution found between \u{b1}10\u{b9}\u{b2}. The equation may have no real root here"),
+        None => err(
+            ErrorCode::Solve,
+            "No solution found between \u{b1}10\u{b9}\u{b2}. The equation may have no real root here",
+        ),
     }
 }
 
@@ -645,7 +671,9 @@ fn check_equals(l: &V, r: &V) -> V {
 fn dim_of_val(v: &V) -> Dim {
     match v {
         V::Unit(u) => u.dim.clone(),
-        V::List(items) => items.iter().find_map(|c| if let V::Unit(u) = c { Some(u.dim.clone()) } else { None }).unwrap_or_default(),
+        V::List(items) => {
+            items.iter().find_map(|c| if let V::Unit(u) = c { Some(u.dim.clone()) } else { None }).unwrap_or_default()
+        }
         _ => Dim::new(),
     }
 }
@@ -674,7 +702,9 @@ fn code_of_val(v: &V, dim: &Dim) -> Option<String> {
 fn to_base_val(v: &V) -> V {
     match v {
         V::Unit(u) => V::Num(u.value),
-        V::List(items) => list(items.iter().map(|c| if let V::Unit(u) = c { V::Num(u.value) } else { c.clone() }).collect()),
+        V::List(items) => {
+            list(items.iter().map(|c| if let V::Unit(u) = c { V::Num(u.value) } else { c.clone() }).collect())
+        }
         other => other.clone(),
     }
 }
@@ -774,7 +804,9 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
                 }
                 if let (Some(a), Some(b)) = (&dl.code, &dr.code) {
                     if a != b {
-                        s.holds = V::err(unit_error(&format!("Can't equate {a} and {b}: they are different currencies with no exchange rate.")));
+                        s.holds = V::err(unit_error(&format!(
+                            "Can't equate {a} and {b}: they are different currencies with no exchange rate."
+                        )));
                         return s;
                     }
                 }
@@ -994,7 +1026,11 @@ mod tests {
         close(solve("d = DEGREES(r)", "r", &[("d", n(180.0))]), std::f64::consts::PI, 12);
         assert_eq!(solve("a = -b", "b", &[("a", n(5.0))]), -5.0);
         assert_eq!(solve("a = b%", "b", &[("a", n(0.25))]), 25.0);
-        let r = solve("f = 8.9875517923*10^9 * q1 * q2 / r ^ 2", "r", &[("f", n(8.98755e-3)), ("q1", n(1e-6)), ("q2", n(1e-6))]);
+        let r = solve(
+            "f = 8.9875517923*10^9 * q1 * q2 / r ^ 2",
+            "r",
+            &[("f", n(8.98755e-3)), ("q1", n(1e-6)), ("q2", n(1e-6))],
+        );
         close(r, 1.0, 4);
     }
 

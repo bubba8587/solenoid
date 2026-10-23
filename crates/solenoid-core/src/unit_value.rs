@@ -1,10 +1,11 @@
 // [[C130]] rustCore
 //! Port of `src/graph/unitValue.ts` (the parts the frame verbs use).
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 
 pub const READINGS_ADD: &str = "Temperature readings can't be added. Subtract two for a difference, or average them.";
-pub const READINGS_SCALE: &str = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
+pub const READINGS_SCALE: &str =
+    "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
 pub const READINGS_FOLD: &str = "A fold over readings must answer a reading each step, like MAX(acc, value).";
 
 pub fn unit_error(detail: &str) -> SolError {
@@ -29,7 +30,12 @@ pub fn to_precision(x: f64, p: usize) -> f64 {
     if !x.is_finite() || x == 0.0 || p == 0 || p > 100 {
         return x;
     }
-    let shortest = ryu_js::Buffer::new().format_finite(x.abs()).bytes().filter(u8::is_ascii_digit).skip_while(|&d| d == b'0').count();
+    let shortest = ryu_js::Buffer::new()
+        .format_finite(x.abs())
+        .bytes()
+        .filter(u8::is_ascii_digit)
+        .skip_while(|&d| d == b'0')
+        .count();
     if shortest <= p {
         return x;
     }
@@ -37,7 +43,8 @@ pub fn to_precision(x: f64, p: usize) -> f64 {
         // 17 correctly rounded digits decide the cut unless they read exactly 5 then zeros past it: that could be a
         // true tie or a value just below one rounded up, which only the exact expansion settles.
         let near = format!("{:.16e}", x.abs());
-        let digits: Vec<u8> = near.split_once('e').map_or(near.as_str(), |(m, _)| m).bytes().filter(u8::is_ascii_digit).collect();
+        let digits: Vec<u8> =
+            near.split_once('e').map_or(near.as_str(), |(m, _)| m).bytes().filter(u8::is_ascii_digit).collect();
         let rest = &digits[p..];
         let ambiguous = rest[0] == b'5' && rest[1..].iter().all(|&d| d == b'0');
         let exact = if ambiguous { format!("{:.800e}", x.abs()) } else { near };
@@ -47,7 +54,8 @@ pub fn to_precision(x: f64, p: usize) -> f64 {
     let (m, _) = near.split_once('e').unwrap_or((&near, "0"));
     let digits: Vec<u8> = m.bytes().filter(u8::is_ascii_digit).collect();
     let rest = &digits[p..];
-    let tie_like = (rest[0] == b'5' && rest[1..].iter().all(|&d| d == b'0')) || (rest[0] == b'4' && rest[1..].iter().all(|&d| d == b'9'));
+    let tie_like = (rest[0] == b'5' && rest[1..].iter().all(|&d| d == b'0'))
+        || (rest[0] == b'4' && rest[1..].iter().all(|&d| d == b'9'));
     let exact = if tie_like || p + 1 > digits.len() { format!("{:.100e}", x.abs()) } else { near };
     round_digits_text(&exact, p, x)
 }
@@ -87,8 +95,8 @@ fn round_digits_text(expansion: &str, p: usize, x: f64) -> f64 {
 }
 
 const POW10: [f64; 23] = [
-    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21,
-    1e22,
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20,
+    1e21, 1e22,
 ];
 
 pub fn round_at_larger_term(y: f64, t: f64) -> f64 {

@@ -59,7 +59,8 @@ pub fn base64_encode(text: &str) -> String {
 }
 
 /// The padding is checked here, so the body decodes bare; stray low bits in its last symbol are dropped, as the TS does.
-const BODY: GeneralPurpose = GeneralPurpose::new(&base64::alphabet::STANDARD, NO_PAD.with_decode_allow_trailing_bits(true));
+const BODY: GeneralPurpose =
+    GeneralPurpose::new(&base64::alphabet::STANDARD, NO_PAD.with_decode_allow_trailing_bits(true));
 
 /// `None` for text that is not valid base64, or bytes that aren't UTF-8 (`TextDecoder`'s `fatal`).
 pub fn base64_decode(text: &str) -> Option<String> {
@@ -75,7 +76,10 @@ pub fn base64_decode(text: &str) -> Option<String> {
     // `^[A-Za-z0-9+/]*={0,2}$`
     let body_end = clean.trim_end_matches('=').len();
     let pads = clean.len() - body_end;
-    if pads > 2 || !clean[..body_end].bytes().all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/') || clean.len() % 4 == 1 {
+    if pads > 2
+        || !clean[..body_end].bytes().all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/')
+        || clean.len() % 4 == 1
+    {
         return None;
     }
     // A last symbol alone in its quantum carries no whole byte, and the TS drops it.

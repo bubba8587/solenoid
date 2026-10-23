@@ -5,7 +5,7 @@
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
-use crate::error_value::{ErrorCode, FxError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{js_pow, js_string_of, parse_number, throw, truthy, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
@@ -17,11 +17,48 @@ const NA: V = V::Fx(FxError::NotAvailable);
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "PERMUTATIONA", "SUMSQ", "SUMPRODUCT",
-    "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
-    "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
-    "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-    "ERFC.PRECISE", "GAMMA", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
+    "PERMUTATIONA",
+    "SUMSQ",
+    "SUMPRODUCT",
+    "SUMX2MY2",
+    "SUMX2PY2",
+    "SUMXMY2",
+    "SERIESSUM",
+    "BASE",
+    "DECIMAL",
+    "ROMAN",
+    "ARABIC",
+    "BIN2DEC",
+    "BIN2HEX",
+    "BIN2OCT",
+    "DEC2BIN",
+    "DEC2HEX",
+    "DEC2OCT",
+    "HEX2BIN",
+    "HEX2DEC",
+    "HEX2OCT",
+    "OCT2BIN",
+    "OCT2DEC",
+    "OCT2HEX",
+    "BITAND",
+    "BITOR",
+    "BITXOR",
+    "BITLSHIFT",
+    "BITRSHIFT",
+    "DELTA",
+    "GESTEP",
+    "TYPE",
+    "ERF",
+    "ERF.PRECISE",
+    "ERFC",
+    "ERFC.PRECISE",
+    "GAMMA",
+    "Z.TEST",
+    "CHISQ.TEST",
+    "NA",
+    "GAUSS",
+    "PHI",
+    "CONFIDENCE.NORM",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -44,7 +81,11 @@ fn any_error(vs: &[&V]) -> Option<V> {
 }
 
 fn num_of(v: &V) -> Option<f64> {
-    if let V::Num(n) = v { Some(*n) } else { None }
+    if let V::Num(n) = v {
+        Some(*n)
+    } else {
+        None
+    }
 }
 
 /// `flatten(x)`: a list's items, nested lists spread; anything else as one item.
@@ -77,7 +118,6 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
     Ok(out)
 }
 
-
 fn invalid_array_length() -> V {
     throw(sol_error(ErrorCode::Value, "Invalid array length"))
 }
@@ -99,7 +139,6 @@ fn array_join(n: f64, text: &str) -> Result<String, V> {
 fn rept(text: &str, times: f64) -> Result<String, V> {
     array_join(times + 1.0, text)
 }
-
 
 /// The places argument the DEC2…/…2BIN family pads with.
 fn with_places(result: String, places: &V) -> V {
@@ -149,11 +188,19 @@ fn negative_binary(n: f64) -> V {
 
 /// The first Str's UTF-16 length, as `number.length` reads it; None for anything else.
 fn str_len(v: &V) -> Option<usize> {
-    if let V::Str(s) = v { Some(s.encode_utf16().count()) } else { None }
+    if let V::Str(s) = v {
+        Some(s.encode_utf16().count())
+    } else {
+        None
+    }
 }
 
 fn first_char(v: &V) -> Option<char> {
-    if let V::Str(s) = v { s.chars().next() } else { None }
+    if let V::Str(s) = v {
+        s.chars().next()
+    } else {
+        None
+    }
 }
 
 /// The base conversions.
@@ -199,12 +246,17 @@ fn base_convert(name: &str, number: &V, places: &V) -> V {
             match name {
                 "HEX2DEC" => V::Num(if decimal >= 549_755_813_888.0 { decimal - 1_099_511_627_776.0 } else { decimal }),
                 "HEX2BIN" => {
-                    let negative = str_len(number) == Some(10) && first_char(number).is_some_and(|c| c.eq_ignore_ascii_case(&'f'));
+                    let negative =
+                        str_len(number) == Some(10) && first_char(number).is_some_and(|c| c.eq_ignore_ascii_case(&'f'));
                     let decimal = if negative { decimal - 1_099_511_627_776.0 } else { decimal };
                     if !(-512.0..=511.0).contains(&decimal) {
                         return NUM;
                     }
-                    if negative { negative_binary(decimal) } else { with_places(radix_text(decimal, 2), places) }
+                    if negative {
+                        negative_binary(decimal)
+                    } else {
+                        with_places(radix_text(decimal, 2), places)
+                    }
                 }
                 _ => {
                     if decimal > 536_870_911.0 && decimal < 1_098_974_756_864.0 {
@@ -230,7 +282,11 @@ fn base_convert(name: &str, number: &V, places: &V) -> V {
                     if !(-512.0..=511.0).contains(&decimal) {
                         return NUM;
                     }
-                    if negative { negative_binary(decimal) } else { with_places(radix_text(decimal, 2), places) }
+                    if negative {
+                        negative_binary(decimal)
+                    } else {
+                        with_places(radix_text(decimal, 2), places)
+                    }
                 }
                 _ => {
                     if decimal >= 536_870_912.0 {
@@ -307,8 +363,8 @@ fn arabic(s: &str) -> f64 {
 
 fn roman(n: f64) -> V {
     const KEY: [&str; 30] = [
-        "", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM", "", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX",
-        "XC", "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX",
+        "", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM", "", "X", "XX", "XXX", "XL", "L", "LX", "LXX",
+        "LXXX", "XC", "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX",
     ];
     let mut digits: Vec<char> = number_to_string(n).chars().collect();
     let mut roman = String::new();
@@ -329,11 +385,34 @@ fn roman(n: f64) -> V {
 /// `jStat.erf`, its argument as JS has it: a string stays a string for `2 + x`, so it concatenates there.
 fn jstat_erf(x: &V) -> f64 {
     const COF: [f64; 28] = [
-        -1.3026537197817094, 6.4196979235649026e-1, 1.9476473204185836e-2, -9.561514786808631e-3,
-        -9.46595344482036e-4, 3.66839497852761e-4, 4.2523324806907e-5, -2.0278578112534e-5, -1.624290004647e-6,
-        1.303655835580e-6, 1.5626441722e-8, -8.5238095915e-8, 6.529054439e-9, 5.059343495e-9, -9.91364156e-10,
-        -2.27365122e-10, 9.6467911e-11, 2.394038e-12, -6.886027e-12, 8.94487e-13, 3.13092e-13, -1.12708e-13,
-        3.81e-16, 7.106e-15, -1.523e-15, -9.4e-17, 1.21e-16, -2.8e-17,
+        -1.3026537197817094,
+        6.4196979235649026e-1,
+        1.9476473204185836e-2,
+        -9.561514786808631e-3,
+        -9.46595344482036e-4,
+        3.66839497852761e-4,
+        4.2523324806907e-5,
+        -2.0278578112534e-5,
+        -1.624290004647e-6,
+        1.303655835580e-6,
+        1.5626441722e-8,
+        -8.5238095915e-8,
+        6.529054439e-9,
+        5.059343495e-9,
+        -9.91364156e-10,
+        -2.27365122e-10,
+        9.6467911e-11,
+        2.394038e-12,
+        -6.886027e-12,
+        8.94487e-13,
+        3.13092e-13,
+        -1.12708e-13,
+        3.81e-16,
+        7.106e-15,
+        -1.523e-15,
+        -9.4e-17,
+        1.21e-16,
+        -2.8e-17,
     ];
     let mut xn = js_number(x);
     let mut text = if let V::Str(s) = x { Some(s.clone()) } else { None };
@@ -355,11 +434,22 @@ fn jstat_erf(x: &V) -> f64 {
         dd = tmp;
     }
     let res = t * exp(-xn * xn + 0.5 * (COF[0] + ty * d) - dd);
-    if isneg { res - 1.0 } else { 1.0 - res }
+    if isneg {
+        res - 1.0
+    } else {
+        1.0 - res
+    }
 }
 
 pub fn jstat_gammaln(x: f64) -> f64 {
-    const COF: [f64; 6] = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    const COF: [f64; 6] = [
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5,
+    ];
     let mut ser = 1.000000000190015;
     let xx = x;
     let mut y = x;
@@ -373,8 +463,26 @@ pub fn jstat_gammaln(x: f64) -> f64 {
 }
 
 fn jstat_gammafn(x: f64) -> f64 {
-    const P: [f64; 8] = [-1.716185138865495, 24.76565080557592, -379.80425647094563, 629.3311553128184, 866.9662027904133, -31451.272968848367, -36144.413418691176, 66456.14382024054];
-    const Q: [f64; 8] = [-30.8402300119739, 315.35062697960416, -1015.1563674902192, -3107.771671572311, 22538.118420980151, 4755.8462775278811, -134659.9598649693, -115132.2596755535];
+    const P: [f64; 8] = [
+        -1.716185138865495,
+        24.76565080557592,
+        -379.80425647094563,
+        629.3311553128184,
+        866.9662027904133,
+        -31451.272968848367,
+        -36144.413418691176,
+        66456.14382024054,
+    ];
+    const Q: [f64; 8] = [
+        -30.8402300119739,
+        315.35062697960416,
+        -1015.1563674902192,
+        -3107.771671572311,
+        22538.118420980151,
+        4755.8462775278811,
+        -134659.9598649693,
+        -115132.2596755535,
+    ];
     let mut fact = 0.0;
     let mut n = 0.0;
     let (mut xden, mut xnum) = (0.0, 0.0);
@@ -385,7 +493,8 @@ fn jstat_gammafn(x: f64) -> f64 {
     if y <= 0.0 {
         let res = y % 1.0 + 3.6e-16;
         if res != 0.0 && !res.is_nan() {
-            fact = (if to_int32(y) & 1 == 0 { 1.0 } else { -1.0 }) * std::f64::consts::PI / sin(std::f64::consts::PI * res);
+            fact = (if to_int32(y) & 1 == 0 { 1.0 } else { -1.0 }) * std::f64::consts::PI
+                / sin(std::f64::consts::PI * res);
             y = 1.0 - y;
         } else {
             return f64::INFINITY;
@@ -440,7 +549,11 @@ fn fx_average(xs: &[f64]) -> Result<f64, V> {
         count += 1.0;
     }
     let r = sum / count;
-    if r.is_nan() { Err(NUM) } else { Ok(r) }
+    if r.is_nan() {
+        Err(NUM)
+    } else {
+        Ok(r)
+    }
 }
 
 fn fx_var_s(xs: &[f64]) -> f64 {
@@ -477,7 +590,11 @@ fn jstat_erfcinv(p: f64) -> f64 {
         let err = (1.0 - jstat_erf(&V::Num(x))) - pp;
         x += err / (1.12837916709551257 * exp(-x * x) - x * err);
     }
-    if p < 1.0 { x } else { -x }
+    if p < 1.0 {
+        x
+    } else {
+        -x
+    }
 }
 
 /// `jStat.normal.cdf(x, 0, 1)`.
@@ -530,7 +647,10 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V>
             Ok(if key == "length" {
                 V::Num(units.len() as f64)
             } else {
-                key.parse::<usize>().ok().and_then(|i| units.get(i)).map_or(V::Undef, |&u| V::str(&String::from_utf16_lossy(&[u])))
+                key.parse::<usize>()
+                    .ok()
+                    .and_then(|i| units.get(i))
+                    .map_or(V::Undef, |&u| V::str(&String::from_utf16_lossy(&[u])))
             })
         }
         V::Null | V::Undef => {
@@ -635,15 +755,26 @@ pub fn call(name: &str, a: &[V]) -> V {
                     let units: Vec<u16> = s.encode_utf16().collect();
                     let last = String::from_utf16_lossy(&units[units.len() - 1..]);
                     return match parse_number(&V::str(&last)) {
-                        V::Num(_) => throw(sol_error(ErrorCode::Value, format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1))),
+                        V::Num(_) => throw(sol_error(
+                            ErrorCode::Value,
+                            format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1),
+                        )),
                         _ => VALUE,
                     };
                 }
                 // A truthy scalar has no length, so it parses as itself and reads `undefined` at [0].
-                v if truthy(v) => if let V::Fx(_) = v { Err(VALUE) } else { Ok(None) },
+                v if truthy(v) => {
+                    if let V::Fx(_) = v {
+                        Err(VALUE)
+                    } else {
+                        Ok(None)
+                    }
+                }
                 _ => Err(VALUE),
             };
-            let (Some(x), Some(n), Some(m), Ok(cs)) = (num_of(&x), num_of(&n), num_of(&m), coefficients) else { return VALUE };
+            let (Some(x), Some(n), Some(m), Ok(cs)) = (num_of(&x), num_of(&n), num_of(&m), coefficients) else {
+                return VALUE;
+            };
             let Some(cs) = cs else { return V::Num(f64::NAN) };
             let mut result = cs[0] * js_pow(x, n);
             for (i, c) in cs.iter().enumerate().skip(1) {
@@ -656,7 +787,8 @@ pub fn call(name: &str, a: &[V]) -> V {
             if let Some(e) = any_error(&[&n, &r, &l]) {
                 return e;
             }
-            let (n, r, l) = (num_of(&n).unwrap_or(f64::NAN), num_of(&r).unwrap_or(f64::NAN), num_of(&l).unwrap_or(f64::NAN));
+            let (n, r, l) =
+                (num_of(&n).unwrap_or(f64::NAN), num_of(&r).unwrap_or(f64::NAN), num_of(&l).unwrap_or(f64::NAN));
             if r == 0.0 {
                 return NUM;
             }
@@ -685,7 +817,11 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return NUM;
             }
             let v = parse_int(&js_string_of(&text), r);
-            if v.is_nan() { NUM } else { V::Num(v) }
+            if v.is_nan() {
+                NUM
+            } else {
+                V::Num(v)
+            }
         }
         "ROMAN" => match parse_number(arg(a, 0)) {
             V::Num(n) => roman(n),
@@ -696,7 +832,11 @@ pub fn call(name: &str, a: &[V]) -> V {
             e @ V::Fx(_) => e.clone(),
             v => {
                 let s = js_string_of(v);
-                if is_roman(&s) { V::Num(arabic(&s)) } else { VALUE }
+                if is_roman(&s) {
+                    V::Num(arabic(&s))
+                } else {
+                    VALUE
+                }
             }
         },
         "BIN2DEC" | "BIN2HEX" | "BIN2OCT" | "DEC2BIN" | "DEC2HEX" | "DEC2OCT" | "HEX2BIN" | "HEX2DEC" | "HEX2OCT"
@@ -726,7 +866,11 @@ pub fn call(name: &str, a: &[V]) -> V {
                     }
                     let left = (name == "BITLSHIFT") == (y >= 0.0);
                     let s = to_uint32(if y >= 0.0 { y } else { -y }) & 31;
-                    if left { xi.wrapping_shl(s) } else { xi >> s }
+                    if left {
+                        xi.wrapping_shl(s)
+                    } else {
+                        xi >> s
+                    }
                 }
             }))
         }
@@ -754,7 +898,20 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::Str(_) => V::Num(2.0),
             V::Bool(_) => V::Num(4.0),
             V::Num(_) => V::Num(16.0),
-            V::Fx(code) if matches!(*code, FxError::Value | FxError::Ref | FxError::DivZero | FxError::Num | FxError::Name | FxError::Null | FxError::NotAvailable) => V::Num(16.0),
+            V::Fx(code)
+                if matches!(
+                    *code,
+                    FxError::Value
+                        | FxError::Ref
+                        | FxError::DivZero
+                        | FxError::Num
+                        | FxError::Name
+                        | FxError::Null
+                        | FxError::NotAvailable
+                ) =>
+            {
+                V::Num(16.0)
+            }
             V::List(_) => V::Num(64.0),
             _ => V::Undef,
         },

@@ -4,10 +4,12 @@
 
 use std::rc::Rc;
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::eval::{Env, Eval};
 use crate::excel_functions::{fx_error_to_sol, js_pow, V};
-use crate::unit_dims::{affine_weight, dim_equal, dim_eval_with_code, holds_unit, is_dimensionless, AffScope, Codes, Dim, NamedLambdas};
+use crate::unit_dims::{
+    affine_weight, dim_equal, dim_eval_with_code, holds_unit, is_dimensionless, AffScope, Codes, Dim, NamedLambdas,
+};
 use crate::unit_expression::{dim_power_of, display_unit, DisplayUnit};
 use crate::unit_lists::tag_dim;
 
@@ -64,7 +66,10 @@ fn read_in(base: f64, u: Option<&DisplayUnit>) -> f64 {
 /// A step's answer as `compileTsEvaluator` hands it back.
 fn normalize(v: V) -> V {
     match v {
-        V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+        V::Lambda(_) => V::err(sol_error(
+            ErrorCode::Value,
+            "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY",
+        )),
         V::Fx(m) => V::err(fx_error_to_sol(m)),
         other => other,
     }
@@ -88,13 +93,18 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
     let n = *n;
     match (u, point) {
         (Some(u), Some(1)) => tag_dim(n * u.scale + u.offset, u.dim.clone(), elem.display.clone()),
-        (Some(u), Some(0)) => tag_dim(n * js_pow(u.scale, dim_power_of(dr, &elem.dim).unwrap_or(1.0)), dr.clone(), None),
+        (Some(u), Some(0)) => {
+            tag_dim(n * js_pow(u.scale, dim_power_of(dr, &elem.dim).unwrap_or(1.0)), dr.clone(), None)
+        }
         _ => {
             let display = if dim_equal(dr, &elem.dim) { elem.display.clone() } else { None };
             match u {
                 None => tag_dim(n, dr.clone(), display),
                 Some(u) => match dim_power_of(dr, &elem.dim) {
-                    None => V::err(sol_error(ErrorCode::Unit, "The fold's result unit can't be read back from the list's unit.")),
+                    None => V::err(sol_error(
+                        ErrorCode::Unit,
+                        "The fold's result unit can't be read back from the list's unit.",
+                    )),
                     Some(k) => tag_dim(n * js_pow(u.scale, k), dr.clone(), display),
                 },
             }
@@ -108,7 +118,13 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
 }
 
 /// `fold_units` with the formula parsed, each step's names beside `captured` (a wired LAMBDA's captures).
-pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured: &Env, m: &V, initial: &V) -> Option<V> {
+pub fn fold_units_over(
+    kind: FoldKind,
+    ast: &crate::excel_formula::Ast,
+    captured: &Env,
+    m: &V,
+    initial: &V,
+) -> Option<V> {
     let V::List(rows) = m else { return None };
     let mut mat: Vec<Vec<V>> = Vec::with_capacity(rows.len());
     for r in rows.iter() {
@@ -133,7 +149,10 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
         },
         (true, V::Unit(i), Some((e, _))) if !dim_equal(&e.dim, &i.dim) => {
             let name = if kind == FoldKind::Scan { "SCAN" } else { "REDUCE" };
-            return Some(V::err(sol_error(ErrorCode::Unit, format!("{name}'s initial value and its list are in different units."))));
+            return Some(V::err(sol_error(
+                ErrorCode::Unit,
+                format!("{name}'s initial value and its list are in different units."),
+            )));
         }
         (true, V::Unit(i), Some((e, _))) if e.display != i.display => Some((Elem { dim: e.dim, display: None }, None)),
         (_, _, elem) => elem,
@@ -186,7 +205,9 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
             }
             steps.push(done);
         }
-        let shaped = |steps: Vec<Vec<V>>, f: &dyn Fn(V) -> V| V::List(Rc::new(steps.into_iter().map(|r| V::List(Rc::new(r.into_iter().map(f).collect()))).collect()));
+        let shaped = |steps: Vec<Vec<V>>, f: &dyn Fn(V) -> V| {
+            V::List(Rc::new(steps.into_iter().map(|r| V::List(Rc::new(r.into_iter().map(f).collect()))).collect()))
+        };
         let Some((elem, _)) = &elem else {
             return Some(if kind == FoldKind::Scan { shaped(steps, &|c| c) } else { cell(&acc) });
         };
@@ -224,5 +245,9 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
         };
         out = out.into_iter().map(|c| retag(c, &dr, elem, fu, point)).collect();
     }
-    Some(V::List(Rc::new(if kind == FoldKind::ByRow { out.into_iter().map(|c| V::List(Rc::new(vec![c]))).collect() } else { out })))
+    Some(V::List(Rc::new(if kind == FoldKind::ByRow {
+        out.into_iter().map(|c| V::List(Rc::new(vec![c]))).collect()
+    } else {
+        out
+    })))
 }

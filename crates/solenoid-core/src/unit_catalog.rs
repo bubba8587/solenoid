@@ -66,9 +66,27 @@ fn base_unit(sym: &str) -> Option<Unit> {
 
 /// `SI_PREFIXES` in its key order, `da` first as `resolveSymbol` tries it.
 const PREFIXES: &[(&str, f64)] = &[
-    ("da", 1e1), ("Y", 1e24), ("Z", 1e21), ("E", 1e18), ("P", 1e15), ("T", 1e12), ("G", 1e9), ("M", 1e6), ("k", 1e3),
-    ("h", 1e2), ("d", 1e-1), ("c", 1e-2), ("m", 1e-3), ("u", 1e-6), ("µ", 1e-6), ("n", 1e-9), ("p", 1e-12),
-    ("f", 1e-15), ("a", 1e-18), ("z", 1e-21), ("y", 1e-24),
+    ("da", 1e1),
+    ("Y", 1e24),
+    ("Z", 1e21),
+    ("E", 1e18),
+    ("P", 1e15),
+    ("T", 1e12),
+    ("G", 1e9),
+    ("M", 1e6),
+    ("k", 1e3),
+    ("h", 1e2),
+    ("d", 1e-1),
+    ("c", 1e-2),
+    ("m", 1e-3),
+    ("u", 1e-6),
+    ("µ", 1e-6),
+    ("n", 1e-9),
+    ("p", 1e-12),
+    ("f", 1e-15),
+    ("a", 1e-18),
+    ("z", 1e-21),
+    ("y", 1e-24),
 ];
 
 fn linear(u: &Unit) -> bool {
@@ -114,7 +132,9 @@ fn parse_factor(tok: &str) -> Option<Unit> {
             Some((i, f)) if frac => (i, Some(f)),
             _ => (s, None),
         };
-        !int.is_empty() && int.bytes().all(|b| b.is_ascii_digit()) && dec.is_none_or(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()))
+        !int.is_empty()
+            && int.bytes().all(|b| b.is_ascii_digit())
+            && dec.is_none_or(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()))
     };
     let (mut sym, mut power) = (t, 1.0);
     if let Some((base, p)) = t.split_once('^').filter(|(b, p)| !b.is_empty() && !p.contains('^') && is_num(p, true)) {
@@ -133,7 +153,11 @@ fn parse_factor(tok: &str) -> Option<Unit> {
         }
     }
     let base = resolve_symbol(sym)?;
-    if power == 1.0 { Some(base) } else { unit_pow(&base, power) }
+    if power == 1.0 {
+        Some(base)
+    } else {
+        unit_pow(&base, power)
+    }
 }
 
 fn parse_product(s: &str) -> Option<Unit> {
@@ -166,12 +190,16 @@ pub fn parse_unit(expr: &str) -> Option<Unit> {
         return Some(num);
     }
     let den = parse_product(parts[1])?;
-    (linear(&num) && linear(&den) && den.scale != 0.0).then(|| Unit { dim: dim_div(&num.dim, &den.dim), scale: num.scale / den.scale, offset: None })
+    (linear(&num) && linear(&den) && den.scale != 0.0).then(|| Unit {
+        dim: dim_div(&num.dim, &den.dim),
+        scale: num.scale / den.scale,
+        offset: None,
+    })
 }
 
 const CURRENCIES: &[&str] = &[
-    "aud", "brl", "cad", "chf", "cny", "czk", "dkk", "eur", "gbp", "hkd", "huf", "idr", "ils", "inr", "isk", "jpy", "krw",
-    "mxn", "myr", "nok", "nzd", "php", "pln", "ron", "sek", "sgd", "thb", "try", "usd", "zar",
+    "aud", "brl", "cad", "chf", "cny", "czk", "dkk", "eur", "gbp", "hkd", "huf", "idr", "ils", "inr", "isk", "jpy",
+    "krw", "mxn", "myr", "nok", "nzd", "php", "pln", "ron", "sek", "sgd", "thb", "try", "usd", "zar",
 ];
 
 /// A CONVERT unit's dimension as `convert_units.rs` spells it: `length-1 mass1 time-2`.
@@ -218,8 +246,9 @@ pub fn fc_unit_to_unit(id: &str) -> Option<Unit> {
     if CURRENCIES.contains(&id) {
         return Some(d(&[("currency", 1.0)], 1.0, None));
     }
-    crate::convert_units::UNITS
-        .iter()
-        .find(|(key, ..)| *key == id)
-        .map(|(_, _, dim, scale, offset)| Unit { dim: convert_dim(dim), scale: *scale, offset: *offset })
+    crate::convert_units::UNITS.iter().find(|(key, ..)| *key == id).map(|(_, _, dim, scale, offset)| Unit {
+        dim: convert_dim(dim),
+        scale: *scale,
+        offset: *offset,
+    })
 }

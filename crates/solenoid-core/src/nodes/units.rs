@@ -2,16 +2,20 @@
 //! display unit's scale and offset across the wire, so a body reads them off the cell; a cell it makes in another
 //! cell's unit borrows that cell's.
 
-use crate::error_value::ErrorCode;
-use super::kit::{guard_finite, short_circuit};
 use super::err;
+use super::kit::{guard_finite, short_circuit};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::unit_dims::{dim_div, dim_equal, dim_mul, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD, READINGS_SCALE};
 use std::rc::Rc;
 
 pub fn dim_of(v: &V) -> Dim {
-    if let V::Unit(u) = v { u.dim.clone() } else { Dim::new() }
+    if let V::Unit(u) = v {
+        u.dim.clone()
+    } else {
+        Dim::new()
+    }
 }
 
 pub fn magnitude_of(v: &V) -> f64 {
@@ -65,7 +69,15 @@ pub fn tag(value: f64, dim: Dim, from: Option<&UnitCell>) -> V {
 }
 
 pub fn tag_ratio(value: f64) -> V {
-    V::Unit(Rc::new(UnitCell { value, dim: Dim::new(), display: None, ratio: true, scale: None, offset: None, unit_dim: None }))
+    V::Unit(Rc::new(UnitCell {
+        value,
+        dim: Dim::new(),
+        display: None,
+        ratio: true,
+        scale: None,
+        offset: None,
+        unit_dim: None,
+    }))
 }
 
 fn pure_currency(v: &V) -> bool {

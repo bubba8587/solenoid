@@ -56,18 +56,24 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
             }
         }
         "vcard" => {
-            let lines: Vec<String> = [("FN", "vcName"), ("TEL", "vcPhone"), ("EMAIL", "vcEmail"), ("ORG", "vcOrg"), ("URL", "vcUrl")]
-                .iter()
-                .filter_map(|(k, f)| {
-                    let v = lit(f);
-                    let v = js_trim(&v);
-                    (!v.is_empty()).then(|| format!("{k}:{v}"))
-                })
-                .collect();
+            let lines: Vec<String> =
+                [("FN", "vcName"), ("TEL", "vcPhone"), ("EMAIL", "vcEmail"), ("ORG", "vcOrg"), ("URL", "vcUrl")]
+                    .iter()
+                    .filter_map(|(k, f)| {
+                        let v = lit(f);
+                        let v = js_trim(&v);
+                        (!v.is_empty()).then(|| format!("{k}:{v}"))
+                    })
+                    .collect();
             if lines.is_empty() {
                 return String::new();
             }
-            ["BEGIN:VCARD".to_string(), "VERSION:3.0".to_string()].into_iter().chain(lines).chain(["END:VCARD".to_string()]).collect::<Vec<_>>().join("\n")
+            ["BEGIN:VCARD".to_string(), "VERSION:3.0".to_string()]
+                .into_iter()
+                .chain(lines)
+                .chain(["END:VCARD".to_string()])
+                .collect::<Vec<_>>()
+                .join("\n")
         }
         _ => js_trim(text).to_string(),
     }
@@ -114,10 +120,13 @@ fn qr_code(c: &mut Call) -> Answer {
         c.show("cachedResult", V::Null);
         return Ok(vec![("chart".into(), V::Null)]);
     }
-    let symbol = encode(&payload, QrCodeEcc::Medium).map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
+    let symbol = encode(&payload, QrCodeEcc::Medium)
+        .map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
     let label = c.field_str("label", "QR Code").to_string();
     let height = c.field("imageHeight").cloned().unwrap_or(Json::from(200));
-    let image = V::Json(Rc::new(json!({ "__image": true, "src": svg_src(symbol.size() as usize, &|x, y| symbol.get_module(x as i32, y as i32)), "height": height, "alt": label, "title": label })));
+    let image = V::Json(Rc::new(
+        json!({ "__image": true, "src": svg_src(symbol.size() as usize, &|x, y| symbol.get_module(x as i32, y as i32)), "height": height, "alt": label, "title": label }),
+    ));
     c.show("cachedResult", image.clone());
     Ok(vec![("chart".into(), image)])
 }
@@ -138,17 +147,32 @@ mod tests {
 
     #[test]
     fn a_network_is_the_wifi_grammar() {
-        assert_eq!(build("wifi", "", &[("ssid", "MyNet"), ("wifiPass", "secret"), ("wifiAuth", "WPA")]), "WIFI:T:WPA;S:MyNet;P:secret;;");
-        assert_eq!(build("wifi", "", &[("ssid", "Cafe;A"), ("wifiPass", "p:a\"b"), ("wifiAuth", "WPA")]), "WIFI:T:WPA;S:Cafe\\;A;P:p\\:a\\\"b;;");
+        assert_eq!(
+            build("wifi", "", &[("ssid", "MyNet"), ("wifiPass", "secret"), ("wifiAuth", "WPA")]),
+            "WIFI:T:WPA;S:MyNet;P:secret;;"
+        );
+        assert_eq!(
+            build("wifi", "", &[("ssid", "Cafe;A"), ("wifiPass", "p:a\"b"), ("wifiAuth", "WPA")]),
+            "WIFI:T:WPA;S:Cafe\\;A;P:p\\:a\\\"b;;"
+        );
         assert_eq!(build("wifi", "", &[("ssid", "Open"), ("wifiAuth", "nopass")]), "WIFI:T:nopass;S:Open;;");
-        assert_eq!(build("wifi", "", &[("ssid", "N"), ("wifiPass", "p"), ("wifiAuth", "WPA"), ("wifiHidden", "true")]), "WIFI:T:WPA;S:N;P:p;H:true;;");
-        assert_eq!(build("wifi", "", &[("ssid", "N"), ("wifiAuth", "nopass"), ("wifiHidden", "true")]), "WIFI:T:nopass;S:N;H:true;;");
+        assert_eq!(
+            build("wifi", "", &[("ssid", "N"), ("wifiPass", "p"), ("wifiAuth", "WPA"), ("wifiHidden", "true")]),
+            "WIFI:T:WPA;S:N;P:p;H:true;;"
+        );
+        assert_eq!(
+            build("wifi", "", &[("ssid", "N"), ("wifiAuth", "nopass"), ("wifiHidden", "true")]),
+            "WIFI:T:nopass;S:N;H:true;;"
+        );
         assert_eq!(build("wifi", "", &[("ssid", ""), ("wifiPass", "p")]), "");
     }
 
     #[test]
     fn a_contact_holds_its_filled_lines() {
-        assert_eq!(build("vcard", "", &[("vcName", "Ada Lovelace"), ("vcEmail", "ada@x.io")]), "BEGIN:VCARD\nVERSION:3.0\nFN:Ada Lovelace\nEMAIL:ada@x.io\nEND:VCARD");
+        assert_eq!(
+            build("vcard", "", &[("vcName", "Ada Lovelace"), ("vcEmail", "ada@x.io")]),
+            "BEGIN:VCARD\nVERSION:3.0\nFN:Ada Lovelace\nEMAIL:ada@x.io\nEND:VCARD"
+        );
         assert_eq!(build("vcard", "", &[]), "");
     }
 

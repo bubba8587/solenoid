@@ -12,17 +12,19 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
-use crate::spelled::{spelled, Wire};
-use rustc_hash::{FxHashMap, FxHashSet};
+use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::js_sort::js_sort_by;
-use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
-use crate::jsnum::{compare_utf16, js_lower, js_string, number_to_string, js_trim, math_round, to_number, trunc_count, truthy};
+use crate::jsnum::{
+    compare_utf16, js_lower, js_string, js_trim, math_round, number_to_string, to_number, trunc_count, truthy,
+};
+use crate::spelled::{spelled, Wire};
 use crate::string_order::compare_strings;
 use crate::unit_value::{round_at_larger_term, unit_error, READINGS_ADD, READINGS_SCALE};
 use crate::value_kinds::{decimal_from_text, for_aggregate, guard_finite, logical_or_type_error, AggregatePrep};
 use crate::wire::{de_cell, encode_cell};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 type Res<T> = Result<T, SolError>;
 
@@ -334,7 +336,11 @@ pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
 /// A number's bits as an unsigned key in the number's order, -0 with 0 (`compareNumbers` holds them equal).
 fn ordered_bits(n: f64) -> u64 {
     let bits = (n + 0.0).to_bits();
-    if bits >> 63 == 1 { !bits } else { bits | (1 << 63) }
+    if bits >> 63 == 1 {
+        !bits
+    } else {
+        bits | (1 << 63)
+    }
 }
 
 // Not `a - b`, which is NaN for two equal infinities and splits their tie.
@@ -406,7 +412,12 @@ enum SortKey {
     S(Rc<str>),
 }
 
-fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, ty: FrameColType, dir: SortDir) -> Vec<usize> {
+fn sorted_index_order<'a>(
+    len: usize,
+    cell_at: impl Fn(usize) -> &'a FrameCell,
+    ty: FrameColType,
+    dir: SortDir,
+) -> Vec<usize> {
     let mut keys: Vec<Option<SortKey>> = Vec::with_capacity(len);
     let mut heads: Vec<usize> = Vec::new();
     let mut tails: Vec<usize> = Vec::new();
@@ -533,7 +544,10 @@ impl FilterOp {
 
     /// The tests that read no value (`VALUELESS_FILTER_OPS`).
     pub fn is_valueless(self) -> bool {
-        matches!(self, FilterOp::IsBlank | FilterOp::NotBlank | FilterOp::IsError | FilterOp::NotError | FilterOp::ListEmpty)
+        matches!(
+            self,
+            FilterOp::IsBlank | FilterOp::NotBlank | FilterOp::IsError | FilterOp::NotError | FilterOp::ListEmpty
+        )
     }
 }
 
@@ -593,7 +607,13 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
     if let FrameCell::Err(e) = value {
         return Err(e.as_ref().clone());
     }
-    let fold = move |s: &'_ str| -> String { if match_case { s.to_string() } else { js_lower(s).into_owned() } };
+    let fold = move |s: &'_ str| -> String {
+        if match_case {
+            s.to_string()
+        } else {
+            js_lower(s).into_owned()
+        }
+    };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
     if op.text_label().is_some() {
         let needle = fold(&js_string(value));
@@ -635,7 +655,9 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
         return Ok(match op {
             FilterOp::Eq => Box::new(move |c| Ok(!absent(c) && same(c))),
             FilterOp::Neq => Box::new(move |c| Ok(!absent(c) && !same(c))),
-            _ => Box::new(move |c| Ok(!absent(c) && compare_op(op, ordering_num(compare_strings(&js_string(c), &target)), 0.0))),
+            _ => Box::new(move |c| {
+                Ok(!absent(c) && compare_op(op, ordering_num(compare_strings(&js_string(c), &target)), 0.0))
+            }),
         });
     }
     // Read before any row: a value the column can't compare with is the filter's error, rows or none.
@@ -644,7 +666,15 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
         if absent(c) || (ty == FrameColType::Logical && !matches!(c, FrameCell::Bool(_))) {
             return Ok(false);
         }
-        let x = if ty == FrameColType::Logical { if truthy(c) { 1.0 } else { 0.0 } } else { to_number(c) };
+        let x = if ty == FrameColType::Logical {
+            if truthy(c) {
+                1.0
+            } else {
+                0.0
+            }
+        } else {
+            to_number(c)
+        };
         Ok(compare_op(op, x, y))
     }))
 }
@@ -662,7 +692,12 @@ pub fn filter_rows(f: &FrameValue, column: &str, op: FilterOp, value: &FrameCell
     Ok(reorder_rows(f, &keep))
 }
 
-pub fn filter_rows_multi(f: &FrameValue, combine: FilterCombine, conditions: &[FilterCond], complement: bool) -> Res<FrameValue> {
+pub fn filter_rows_multi(
+    f: &FrameValue,
+    combine: FilterCombine,
+    conditions: &[FilterCond],
+    complement: bool,
+) -> Res<FrameValue> {
     if conditions.is_empty() {
         return Ok(if complement { reorder_rows(f, &[]) } else { f.clone() });
     }
@@ -775,7 +810,11 @@ fn text_extreme(values: &[FrameCell], op: AggOp) -> FrameCell {
             None => true,
             Some(b) => {
                 let c = compare_strings(&t, b);
-                if op == AggOp::Min { c == Ordering::Less } else { c == Ordering::Greater }
+                if op == AggOp::Min {
+                    c == Ordering::Less
+                } else {
+                    c == Ordering::Greater
+                }
             }
         };
         if better {
@@ -855,14 +894,23 @@ impl ReadingPlan {
     }
 }
 
-fn reading_plan(given: Option<f64>, refused: Option<&str>, delta: Option<u8>, given_linear: Option<f64>) -> ReadingPlan {
+fn reading_plan(
+    given: Option<f64>,
+    refused: Option<&str>,
+    delta: Option<u8>,
+    given_linear: Option<f64>,
+) -> ReadingPlan {
     match given {
         None => {
             if delta != Some(2) {
                 return ReadingPlan::Identity;
             }
             let k = given_linear.unwrap_or(1.0).powi(2);
-            if k == 1.0 { ReadingPlan::Identity } else { ReadingPlan::Scale(k) }
+            if k == 1.0 {
+                ReadingPlan::Identity
+            } else {
+                ReadingPlan::Scale(k)
+            }
         }
         Some(scale) => {
             if let Some(r) = refused {
@@ -888,7 +936,9 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
     let buckets = buckets_of(frame_row_count(f), &key_cols);
     let mut out: Vec<FrameColumn> = key_cols
         .iter()
-        .map(|c| FrameColumn::new(c.name.clone(), c.ty, buckets.iter().map(|rows| c.cell_at(rows[0]).clone()).collect()))
+        .map(|c| {
+            FrameColumn::new(c.name.clone(), c.ty, buckets.iter().map(|rows| c.cell_at(rows[0]).clone()).collect())
+        })
         .collect();
     for (spec, col) in agg_cols {
         let op = known_agg(&spec.op)?;
@@ -900,7 +950,10 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
             values.push(plan.cell(aggregate_group(&cells, op, Some(col.ty))));
         }
         if preserves && col.ty == FrameColType::Logical {
-            values = values.into_iter().map(|v| if let FrameCell::Num(n) = v { FrameCell::Bool(n != 0.0) } else { v }).collect();
+            values = values
+                .into_iter()
+                .map(|v| if let FrameCell::Num(n) = v { FrameCell::Bool(n != 0.0) } else { v })
+                .collect();
         }
         out.push(FrameColumn::new(spec.as_.clone(), if preserves { col.ty } else { FrameColType::Number }, values));
     }
@@ -926,7 +979,8 @@ pub fn drop_columns(f: &FrameValue, names: &[String]) -> FrameValue {
 }
 
 pub fn rename_columns(f: &FrameValue, map: &HashMap<String, String>) -> FrameValue {
-    let proposed: Vec<String> = f.columns.iter().map(|c| map.get(&c.name).cloned().unwrap_or_else(|| c.name.clone())).collect();
+    let proposed: Vec<String> =
+        f.columns.iter().map(|c| map.get(&c.name).cloned().unwrap_or_else(|| c.name.clone())).collect();
     let unique = make_headers(&proposed, proposed.len());
     frame(f.columns.iter().zip(unique).map(|(c, name)| FrameColumn { name, ..c.clone() }).collect())
 }
@@ -977,10 +1031,17 @@ fn key_index(col: &FrameColumn, n: usize) -> FxHashMap<CellKey<'_>, Vec<usize>> 
 
 type Pair = (Option<usize>, Option<usize>);
 
-fn assemble_join_output(left: &FrameValue, right: &FrameValue, left_key: &str, right_key: &str, pairs: &[Pair]) -> Res<FrameValue> {
+fn assemble_join_output(
+    left: &FrameValue,
+    right: &FrameValue,
+    left_key: &str,
+    right_key: &str,
+    pairs: &[Pair],
+) -> Res<FrameValue> {
     let rk = require_column(right, right_key)?;
     let right_non_key: Vec<&FrameColumn> = right.columns.iter().filter(|c| c.name != right_key).collect();
-    let all_names: Vec<String> = left.columns.iter().chain(right_non_key.iter().copied()).map(|c| c.name.clone()).collect();
+    let all_names: Vec<String> =
+        left.columns.iter().chain(right_non_key.iter().copied()).map(|c| c.name.clone()).collect();
     let names = make_headers(&all_names, all_names.len());
     let mut out = Vec::with_capacity(names.len());
     for (ci, c) in left.columns.iter().enumerate() {
@@ -1049,7 +1110,13 @@ fn asof_key(cell: &FrameCell) -> Option<f64> {
     n.is_finite().then_some(n)
 }
 
-fn asof_pairs(left: &FrameValue, lk: &FrameColumn, right: &FrameValue, rk: &FrameColumn, opts: &JoinOpts) -> Res<Vec<Pair>> {
+fn asof_pairs(
+    left: &FrameValue,
+    lk: &FrameColumn,
+    right: &FrameValue,
+    rk: &FrameColumn,
+    opts: &JoinOpts,
+) -> Res<Vec<Pair>> {
     if !is_orderable_key(lk.ty) || !is_orderable_key(rk.ty) {
         return Err(sol_error(ErrorCode::Value, "As-of join requires a numeric or date key"));
     }
@@ -1114,11 +1181,17 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
         let scale = opts.right_key_scale.unwrap_or(1.0);
         let offset = opts.right_key_offset.unwrap_or(0.0);
         if (scale != 1.0 || offset != 0.0) && rk0.ty == FrameColType::Number {
-            let values = rk0
-                .values
-                .iter()
-                .map(|v| if let FrameCell::Num(n) = v { FrameCell::Num(convert_key(*n, scale, offset)) } else { v.clone() })
-                .collect();
+            let values =
+                rk0.values
+                    .iter()
+                    .map(|v| {
+                        if let FrameCell::Num(n) = v {
+                            FrameCell::Num(convert_key(*n, scale, offset))
+                        } else {
+                            v.clone()
+                        }
+                    })
+                    .collect();
             let clean = FrameColumn::new(rk0.name.clone(), rk0.ty, values);
             scaled_right = frame(
                 right.columns.iter().map(|c| if std::ptr::eq(c, rk0) { clean.clone() } else { c.clone() }).collect(),
@@ -1338,7 +1411,8 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
             _ => level_rank[lvl][vk],
         }
     };
-    let ranks: Vec<Vec<usize>> = first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
+    let ranks: Vec<Vec<usize>> =
+        first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
     let mut order: Vec<usize> = (0..first_seen.len()).collect();
     js_sort_by(&mut order, |&a, &b| ranks[a].cmp(&ranks[b]));
     order.into_iter().map(|i| first_seen[i].clone()).collect()
@@ -1370,8 +1444,11 @@ pub struct AxisOut {
 }
 
 fn expand_axis(leaves: &[Tuple], depth: f64, n_fields: usize) -> Vec<AxisOut> {
-    let out: Vec<AxisOut> =
-        leaves.iter().enumerate().map(|(i, t)| AxisOut { kind: AxisKind::Leaf, span: Rc::new(vec![i]), tuple: t.clone(), fill: n_fields }).collect();
+    let out: Vec<AxisOut> = leaves
+        .iter()
+        .enumerate()
+        .map(|(i, t)| AxisOut { kind: AxisKind::Leaf, span: Rc::new(vec![i]), tuple: t.clone(), fill: n_fields })
+        .collect();
     if depth == 0.0 || n_fields == 0 {
         return out;
     }
@@ -1387,7 +1464,12 @@ fn expand_axis(leaves: &[Tuple], depth: f64, n_fields: usize) -> Vec<AxisOut> {
                 let span: Vec<usize> = (start..i).collect();
                 let anchor = if top { span[0] } else { span[span.len() - 1] };
                 let tuple = leaves[start][..p.min(leaves[start].len())].to_vec();
-                subs_at.entry((anchor, p)).or_default().push(AxisOut { kind: AxisKind::Sub, span: Rc::new(span), tuple, fill: p });
+                subs_at.entry((anchor, p)).or_default().push(AxisOut {
+                    kind: AxisKind::Sub,
+                    span: Rc::new(span),
+                    tuple,
+                    fill: p,
+                });
                 start = i;
             }
         }
@@ -1397,7 +1479,8 @@ fn expand_axis(leaves: &[Tuple], depth: f64, n_fields: usize) -> Vec<AxisOut> {
     let mut with_subs: Vec<AxisOut> = Vec::new();
     for (i, leaf) in out.iter().enumerate() {
         let mut here: Vec<AxisOut> = Vec::new();
-        let order: Box<dyn Iterator<Item = &usize>> = if top { Box::new(levels.iter()) } else { Box::new(levels.iter().rev()) };
+        let order: Box<dyn Iterator<Item = &usize>> =
+            if top { Box::new(levels.iter()) } else { Box::new(levels.iter().rev()) };
         for &lvl in order {
             if let Some(s) = subs_at.get(&(i, lvl)) {
                 here.extend(s.iter().cloned());
@@ -1421,8 +1504,10 @@ fn expand_axis(leaves: &[Tuple], depth: f64, n_fields: usize) -> Vec<AxisOut> {
 }
 
 fn sum_group(values: &[FrameCell]) -> FrameCell {
-    let as_nums: Vec<FrameCell> =
-        values.iter().map(|v| if let FrameCell::Bool(b) = v { FrameCell::Num(f64::from(u8::from(*b))) } else { v.clone() }).collect();
+    let as_nums: Vec<FrameCell> = values
+        .iter()
+        .map(|v| if let FrameCell::Bool(b) = v { FrameCell::Num(f64::from(u8::from(*b))) } else { v.clone() })
+        .collect();
     match for_aggregate(&as_nums) {
         AggregatePrep::Error(e) => e,
         AggregatePrep::Nums(n) => FrameCell::Num(n.iter().filter(|x| x.is_finite()).fold(0.0, |a, b| a + b)),
@@ -1471,7 +1556,11 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let (rs, cs) = (spec.row_sort.unwrap_or(0.0), spec.col_sort.unwrap_or(0.0));
     let sort_field = |s: f64, n: usize| -> isize {
         let k = s.abs() - 1.0;
-        if k < n as f64 && k.fract() == 0.0 { k as isize } else { -1 }
+        if k < n as f64 && k.fract() == 0.0 {
+            k as isize
+        } else {
+            -1
+        }
     };
     let mut row_leaves = order_leaves(&rows, &row_cols, sort_field(rs, row_cols.len()), rs < 0.0);
     let mut col_leaves = order_leaves(&rows, &col_cols, sort_field(cs, col_cols.len()), cs < 0.0);
@@ -1479,8 +1568,10 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
 
     let mut cells: Vec<Vec<Vec<Vec<FrameCell>>>> = vec![vec![vec![Vec::new(); c_n]; r_n]; v_n];
     {
-        let row_index: FxHashMap<Vec<CellKey>, usize> = row_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
-        let col_index: FxHashMap<Vec<CellKey>, usize> = col_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
+        let row_index: FxHashMap<Vec<CellKey>, usize> =
+            row_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
+        let col_index: FxHashMap<Vec<CellKey>, usize> =
+            col_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
         for &i in &rows {
             let r = row_index.get(&row_cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>());
             let c = col_index.get(&col_cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>());
@@ -1516,7 +1607,11 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
                     compare_strings(&text(a), &text(b))
                 }
             };
-            if desc { d.reverse() } else { d }
+            if desc {
+                d.reverse()
+            } else {
+                d
+            }
         }
     };
     let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
@@ -1534,8 +1629,9 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
     if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
         let vs = col_val_sort as usize;
-        let scores: Vec<Score> =
-            (0..c_n).map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)).collect();
+        let scores: Vec<Score> = (0..c_n)
+            .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
+            .collect();
         let cmp = by_key(cs < 0.0);
         let mut perm: Vec<usize> = (0..c_n).collect();
         js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
@@ -1559,13 +1655,19 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let all_rows: Rc<Vec<usize>> = Rc::new((0..r_n).collect());
     let all_cols: Rc<Vec<usize>> = Rc::new((0..c_n).collect());
     let siblings_of = |leaves: &[Tuple], all: &Rc<Vec<usize>>| -> Vec<Rc<Vec<usize>>> {
-        let parent_keys: Vec<Vec<CellKey>> = leaves.iter().map(|t| tuple_key(&t[..t.len().saturating_sub(1)])).collect();
+        let parent_keys: Vec<Vec<CellKey>> =
+            leaves.iter().map(|t| tuple_key(&t[..t.len().saturating_sub(1)])).collect();
         let mut groups: FxHashMap<&Vec<CellKey>, Vec<usize>> = FxHashMap::default();
         for (i, k) in parent_keys.iter().enumerate() {
             groups.entry(k).or_default().push(i);
         }
-        let shared: FxHashMap<&Vec<CellKey>, Rc<Vec<usize>>> = groups.into_iter().map(|(k, g)| (k, Rc::new(g))).collect();
-        leaves.iter().enumerate().map(|(i, t)| if t.len() <= 1 { all.clone() } else { shared[&parent_keys[i]].clone() }).collect()
+        let shared: FxHashMap<&Vec<CellKey>, Rc<Vec<usize>>> =
+            groups.into_iter().map(|(k, g)| (k, Rc::new(g))).collect();
+        leaves
+            .iter()
+            .enumerate()
+            .map(|(i, t)| if t.len() <= 1 { all.clone() } else { shared[&parent_keys[i]].clone() })
+            .collect()
     };
     let row_siblings = if relative_to == 4.0 { siblings_of(&row_leaves, &all_rows) } else { Vec::new() };
     let col_siblings = if relative_to == 3.0 { siblings_of(&col_leaves, &all_cols) } else { Vec::new() };
@@ -1614,7 +1716,11 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         match (num, den) {
             (_, d @ FrameCell::Err(_)) => d,
             (FrameCell::Num(n), FrameCell::Num(d)) => {
-                if d == 0.0 { FrameCell::Null } else { FrameCell::Num(n / d) }
+                if d == 0.0 {
+                    FrameCell::Null
+                } else {
+                    FrameCell::Num(n / d)
+                }
             }
             _ => FrameCell::Null,
         }
@@ -1625,11 +1731,19 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let mut out_cols: Vec<FrameColumn> = Vec::new();
     for (k, c) in row_cols.iter().enumerate() {
         let marked = has_totals
-            && row_out.iter().any(|ro| (ro.kind == AxisKind::Grand && k == 0) || (ro.kind == AxisKind::Sub && k == ro.fill));
+            && row_out
+                .iter()
+                .any(|ro| (ro.kind == AxisKind::Grand && k == 0) || (ro.kind == AxisKind::Sub && k == ro.fill));
         let values: Vec<FrameCell> = row_out
             .iter()
             .map(|ro| match ro.kind {
-                AxisKind::Grand => if k == 0 { FrameCell::str("Grand Total") } else { FrameCell::Null },
+                AxisKind::Grand => {
+                    if k == 0 {
+                        FrameCell::str("Grand Total")
+                    } else {
+                        FrameCell::Null
+                    }
+                }
                 AxisKind::Sub => {
                     if k < ro.fill {
                         ro.tuple[k].clone()
@@ -1643,7 +1757,10 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             })
             .collect();
         if marked && c.ty != FrameColType::String {
-            let values = values.iter().map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&format_frame_cell(c.ty, v)) }).collect();
+            let values = values
+                .iter()
+                .map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&format_frame_cell(c.ty, v)) })
+                .collect();
             out_cols.push(FrameColumn::new(key_names[k].clone(), FrameColType::String, values));
         } else {
             out_cols.push(FrameColumn::new(key_names[k].clone(), c.ty, values));
@@ -1665,7 +1782,11 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         if multi_val {
             return if base.is_empty() { value_names[v].clone() } else { format!("{base} | {}", value_names[v]) };
         }
-        if base.is_empty() { value_names[v].clone() } else { base }
+        if base.is_empty() {
+            value_names[v].clone()
+        } else {
+            base
+        }
     };
     let mut raw_headers = Vec::new();
     let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
@@ -1744,7 +1865,12 @@ pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
                 Some(&existing) if existing != c.ty => {
                     return Err(sol_error(
                         ErrorCode::Type,
-                        format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.as_str(), c.ty.as_str()),
+                        format!(
+                            "append: column \"{}\" is {} in one frame and {} in another",
+                            c.name,
+                            existing.as_str(),
+                            c.ty.as_str()
+                        ),
                     ));
                 }
                 _ => {}
@@ -1789,8 +1915,12 @@ pub struct TaggedOp(pub FrameOp);
 impl<'de> Deserialize<'de> for TaggedOp {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         use serde::de::Error;
-        let Json::Object(mut fields) = Json::deserialize(d)? else { return Err(D::Error::custom("an op is an object")) };
-        let Some(Json::String(kind)) = fields.remove("kind") else { return Err(D::Error::custom("an op names its kind")) };
+        let Json::Object(mut fields) = Json::deserialize(d)? else {
+            return Err(D::Error::custom("an op is an object"));
+        };
+        let Some(Json::String(kind)) = fields.remove("kind") else {
+            return Err(D::Error::custom("an op names its kind"));
+        };
         let mut outer = serde_json::Map::new();
         outer.insert(kind, Json::Object(fields));
         serde_json::from_value(Json::Object(outer)).map(TaggedOp).map_err(D::Error::custom)
@@ -1805,7 +1935,9 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::Sort { by, dir } => sort_by_column(f, by, *dir),
         FrameOp::Distinct { columns } => distinct_rows(f, columns.as_deref()),
         FrameOp::Head { n } => Ok(head_rows(f, *n)),
-        FrameOp::Filter { column, op, value, match_case } => filter_rows(f, column, *op, value, match_case.unwrap_or(false)),
+        FrameOp::Filter { column, op, value, match_case } => {
+            filter_rows(f, column, *op, value, match_case.unwrap_or(false))
+        }
         FrameOp::FilterMulti { combine, conditions, complement } => {
             filter_rows_multi(f, *combine, conditions, complement.unwrap_or(false))
         }
@@ -1816,7 +1948,9 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::Window(spec) => window_frame(f, spec),
         FrameOp::Pivot(spec) => pivot_frame(f, spec).map(|(out, _)| out),
         FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, *dir),
-        FrameOp::ReplaceValues { column, find, replace_with, mode } => replace_values(f, column, find, replace_with, *mode),
+        FrameOp::ReplaceValues { column, find, replace_with, mode } => {
+            replace_values(f, column, find, replace_with, *mode)
+        }
         FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, *mode, *n, *to)),
         FrameOp::DropBlankRows { mode } => Ok(drop_blank_rows(f, *mode)),
         FrameOp::AddIndex { name, start } => Ok(add_index_column(f, name, *start)),
@@ -1884,7 +2018,13 @@ fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
     }
 }
 
-pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &str, mode: ReplaceMode) -> Res<FrameValue> {
+pub fn replace_values(
+    f: &FrameValue,
+    column: &str,
+    find: &str,
+    replace_with: &str,
+    mode: ReplaceMode,
+) -> Res<FrameValue> {
     if find.is_empty() {
         return Ok(f.clone());
     }
@@ -1911,7 +2051,13 @@ pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &s
                 let values = col
                     .values
                     .iter()
-                    .map(|v| if let FrameCell::Str(s) = v { FrameCell::str(&s.replace(find, replace_with)) } else { v.clone() })
+                    .map(|v| {
+                        if let FrameCell::Str(s) = v {
+                            FrameCell::str(&s.replace(find, replace_with))
+                        } else {
+                            v.clone()
+                        }
+                    })
                     .collect();
                 return FrameColumn::new(col.name.clone(), col.ty, values);
             }
@@ -1928,7 +2074,11 @@ pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &s
                         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }) == find_upper,
                         FrameCell::Str(s) => s.as_ref() == find,
                     };
-                    if hit { replacement.clone() } else { v.clone() }
+                    if hit {
+                        replacement.clone()
+                    } else {
+                        v.clone()
+                    }
                 })
                 .collect();
             FrameColumn::new(col.name.clone(), col.ty, values)
@@ -1992,7 +2142,11 @@ pub fn add_index_column(f: &FrameValue, name: &str, start: f64) -> FrameValue {
         "" => "Index",
         t => t,
     };
-    let index = FrameColumn::new(nm, FrameColType::Number, (0..frame_row_count(f)).map(|i| FrameCell::Num(start + i as f64)).collect());
+    let index = FrameColumn::new(
+        nm,
+        FrameColType::Number,
+        (0..frame_row_count(f)).map(|i| FrameCell::Num(start + i as f64)).collect(),
+    );
     with_unique_names(std::iter::once(index).chain(f.columns.iter().cloned()).collect())
 }
 
@@ -2004,8 +2158,18 @@ pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option
     let idx = f.columns.iter().position(|c| std::ptr::eq(c, col)).unwrap_or(0);
     // Each cell's display text; a blank or an error splits into nothing.
     let texts: Vec<Option<String>> =
-        col.values.iter().map(|v| if matches!(v, FrameCell::Null | FrameCell::Err(_)) { None } else { Some(format_frame_cell(col.ty, v)) }).collect();
-    let parts: Vec<Vec<&str>> = texts.iter().map(|t| t.as_deref().map_or(Vec::new(), |t| t.split(delimiter).collect())).collect();
+        col.values
+            .iter()
+            .map(|v| {
+                if matches!(v, FrameCell::Null | FrameCell::Err(_)) {
+                    None
+                } else {
+                    Some(format_frame_cell(col.ty, v))
+                }
+            })
+            .collect();
+    let parts: Vec<Vec<&str>> =
+        texts.iter().map(|t| t.as_deref().map_or(Vec::new(), |t| t.split(delimiter).collect())).collect();
     let n = parts.iter().map(Vec::len).max().unwrap_or(0);
     let new_cols = (0..n).map(|k| {
         let name = match names.and_then(|ns| ns.get(k)).map(|s| js_trim(s)) {
@@ -2040,8 +2204,20 @@ pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: 
     let at = f.columns.iter().position(|c| c.name == sources[0].name).unwrap_or(0);
     let kept: Vec<&FrameColumn> = f.columns.iter().filter(|c| !drop.contains(c.name.as_str())).collect();
     let kept_before = f.columns[..at].iter().filter(|c| !drop.contains(c.name.as_str())).count();
-    let merged = FrameColumn::new(match js_trim(name) { "" => "Merged", t => t }, FrameColType::String, values);
-    let out = kept[..kept_before].iter().map(|c| (*c).clone()).chain(std::iter::once(merged)).chain(kept[kept_before..].iter().map(|c| (*c).clone())).collect();
+    let merged = FrameColumn::new(
+        match js_trim(name) {
+            "" => "Merged",
+            t => t,
+        },
+        FrameColType::String,
+        values,
+    );
+    let out = kept[..kept_before]
+        .iter()
+        .map(|c| (*c).clone())
+        .chain(std::iter::once(merged))
+        .chain(kept[kept_before..].iter().map(|c| (*c).clone()))
+        .collect();
     Ok(with_unique_names(out))
 }
 
@@ -2053,7 +2229,15 @@ pub const ZERO_GROUP_TOTAL: &str = "The group total is 0";
 impl WindowFn {
     /// Whether it reads a value column; the ranks and counters read only the order.
     fn reads_column(self) -> bool {
-        !matches!(self, WindowFn::RowNumber | WindowFn::Rank | WindowFn::DenseRank | WindowFn::PercentRank | WindowFn::Ntile | WindowFn::CumCount)
+        !matches!(
+            self,
+            WindowFn::RowNumber
+                | WindowFn::Rank
+                | WindowFn::DenseRank
+                | WindowFn::PercentRank
+                | WindowFn::Ntile
+                | WindowFn::CumCount
+        )
     }
 
     fn readings_refused(self) -> Option<&'static str> {
@@ -2084,18 +2268,16 @@ fn div0(msg: &str) -> FrameCell {
 }
 
 pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
-    let func = spec.fn_.known().map_err(|name| sol_error(ErrorCode::Value, format!("unknown window function \"{name}\"")))?;
+    let func =
+        spec.fn_.known().map_err(|name| sol_error(ErrorCode::Value, format!("unknown window function \"{name}\"")))?;
     let n = frame_row_count(f);
     let key_cols: Vec<&FrameColumn> = spec.partition_by.iter().map(|k| require_column(f, k)).collect::<Res<_>>()?;
     let order_col = match &spec.order_by {
         Some(o) if !o.is_empty() => Some(require_column(f, o)?),
         _ => None,
     };
-    let val_col = if func.reads_column() {
-        Some(require_column(f, spec.column.as_deref().unwrap_or(""))?)
-    } else {
-        None
-    };
+    let val_col =
+        if func.reads_column() { Some(require_column(f, spec.column.as_deref().unwrap_or(""))?) } else { None };
     let big_n = math_round(spec.n.unwrap_or(1.0)).max(1.0);
     let big_n = if spec.n.is_some_and(f64::is_nan) { f64::NAN } else { big_n };
     let parts = buckets_of(n, &key_cols);
@@ -2104,17 +2286,23 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         let ordered: Vec<usize> = match order_col {
             Some(oc) => {
                 let desc = spec.order_dir == Some(SortDir::Desc);
-                let (mut keyed, blanks): (Vec<usize>, Vec<usize>) = rows.iter().partition(|&&i| !blank_key(oc.cell_at(i)));
+                let (mut keyed, blanks): (Vec<usize>, Vec<usize>) =
+                    rows.iter().partition(|&&i| !blank_key(oc.cell_at(i)));
                 js_sort_by(&mut keyed, |&i, &j| {
                     let c = window_cmp(oc.cell_at(i), oc.cell_at(j));
-                    if desc { c.reverse() } else { c }
+                    if desc {
+                        c.reverse()
+                    } else {
+                        c
+                    }
                 });
                 keyed.extend(blanks);
                 keyed
             }
             None => rows,
         };
-        let vals: Vec<FrameCell> = val_col.map_or_else(Vec::new, |vc| ordered.iter().map(|&i| vc.cell_at(i).clone()).collect());
+        let vals: Vec<FrameCell> =
+            val_col.map_or_else(Vec::new, |vc| ordered.iter().map(|&i| vc.cell_at(i).clone()).collect());
         let err: Option<FrameCell> = vals.iter().find(|v| v.is_err()).cloned();
         let nums: Vec<Option<f64>> = vals
             .iter()
@@ -2125,10 +2313,18 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
             })
             .collect();
         let present: Vec<f64> = nums.iter().flatten().copied().collect();
-        let order_vals: Vec<&FrameCell> = order_col.map_or_else(Vec::new, |oc| ordered.iter().map(|&i| oc.cell_at(i)).collect());
+        let order_vals: Vec<&FrameCell> =
+            order_col.map_or_else(Vec::new, |oc| ordered.iter().map(|&i| oc.cell_at(i)).collect());
         let m = ordered.len();
         let group_value = || -> FrameCell {
-            if !matches!(func, WindowFn::GroupSum | WindowFn::GroupAvg | WindowFn::GroupMin | WindowFn::GroupMax | WindowFn::GroupCount) {
+            if !matches!(
+                func,
+                WindowFn::GroupSum
+                    | WindowFn::GroupAvg
+                    | WindowFn::GroupMin
+                    | WindowFn::GroupMax
+                    | WindowFn::GroupCount
+            ) {
                 return FrameCell::Null;
             }
             if let Some(e) = &err {
@@ -2173,7 +2369,11 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                 WindowFn::Rank | WindowFn::DenseRank | WindowFn::PercentRank => {
                     if order_col.is_none() {
                         FrameCell::Num(if func == WindowFn::PercentRank {
-                            if m > 1 { pf / (m - 1) as f64 } else { 0.0 }
+                            if m > 1 {
+                                pf / (m - 1) as f64
+                            } else {
+                                0.0
+                            }
                         } else {
                             pf + 1.0
                         })
@@ -2184,7 +2384,11 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                             WindowFn::DenseRank => dense as f64,
                             WindowFn::Rank => run_start as f64 + 1.0,
                             _ => {
-                                if ranked > 1 { run_start as f64 / (ranked - 1) as f64 } else { 0.0 }
+                                if ranked > 1 {
+                                    run_start as f64 / (ranked - 1) as f64
+                                } else {
+                                    0.0
+                                }
                             }
                         })
                     }
@@ -2201,10 +2405,18 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                     }),
                 },
                 WindowFn::Lag => {
-                    if pf - big_n >= 0.0 { vals[p - big_n as usize].clone() } else { FrameCell::Null }
+                    if pf - big_n >= 0.0 {
+                        vals[p - big_n as usize].clone()
+                    } else {
+                        FrameCell::Null
+                    }
                 }
                 WindowFn::Lead => {
-                    if pf + big_n < m as f64 { vals[p + big_n as usize].clone() } else { FrameCell::Null }
+                    if pf + big_n < m as f64 {
+                        vals[p + big_n as usize].clone()
+                    } else {
+                        FrameCell::Null
+                    }
                 }
                 WindowFn::Diff | WindowFn::PctChange => {
                     let prev = if p >= 1 { nums[p - 1] } else { None };
@@ -2249,18 +2461,26 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                         })
                     }
                 }
-                WindowFn::GroupSum | WindowFn::GroupAvg | WindowFn::GroupMin | WindowFn::GroupMax | WindowFn::GroupCount => {
-                    group_value.clone()
-                }
+                WindowFn::GroupSum
+                | WindowFn::GroupAvg
+                | WindowFn::GroupMin
+                | WindowFn::GroupMax
+                | WindowFn::GroupCount => group_value.clone(),
                 WindowFn::Share => match (&err, x) {
                     (Some(e), _) => e.clone(),
                     (None, None) => FrameCell::Null,
                     (None, Some(x)) => {
-                        if total == 0.0 { div0(ZERO_GROUP_TOTAL) } else { FrameCell::Num(x / total) }
+                        if total == 0.0 {
+                            div0(ZERO_GROUP_TOTAL)
+                        } else {
+                            FrameCell::Num(x / total)
+                        }
                     }
                 },
                 WindowFn::First => err.clone().unwrap_or_else(|| vals.first().cloned().unwrap_or(FrameCell::Null)),
-                WindowFn::Last => err.clone().unwrap_or_else(|| if vals.is_empty() { FrameCell::Null } else { vals[m - 1].clone() }),
+                WindowFn::Last => {
+                    err.clone().unwrap_or_else(|| if vals.is_empty() { FrameCell::Null } else { vals[m - 1].clone() })
+                }
             };
             out[row] = v;
         }
@@ -2272,7 +2492,12 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     let trimmed = js_trim(&spec.as_);
     let name = if trimmed.is_empty() { func.as_str().to_string() } else { trimmed.to_string() };
     let plan = if val_col.is_some() {
-        reading_plan(spec.reading_scale, func.readings_refused(), if func == WindowFn::Diff { Some(1) } else { None }, None)
+        reading_plan(
+            spec.reading_scale,
+            func.readings_refused(),
+            if func == WindowFn::Diff { Some(1) } else { None },
+            None,
+        )
     } else {
         ReadingPlan::Identity
     };

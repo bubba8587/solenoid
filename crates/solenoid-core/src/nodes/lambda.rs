@@ -21,7 +21,8 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 fn is_ident(s: &str) -> bool {
     let mut chars = s.chars();
-    chars.next().is_some_and(|f| f.is_ascii_alphabetic() || f == '_') && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+    chars.next().is_some_and(|f| f.is_ascii_alphabetic() || f == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
 /// `atColNames`: the names written `@name`, in order, once each.
@@ -43,7 +44,8 @@ fn at_col_names(ast: &Ast, out: &mut Vec<String>) {
 }
 
 fn lambda(c: &mut Call) -> Answer {
-    let params: Vec<String> = c.field_str("params", "x").split(',').map(js_trim).filter(|p| !p.is_empty()).map(String::from).collect();
+    let params: Vec<String> =
+        c.field_str("params", "x").split(',').map(js_trim).filter(|p| !p.is_empty()).map(String::from).collect();
     let expr = c.field_str("expr", "").to_string();
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {
         c.show("cachedValue", V::Null);
@@ -51,14 +53,26 @@ fn lambda(c: &mut Call) -> Answer {
         Ok(vec![("result".to_string(), result)])
     };
     if !params.iter().all(|p| is_ident(p)) {
-        return refuse(c, Some("Bad parameter name".into()), err(ErrorCode::Name, "A lambda parameter name isn't a valid identifier"));
+        return refuse(
+            c,
+            Some("Bad parameter name".into()),
+            err(ErrorCode::Name, "A lambda parameter name isn't a valid identifier"),
+        );
     }
     if params.iter().enumerate().any(|(i, p)| params[..i].contains(p)) {
-        return refuse(c, Some("A parameter appears twice".into()), err(ErrorCode::Name, "A lambda parameter name appears twice"));
+        return refuse(
+            c,
+            Some("A parameter appears twice".into()),
+            err(ErrorCode::Name, "A lambda parameter name appears twice"),
+        );
     }
     if let Some(k) = params.iter().find(|p| constant_value(p).is_some()) {
         let shown = format!("{k} is a constant");
-        return refuse(c, Some(shown), err(ErrorCode::Name, format!("{k} is a constant, so it can't name a lambda parameter")));
+        return refuse(
+            c,
+            Some(shown),
+            err(ErrorCode::Name, format!("{k} is a constant, so it can't name a lambda parameter")),
+        );
     }
     let Some(ast) = parse_formula(&expr) else {
         if js_trim(&expr).is_empty() {
@@ -74,7 +88,8 @@ fn lambda(c: &mut Call) -> Answer {
     let units: Vec<V> = captured.iter().map(|v| c.read_num(v, 0.0)).collect();
     // The body reads its captures unit-blind; a computed column reads their units ([[D100]] computedColumnInfersUnit).
     let env: Env = captured.iter().cloned().zip(units.iter().map(strip_unit_cells)).collect();
-    let descriptions = c.field("varDescriptions").filter(|d| d.as_object().is_some_and(|o| !o.is_empty())).map(|d| Rc::new(d.clone()));
+    let descriptions =
+        c.field("varDescriptions").filter(|d| d.as_object().is_some_and(|o| !o.is_empty())).map(|d| Rc::new(d.clone()));
     let lam = V::Lambda(Rc::new(LambdaV {
         params,
         body: Some(Rc::new(ast)),

@@ -2,10 +2,10 @@
 //! correlation and regression, the hypothesis tests, interpolation and the fits. Most share their kernel with a
 //! formula function.
 
-use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, num};
 use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_pow, to_f64_js, V};
 use crate::fdlibm::{exp, log};
 use crate::jsnum::math_round;
@@ -95,7 +95,11 @@ pub(crate) fn finite_num(v: &V) -> Option<f64> {
 
 /// A number the way `Number.isFinite` gates it: itself where it is a number, NaN otherwise.
 pub(crate) fn strict_num(v: &V) -> f64 {
-    if let V::Num(n) = v { *n } else { f64::NAN }
+    if let V::Num(n) = v {
+        *n
+    } else {
+        f64::NAN
+    }
 }
 
 /// What a blank means for a card input ([[D86]] blankRoles), as `inputRoles.ts` declares it.
@@ -142,7 +146,11 @@ pub(crate) fn read_role(c: &Call, key: &str, role: Role) -> V {
 
 /// `x ?? dflt`.
 pub(crate) fn or(v: V, dflt: V) -> V {
-    if nullish(&v) { dflt } else { v }
+    if nullish(&v) {
+        dflt
+    } else {
+        v
+    }
 }
 
 /// `forAggregate`: the first error, else the number cells.
@@ -185,7 +193,9 @@ fn answer(c: &mut Call, result: V) -> Answer {
 pub(crate) fn sort_numeric(v: &mut Vec<V>) {
     let cmp = |a: &V, b: &V| js_num(a) - js_num(b);
     if crate::js_sort::v8_sort_short(v, cmp).is_none() {
-        crate::js_sort::js_sort_by(v, |a, b| (js_num(a) - js_num(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+        crate::js_sort::js_sort_by(v, |a, b| {
+            (js_num(a) - js_num(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
+        });
     }
 }
 
@@ -517,7 +527,9 @@ fn groups_of(m: &V) -> Option<Vec<V>> {
     let cols = len(&rows[0]);
     Some(
         (0..cols)
-            .map(|j| list(rows.iter().filter_map(|r| items(r).get(j)).filter(|v| finite_num(v).is_some()).cloned().collect()))
+            .map(|j| {
+                list(rows.iter().filter_map(|r| items(r).get(j)).filter(|v| finite_num(v).is_some()).cloned().collect())
+            })
             .collect(),
     )
 }
@@ -569,11 +581,19 @@ fn hypothesis_test(c: &mut Call) -> Answer {
         }
         "proptest" => {
             let args = [c.read_num("x1", 0.0), c.read_num("n1", 1.0), c.read_num("x2", 0.0), c.read_num("n2", 1.0)];
-            if args.iter().any(|v| matches!(v, V::Null)) { V::Null } else { core_call("PROPTEST", &args) }
+            if args.iter().any(|v| matches!(v, V::Null)) {
+                V::Null
+            } else {
+                core_call("PROPTEST", &args)
+            }
         }
         "binomtest" => {
             let args = [c.read_num("k", 0.0), c.read_num("n", 1.0), c.read_num("p0", 0.5)];
-            if args.iter().any(|v| matches!(v, V::Null)) { V::Null } else { core_call("BINOMTEST", &args) }
+            if args.iter().any(|v| matches!(v, V::Null)) {
+                V::Null
+            } else {
+                core_call("BINOMTEST", &args)
+            }
         }
         "z" => {
             let x = c.read_num("x", 0.0);
@@ -587,7 +607,11 @@ fn hypothesis_test(c: &mut Call) -> Answer {
                 if !matches!(x, V::Null) && !matches!(sigma, V::Null) {
                     let n = xs.len() as f64;
                     let m = mean(&xs);
-                    let std = if !matches!(sigma, V::Undef) && js_num(&sigma) > 0.0 { js_num(&sigma) } else { sample_var(&xs).sqrt() };
+                    let std = if !matches!(sigma, V::Undef) && js_num(&sigma) > 0.0 {
+                        js_num(&sigma)
+                    } else {
+                        sample_var(&xs).sqrt()
+                    };
                     if std > 0.0 {
                         r = V::Num(1.0 - std_norm_cdf((m - js_num(&x)) / (std / n.sqrt())));
                     }
@@ -624,7 +648,11 @@ fn hypothesis_test(c: &mut Call) -> Answer {
             if truthy(&a) && truthy(&b) {
                 // The kernels read their lists as JS arithmetic does: a blank as 0, a logical as 0 or 1.
                 let as_js = |v: &V| match v {
-                    V::List(l) => list(l.iter().map(|x| if matches!(x, V::Null | V::Bool(_)) { V::Num(num(x)) } else { x.clone() }).collect()),
+                    V::List(l) => list(
+                        l.iter()
+                            .map(|x| if matches!(x, V::Null | V::Bool(_)) { V::Num(num(x)) } else { x.clone() })
+                            .collect(),
+                    ),
                     other => other.clone(),
                 };
                 let (a, b) = (as_js(&a), as_js(&b));
@@ -707,7 +735,13 @@ fn interpolate_grid(c: &mut Call) -> Answer {
     let axis = |k: &str| match c.wired(k) {
         None => V::Undef,
         Some([]) => V::Null,
-        Some([v, ..]) => if matches!(v, V::Undef) { V::Null } else { v.clone() },
+        Some([v, ..]) => {
+            if matches!(v, V::Undef) {
+                V::Null
+            } else {
+                v.clone()
+            }
+        }
     };
     let (xs, ys) = (axis("xs"), axis("ys"));
     let forecast = c.field("forecast").and_then(serde_json::Value::as_bool).unwrap_or(true);
@@ -782,7 +816,8 @@ fn linest(c: &mut Call) -> Answer {
         Err(e) => return outs(c, e.clone(), e.clone(), e),
     };
     let fit: Option<(V, V, V)> = if exponential {
-        let (xn, yn): (Vec<f64>, Vec<f64>) = (items(&xs).iter().map(js_num).collect(), items(&ys).iter().map(js_num).collect());
+        let (xn, yn): (Vec<f64>, Vec<f64>) =
+            (items(&xs).iter().map(js_num).collect(), items(&ys).iter().map(js_num).collect());
         let e = exp_fit_r2(&xn, &yn);
         if e.is_none() && len(&xs) >= 2 && yn.iter().any(|y| y.is_nan() || *y <= 0.0) {
             let e = err(ErrorCode::Domain, "Exponential fit needs every y above 0 (Excel: #NUM!)");
@@ -916,8 +951,14 @@ fn distributions(c: &mut Call) -> Answer {
             let seed = c.field("sampleSeed").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as u32;
             let mut rng = crate::planners::mulberry32(seed);
             let us: Vec<f64> = (0..if n.is_nan() { 0 } else { n as usize }).map(|_| rng()).collect();
-            let &(_, continuous, inverse, _) = crate::fns_random::FAMILIES.iter().find(|f| f.0 == op).unwrap_or(&("", true, false, &[]));
-            list(crate::fns_random::sample_quantiles(&op, continuous, inverse, &us, &nums).into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())
+            let &(_, continuous, inverse, _) =
+                crate::fns_random::FAMILIES.iter().find(|f| f.0 == op).unwrap_or(&("", true, false, &[]));
+            list(
+                crate::fns_random::sample_quantiles(&op, continuous, inverse, &us, &nums)
+                    .into_iter()
+                    .map(|v| v.map_or(V::Null, V::Num))
+                    .collect(),
+            )
         }
     } else {
         let first_key = if form.starts_with("inv") { "prob" } else { x_key };

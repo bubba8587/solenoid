@@ -9,7 +9,7 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub const TAG_NULL: u8 = 0;
@@ -44,7 +44,8 @@ struct Cutter<'a> {
 
 impl<'a> Cutter<'a> {
     fn next(&mut self) -> Result<&'a str, SolError> {
-        let want = *self.lens.next().ok_or_else(|| sol_error(ErrorCode::Error, "binary frame: text lengths run out"))? as usize;
+        let want = *self.lens.next().ok_or_else(|| sol_error(ErrorCode::Error, "binary frame: text lengths run out"))?
+            as usize;
         let mut units = 0;
         let mut end = 0;
         for c in self.rest.chars() {
@@ -97,7 +98,11 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
 }
 
 fn utf16_len(s: &str) -> u32 {
-    if s.is_ascii() { s.len() as u32 } else { s.chars().map(char::len_utf16).sum::<usize>() as u32 }
+    if s.is_ascii() {
+        s.len() as u32
+    } else {
+        s.chars().map(char::len_utf16).sum::<usize>() as u32
+    }
 }
 
 impl Columnar {
@@ -169,7 +174,9 @@ mod tests {
         let v = &back.columns[0].values;
         assert!(matches!(&v[0], FrameCell::Str(s) if s.as_ref() == "x😀é"));
         assert!(matches!(v[2], FrameCell::Num(x) if x == 0.0 && x.is_sign_negative()));
-        assert!(matches!(&v[5], FrameCell::Err(e) if e.code == ErrorCode::NotAvailable && e.message == "m" && e.reference == Some(7)));
+        assert!(
+            matches!(&v[5], FrameCell::Err(e) if e.code == ErrorCode::NotAvailable && e.message == "m" && e.reference == Some(7))
+        );
         assert!(matches!(&v[6], FrameCell::Str(s) if s.is_empty()));
     }
 }

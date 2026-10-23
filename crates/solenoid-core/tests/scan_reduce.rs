@@ -41,7 +41,9 @@ fn scan_ends_where_reduce_does() {
     let (mut checked, mut units) = (0, 0);
     for case in load("ScanLambdaNode.json.gz") {
         let Some(V::List(rows)) = answer(&case, "ScanLambdaNode") else { continue };
-        let Some(V::List(last_row)) = rows.iter().rev().find(|r| matches!(r, V::List(c) if !c.is_empty())) else { continue };
+        let Some(V::List(last_row)) = rows.iter().rev().find(|r| matches!(r, V::List(c) if !c.is_empty())) else {
+            continue;
+        };
         let last = last_row.last().unwrap();
         let reduce = answer(&case, "ReduceLambdaNode").expect("REDUCE answers what SCAN does");
         assert!(same(last, &reduce), "SCAN ends at {last:?}, REDUCE at {reduce:?}, inputs {}", case["inputs"]);

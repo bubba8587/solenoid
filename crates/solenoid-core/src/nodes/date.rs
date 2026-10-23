@@ -1,12 +1,12 @@
 //! [[C44]] dateSerials, [[B11]] maximalMerge, [[C17]] shareImpl, [[D41]] formatFlowsDownstream. `nodes/date.ts`'s
 //! card bodies: dates are serials, each card the formula of its name item by item; the zone cards read `zone.rs`.
 
-use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, each, guard_finite, short_circuit};
 use super::text::{js_floor, setting};
-use super::{err, list, Answer, Call};
-use crate::excel_functions::{js_less, to_f64_js, V};
 use super::values::{Column, Frame};
+use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
+use crate::excel_functions::{js_less, to_f64_js, V};
 use crate::frame::FrameColType;
 use crate::jsnum::js_trim;
 use crate::value_kinds::OVERFLOW_MESSAGE;
@@ -54,7 +54,11 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
             let rt = V::Num(js_floor(&setting(c, "return_type", V::Num(1.0))));
             let name = op.to_uppercase();
             broadcast(&[first(c, "date")], |o| {
-                if op == "isoweeknum" { core_call(&name, &[o[0].clone()]) } else { core_call(&name, &[o[0].clone(), rt.clone()]) }
+                if op == "isoweeknum" {
+                    core_call(&name, &[o[0].clone()])
+                } else {
+                    core_call(&name, &[o[0].clone(), rt.clone()])
+                }
             })
         }
         "DateDiffNode" => date_diff(c),
@@ -86,7 +90,11 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                         V::Null => String::new(),
                         v => crate::jsnum::js_trim(&crate::excel_functions::js_string_of(&v)).to_string(),
                     };
-                    if text.is_empty() { V::Null } else { core_call(name, &[V::str(&text)]) }
+                    if text.is_empty() {
+                        V::Null
+                    } else {
+                        core_call(name, &[V::str(&text)])
+                    }
                 }
             }
         }
@@ -155,8 +163,19 @@ fn world_clock(c: &Call) -> V {
             }
         }
     }
-    let column = |name: &str, values| Column { name: name.into(), ty: FrameColType::String, values, unit: None, format: None, raw: None };
-    V::Frame(Rc::new(Frame { columns: vec![column("Place", places), column("Local", times)], total_rows: None, approx: None }))
+    let column = |name: &str, values| Column {
+        name: name.into(),
+        ty: FrameColType::String,
+        values,
+        unit: None,
+        format: None,
+        raw: None,
+    };
+    V::Frame(Rc::new(Frame {
+        columns: vec![column("Place", places), column("Local", times)],
+        total_rows: None,
+        approx: None,
+    }))
 }
 
 fn date_diff(c: &Call) -> V {
@@ -208,5 +227,7 @@ fn workdays(c: &Call) -> V {
     let workday = c.field_str("op", "workday") == "workday";
     let name = if workday { "WORKDAY.INTL" } else { "NETWORKDAYS.INTL" };
     let x = if workday { c.read_num("days", 5.0) } else { first(c, "end") };
-    broadcast_err(&[first(c, "start"), x], |o| core_call(name, &[o[0].clone(), o[1].clone(), V::Num(code), hol.clone()]))
+    broadcast_err(&[first(c, "start"), x], |o| {
+        core_call(name, &[o[0].clone(), o[1].clone(), V::Num(code), hol.clone()])
+    })
 }

@@ -97,7 +97,12 @@ impl Rows {
 /// when that's set. The crate skips an empty line; `keep_blank` reads each as a row of one empty field.
 fn read(input: &str, delim: u8, keep_blank: bool, limit: Option<usize>) -> Rows {
     let b = input.as_bytes();
-    let mut rdr = csv::ReaderBuilder::new().has_headers(false).flexible(true).delimiter(delim).buffer_capacity(1 << 16).from_reader(b);
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .flexible(true)
+        .delimiter(delim)
+        .buffer_capacity(1 << 16)
+        .from_reader(b);
     let mut rec = csv::ByteRecord::new();
     let mut text = Vec::with_capacity(if limit.is_none() { b.len() } else { 0 });
     let mut out = Rows::default();
@@ -241,7 +246,9 @@ pub(crate) fn iso_date_text(t: &str) -> bool {
         Some(b'Z') => i + 1 == b.len(),
         Some(b'+' | b'-') => {
             let j = i + 1;
-            digits(j..j + 2) && ((b.len() == j + 4 && digits(j + 2..j + 4)) || (b.len() == j + 5 && b[j + 2] == b':' && digits(j + 3..j + 5)))
+            digits(j..j + 2)
+                && ((b.len() == j + 4 && digits(j + 2..j + 4))
+                    || (b.len() == j + 5 && b[j + 2] == b':' && digits(j + 3..j + 5)))
         }
         _ => false,
     }
@@ -268,7 +275,9 @@ fn plain_date_serial(t: &str) -> Option<f64> {
     if b.len() != 10 || b[4] != b'-' || b[7] != b'-' {
         return None;
     }
-    let num = |r: std::ops::Range<usize>| b[r].iter().try_fold(0u32, |n, &c| c.is_ascii_digit().then(|| n * 10 + u32::from(c - b'0')));
+    let num = |r: std::ops::Range<usize>| {
+        b[r].iter().try_fold(0u32, |n, &c| c.is_ascii_digit().then(|| n * 10 + u32::from(c - b'0')))
+    };
     let (y, m, d) = (num(0..4)?, num(5..7)?, num(8..10)?);
     let leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
     let days = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -332,11 +341,13 @@ pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clon
     let read_all = |f: &dyn Fn(&str) -> Option<f64>| -> Option<Vec<Option<f64>>> {
         cells.clone().map(|c| if blank(c) { Some(None) } else { f(c.unwrap_or("")).map(Some) }).collect()
     };
-    let number = |s: &str| short_integer(s).or_else(|| Some(crate::value_kinds::decimal_from_text(s)).filter(|n| n.is_finite()));
+    let number =
+        |s: &str| short_integer(s).or_else(|| Some(crate::value_kinds::decimal_from_text(s)).filter(|n| n.is_finite()));
     if let Some(v) = read_all(&number) {
         return Typed::Number(v);
     }
-    let logical: Option<Vec<Option<bool>>> = cells.clone().map(|c| if blank(c) { Some(None) } else { logical_text(c.unwrap_or("")).map(Some) }).collect();
+    let logical: Option<Vec<Option<bool>>> =
+        cells.clone().map(|c| if blank(c) { Some(None) } else { logical_text(c.unwrap_or("")).map(Some) }).collect();
     if let Some(v) = logical {
         return Typed::Logical(v);
     }
@@ -365,7 +376,8 @@ pub fn source_columns(text: &str) -> Vec<(String, FrameColType, Vec<String>)> {
         .into_iter()
         .enumerate()
         .map(|(j, name)| {
-            let cells: Vec<String> = (1..rows.len()).map(|i| js_trim(rows.get(i, j).unwrap_or("")).to_string()).collect();
+            let cells: Vec<String> =
+                (1..rows.len()).map(|i| js_trim(rows.get(i, j).unwrap_or("")).to_string()).collect();
             let ty = infer_text_column(cells.iter().map(|c| Some(c.as_str()))).ty();
             (name, ty, cells)
         })
@@ -441,7 +453,11 @@ pub fn unparse(fields: &[String], data: &[Vec<String>]) -> String {
         let _ = w.write_record(fields);
     }
     for row in data {
-        let _ = if width > 0 { w.write_record((0..width).map(|j| row.get(j).map_or("", String::as_str))) } else { w.write_record(row) };
+        let _ = if width > 0 {
+            w.write_record((0..width).map(|j| row.get(j).map_or("", String::as_str)))
+        } else {
+            w.write_record(row)
+        };
     }
     let bytes = w.into_inner().unwrap_or_default();
     String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
@@ -451,15 +467,24 @@ pub fn unparse(fields: &[String], data: &[Vec<String>]) -> String {
 pub fn invoke(command: &str, args: &Json) -> Option<Json> {
     let text = || args.get("text").and_then(Json::as_str).unwrap_or("");
     let strings = |v: Option<&Json>| -> Vec<String> {
-        v.and_then(Json::as_array).map(|a| a.iter().map(|s| s.as_str().unwrap_or("").to_string()).collect()).unwrap_or_default()
+        v.and_then(Json::as_array)
+            .map(|a| a.iter().map(|s| s.as_str().unwrap_or("").to_string()).collect())
+            .unwrap_or_default()
     };
     Some(match command {
         "engine_csv_source" => Json::Array(
-            source_columns(text()).into_iter().map(|(name, ty, cells)| json!({ "name": name, "type": ty.as_str(), "cells": cells })).collect(),
+            source_columns(text())
+                .into_iter()
+                .map(|(name, ty, cells)| json!({ "name": name, "type": ty.as_str(), "cells": cells }))
+                .collect(),
         ),
         "engine_csv_text" => {
             let fields = strings(args.get("fields"));
-            let rows: Vec<Vec<String>> = args.get("rows").and_then(Json::as_array).map(|a| a.iter().map(|r| strings(Some(r))).collect()).unwrap_or_default();
+            let rows: Vec<Vec<String>> = args
+                .get("rows")
+                .and_then(Json::as_array)
+                .map(|a| a.iter().map(|r| strings(Some(r))).collect())
+                .unwrap_or_default();
             json!(unparse(&fields, &rows))
         }
         _ => return None,

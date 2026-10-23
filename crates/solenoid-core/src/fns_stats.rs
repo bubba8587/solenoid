@@ -5,59 +5,201 @@
 #![allow(clippy::excessive_precision)]
 
 use crate::date_serial::parts_of_ms;
-use crate::zone;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
-use crate::error_value::{ErrorCode, FxError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
-    average_ranks, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js, to_num, V,
+    average_ranks, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js,
+    to_num, V,
 };
 use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
 use crate::jsnum::{math_max, math_min, math_round, number_to_string};
+use crate::zone;
 
 /// `LEGACY_ALIASES`: a blocked name and the function that replaces it.
 const BLOCKED: &[(&str, &str)] = &[
-    ("SUMIF", "SUMIFS"), ("SUBTOTAL", "SUM"), ("AGGREGATE", "SUM"),
-    ("AVERAGEA", "AVERAGE"), ("MINA", "MIN"), ("MAXA", "MAX"), ("STDEVA", "STDEV.S"), ("STDEVPA", "STDEV.P"),
-    ("VARA", "VAR.S"), ("VARPA", "VAR.P"),
-    ("NORMDIST", "NORM.DIST"), ("NORMINV", "NORM.INV"), ("NORMSDIST", "NORM.S.DIST"), ("NORMSINV", "NORM.S.INV"),
-    ("LOGNORMDIST", "LOGNORM.DIST"), ("LOGINV", "LOGNORM.INV"), ("LOGNORMINV", "LOGNORM.INV"),
-    ("TDIST", "T.DIST.RT"), ("TINV", "T.INV.2T"), ("CHIDIST", "CHISQ.DIST.RT"), ("CHIINV", "CHISQ.INV.RT"),
-    ("FDIST", "F.DIST.RT"), ("FINV", "F.INV.RT"), ("BETADIST", "BETA.DIST"), ("BETAINV", "BETA.INV"),
-    ("GAMMADIST", "GAMMA.DIST"), ("GAMMAINV", "GAMMA.INV"), ("EXPONDIST", "EXPON.DIST"), ("WEIBULLDIST", "WEIBULL.DIST"),
-    ("BINOMDIST", "BINOM.DIST"), ("NEGBINOMDIST", "NEGBINOM.DIST"), ("HYPGEOMDIST", "HYPGEOM.DIST"),
-    ("POISSONDIST", "POISSON.DIST"), ("CRITBINOM", "BINOM.INV"),
-    ("CHITEST", "CHISQ.TEST"), ("FTEST", "F.TEST"), ("TTEST", "T.TEST"), ("ZTEST", "Z.TEST"),
-    ("FORECAST", "FORECAST.LINEAR"), ("NETWORKDAYSINTL", "NETWORKDAYS.INTL"), ("WORKDAYINTL", "WORKDAY.INTL"),
-    ("CEILINGMATH", "CEILING.MATH"), ("CEILINGPRECISE", "CEILING.MATH"), ("FLOORMATH", "FLOOR.MATH"),
-    ("FLOORPRECISE", "FLOOR.MATH"), ("CEILING.PRECISE", "CEILING.MATH"), ("FLOOR.PRECISE", "FLOOR.MATH"),
-    ("ISO.CEILING", "CEILING.MATH"), ("ISO.CEILING.MATH", "CEILING.MATH"), ("ISO.CEILING.PRECISE", "CEILING.MATH"),
-    ("GAMMALNPRECISE", "GAMMALN.PRECISE"), ("MODESNGL", "MODE.SNGL"),
-    ("PERCENTILEINC", "PERCENTILE.INC"), ("PERCENTILEEXC", "PERCENTILE.EXC"),
-    ("PERCENTRANKINC", "PERCENTRANK.INC"), ("PERCENTRANKEXC", "PERCENTRANK.EXC"),
-    ("QUARTILEINC", "QUARTILE.INC"), ("QUARTILEEXC", "QUARTILE.EXC"), ("RANKEQ", "RANK.EQ"), ("RANKAVG", "RANK.AVG"),
-    ("STDEVS", "STDEV.S"), ("STDEVP", "STDEV.P"), ("VARS", "VAR.S"), ("VARP", "VAR.P"),
-    ("COVARIANCEP", "COVARIANCE.P"), ("COVARIANCES", "COVARIANCE.S"), ("SKEWP", "SKEW.P"),
-    ("CHIDISTRT", "CHISQ.DIST.RT"), ("CHIINVRT", "CHISQ.INV.RT"), ("FDISTRT", "F.DIST.RT"), ("FINVRT", "F.INV.RT"),
-    ("TDISTRT", "T.DIST.RT"), ("TDIST.RT", "T.DIST.RT"), ("TDIST.2T", "T.DIST.2T"), ("TINV.2T", "T.INV.2T"),
-    ("CHIDIST.RT", "CHISQ.DIST.RT"), ("CHIINV.RT", "CHISQ.INV.RT"), ("FDIST.RT", "F.DIST.RT"), ("FINV.RT", "F.INV.RT"),
+    ("SUMIF", "SUMIFS"),
+    ("SUBTOTAL", "SUM"),
+    ("AGGREGATE", "SUM"),
+    ("AVERAGEA", "AVERAGE"),
+    ("MINA", "MIN"),
+    ("MAXA", "MAX"),
+    ("STDEVA", "STDEV.S"),
+    ("STDEVPA", "STDEV.P"),
+    ("VARA", "VAR.S"),
+    ("VARPA", "VAR.P"),
+    ("NORMDIST", "NORM.DIST"),
+    ("NORMINV", "NORM.INV"),
+    ("NORMSDIST", "NORM.S.DIST"),
+    ("NORMSINV", "NORM.S.INV"),
+    ("LOGNORMDIST", "LOGNORM.DIST"),
+    ("LOGINV", "LOGNORM.INV"),
+    ("LOGNORMINV", "LOGNORM.INV"),
+    ("TDIST", "T.DIST.RT"),
+    ("TINV", "T.INV.2T"),
+    ("CHIDIST", "CHISQ.DIST.RT"),
+    ("CHIINV", "CHISQ.INV.RT"),
+    ("FDIST", "F.DIST.RT"),
+    ("FINV", "F.INV.RT"),
+    ("BETADIST", "BETA.DIST"),
+    ("BETAINV", "BETA.INV"),
+    ("GAMMADIST", "GAMMA.DIST"),
+    ("GAMMAINV", "GAMMA.INV"),
+    ("EXPONDIST", "EXPON.DIST"),
+    ("WEIBULLDIST", "WEIBULL.DIST"),
+    ("BINOMDIST", "BINOM.DIST"),
+    ("NEGBINOMDIST", "NEGBINOM.DIST"),
+    ("HYPGEOMDIST", "HYPGEOM.DIST"),
+    ("POISSONDIST", "POISSON.DIST"),
+    ("CRITBINOM", "BINOM.INV"),
+    ("CHITEST", "CHISQ.TEST"),
+    ("FTEST", "F.TEST"),
+    ("TTEST", "T.TEST"),
+    ("ZTEST", "Z.TEST"),
+    ("FORECAST", "FORECAST.LINEAR"),
+    ("NETWORKDAYSINTL", "NETWORKDAYS.INTL"),
+    ("WORKDAYINTL", "WORKDAY.INTL"),
+    ("CEILINGMATH", "CEILING.MATH"),
+    ("CEILINGPRECISE", "CEILING.MATH"),
+    ("FLOORMATH", "FLOOR.MATH"),
+    ("FLOORPRECISE", "FLOOR.MATH"),
+    ("CEILING.PRECISE", "CEILING.MATH"),
+    ("FLOOR.PRECISE", "FLOOR.MATH"),
+    ("ISO.CEILING", "CEILING.MATH"),
+    ("ISO.CEILING.MATH", "CEILING.MATH"),
+    ("ISO.CEILING.PRECISE", "CEILING.MATH"),
+    ("GAMMALNPRECISE", "GAMMALN.PRECISE"),
+    ("MODESNGL", "MODE.SNGL"),
+    ("PERCENTILEINC", "PERCENTILE.INC"),
+    ("PERCENTILEEXC", "PERCENTILE.EXC"),
+    ("PERCENTRANKINC", "PERCENTRANK.INC"),
+    ("PERCENTRANKEXC", "PERCENTRANK.EXC"),
+    ("QUARTILEINC", "QUARTILE.INC"),
+    ("QUARTILEEXC", "QUARTILE.EXC"),
+    ("RANKEQ", "RANK.EQ"),
+    ("RANKAVG", "RANK.AVG"),
+    ("STDEVS", "STDEV.S"),
+    ("STDEVP", "STDEV.P"),
+    ("VARS", "VAR.S"),
+    ("VARP", "VAR.P"),
+    ("COVARIANCEP", "COVARIANCE.P"),
+    ("COVARIANCES", "COVARIANCE.S"),
+    ("SKEWP", "SKEW.P"),
+    ("CHIDISTRT", "CHISQ.DIST.RT"),
+    ("CHIINVRT", "CHISQ.INV.RT"),
+    ("FDISTRT", "F.DIST.RT"),
+    ("FINVRT", "F.INV.RT"),
+    ("TDISTRT", "T.DIST.RT"),
+    ("TDIST.RT", "T.DIST.RT"),
+    ("TDIST.2T", "T.DIST.2T"),
+    ("TINV.2T", "T.INV.2T"),
+    ("CHIDIST.RT", "CHISQ.DIST.RT"),
+    ("CHIINV.RT", "CHISQ.INV.RT"),
+    ("FDIST.RT", "F.DIST.RT"),
+    ("FINV.RT", "F.INV.RT"),
     ("BINOMDIST.RANGE", "BINOM.DIST.RANGE"),
 ];
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "SUMIF", "SUBTOTAL", "AGGREGATE", "AVERAGEA", "MINA", "MAXA", "STDEVA", "STDEVPA", "VARA", "VARPA",
-    "NORMDIST", "NORMINV", "NORMSDIST", "NORMSINV", "LOGNORMDIST", "LOGINV", "LOGNORMINV", "TDIST", "TINV", "CHIDIST",
-    "CHIINV", "FDIST", "FINV", "BETADIST", "BETAINV", "GAMMADIST", "GAMMAINV", "EXPONDIST", "WEIBULLDIST", "BINOMDIST",
-    "NEGBINOMDIST", "HYPGEOMDIST", "POISSONDIST", "CRITBINOM", "CHITEST", "FTEST", "TTEST", "ZTEST", "FORECAST",
-    "NETWORKDAYSINTL", "WORKDAYINTL", "CEILINGMATH", "CEILINGPRECISE", "FLOORMATH", "FLOORPRECISE", "CEILING.PRECISE",
-    "FLOOR.PRECISE", "ISO.CEILING", "ISO.CEILING.MATH", "ISO.CEILING.PRECISE", "GAMMALNPRECISE", "MODESNGL",
-    "PERCENTILEINC", "PERCENTILEEXC", "PERCENTRANKINC", "PERCENTRANKEXC", "QUARTILEINC", "QUARTILEEXC", "RANKEQ",
-    "RANKAVG", "STDEVS", "STDEVP", "VARS", "VARP", "COVARIANCEP", "COVARIANCES", "SKEWP", "CHIDISTRT", "CHIINVRT",
-    "FDISTRT", "FINVRT", "TDISTRT", "TDIST.RT", "TDIST.2T", "TINV.2T", "CHIDIST.RT", "CHIINV.RT", "FDIST.RT", "FINV.RT",
+    "SUMIF",
+    "SUBTOTAL",
+    "AGGREGATE",
+    "AVERAGEA",
+    "MINA",
+    "MAXA",
+    "STDEVA",
+    "STDEVPA",
+    "VARA",
+    "VARPA",
+    "NORMDIST",
+    "NORMINV",
+    "NORMSDIST",
+    "NORMSINV",
+    "LOGNORMDIST",
+    "LOGINV",
+    "LOGNORMINV",
+    "TDIST",
+    "TINV",
+    "CHIDIST",
+    "CHIINV",
+    "FDIST",
+    "FINV",
+    "BETADIST",
+    "BETAINV",
+    "GAMMADIST",
+    "GAMMAINV",
+    "EXPONDIST",
+    "WEIBULLDIST",
+    "BINOMDIST",
+    "NEGBINOMDIST",
+    "HYPGEOMDIST",
+    "POISSONDIST",
+    "CRITBINOM",
+    "CHITEST",
+    "FTEST",
+    "TTEST",
+    "ZTEST",
+    "FORECAST",
+    "NETWORKDAYSINTL",
+    "WORKDAYINTL",
+    "CEILINGMATH",
+    "CEILINGPRECISE",
+    "FLOORMATH",
+    "FLOORPRECISE",
+    "CEILING.PRECISE",
+    "FLOOR.PRECISE",
+    "ISO.CEILING",
+    "ISO.CEILING.MATH",
+    "ISO.CEILING.PRECISE",
+    "GAMMALNPRECISE",
+    "MODESNGL",
+    "PERCENTILEINC",
+    "PERCENTILEEXC",
+    "PERCENTRANKINC",
+    "PERCENTRANKEXC",
+    "QUARTILEINC",
+    "QUARTILEEXC",
+    "RANKEQ",
+    "RANKAVG",
+    "STDEVS",
+    "STDEVP",
+    "VARS",
+    "VARP",
+    "COVARIANCEP",
+    "COVARIANCES",
+    "SKEWP",
+    "CHIDISTRT",
+    "CHIINVRT",
+    "FDISTRT",
+    "FINVRT",
+    "TDISTRT",
+    "TDIST.RT",
+    "TDIST.2T",
+    "TINV.2T",
+    "CHIDIST.RT",
+    "CHIINV.RT",
+    "FDIST.RT",
+    "FINV.RT",
     "BINOMDIST.RANGE",
-    "TRUE", "FALSE", "GEOMETRIC", "FIBONACCI", "BESSELI", "BESSELJ", "BESSELK", "BESSELY", "ANOVA", "KRUSKAL",
-    "MANNWHITNEY", "WILCOXON", "KSTEST", "CONFIDENCE.T", "ACCRINT", "COUPDAYS", "DISC", "PRICEDISC",
+    "TRUE",
+    "FALSE",
+    "GEOMETRIC",
+    "FIBONACCI",
+    "BESSELI",
+    "BESSELJ",
+    "BESSELK",
+    "BESSELY",
+    "ANOVA",
+    "KRUSKAL",
+    "MANNWHITNEY",
+    "WILCOXON",
+    "KSTEST",
+    "CONFIDENCE.T",
+    "ACCRINT",
+    "COUPDAYS",
+    "DISC",
+    "PRICEDISC",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -133,10 +275,14 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "BESSELK" => bessel_wrap(besselk0, besselk1, x, n, 2, 1.0),
                 _ => bessel_wrap(bessely0, bessely1, x, n, 1, -1.0),
             };
-            r.map_or_else(|| V::err(sol_error(ErrorCode::Domain, format!("{name} takes an order of at most 1,000,000"))), V::Num)
+            r.map_or_else(
+                || V::err(sol_error(ErrorCode::Domain, format!("{name} takes an order of at most 1,000,000"))),
+                V::Num,
+            )
         }
         "ANOVA" | "KRUSKAL" => {
-            let groups: Vec<Vec<f64>> = a.iter().map(|g| nums_of(std::slice::from_ref(g))).filter(|g| !g.is_empty()).collect();
+            let groups: Vec<Vec<f64>> =
+                a.iter().map(|g| nums_of(std::slice::from_ref(g))).filter(|g| !g.is_empty()).collect();
             opt(if name == "ANOVA" { anova_p(&groups) } else { kruskal_p(&groups) })
         }
         "MANNWHITNEY" | "WILCOXON" | "KSTEST" => {
@@ -175,7 +321,9 @@ fn truthy_value(v: &V) -> bool {
 /// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)`, its dates read as serials as every other
 /// date argument is (Formula.js's `new Date(serial)` read them as milliseconds).
 fn accrint(a: &[V]) -> V {
-    let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx(FxError::Num) };
+    let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else {
+        return V::Fx(FxError::Num);
+    };
     let mut dates = [0.0; 3];
     for (i, d) in dates.iter_mut().enumerate() {
         match parse_date(arg(a, i)) {
@@ -236,7 +384,12 @@ fn fx_yearfrac(s: f64, e: f64, basis: f64) -> f64 {
                 return fx_days_between(s, e) / if leap { 366.0 } else { 365.0 };
             }
             let years = ey - sy + 1.0;
-            let days = (zone::new_local(ey + 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0) - zone::new_local(sy, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0)) / 1000.0 / 60.0 / 60.0 / 24.0;
+            let days = (zone::new_local(ey + 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0)
+                - zone::new_local(sy, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0))
+                / 1000.0
+                / 60.0
+                / 60.0
+                / 24.0;
             fx_days_between(s, e) / (days / years)
         }
         2 => fx_days_between(s, e) / 360.0,
@@ -333,7 +486,11 @@ fn besselj1(x: f64) -> f64 {
         let y = 64.0 / y;
         let (a1, a2) = (horner(&J1_A1B, y), horner(&J1_A2B, y));
         let a = (W / x.abs()).sqrt() * (cos(xx) * a1 - sin(xx) * a2 * 8.0 / x.abs());
-        if x < 0.0 { -a } else { a }
+        if x < 0.0 {
+            -a
+        } else {
+            a
+        }
     }
 }
 
@@ -395,8 +552,10 @@ fn besselj(x: f64, n: f64) -> Option<f64> {
 const Y0_A1A: [f64; 6] = [-2957821389.0, 7062834065.0, -512359803.6, 10879881.29, -86327.92757, 228.4622733];
 const Y0_A2A: [f64; 6] = [40076544269.0, 745249964.8, 7189466.438, 47447.26470, 226.1030244, 1.0];
 const Y0_A2B: [f64; 5] = [-0.1562499995e-1, 0.1430488765e-3, -0.6911147651e-5, 0.7621095161e-6, -0.934945152e-7];
-const Y1_A1A: [f64; 6] = [-0.4900604943e13, 0.1275274390e13, -0.5153438139e11, 0.7349264551e9, -0.4237922726e7, 0.8511937935e4];
-const Y1_A2A: [f64; 7] = [0.2499580570e14, 0.4244419664e12, 0.3733650367e10, 0.2245904002e8, 0.1020426050e6, 0.3549632885e3, 1.0];
+const Y1_A1A: [f64; 6] =
+    [-0.4900604943e13, 0.1275274390e13, -0.5153438139e11, 0.7349264551e9, -0.4237922726e7, 0.8511937935e4];
+const Y1_A2A: [f64; 7] =
+    [0.2499580570e14, 0.4244419664e12, 0.3733650367e10, 0.2245904002e8, 0.1020426050e6, 0.3549632885e3, 1.0];
 
 fn bessely0(x: f64) -> f64 {
     let y = x * x;
@@ -423,9 +582,29 @@ fn bessely1(x: f64) -> f64 {
 }
 
 const I0_A: [f64; 7] = [1.0, 3.5156229, 3.0899424, 1.2067492, 0.2659732, 0.360768e-1, 0.45813e-2];
-const I0_B: [f64; 9] = [0.39894228, 0.1328592e-1, 0.225319e-2, -0.157565e-2, 0.916281e-2, -0.2057706e-1, 0.2635537e-1, -0.1647633e-1, 0.392377e-2];
+const I0_B: [f64; 9] = [
+    0.39894228,
+    0.1328592e-1,
+    0.225319e-2,
+    -0.157565e-2,
+    0.916281e-2,
+    -0.2057706e-1,
+    0.2635537e-1,
+    -0.1647633e-1,
+    0.392377e-2,
+];
 const I1_A: [f64; 7] = [0.5, 0.87890594, 0.51498869, 0.15084934, 0.2658733e-1, 0.301532e-2, 0.32411e-3];
-const I1_B: [f64; 9] = [0.39894228, -0.3988024e-1, -0.362018e-2, 0.163801e-2, -0.1031555e-1, 0.2282967e-1, -0.2895312e-1, 0.1787654e-1, -0.420059e-2];
+const I1_B: [f64; 9] = [
+    0.39894228,
+    -0.3988024e-1,
+    -0.362018e-2,
+    0.163801e-2,
+    -0.1031555e-1,
+    0.2282967e-1,
+    -0.2895312e-1,
+    0.1787654e-1,
+    -0.420059e-2,
+];
 
 fn besseli0(x: f64) -> f64 {
     if x <= 3.75 {
@@ -739,7 +918,8 @@ fn ibetainv(p: f64, a: f64, b: f64) -> f64 {
         }
         let al = (x * x - 3.0) / 6.0;
         let h = 2.0 / (1.0 / (2.0 * a - 1.0) + 1.0 / (2.0 * b - 1.0));
-        let w = (x * (al + h).sqrt() / h) - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h));
+        let w = (x * (al + h).sqrt() / h)
+            - (1.0 / (2.0 * b - 1.0) - 1.0 / (2.0 * a - 1.0)) * (al + 5.0 / 6.0 - 2.0 / (3.0 * h));
         x = a / (a + b * exp(2.0 * w));
     } else {
         let lna = log(a / (a + b));
@@ -775,7 +955,11 @@ fn ibetainv(p: f64, a: f64, b: f64) -> f64 {
 fn studentt_inv(p: f64, dof: f64) -> f64 {
     let x = ibetainv(2.0 * math_min(p, 1.0 - p), 0.5 * dof, 0.5);
     let x = (dof * (1.0 - x) / x).sqrt();
-    if p > 0.5 { x } else { -x }
+    if p > 0.5 {
+        x
+    } else {
+        -x
+    }
 }
 
 // ─── Formula.js's date-reading finance bodies ───────────────────────────────────
@@ -936,7 +1120,9 @@ fn discounted(name: &str, a: &[V]) -> V {
     let (pr, redemption) = (parse_number(arg(a, 2)), parse_number(arg(a, 3)));
     let basis = parse_number(arg(a, 4));
     let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx(FxError::Value) };
-    let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else { return V::Fx(FxError::Value) };
+    let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else {
+        return V::Fx(FxError::Value);
+    };
     if pr <= 0.0 || redemption <= 0.0 {
         return V::Fx(FxError::Num);
     }

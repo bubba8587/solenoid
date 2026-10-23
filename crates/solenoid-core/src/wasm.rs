@@ -23,11 +23,21 @@ fn reply(r: Result<serde_json::Value, SolError>) -> String {
 #[wasm_bindgen]
 pub fn engine_invoke(command: &str, args: &str) -> String {
     match serde_json::from_str(args) {
-        Ok(parsed) if matches!(command, "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units") => match crate::frame_backend::call_reply(command, &parsed) {
-            Ok(r) => format!("{{\"ok\":{}}}", serde_json::to_string(&r).expect("a call's reply serializes")),
-            Err(e) => reply(Err(e)),
-        },
-        Ok(parsed) if command == "engine_node" => format!("{{\"ok\":{}}}", serde_json::to_string(&crate::nodes::reply(&parsed)).expect("a card's reply serializes")),
+        Ok(parsed)
+            if matches!(
+                command,
+                "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units"
+            ) =>
+        {
+            match crate::frame_backend::call_reply(command, &parsed) {
+                Ok(r) => format!("{{\"ok\":{}}}", serde_json::to_string(&r).expect("a call's reply serializes")),
+                Err(e) => reply(Err(e)),
+            }
+        }
+        Ok(parsed) if command == "engine_node" => format!(
+            "{{\"ok\":{}}}",
+            serde_json::to_string(&crate::nodes::reply(&parsed)).expect("a card's reply serializes")
+        ),
         Ok(parsed) => reply(invoke(command, &parsed)),
         Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
     }
@@ -73,7 +83,10 @@ pub fn engine_csv_frame(text: &str) -> String {
 /// Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
 #[wasm_bindgen]
 pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
-    let (out, rows) = crate::csv::rows_columnar(text, crate::csv::CsvOptions { detect_delimiter: detect, keep_blank_lines: keep_blank });
+    let (out, rows) = crate::csv::rows_columnar(
+        text,
+        crate::csv::CsvOptions { detect_delimiter: detect, keep_blank_lines: keep_blank },
+    );
     STAGED.with(|s| *s.borrow_mut() = out);
     reply(Ok(serde_json::json!(rows)))
 }

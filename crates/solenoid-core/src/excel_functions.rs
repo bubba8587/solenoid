@@ -3,15 +3,15 @@
 //! the Formula.js ones it passes through to (`@formulajs/formulajs` 4.6.1), each named as there. A value is a JS
 //! value: `Fx` is a Formula.js `Error` object, which flows until `normalizeFxResult` turns it into a SolError.
 
-use std::rc::Rc;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
-use crate::error_value::{ErrorCode, FxError, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, FxError, SolError};
+use crate::frame::FrameCell;
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
-use crate::frame::FrameCell;
 
 #[derive(Clone, Debug)]
 pub enum V {
@@ -84,16 +84,33 @@ pub fn take_thrown() -> Option<SolError> {
 }
 
 /// The modules that answer their own names, beside `call_function`'s arms and the finance functions.
-const MODULES: [&[&str]; 7] = [crate::formulajs::NAMES, crate::fns_complex::NAMES, crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES, crate::fns_random::NAMES, crate::fns_packs::NAMES];
+const MODULES: [&[&str]; 7] = [
+    crate::formulajs::NAMES,
+    crate::fns_complex::NAMES,
+    crate::fns_matrix::NAMES,
+    crate::fns_lists::NAMES,
+    crate::fns_stats::NAMES,
+    crate::fns_random::NAMES,
+    crate::fns_packs::NAMES,
+];
 
 /// Every function the core carries a body for.
 pub fn ported_names() -> Vec<&'static str> {
-    F::ALL.iter().map(|f| f.name()).chain(FINANCE_WHOLE.iter().chain(FINANCE).copied()).chain(MODULES.into_iter().flatten().copied()).collect()
+    F::ALL
+        .iter()
+        .map(|f| f.name())
+        .chain(FINANCE_WHOLE.iter().chain(FINANCE).copied())
+        .chain(MODULES.into_iter().flatten().copied())
+        .collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
 pub fn reads_matrices(name: &str) -> bool {
-    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX") || crate::fns_random::NAMES.contains(&name) || crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
+    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX")
+        || crate::fns_random::NAMES.contains(&name)
+        || crate::fns_matrix::NAMES.contains(&name)
+        || crate::fns_lists::NAMES.contains(&name)
+        || crate::shapers::is_shaper(name)
 }
 
 pub fn is_ported(name: &str) -> bool {
@@ -110,13 +127,61 @@ pub fn takes_whole_lists(name: &str) -> bool {
 pub fn reads_lists(name: &str) -> bool {
     matches!(
         name,
-        "SUM" | "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC"
-            | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH" | "INDEX"
-            | "CORREL" | "PEARSON" | "RSQ" | "KENDALL" | "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" | "SLOPE" | "INTERCEPT"
-            | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
-            | "SUMPRODUCT" | "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" | "SERIESSUM" | "Z.TEST" | "CHISQ.TEST" | "SPEARMAN"
-            | "FORECAST.LINEAR" | "T.TEST" | "F.TEST" | "PROB"
-            | "FVSCHEDULE" | "ANOVA" | "KRUSKAL" | "MANNWHITNEY" | "WILCOXON" | "KSTEST"
+        "SUM"
+            | "LARGE"
+            | "SMALL"
+            | "PERCENTILE"
+            | "PERCENTILE.INC"
+            | "PERCENTILE.EXC"
+            | "QUARTILE"
+            | "QUARTILE.INC"
+            | "QUARTILE.EXC"
+            | "SUMIFS"
+            | "AVERAGEIFS"
+            | "MINIFS"
+            | "MAXIFS"
+            | "COUNTIFS"
+            | "COUNTIF"
+            | "AVERAGEIF"
+            | "TEXTJOIN"
+            | "XLOOKUP"
+            | "XMATCH"
+            | "INDEX"
+            | "CORREL"
+            | "PEARSON"
+            | "RSQ"
+            | "KENDALL"
+            | "COVAR"
+            | "COVARIANCE.P"
+            | "COVARIANCE.S"
+            | "SLOPE"
+            | "INTERCEPT"
+            | "STEYX"
+            | "RANK"
+            | "RANK.EQ"
+            | "RANK.AVG"
+            | "TRIMMEAN"
+            | "PERCENTRANK"
+            | "PERCENTRANK.INC"
+            | "PERCENTRANK.EXC"
+            | "SUMPRODUCT"
+            | "SUMX2MY2"
+            | "SUMX2PY2"
+            | "SUMXMY2"
+            | "SERIESSUM"
+            | "Z.TEST"
+            | "CHISQ.TEST"
+            | "SPEARMAN"
+            | "FORECAST.LINEAR"
+            | "T.TEST"
+            | "F.TEST"
+            | "PROB"
+            | "FVSCHEDULE"
+            | "ANOVA"
+            | "KRUSKAL"
+            | "MANNWHITNEY"
+            | "WILCOXON"
+            | "KSTEST"
     )
 }
 
@@ -237,10 +302,16 @@ pub fn js_string_of(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Str(s) => String::from(&**s),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => "[object Object]".into(),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => {
+            "[object Object]".into()
+        }
         V::Fx(code) => format!("Error: {code}"),
         // `Array.prototype.join` renders null and undefined as empty.
-        V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
+        V::List(items) => items
+            .iter()
+            .map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) })
+            .collect::<Vec<_>>()
+            .join(","),
     }
 }
 
@@ -255,7 +326,11 @@ pub(crate) fn to_num(v: &V) -> f64 {
 
 /// `optNum`: a blank reads as the default.
 fn opt_num(v: &V, dflt: f64) -> f64 {
-    if matches!(v, V::Null | V::Undef) { dflt } else { to_num(v) }
+    if matches!(v, V::Null | V::Undef) {
+        dflt
+    } else {
+        to_num(v)
+    }
 }
 
 /// `numberToText` (excelFunctions.ts).
@@ -354,7 +429,11 @@ pub(crate) fn parse_number(v: &V) -> V {
         V::Bool(b) => V::Num(f64::from(u8::from(*b))),
         // `parseFloat(String(n))` gives n back for every number but -0, which reads as 0.
         V::Num(n) => {
-            if n.is_nan() { V::Fx(FxError::Value) } else { V::Num(*n + 0.0) }
+            if n.is_nan() {
+                V::Fx(FxError::Value)
+            } else {
+                V::Num(*n + 0.0)
+            }
         }
         // Text is never read as a number ([[C131]] noTextGuessing).
         V::Str(_) => V::Fx(FxError::Value),
@@ -362,9 +441,15 @@ pub(crate) fn parse_number(v: &V) -> V {
         // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
         V::List(_) => {
             let s = js_string_of(v);
-            if string_to_number(&s).is_nan() { V::Fx(FxError::Value) } else { V::Num(js_parse_float(&s)) }
+            if string_to_number(&s).is_nan() {
+                V::Fx(FxError::Value)
+            } else {
+                V::Num(js_parse_float(&s))
+            }
         }
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => V::Fx(FxError::Value),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => {
+            V::Fx(FxError::Value)
+        }
     }
 }
 
@@ -384,7 +469,15 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => true,
+        V::Err(_)
+        | V::Fx(_)
+        | V::List(_)
+        | V::Cx(..)
+        | V::Lambda(_)
+        | V::Unit(_)
+        | V::Frame(_)
+        | V::Cube(_)
+        | V::Json(_) => true,
     }
 }
 
@@ -433,7 +526,11 @@ fn fold_max(arr: &[f64]) -> f64 {
 fn median_of(arr: &[f64]) -> f64 {
     let s = sorted_nums(arr);
     let m = s.len() / 2;
-    if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] }
+    if s.len().is_multiple_of(2) {
+        (s[m - 1] + s[m]) / 2.0
+    } else {
+        s[m]
+    }
 }
 
 /// The one-list statistics `aggregate` answers.
@@ -474,7 +571,11 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
     }
     let n = arr.len();
     let raw: V = if n == 0 {
-        if op == Stat::Product { V::Num(1.0) } else { V::Null }
+        if op == Stat::Product {
+            V::Num(1.0)
+        } else {
+            V::Null
+        }
     } else {
         let mean = || sum(arr) / n as f64;
         match op {
@@ -635,7 +736,11 @@ fn js_substr(s: &[u16], start: f64, len: Option<f64>) -> Vec<u16> {
     st = if st < 0.0 { (size + st).max(0.0) } else { st.min(size) };
     let l = len.map_or(size, int);
     let end = (st + l).min(size);
-    if st >= end { Vec::new() } else { s[st as usize..end as usize].to_vec() }
+    if st >= end {
+        Vec::new()
+    } else {
+        s[st as usize..end as usize].to_vec()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -675,7 +780,10 @@ fn x_search_mode(v: &V) -> Result<bool, V> {
     } else if n == -1.0 {
         Ok(true)
     } else if n == 2.0 || n == -2.0 {
-        Err(V::err(sol_error(ErrorCode::Value, "Binary search (±2) isn't supported. Every search scans the whole list")))
+        Err(V::err(sol_error(
+            ErrorCode::Value,
+            "Binary search (±2) isn't supported. Every search scans the whole list",
+        )))
     } else {
         Err(V::err(sol_error(ErrorCode::Value, "search_mode is 1 or -1")))
     }
@@ -698,7 +806,12 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
     }
     let lookup = match lookup {
         V::Num(x) if x.is_finite() => *x,
-        _ => return Err(V::err(sol_error(ErrorCode::Value, "Approximate match compares numbers. Use exact match (0) for text"))),
+        _ => {
+            return Err(V::err(sol_error(
+                ErrorCode::Value,
+                "Approximate match compares numbers. Use exact match (0) for text",
+            )))
+        }
     };
     let mut best: Option<(usize, f64)> = None;
     for i in (0..n).map(at) {
@@ -752,7 +865,11 @@ pub(crate) fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
 
 /// `Math.sign`.
 fn js_sign(x: f64) -> f64 {
-    if x.is_nan() || x == 0.0 { x } else { x.signum() }
+    if x.is_nan() || x == 0.0 {
+        x
+    } else {
+        x.signum()
+    }
 }
 
 /// `kendallCounts` (statsOps.ts): the pairwise counts in O(n log n), finite values only.
@@ -764,7 +881,12 @@ fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
         t * (t - 1.0) / 2.0
     };
     let mut idx: Vec<usize> = (0..n).collect();
-    idx.sort_by(|&a, &b| xs[a].partial_cmp(&xs[b]).unwrap_or(std::cmp::Ordering::Equal).then(ys[a].partial_cmp(&ys[b]).unwrap_or(std::cmp::Ordering::Equal)));
+    idx.sort_by(|&a, &b| {
+        xs[a]
+            .partial_cmp(&xs[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(ys[a].partial_cmp(&ys[b]).unwrap_or(std::cmp::Ordering::Equal))
+    });
     let (mut n1, mut n3) = (0.0, 0.0);
     let mut i = 0;
     while i < n {
@@ -913,10 +1035,17 @@ fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
     }
-    let above = refs.iter().filter(|x| {
-        let n = as_number_cmp(x);
-        if ascending { n < value } else { n > value }
-    }).count() as f64;
+    let above = refs
+        .iter()
+        .filter(|x| {
+            let n = as_number_cmp(x);
+            if ascending {
+                n < value
+            } else {
+                n > value
+            }
+        })
+        .count() as f64;
     let equal = refs.iter().filter(|x| matches!(x, V::Num(n) if *n == value)).count() as f64;
     if equal == 0.0 {
         return V::err(sol_error(ErrorCode::NotAvailable, "Value not found in the list"));
@@ -955,7 +1084,9 @@ impl JsSum {
 pub(crate) fn js_numeric_sort(xs: &[V]) -> Vec<V> {
     let (mut s, undef): (Vec<V>, Vec<V>) = xs.iter().cloned().partition(|v| !matches!(v, V::Undef));
     if s.iter().all(|v| matches!(v, V::Num(n) if !n.is_nan())) {
-        crate::js_sort::js_sort_by(&mut s, |a, b| (to_f64_js(a) - to_f64_js(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+        crate::js_sort::js_sort_by(&mut s, |a, b| {
+            (to_f64_js(a) - to_f64_js(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
+        });
     } else {
         crate::decision::sort_by_num(&mut s, |a, b| to_f64_js(a) - to_f64_js(b));
     }
@@ -969,7 +1100,10 @@ pub(crate) fn js_len_spread(v: &V) -> (Option<f64>, Option<Vec<V>>) {
     match v {
         V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
         V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
-        V::Str(s) => (Some(s.encode_utf16().count() as f64), Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect())),
+        V::Str(s) => (
+            Some(s.encode_utf16().count() as f64),
+            Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
+        ),
         _ => (None, None),
     }
 }
@@ -1025,10 +1159,13 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
     if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
         return e.clone();
     }
-    let nums: Vec<f64> = arr.iter().filter_map(|v| match v {
-        V::Num(n) if n.is_finite() => Some(*n),
-        _ => None,
-    }).collect();
+    let nums: Vec<f64> = arr
+        .iter()
+        .filter_map(|v| match v {
+            V::Num(n) if n.is_finite() => Some(*n),
+            _ => None,
+        })
+        .collect();
     let s = sorted_nums(&nums);
     let n = s.len();
     if n == 0 || x.is_nan() {
@@ -1072,7 +1209,13 @@ fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
         while y != 0.0 && !y.is_nan() {
             (x, y) = (y, x % y);
         }
-        acc = if gcd { x } else if x == 0.0 { 0.0 } else { (acc / x) * n };
+        acc = if gcd {
+            x
+        } else if x == 0.0 {
+            0.0
+        } else {
+            (acc / x) * n
+        };
         if acc >= two53 {
             return V::err(sol_error(ErrorCode::Domain, "LCM is 2^53 or more"));
         }
@@ -1261,8 +1404,13 @@ pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, 
         V::Null | V::Undef => Ok(None),
         V::Bool(b) => Ok(Some(*b)),
         V::Num(n) if n.is_finite() => Ok(Some(*n != 0.0)),
-        V::Str(s) => Err(V::err(sol_error(ErrorCode::Type, format!("{place}: \"{s}\" is text. Use TRUE, FALSE or a number")))),
-        other => Err(V::err(sol_error(ErrorCode::Type, format!("{place}: {} isn't a logical. Only TRUE, FALSE or a number read as one", js_string_of(other))))),
+        V::Str(s) => {
+            Err(V::err(sol_error(ErrorCode::Type, format!("{place}: \"{s}\" is text. Use TRUE, FALSE or a number"))))
+        }
+        other => Err(V::err(sol_error(
+            ErrorCode::Type,
+            format!("{place}: {} isn't a logical. Only TRUE, FALSE or a number read as one", js_string_of(other)),
+        ))),
     }
 }
 
@@ -1300,7 +1448,10 @@ fn ordinal_text(n: f64) -> String {
 fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, caseless: bool, match_end: bool) -> V {
     let n = instance.trunc();
     if n == 0.0 {
-        return V::err(sol_error(ErrorCode::Value, format!("TEXT{}: instance_num can't be 0", if after { "AFTER" } else { "BEFORE" })));
+        return V::err(sol_error(
+            ErrorCode::Value,
+            format!("TEXT{}: instance_num can't be 0", if after { "AFTER" } else { "BEFORE" }),
+        ));
     }
     if delimiter.is_empty() {
         return V::Null;
@@ -1325,7 +1476,11 @@ fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, ca
         i = index_of(k + needle.len());
     }
     if match_end {
-        if n > 0.0 { at.push((t16.len(), 0)) } else { at.insert(0, (0, 0)) }
+        if n > 0.0 {
+            at.push((t16.len(), 0))
+        } else {
+            at.insert(0, (0, 0))
+        }
     }
     let len = at.len() as f64;
     let idx = if n > 0.0 { n - 1.0 } else { len + n };
@@ -1346,7 +1501,10 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
         return V::str(t);
     }
     if w > 32767.0 {
-        return V::err(sol_error(ErrorCode::Value, "PADTEXT's result would pass 32,767 characters, Excel's text limit"));
+        return V::err(sol_error(
+            ErrorCode::Value,
+            "PADTEXT's result would pass 32,767 characters, Excel's text limit",
+        ));
     }
     let need = w - chars.len() as f64;
     if need.is_nan() {
@@ -1389,7 +1547,13 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     let bad = || V::err(sol_error(ErrorCode::Value, "NUMBERVALUE needs a number"));
     let (dot, comma, percent) = (u16::from(b'.'), u16::from(b','), u16::from(b'%'));
     let d = decimal_sep.encode_utf16().next().unwrap_or(dot);
-    let g: Option<u16> = if !group_sep.is_empty() { group_sep.encode_utf16().next() } else if d == comma { None } else { Some(comma) };
+    let g: Option<u16> = if !group_sep.is_empty() {
+        group_sep.encode_utf16().next()
+    } else if d == comma {
+        None
+    } else {
+        Some(comma)
+    };
     if g == Some(d) {
         return bad();
     }
@@ -1417,7 +1581,11 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
         num.extend_from_slice(f);
     }
     let n = decimal_from_text(&from_utf16(&num));
-    if n.is_nan() { bad() } else { V::Num(n / js_pow(100.0, f64::from(pct))) }
+    if n.is_nan() {
+        bad()
+    } else {
+        V::Num(n / js_pow(100.0, f64::from(pct)))
+    }
 }
 
 /// `splitText` (textOps.ts). A caseless split finds the delimiter in the lowercased text and cuts the original at
@@ -1428,11 +1596,8 @@ fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bo
         if d.is_empty() {
             return from_utf16(t).chars().map(|c| utf16(&c.to_string())).collect();
         }
-        let (hay, needle) = if caseless {
-            (utf16(&js_lower(&from_utf16(t))), utf16(&js_lower(d)))
-        } else {
-            (t.to_vec(), utf16(d))
-        };
+        let (hay, needle) =
+            if caseless { (utf16(&js_lower(&from_utf16(t))), utf16(&js_lower(d))) } else { (t.to_vec(), utf16(d)) };
         let slice = |from: usize, to: usize| t[from.min(t.len())..to.clamp(from.min(t.len()), t.len())].to_vec();
         let d_len = d.encode_utf16().count();
         let mut parts = Vec::new();
@@ -1500,7 +1665,11 @@ fn dist_domain() -> V {
 }
 
 fn finite_or_null(r: f64) -> V {
-    if r.is_finite() { V::Num(r) } else { V::Null }
+    if r.is_finite() {
+        V::Num(r)
+    } else {
+        V::Null
+    }
 }
 
 /// `cdfOrPdf`.
@@ -1522,7 +1691,9 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
         return V::Null;
     }
     match crate::dists::compute(key, form, vn, &ps) {
-        Err(crate::dists::TooLong) => V::err(sol_error(ErrorCode::Domain, "This distribution would sum more than 1,000,000 terms")),
+        Err(crate::dists::TooLong) => {
+            V::err(sol_error(ErrorCode::Domain, "This distribution would sum more than 1,000,000 terms"))
+        }
         Ok(None) => dist_domain(),
         Ok(Some(r)) => finite_or_null(r),
     }
@@ -1538,10 +1709,12 @@ fn as_one_dim(v: &V) -> Option<Vec<V>> {
                     return Some(r.as_ref().clone());
                 }
             }
-            rows.iter().map(|r| match r {
-                V::List(c) if c.len() == 1 => Some(c[0].clone()),
-                _ => None,
-            }).collect()
+            rows.iter()
+                .map(|r| match r {
+                    V::List(c) if c.len() == 1 => Some(c[0].clone()),
+                    _ => None,
+                })
+                .collect()
         }
         V::List(items) => Some(items.as_ref().clone()),
         other => Some(vec![other.clone()]),
@@ -1593,7 +1766,11 @@ fn position_of(x: &V) -> Result<Ax, V> {
         V::Bool(b) => f64::from(u8::from(*b)),
         _ => f64::NAN,
     };
-    if n.is_nan() { Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
+    if n.is_nan() {
+        Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number")))
+    } else {
+        Ok(Ax::Num(n))
+    }
 }
 
 /// `indexMany`: on a table whose other axis is whole, a list picks rows or columns; otherwise the axes pair up as
@@ -1604,7 +1781,8 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
         let (rm, cm) = (matches!(row, Ax::Many(_)), matches!(col, Ax::Many(_)));
         if is_grid(grid) && rm != cm {
             let (Ax::Many(picks), other) = (if rm { (&row, &col) } else { (&col, &row) }) else { unreachable!() };
-            let walks = matches!(col, Ax::Undef) && (grid.len() == 1 || grid.iter().all(|r| !matches!(r, V::List(c) if c.len() > 1)));
+            let walks = matches!(col, Ax::Undef)
+                && (grid.len() == 1 || grid.iter().all(|r| !matches!(r, V::List(c) if c.len() > 1)));
             let whole = match other {
                 Ax::Undef => true,
                 Ax::Num(n) => n.trunc() == 0.0,
@@ -1616,7 +1794,13 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                     let x = match position_of(p) {
                         Ok(Ax::Null) => V::Null,
                         Err(e) => e,
-                        Ok(at) => if rm { index_at(v, at, other.clone()) } else { index_at(v, other.clone(), at) },
+                        Ok(at) => {
+                            if rm {
+                                index_at(v, at, other.clone())
+                            } else {
+                                index_at(v, other.clone(), at)
+                            }
+                        }
                     };
                     match x {
                         V::List(l) => lists.push(l),
@@ -1627,10 +1811,21 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                     return V::List(Rc::new(lists.into_iter().map(V::List).collect()));
                 }
                 let first = lists.first().map_or(0, |l| l.len());
-                return V::List(Rc::new((0..first).map(|i| V::List(Rc::new(lists.iter().map(|c| match c.get(i) {
-                    None | Some(V::Undef) => V::Null,
-                    Some(x) => x.clone(),
-                }).collect()))).collect()));
+                return V::List(Rc::new(
+                    (0..first)
+                        .map(|i| {
+                            V::List(Rc::new(
+                                lists
+                                    .iter()
+                                    .map(|c| match c.get(i) {
+                                        None | Some(V::Undef) => V::Null,
+                                        Some(x) => x.clone(),
+                                    })
+                                    .collect(),
+                            ))
+                        })
+                        .collect(),
+                ));
             }
         }
     }
@@ -1645,7 +1840,12 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
         }
     };
     let (rg, cg) = (as_grid(&row), as_grid(&col));
-    let width = |g: &Option<Vec<V>>| g.as_ref().map_or(1, |g| match &g[0] { V::List(r) => r.len(), _ => 1 });
+    let width = |g: &Option<Vec<V>>| {
+        g.as_ref().map_or(1, |g| match &g[0] {
+            V::List(r) => r.len(),
+            _ => 1,
+        })
+    };
     let h = rg.as_ref().map_or(1, Vec::len).max(cg.as_ref().map_or(1, Vec::len));
     let w = width(&rg).max(width(&cg));
     // `g[gi][gj]` on a row that is not a list: a string's code unit, undefined for a number; a blank row throws.
@@ -1662,18 +1862,32 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
             None => short(),
         }
     };
-    let out: Vec<V> = (0..h).map(|i| V::List(Rc::new((0..w).map(|j| {
-        let (r, c) = (at(&rg, i, j), at(&cg, i, j));
-        let (r, c) = match (r, c) {
-            (Err(e), _) | (_, Err(e)) => return e,
-            (Ok(r), Ok(c)) => (r, c),
-        };
-        match index_at(v, r, c) {
-            V::List(_) => V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value")),
-            x => x,
-        }
-    }).collect()))).collect();
-    if h == 1 { out.into_iter().next().unwrap_or(V::Null) } else { V::List(Rc::new(out)) }
+    let out: Vec<V> = (0..h)
+        .map(|i| {
+            V::List(Rc::new(
+                (0..w)
+                    .map(|j| {
+                        let (r, c) = (at(&rg, i, j), at(&cg, i, j));
+                        let (r, c) = match (r, c) {
+                            (Err(e), _) | (_, Err(e)) => return e,
+                            (Ok(r), Ok(c)) => (r, c),
+                        };
+                        match index_at(v, r, c) {
+                            V::List(_) => {
+                                V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value"))
+                            }
+                            x => x,
+                        }
+                    })
+                    .collect(),
+            ))
+        })
+        .collect();
+    if h == 1 {
+        out.into_iter().next().unwrap_or(V::Null)
+    } else {
+        V::List(Rc::new(out))
+    }
 }
 
 fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
@@ -1686,7 +1900,11 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
     let c = if col_all { -1.0 } else { col.unwrap_or(0.0).trunc() - 1.0 };
     let V::List(items) = v else {
         let ok = (row_all || r == 0.0) && (col_all || c == 0.0);
-        return if ok { v.clone() } else { V::err(sol_error(ErrorCode::Ref, "Index is outside a single value. Only index 1 exists")) };
+        return if ok {
+            v.clone()
+        } else {
+            V::err(sol_error(ErrorCode::Ref, "Index is outside a single value. Only index 1 exists"))
+        };
     };
     let inside = |k: f64, len: usize| k >= 0.0 && k < len as f64;
     let or_null = |x: Option<&V>| match x {
@@ -1703,7 +1921,11 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         if col.is_none() && !row_all {
             if grid.len() == 1 {
                 if let V::List(only) = &grid[0] {
-                    return if inside(r, only.len()) { or_null(only.get(r as usize)) } else { index_ref_error(r + 1.0, only.len(), "Column") };
+                    return if inside(r, only.len()) {
+                        or_null(only.get(r as usize))
+                    } else {
+                        index_ref_error(r + 1.0, only.len(), "Column")
+                    };
                 }
             }
             if width() == 1 {
@@ -1725,10 +1947,20 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
                 return index_ref_error(c + 1.0, w, "Column");
             }
             let c = c as usize;
-            return V::List(Rc::new(grid.iter().map(|row| match row {
-                V::List(cells) => or_null(cells.get(c)),
-                other => if c == 0 { other.clone() } else { V::Null },
-            }).collect()));
+            return V::List(Rc::new(
+                grid.iter()
+                    .map(|row| match row {
+                        V::List(cells) => or_null(cells.get(c)),
+                        other => {
+                            if c == 0 {
+                                other.clone()
+                            } else {
+                                V::Null
+                            }
+                        }
+                    })
+                    .collect(),
+            ));
         }
         let row_arr: Vec<V> = match &grid[r as usize] {
             V::List(cells) => cells.as_ref().clone(),
@@ -1737,17 +1969,31 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         if col_all {
             return V::List(Rc::new(row_arr));
         }
-        return if inside(c, row_arr.len()) { or_null(row_arr.get(c as usize)) } else { index_ref_error(c + 1.0, row_arr.len(), "Column") };
+        return if inside(c, row_arr.len()) {
+            or_null(row_arr.get(c as usize))
+        } else {
+            index_ref_error(c + 1.0, row_arr.len(), "Column")
+        };
     }
     // A list is one row ([[D85]] columnsStayColumns): one index walks along it; with two, the row must be 1.
-    let item = |i: f64, what: &str| if inside(i, items.len()) { items[i as usize].clone() } else { index_ref_error(i + 1.0, items.len(), what) };
+    let item = |i: f64, what: &str| {
+        if inside(i, items.len()) {
+            items[i as usize].clone()
+        } else {
+            index_ref_error(i + 1.0, items.len(), what)
+        }
+    };
     if col.is_none() {
         return if row_all { v.clone() } else { item(r, "Item") };
     }
     if !row_all && r != 0.0 {
         return index_ref_error(r + 1.0, 1, "Row");
     }
-    if col_all { v.clone() } else { item(c, "Column") }
+    if col_all {
+        v.clone()
+    } else {
+        item(c, "Column")
+    }
 }
 
 /// `/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i`: hours, minutes, seconds and whether
@@ -1831,7 +2077,8 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if values.is_empty() || weights.len() < values.len() {
         return V::Null;
     }
-    let pairs: Vec<(&V, &V)> = values.iter().zip(weights).filter(|(v, w)| !matches!(v, V::Null) && !matches!(w, V::Null)).collect();
+    let pairs: Vec<(&V, &V)> =
+        values.iter().zip(weights).filter(|(v, w)| !matches!(v, V::Null) && !matches!(w, V::Null)).collect();
     let w_sum = pairs.iter().fold(JsSum::Num(0.0), |a, (_, w)| a.add(w));
     if pairs.is_empty() || matches!(w_sum, JsSum::Num(x) if x == 0.0) {
         return V::Null;
@@ -1857,7 +2104,11 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
 
 /// `x || 0`: a falsy argument reads as 0.
 fn or_zero(v: &V) -> &V {
-    if truthy(v) { v } else { &V::Num(0.0) }
+    if truthy(v) {
+        v
+    } else {
+        &V::Num(0.0)
+    }
 }
 
 /// The parsed arguments, or None where one is an error (`anyIsError`).
@@ -1880,21 +2131,37 @@ fn js_arith(v: &V) -> f64 {
 
 /// Formula.js PMT.
 fn fx_pmt(rate: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
-    let nums = [parse_number(rate), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
+    let nums = [
+        parse_number(rate),
+        parse_number(nper),
+        parse_number(pv),
+        parse_number(or_zero(fv)),
+        parse_number(or_zero(ty)),
+    ];
     let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let result = if rate == 0.0 {
         (pv + fv) / nper
     } else {
         let term = js_pow(1.0 + rate, nper);
         let base = (fv * rate) / (term - 1.0) + (pv * rate) / (1.0 - 1.0 / term);
-        if ty == 1.0 { base / (1.0 + rate) } else { base }
+        if ty == 1.0 {
+            base / (1.0 + rate)
+        } else {
+            base
+        }
     };
     V::Num(-result)
 }
 
 /// Formula.js FV.
 fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
-    let nums = [parse_number(rate), parse_number(nper), parse_number(payment), parse_number(or_zero(value)), parse_number(or_zero(ty))];
+    let nums = [
+        parse_number(rate),
+        parse_number(nper),
+        parse_number(payment),
+        parse_number(or_zero(value)),
+        parse_number(or_zero(ty)),
+    ];
     let Some([rate, nper, payment, value, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let result = if rate == 0.0 {
         value + payment * nper
@@ -1911,12 +2178,23 @@ fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
 
 /// Formula.js IPMT: its inner PMT and FV take the parsed numbers and parse them again.
 fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
-    let nums = [parse_number(rate), parse_number(per), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
+    let nums = [
+        parse_number(rate),
+        parse_number(per),
+        parse_number(nper),
+        parse_number(pv),
+        parse_number(or_zero(fv)),
+        parse_number(or_zero(ty)),
+    ];
     let Some([rate, per, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let num = V::Num;
     let payment = fx_pmt(&num(rate), &num(nper), &num(pv), &num(fv), &num(ty));
     let interest = if per == 1.0 {
-        if ty == 1.0 { 0.0 } else { -pv }
+        if ty == 1.0 {
+            0.0
+        } else {
+            -pv
+        }
     } else if ty == 1.0 {
         js_arith(&fx_fv(&num(rate), &num(per - 2.0), &payment, &num(pv), &num(1.0))) - js_arith(&payment)
     } else {
@@ -1957,7 +2235,11 @@ fn weekend_of(w: &V) -> Option<crate::date_ops::Weekend> {
         V::Str(s) if s.encode_utf16().count() == 7 => crate::date_ops::Weekend::from_mask(s),
         other => {
             let code = to_num(other);
-            if code.is_nan() { None } else { crate::date_ops::weekend_days(code) }
+            if code.is_nan() {
+                None
+            } else {
+                crate::date_ops::weekend_days(code)
+            }
         }
     }
 }
@@ -1965,10 +2247,13 @@ fn weekend_of(w: &V) -> Option<crate::date_ops::Weekend> {
 /// `holidaySet`: whole-day serials, once each, in the order given.
 fn holiday_set(h: &V) -> Vec<f64> {
     let items: Vec<V> = match h {
-        V::List(items) => items.iter().flat_map(|v| match v {
-            V::List(inner) => inner.as_ref().clone(),
-            other => vec![other.clone()],
-        }).collect(),
+        V::List(items) => items
+            .iter()
+            .flat_map(|v| match v {
+                V::List(inner) => inner.as_ref().clone(),
+                other => vec![other.clone()],
+            })
+            .collect(),
         V::Null | V::Undef => Vec::new(),
         other => vec![other.clone()],
     };
@@ -2011,7 +2296,11 @@ fn parse_value_text(text: &str) -> f64 {
     // `/^\(.*\)$/`: `.` stops at a line terminator.
     let mut neg = false;
     let owned;
-    if t.len() >= 2 && t.starts_with('(') && t.ends_with(')') && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}']) {
+    if t.len() >= 2
+        && t.starts_with('(')
+        && t.ends_with(')')
+        && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}'])
+    {
         neg = true;
         t = js_trim(&t[1..t.len() - 1]);
     }
@@ -2087,7 +2376,6 @@ pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
         _ => Some(f64::NAN),
     }
 }
-
 
 /// `guardFinite(undefined, inputs)`: not finite and not NaN, so it stands only beside an infinite input.
 fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
@@ -2203,7 +2491,13 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     if r == 0.0 {
         return 0.0;
     }
-    let sign = if v > 0.0 { 1.0 } else if v < 0.0 { -1.0 } else { v };
+    let sign = if v > 0.0 {
+        1.0
+    } else if v < 0.0 {
+        -1.0
+    } else {
+        v
+    };
     sign * (if d >= 0.0 { r / scale } else { r * scale })
 }
 
@@ -2223,7 +2517,10 @@ pub(crate) fn if_test(v: &V) -> Cond {
         V::Num(n) if n.is_nan() => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition is not a number"))),
         V::Num(n) => Cond::Bool(*n != 0.0),
         // Text is text, even "TRUE" ([[C131]] noTextGuessing).
-        V::Str(_) => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical. Compare text with = to get one"))),
+        V::Str(_) => Cond::Err(V::err(sol_error(
+            ErrorCode::Value,
+            "A condition needs a logical. Compare text with = to get one",
+        ))),
         _ => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical"))),
     }
 }
@@ -2597,50 +2894,153 @@ const fn every() -> Refused {
 
 const REFUSED: &[(&str, Refused)] = &[
     // List functions.
-    ("SLICE", nums(&[1, 2])), ("NTHELEMENT", nums(&[1])), ("SHIFT", flags(&[1], &[2])), ("ARGSORT", flags(&[], &[1])),
-    ("COMBINATIONS", nums(&[1])), ("PERMUTATIONS", nums(&[1])), ("EWMA", nums(&[1])), ("TRAPZ", nums(&[1])),
-    ("NTILE", nums(&[1])), ("ISOUTLIER", nums(&[2])), ("RUNNING", nums(&[2])), ("LINSPACE", nums(&[0, 1, 2])),
-    ("RANGE", nums(&[0, 1, 2])), ("SPECTRUM", nums(&[1])), ("GAUSSIANSMOOTH", nums(&[1])), ("SAVGOL", nums(&[1, 2])),
-    ("LOWESS", nums(&[1])), ("FINDPEAKS", nums(&[1, 2, 3])), ("DECOMPOSE", nums(&[1])), ("FORECAST.ETS", nums(&[0, 3])),
-    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])), ("FIBONACCI", nums(&[0])), ("GEOMETRIC", nums(&[0, 1, 2])),
+    ("SLICE", nums(&[1, 2])),
+    ("NTHELEMENT", nums(&[1])),
+    ("SHIFT", flags(&[1], &[2])),
+    ("ARGSORT", flags(&[], &[1])),
+    ("COMBINATIONS", nums(&[1])),
+    ("PERMUTATIONS", nums(&[1])),
+    ("EWMA", nums(&[1])),
+    ("TRAPZ", nums(&[1])),
+    ("NTILE", nums(&[1])),
+    ("ISOUTLIER", nums(&[2])),
+    ("RUNNING", nums(&[2])),
+    ("LINSPACE", nums(&[0, 1, 2])),
+    ("RANGE", nums(&[0, 1, 2])),
+    ("SPECTRUM", nums(&[1])),
+    ("GAUSSIANSMOOTH", nums(&[1])),
+    ("SAVGOL", nums(&[1, 2])),
+    ("LOWESS", nums(&[1])),
+    ("FINDPEAKS", nums(&[1, 2, 3])),
+    ("DECOMPOSE", nums(&[1])),
+    ("FORECAST.ETS", nums(&[0, 3])),
+    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])),
+    ("FIBONACCI", nums(&[0])),
+    ("GEOMETRIC", nums(&[0, 1, 2])),
     // Shapers, matrices and generators.
-    ("TAKE", nums(&[1, 2])), ("DROP", nums(&[1, 2])), ("SORT", flags(&[1], &[3])), ("UNIQUE", flags(&[], &[1, 2])),
-    ("CHOOSECOLS", Refused { numbers: &[], from: Some(1), flags: &[] }), ("CHOOSEROWS", Refused { numbers: &[], from: Some(1), flags: &[] }),
-    ("EXPAND", nums(&[1, 2])), ("MUNIT", nums(&[0])), ("WRAPROWS", nums(&[1])), ("WRAPCOLS", nums(&[1])),
-    ("SEQUENCE", nums(&[0, 1, 2, 3])), ("TOCOL", nums(&[1])), ("TOROW", nums(&[1])), ("POLYFIT", nums(&[2])),
-    ("QUADRATICROOTS", nums(&[0, 1, 2])), ("HISTOGRAM2D", nums(&[2, 3])), ("RANDARRAY", flags(&[0, 1, 2, 3], &[4])),
-    ("TREND", flags(&[], &[3])), ("GROWTH", flags(&[], &[3])),
+    ("TAKE", nums(&[1, 2])),
+    ("DROP", nums(&[1, 2])),
+    ("SORT", flags(&[1], &[3])),
+    ("UNIQUE", flags(&[], &[1, 2])),
+    ("CHOOSECOLS", Refused { numbers: &[], from: Some(1), flags: &[] }),
+    ("CHOOSEROWS", Refused { numbers: &[], from: Some(1), flags: &[] }),
+    ("EXPAND", nums(&[1, 2])),
+    ("MUNIT", nums(&[0])),
+    ("WRAPROWS", nums(&[1])),
+    ("WRAPCOLS", nums(&[1])),
+    ("SEQUENCE", nums(&[0, 1, 2, 3])),
+    ("TOCOL", nums(&[1])),
+    ("TOROW", nums(&[1])),
+    ("POLYFIT", nums(&[2])),
+    ("QUADRATICROOTS", nums(&[0, 1, 2])),
+    ("HISTOGRAM2D", nums(&[2, 3])),
+    ("RANDARRAY", flags(&[0, 1, 2, 3], &[4])),
+    ("TREND", flags(&[], &[3])),
+    ("GROWTH", flags(&[], &[3])),
     // Distributions: the value, the parameters and the cumulative flag.
-    ("NORM.DIST", flags(&[0, 1, 2], &[3])), ("NORM.INV", nums(&[0, 1, 2])), ("NORM.S.DIST", flags(&[0], &[1])),
-    ("NORM.S.INV", nums(&[0])), ("CHISQ.DIST", flags(&[0, 1], &[2])), ("CHISQ.INV", nums(&[0, 1])),
-    ("CHISQ.DIST.RT", nums(&[0, 1])), ("F.DIST", flags(&[0, 1, 2], &[3])), ("F.INV", nums(&[0, 1, 2])),
-    ("F.DIST.RT", nums(&[0, 1, 2])), ("GAMMA.DIST", flags(&[0, 1, 2], &[3])), ("LOGNORM.DIST", flags(&[0, 1, 2], &[3])),
-    ("LOGNORM.INV", nums(&[0, 1, 2])), ("WEIBULL.DIST", flags(&[0, 1, 2], &[3])), ("EXPON.DIST", flags(&[0, 1], &[2])),
-    ("BINOM.DIST", flags(&[0, 1, 2], &[3])), ("BINOM.INV", nums(&[0, 1, 2])), ("POISSON.DIST", flags(&[0, 1], &[2])),
-    ("HYPGEOM.DIST", flags(&[0, 1, 2, 3], &[4])), ("NEGBINOM.DIST", flags(&[0, 1, 2], &[3])), ("T.DIST", flags(&[0, 1], &[2])),
-    ("T.DIST.RT", nums(&[0, 1])), ("T.DIST.2T", nums(&[0, 1])), ("T.INV", nums(&[0, 1])), ("T.INV.2T", nums(&[0, 1])),
-    ("CHISQ.INV.RT", nums(&[0, 1])), ("F.INV.RT", nums(&[0, 1, 2])), ("GAMMA.INV", nums(&[0, 1, 2])),
-    ("BETA.DIST", flags(&[0, 1, 2, 4, 5], &[3])), ("BETA.INV", nums(&[0, 1, 2, 3, 4])), ("ISCLOSE", nums(&[0, 1, 2])),
+    ("NORM.DIST", flags(&[0, 1, 2], &[3])),
+    ("NORM.INV", nums(&[0, 1, 2])),
+    ("NORM.S.DIST", flags(&[0], &[1])),
+    ("NORM.S.INV", nums(&[0])),
+    ("CHISQ.DIST", flags(&[0, 1], &[2])),
+    ("CHISQ.INV", nums(&[0, 1])),
+    ("CHISQ.DIST.RT", nums(&[0, 1])),
+    ("F.DIST", flags(&[0, 1, 2], &[3])),
+    ("F.INV", nums(&[0, 1, 2])),
+    ("F.DIST.RT", nums(&[0, 1, 2])),
+    ("GAMMA.DIST", flags(&[0, 1, 2], &[3])),
+    ("LOGNORM.DIST", flags(&[0, 1, 2], &[3])),
+    ("LOGNORM.INV", nums(&[0, 1, 2])),
+    ("WEIBULL.DIST", flags(&[0, 1, 2], &[3])),
+    ("EXPON.DIST", flags(&[0, 1], &[2])),
+    ("BINOM.DIST", flags(&[0, 1, 2], &[3])),
+    ("BINOM.INV", nums(&[0, 1, 2])),
+    ("POISSON.DIST", flags(&[0, 1], &[2])),
+    ("HYPGEOM.DIST", flags(&[0, 1, 2, 3], &[4])),
+    ("NEGBINOM.DIST", flags(&[0, 1, 2], &[3])),
+    ("T.DIST", flags(&[0, 1], &[2])),
+    ("T.DIST.RT", nums(&[0, 1])),
+    ("T.DIST.2T", nums(&[0, 1])),
+    ("T.INV", nums(&[0, 1])),
+    ("T.INV.2T", nums(&[0, 1])),
+    ("CHISQ.INV.RT", nums(&[0, 1])),
+    ("F.INV.RT", nums(&[0, 1, 2])),
+    ("GAMMA.INV", nums(&[0, 1, 2])),
+    ("BETA.DIST", flags(&[0, 1, 2, 4, 5], &[3])),
+    ("BETA.INV", nums(&[0, 1, 2, 3, 4])),
+    ("ISCLOSE", nums(&[0, 1, 2])),
     // Order statistics: the position or fraction beside the range.
-    ("PERCENTILE", nums(&[1])), ("PERCENTILE.INC", nums(&[1])), ("PERCENTILE.EXC", nums(&[1])), ("QUARTILE", nums(&[1])),
-    ("QUARTILE.INC", nums(&[1])), ("QUARTILE.EXC", nums(&[1])), ("PERCENTRANK", nums(&[1, 2])),
-    ("PERCENTRANK.INC", nums(&[1, 2])), ("PERCENTRANK.EXC", nums(&[1, 2])),
+    ("PERCENTILE", nums(&[1])),
+    ("PERCENTILE.INC", nums(&[1])),
+    ("PERCENTILE.EXC", nums(&[1])),
+    ("QUARTILE", nums(&[1])),
+    ("QUARTILE.INC", nums(&[1])),
+    ("QUARTILE.EXC", nums(&[1])),
+    ("PERCENTRANK", nums(&[1, 2])),
+    ("PERCENTRANK.INC", nums(&[1, 2])),
+    ("PERCENTRANK.EXC", nums(&[1, 2])),
     // Dates, text, numbers and finance.
-    ("WEEKDAY", nums(&[1])), ("WEEKNUM", nums(&[1])), ("YEARFRAC", nums(&[2])), ("DAYS360", flags(&[], &[2])),
-    ("DATETRUNC", flags(&[], &[2])), ("TIMEZONECONVERT", nums(&[0])), ("TEXTSPLIT", flags(&[], &[3])),
-    ("TEXTJOIN", flags(&[], &[1])), ("TEXTBEFORE", nums(&[2, 3, 4])), ("TEXTAFTER", nums(&[2, 3, 4])), ("FIND", nums(&[2])),
-    ("PADTEXT", nums(&[1])), ("TRUNCATETEXT", nums(&[1])), ("WRAPTEXT", nums(&[1])), ("CHAR", nums(&[0])),
-    ("UNICHAR", nums(&[0])), ("SPELLNUMBER", nums(&[0])), ("ISEVEN", nums(&[0])), ("ISODD", nums(&[0])),
-    ("FIXED", flags(&[], &[2])), ("DOLLAR", nums(&[0, 1])), ("SLN", nums(&[0, 1, 2])),
+    ("WEEKDAY", nums(&[1])),
+    ("WEEKNUM", nums(&[1])),
+    ("YEARFRAC", nums(&[2])),
+    ("DAYS360", flags(&[], &[2])),
+    ("DATETRUNC", flags(&[], &[2])),
+    ("TIMEZONECONVERT", nums(&[0])),
+    ("TEXTSPLIT", flags(&[], &[3])),
+    ("TEXTJOIN", flags(&[], &[1])),
+    ("TEXTBEFORE", nums(&[2, 3, 4])),
+    ("TEXTAFTER", nums(&[2, 3, 4])),
+    ("FIND", nums(&[2])),
+    ("PADTEXT", nums(&[1])),
+    ("TRUNCATETEXT", nums(&[1])),
+    ("WRAPTEXT", nums(&[1])),
+    ("CHAR", nums(&[0])),
+    ("UNICHAR", nums(&[0])),
+    ("SPELLNUMBER", nums(&[0])),
+    ("ISEVEN", nums(&[0])),
+    ("ISODD", nums(&[0])),
+    ("FIXED", flags(&[], &[2])),
+    ("DOLLAR", nums(&[0, 1])),
+    ("SLN", nums(&[0, 1, 2])),
     // The finance kernels read a NaN argument as a missing one; every argument but a list of cash flows is a number.
-    ("COUPDAYBS", every()), ("COUPDAYSNC", every()), ("COUPNCD", every()), ("COUPPCD", every()), ("COUPNUM", every()),
-    ("ACCRINTM", every()), ("INTRATE", every()), ("RECEIVED", every()), ("YIELDDISC", every()), ("TBILLEQ", every()),
-    ("TBILLPRICE", every()), ("TBILLYIELD", every()), ("PRICEMAT", every()), ("YIELDMAT", every()), ("DURATION", every()),
-    ("MDURATION", every()), ("PRICE", every()), ("YIELD", every()), ("CUMIPMT", every()), ("CUMPRINC", every()),
-    ("VDB", every()), ("ODDFPRICE", every()), ("ODDFYIELD", every()), ("ODDLPRICE", every()), ("ODDLYIELD", every()),
-    ("RATE", every()), ("DB", every()), ("DDB", every()), ("SYD", every()), ("EFFECT", every()), ("NOMINAL", every()),
-    ("PDURATION", every()), ("RRI", every()), ("DOLLARDE", every()), ("DOLLARFR", every()), ("ISPMT", every()),
-    ("NPV", nums(&[0])), ("FVSCHEDULE", nums(&[0])),
+    ("COUPDAYBS", every()),
+    ("COUPDAYSNC", every()),
+    ("COUPNCD", every()),
+    ("COUPPCD", every()),
+    ("COUPNUM", every()),
+    ("ACCRINTM", every()),
+    ("INTRATE", every()),
+    ("RECEIVED", every()),
+    ("YIELDDISC", every()),
+    ("TBILLEQ", every()),
+    ("TBILLPRICE", every()),
+    ("TBILLYIELD", every()),
+    ("PRICEMAT", every()),
+    ("YIELDMAT", every()),
+    ("DURATION", every()),
+    ("MDURATION", every()),
+    ("PRICE", every()),
+    ("YIELD", every()),
+    ("CUMIPMT", every()),
+    ("CUMPRINC", every()),
+    ("VDB", every()),
+    ("ODDFPRICE", every()),
+    ("ODDFYIELD", every()),
+    ("ODDLPRICE", every()),
+    ("ODDLYIELD", every()),
+    ("RATE", every()),
+    ("DB", every()),
+    ("DDB", every()),
+    ("SYD", every()),
+    ("EFFECT", every()),
+    ("NOMINAL", every()),
+    ("PDURATION", every()),
+    ("RRI", every()),
+    ("DOLLARDE", every()),
+    ("DOLLARFR", every()),
+    ("ISPMT", every()),
+    ("NPV", nums(&[0])),
+    ("FVSCHEDULE", nums(&[0])),
 ];
 
 /// The `#VALUE!` a call answers for text where `REFUSED` names a number or a logical, before its body runs.
@@ -2696,7 +3096,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
     }
     // A range body ported for flat arguments reads a list or a table among them as its items, as the TS's does. A
     // value nested past a table is read differently by each TS body, which no ported one follows yet.
-    if a.iter().any(|v| matches!(v, V::List(_))) && !reads_lists(name) && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range) {
+    if a.iter().any(|v| matches!(v, V::List(_)))
+        && !reads_lists(name)
+        && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range)
+    {
         let mut flat = Vec::with_capacity(a.len());
         for v in a {
             match v {
@@ -2705,7 +3108,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                         match x {
                             V::List(row) => {
                                 if row.iter().any(|y| matches!(y, V::List(_))) {
-                                    return throw(sol_error(ErrorCode::Value, format!("{name} reads values and tables, not lists nested inside a table")));
+                                    return throw(sol_error(
+                                        ErrorCode::Value,
+                                        format!("{name} reads values and tables, not lists nested inside a table"),
+                                    ));
                                 }
                                 flat.extend(row.iter().cloned());
                             }
@@ -2740,8 +3146,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             match if_test(&test) {
                 Cond::Missing => V::Null,
                 Cond::Err(e) => e,
-                Cond::Bool(true) => if matches!(arg(a, 1), V::Undef) { V::Bool(true) } else { arg(a, 1).clone() },
-                Cond::Bool(false) => if matches!(arg(a, 2), V::Undef) { V::Bool(false) } else { arg(a, 2).clone() },
+                Cond::Bool(true) => {
+                    if matches!(arg(a, 1), V::Undef) {
+                        V::Bool(true)
+                    } else {
+                        arg(a, 1).clone()
+                    }
+                }
+                Cond::Bool(false) => {
+                    if matches!(arg(a, 2), V::Undef) {
+                        V::Bool(false)
+                    } else {
+                        arg(a, 2).clone()
+                    }
+                }
             }
         }
         F::IFS => {
@@ -2794,7 +3212,15 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() || digits.is_nan() {
                 return value_err(name);
             }
-            V::Num(round_digits(n, digits, match arm { F::ROUND => "round", F::ROUNDUP => "roundup", _ => "rounddown" }))
+            V::Num(round_digits(
+                n,
+                digits,
+                match arm {
+                    F::ROUND => "round",
+                    F::ROUNDUP => "roundup",
+                    _ => "rounddown",
+                },
+            ))
         }
         F::TRUNC => {
             let (n, d) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
@@ -2841,7 +3267,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err("SQRT");
             }
-            if n < 0.0 { V::err(sol_error(ErrorCode::Domain, "SQRT of a negative number")) } else { V::Num(n.sqrt()) }
+            if n < 0.0 {
+                V::err(sol_error(ErrorCode::Domain, "SQRT of a negative number"))
+            } else {
+                V::Num(n.sqrt())
+            }
         }
         F::LN | F::LOG10 => {
             let n = to_num(arg(a, 0));
@@ -2858,7 +3288,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("MOD");
             }
-            if y == 0.0 { V::err(sol_error(ErrorCode::DivZero, "Division by zero")) } else { V::Num(x - y * (x / y).floor()) }
+            if y == 0.0 {
+                V::err(sol_error(ErrorCode::DivZero, "Division by zero"))
+            } else {
+                V::Num(x - y * (x / y).floor())
+            }
         }
         F::POWER => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
@@ -2876,7 +3310,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("QUOTIENT");
             }
-            if y == 0.0 { V::err(sol_error(ErrorCode::DivZero, "Division by zero")) } else { V::Num((x / y).trunc()) }
+            if y == 0.0 {
+                V::err(sol_error(ErrorCode::DivZero, "Division by zero"))
+            } else {
+                V::Num((x / y).trunc())
+            }
         }
         F::SUM => sum_like_fx(a),
         F::MIN | F::MAX => {
@@ -2933,17 +3371,23 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (n, items) = match arg(a, 0) {
                 V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
                 V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
-                V::Str(s) => (Some(s.encode_utf16().count() as f64), Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect())),
+                V::Str(s) => (
+                    Some(s.encode_utf16().count() as f64),
+                    Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
+                ),
                 _ => (None, None),
             };
             excel_trimmean(n, items, to_num(arg(a, 1)))
         }
         F::PERCENTRANK | F::PERCENTRANK_INC | F::PERCENTRANK_EXC => {
             let arr: Vec<V> = match arg(a, 0) {
-                V::List(items) => items.iter().flat_map(|v| match v {
-                    V::List(inner) => inner.as_ref().clone(),
-                    other => vec![other.clone()],
-                }).collect(),
+                V::List(items) => items
+                    .iter()
+                    .flat_map(|v| match v {
+                        V::List(inner) => inner.as_ref().clone(),
+                        other => vec![other.clone()],
+                    })
+                    .collect(),
                 V::Null | V::Undef => Vec::new(),
                 other => vec![other.clone()],
             };
@@ -2992,7 +3436,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::VAR_P => aggregate(Stat::VarP, &nums_of(a)),
         F::PRODUCT => {
             let n = nums_of(a);
-            if n.is_empty() { V::Num(0.0) } else { aggregate(Stat::Product, &n) }
+            if n.is_empty() {
+                V::Num(0.0)
+            } else {
+                aggregate(Stat::Product, &n)
+            }
         }
         F::LEN => V::Num(utf16(&to_str(arg(a, 0))).len() as f64),
         F::CONCAT | F::CONCATENATE => V::str(&a.iter().map(to_str).collect::<String>()),
@@ -3072,7 +3520,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let len = utf16(&t).len() as f64;
             if len * n > 32767.0 {
-                return V::err(sol_error(ErrorCode::Value, "REPT's result would pass 32,767 characters, Excel's text limit"));
+                return V::err(sol_error(
+                    ErrorCode::Value,
+                    "REPT's result would pass 32,767 characters, Excel's text limit",
+                ));
             }
             if n.is_infinite() {
                 return throw(sol_error(ErrorCode::Value, format!("Invalid count value: {}", number_to_string(n))));
@@ -3119,8 +3570,23 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         // Formula.js's trig: parseNumber, then V8's Math (fdlibm: ours, or the libm crate where it matches V8 bit for bit).
-        F::SIN | F::COS | F::TAN | F::ATAN | F::SINH | F::COSH | F::TANH | F::ASINH | F::COT | F::COTH | F::ACOTH | F::SEC
-        | F::SECH | F::CSC | F::CSCH | F::DEGREES | F::RADIANS => {
+        F::SIN
+        | F::COS
+        | F::TAN
+        | F::ATAN
+        | F::SINH
+        | F::COSH
+        | F::TANH
+        | F::ASINH
+        | F::COT
+        | F::COTH
+        | F::ACOTH
+        | F::SEC
+        | F::SECH
+        | F::CSC
+        | F::CSCH
+        | F::DEGREES
+        | F::RADIANS => {
             use crate::fdlibm::{cos, exp, log, sin};
             let n = match parse_number(arg(a, 0)) {
                 V::Num(n) => n,
@@ -3357,7 +3823,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Fx(FxError::Value);
             }
             let (old, new) = (to_str(arg(a, 0)), to_str(arg(a, 3)));
-            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else { return V::Fx(FxError::Value) };
+            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else {
+                return V::Fx(FxError::Value);
+            };
             let old = utf16(&old);
             let mut out = js_substr(&old, 0.0, Some(at - 1.0));
             out.extend(utf16(&new));
@@ -3370,7 +3838,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if s.is_nan() || e.is_nan() {
                 return value_err("DATEDIF");
             }
-            let reversed = || V::err(sol_error(ErrorCode::Domain, "DATEDIF needs the start date on or before the end date"));
+            let reversed =
+                || V::err(sol_error(ErrorCode::Domain, "DATEDIF needs the start date on or before the end date"));
             if s > e {
                 return reversed();
             }
@@ -3409,7 +3878,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let unit = if matches!(unit, V::Null | V::Undef) { "day".to_string() } else { js_string_of(unit) };
             match crate::date_ops::date_trunc_unit_for(&unit) {
                 Some(u) => V::Num(crate::date_ops::date_trunc(n, u, is_true(arg(a, 2)))),
-                None => V::err(sol_error(ErrorCode::Domain, "DATETRUNC unit must be day, week, week_sun, month, quarter or year")),
+                None => V::err(sol_error(
+                    ErrorCode::Domain,
+                    "DATETRUNC unit must be day, week, week_sun, month, quarter or year",
+                )),
             }
         }
         F::FROMEPOCH | F::TOEPOCH => {
@@ -3434,7 +3906,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let Some(off) = off else {
                 return V::err(sol_error(
                     ErrorCode::Value,
-                    format!("{name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day"),
+                    format!(
+                        "{name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day"
+                    ),
                 ));
             };
             let hol = holiday_set(holidays);
@@ -3456,15 +3930,24 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => return e,
             };
             let Some(ks) = as_one_dim(arg(a, 1)) else {
-                return V::err(sol_error(ErrorCode::Value, format!("{name}'s lookup array must be a single row or a single column")));
+                return V::err(sol_error(
+                    ErrorCode::Value,
+                    format!("{name}'s lookup array must be a single row or a single column"),
+                ));
             };
             let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
                 let values = arg(a, 2);
                 let Some(vs) = as_one_dim(values) else {
-                    return V::err(sol_error(ErrorCode::Value, "XLOOKUP's return array must be a single row or a single column"));
+                    return V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must be a single row or a single column",
+                    ));
                 };
                 if matches!(values, V::List(_)) && vs.len() != ks.len() {
-                    return V::err(sol_error(ErrorCode::Value, "XLOOKUP's return array must match the lookup array's length"));
+                    return V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must match the lookup array's length",
+                    ));
                 }
                 let if_not_found = arg(a, 3).clone();
                 Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
@@ -3484,14 +3967,19 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             match arg(a, 0) {
                 l @ V::List(items) if matches!(items.first(), Some(V::List(_))) => match as_one_dim(l) {
                     Some(cells) => V::List(Rc::new(cells.iter().map(&pick).collect())),
-                    None => V::err(sol_error(ErrorCode::Shape, format!("{name}'s lookup value is one value or a list, not a 2-D grid"))),
+                    None => V::err(sol_error(
+                        ErrorCode::Shape,
+                        format!("{name}'s lookup value is one value or a list, not a 2-D grid"),
+                    )),
                 },
                 V::List(items) => V::List(Rc::new(items.iter().map(&pick).collect())),
                 l => pick(l),
             }
         }
         F::TEXT => excel_text(arg(a, 0), arg(a, 1)),
-        F::NORM_DIST => dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::NORM_DIST => {
+            dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
+        }
         F::NORM_INV => dist("normal", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
         F::NORM_S_DIST => dist("normal-s", cdf_or_pdf(arg(a, 1), false), arg(a, 0), &[]),
         F::NORM_S_INV => dist("normal-s", Form::Inv, arg(a, 0), &[]),
@@ -3501,17 +3989,37 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::F_DIST => dist("f", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
         F::F_INV => dist("f", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
         F::F_DIST_RT => dist("f", Form::RightTail, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        F::GAMMA_DIST => dist("gamma", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        F::LOGNORM_DIST => dist("lognorm", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::GAMMA_DIST => {
+            dist("gamma", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
+        }
+        F::LOGNORM_DIST => {
+            dist("lognorm", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
+        }
         F::LOGNORM_INV => dist("lognorm", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        F::WEIBULL_DIST => dist("weibull", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::WEIBULL_DIST => {
+            dist("weibull", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
+        }
         F::EXPON_DIST => dist("expon", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
         F::BINOM_DIST => dist("binom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
         F::BINOM_INV => dist("binom", Form::Inv, arg(a, 2), &[arg(a, 0).clone(), arg(a, 1).clone()]),
         F::POISSON_DIST => dist("poisson", cdf_or_pdf(arg(a, 2), true), arg(a, 0), &[arg(a, 1).clone()]),
-        F::HYPGEOM_DIST => dist("hypgeom", cdf_or_pdf(arg(a, 4), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone(), arg(a, 3).clone()]),
-        F::NEGBINOM_DIST => dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        F::T_DIST | F::T_DIST_RT | F::T_DIST_2T | F::T_INV | F::T_INV_2T | F::CHISQ_INV_RT | F::F_INV_RT | F::GAMMA_INV => {
+        F::HYPGEOM_DIST => dist(
+            "hypgeom",
+            cdf_or_pdf(arg(a, 4), true),
+            arg(a, 0),
+            &[arg(a, 1).clone(), arg(a, 2).clone(), arg(a, 3).clone()],
+        ),
+        F::NEGBINOM_DIST => {
+            dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
+        }
+        F::T_DIST
+        | F::T_DIST_RT
+        | F::T_DIST_2T
+        | F::T_INV
+        | F::T_INV_2T
+        | F::CHISQ_INV_RT
+        | F::F_INV_RT
+        | F::GAMMA_INV => {
             use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
             let want = if matches!(arm, F::F_INV_RT | F::GAMMA_INV) { 3 } else { 2 };
             let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
@@ -3521,7 +4029,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (x, d) = (ns[0], ns[1]);
             let r = match arm {
                 F::T_DIST | F::T_DIST_RT | F::T_DIST_2T if d <= 0.0 => return dist_domain(),
-                F::T_DIST => if is_true(arg(a, 2)) { t_cdf(x, d) } else { t_pdf(x, d) },
+                F::T_DIST => {
+                    if is_true(arg(a, 2)) {
+                        t_cdf(x, d)
+                    } else {
+                        t_pdf(x, d)
+                    }
+                }
                 F::T_DIST_RT => 1.0 - t_cdf(x, d),
                 F::T_DIST_2T => 2.0 * (1.0 - t_cdf(x.abs(), d)),
                 _ if d <= 0.0 || x <= 0.0 || x >= 1.0 => return dist_domain(),
@@ -3532,7 +4046,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 F::F_INV_RT => bisection_inv(|v| f_cdf(v, d, ns[2]), 1.0 - x, 0.0, 1e6),
                 _ => bisection_inv(|v| gamma_cdf(v, d, ns[2]), x, 0.0, 1e6),
             };
-            if r.is_finite() { V::Num(r) } else { V::Null }
+            if r.is_finite() {
+                V::Num(r)
+            } else {
+                V::Null
+            }
         }
         F::BETA_DIST | F::BETA_INV => {
             let inv = arm == F::BETA_INV;
@@ -3661,7 +4179,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             } else {
                 match crate::jsnum::to_fixed(x, dd) {
                     Some(t) => t,
-                    None => return throw(sol_error(ErrorCode::Value, "toFixed() digits argument must be between 0 and 100")),
+                    None => {
+                        return throw(sol_error(
+                            ErrorCode::Value,
+                            "toFixed() digits argument must be between 0 and 100",
+                        ))
+                    }
                 }
             };
             V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
@@ -3675,7 +4198,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     V::List(items) => Ok(Ax::Many(items.clone())),
                     other => {
                         let n = to_num(other);
-                        if n.is_nan() { Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
+                        if n.is_nan() {
+                            Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number")))
+                        } else {
+                            Ok(Ax::Num(n))
+                        }
                     }
                 }
             };
@@ -3691,12 +4218,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 }
             }
             let k = arg(a, 1);
-            V::Bool(to_list(arg(a, 0)).iter().any(|x| !matches!(x, V::Null) && !x.is_sol_error() && strict_equals(x, k)))
+            V::Bool(
+                to_list(arg(a, 0)).iter().any(|x| !matches!(x, V::Null) && !x.is_sol_error() && strict_equals(x, k)),
+            )
         }
         F::PMT => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         F::FV => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         F::PV => {
-            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(or_zero(arg(a, 3))), parse_number(or_zero(arg(a, 4)))];
+            let nums = [
+                parse_number(arg(a, 0)),
+                parse_number(arg(a, 1)),
+                parse_number(arg(a, 2)),
+                parse_number(or_zero(arg(a, 3))),
+                parse_number(or_zero(arg(a, 4))),
+            ];
             let Some([rate, per, pmt, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             V::Num(if rate == 0.0 {
                 -pmt * per - fv
@@ -3706,7 +4241,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::NPER => {
             let opt = |v: &V| if matches!(v, V::Undef) { V::Num(0.0) } else { v.clone() };
-            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(&opt(arg(a, 3))), parse_number(&opt(arg(a, 4)))];
+            let nums = [
+                parse_number(arg(a, 0)),
+                parse_number(arg(a, 1)),
+                parse_number(arg(a, 2)),
+                parse_number(&opt(arg(a, 3))),
+                parse_number(&opt(arg(a, 4))),
+            ];
             let Some([rate, pmt, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             V::Num(if rate == 0.0 {
                 -(pv + fv) / pmt
@@ -3718,10 +4259,19 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::IPMT => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
         F::PPMT => {
-            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 2)), parse_number(arg(a, 3)), parse_number(or_zero(arg(a, 4))), parse_number(or_zero(arg(a, 5)))];
+            let nums = [
+                parse_number(arg(a, 0)),
+                parse_number(arg(a, 2)),
+                parse_number(arg(a, 3)),
+                parse_number(or_zero(arg(a, 4))),
+                parse_number(or_zero(arg(a, 5))),
+            ];
             let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             let (rate, nper, pv, fv, ty) = (V::Num(rate), V::Num(nper), V::Num(pv), V::Num(fv), V::Num(ty));
-            V::Num(js_arith(&fx_pmt(&rate, &nper, &pv, &fv, &ty)) - js_arith(&fx_ipmt(&rate, arg(a, 1), &nper, &pv, &fv, &ty)))
+            V::Num(
+                js_arith(&fx_pmt(&rate, &nper, &pv, &fv, &ty))
+                    - js_arith(&fx_ipmt(&rate, arg(a, 1), &nper, &pv, &fv, &ty)),
+            )
         }
         F::CLAMP => {
             let n = to_num(arg(a, 0));
@@ -3804,7 +4354,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::err(sol_error(ErrorCode::DivZero, "Life is 0"));
             }
             let r = (to_num(arg(a, 0)) - to_num(arg(a, 1))) / l;
-            if r.is_finite() { V::Num(r) } else { V::Null }
+            if r.is_finite() {
+                V::Num(r)
+            } else {
+                V::Null
+            }
         }
         F::ORDINAL => {
             let n = to_num(arg(a, 0));
@@ -3905,7 +4459,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Num(*n);
             }
             let n = parse_value_text(&to_str(if matches!(x, V::Bool(_)) { &V::Null } else { x }));
-            if n.is_nan() { value_err("VALUE") } else { V::Num(n) }
+            if n.is_nan() {
+                value_err("VALUE")
+            } else {
+                V::Num(n)
+            }
         }
         F::TEXTJOIN => {
             let parts: Vec<String> = flat_all(a.get(2..).unwrap_or(&[])).iter().map(to_str).collect();
@@ -3958,7 +4516,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
         F::COUNTA | F::COUNTBLANK => {
-            let blanks = a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
+            let blanks =
+                a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
             V::Num(if arm == F::COUNTA { a.len() - blanks } else { blanks } as f64)
         }
         F::ISEVEN | F::ISODD => {
@@ -3969,7 +4528,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::N => match arg(a, 0) {
             V::Num(n) => V::Num(*n),
             V::Bool(b) => V::Num(f64::from(u8::from(*b))),
-            v @ V::Fx(code) if matches!(*code, FxError::Value | FxError::Ref | FxError::DivZero | FxError::Num | FxError::Name | FxError::Null | FxError::NotAvailable) => v.clone(),
+            v @ V::Fx(code)
+                if matches!(
+                    *code,
+                    FxError::Value
+                        | FxError::Ref
+                        | FxError::DivZero
+                        | FxError::Num
+                        | FxError::Name
+                        | FxError::Null
+                        | FxError::NotAvailable
+                ) =>
+            {
+                v.clone()
+            }
             _ => V::Num(0.0),
         },
         F::T => match arg(a, 0) {
@@ -3987,7 +4559,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let n = a.len() - 1;
             if idx < 1.0 || idx > n as f64 {
-                return V::err(sol_error(ErrorCode::Value, format!("CHOOSE index {} is outside the range 1–{n}", number_to_string(idx))));
+                return V::err(sol_error(
+                    ErrorCode::Value,
+                    format!("CHOOSE index {} is outside the range 1–{n}", number_to_string(idx)),
+                ));
             }
             match &a[idx as usize] {
                 V::Undef => V::Null,
@@ -4042,11 +4617,17 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::ROW => match ROW_NUMBER.with(|r| r.get()) {
             Some(n) => V::Num(n),
-            None => V::err(sol_error(ErrorCode::Name, "ROW() is this row's number, so it only works inside a computed column")),
+            None => V::err(sol_error(
+                ErrorCode::Name,
+                "ROW() is this row's number, so it only works inside a computed column",
+            )),
         },
         F::TODAY | F::NOW => match clock() {
             Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
-            None => throw(sol_error(ErrorCode::Value, format!("{name} reads the calculation's clock, and this call has none"))),
+            None => throw(sol_error(
+                ErrorCode::Value,
+                format!("{name} reads the calculation's clock, and this call has none"),
+            )),
         },
         F::EDATE => fx_edate(arg(a, 0), arg(a, 1)),
         F::CONVERT => {
@@ -4079,7 +4660,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Null;
             }
             let unspread = if sa.is_none() { "a" } else { "b" };
-            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error(ErrorCode::Value, format!("{unspread} is not iterable"))) };
+            let (Some(sa), Some(sb)) = (sa, sb) else {
+                return throw(sol_error(ErrorCode::Value, format!("{unspread} is not iterable")));
+            };
             let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
             if !(v1 > 0.0) || !(v2 > 0.0) {
                 return V::Null;
@@ -4088,7 +4671,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (df1, df2) = (na.unwrap_or(f64::NAN) - 1.0, nb.unwrap_or(f64::NAN) - 1.0);
             let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
             let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
-            if p.is_finite() { V::Num(p) } else { V::Null }
+            if p.is_finite() {
+                V::Num(p)
+            } else {
+                V::Null
+            }
         }
         F::T_TEST => {
             let lists = |i: usize| match arg(a, i) {
@@ -4107,12 +4694,17 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             } else if ty == 3.0 {
                 TTestKind::UnequalVar
             } else {
-                return V::err(sol_error(ErrorCode::Domain, "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)"));
+                return V::err(sol_error(
+                    ErrorCode::Domain,
+                    "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)",
+                ));
             };
             if tails != 1.0 && tails != 2.0 {
                 return V::err(sol_error(ErrorCode::Domain, "T.TEST: tails must be 1 or 2"));
             }
-            let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return V::err(sol_error(ErrorCode::Value, "T.TEST reads two lists of numbers")) };
+            let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else {
+                return V::err(sol_error(ErrorCode::Value, "T.TEST reads two lists of numbers"));
+            };
             match t_test_p(kind, &xa, &xb) {
                 Some(p2) => V::Num(if tails == 2.0 { p2 } else { p2 / 2.0 }),
                 None => V::Null,
@@ -4128,7 +4720,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::FISHERINV => {
             let n = to_num(arg(a, 0));
-            if n.is_nan() { value_err("FISHERINV") } else { V::Num(crate::fdlibm::tanh(n)) }
+            if n.is_nan() {
+                value_err("FISHERINV")
+            } else {
+                V::Num(crate::fdlibm::tanh(n))
+            }
         }
         F::LOG2 => match arg(a, 0) {
             V::Null | V::Undef => V::Null,
@@ -4142,10 +4738,15 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         },
         F::REGEXTEST | F::REGEXEXTRACT | F::REGEXREPLACE => regex_call(name, a),
-        F::ENCODEURL => {
-            V::str(&crate::text_ops::encode_uri_component(&to_str(arg(a, 0))))
-        }
-        F::DECODEURL | F::ENCODEBASE64 | F::DECODEBASE64 | F::UNACCENT | F::SPELLNUMBER | F::HASH | F::SLUGIFY | F::TEMPLATE
+        F::ENCODEURL => V::str(&crate::text_ops::encode_uri_component(&to_str(arg(a, 0)))),
+        F::DECODEURL
+        | F::ENCODEBASE64
+        | F::DECODEBASE64
+        | F::UNACCENT
+        | F::SPELLNUMBER
+        | F::HASH
+        | F::SLUGIFY
+        | F::TEMPLATE
             if matches!(arg(a, 0), V::Null | V::Undef) =>
         {
             V::Null
@@ -4162,7 +4763,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::HASH => {
             let alg: String = match arg(a, 1) {
                 V::Null | V::Undef => "sha256".into(),
-                v => js_lower(js_trim(&js_string_of(v))).chars().filter(|&c| c != '-' && c != '_' && !is_js_space(c)).collect(),
+                v => js_lower(js_trim(&js_string_of(v)))
+                    .chars()
+                    .filter(|&c| c != '-' && c != '_' && !is_js_space(c))
+                    .collect(),
             };
             match crate::hash_ops::hash_text(&to_str(arg(a, 0)), &alg) {
                 Some(h) => V::str(&h),
@@ -4172,9 +4776,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 )),
             }
         }
-        F::UNACCENT => {
-            V::str(&crate::text_ops::unaccent(&to_str(arg(a, 0))))
-        }
+        F::UNACCENT => V::str(&crate::text_ops::unaccent(&to_str(arg(a, 0)))),
         F::SLUGIFY => {
             let sep = match arg(a, 1) {
                 V::Null | V::Undef => "-".to_string(),
@@ -4193,12 +4795,17 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let given = |v: &V| !matches!(v, V::Null | V::Undef);
             let (col, row) = (arg(a, 1), arg(a, 2));
             if !given(col) && !given(row) {
-                return V::err(sol_error(ErrorCode::Syntax, "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
+                return V::err(sol_error(
+                    ErrorCode::Syntax,
+                    "TEXTSPLIT needs a column delimiter, a row delimiter, or both",
+                ));
             }
             let mode = arg(a, 4);
             let caseless = given(mode) && to_num(mode) == 1.0;
             let pad = match arg(a, 5) {
-                V::Undef => V::err(sol_error(ErrorCode::NotAvailable, "TEXTSPLIT: this row has fewer parts than the longest")),
+                V::Undef => {
+                    V::err(sol_error(ErrorCode::NotAvailable, "TEXTSPLIT: this row has fewer parts than the longest"))
+                }
                 v => v.clone(),
             };
             let col = given(col).then(|| to_str(col));
@@ -4243,7 +4850,13 @@ fn combinatoric(op: &str, args: &[f64]) -> V {
         "FACTDOUBLE" => product(if n % 2.0 == 0.0 { 2.0 } else { 1.0 }, n, 2.0),
         "COMBIN" if n < k => return chosen(),
         "COMBIN" => combinations(n, k),
-        "COMBINA" if n == 0.0 => if k == 0.0 { 1.0 } else { 0.0 },
+        "COMBINA" if n == 0.0 => {
+            if k == 0.0 {
+                1.0
+            } else {
+                0.0
+            }
+        }
         "COMBINA" => combinations(n + k - 1.0, k),
         "PERMUT" if n < k => return chosen(),
         "PERMUT" => product(n - k + 1.0, n, 1.0),
@@ -4288,7 +4901,11 @@ fn combinations(n: f64, k: f64) -> f64 {
         }
         i += 1.0;
     }
-    if r < 9_007_199_254_740_992.0 { math_round(r) } else { r }
+    if r < 9_007_199_254_740_992.0 {
+        math_round(r)
+    } else {
+        r
+    }
 }
 
 /// `while (b) [a, b] = [b, a % b]`.
@@ -4302,9 +4919,13 @@ fn int_gcd(mut a: f64, mut b: f64) -> f64 {
 /// `binomDistRange` (mathUtils.ts).
 fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
     let (n, lo, hi) = (trials.trunc(), s.trunc(), s2.unwrap_or(s).trunc());
-    let ok = (0.0..f64::INFINITY).contains(&n) && (0.0..=1.0).contains(&p) && lo >= 0.0 && lo <= n && hi >= lo && hi <= n;
+    let ok =
+        (0.0..f64::INFINITY).contains(&n) && (0.0..=1.0).contains(&p) && lo >= 0.0 && lo <= n && hi >= lo && hi <= n;
     if !ok {
-        return V::err(sol_error(ErrorCode::Domain, "BINOM.DIST.RANGE needs 0 \u{2264} s \u{2264} s2 \u{2264} trials and a probability from 0 to 1"));
+        return V::err(sol_error(
+            ErrorCode::Domain,
+            "BINOM.DIST.RANGE needs 0 \u{2264} s \u{2264} s2 \u{2264} trials and a probability from 0 to 1",
+        ));
     }
     if hi - lo + 1.0 > MAX_OUTCOMES {
         return V::err(sol_error(ErrorCode::Domain, "BINOM.DIST.RANGE sums at most 1,000,000 outcomes"));
@@ -4320,7 +4941,9 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
         sum += if c.is_finite() {
             c * js_pow(p, k) * js_pow(1.0 - p, n - k)
         } else {
-            crate::fdlibm::exp(crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p))
+            crate::fdlibm::exp(
+                crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p),
+            )
         };
         k += 1.0;
     }
@@ -4403,7 +5026,9 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
 /// `averageRanks` (statsOps.ts): ties share the mean of their places.
 pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     let mut idx: Vec<usize> = (0..arr.len()).collect();
-    crate::js_sort::js_sort_by(&mut idx, |&x, &y| (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    crate::js_sort::js_sort_by(&mut idx, |&x, &y| {
+        (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
+    });
     let mut ranks = vec![0.0; arr.len()];
     let mut i = 0;
     while i < idx.len() {
@@ -4433,7 +5058,11 @@ pub(crate) fn spearman(xs: &[f64], ys: &[f64]) -> V {
 /// a number, which JS would add as text.
 fn raw_numbers(v: &V) -> Result<Option<Vec<f64>>, ()> {
     match v {
-        V::List(items) => items.iter().map(|x| if let V::Num(n) = x { Ok(*n) } else { Err(()) }).collect::<Result<Vec<_>, _>>().map(Some),
+        V::List(items) => items
+            .iter()
+            .map(|x| if let V::Num(n) = x { Ok(*n) } else { Err(()) })
+            .collect::<Result<Vec<_>, _>>()
+            .map(Some),
         V::Null | V::Undef => Ok(Some(Vec::new())),
         V::Str(_) => Err(()),
         _ => Ok(None),
@@ -4529,7 +5158,10 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
         return e.clone();
     }
     let n = range.len().min(probs.len());
-    let pairs: Vec<(&V, &V)> = (0..n).map(|i| (&range[i], &probs[i])).filter(|(x, y)| !matches!(x, V::Null) && !matches!(y, V::Null)).collect();
+    let pairs: Vec<(&V, &V)> = (0..n)
+        .map(|i| (&range[i], &probs[i]))
+        .filter(|(x, y)| !matches!(x, V::Null) && !matches!(y, V::Null))
+        .collect();
     if pairs.is_empty() {
         return V::Null;
     }
@@ -4544,7 +5176,11 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
             }
         }
     }
-    if text || !prob.is_finite() { V::Null } else { V::Num(clamp01(prob)) }
+    if text || !prob.is_finite() {
+        V::Null
+    } else {
+        V::Num(clamp01(prob))
+    }
 }
 
 /// Formula.js EDATE under the registration's `toSerialIfDate`: the start's local day of the month, moved by whole
@@ -4644,16 +5280,27 @@ fn regex_call(name: &str, a: &[V]) -> V {
     let re = match compile(&utf16(&pattern), icase) {
         Compiled::Ok(re) => re,
         Compiled::Invalid => return V::Null,
-        Compiled::Unsure => return V::err(sol_error(ErrorCode::Value, format!("{name} can't run this pattern: a repeat count past 100,000 or a \\p{{…}} class"))),
+        Compiled::Unsure => {
+            return V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name} can't run this pattern: a repeat count past 100,000 or a \\p{{…}} class"),
+            ))
+        }
     };
     // Every match list (modes 1 and 2) is a list.
     let t = utf16(&text);
     match name {
         "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),
         "REGEXEXTRACT" if mode == 0.0 => V::str(&from_utf16(&regex_extract(&re, &t))),
-        "REGEXEXTRACT" if mode == 1.0 => V::List(Rc::new(match_all(&re, &t).into_iter().map(|m| V::str(&from_utf16(&t[m.range]))).collect())),
+        "REGEXEXTRACT" if mode == 1.0 => {
+            V::List(Rc::new(match_all(&re, &t).into_iter().map(|m| V::str(&from_utf16(&t[m.range]))).collect()))
+        }
         "REGEXEXTRACT" => V::List(Rc::new(match regress_first(&re, &t) {
-            Some(m) => m.captures.iter().map(|g| V::str(&g.as_ref().map_or_else(String::new, |r| from_utf16(&t[r.clone()])))).collect(),
+            Some(m) => m
+                .captures
+                .iter()
+                .map(|g| V::str(&g.as_ref().map_or_else(String::new, |r| from_utf16(&t[r.clone()]))))
+                .collect(),
             None => Vec::new(),
         })),
         _ if occurrence == 0.0 => V::str(&from_utf16(&regex_replace_all(&re, &t, &utf16(&replacement)))),
@@ -4814,7 +5461,11 @@ fn dollar(value: &V, decimals: &V) -> V {
                 return throw(sol_error(ErrorCode::Value, "minimumFractionDigits value is out of range."));
             }
             let formatted = intl_usd(x, fd.floor() as usize);
-            if x < 0.0 { format!("$({})", formatted.get(2..).unwrap_or("")) } else { formatted }
+            if x < 0.0 {
+                format!("$({})", formatted.get(2..).unwrap_or(""))
+            } else {
+                formatted
+            }
         }
         // An Error's toLocaleString is its toString.
         other => js_string_of(&other),
@@ -4975,7 +5626,13 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
             if !matches!(value, V::List(_)) && !matches!(fallback, V::List(_)) {
                 return if caught(value) { fallback } else { value.clone() };
             }
-            crate::eval::map_cells(&[value.clone(), fallback], &mut |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
+            crate::eval::map_cells(&[value.clone(), fallback], &mut |x| {
+                if caught(&x[0]) {
+                    x[1].clone()
+                } else {
+                    x[0].clone()
+                }
+            })
         }
         "ERROR.TYPE" => walk(value, &|v| match as_sol(v) {
             Some(e) => V::Num(error_type_num(e.code)),
@@ -4988,16 +5645,49 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
 // ─── Finance (financeOps.ts, and Formula.js's own) ──────────────────────────────
 
 /// The finance functions that read a whole list of cash flows (`listArgs`).
-const FINANCE_WHOLE: &[&str] = &[
-    "IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO",
-];
+const FINANCE_WHOLE: &[&str] =
+    &["IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO"];
 
 /// The rest of the finance functions `finance_function` answers.
 const FINANCE: &[&str] = &[
-    "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC",
-    "TBILLEQ", "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD",
-    "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "NPV", "RATE",
-    "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE", "DOLLARFR", "ISPMT",
+    "COUPDAYBS",
+    "COUPDAYSNC",
+    "COUPNCD",
+    "COUPPCD",
+    "COUPNUM",
+    "ACCRINTM",
+    "INTRATE",
+    "RECEIVED",
+    "YIELDDISC",
+    "TBILLEQ",
+    "TBILLPRICE",
+    "TBILLYIELD",
+    "PRICEMAT",
+    "YIELDMAT",
+    "DURATION",
+    "MDURATION",
+    "PRICE",
+    "YIELD",
+    "FVSCHEDULE",
+    "CUMIPMT",
+    "CUMPRINC",
+    "VDB",
+    "ODDFPRICE",
+    "ODDFYIELD",
+    "ODDLPRICE",
+    "ODDLYIELD",
+    "NPV",
+    "RATE",
+    "DB",
+    "DDB",
+    "SYD",
+    "EFFECT",
+    "NOMINAL",
+    "PDURATION",
+    "RRI",
+    "DOLLARDE",
+    "DOLLARFR",
+    "ISPMT",
 ];
 
 fn is_finance_whole(name: &str) -> bool {
@@ -5063,7 +5753,11 @@ fn parse_int_of(x: f64) -> f64 {
         return f64::NAN;
     }
     let n: f64 = digits[..end].parse().unwrap_or(f64::NAN);
-    if neg { -n } else { n }
+    if neg {
+        -n
+    } else {
+        n
+    }
 }
 
 fn finance_function(name: &str, a: &[V]) -> V {
@@ -5096,7 +5790,9 @@ fn finance_function(name: &str, a: &[V]) -> V {
             fin(f::tbill(op, n(0), n(1), n(2)))
         }
         "PRICEMAT" | "YIELDMAT" => fin(f::price_mat(name == "PRICEMAT", n(0), n(1), n(2), n(3), n(4), o(5, 0.0))),
-        "DURATION" | "MDURATION" => fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0))),
+        "DURATION" | "MDURATION" => {
+            fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0)))
+        }
         "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0))),
         "IRR" => {
             let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
@@ -5124,7 +5820,11 @@ fn finance_function(name: &str, a: &[V]) -> V {
             if fr.is_nan() || rr.is_nan() {
                 return value_err("MIRR");
             }
-            if nums.len() <= 1 { V::Null } else { fin(f::mirr(&nums, fr, rr)) }
+            if nums.len() <= 1 {
+                V::Null
+            } else {
+                fin(f::mirr(&nums, fr, rr))
+            }
         }
         "XNPV" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
@@ -5162,7 +5862,11 @@ fn finance_function(name: &str, a: &[V]) -> V {
                 return V::Null;
             }
             let p = n(0);
-            if p.is_nan() { value_err("FVSCHEDULE") } else { V::Num(f::fv_schedule(p, &nums_of(std::slice::from_ref(arg(a, 1))))) }
+            if p.is_nan() {
+                value_err("FVSCHEDULE")
+            } else {
+                V::Num(f::fv_schedule(p, &nums_of(std::slice::from_ref(arg(a, 1)))))
+            }
         }
         "CUMIPMT" | "CUMPRINC" => {
             let ty = if is_true(arg(a, 5)) { 1.0 } else { 0.0 };
@@ -5262,7 +5966,8 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 return V::Num(0.0);
             }
             // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
-            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0).map_or(f64::NAN, |t| string_to_number(&t));
+            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0)
+                .map_or(f64::NAN, |t| string_to_number(&t));
             let initial = (cost * rate * month) / 12.0;
             let mut total = initial;
             let mut current = 0.0;
@@ -5403,9 +6108,18 @@ mod tests {
     #[test]
     fn text_is_never_a_number_or_a_logical() {
         let s = V::str;
-        for (name, args) in [("ABS", vec![s("5")]), ("SQRT", vec![s("4")]), ("EDATE", vec![s("2024-01-31"), V::Num(1.0)]), ("TAKE", vec![V::Num(1.0), s("1")]), ("NORM.DIST", vec![V::Num(1.0), V::Num(0.0), V::Num(1.0), s("TRUE")])] {
+        for (name, args) in [
+            ("ABS", vec![s("5")]),
+            ("SQRT", vec![s("4")]),
+            ("EDATE", vec![s("2024-01-31"), V::Num(1.0)]),
+            ("TAKE", vec![V::Num(1.0), s("1")]),
+            ("NORM.DIST", vec![V::Num(1.0), V::Num(0.0), V::Num(1.0), s("TRUE")]),
+        ] {
             let r = call_function(name, &args);
-            assert!(matches!(&r, V::Fx(FxError::Value)) || matches!(&r, V::Err(e) if e.code == ErrorCode::Value), "{name}: {r:?}");
+            assert!(
+                matches!(&r, V::Fx(FxError::Value)) || matches!(&r, V::Err(e) if e.code == ErrorCode::Value),
+                "{name}: {r:?}"
+            );
         }
         assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), V::Num(n) if n == 1.0));
         assert!(matches!(call_function("VALUE", &[s("5")]), V::Num(n) if n == 5.0));

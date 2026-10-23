@@ -6,15 +6,16 @@
 //! reconcile and a frame ref's read stay with the TS around these bodies.
 
 use super::columns::{
-    called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition, TableColumn,
+    called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition,
+    TableColumn,
 };
 use super::kit::{each, guard_finite};
 use super::{err, list, Answer, Call, Column};
+use crate::error_value::ErrorCode;
 use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
-use crate::frame::FrameColType;
-use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_less, js_string_of, V};
+use crate::frame::FrameColType;
 use crate::jsnum::{js_lower, js_trim, number_to_string, string_to_number};
 use crate::unit_dims::{dim_equal, Dim, UnitCell};
 use serde_json::Value as Json;
@@ -126,7 +127,15 @@ fn alert_status(c: &Call) -> Result<V, V> {
             if blank(&[&v, &lo, &hi]) {
                 return Ok(V::Null);
             }
-            broadcast(&[v, lo, hi], |o| if js_less(o[0], o[1]) { 1.0 } else if js_less(o[2], o[0]) { 2.0 } else { 0.0 })
+            broadcast(&[v, lo, hi], |o| {
+                if js_less(o[0], o[1]) {
+                    1.0
+                } else if js_less(o[2], o[0]) {
+                    2.0
+                } else {
+                    0.0
+                }
+            })
         }
         "equals" => {
             let (v, t) = (scalarish(c, "value"), scalarish(c, "target"));
@@ -140,7 +149,9 @@ fn alert_status(c: &Call) -> Result<V, V> {
             if blank(&[&v]) {
                 return Ok(V::Null);
             }
-            broadcast(&[v], |o| f64::from(u8::from(matches!(o[0], V::Bool(true)) || matches!(o[0], V::Num(n) if *n == 1.0))))
+            broadcast(&[v], |o| {
+                f64::from(u8::from(matches!(o[0], V::Bool(true)) || matches!(o[0], V::Num(n) if *n == 1.0)))
+            })
         }
         "text" => {
             let text = c.read_input("text", text_literal(c, "text", ""));
@@ -198,11 +209,19 @@ fn json_of(v: &V) -> String {
         V::Str(s) => quote(s),
         V::Bool(b) => b.to_string(),
         V::List(items) => format!("[{}]", items.iter().map(json_of).collect::<Vec<_>>().join(",")),
-        V::Err(e) => format!("{{\"__solError\":true,\"code\":{},\"message\":{}}}", quote(e.code.as_str()), quote(&e.message)),
+        V::Err(e) => {
+            format!("{{\"__solError\":true,\"code\":{},\"message\":{}}}", quote(e.code.as_str()), quote(&e.message))
+        }
         V::Unit(u) => format!("{{\"__unitCell\":true,\"value\":{}}}", json_of(&V::Num(u.value))),
         V::Json(j) => j.to_string(),
-        V::Frame(f) => format!("{{\"__frame\":[{}]}}", f.columns.iter().map(|c| json_of(&list(c.values.clone()))).collect::<Vec<_>>().join(",")),
-        V::Cube(cube) => format!("{{\"__cube\":[{}]}}", cube.columns.iter().map(|c| json_of(&list(c.cells.clone()))).collect::<Vec<_>>().join(",")),
+        V::Frame(f) => format!(
+            "{{\"__frame\":[{}]}}",
+            f.columns.iter().map(|c| json_of(&list(c.values.clone()))).collect::<Vec<_>>().join(",")
+        ),
+        V::Cube(cube) => format!(
+            "{{\"__cube\":[{}]}}",
+            cube.columns.iter().map(|c| json_of(&list(c.cells.clone()))).collect::<Vec<_>>().join(",")
+        ),
         other => js_string_of(other),
     }
 }
@@ -295,7 +314,11 @@ fn has_duplicate(raw: &V) -> bool {
     if let Some(cols) = table {
         let rows = cols.iter().map(|c| c.len()).max().unwrap_or(0);
         return (0..rows).any(|i| {
-            let k = cols.iter().map(|col| cell_key(col.get(i).filter(|v| !missing(v)).unwrap_or(&V::Null))).collect::<Vec<_>>().join("|");
+            let k = cols
+                .iter()
+                .map(|col| cell_key(col.get(i).filter(|v| !missing(v)).unwrap_or(&V::Null)))
+                .collect::<Vec<_>>()
+                .join("|");
             !seen.insert(k)
         });
     }
@@ -330,7 +353,9 @@ fn expect(c: &mut Call) -> Answer {
     }
     let (has_min, has_max) = (!matches!(min, V::Null), !matches!(max, V::Null));
     if on("checkRange") && (has_min || has_max) {
-        let bad = values.iter().any(|v| matches!(v, V::Num(n) if n.is_finite()) && ((has_min && js_less(v, &min)) || (has_max && js_less(&max, v))));
+        let bad = values.iter().any(|v| {
+            matches!(v, V::Num(n) if n.is_finite()) && ((has_min && js_less(v, &min)) || (has_max && js_less(&max, v)))
+        });
         if bad {
             violations.push("range");
         }
@@ -384,7 +409,11 @@ pub(crate) type UnitParts = (Dim, Option<String>);
 
 /// A `ColumnUnit` (a table's unit) as the wire carries it: its dimension and display unit.
 pub(crate) fn column_unit_parts(u: &Json) -> UnitParts {
-    let dim = u.get("dim").and_then(Json::as_object).map(|o| o.iter().map(|(k, v)| (k.clone(), json_f64(v))).collect()).unwrap_or_default();
+    let dim = u
+        .get("dim")
+        .and_then(Json::as_object)
+        .map(|o| o.iter().map(|(k, v)| (k.clone(), json_f64(v))).collect())
+        .unwrap_or_default();
     (dim, u.get("display").and_then(Json::as_str).map(String::from))
 }
 
@@ -466,9 +495,10 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
     if !items.iter().any(|r| matches!(r, V::List(_))) {
         return list(items.iter().map(one).collect());
     }
-    let first_cell = items.iter().find_map(|r| if let V::List(cells) = r { Some(cells) } else { None }).and_then(|cells| {
-        cells.iter().find(|x| !missing(x) && !matches!(x, V::Str(s) if s.is_empty()))
-    });
+    let first_cell = items
+        .iter()
+        .find_map(|r| if let V::List(cells) = r { Some(cells) } else { None })
+        .and_then(|cells| cells.iter().find(|x| !missing(x) && !matches!(x, V::Str(s) if s.is_empty())));
     if !matches!(first_cell, Some(V::Num(_))) {
         return pass_on(c, key, out_key, value).1;
     }
@@ -480,15 +510,30 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
                 if want.is_empty() {
                     want = "dimensionless".into();
                 }
-                return unit_err(format!("This grid is {}, but the format unit is {want}. Convert it first.", format_dim(&held_dim)));
+                return unit_err(format!(
+                    "This grid is {}, but the format unit is {want}. Convert it first.",
+                    format_dim(&held_dim)
+                ));
             }
             match display {
                 Some(id) if held_display.as_deref().unwrap_or("") != id => {
                     let from = held_display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit);
                     let (fs, fo) = from.map_or((1.0, 0.0), |f| (f.scale, f.offset.unwrap_or(0.0)));
                     let to_off = u.offset.unwrap_or(0.0);
-                    let rescale = |x: &V| if let V::Num(n) = x { V::Num((n * fs + fo - to_off) / u.scale) } else { x.clone() };
-                    let out = list(items.iter().map(|r| if let V::List(cells) = r { list(cells.iter().map(rescale).collect()) } else { rescale(r) }).collect());
+                    let rescale =
+                        |x: &V| if let V::Num(n) = x { V::Num((n * fs + fo - to_off) / u.scale) } else { x.clone() };
+                    let out = list(
+                        items
+                            .iter()
+                            .map(|r| {
+                                if let V::List(cells) = r {
+                                    list(cells.iter().map(rescale).collect())
+                                } else {
+                                    rescale(r)
+                                }
+                            })
+                            .collect(),
+                    );
                     put_table_unit(c, out_key, &u.dim, Some(id));
                     return out;
                 }
@@ -506,7 +551,8 @@ fn put_table_unit(c: &mut Call, key: &str, dim: &Dim, display: Option<&str>) {
     if crate::unit_dims::is_dimensionless(dim) {
         return;
     }
-    let dim: serde_json::Map<String, Json> = dim.iter().map(|(k, v)| (k.clone(), super::frames::json_num(*v))).collect();
+    let dim: serde_json::Map<String, Json> =
+        dim.iter().map(|(k, v)| (k.clone(), super::frames::json_num(*v))).collect();
     let display = display.map_or_else(|| serde_json::json!({ "__undef": 1 }), Json::from);
     c.set_matrix_unit(key, serde_json::json!({ "dim": dim, "display": display }));
 }
@@ -515,9 +561,12 @@ fn format_controller(c: &mut Call) -> Answer {
     use crate::card_helpers::{fc_unit_id_for_unit, is_fc_unit};
     let val = first(c, "in");
     let held = held_unit(c, "in", &val);
-    let inherited: Option<String> = held.as_ref().and_then(|(dim, display)| display.clone().or_else(|| fc_unit_id_for_unit(dim, 1.0).map(String::from)));
+    let inherited: Option<String> = held
+        .as_ref()
+        .and_then(|(dim, display)| display.clone().or_else(|| fc_unit_id_for_unit(dim, 1.0).map(String::from)));
     let dictated_from = c.field_str("dictatedFromUnit", "");
-    let dictated = if !dictated_from.is_empty() && is_fc_unit(dictated_from) { dictated_from.to_string() } else { String::new() };
+    let dictated =
+        if !dictated_from.is_empty() && is_fc_unit(dictated_from) { dictated_from.to_string() } else { String::new() };
     let mut unit = c.field_str("unit", "none").to_string();
     if !dictated.is_empty() && unit == "none" {
         unit = dictated.clone();
@@ -544,7 +593,9 @@ fn template_format(v: &V, spec: Option<&str>, is_date: bool) -> String {
         V::Null | V::Undef => String::new(),
         V::Err(e) => e.code.as_str().to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
-        V::Num(n) if is_date => crate::date_serial::format_date_serial(*n, spec.unwrap_or(crate::date_serial::DEFAULT_DATE_FORMAT)),
+        V::Num(n) if is_date => {
+            crate::date_serial::format_date_serial(*n, spec.unwrap_or(crate::date_serial::DEFAULT_DATE_FORMAT))
+        }
         V::Num(n) => js_string_of(&super::kit::core_call("TEXT", &[V::Num(*n), V::str(spec.unwrap_or("@"))])),
         V::List(items) => items.iter().map(|x| template_format(x, spec, is_date)).collect::<Vec<_>>().join(", "),
         other => js_string_of(other),
@@ -567,7 +618,10 @@ fn template(c: &mut Call) -> Answer {
     };
     let tokens = template_tokens(&template);
     let value = |name: &str| first(c, name);
-    let names: Vec<&str> = tokens.iter().filter_map(|(_, t)| if let Some(Token::Placeholder(n, _)) = t { Some(n.as_str()) } else { None }).collect();
+    let names: Vec<&str> = tokens
+        .iter()
+        .filter_map(|(_, t)| if let Some(Token::Placeholder(n, _)) = t { Some(n.as_str()) } else { None })
+        .collect();
     let len = names.iter().filter_map(|n| if let V::List(l) = value(n) { Some(l.len()) } else { None }).max();
     let render = |at: Option<usize>| {
         let mut out = String::new();
@@ -628,7 +682,8 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
     let trimmed = js_trim(text);
     if trimmed.starts_with('[') {
         if let Ok(Json::Array(raw)) = serde_json::from_str::<Json>(trimmed) {
-            let given: Vec<String> = raw.iter().map(|c| c.get("name").and_then(Json::as_str).unwrap_or("").to_string()).collect();
+            let given: Vec<String> =
+                raw.iter().map(|c| c.get("name").and_then(Json::as_str).unwrap_or("").to_string()).collect();
             let names = crate::frame::make_headers(&given, raw.len());
             return raw
                 .iter()
@@ -646,13 +701,17 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
                         _ => Vec::new(),
                     };
                     let unit = c.get("unit").and_then(Json::as_str).filter(|u| !u.is_empty()).map(String::from);
-                    let expr = c.get("expr").and_then(Json::as_str).filter(|e| !js_trim(e).is_empty()).map(String::from);
+                    let expr =
+                        c.get("expr").and_then(Json::as_str).filter(|e| !js_trim(e).is_empty()).map(String::from);
                     SourceColumn { name, ty, cells, unit, expr }
                 })
                 .collect();
         }
     }
-    crate::csv::source_columns(trimmed).into_iter().map(|(name, ty, cells)| SourceColumn { name, ty, cells, unit: None, expr: None }).collect()
+    crate::csv::source_columns(trimmed)
+        .into_iter()
+        .map(|(name, ty, cells)| SourceColumn { name, ty, cells, unit: None, expr: None })
+        .collect()
 }
 
 /// `deriveFrame`: each column's cells read as its type, the text kept as typed.
@@ -661,7 +720,11 @@ fn derive_column(s: &SourceColumn) -> Column {
         name: s.name.clone(),
         ty: s.ty,
         values: s.cells.iter().map(|cell| super::list::frame_cell_of(s.ty.as_str(), cell)).collect(),
-        unit: if s.ty == FrameColType::Number { s.unit.as_deref().and_then(super::frames::column_unit_from_spec) } else { None },
+        unit: if s.ty == FrameColType::Number {
+            s.unit.as_deref().and_then(super::frames::column_unit_from_spec)
+        } else {
+            None
+        },
         format: None,
         raw: Some(Json::Array(s.cells.iter().map(|x| Json::String(x.clone())).collect())),
     }
@@ -698,7 +761,11 @@ fn picks(v: V) -> V {
     match v {
         V::List(items) if !matches!(items.first(), Some(V::List(_))) => {
             let kept: Vec<V> = items.iter().filter(|x| !missing(x)).cloned().collect();
-            if kept.is_empty() { V::Undef } else { list(kept) }
+            if kept.is_empty() {
+                V::Undef
+            } else {
+                list(kept)
+            }
         }
         x if missing(&x) => V::Undef,
         other => other,
@@ -710,9 +777,13 @@ fn option_word<'a>(opts: &str, key: &str, values: &[&'a str]) -> Option<&'a str>
     opts.split(';').find_map(|seg| {
         let seg = seg.trim_start_matches(crate::jsnum::is_js_space);
         let rest = seg.get(..key.len()).filter(|h| h.eq_ignore_ascii_case(key)).map(|_| &seg[key.len()..])?;
-        let rest = rest.trim_start_matches(crate::jsnum::is_js_space).strip_prefix('=')?.trim_start_matches(crate::jsnum::is_js_space);
+        let rest = rest
+            .trim_start_matches(crate::jsnum::is_js_space)
+            .strip_prefix('=')?
+            .trim_start_matches(crate::jsnum::is_js_space);
         values.iter().copied().find(|w| {
-            rest.get(..w.len()).is_some_and(|h| h.eq_ignore_ascii_case(w)) && !rest[w.len()..].chars().next().is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+            rest.get(..w.len()).is_some_and(|h| h.eq_ignore_ascii_case(w))
+                && !rest[w.len()..].chars().next().is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
         })
     })
 }
@@ -723,7 +794,11 @@ fn frame_cell_text(col: &Column, v: &V) -> V {
         V::Err(e) => V::str(e.code.as_str()),
         V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),
         V::Num(n) if col.ty == FrameColType::Date && n.is_finite() => {
-            let ann = col.format.as_ref().map(crate::card_helpers::Annotation::from_json).unwrap_or_else(crate::card_helpers::Annotation::auto);
+            let ann = col
+                .format
+                .as_ref()
+                .map(crate::card_helpers::Annotation::from_json)
+                .unwrap_or_else(crate::card_helpers::Annotation::auto);
             V::str(&crate::date_serial::format_date_serial(*n, crate::card_helpers::date_annotation_pattern(&ann)))
         }
         other => other.clone(),
@@ -799,15 +874,23 @@ fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberD
     let shown_text = |col: &Column, r: usize| match record_cell(col, r) {
         V::Null => String::new(),
         V::Num(n) => {
-            let dated = col.format.as_ref().and_then(|f| f.get("format")).and_then(Json::as_str).is_some_and(is_date_style);
-            if col.format.is_some() && !dated { record_number_text(n, col.format.as_ref(), d) } else { number_to_string(n) }
+            let dated =
+                col.format.as_ref().and_then(|f| f.get("format")).and_then(Json::as_str).is_some_and(is_date_style);
+            if col.format.is_some() && !dated {
+                record_number_text(n, col.format.as_ref(), d)
+            } else {
+                number_to_string(n)
+            }
         }
         v => js_string_of(&v),
     };
     let chip_cols: Vec<usize> = cols
         .iter()
         .enumerate()
-        .filter(|(_, c)| c.ty == FrameColType::String && c.format.as_ref().and_then(|f| f.get("chip")).and_then(Json::as_bool) == Some(true))
+        .filter(|(_, c)| {
+            c.ty == FrameColType::String
+                && c.format.as_ref().and_then(|f| f.get("chip")).and_then(Json::as_bool) == Some(true)
+        })
         .map(|(i, _)| i)
         .collect();
     let names: Vec<String> = cols.iter().map(column_label).collect();
@@ -877,9 +960,11 @@ fn record_field(name: &str, col: Option<&Column>, row: Option<usize>, at: &At) -
 
 fn record(c: &mut Call) -> Answer {
     let op = c.field_str("op", "detail").to_string();
-    let display = c.field("numberDisplay").map_or_else(crate::card_helpers::NumberDisplay::default, |d| crate::card_helpers::NumberDisplay {
-        decimals: d.get("decimals").map_or(4.0, json_f64),
-        sci_from: crate::card_helpers::sci_from_setting(d.get("sciAbove").and_then(Json::as_str)),
+    let display = c.field("numberDisplay").map_or_else(crate::card_helpers::NumberDisplay::default, |d| {
+        crate::card_helpers::NumberDisplay {
+            decimals: d.get("decimals").map_or(4.0, json_f64),
+            sci_from: crate::card_helpers::sci_from_setting(d.get("sciAbove").and_then(Json::as_str)),
+        }
     });
     let fv = first(c, "frame");
     let cols: &[Column] = match &fv {
@@ -910,7 +995,8 @@ fn record(c: &mut Call) -> Answer {
             _ => None,
         },
     };
-    let options = opt_str.as_deref().filter(|s| !s.is_empty()).map(super::visual::parse_chart_options).unwrap_or_default();
+    let options =
+        opt_str.as_deref().filter(|s| !s.is_empty()).map(super::visual::parse_chart_options).unwrap_or_default();
     let size = opt_str.as_deref().and_then(|o| option_word(o, "cardsize", &["s", "m", "l"]));
     let clamp_tiles = opt_str.as_deref().and_then(|o| option_word(o, "clamp", &["on", "true", "yes", "1"])).is_some();
 
@@ -920,7 +1006,11 @@ fn record(c: &mut Call) -> Answer {
             V::Str(s) => js_lower(js_trim(s)).into_owned(),
             _ => String::new(),
         };
-        if key.is_empty() { None } else { cols.iter().find(|col| js_lower(js_trim(&col.name)) == key) }
+        if key.is_empty() {
+            None
+        } else {
+            cols.iter().find(|col| js_lower(js_trim(&col.name)) == key)
+        }
     } else {
         None
     };
@@ -929,15 +1019,43 @@ fn record(c: &mut Call) -> Answer {
         V::Str(s) if !js_trim(s).is_empty() => crate::card_helpers::parse_record_layout(s),
         _ => Vec::new(),
     };
-    let stack: Vec<&Column> = cols.iter().filter(|col| !(op == "board" && by_col.is_some_and(|b| std::ptr::eq(b, *col)))).collect();
+    let stack: Vec<&Column> =
+        cols.iter().filter(|col| !(op == "board" && by_col.is_some_and(|b| std::ptr::eq(b, *col)))).collect();
     let card_at = |row: Option<usize>| -> Json {
         if placed.is_empty() {
-            Json::Array(stack.iter().enumerate().map(|(i, col)| record_field(&col.name, Some(col), row, &At { row: i + 1, col: 1, row_span: 1, col_span: 1, hint: String::new(), title: false })).collect())
+            Json::Array(
+                stack
+                    .iter()
+                    .enumerate()
+                    .map(|(i, col)| {
+                        record_field(
+                            &col.name,
+                            Some(col),
+                            row,
+                            &At { row: i + 1, col: 1, row_span: 1, col_span: 1, hint: String::new(), title: false },
+                        )
+                    })
+                    .collect(),
+            )
         } else {
             Json::Array(
                 placed
                     .iter()
-                    .map(|p| record_field(&p.name, by_name(&p.name), row, &At { row: p.row, col: p.col, row_span: p.row_span, col_span: p.col_span, hint: p.hint.clone(), title: p.title }))
+                    .map(|p| {
+                        record_field(
+                            &p.name,
+                            by_name(&p.name),
+                            row,
+                            &At {
+                                row: p.row,
+                                col: p.col,
+                                row_span: p.row_span,
+                                col_span: p.col_span,
+                                hint: p.hint.clone(),
+                                title: p.title,
+                            },
+                        )
+                    })
                     .collect(),
             )
         }
@@ -1046,11 +1164,33 @@ fn lambda_socket_name(key: &str) -> String {
 
 /// A computed column over the table on the core's evaluator (`computeColumnOnEngine`): its cells, or the error that
 /// stops it.
-fn run_column(planned: &[TableColumn], rows: usize, spec: crate::eval::ColumnSpec, sides: rustc_hash::FxHashMap<String, V>, row_sides: rustc_hash::FxHashMap<String, V>) -> Result<Vec<V>, V> {
+fn run_column(
+    planned: &[TableColumn],
+    rows: usize,
+    spec: crate::eval::ColumnSpec,
+    sides: rustc_hash::FxHashMap<String, V>,
+    row_sides: rustc_hash::FxHashMap<String, V>,
+) -> Result<Vec<V>, V> {
     let frame = crate::frame::FrameValue {
-        columns: planned.iter().map(|c| crate::frame::FrameColumn::new(c.row.name.clone(), c.ty, c.row.values.iter().map(super::frames::core_cell).collect())).collect(),
+        columns: planned
+            .iter()
+            .map(|c| {
+                crate::frame::FrameColumn::new(
+                    c.row.name.clone(),
+                    c.ty,
+                    c.row.values.iter().map(super::frames::core_cell).collect(),
+                )
+            })
+            .collect(),
     };
-    let inputs = crate::eval::ColumnInputs { table: crate::eval::Table::Frame(&frame), sides, row_sides, reserved: Vec::new(), alias: Default::default(), rows };
+    let inputs = crate::eval::ColumnInputs {
+        table: crate::eval::Table::Frame(&frame),
+        sides,
+        row_sides,
+        reserved: Vec::new(),
+        alias: Default::default(),
+        rows,
+    };
     match crate::eval::column(spec, inputs) {
         Err(e) => Err(V::err(e)),
         Ok(o) => Ok(o.cells.iter().map(super::frames::card_cell).collect()),
@@ -1063,7 +1203,11 @@ fn frame_input(c: &mut Call) -> Answer {
     if source.iter().all(|s| s.expr.is_none()) {
         return Ok(vec![("frame".into(), super::frames::frame_v(base))]);
     }
-    let keys: Vec<String> = c.field("lambdaKeys").and_then(Json::as_array).map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect()).unwrap_or_default();
+    let keys: Vec<String> = c
+        .field("lambdaKeys")
+        .and_then(Json::as_array)
+        .map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect())
+        .unwrap_or_default();
     let lam_by_name: Vec<(String, V)> = keys.iter().map(|k| (lambda_socket_name(k), first(c, k))).collect();
     let lam_of = |name: &str| lam_by_name.iter().find(|(n, _)| n == name).map(|(_, v)| v);
     let mut columns: Vec<Column> = base
@@ -1100,12 +1244,18 @@ fn frame_input(c: &mut Call) -> Answer {
                     r
                 }
             };
-            let used: Vec<String> =
-                if bare { vec![js_trim(expr).to_string()] } else { refs.into_iter().filter(|n| lam_of(n).is_some() && index_of(n).is_none()).collect() };
-            let used_lams: Vec<Rc<LambdaV>> = used.iter().filter_map(|n| match lam_of(n) {
-                Some(V::Lambda(l)) => Some(l.clone()),
-                _ => None,
-            }).collect();
+            let used: Vec<String> = if bare {
+                vec![js_trim(expr).to_string()]
+            } else {
+                refs.into_iter().filter(|n| lam_of(n).is_some() && index_of(n).is_none()).collect()
+            };
+            let used_lams: Vec<Rc<LambdaV>> = used
+                .iter()
+                .filter_map(|n| match lam_of(n) {
+                    Some(V::Lambda(l)) => Some(l.clone()),
+                    _ => None,
+                })
+                .collect();
             let lam = if bare { used_lams.first().cloned() } else { None };
             let mut deps: Vec<String> = match (&lam, &ast) {
                 (Some(l), _) => l.params.clone(),
@@ -1143,10 +1293,15 @@ fn frame_input(c: &mut Call) -> Answer {
             let side = |n: &str| captures.iter().find(|(k, _)| k == n).map_or(V::Undef, |(_, v)| v.clone());
             let def = match &lam {
                 Some(l) => named_lambda(&V::Lambda(l.clone())).map(|fl| Definition {
-                    ast: Ast::Call { name: "λ".into(), args: l.params.iter().map(|p| Ast::AtCol(p.clone())).collect() },
+                    ast: Ast::Call {
+                        name: "λ".into(), args: l.params.iter().map(|p| Ast::AtCol(p.clone())).collect()
+                    },
                     fns: [("λ".to_string(), fl)].into_iter().collect(),
                 }),
-                None => ast.clone().map(|a| Definition { ast: a, fns: lam_by_name.iter().filter_map(|(n, v)| named_lambda(v).map(|fl| (n.clone(), fl))).collect() }),
+                None => ast.clone().map(|a| Definition {
+                    ast: a,
+                    fns: lam_by_name.iter().filter_map(|(n, v)| named_lambda(v).map(|fl| (n.clone(), fl))).collect(),
+                }),
             };
             let authored = source[i].unit.as_deref().and_then(super::frames::column_unit_from_spec);
             let table = frame_table(&columns);
@@ -1166,17 +1321,39 @@ fn frame_input(c: &mut Call) -> Answer {
                 Some(l) => {
                     let in_plan = lambda_with_captures(l, &l.units, &|v| plan.side(v));
                     for p in l.params.iter().filter(|p| free(p)) {
-                        sides.insert(p.clone(), err(ErrorCode::Ref, format!("No column \"{p}\": a table λ's side values ride its captures")));
+                        sides.insert(
+                            p.clone(),
+                            err(
+                                ErrorCode::Ref,
+                                format!("No column \"{p}\": a table λ's side values ride its captures"),
+                            ),
+                        );
                     }
-                    for p in l.body.as_ref().map(|b| crate::eval::row_refs(b)).unwrap_or_default().into_iter().filter(|p| free(p)) {
+                    for p in l
+                        .body
+                        .as_ref()
+                        .map(|b| crate::eval::row_refs(b))
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter(|p| free(p))
+                    {
                         row_sides.insert(p.clone(), err(ErrorCode::Ref, format!("No column \"{p}\"")));
                     }
                     run_column(&plan.columns, rows, crate::eval::ColumnSpec::Lambda(&in_plan), sides, row_sides)
                 }
                 None => {
                     let a = ast.as_ref().expect("a formula column parses here");
-                    let lambdas: Vec<(String, V)> = used.iter().zip(&used_lams).map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &l.units, &|v| plan.side(v))))).collect();
-                    let value = |p: &str| lambdas.iter().find(|(n, _)| n == p).map_or_else(|| err(ErrorCode::Ref, format!("No column \"{p}\"")), |(_, v)| v.clone());
+                    let lambdas: Vec<(String, V)> = used
+                        .iter()
+                        .zip(&used_lams)
+                        .map(|(n, l)| (n.clone(), V::Lambda(lambda_with_captures(l, &l.units, &|v| plan.side(v)))))
+                        .collect();
+                    let value = |p: &str| {
+                        lambdas
+                            .iter()
+                            .find(|(n, _)| n == p)
+                            .map_or_else(|| err(ErrorCode::Ref, format!("No column \"{p}\"")), |(_, v)| v.clone())
+                    };
                     for p in vars.iter().chain(used.iter()).filter(|p| free(p)) {
                         sides.entry(p.clone()).or_insert_with(|| value(p));
                     }
@@ -1191,7 +1368,13 @@ fn frame_input(c: &mut Call) -> Answer {
                     for p in rrefs.iter().filter(|p| free(p)) {
                         row_sides.entry(p.clone()).or_insert_with(|| value(p));
                     }
-                    run_column(&plan.columns, rows, crate::eval::ColumnSpec::Expr { ast: a, lambdas: &used }, sides, row_sides)
+                    run_column(
+                        &plan.columns,
+                        rows,
+                        crate::eval::ColumnSpec::Expr { ast: a, lambdas: &used },
+                        sides,
+                        row_sides,
+                    )
                 }
             };
             match outcome {
@@ -1203,7 +1386,14 @@ fn frame_input(c: &mut Call) -> Answer {
                         None => ast.clone(),
                     };
                     let ty = computed_column_type(&source[i].name, &cells, &table, definition.as_ref(), &[]);
-                    columns[i] = Column { name: source[i].name.clone(), ty, values: cells, unit: unit.filter(|_| ty == FrameColType::Number), format: None, raw: None };
+                    columns[i] = Column {
+                        name: source[i].name.clone(),
+                        ty,
+                        values: cells,
+                        unit: unit.filter(|_| ty == FrameColType::Number),
+                        format: None,
+                        raw: None,
+                    };
                 }
             }
         }

@@ -31,7 +31,9 @@ fn same(a: &V, b: &V) -> bool {
         (V::List(x), V::List(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q)),
         (V::Unit(x), V::Unit(y)) => {
             same(&V::Num(x.value), &V::Num(y.value)) && x.display == y.display && x.ratio == y.ratio && {
-                let nz = |d: &std::collections::BTreeMap<String, f64>| d.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| (k.clone(), v.to_bits())).collect::<Vec<_>>();
+                let nz = |d: &std::collections::BTreeMap<String, f64>| {
+                    d.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| (k.clone(), v.to_bits())).collect::<Vec<_>>()
+                };
                 nz(&x.dim) == nz(&y.dim)
             }
         }
@@ -39,17 +41,28 @@ fn same(a: &V, b: &V) -> bool {
         // A LAMBDA by what its reader sees: its parameters, its body's text, the names it captures with their values
         // as the body reads them and with their units, and its notes on its variables.
         (V::Lambda(x), V::Lambda(y)) => {
-            let read = |l: &solenoid_core::eval::LambdaV| l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect::<Vec<_>>();
+            let read = |l: &solenoid_core::eval::LambdaV| {
+                l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect::<Vec<_>>()
+            };
             let all = |a: &[V], b: &[V]| a.len() == b.len() && a.iter().zip(b).all(|(p, q)| same(p, q));
-            x.params == y.params && x.src == y.src && x.eta == y.eta && x.captured == y.captured && x.descriptions == y.descriptions
-                && all(&read(x), &read(y)) && all(&x.units, &y.units)
+            x.params == y.params
+                && x.src == y.src
+                && x.eta == y.eta
+                && x.captured == y.captured
+                && x.descriptions == y.descriptions
+                && all(&read(x), &read(y))
+                && all(&x.units, &y.units)
         }
         (V::Frame(x), V::Frame(y)) => {
             x.total_rows == y.total_rows
                 && x.approx == y.approx
                 && x.columns.len() == y.columns.len()
                 && x.columns.iter().zip(&y.columns).all(|(p, q)| {
-                    p.name == q.name && p.ty == q.ty && p.unit == q.unit && p.format == q.format && p.raw == q.raw
+                    p.name == q.name
+                        && p.ty == q.ty
+                        && p.unit == q.unit
+                        && p.format == q.format
+                        && p.raw == q.raw
                         && p.values.len() == q.values.len()
                         && p.values.iter().zip(&q.values).all(|(a, b)| same(a, b))
                 })
@@ -57,7 +70,11 @@ fn same(a: &V, b: &V) -> bool {
         (V::Cube(x), V::Cube(y)) => {
             x.columns.len() == y.columns.len()
                 && x.columns.iter().zip(&y.columns).all(|(p, q)| {
-                    p.name == q.name && p.ty == q.ty && p.format == q.format && p.cells.len() == q.cells.len() && p.cells.iter().zip(&q.cells).all(|(a, b)| same(a, b))
+                    p.name == q.name
+                        && p.ty == q.ty
+                        && p.format == q.format
+                        && p.cells.len() == q.cells.len()
+                        && p.cells.iter().zip(&q.cells).all(|(a, b)| same(a, b))
                 })
         }
         _ => false,
@@ -78,8 +95,22 @@ fn show(v: &V) -> String {
         V::Lambda(_) => "lambda".into(),
         V::Fx(m) => format!("fx({m})"),
         V::Json(j) => j.to_string(),
-        V::Frame(f) => format!("frame[{}]", f.columns.iter().map(|c| format!("{}: [{}]", c.name, c.values.iter().map(show).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")),
-        V::Cube(c) => format!("cube[{}]", c.columns.iter().map(|c| format!("{}: [{}]", c.name, c.cells.iter().map(show).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")),
+        V::Frame(f) => format!(
+            "frame[{}]",
+            f.columns
+                .iter()
+                .map(|c| format!("{}: [{}]", c.name, c.values.iter().map(show).collect::<Vec<_>>().join(", ")))
+                .collect::<Vec<_>>()
+                .join("; ")
+        ),
+        V::Cube(c) => format!(
+            "cube[{}]",
+            c.columns
+                .iter()
+                .map(|c| format!("{}: [{}]", c.name, c.cells.iter().map(show).collect::<Vec<_>>().join(", ")))
+                .collect::<Vec<_>>()
+                .join("; ")
+        ),
     }
 }
 
@@ -97,7 +128,11 @@ fn mismatch(case: &Json) -> Option<String> {
     let mut result = case["result"].clone();
     if let Some(t) = result.get("thrownJs").and_then(Json::as_str).map(String::from) {
         let (name, msg) = t.split_once(": ").unwrap_or(("Error", t.as_str()));
-        let e = if name == "ShapeError" { serde_json::json!({ "__err": "#SHAPE!", "msg": msg }) } else { serde_json::json!({ "__err": "#ERROR!", "msg": format!("This node failed to compute: {msg}") }) };
+        let e = if name == "ShapeError" {
+            serde_json::json!({ "__err": "#SHAPE!", "msg": msg })
+        } else {
+            serde_json::json!({ "__err": "#ERROR!", "msg": format!("This node failed to compute: {msg}") })
+        };
         result = serde_json::json!({ "thrown": e });
     }
     let result = &result;
@@ -121,7 +156,12 @@ fn mismatch(case: &Json) -> Option<String> {
             }
         }
         (Err(e), _, Some(w)) if same(e, &dec(w)) => {}
-        (Ok(outs), _, _) => return Some(format!("got outputs {:?}, want {result}", outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>())),
+        (Ok(outs), _, _) => {
+            return Some(format!(
+                "got outputs {:?}, want {result}",
+                outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>()
+            ))
+        }
         (Err(e), _, _) => return Some(format!("threw {}, want {result}", show(e))),
     }
     let want = case["display"].as_object().cloned().unwrap_or_default();
@@ -179,7 +219,10 @@ fn card_bodies_answer_as_frozen() {
             if let Some(why) = mismatch(&case) {
                 bad += 1;
                 if shown.len() < 4 {
-                    shown.push(format!("    {why}\n      init {} lits {} inputs {}", case["init"], case["literals"], case["inputs"]));
+                    shown.push(format!(
+                        "    {why}\n      init {} lits {} inputs {}",
+                        case["init"], case["literals"], case["inputs"]
+                    ));
                 }
             }
         }

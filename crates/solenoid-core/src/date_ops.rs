@@ -4,7 +4,7 @@
 //! read NaN.
 
 use crate::date_serial::{date_utc, days_from_civil, parts_of_ms, serial_to_ms, MS_PER_DAY};
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::jsnum::{math_max as js_max, math_min as js_min, math_round};
 
 type Date = Option<f64>;
@@ -83,7 +83,11 @@ fn actual_year_length(sd: Date, ed: Date) -> f64 {
         || (is_leap_year(s.y) && t1 < mar1(s.y) && t2 >= mar1(s.y))
         || (is_leap_year(e.y) && t2 >= mar1(e.y) && t1 < mar1(e.y))
         || (e.m == 1.0 && e.d == 29.0);
-    if feb29 { 366.0 } else { 365.0 }
+    if feb29 {
+        366.0
+    } else {
+        365.0
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -187,8 +191,6 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
         }
     }))
 }
-
-
 
 pub fn epoch_to_serial(epoch: f64, ms: bool) -> f64 {
     25569.0 + epoch / if ms { 86_400_000.0 } else { 86_400.0 }
@@ -318,7 +320,9 @@ pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Re
     while left > per_week {
         let weeks = ((left - 1.0) / per_week).floor();
         let next = d + step * 7.0 * weeks;
-        let skipped = working.iter().filter(|&&h| if step > 0.0 { h > d && h <= next } else { h < d && h >= next }).count() as f64;
+        let skipped =
+            working.iter().filter(|&&h| if step > 0.0 { h > d && h <= next } else { h < d && h >= next }).count()
+                as f64;
         d = next;
         left -= weeks * per_week - skipped;
     }
@@ -328,7 +332,11 @@ pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Re
             left -= 1.0;
         }
     }
-    if d < first || d > last { Err(outside()) } else { Ok(d) }
+    if d < first || d > last {
+        Err(outside())
+    } else {
+        Ok(d)
+    }
 }
 
 /// `networkDays`.

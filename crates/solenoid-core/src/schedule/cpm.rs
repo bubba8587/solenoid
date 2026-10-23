@@ -56,11 +56,19 @@ impl Ctx<'_> {
     }
 
     fn units(&self, i: usize, days: f64) -> f64 {
-        if self.cal(i).minutes { math_round(days * self.u(i)) } else { (days - 1e-9).ceil() }
+        if self.cal(i).minutes {
+            math_round(days * self.u(i))
+        } else {
+            (days - 1e-9).ceil()
+        }
     }
 
     fn lag_units(&self, e: &Edge) -> f64 {
-        if self.cal(e.to).minutes { math_round(e.lag * self.u(e.to)) } else { math_round(e.lag) }
+        if self.cal(e.to).minutes {
+            math_round(e.lag * self.u(e.to))
+        } else {
+            math_round(e.lag)
+        }
     }
 
     fn start_at(&self, i: usize, k: f64) -> Sr<f64> {
@@ -96,11 +104,19 @@ impl Ctx<'_> {
             }
             return Ok(m);
         }
-        if p.dur[i] == 0.0 { self.start_instant(p, i) } else { self.end_after(i, p.ef[i]) }
+        if p.dur[i] == 0.0 {
+            self.start_instant(p, i)
+        } else {
+            self.end_after(i, p.ef[i])
+        }
     }
 
     fn ceil_on(&self, j: usize, instant: f64, e: &Edge) -> Sr<f64> {
-        if e.elapsed { self.cal(j).index_ceil(instant + e.lag) } else { Ok(self.cal(j).index_ceil(instant)? + self.lag_units(e)) }
+        if e.elapsed {
+            self.cal(j).index_ceil(instant + e.lag)
+        } else {
+            Ok(self.cal(j).index_ceil(instant)? + self.lag_units(e))
+        }
     }
 
     fn back_lag(&self, j: usize, unit_idx: f64, e: &Edge, of_start: bool) -> Sr<f64> {
@@ -108,7 +124,11 @@ impl Ctx<'_> {
             return Ok((if of_start { self.start_at(j, unit_idx)? } else { self.end_after(j, unit_idx)? }) - e.lag);
         }
         let k = unit_idx - self.lag_units(e);
-        if of_start { self.start_at(j, k) } else { self.end_after(j, k) }
+        if of_start {
+            self.start_at(j, k)
+        } else {
+            self.end_after(j, k)
+        }
     }
 
     fn link_early_start(&self, p: &Pass, e: &Edge, dur: f64) -> Sr<f64> {
@@ -134,7 +154,12 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             pool.len() - 1
         })
     };
-    let elapsed_spec = CalendarSpec { working_days: false, weekend_code: Some(1.0), holidays: Some(Vec::new()), ..input.calendar.clone() };
+    let elapsed_spec = CalendarSpec {
+        working_days: false,
+        weekend_code: Some(1.0),
+        holidays: Some(Vec::new()),
+        ..input.calendar.clone()
+    };
     let mut cals = Vec::with_capacity(n);
     for t in tasks {
         let at = if t.summary {
@@ -345,7 +370,8 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
     forward(&mut p, &none)?;
     backward(&mut p, &mut summary_ls)?;
     if tasks.iter().any(|t| t.alap && !t.summary) {
-        let floors: Vec<Option<f64>> = (0..n).map(|i| (tasks[i].alap && !tasks[i].summary && !tasks[i].manual).then_some(p.ls[i])).collect();
+        let floors: Vec<Option<f64>> =
+            (0..n).map(|i| (tasks[i].alap && !tasks[i].summary && !tasks[i].manual).then_some(p.ls[i])).collect();
         forward(&mut p, &floors)?;
         backward(&mut p, &mut summary_ls)?;
     }
@@ -357,7 +383,8 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
     for &i in order {
         let t = &tasks[i];
         if t.summary {
-            total_days[i] = math_min(min_of(t.children.iter().map(|&c| total_days[c])), days(i, summary_ls[i] - p.es[i]));
+            total_days[i] =
+                math_min(min_of(t.children.iter().map(|&c| total_days[c])), days(i, summary_ls[i] - p.es[i]));
             critical[i] = t.children.iter().any(|&c| critical[c]) || total_days[i] <= crit_limit_days;
         } else {
             critical[i] = (total_days[i] <= crit_limit_days || t.alap) && t.complete < 100.0;
@@ -422,7 +449,10 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             return cx.start_instant(&p, i);
         }
         if p.dur[i] == 0.0 {
-            if p.floored[i] || t.actual_start.is_some() || !(p.es[i] > 0.0 && (!in_edges[i].is_empty() || t.parent.is_some())) {
+            if p.floored[i]
+                || t.actual_start.is_some()
+                || !(p.es[i] > 0.0 && (!in_edges[i].is_empty() || t.parent.is_some()))
+            {
                 return cx.start_at(i, p.es[i]);
             }
             let mut at = cx.end_of(i, p.es[i] - 1.0)?;
@@ -445,7 +475,11 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             let e = cx.end_instant(&p, i)?;
             return Ok(if cx.project().minutes { e } else { e - 1.0 });
         }
-        if p.dur[i] == 0.0 { start_of(i) } else { cx.end_of(i, p.ef[i] - 1.0) }
+        if p.dur[i] == 0.0 {
+            start_of(i)
+        } else {
+            cx.end_of(i, p.ef[i] - 1.0)
+        }
     };
     let milestone_at = |i: usize, k: f64, start: f64| -> Sr<f64> {
         if k == p.es[i] {
@@ -482,7 +516,11 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             early_finish: if t.summary || zero { finish } else { cx.end_of(i, p.ef[i] - 1.0)? },
             late_start: if zero && !t.summary { milestone_at(i, p.ls[i], start)? } else { cx.start_at(i, p.ls[i])? },
             late_finish: if zero {
-                if t.summary { cx.end_of(i, math_max(p.lf[i] - 1.0, p.ls[i]))? } else { milestone_at(i, p.ls[i], start)? }
+                if t.summary {
+                    cx.end_of(i, math_max(p.lf[i] - 1.0, p.ls[i]))?
+                } else {
+                    milestone_at(i, p.ls[i], start)?
+                }
             } else {
                 cx.end_of(i, p.lf[i] - 1.0)?
             },
@@ -515,7 +553,9 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         let to = tasks.iter().position(|t| t.name == src.to).expect("a link's successor is a task");
         let from = e.from;
         let demanded = cx.link_early_start(&p, e, p.dur[e.to])?;
-        let driving = p.driver[to] == Some(k) || (tasks[to].summary && tasks[to].children.iter().any(|&c| p.driver[c].is_some_and(|d| edges[d].source == e.source)));
+        let driving = p.driver[to] == Some(k)
+            || (tasks[to].summary
+                && tasks[to].children.iter().any(|&c| p.driver[c].is_some_and(|d| edges[d].source == e.source)));
         links.push(ScheduleLink {
             from: src.from.clone(),
             to: src.to.clone(),

@@ -32,7 +32,11 @@ impl Tok {
         matches!(self, Tok::Number { .. })
     }
     fn number(self) -> i32 {
-        if let Tok::Number { n, .. } = self { n } else { 0 }
+        if let Tok::Number { n, .. } = self {
+            n
+        } else {
+            0
+        }
     }
     fn is_fixed(self, l: usize) -> bool {
         matches!(self, Tok::Number { len, .. } if len == l)
@@ -44,7 +48,11 @@ impl Tok {
         self.is_symbol(b'+') || self.is_symbol(b'-')
     }
     fn sign(self) -> i32 {
-        if self.is_symbol(b'-') { -1 } else { 1 }
+        if self.is_symbol(b'-') {
+            -1
+        } else {
+            1
+        }
     }
     fn is_z(self) -> bool {
         matches!(self, Tok::Keyword { kind: Kw::Zone, value: 0, len: 1 })
@@ -272,7 +280,9 @@ impl Time {
         self.index == 0
     }
     fn is_expecting(&self, n: i32) -> bool {
-        (self.index == 1 && is_minute(n)) || (self.index == 2 && is_minute(n)) || (self.index == 3 && between(n, 0, 999))
+        (self.index == 1 && is_minute(n))
+            || (self.index == 2 && is_minute(n))
+            || (self.index == 3 && between(n, 0, 999))
     }
     fn add(&mut self, n: i32) -> bool {
         if self.index < 4 {

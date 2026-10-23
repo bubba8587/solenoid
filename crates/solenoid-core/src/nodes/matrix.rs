@@ -2,23 +2,23 @@
 //! lambdaBindsByName. `nodes/matrix.ts`: the linear-algebra cards; `nodes/tableLambda.ts`: the LAMBDA helpers over a
 //! table.
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
 use super::kit::{core_call, num};
 use super::list::{frame_cell_of, js_number, nullish, slot};
 use super::logic::pick_slot;
-use super::units::{from_unit, tag};
 use super::scalar::{read_role, Role};
+use super::units::{from_unit, tag};
 use super::{err, list, Answer, Call};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::eval::{variables, Env, Eval, LambdaV};
 use crate::excel_formula::{parse_formula, Ast};
+use crate::excel_functions::js_string_of;
 use crate::excel_functions::V;
 use crate::frame::FrameCell;
 use crate::jsnum::{js_trim, math_round, number_to_string};
-use crate::unit_fold::{fold_units_over, FoldKind};
-use crate::excel_functions::js_string_of;
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, is_dimensionless, Dim};
 use crate::unit_expression::display_magnitude_of;
+use crate::unit_fold::{fold_units_over, FoldKind};
 use crate::value_kinds::guard_finite as guard_cells;
 use serde_json::Value as Json;
 use std::rc::Rc;
@@ -57,7 +57,11 @@ fn first(c: &Call, key: &str) -> Option<V> {
 }
 
 fn rows_of(m: &V) -> Vec<V> {
-    if let V::List(r) = m { r.as_ref().clone() } else { Vec::new() }
+    if let V::List(r) = m {
+        r.as_ref().clone()
+    } else {
+        Vec::new()
+    }
 }
 
 /// `matCols`: the first row's width.
@@ -77,8 +81,12 @@ fn numeric(m: &V) -> Result<V, V> {
     for row in rows_of(m) {
         for cell in rows_of(&row) {
             match cell {
-                V::Null | V::Undef => return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing")),
-                V::Str(s) if s.is_empty() => return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing")),
+                V::Null | V::Undef => {
+                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"))
+                }
+                V::Str(s) if s.is_empty() => {
+                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"))
+                }
                 V::Num(n) if n.is_finite() => {}
                 _ => return Err(err(ErrorCode::Type, "This matrix operation needs numbers, but got text")),
             }
@@ -93,7 +101,12 @@ fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     (js_max1(rows) * js_max1(cols) > MAX_GENERATED).then(|| {
         err(
             ErrorCode::Overflow,
-            format!("{f} would build {}×{} cells, past the {} element limit", number_to_string(rows), number_to_string(cols), number_to_string(MAX_GENERATED)),
+            format!(
+                "{f} would build {}×{} cells, past the {} element limit",
+                number_to_string(rows),
+                number_to_string(cols),
+                number_to_string(MAX_GENERATED)
+            ),
         )
     })
 }
@@ -216,7 +229,9 @@ fn table_outer(c: &mut Call) -> Answer {
         core_call("OUTER", &[list(a), list(b)])
     } else {
         cell_cap("OUTER", a.len() as f64, b.len() as f64).unwrap_or_else(|| {
-            grid(a.iter().map(|x| b.iter().map(|y| if nullish(x) || nullish(y) { V::Null } else { V::Num(num(x) * num(y)) }).collect()))
+            grid(a.iter().map(|x| {
+                b.iter().map(|y| if nullish(x) || nullish(y) { V::Null } else { V::Num(num(x) * num(y)) }).collect()
+            }))
         })
     };
     c.show("cachedResult", r.clone());
@@ -241,7 +256,11 @@ fn mat_solve(c: &mut Call) -> Answer {
     if n != width(&m) || bs.len() != n {
         return done(c, err(ErrorCode::Shape, "A must be square with one b per row"));
     }
-    let r = if n == 0 { err(ErrorCode::DivZero, "A is singular, so the system has no unique solution") } else { core_call("SOLVE", &[m, b]) };
+    let r = if n == 0 {
+        err(ErrorCode::DivZero, "A is singular, so the system has no unique solution")
+    } else {
+        core_call("SOLVE", &[m, b])
+    };
     done(c, r)
 }
 
@@ -258,7 +277,11 @@ fn mat_eigen(c: &mut Call) -> Answer {
     };
     let values = core_call("EIGENVALUES", std::slice::from_ref(&m));
     if let V::Err(e) = &values {
-        let e = if e.code == ErrorCode::Shape { err(ErrorCode::Shape, "Eigen needs a square, symmetric matrix") } else { values.clone() };
+        let e = if e.code == ErrorCode::Shape {
+            err(ErrorCode::Shape, "Eigen needs a square, symmetric matrix")
+        } else {
+            values.clone()
+        };
         return done(c, e.clone(), e);
     }
     let vectors = core_call("EIGENVECTORS", &[m]);
@@ -273,7 +296,12 @@ pub(crate) fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
         V::Null | V::Undef => None,
         V::List(items) if items.is_empty() => Some(Vec::new()),
         V::List(items) if !matches!(items[0], V::List(_)) => Some(vec![items.as_ref().clone()]),
-        V::List(items) => Some(items.iter().map(|r| if let V::List(cells) = r { cells.as_ref().clone() } else { vec![r.clone()] }).collect()),
+        V::List(items) => Some(
+            items
+                .iter()
+                .map(|r| if let V::List(cells) = r { cells.as_ref().clone() } else { vec![r.clone()] })
+                .collect(),
+        ),
         other => Some(vec![vec![other.clone()]]),
     }
 }
@@ -372,7 +400,10 @@ pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, S
     if let V::Lambda(lam) = slot(c, "lambda") {
         let unknown: Vec<&str> = lam.params.iter().map(String::as_str).filter(|p| !vars.contains(p)).collect();
         if !unknown.is_empty() {
-            return Err(sol_error(ErrorCode::Value, format!("Lambda param {} isn't one of this node's variables ({})", unknown.join(", "), vars.join(", "))));
+            return Err(sol_error(
+                ErrorCode::Value,
+                format!("Lambda param {} isn't one of this node's variables ({})", unknown.join(", "), vars.join(", ")),
+            ));
         }
         let order = lam.params.iter().map(|p| vars.iter().position(|v| v == p)).collect();
         return Ok(Body::Lambda(lam, order));
@@ -404,7 +435,11 @@ impl Body {
     pub(crate) fn fold(&self, kind: FoldKind, m: &[Vec<V>], initial: &V) -> Option<V> {
         match self {
             Body::Inline(ast, _) => fold_units_over(kind, ast, &Env::default(), &matrix_v(m), initial),
-            Body::Lambda(lam, _) => lam.body.as_ref().filter(|_| lam.eta.is_none()).and_then(|b| fold_units_over(kind, b, &lam.env, &matrix_v(m), initial)),
+            Body::Lambda(lam, _) => lam
+                .body
+                .as_ref()
+                .filter(|_| lam.eta.is_none())
+                .and_then(|b| fold_units_over(kind, b, &lam.env, &matrix_v(m), initial)),
         }
     }
 
@@ -412,16 +447,20 @@ impl Body {
     pub(crate) fn call(&self, ev: &Eval, args: &[V]) -> V {
         let r = match self {
             Body::Lambda(lam, order) => {
-                let argv: Vec<V> = order.iter().map(|i| i.and_then(|i| args.get(i).cloned()).unwrap_or(V::Undef)).collect();
+                let argv: Vec<V> =
+                    order.iter().map(|i| i.and_then(|i| args.get(i).cloned()).unwrap_or(V::Undef)).collect();
                 ev.call_lambda(lam, &argv)
             }
             Body::Inline(ast, names) => {
-                let env: Env = names.iter().cloned().zip(args.iter().cloned().chain(std::iter::repeat(V::Undef))).collect();
+                let env: Env =
+                    names.iter().cloned().zip(args.iter().cloned().chain(std::iter::repeat(V::Undef))).collect();
                 return ev.run(ast, &Rc::new(env));
             }
         };
         match r {
-            V::Lambda(_) => err(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY"),
+            V::Lambda(_) => {
+                err(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")
+            }
             V::Fx(code) => V::err(crate::excel_functions::fx_error_to_sol(code)),
             other => other,
         }
@@ -485,7 +524,18 @@ fn map_table(c: &mut Call) -> Answer {
         .map(|(i, row)| {
             row.iter()
                 .enumerate()
-                .map(|(j, x)| result_cell(&body.call(&ev, &[x.clone(), pick(&extras[0], i, j), pick(&extras[1], i, j), V::Num((i + 1) as f64), V::Num((j + 1) as f64)])))
+                .map(|(j, x)| {
+                    result_cell(&body.call(
+                        &ev,
+                        &[
+                            x.clone(),
+                            pick(&extras[0], i, j),
+                            pick(&extras[1], i, j),
+                            V::Num((i + 1) as f64),
+                            V::Num((j + 1) as f64),
+                        ],
+                    ))
+                })
                 .collect()
         })
         .collect();
@@ -554,12 +604,18 @@ fn make_array(c: &mut Call) -> Answer {
         return lambda_done(c, V::Null, None);
     }
     if rows * cols > MAX_GENERATED {
-        let msg = format!("MAKEARRAY count {} exceeds the {} element limit", number_to_string(rows * cols), number_to_string(MAX_GENERATED));
+        let msg = format!(
+            "MAKEARRAY count {} exceeds the {} element limit",
+            number_to_string(rows * cols),
+            number_to_string(MAX_GENERATED)
+        );
         return fn_error(c, sol_error(ErrorCode::Overflow, msg));
     }
     let ev = Eval::default();
     let (r, k) = (if rows.is_nan() { 0 } else { rows as usize }, if cols.is_nan() { 0 } else { cols as usize });
-    let out: Vec<Vec<V>> = (1..=r).map(|i| (1..=k).map(|j| result_cell(&body.call(&ev, &[V::Num(i as f64), V::Num(j as f64)]))).collect()).collect();
+    let out: Vec<Vec<V>> = (1..=r)
+        .map(|i| (1..=k).map(|j| result_cell(&body.call(&ev, &[V::Num(i as f64), V::Num(j as f64)]))).collect())
+        .collect();
     lambda_done(c, matrix_v(&out), None)
 }
 
@@ -582,7 +638,10 @@ fn unit_json(dim: &Dim, display: Option<&str>) -> Json {
 }
 
 fn unit_dim(u: &Json) -> Dim {
-    u.get("dim").and_then(Json::as_object).map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect()).unwrap_or_default()
+    u.get("dim")
+        .and_then(Json::as_object)
+        .map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect())
+        .unwrap_or_default()
 }
 
 fn unit_display(u: &Json) -> &str {
@@ -609,7 +668,9 @@ fn put_unit(c: &mut Call, key: &str, out: &V, unit: Option<Json>) {
 /// `matrixUnitOf(toAnyMatrix(inputs[key]?.[0]))`: the input's unit where the reading is the input's own table.
 fn table_unit_of(c: &Call, key: &str) -> Option<Json> {
     match slot(c, key) {
-        V::List(rows) if !rows.is_empty() && rows.iter().all(|r| matches!(r, V::List(_))) => c.matrix_unit(key).cloned(),
+        V::List(rows) if !rows.is_empty() && rows.iter().all(|r| matches!(r, V::List(_))) => {
+            c.matrix_unit(key).cloned()
+        }
         _ => None,
     }
 }
@@ -634,7 +695,11 @@ fn table_input(c: &mut Call) -> Answer {
     let ty = c.field_str("dataType", "number").to_string();
     let unit = c.field_str("unit", "none").to_string();
     let cells = table_raw_cells(c.field_str("tableText", "1, 0\n0, 1"));
-    let m = if cells.is_empty() { V::Null } else { grid(cells.iter().map(|r| r.iter().map(|x| frame_cell_of(&ty, x)).collect())) };
+    let m = if cells.is_empty() {
+        V::Null
+    } else {
+        grid(cells.iter().map(|r| r.iter().map(|x| frame_cell_of(&ty, x)).collect()))
+    };
     let mut tag = None;
     if ty == "number" && !cells.is_empty() {
         // `applyFcUnit` on a table: its unit where the first filled cell is a number.
@@ -659,7 +724,8 @@ fn table_transpose(c: &mut Call) -> Answer {
 
 /// `matrixCellsFromList`: each unit cell as its display magnitude, and the one unit they share.
 fn cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
-    let mags = cells.iter().map(|x| if let V::Unit(u) = x { V::Num(display_magnitude_of(u)) } else { x.clone() }).collect();
+    let mags =
+        cells.iter().map(|x| if let V::Unit(u) = x { V::Num(display_magnitude_of(u)) } else { x.clone() }).collect();
     let mut unit: Option<Json> = None;
     for x in cells {
         let V::Unit(u) = x else { continue };
@@ -720,7 +786,10 @@ fn tag_cell(v: &V, unit: &Json) -> V {
 
 fn table_reshape(c: &mut Call) -> Answer {
     let op = c.field_str("op", "wraprows").to_string();
-    let skip = ["none", "blanks", "errors", "both"].iter().position(|s| *s == c.field_str("skipCells", "none")).map_or(-1.0, |i| i as f64);
+    let skip = ["none", "blanks", "errors", "both"]
+        .iter()
+        .position(|s| *s == c.field_str("skipCells", "none"))
+        .map_or(-1.0, |i| i as f64);
     let by_col = c.field_str("scanBy", "row") == "col";
     let done = |c: &mut Call, l: V, m: V, r: V, unit: Option<Json>| {
         c.show("cachedList", l);
@@ -760,7 +829,11 @@ fn table_reshape(c: &mut Call) -> Answer {
 }
 
 fn or_null(v: V) -> V {
-    if matches!(v, V::Undef) { V::Null } else { v }
+    if matches!(v, V::Undef) {
+        V::Null
+    } else {
+        v
+    }
 }
 
 /// `readRole` for required picks: a blank position dropped, a blank inside a table of positions `#SYNTAX!`, none left
@@ -779,14 +852,21 @@ fn required_picks(c: &Call, key: &str) -> V {
         return v;
     }
     let no_default = || err(ErrorCode::Syntax, format!("{label} is blank, and it has no default"));
-    let blank = |x: &V| if nullish(x) { err(ErrorCode::Syntax, format!("A position in {label} is blank")) } else { x.clone() };
+    let blank =
+        |x: &V| if nullish(x) { err(ErrorCode::Syntax, format!("A position in {label} is blank")) } else { x.clone() };
     match &v {
-        V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
-            list(rows.iter().map(|r| if let V::List(cells) = r { list(cells.iter().map(blank).collect()) } else { blank(r) }).collect())
-        }
+        V::List(rows) if matches!(rows.first(), Some(V::List(_))) => list(
+            rows.iter()
+                .map(|r| if let V::List(cells) = r { list(cells.iter().map(blank).collect()) } else { blank(r) })
+                .collect(),
+        ),
         V::List(items) => {
             let kept: Vec<V> = items.iter().filter(|x| !nullish(x)).cloned().collect();
-            if kept.is_empty() { no_default() } else { list(kept) }
+            if kept.is_empty() {
+                no_default()
+            } else {
+                list(kept)
+            }
         }
         x if nullish(x) => no_default(),
         _ => v,
@@ -803,7 +883,10 @@ fn choose_axis(m: &[Vec<V>], indices: &[V], by_row: bool) -> V {
         let p = if n < 0.0 { size + n.trunc() } else { n.trunc() - 1.0 };
         if !(p >= 0.0 && p < size) {
             let (i, size) = (js_string_of(i), number_to_string(size));
-            return err(ErrorCode::Value, format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"));
+            return err(
+                ErrorCode::Value,
+                format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"),
+            );
         }
         resolved.push(p as usize);
     }
@@ -871,8 +954,11 @@ fn expand(c: &mut Call) -> Answer {
 fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
     let rows = m.len();
     let cols = m.first().map_or(0, Vec::len);
-    let mut out: Vec<Vec<V>> = m.iter().map(|r| (0..cols).map(|j| r.get(j).cloned().unwrap_or(V::Null)).collect()).collect();
-    let ref_err = |n: f64, max: usize, what: &str| Ok(err(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))));
+    let mut out: Vec<Vec<V>> =
+        m.iter().map(|r| (0..cols).map(|j| r.get(j).cloned().unwrap_or(V::Null)).collect()).collect();
+    let ref_err = |n: f64, max: usize, what: &str| {
+        Ok(err(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))))
+    };
     for (r, k, v) in writes {
         let (r, k) = (math_round(js_number(r)), math_round(js_number(k)));
         if !r.is_finite() {
@@ -890,7 +976,10 @@ fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
         // A row is read as JS indexes it: a list by its items, text by its UTF-16 units; a blank row throws.
         if let Some(x) = block.iter().find(|x| nullish(x)) {
             let what = if matches!(x, V::Undef) { "undefined" } else { "null" };
-            return Err(err(ErrorCode::Error, format!("This node failed to compute: Cannot read properties of {what} (reading 'length')")));
+            return Err(err(
+                ErrorCode::Error,
+                format!("This node failed to compute: Cannot read properties of {what} (reading 'length')"),
+            ));
         }
         let block: Vec<Option<Vec<V>>> = block
             .iter()

@@ -1,12 +1,25 @@
 // [[C130]] rustCore, [[C44]] dateSerials
 //! Port of `src/graph/nodes/dateSerial.ts` `formatDateSerial`: a serial day, read as UTC.
 
-const FORMAT_MONTHS: [&str; 12] =
-    ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const FORMAT_MONTHS: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
 const FORMAT_DAYS: [&str; 7] = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 pub const DEFAULT_DATE_FORMAT: &str = "DD-MMM-YYYY";
 
-const TOKENS: [&str; 17] = ["MMMM", "MMM", "MM", "M", "DDDD", "DDD", "DD", "D", "YYYY", "YY", "HH", "hh", "h", "mm", "ss", "A", "a"];
+const TOKENS: [&str; 17] =
+    ["MMMM", "MMM", "MM", "M", "DDDD", "DDD", "DD", "D", "YYYY", "YY", "HH", "hh", "h", "mm", "ss", "A", "a"];
 
 /// Howard Hinnant's `civil_from_days`.
 pub fn civil_from_days(z: i64) -> (i64, u32, u32) {
@@ -80,7 +93,11 @@ pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
 }
 
 fn pad(n: i64, width: usize) -> String {
-    if n < 0 { format!("-{:0>width$}", -n, width = width) } else { format!("{n:0>width$}") }
+    if n < 0 {
+        format!("-{:0>width$}", -n, width = width)
+    } else {
+        format!("{n:0>width$}")
+    }
 }
 
 /// `serialToJsDate`'s UTC fields: `new Date(Math.round((serial - 25569) * 86400000))`, `None` for an Invalid Date.

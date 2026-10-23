@@ -53,8 +53,8 @@ pub fn js_lower(s: &str) -> Cow<'_, str> {
 pub fn is_js_space(c: char) -> bool {
     matches!(
         c,
-        '\t' | '\n' | '\u{B}' | '\u{C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'..='\u{200A}'
-            | '\u{2028}' | '\u{2029}' | '\u{202F}' | '\u{205F}' | '\u{3000}' | '\u{FEFF}'
+        '\t' | '\n' | '\u{B}' | '\u{C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200A}' | '\u{2028}' | '\u{2029}' | '\u{202F}' | '\u{205F}' | '\u{3000}' | '\u{FEFF}'
     )
 }
 
@@ -128,7 +128,11 @@ pub fn math_round(x: f64) -> f64 {
         return x;
     }
     let r = (x + 0.5).floor();
-    if r == 0.0 && x < 0.0 { -0.0 } else { r }
+    if r == 0.0 && x < 0.0 {
+        -0.0
+    } else {
+        r
+    }
 }
 
 /// `Math.trunc` as an index count: NaN and negatives count as none.
@@ -147,7 +151,11 @@ pub fn math_min(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
-        if a.is_sign_negative() { a } else { b }
+        if a.is_sign_negative() {
+            a
+        } else {
+            b
+        }
     } else {
         a.min(b)
     }
@@ -158,7 +166,11 @@ pub fn math_max(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
-        if a.is_sign_positive() { a } else { b }
+        if a.is_sign_positive() {
+            a
+        } else {
+            b
+        }
     } else {
         a.max(b)
     }

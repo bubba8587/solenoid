@@ -4,7 +4,7 @@
 
 use super::kit::{broadcast_err, core_call};
 use super::{err, list, Answer, Call};
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
 use crate::jsnum::js_trim;
 
@@ -18,7 +18,11 @@ pub(crate) fn role_value(c: &Call, key: &str) -> V {
         None | Some([]) => lit,
         Some([first, ..]) => first.clone(),
     };
-    if matches!(v, V::Undef) { V::Null } else { v }
+    if matches!(v, V::Undef) {
+        V::Null
+    } else {
+        v
+    }
 }
 
 /// `readRole` of a `setting` role ([[D86]] blankRoles): a blank reads as `blank`, item by item in a list.
@@ -31,7 +35,11 @@ pub(crate) fn setting(c: &Call, key: &str, blank: V) -> V {
         }
     }
     let v = role_value(c, key);
-    if v.is_sol_error() { v } else { fill(&v, &blank) }
+    if v.is_sol_error() {
+        v
+    } else {
+        fill(&v, &blank)
+    }
 }
 
 /// `readRole` of the `required` role: a blank is `#SYNTAX!`, item by item in a list.
@@ -79,7 +87,11 @@ pub(crate) fn js_max(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
-        if a.is_sign_positive() { a } else { b }
+        if a.is_sign_positive() {
+            a
+        } else {
+            b
+        }
     } else {
         a.max(b)
     }
@@ -118,7 +130,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "RegexNode" => regex(c),
         "CastNode" => cast(c),
         "ExactNode" => {
-            let r = broadcast_err(&[str_val(c, "a"), str_val(c, "b")], |o| core_call("EXACT", &[o[0].clone(), o[1].clone()]));
+            let r = broadcast_err(&[str_val(c, "a"), str_val(c, "b")], |o| {
+                core_call("EXACT", &[o[0].clone(), o[1].clone()])
+            });
             done(c, "cachedResult", r)
         }
         "UrlEncodeNode" => {
@@ -151,7 +165,13 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "SpellNumberNode" => {
             let value = match c.wired("value") {
                 None | Some([]) => c.literal("value"),
-                Some([first, ..]) => if matches!(first, V::Undef) { V::Null } else { first.clone() },
+                Some([first, ..]) => {
+                    if matches!(first, V::Undef) {
+                        V::Null
+                    } else {
+                        first.clone()
+                    }
+                }
             };
             let name = if c.field_str("mode", "words") == "ordinal" { "ORDINAL" } else { "SPELLNUMBER" };
             let r = broadcast_err(&[value], |o| core_call(name, &[o[0].clone()]));
@@ -160,7 +180,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "FuzzyMatchNode" => fuzzy_match(c),
         "TextSimilarityNode" => {
             let method = V::str(c.field_str("method", "ratio"));
-            let r = broadcast_err(&[str_val(c, "a"), str_val(c, "b")], |o| core_call("SIMILARITY", &[o[0].clone(), o[1].clone(), method.clone()]));
+            let r = broadcast_err(&[str_val(c, "a"), str_val(c, "b")], |o| {
+                core_call("SIMILARITY", &[o[0].clone(), o[1].clone(), method.clone()])
+            });
             done(c, "cachedResult", r)
         }
         _ => return None,
@@ -185,7 +207,9 @@ fn pad_text(c: &mut Call) -> Answer {
         return done(c, "cachedText", w);
     }
     let side = V::str(c.field_str("side", "right"));
-    let r = broadcast_err(&[str_val(c, "text")], |o| core_call("PADTEXT", &[o[0].clone(), w.clone(), side.clone(), fill.clone()]));
+    let r = broadcast_err(&[str_val(c, "text")], |o| {
+        core_call("PADTEXT", &[o[0].clone(), w.clone(), side.clone(), fill.clone()])
+    });
     done(c, "cachedText", r)
 }
 
@@ -250,7 +274,8 @@ fn text_find(c: &mut Call) -> Answer {
 }
 
 fn substitute(c: &mut Call) -> Answer {
-    let args = [str_val(c, "text"), str_val(c, "old_text"), str_val(c, "new_text"), setting(c, "instance", V::Num(0.0))];
+    let args =
+        [str_val(c, "text"), str_val(c, "old_text"), str_val(c, "new_text"), setting(c, "instance", V::Num(0.0))];
     let r = broadcast_err(&args, |o| {
         let n = js_floor(o[3]);
         let mut a = vec![o[0].clone(), o[1].clone(), o[2].clone()];
@@ -320,8 +345,19 @@ fn text_split(c: &mut Call) -> Answer {
 }
 
 const ROMAN: [(f64, &str); 13] = [
-    (1000.0, "M"), (900.0, "CM"), (500.0, "D"), (400.0, "CD"), (100.0, "C"), (90.0, "XC"), (50.0, "L"),
-    (40.0, "XL"), (10.0, "X"), (9.0, "IX"), (5.0, "V"), (4.0, "IV"), (1.0, "I"),
+    (1000.0, "M"),
+    (900.0, "CM"),
+    (500.0, "D"),
+    (400.0, "CD"),
+    (100.0, "C"),
+    (90.0, "XC"),
+    (50.0, "L"),
+    (40.0, "XL"),
+    (10.0, "X"),
+    (9.0, "IX"),
+    (5.0, "V"),
+    (4.0, "IV"),
+    (1.0, "I"),
 ];
 
 fn roman(raw: &V) -> V {
@@ -402,7 +438,12 @@ fn fuzzy_match(c: &mut Call) -> Answer {
     let cands: Vec<V> = match super::list::slot(c, "candidates") {
         V::List(items) => items.iter().filter(|v| matches!(v, V::Str(_))).cloned().collect(),
         V::Null | V::Undef => Vec::new(),
-        _ => return Err(err(ErrorCode::Error, "This node failed to compute: ((intermediate value) ?? []).filter is not a function")),
+        _ => {
+            return Err(err(
+                ErrorCode::Error,
+                "This node failed to compute: ((intermediate value) ?? []).filter is not a function",
+            ))
+        }
     };
     let threshold = match setting(c, "threshold", V::Undef) {
         V::Undef | V::Null => 0.6,
@@ -448,7 +489,8 @@ fn text_after_before(c: &mut Call) -> Answer {
     }
     let name = if c.field_str("op", "after") == "after" { "TEXTAFTER" } else { "TEXTBEFORE" };
     let instance = if matches!(instance, V::Undef) { V::Num(1.0) } else { instance };
-    let mode = V::Num(if c.field("matchCase").and_then(serde_json::Value::as_bool).unwrap_or(true) { 0.0 } else { 1.0 });
+    let mode =
+        V::Num(if c.field("matchCase").and_then(serde_json::Value::as_bool).unwrap_or(true) { 0.0 } else { 1.0 });
     let end = V::Num(if c.field("matchEnd").and_then(serde_json::Value::as_bool).unwrap_or(false) { 1.0 } else { 0.0 });
     let fallback = !matches!(&if_not_found, V::Undef) && !matches!(&if_not_found, V::Str(s) if s.is_empty());
     let r = broadcast_err(&[str_val(c, "text"), str_val(c, "delimiter")], |o| {
@@ -516,7 +558,9 @@ fn regex_apply(op: &str, p: &Pattern, text: &[u16], replacement: &[u16]) -> V {
         "test" => V::Num(if p.first(text).is_some() { 1.0 } else { 0.0 }),
         "extract" => p.first(text).map_or_else(|| V::str(""), |m| text_of(&text[m.range])),
         "extract_all" => list(p.all(text).into_iter().map(|m| text_of(&text[m.range])).collect()),
-        "extract_groups" if p.global => list(p.all(text).into_iter().skip(1).map(|m| text_of(&text[m.range])).collect()),
+        "extract_groups" if p.global => {
+            list(p.all(text).into_iter().skip(1).map(|m| text_of(&text[m.range])).collect())
+        }
         "extract_groups" => list(match p.first(text) {
             Some(m) => m.captures.iter().map(|g| g.clone().map_or_else(|| V::str(""), |r| text_of(&text[r]))).collect(),
             None => Vec::new(),
@@ -548,7 +592,13 @@ fn regex(c: &mut Call) -> Answer {
     let re = match crate::js_regex::compile_with(&utf16(&js_string_of(&pattern)), jf) {
         crate::js_regex::Compiled::Ok(re) => re,
         crate::js_regex::Compiled::Invalid => return blank(c),
-        crate::js_regex::Compiled::Unsure => return done(c, "cachedResult", err(ErrorCode::Value, "This pattern uses a feature the engine can't run yet")),
+        crate::js_regex::Compiled::Unsure => {
+            return done(
+                c,
+                "cachedResult",
+                err(ErrorCode::Value, "This pattern uses a feature the engine can't run yet"),
+            )
+        }
     };
     let p = Pattern { re, global, sticky, unicode: jf.unicode || jf.unicode_sets };
     let raw = match c.wired("text") {
@@ -596,16 +646,27 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
         // `format` is a list here, whose `split` and `endsWith` aren't functions.
         other => {
             let s = js_string_of(other);
-            let zeros = s.strip_prefix('0').is_some_and(|r| r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0')));
-            return Err(super::frames::thrown(if zeros { "format.split is not a function" } else { "format.endsWith is not a function" }));
+            let zeros = s.strip_prefix('0').is_some_and(|r| {
+                r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))
+            });
+            return Err(super::frames::thrown(if zeros {
+                "format.split is not a function"
+            } else {
+                "format.endsWith is not a function"
+            }));
         }
     };
     let decimals = |f: &str| f.split('.').nth(1).map_or(0, |d| d.encode_utf16().count()) as f64;
-    let fixed = |x: f64, d: f64| crate::jsnum::to_fixed(x, d).ok_or_else(|| super::frames::thrown("toFixed() digits argument must be between 0 and 100"));
+    let fixed = |x: f64, d: f64| {
+        crate::jsnum::to_fixed(x, d)
+            .ok_or_else(|| super::frames::thrown("toFixed() digits argument must be between 0 and 100"))
+    };
     if s.is_empty() || s == "general" {
         return Ok(crate::jsnum::number_to_string(v));
     }
-    if s.strip_prefix('0').is_some_and(|r| r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))) {
+    if s.strip_prefix('0').is_some_and(|r| {
+        r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))
+    }) {
         return fixed(v, decimals(&s));
     }
     if let Some(inner) = s.strip_suffix('%') {
@@ -615,7 +676,11 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
 }
 
 /// `unitCellText`: a value in an FC unit reads with the FC's label, `$5` or `5 km`; any other unit by its dimension.
-fn unit_cell_text(cell: &crate::unit_dims::UnitCell, labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)], format: &V) -> Result<String, V> {
+fn unit_cell_text(
+    cell: &crate::unit_dims::UnitCell,
+    labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)],
+    format: &V,
+) -> Result<String, V> {
     let found = cell.display.as_deref().and_then(|d| labels.iter().find(|(id, ..)| id == d));
     match found {
         Some((_, label, prefix, Some(dim))) if crate::unit_dims::dim_equal(dim, &cell.dim) => {
@@ -639,7 +704,10 @@ fn unit_labels(c: &Call) -> Vec<(String, String, bool, Option<crate::unit_dims::
     rows.iter()
         .filter_map(|r| {
             let r = r.as_array()?;
-            let dim = r.get(3).and_then(serde_json::Value::as_object).map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect());
+            let dim = r
+                .get(3)
+                .and_then(serde_json::Value::as_object)
+                .map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect());
             Some((r.first()?.as_str()?.to_string(), r.get(1)?.as_str()?.to_string(), r.get(2)?.as_bool()?, dim))
         })
         .collect()
@@ -661,7 +729,13 @@ fn separator(v: &V) -> String {
 /// decimal is `,`), `$`, `(5)` for negatives and trailing `%`.
 fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     let d = if decimal.is_empty() { "." } else { decimal };
-    let g = if !group.is_empty() { Some(group) } else if d == "," { None } else { Some(",") };
+    let g = if !group.is_empty() {
+        Some(group)
+    } else if d == "," {
+        None
+    } else {
+        Some(",")
+    };
     if g == Some(d) {
         return f64::NAN;
     }
@@ -673,7 +747,11 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     }
     // `/^\(.*\)$/`: `.` stops at a line terminator.
     let mut neg = false;
-    if t.len() >= 2 && t.starts_with('(') && t.ends_with(')') && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}']) {
+    if t.len() >= 2
+        && t.starts_with('(')
+        && t.ends_with(')')
+        && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}'])
+    {
         neg = true;
         t = js_trim(&t[1..t.len() - 1]).to_string();
     }
@@ -696,7 +774,11 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
         Some(f) => format!("{whole}.{f}"),
         None => whole,
     });
-    if n.is_nan() { f64::NAN } else { (if neg { -n } else { n }) / crate::excel_functions::js_pow(100.0, f64::from(pct)) }
+    if n.is_nan() {
+        f64::NAN
+    } else {
+        (if neg { -n } else { n }) / crate::excel_functions::js_pow(100.0, f64::from(pct))
+    }
 }
 
 /// `parseCx` (cast.ts): `a`, `bi`, `a+bi`, `a-bi`, `i` and `-i`, with j for i, spaces anywhere; else NaN parts.
@@ -746,7 +828,14 @@ fn parse_cx(s: &str) -> (f64, f64) {
 }
 
 /// What `castOne` answers for one value: a scalar, `None` for a blank, or NaN parts where it can't convert.
-fn cast_one(x: &V, target: &str, format: &V, dateish: bool, seps: (&str, &str), labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)]) -> Result<V, V> {
+fn cast_one(
+    x: &V,
+    target: &str,
+    format: &V,
+    dateish: bool,
+    seps: (&str, &str),
+    labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)],
+) -> Result<V, V> {
     if matches!(x, V::Null | V::Undef) {
         return Ok(V::Null);
     }
@@ -840,13 +929,19 @@ fn cast(c: &mut Call) -> Answer {
     if [&format, &decimal, &group].iter().any(|v| matches!(v, V::Null)) {
         return done(c, "cachedResult", V::Null);
     }
-    let dateish = matches!(c.field("sourceType").and_then(serde_json::Value::as_str), Some("date" | "datelist" | "datecombo" | "datetable"));
+    let dateish = matches!(
+        c.field("sourceType").and_then(serde_json::Value::as_str),
+        Some("date" | "datelist" | "datecombo" | "datetable")
+    );
     let labels = unit_labels(c);
     let (decimal, group) = (separator(&decimal), separator(&group));
     let failed = || err(ErrorCode::Value, format!("Could not convert the value to {target}"));
     let one = |x: &V| cast_one(x, &target, &format, dateish, (&decimal, &group), &labels);
     if let V::List(items) = &raw {
-        let out: Vec<V> = items.iter().map(|x| one(x).map(|v| if cast_failed(&v) { failed() } else { v })).collect::<Result<_, _>>()?;
+        let out: Vec<V> = items
+            .iter()
+            .map(|x| one(x).map(|v| if cast_failed(&v) { failed() } else { v }))
+            .collect::<Result<_, _>>()?;
         let shown = out
             .iter()
             .map(|v| match (v, target.as_str()) {

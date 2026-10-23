@@ -55,7 +55,15 @@ pub struct Graph {
 fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
     let mut out: Vec<FlatTask> = Vec::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
-    fn visit(t: &PlanTask, level: f64, parent: Option<usize>, wbs: String, calendar: &CalendarSpec, out: &mut Vec<FlatTask>, seen: &mut HashMap<String, usize>) -> Sr<usize> {
+    fn visit(
+        t: &PlanTask,
+        level: f64,
+        parent: Option<usize>,
+        wbs: String,
+        calendar: &CalendarSpec,
+        out: &mut Vec<FlatTask>,
+        seen: &mut HashMap<String, usize>,
+    ) -> Sr<usize> {
         let name = js_trim(&t.name).to_string();
         let row = t.row.unwrap_or((out.len() + 1) as f64);
         if name.is_empty() {
@@ -67,7 +75,8 @@ fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
         }
         let intervals = t.calendar.as_ref().and_then(|c| c.intervals.as_deref()).or(calendar.intervals.as_deref());
         let hours_per_day = hours_per_day_of(intervals);
-        let from_work = t.work.filter(|w| w.is_finite()).map(|w| w / (math_max(0.01, t.units.unwrap_or(1.0)) * hours_per_day));
+        let from_work =
+            t.work.filter(|w| w.is_finite()).map(|w| w / (math_max(0.01, t.units.unwrap_or(1.0)) * hours_per_day));
         let dur = match t.duration {
             None => from_work.unwrap_or(0.0),
             Some(d) => d,
@@ -155,7 +164,10 @@ pub fn build_graph(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Graph> {
                 continue;
             }
             let Some(&j) = by_key.get(&name_key(&p.task)) else {
-                return Err(ScheduleError::new(format!("task \"{}\" waits on \"{}\", which is not a task", t.name, p.task)));
+                return Err(ScheduleError::new(format!(
+                    "task \"{}\" waits on \"{}\", which is not a task",
+                    t.name, p.task
+                )));
             };
             let source = sources.len();
             sources.push(Source { from: tasks[j].name.clone(), to: t.name.clone() });

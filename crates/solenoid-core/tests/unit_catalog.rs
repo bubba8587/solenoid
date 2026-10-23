@@ -22,12 +22,16 @@ fn every_id_resolves_as_frozen() {
                 let scale = matches!(num(&w["scale"]), solenoid_core::frame::FrameCell::Num(n) if n.to_bits() == u.scale.to_bits());
                 let offset = match (w.get("offset"), u.offset) {
                     (None, None) => true,
-                    (Some(o), Some(x)) => matches!(num(o), solenoid_core::frame::FrameCell::Num(n) if n.to_bits() == x.to_bits()),
+                    (Some(o), Some(x)) => {
+                        matches!(num(o), solenoid_core::frame::FrameCell::Num(n) if n.to_bits() == x.to_bits())
+                    }
                     (Some(o), None) => o.as_f64() == Some(0.0),
                     _ => false,
                 };
-                let dim: Vec<(String, f64)> = w["dim"].as_object().unwrap().iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap())).collect();
-                let mine: Vec<(String, f64)> = u.dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), *e)).collect();
+                let dim: Vec<(String, f64)> =
+                    w["dim"].as_object().unwrap().iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap())).collect();
+                let mine: Vec<(String, f64)> =
+                    u.dim.iter().filter(|(_, e)| **e != 0.0).map(|(k, e)| (k.clone(), *e)).collect();
                 let mut dim = dim;
                 dim.sort_by(|a, b| a.0.cmp(&b.0));
                 scale && offset && dim == mine

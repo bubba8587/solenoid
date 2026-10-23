@@ -6,7 +6,9 @@
 //! hold its answers, frozen by `tests/graph/coreCardHelpers.test.ts`.
 
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number, to_exponential, to_fixed};
+use crate::jsnum::{
+    is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number, to_exponential, to_fixed,
+};
 use crate::unit_dims::{dim_equal, Dim};
 use serde_json::{json, Value as Json};
 use std::collections::{HashMap, HashSet};
@@ -175,7 +177,11 @@ pub fn sci_from_setting(sci_above: Option<&str>) -> f64 {
         Some("off") => f64::INFINITY,
         s => {
             let p = s.map_or(f64::NAN, string_to_number);
-            if p.fract() == 0.0 { crate::fdlibm::pow(10.0, p) } else { 1e9 }
+            if p.fract() == 0.0 {
+                crate::fdlibm::pow(10.0, p)
+            } else {
+                1e9
+            }
         }
     }
 }
@@ -208,7 +214,11 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
     // `.replace(/\.?0+$/, "")`.
     let kept = s.trim_end_matches('0');
     let kept = if kept.len() < s.len() { kept.strip_suffix('.').unwrap_or(kept) } else { &s };
-    if kept == "-0" { "0".into() } else { kept.to_string() }
+    if kept == "-0" {
+        "0".into()
+    } else {
+        kept.to_string()
+    }
 }
 
 /// The digits of `String(|x|)`, the shortest that round-trip, and where the point sits: x = 0.d₁d₂… × 10^point.
@@ -265,7 +275,11 @@ fn assemble(neg: bool, int: &str, frac: &str, grouping: bool) -> String {
         t => t,
     };
     let sign = if neg { "-" } else { "" };
-    if frac.is_empty() { format!("{sign}{}", group(int, grouping)) } else { format!("{sign}{}.{frac}", group(int, grouping)) }
+    if frac.is_empty() {
+        format!("{sign}{}", group(int, grouping))
+    } else {
+        format!("{sign}{}.{frac}", group(int, grouping))
+    }
 }
 
 fn digit_text(ds: &[u8]) -> String {
@@ -401,7 +415,11 @@ pub fn date_annotation_pattern(ann: &Annotation) -> &str {
 
 /// `Math.max(lo, Math.min(hi, x))` with NaN carried, as the clamps of the digit counts read.
 fn clamp_js(x: f64, lo: f64, hi: f64) -> f64 {
-    if x.is_nan() { x } else { x.min(hi).max(lo) }
+    if x.is_nan() {
+        x
+    } else {
+        x.min(hi).max(lo)
+    }
 }
 
 fn format_precise(n: f64, digits: f64, sigfigs: bool, grouping: bool) -> String {
@@ -454,7 +472,11 @@ fn to_fraction(n: f64, d: NumberDisplay) -> String {
         return format_scalar(n, d);
     }
     let (num, den) = (number_to_string(num), number_to_string(den));
-    if whole > 0.0 { format!("{sign}{} {num}/{den}", number_to_string(whole)) } else { format!("{sign}{num}/{den}") }
+    if whole > 0.0 {
+        format!("{sign}{} {num}/{den}", number_to_string(whole))
+    } else {
+        format!("{sign}{num}/{den}")
+    }
 }
 
 fn to_fraction_advanced(n: f64, d: NumberDisplay) -> String {
@@ -481,7 +503,13 @@ fn to_fraction_advanced(n: f64, d: NumberDisplay) -> String {
         if den == 0.0 || num == 0.0 {
             continue;
         }
-        let sign = if q > 0.0 { 1.0 } else if q < 0.0 { -1.0 } else { q };
+        let sign = if q > 0.0 {
+            1.0
+        } else if q < 0.0 {
+            -1.0
+        } else {
+            q
+        };
         let approx = sign * (num / den) * c;
         let e = (approx - n).abs() / n.abs();
         if e < 1e-6 && best.is_none_or(|b| den < b.1) {
@@ -521,7 +549,17 @@ fn si_prefix(n: f64) -> String {
         return "0".into();
     }
     let n = to_precision(n, 3);
-    let steps = [(1e12, "T"), (1e9, "G"), (1e6, "M"), (1e3, "k"), (1.0, ""), (1e-3, "m"), (1e-6, "µ"), (1e-9, "n"), (1e-12, "p")];
+    let steps = [
+        (1e12, "T"),
+        (1e9, "G"),
+        (1e6, "M"),
+        (1e3, "k"),
+        (1.0, ""),
+        (1e-3, "m"),
+        (1e-6, "µ"),
+        (1e-9, "n"),
+        (1e-12, "p"),
+    ];
     for (factor, prefix) in steps {
         if n.abs() >= factor {
             return format!("{}{prefix}", number_to_string(to_precision(n / factor, 3)));
@@ -610,7 +648,11 @@ pub fn format_number_with_annotation(n: f64, ann: &Annotation, d: NumberDisplay)
             (label, false) => format!("{formatted}{label}"),
         }
     };
-    if paren { format!("({out})") } else { out }
+    if paren {
+        format!("({out})")
+    } else {
+        out
+    }
 }
 
 // ─── The Cards view's plan ──────────────────────────────────────────────────────
@@ -633,7 +675,11 @@ pub struct CardColumn {
 
 impl CardColumn {
     pub fn from_json(j: &Json) -> CardColumn {
-        let strs = |k: &str| j.get(k).and_then(Json::as_array).map(|a| a.iter().map(|x| x.as_str().unwrap_or("").to_string()).collect::<Vec<_>>());
+        let strs = |k: &str| {
+            j.get(k)
+                .and_then(Json::as_array)
+                .map(|a| a.iter().map(|x| x.as_str().unwrap_or("").to_string()).collect::<Vec<_>>())
+        };
         let flag = |k: &str| j.get(k).and_then(Json::as_bool).unwrap_or(false);
         CardColumn {
             name: j.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
@@ -691,7 +737,8 @@ pub fn is_hex_color(t: &str) -> bool {
 }
 
 fn strip_ci<'a>(t: &'a str, prefix: &str) -> Option<&'a str> {
-    (t.len() >= prefix.len() && t.is_char_boundary(prefix.len()) && t[..prefix.len()].eq_ignore_ascii_case(prefix)).then(|| &t[prefix.len()..])
+    (t.len() >= prefix.len() && t.is_char_boundary(prefix.len()) && t[..prefix.len()].eq_ignore_ascii_case(prefix))
+        .then(|| &t[prefix.len()..])
 }
 
 fn http_rest(t: &str) -> Option<&str> {
@@ -762,7 +809,8 @@ fn profile(col: &CardColumn) -> (Profile, bool) {
     let n = col.cells.len().min(PROFILE_ROWS);
     let mut seen: HashSet<&str> = HashSet::new();
     let (mut filled, mut total, mut max_len, mut images, mut urls) = (0, 0, 0, 0, 0);
-    let (mut ints, mut year_like, mut codes, mut hex_colors, mut shown_percent, mut shown_currency) = (true, true, true, true, true, true);
+    let (mut ints, mut year_like, mut codes, mut hex_colors, mut shown_percent, mut shown_currency) =
+        (true, true, true, true, true, true);
     let mut counting = n > 1;
     let mut prev: Option<f64> = None;
     let (mut min, mut max) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -869,29 +917,163 @@ pub fn name_words(name: &str) -> Vec<String> {
 const KEY_WORDS: &[&str] = &["id", "#", "no", "sku", "uuid", "key", "ref", "code", "idx", "index", "isbn"];
 const KEY_LAST_WORDS: &[&str] = &["id", "no", "num", "number", "code", "ref", "sku", "#"];
 const TITLE_WORDS: &[&str] = &[
-    "name", "title", "label", "item", "product", "subject", "person", "customer", "client", "company", "city", "country", "task",
-    "project", "heading", "username", "user", "contact", "employee", "student", "member", "team", "place", "venue", "event", "song",
-    "book", "film", "movie", "nickname", "model", "brand", "recipe", "dish", "vehicle", "species", "plant", "animal", "game", "album",
-    "artist", "track", "episode", "show", "location", "store", "shop", "vendor", "supplier", "account", "asset", "part", "device",
-    "host", "server", "service", "feature", "issue", "ticket", "milestone", "goal", "habit", "campaign", "course", "school", "hotel",
-    "restaurant", "destination", "trip", "organization", "organisation", "org", "business", "character", "player", "author",
+    "name",
+    "title",
+    "label",
+    "item",
+    "product",
+    "subject",
+    "person",
+    "customer",
+    "client",
+    "company",
+    "city",
+    "country",
+    "task",
+    "project",
+    "heading",
+    "username",
+    "user",
+    "contact",
+    "employee",
+    "student",
+    "member",
+    "team",
+    "place",
+    "venue",
+    "event",
+    "song",
+    "book",
+    "film",
+    "movie",
+    "nickname",
+    "model",
+    "brand",
+    "recipe",
+    "dish",
+    "vehicle",
+    "species",
+    "plant",
+    "animal",
+    "game",
+    "album",
+    "artist",
+    "track",
+    "episode",
+    "show",
+    "location",
+    "store",
+    "shop",
+    "vendor",
+    "supplier",
+    "account",
+    "asset",
+    "part",
+    "device",
+    "host",
+    "server",
+    "service",
+    "feature",
+    "issue",
+    "ticket",
+    "milestone",
+    "goal",
+    "habit",
+    "campaign",
+    "course",
+    "school",
+    "hotel",
+    "restaurant",
+    "destination",
+    "trip",
+    "organization",
+    "organisation",
+    "org",
+    "business",
+    "character",
+    "player",
+    "author",
 ];
 const PROSE_WORDS: &[&str] = &[
-    "description", "desc", "notes", "note", "comments", "comment", "summary", "bio", "about", "details", "remarks", "memo",
-    "abstract", "body", "message", "review", "feedback", "instructions", "synopsis",
+    "description",
+    "desc",
+    "notes",
+    "note",
+    "comments",
+    "comment",
+    "summary",
+    "bio",
+    "about",
+    "details",
+    "remarks",
+    "memo",
+    "abstract",
+    "body",
+    "message",
+    "review",
+    "feedback",
+    "instructions",
+    "synopsis",
 ];
 const TAG_WORDS: &[&str] = &["tags", "tag", "labels", "keywords", "categories", "skills", "topics", "genres", "genre"];
 const RATING_WORDS: &[&str] = &["rating", "ratings", "stars", "star"];
 const METER_WORDS: &[&str] = &[
-    "progress", "percent", "percentage", "pct", "completion", "complete", "completed", "done", "share", "probability", "confidence",
-    "utilization", "utilisation", "usage", "coverage", "battery", "humidity", "occupancy", "attendance", "accuracy",
+    "progress",
+    "percent",
+    "percentage",
+    "pct",
+    "completion",
+    "complete",
+    "completed",
+    "done",
+    "share",
+    "probability",
+    "confidence",
+    "utilization",
+    "utilisation",
+    "usage",
+    "coverage",
+    "battery",
+    "humidity",
+    "occupancy",
+    "attendance",
+    "accuracy",
 ];
-const START_WORDS: &[&str] = &["start", "starts", "from", "begin", "begins", "checkin", "departure", "depart", "opened", "open"];
-const END_WORDS: &[&str] = &["end", "ends", "to", "until", "finish", "finished", "due", "checkout", "return", "closed", "close"];
+const START_WORDS: &[&str] =
+    &["start", "starts", "from", "begin", "begins", "checkin", "departure", "depart", "opened", "open"];
+const END_WORDS: &[&str] =
+    &["end", "ends", "to", "until", "finish", "finished", "due", "checkout", "return", "closed", "close"];
 const HERO_WORDS: &[&str] = &[
-    "total", "grand", "subtotal", "amount", "balance", "net", "gross", "revenue", "sales", "income", "profit", "earnings", "due",
-    "paid", "salary", "pay", "budget", "price", "cost", "fee", "rent", "expense", "spend", "spent", "value", "worth", "valuation",
-    "score", "points", "sum",
+    "total",
+    "grand",
+    "subtotal",
+    "amount",
+    "balance",
+    "net",
+    "gross",
+    "revenue",
+    "sales",
+    "income",
+    "profit",
+    "earnings",
+    "due",
+    "paid",
+    "salary",
+    "pay",
+    "budget",
+    "price",
+    "cost",
+    "fee",
+    "rent",
+    "expense",
+    "spend",
+    "spent",
+    "value",
+    "worth",
+    "valuation",
+    "score",
+    "points",
+    "sum",
 ];
 
 const PROSE_AVG: f64 = 40.0;
@@ -985,7 +1167,9 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
         taken.extend(title_rest.iter().copied());
     }
 
-    let tags = free(&taken, &|i| has(&words[i], TAG_WORDS) && (cols[i].lists || (is_plain_text(i) && profiles[i].max_len <= PROSE_MAX)));
+    let tags = free(&taken, &|i| {
+        has(&words[i], TAG_WORDS) && (cols[i].lists || (is_plain_text(i) && profiles[i].max_len <= PROSE_MAX))
+    });
     taken.extend(tags.iter().copied());
 
     let prose = free(&taken, &|i| {
@@ -1017,7 +1201,13 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
             let p = &profiles[i];
             let ratio = p.distinct as f64 / p.filled as f64;
             let score = (if name_like(i) { 4 } else { 0 })
-                + (if ratio >= 0.9 { 2 } else if ratio >= 0.5 { 1 } else { 0 })
+                + (if ratio >= 0.9 {
+                    2
+                } else if ratio >= 0.5 {
+                    1
+                } else {
+                    0
+                })
                 + i32::from(p.avg_len >= 2.0 && p.avg_len <= 32.0);
             if score > best {
                 best = score;
@@ -1027,7 +1217,8 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
         taken.extend(title);
     }
 
-    let subtitle = if title.is_none() { None } else { first(&taken, &|i| is_plain_text(i) && profiles[i].avg_len <= PROSE_AVG) };
+    let subtitle =
+        if title.is_none() { None } else { first(&taken, &|i| is_plain_text(i) && profiles[i].avg_len <= PROSE_AVG) };
     taken.extend(subtitle);
 
     let mut meta = first(&taken, &is_date);
@@ -1044,7 +1235,9 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
         taken.extend(meta);
     }
 
-    let ratings = free(&taken, &|i| is_num(i) && has(&words[i], RATING_WORDS) && profiles[i].min >= 0.0 && profiles[i].max <= 5.0);
+    let ratings = free(&taken, &|i| {
+        is_num(i) && has(&words[i], RATING_WORDS) && profiles[i].min >= 0.0 && profiles[i].max <= 5.0
+    });
     taken.extend(ratings.iter().copied());
 
     let meters: Vec<(usize, f64)> = free(&taken, &|i| {
@@ -1172,7 +1365,13 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
                     let title = named.starts_with('#');
                     let name = if title { js_trim(&named[1..]) } else { named };
                     let span = m.map_or(1.0, |(_, d)| string_to_number(d).clamp(1.0, 12.0)) as usize;
-                    (0..span).map(move |i| Cell { name: name.to_string(), hint: if i == 0 { hint.to_string() } else { String::new() }, title }).collect::<Vec<_>>()
+                    (0..span)
+                        .map(move |i| Cell {
+                            name: name.to_string(),
+                            hint: if i == 0 { hint.to_string() } else { String::new() },
+                            title,
+                        })
+                        .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>()
         })
@@ -1190,7 +1389,18 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
             cells_of.entry(key.clone()).or_default().push((r, c));
             match rects.get_mut(&key) {
                 None => {
-                    rects.insert(key.clone(), Rect { name: cell.name.clone(), hint: cell.hint.clone(), title: cell.title, r0: r, c0: c, r1: r, c1: c });
+                    rects.insert(
+                        key.clone(),
+                        Rect {
+                            name: cell.name.clone(),
+                            hint: cell.hint.clone(),
+                            title: cell.title,
+                            r0: r,
+                            c0: c,
+                            r1: r,
+                            c1: c,
+                        },
+                    );
                     order.push(key);
                 }
                 Some(rect) => {
@@ -1226,7 +1436,15 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
         .iter()
         .map(|key| {
             let t = &rects[key];
-            Placement { name: t.name.clone(), row: t.r0 + 1, col: t.c0 + 1, row_span: t.r1 - t.r0 + 1, col_span: t.c1 - t.c0 + 1, hint: t.hint.clone(), title: t.title }
+            Placement {
+                name: t.name.clone(),
+                row: t.r0 + 1,
+                col: t.c0 + 1,
+                row_span: t.r1 - t.r0 + 1,
+                col_span: t.c1 - t.c0 + 1,
+                hint: t.hint.clone(),
+                title: t.title,
+            }
         })
         .collect()
 }

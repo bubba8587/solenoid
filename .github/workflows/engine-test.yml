@@ -28,7 +28,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -36,6 +36,7 @@ jobs:
 
       - name: Parquet reader lints and tests
         run: |
+          cargo fmt --manifest-path crates/solenoid-parquet/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-parquet/Cargo.toml --all-targets -- -D warnings
           cargo test --manifest-path crates/solenoid-parquet/Cargo.toml
 
@@ -46,7 +47,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
@@ -55,6 +56,7 @@ jobs:
 
       - name: Core lints
         run: |
+          cargo fmt --manifest-path crates/solenoid-core/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
 
@@ -68,7 +70,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
@@ -77,6 +79,7 @@ jobs:
 
       - name: Graph core lints
         run: |
+          cargo fmt --manifest-path crates/solenoid-graph/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
 

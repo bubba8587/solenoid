@@ -6,7 +6,9 @@
 //! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
 //! and shows its layout (`pivotWire`) for the shell to keep beside the frame.
 
-use super::frames::{agg_unit_plan, affine_display, core_cell, first, from_core, json_num, str_input, to_core, trimmed};
+use super::frames::{
+    affine_display, agg_unit_plan, core_cell, first, from_core, json_num, str_input, to_core, trimmed,
+};
 use super::list::literal_items;
 use super::stats::first_raw;
 use super::verbs::{column_list, flat_column, nullish, plan, uploaded};
@@ -82,7 +84,8 @@ fn join(c: &mut Call) -> Answer {
 
 /// Append and Bind Columns: the wired frames in socket order; one passes on, more go to the backend to combine.
 fn stack(c: &mut Call) -> Answer {
-    let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('f') && !nullish(&first(c, k))).collect();
+    let keys: Vec<String> =
+        c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('f') && !nullish(&first(c, k))).collect();
     match keys.as_slice() {
         [] => one("frame", V::Null),
         [k] => {
@@ -153,7 +156,11 @@ fn slicer_picks(picked: &[V], values: &[V]) -> Vec<String> {
 
 fn slicer(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
-    let picked: Vec<V> = c.field("selectedValues").and_then(Json::as_array).map(|a| a.iter().map(super::decode).collect()).unwrap_or_default();
+    let picked: Vec<V> = c
+        .field("selectedValues")
+        .and_then(Json::as_array)
+        .map(|a| a.iter().map(super::decode).collect())
+        .unwrap_or_default();
     let selected = c.field_str("selectedColumn", "").to_string();
     if is_ref(&raw) {
         let names: Vec<String> = match first(c, "schema") {
@@ -190,14 +197,16 @@ fn slicer(c: &mut Call) -> Answer {
         if kept.is_empty() {
             return one("result", plan(&raw, json!({ "kind": "head", "n": 0 })));
         }
-        let conditions: Vec<Json> = kept.iter().map(|t| json!({ "column": name, "op": "eq", "value": t, "matchCase": true })).collect();
+        let conditions: Vec<Json> =
+            kept.iter().map(|t| json!({ "column": name, "op": "eq", "value": t, "matchCase": true })).collect();
         return one("result", plan(&raw, json!({ "kind": "filterMulti", "combine": "or", "conditions": conditions })));
     }
     let frame = match &raw {
         V::Frame(f) => Some(f.clone()),
         _ => None,
     };
-    let names: Vec<String> = frame.as_ref().map(|f| f.columns.iter().map(|k| k.name.clone()).collect()).unwrap_or_default();
+    let names: Vec<String> =
+        frame.as_ref().map(|f| f.columns.iter().map(|k| k.name.clone()).collect()).unwrap_or_default();
     c.show("cachedColumns", texts(&names));
     let Some(f) = frame.filter(|f| !f.columns.is_empty()) else {
         c.show("cachedUniqueValues", list(Vec::new()));
@@ -209,7 +218,8 @@ fn slicer(c: &mut Call) -> Answer {
     if picked.is_empty() {
         return one("result", raw);
     }
-    let needles: Vec<FrameCell> = slicer_picks(&picked, &col.values).into_iter().map(|t| FrameCell::Str(t.into())).collect();
+    let needles: Vec<FrameCell> =
+        slicer_picks(&picked, &col.values).into_iter().map(|t| FrameCell::Str(t.into())).collect();
     let mut preds = Vec::with_capacity(needles.len());
     for n in &needles {
         preds.push(compile_filter(FilterOp::Eq, n, col.ty, true).map_err(V::err)?);
@@ -228,11 +238,18 @@ fn slicer(c: &mut Call) -> Answer {
         .columns
         .iter()
         .map(|k| Column {
-            values: keep.iter().map(|&i| match k.values.get(i) {
-                Some(V::Undef) | None => V::Null,
-                Some(v) => v.clone(),
-            }).collect(),
-            raw: k.raw.as_ref().and_then(Json::as_array).map(|r| Json::Array(keep.iter().map(|&i| r.get(i).cloned().unwrap_or_else(|| Json::String(String::new()))).collect())),
+            values: keep
+                .iter()
+                .map(|&i| match k.values.get(i) {
+                    Some(V::Undef) | None => V::Null,
+                    Some(v) => v.clone(),
+                })
+                .collect(),
+            raw: k.raw.as_ref().and_then(Json::as_array).map(|r| {
+                Json::Array(
+                    keep.iter().map(|&i| r.get(i).cloned().unwrap_or_else(|| Json::String(String::new()))).collect(),
+                )
+            }),
             ..k.clone()
         })
         .collect();
@@ -289,7 +306,9 @@ fn csv_list(c: &Call, key: &str) -> Vec<String> {
 }
 
 fn names_of(j: Option<&Json>) -> Vec<String> {
-    j.and_then(Json::as_array).map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
+    j.and_then(Json::as_array)
+        .map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect())
+        .unwrap_or_default()
 }
 
 /// The saved fields the pivot reads, field names the input lacks dropped; the shell prunes the saved ones to the
@@ -301,8 +320,20 @@ struct Fields {
 }
 
 fn kept(c: &Call, valid: &HashSet<String>) -> Fields {
-    let map = |field: &str| -> Map<String, Json> { c.field(field).and_then(Json::as_object).cloned().unwrap_or_default().into_iter().filter(|(k, _)| valid.contains(k)).collect() };
-    Fields { funcs: map("funcs"), exclude: map("filterExclude"), details: names_of(c.field("detailFields")).into_iter().filter(|n| valid.contains(n)).collect() }
+    let map = |field: &str| -> Map<String, Json> {
+        c.field(field)
+            .and_then(Json::as_object)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|(k, _)| valid.contains(k))
+            .collect()
+    };
+    Fields {
+        funcs: map("funcs"),
+        exclude: map("filterExclude"),
+        details: names_of(c.field("detailFields")).into_iter().filter(|n| valid.contains(n)).collect(),
+    }
 }
 
 /// `combineFilter`: the hidden value keys as a row mask, ANDed with the wired one.
@@ -322,7 +353,9 @@ fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<V
     Some(
         (0..row_count(f))
             .map(|i| {
-                let hidden = active.iter().any(|(ks, col)| col.is_some_and(|k| ks.contains(&pivot_cell_key(k.values.get(i).unwrap_or(&V::Null)))));
+                let hidden = active.iter().any(|(ks, col)| {
+                    col.is_some_and(|k| ks.contains(&pivot_cell_key(k.values.get(i).unwrap_or(&V::Null))))
+                });
                 Some(!hidden && wired.is_none_or(|w| matches!(w.get(i), Some(V::Bool(true)))))
             })
             .collect(),
@@ -402,7 +435,12 @@ fn pivot(c: &mut Call) -> Answer {
                     want(n);
                 }
             }
-            for n in c.field("filterExclude").and_then(Json::as_object).map(|m| m.keys().cloned().collect::<Vec<_>>()).unwrap_or_default() {
+            for n in c
+                .field("filterExclude")
+                .and_then(Json::as_object)
+                .map(|m| m.keys().cloned().collect::<Vec<_>>())
+                .unwrap_or_default()
+            {
                 want(n);
             }
             for n in names_of(c.field("detailFields")) {
@@ -418,12 +456,25 @@ fn pivot(c: &mut Call) -> Answer {
             }
         };
         let by_name = |name: &str| read.columns.iter().rev().find(|k| k.name == name);
-        let sources = schema.columns.iter().map(|k| source_column(k, by_name(&k.name).map(|r| distinct_keys(&r.values)).unwrap_or_default())).collect();
+        let sources = schema
+            .columns
+            .iter()
+            .map(|k| source_column(k, by_name(&k.name).map(|r| distinct_keys(&r.values)).unwrap_or_default()))
+            .collect();
         show_sources(c, sources);
         let columns = schema
             .columns
             .iter()
-            .map(|k| by_name(&k.name).cloned().unwrap_or_else(|| Column { name: k.name.clone(), ty: k.ty, values: Vec::new(), unit: None, format: None, raw: None }))
+            .map(|k| {
+                by_name(&k.name).cloned().unwrap_or_else(|| Column {
+                    name: k.name.clone(),
+                    ty: k.ty,
+                    values: Vec::new(),
+                    unit: None,
+                    format: None,
+                    raw: None,
+                })
+            })
             .collect();
         let slice = Rc::new(Frame { columns, total_rows: None, approx: None });
         return pivot_over(c, V::Frame(slice), Some(&raw));
@@ -474,7 +525,8 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
         return answer(fv);
     }
     let agg = c.field_str("agg", "sum").to_string();
-    let funcs: Vec<String> = values.iter().map(|n| fields.funcs.get(n).and_then(Json::as_str).unwrap_or(&agg).to_string()).collect();
+    let funcs: Vec<String> =
+        values.iter().map(|n| fields.funcs.get(n).and_then(Json::as_str).unwrap_or(&agg).to_string()).collect();
     let num = |key: &str| json_num(c.field(key).and_then(Json::as_f64).unwrap_or(0.0));
     let filter = combine_filter(f, &fields.exclude, &first_raw(c, "filter"));
     // `pivotUnits`: each value field's scales and the unit its body columns take, by its place among the named ones.
@@ -482,7 +534,8 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
     let unit_of = |n: &str| f.columns.iter().find(|k| k.name == n).and_then(|k| k.unit.as_ref());
     let func_at = |i: usize| funcs.get(i).or(funcs.first()).map_or("sum", String::as_str);
     let scales: Vec<Json> = named.iter().map(|n| value_scale(unit_of(n))).collect();
-    let units: Vec<Option<Json>> = named.iter().enumerate().map(|(i, n)| agg_unit_plan(func_at(i), unit_of(n)).1).collect();
+    let units: Vec<Option<Json>> =
+        named.iter().enumerate().map(|(i, n)| agg_unit_plan(func_at(i), unit_of(n)).1).collect();
     let mut spec = json!({
         "rowFields": row_fields, "colFields": col_fields, "values": values, "funcs": funcs,
         "rowTotalDepth": num("rowTotalDepth"), "colTotalDepth": num("colTotalDepth"),
@@ -516,7 +569,9 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
     if let Some(details) = layout.get_mut("details").and_then(Json::as_array_mut) {
         for d in details {
             let name = d.get("name").and_then(Json::as_str).unwrap_or("");
-            if let Some(fmt) = f.columns.iter().find(|k| k.name == name).and_then(|k| k.format.clone()).filter(|j| !j.is_null()) {
+            if let Some(fmt) =
+                f.columns.iter().find(|k| k.name == name).and_then(|k| k.format.clone()).filter(|j| !j.is_null())
+            {
                 d["format"] = fmt;
             }
         }

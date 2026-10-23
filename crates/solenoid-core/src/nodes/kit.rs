@@ -2,8 +2,8 @@
 //! `callCore` calls it, the per-cell short circuit and non-finite guard, and the broadcasters that map a body over
 //! lists ([[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[D48]] classifyNonFinite).
 
-use crate::error_value::ErrorCode;
 use super::list;
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::value_kinds::guard_finite as guard_cells;
 
@@ -11,7 +11,8 @@ use crate::value_kinds::guard_finite as guard_cells;
 /// and a Formula.js error answered as its SolError (`normalizeFxResult`).
 pub fn core_call(name: &str, args: &[V]) -> V {
     let upper = name.to_uppercase();
-    let v = crate::eval::argument_error(&upper, args).unwrap_or_else(|| crate::excel_functions::call_function(name, args));
+    let v =
+        crate::eval::argument_error(&upper, args).unwrap_or_else(|| crate::excel_functions::call_function(name, args));
     if crate::excel_functions::take_thrown().is_some() {
         return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments"));
     }
@@ -22,7 +23,9 @@ pub fn core_call(name: &str, args: &[V]) -> V {
 pub fn normalize(v: V) -> V {
     match v {
         V::Fx(m) => V::err(crate::excel_functions::fx_error_to_sol(m)),
-        V::List(items) if items.iter().any(|x| matches!(x, V::Fx(_) | V::List(_))) => list(items.iter().cloned().map(normalize).collect()),
+        V::List(items) if items.iter().any(|x| matches!(x, V::Fx(_) | V::List(_))) => {
+            list(items.iter().cloned().map(normalize).collect())
+        }
         other => other,
     }
 }

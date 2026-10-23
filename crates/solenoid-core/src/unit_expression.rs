@@ -5,10 +5,12 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use crate::error_value::{sol_error, ErrorCode};
 use crate::eval::Env;
 use crate::excel_functions::{fx_error_to_sol, js_pow, V};
-use crate::error_value::{ErrorCode, sol_error};
-use crate::unit_dims::{affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, AffScope, Codes, Dim, NamedLambdas, UnitCell};
+use crate::unit_dims::{
+    affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, AffScope, Codes, Dim, NamedLambdas, UnitCell,
+};
 use crate::unit_lists::tag_dim;
 use crate::unit_value::round_at_larger_term;
 
@@ -141,7 +143,11 @@ pub(crate) fn dim_power_of(dim: &Dim, base: &Dim) -> Option<f64> {
 }
 
 fn js_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() { f64::NAN } else { a.max(b) }
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else {
+        a.max(b)
+    }
 }
 
 /// `displayMagnitudeOf`: a cell's magnitude in its display unit, rounded at the larger term's precision.
@@ -207,7 +213,8 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let mut names: Vec<&String> = env.keys().collect();
     names.sort();
     let mut dims: BTreeMap<String, Dim> = BTreeMap::new();
-    let ordered = order.iter().filter(|n| env.contains_key(*n)).chain(names.iter().copied().filter(|n| !order.contains(n)));
+    let ordered =
+        order.iter().filter(|n| env.contains_key(*n)).chain(names.iter().copied().filter(|n| !order.contains(n)));
     for n in ordered {
         match env_dim(n, &env[n]) {
             Ok(d) => dims.insert(n.clone(), d),
@@ -217,14 +224,16 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let mut dr: Option<Dim> = None;
     let mut shown: Option<Shown> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {
-        let codes: Codes = names.iter().filter_map(|n| env_currency_code(&env[*n], &dims[*n]).map(|c| ((*n).clone(), c))).collect();
+        let codes: Codes =
+            names.iter().filter_map(|n| env_currency_code(&env[*n], &dims[*n]).map(|c| ((*n).clone(), c))).collect();
         match dim_eval_with_code(&ast, &dims, &codes, None) {
             Err(e) => return Some(V::err(e)),
             Ok(op) => dr = op.map(|o| o.dim),
         }
         let values: Vec<&V> = names.iter().map(|n| &env[*n]).collect();
         let sd = shared_display(&values);
-        let united: Vec<String> = names.iter().filter(|n| !is_dimensionless(&dims[**n])).map(|n| (*n).clone()).collect();
+        let united: Vec<String> =
+            names.iter().filter(|n| !is_dimensionless(&dims[**n])).map(|n| (*n).clone()).collect();
         let mut point = None;
         let readings = match &sd {
             Some((_, u)) => u.offset != 0.0 && !u.offset.is_nan(),
@@ -246,13 +255,17 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
             }
         }
     }
-    let run_env: Env = env.iter().map(|(k, v)| (k.clone(), if shown.is_some() { to_shown(v) } else { strip_units(v) })).collect();
+    let run_env: Env =
+        env.iter().map(|(k, v)| (k.clone(), if shown.is_some() { to_shown(v) } else { strip_units(v) })).collect();
     if run_env.values().any(crate::unit_dims::holds_unit) {
         return None;
     }
     let raw = crate::eval::Eval::default().run(&ast, &Rc::new(run_env));
     let mut result = match &raw {
-        V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+        V::Lambda(_) => V::err(sol_error(
+            ErrorCode::Value,
+            "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY",
+        )),
         V::List(items) => V::List(Rc::new(
             items
                 .iter()
@@ -270,9 +283,15 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
                 Some(sh) if sh.k.is_some() => {
                     let k = sh.k.unwrap();
                     match sh.point {
-                        Some(1) => tag_dim(c * sh.unit.scale + sh.unit.offset, sh.unit.dim.clone(), Some(sh.id.clone())),
+                        Some(1) => {
+                            tag_dim(c * sh.unit.scale + sh.unit.offset, sh.unit.dim.clone(), Some(sh.id.clone()))
+                        }
                         Some(0) => tag_dim(c * js_pow(sh.unit.scale, k), d.clone(), None),
-                        _ => tag_dim(c * js_pow(sh.unit.scale, k), d.clone(), if k == 1.0 { Some(sh.id.clone()) } else { None }),
+                        _ => tag_dim(
+                            c * js_pow(sh.unit.scale, k),
+                            d.clone(),
+                            if k == 1.0 { Some(sh.id.clone()) } else { None },
+                        ),
                     }
                 }
                 _ => tag_dim(c, d.clone(), None),
@@ -282,10 +301,15 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
             V::Num(n) => tag(n),
             V::List(items) => {
                 let cell = |c: &V| if let V::Num(n) = c { tag(*n) } else { c.clone() };
-                V::List(Rc::new(items.iter().map(|c| match c {
-                    V::List(row) => V::List(Rc::new(row.iter().map(cell).collect())),
-                    other => cell(other),
-                }).collect()))
+                V::List(Rc::new(
+                    items
+                        .iter()
+                        .map(|c| match c {
+                            V::List(row) => V::List(Rc::new(row.iter().map(cell).collect())),
+                            other => cell(other),
+                        })
+                        .collect(),
+                ))
             }
             other => other,
         };

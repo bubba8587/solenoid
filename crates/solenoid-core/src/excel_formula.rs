@@ -7,11 +7,11 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{call_function, to_f64_js, V};
 use crate::frame::FrameCell;
-use crate::spelled::spelled;
 use crate::jsnum::js_trim;
+use crate::spelled::spelled;
 use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
 
@@ -24,11 +24,24 @@ pub enum Ast {
     Str(Rc<str>),
     Bool(bool),
     Name(String),
-    Call { name: String, args: Vec<Ast> },
-    Apply { func: Box<Ast>, args: Vec<Ast> },
-    Unary { op: UnaryOp, arg: Box<Ast> },
+    Call {
+        name: String,
+        args: Vec<Ast>,
+    },
+    Apply {
+        func: Box<Ast>,
+        args: Vec<Ast>,
+    },
+    Unary {
+        op: UnaryOp,
+        arg: Box<Ast>,
+    },
     Percent(Box<Ast>),
-    Bin { op: BinOp, l: Box<Ast>, r: Box<Ast> },
+    Bin {
+        op: BinOp,
+        l: Box<Ast>,
+        r: Box<Ast>,
+    },
     Blank,
     AtCol(String),
     WholeCol(String),
@@ -68,8 +81,12 @@ impl Ast {
             Ast::Str(v) => json!({ "t": "str", "v": v.as_ref() }),
             Ast::Bool(v) => json!({ "t": "bool", "v": v }),
             Ast::Name(n) => json!({ "t": "name", "name": n }),
-            Ast::Call { name, args } => json!({ "t": "call", "name": name, "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
-            Ast::Apply { func, args } => json!({ "t": "apply", "fn": func.to_json(), "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
+            Ast::Call { name, args } => {
+                json!({ "t": "call", "name": name, "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() })
+            }
+            Ast::Apply { func, args } => {
+                json!({ "t": "apply", "fn": func.to_json(), "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() })
+            }
             Ast::Unary { op, arg } => json!({ "t": "unary", "op": op.as_str(), "arg": arg.to_json() }),
             Ast::Percent(a) => json!({ "t": "percent", "arg": a.to_json() }),
             Ast::Bin { op, l, r } => json!({ "t": "bin", "op": op.as_str(), "l": l.to_json(), "r": r.to_json() }),
@@ -524,7 +541,6 @@ pub struct Refusal {
     pub message: String,
 }
 
-
 /// A lowered value: JSON scalars, `{"__undef": 1}` for JS `undefined` (a left-out default).
 pub(crate) fn lowered(v: &Json) -> V {
     match v {
@@ -558,12 +574,14 @@ pub(crate) fn cell_to_v(c: &FrameCell) -> V {
     }
 }
 
-
 pub(crate) fn guard(result: f64, inputs: &[V]) -> V {
     if result.is_finite() {
         return V::Num(result);
     }
-    match guard_finite(result, &inputs.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect::<Vec<_>>()) {
+    match guard_finite(
+        result,
+        &inputs.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect::<Vec<_>>(),
+    ) {
         FrameCell::Num(n) => V::Num(n),
         FrameCell::Err(e) => V::Err(e),
         _ => V::Null,
@@ -594,8 +612,13 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
     }
     let (na, nb) = (num_of(a), num_of(b));
     let fin = |r: f64| if r.is_finite() { V::Num(r) } else { guard(r, &[na.clone(), nb.clone()]) };
-    if matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow) && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
-        return V::err(sol_error(ErrorCode::Value, "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
+    if matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow)
+        && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_)))
+    {
+        return V::err(sol_error(
+            ErrorCode::Value,
+            "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE",
+        ));
     }
     let xy = || (to_f64_js(&na), to_f64_js(&nb));
     match op {
@@ -642,7 +665,14 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
         BinOp::Eq | BinOp::Ne => {
             let eq = match (a, b) {
                 // Lowercasing allocates, so equal or all-ASCII text skips it; non-ASCII can lowercase into ASCII (K, the Kelvin sign).
-                (V::Str(x), V::Str(y)) => x == y || if x.is_ascii() && y.is_ascii() { x.eq_ignore_ascii_case(y) } else { x.to_lowercase() == y.to_lowercase() },
+                (V::Str(x), V::Str(y)) => {
+                    x == y
+                        || if x.is_ascii() && y.is_ascii() {
+                            x.eq_ignore_ascii_case(y)
+                        } else {
+                            x.to_lowercase() == y.to_lowercase()
+                        }
+                }
                 _ => match (&na, &nb) {
                     (V::Num(x), V::Num(y)) => x == y,
                     (V::Str(x), V::Str(y)) => x == y,
@@ -664,7 +694,12 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
                     }
                 }
                 (V::Str(x), V::Str(y)) => compare_strings(x, y) as i32,
-                _ => return V::err(sol_error(ErrorCode::Type, "Cannot order values of different types; Cast one side first")),
+                _ => {
+                    return V::err(sol_error(
+                        ErrorCode::Type,
+                        "Cannot order values of different types; Cast one side first",
+                    ))
+                }
             };
             V::Bool(match op {
                 BinOp::Lt => cmp < 0,
@@ -676,20 +711,26 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
     }
 }
 
-
-
 /// `tagComputedCell` after `normalizeFxResult`.
 pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
     match v {
-        V::Num(n) if n.is_nan() => FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number")),
+        V::Num(n) if n.is_nan() => {
+            FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number"))
+        }
         V::Num(n) => FrameCell::Num(n),
         V::Str(s) => FrameCell::Str(s),
         V::Bool(b) => FrameCell::Bool(b),
         V::Null | V::Undef => FrameCell::Null,
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
-        V::List(_) => FrameCell::err(sol_error(ErrorCode::Shape, "A computed column needs one value per row. Use @name to read this row's cell.")),
-        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error(ErrorCode::Value, "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
+        V::List(_) => FrameCell::err(sol_error(
+            ErrorCode::Shape,
+            "A computed column needs one value per row. Use @name to read this row's cell.",
+        )),
+        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error(
+            ErrorCode::Value,
+            "Each row of a computed column must be a number, text, TRUE/FALSE or blank.",
+        )),
     }
 }
 

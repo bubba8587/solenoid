@@ -69,7 +69,11 @@ pub fn parse_int(s: &str, radix: f64) -> f64 {
     } else {
         generic_int(digits, r)
     };
-    if neg { -v } else { v }
+    if neg {
+        -v
+    } else {
+        v
+    }
 }
 
 /// `InternalStringToIntDouble`: exact up to 53 bits, then rounded half to even.
@@ -171,7 +175,11 @@ pub fn to_radix_string(x: f64, radix: f64) -> Result<String, String> {
 /// `Double(v).Exponent()`: v = significand × 2^exponent with a 53-bit significand.
 fn exponent_of(v: f64) -> i32 {
     let biased = ((v.to_bits() >> 52) & 0x7ff) as i32;
-    if biased == 0 { -1074 } else { biased - 1075 }
+    if biased == 0 {
+        -1074
+    } else {
+        biased - 1075
+    }
 }
 
 /// `DoubleToRadixCString`.

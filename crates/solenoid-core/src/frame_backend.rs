@@ -9,11 +9,13 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_formula::parse_formula;
 use crate::excel_functions::{take_raised, Calc, Raised};
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
-use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp};
+use crate::frame_verbs::{
+    append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp,
+};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
 
 #[derive(Default)]
@@ -39,13 +41,14 @@ pub(crate) fn register(frame: FrameValue) -> String {
 }
 
 pub(crate) fn get(handle: &str) -> Result<Rc<FrameValue>, SolError> {
-    STORE.with(|s| s.borrow().frames.get(handle).cloned()).ok_or_else(|| {
-        sol_error(ErrorCode::Ref, format!("frame handle {handle} not found (dropped or never created)"))
-    })
+    STORE
+        .with(|s| s.borrow().frames.get(handle).cloned())
+        .ok_or_else(|| sol_error(ErrorCode::Ref, format!("frame handle {handle} not found (dropped or never created)")))
 }
 
 fn parse<'a, T: Deserialize<'a>>(args: &'a Json, key: &str) -> Result<T, SolError> {
-    T::deserialize(args.get(key).unwrap_or(&Json::Null)).map_err(|e| sol_error(ErrorCode::Error, format!("bad argument \"{key}\": {e}")))
+    T::deserialize(args.get(key).unwrap_or(&Json::Null))
+        .map_err(|e| sol_error(ErrorCode::Error, format!("bad argument \"{key}\": {e}")))
 }
 
 fn bad_arg(key: &str, want: &str) -> SolError {
@@ -73,7 +76,8 @@ fn map_arg<'a>(args: &'a Json, key: &str) -> Result<Option<&'a serde_json::Map<S
 fn preview_of(f: &FrameValue, n: usize) -> Json {
     let row_count = frame_row_count(f);
     let take = n.min(row_count);
-    let rows: Vec<Json> = (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
+    let rows: Vec<Json> =
+        (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
     json!({
         "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.as_str() })).collect::<Vec<_>>(),
         "rows": rows,
@@ -85,7 +89,9 @@ fn preview_of(f: &FrameValue, n: usize) -> Json {
 /// One engine command: `args` in, the result out, both as the JSON the Tauri commands take.
 pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
     match command {
-        "engine_ping" => Ok(json!({ "name": "solenoid-core", "version": env!("CARGO_PKG_VERSION"), "backend": "rust" })),
+        "engine_ping" => {
+            Ok(json!({ "name": "solenoid-core", "version": env!("CARGO_PKG_VERSION"), "backend": "rust" }))
+        }
         "engine_source" => Ok(json!(register(wire_to_frame(parse::<WireFrame>(args, "frame")?)))),
         "engine_apply" | "engine_apply_many" => {
             let mut f = get(&parse::<String>(args, "handle")?)?;
@@ -121,12 +127,15 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             Ok(json!(register(join_frames(&l, &r, &parse::<JoinOpts>(args, "opts")?)?)))
         }
         "engine_append" | "engine_bind_columns" => {
-            let frames = parse::<Vec<String>>(args, "handles")?.iter().map(|h| get(h)).collect::<Result<Vec<_>, _>>()?;
+            let frames =
+                parse::<Vec<String>>(args, "handles")?.iter().map(|h| get(h)).collect::<Result<Vec<_>, _>>()?;
             let refs: Vec<&FrameValue> = frames.iter().map(Rc::as_ref).collect();
             let out = if command == "engine_append" { append_frames(&refs)? } else { bind_columns(&refs) };
             Ok(json!(register(out)))
         }
-        "engine_preview" => Ok(preview_of(get(&parse::<String>(args, "handle")?)?.as_ref(), parse::<usize>(args, "n")?)),
+        "engine_preview" => {
+            Ok(preview_of(get(&parse::<String>(args, "handle")?)?.as_ref(), parse::<usize>(args, "n")?))
+        }
         "engine_collect" => {
             let f = get(&parse::<String>(args, "handle")?)?;
             Ok(Json::Array(f.columns.iter().map(column_to_wire).collect()))
@@ -181,7 +190,9 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let frame = std::hint::black_box([0u8; 65_536]);
             panic!("engine_trap {}", frame[0])
         }
-        "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
+        "engine_formula_parse" => {
+            Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json()))
+        }
         // A frame computation no formula shares (`frame_fns.rs`): frames by handle and plain arguments in, a frame (by a
         // new handle) or a value out.
         "engine_frame_fn" => {
@@ -189,16 +200,21 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let handles = parse::<Vec<String>>(args, "handles")?;
             let frames = handles.iter().map(|h| get(h)).collect::<Result<Vec<_>, _>>()?;
             let refs: Vec<&FrameValue> = frames.iter().map(|f| f.as_ref()).collect();
-            let argv: Vec<crate::excel_functions::V> = list_arg(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
+            let argv: Vec<crate::excel_functions::V> =
+                list_arg(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
             let _calc = Calc::begin(None);
             match crate::frame_fns::call(&name, &refs, &argv) {
                 crate::frame_fns::FrameOut::Frame(f) => Ok(json!({ "handle": register(f) })),
-                crate::frame_fns::FrameOut::Value(v) => Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") })),
+                crate::frame_fns::FrameOut::Value(v) => {
+                    Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") }))
+                }
                 crate::frame_fns::FrameOut::FrameAnd(f, v) => Ok(json!({
                     "handle": register(f),
                     "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes"),
                 })),
-                crate::frame_fns::FrameOut::Error(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
+                crate::frame_fns::FrameOut::Error(e) => {
+                    Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } }))
+                }
             }
         }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
@@ -208,7 +224,9 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let mut vars = Vec::new();
             let mut rows: Vec<String> = Vec::new();
             if !src.is_empty() {
-                let Some(ast) = crate::excel_formula::parse_formula(&src) else { return Ok(json!({ "parses": false })) };
+                let Some(ast) = crate::excel_formula::parse_formula(&src) else {
+                    return Ok(json!({ "parses": false }));
+                };
                 vars = crate::eval::variables(&ast);
                 rows = crate::eval::row_refs(&ast);
             }
@@ -224,13 +242,19 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula (its text, or its tree as `ast`), each exponent as
         // its `String(x)`.
         "engine_dim_eval" => {
-            let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?.unwrap_or_default();
+            let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?
+                .unwrap_or_default();
             let codes = parse::<Option<crate::unit_dims::Codes>>(args, "codes")?.unwrap_or_default();
             let fns = named_lambdas(args)?;
             let Some(ast) = formula_arg(args)? else { return Ok(json!({ "parses": false })) };
             Ok(match crate::unit_dims::dim_eval_with_code(&ast, &env, &codes, fns.as_ref()) {
                 Ok(Some(op)) => {
-                    let dim: Vec<Json> = op.dim.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| json!([k, crate::jsnum::number_to_string(*v)])).collect();
+                    let dim: Vec<Json> = op
+                        .dim
+                        .iter()
+                        .filter(|(_, v)| **v != 0.0)
+                        .map(|(k, v)| json!([k, crate::jsnum::number_to_string(*v)]))
+                        .collect();
                     json!({ "dim": dim, "code": op.code })
                 }
                 Ok(None) => json!({ "indeterminate": true }),
@@ -243,16 +267,25 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let (points, lists, bare) = (names("points")?, names("lists")?, names("bare")?);
             let fns = named_lambdas(args)?.unwrap_or_default();
             let Some(ast) = formula_arg(args)? else { return Ok(json!({ "parses": false })) };
-            Ok(match crate::unit_dims::affine_weight(&ast, &crate::unit_dims::AffScope::new(&points, &lists, &bare, &fns)) {
-                Ok(w) => json!({ "w": w }),
-                Err(e) => json!({ "err": e.code, "msg": e.message }),
-            })
+            Ok(
+                match crate::unit_dims::affine_weight(
+                    &ast,
+                    &crate::unit_dims::AffScope::new(&points, &lists, &bare, &fns),
+                ) {
+                    Ok(w) => json!({ "w": w }),
+                    Err(e) => json!({ "err": e.code, "msg": e.message }),
+                },
+            )
         }
         // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
             let values = |key: &str| -> Result<rustc_hash::FxHashMap<String, crate::excel_functions::V>, SolError> {
-                Ok(map_arg(args, key)?.into_iter().flatten().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
+                Ok(map_arg(args, key)?
+                    .into_iter()
+                    .flatten()
+                    .map(|(k, v)| (k.clone(), crate::eval::decode_value(v)))
+                    .collect())
             };
             let inputs = crate::eval::ColumnInputs {
                 table: crate::eval::Table::Frame(&f),
@@ -266,13 +299,17 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let _calc = Calc::begin(parse(args, "clock")?);
             let outcome = match args.get("bare") {
                 Some(w) if !w.is_null() => match crate::eval::decode_value(&json!({ "__lambda": w })) {
-                    crate::excel_functions::V::Lambda(lam) => crate::eval::column(crate::eval::ColumnSpec::Lambda(&lam), inputs),
+                    crate::excel_functions::V::Lambda(lam) => {
+                        crate::eval::column(crate::eval::ColumnSpec::Lambda(&lam), inputs)
+                    }
                     crate::excel_functions::V::Err(e) => Err(e.as_ref().clone()),
                     _ => Err(sol_error(ErrorCode::Value, "This column's LAMBDA can't be read")),
                 },
                 _ => match crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) {
                     None => Err(sol_error(ErrorCode::Syntax, "The formula doesn't parse")),
-                    Some(ast) => crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs),
+                    Some(ast) => {
+                        crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs)
+                    }
                 },
             };
             take_raised();
@@ -288,29 +325,34 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let xs = parse::<Vec<f64>>(args, "xs")?;
             let ys = parse::<Option<Vec<f64>>>(args, "ys")?.unwrap_or_default();
             let f = parse::<String>(args, "fn")?;
-            Ok(Json::Array(xs.iter().enumerate().map(|(i, &x)| {
-                let r = match f.as_str() {
-                    "exp" => crate::fdlibm::exp(x),
-                    "log" => crate::fdlibm::log(x),
-                    "log10" => crate::fdlibm::log10(x),
-                    "prec15" => crate::unit_value::to_precision(x, 15),
-                    "sin" => crate::fdlibm::sin(x),
-                    "cos" => crate::fdlibm::cos(x),
-                    "tan" => crate::fdlibm::tan(x),
-                    "asin" => crate::fdlibm::asin(x),
-                    "acos" => crate::fdlibm::acos(x),
-                    "atan" => crate::fdlibm::atan(x),
-                    "acosh" => crate::fdlibm::acosh(x),
-                    "atanh" => crate::fdlibm::atanh(x),
-                    "log1p" => crate::fdlibm::log1p(x),
-                    "expm1" => crate::fdlibm::expm1(x),
-                    "tanh" => crate::fdlibm::tanh(x),
-                    "log2" => crate::fdlibm::log2(x),
-                    "atan2" => crate::fdlibm::atan2(x, ys.get(i).copied().unwrap_or(f64::NAN)),
-                    _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
-                };
-                json!(r.to_bits().to_string())
-            }).collect()))
+            Ok(Json::Array(
+                xs.iter()
+                    .enumerate()
+                    .map(|(i, &x)| {
+                        let r = match f.as_str() {
+                            "exp" => crate::fdlibm::exp(x),
+                            "log" => crate::fdlibm::log(x),
+                            "log10" => crate::fdlibm::log10(x),
+                            "prec15" => crate::unit_value::to_precision(x, 15),
+                            "sin" => crate::fdlibm::sin(x),
+                            "cos" => crate::fdlibm::cos(x),
+                            "tan" => crate::fdlibm::tan(x),
+                            "asin" => crate::fdlibm::asin(x),
+                            "acos" => crate::fdlibm::acos(x),
+                            "atan" => crate::fdlibm::atan(x),
+                            "acosh" => crate::fdlibm::acosh(x),
+                            "atanh" => crate::fdlibm::atanh(x),
+                            "log1p" => crate::fdlibm::log1p(x),
+                            "expm1" => crate::fdlibm::expm1(x),
+                            "tanh" => crate::fdlibm::tanh(x),
+                            "log2" => crate::fdlibm::log2(x),
+                            "atan2" => crate::fdlibm::atan2(x, ys.get(i).copied().unwrap_or(f64::NAN)),
+                            _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
+                        };
+                        json!(r.to_bits().to_string())
+                    })
+                    .collect(),
+            ))
         }
         "engine_assemble" => {
             #[derive(Deserialize)]
@@ -325,12 +367,18 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
                 let f = get(&p.handle)?;
-                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
+                let c = f
+                    .columns
+                    .iter()
+                    .find(|c| c.name == p.column)
+                    .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
                 columns.push(FrameColumn { name: p.as_, ty: p.ty, values: c.values.clone() });
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
+        "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => {
+            Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes"))
+        }
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         // The formula language's function names, and which of them the built-in packs own.
         "engine_function_names" => Ok(json!({
@@ -339,7 +387,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             "packs": crate::fns_packs::NAMES,
         })),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
-        other => crate::csv::invoke(other, args).ok_or_else(|| sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
+        other => crate::csv::invoke(other, args)
+            .ok_or_else(|| sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
     }
 }
 
@@ -382,14 +431,16 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     let _calc = Calc::begin(parse(args, "clock")?);
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
-        let argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
+        let argv: Vec<V> =
+            list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
         call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false))
     } else if command == "engine_call_each" {
         // [[C120]] linearWork: one body over many items in one crossing, each call as `engine_call` makes it, the
         // items at the `at` positions. An item that throws answers as `engine_call` answers a throw.
         let name = parse::<String>(args, "name")?;
         let scan = parse::<Option<bool>>(args, "scan")?.unwrap_or(false);
-        let mut argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
+        let mut argv: Vec<V> =
+            list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
         let at = parse::<Vec<usize>>(args, "at")?;
         let bad = |k: &str| sol_error(ErrorCode::Error, format!("bad argument \"{k}\""));
         if at.iter().any(|&p| p >= argv.len()) {
@@ -404,14 +455,20 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             }
             out.push(match (call_body(&name, &argv, scan), take_raised()) {
                 (v, Raised::Nothing) => v,
-                (_, Raised::Thrown(_)) => V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments"))),
+                (_, Raised::Thrown(_)) => {
+                    V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")))
+                }
             });
         }
         return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;
-        let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        let env: crate::eval::Env = map_arg(args, "env")?
+            .ok_or_else(|| bad_arg("env", "an object"))?
+            .iter()
+            .map(|(k, v)| (k.clone(), arg_of(v)))
+            .collect();
         let order = parse::<Option<Vec<String>>>(args, "order")?.unwrap_or_default();
         crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(failed)
     } else if command == "engine_fold_units" {
@@ -423,19 +480,28 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             _ => FoldKind::ByCol,
         };
         let src = parse::<String>(args, "src")?;
-        let (m, initial) = (arg_of(args.get("m").unwrap_or(&Json::Null)), arg_of(args.get("initial").unwrap_or(&Json::Null)));
+        let (m, initial) =
+            (arg_of(args.get("m").unwrap_or(&Json::Null)), arg_of(args.get("initial").unwrap_or(&Json::Null)));
         crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(failed)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
-        let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        let env: crate::eval::Env = map_arg(args, "env")?
+            .ok_or_else(|| bad_arg("env", "an object"))?
+            .iter()
+            .map(|(k, v)| (k.clone(), arg_of(v)))
+            .collect();
         if crate::eval::take_missing() {
             return Ok(CallReply::Missing);
         }
         if env.values().any(crate::unit_dims::holds_unit) {
-            return Ok(CallReply::Value(V::err(sol_error(ErrorCode::Value, "A formula here reads plain values, and one of these has a unit"))));
+            return Ok(CallReply::Value(V::err(sol_error(
+                ErrorCode::Value,
+                "A formula here reads plain values, and one of these has a unit",
+            ))));
         }
-        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
+        crate::eval::formula(&src, env)
+            .unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
     };
     Ok(match take_raised() {
         Raised::Thrown(e) => CallReply::Thrown(e.message),
@@ -467,7 +533,9 @@ impl serde::Serialize for CallReply {
                         let mut q = s.serialize_seq(Some(self.0.len()))?;
                         for v in self.0 {
                             match v {
-                                V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => q.serialize_element(n)?,
+                                V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => {
+                                    q.serialize_element(n)?
+                                }
                                 _ => q.serialize_element(&Out(v))?,
                             }
                         }
@@ -550,7 +618,9 @@ fn formula_arg(args: &Json) -> Result<Option<crate::excel_formula::Ast>, SolErro
 /// `fns`: the LAMBDAs a formula calls by name, each `[params, body]` with the body as text or as a tree. One that
 /// doesn't read is left out.
 fn named_lambdas(args: &Json) -> Result<Option<crate::unit_dims::NamedLambdas>, SolError> {
-    let Some(m) = parse::<Option<std::collections::BTreeMap<String, (Vec<String>, Json)>>>(args, "fns")? else { return Ok(None) };
+    let Some(m) = parse::<Option<std::collections::BTreeMap<String, (Vec<String>, Json)>>>(args, "fns")? else {
+        return Ok(None);
+    };
     let mut fns = crate::unit_dims::NamedLambdas::new();
     for (name, (params, body)) in m {
         let body = match &body {

@@ -1,8 +1,8 @@
 //! [[D102]] graphOnCore. The values only cards hand each other, on the wire `nodeWire.ts` speaks: a frame, a cube, and plain data (a chart,
 //! a document, an image) carried whole as JSON whose special numbers and errors are tagged.
 
-use crate::frame::FrameColType;
 use crate::excel_functions::V;
+use crate::frame::FrameColType;
 use serde_json::Value as Json;
 use std::rc::Rc;
 
@@ -45,8 +45,13 @@ pub fn decode(j: &Json) -> V {
         Json::Array(items) => super::list(items.iter().map(decode).collect()),
         Json::Object(o) if o.contains_key("__frame") => {
             let f = &o["__frame"];
-            let columns = f.get("columns").and_then(Json::as_array).map(|cs| cs.iter().map(column).collect()).unwrap_or_default();
-            V::Frame(Rc::new(Frame { columns, total_rows: f.get("totalRows").and_then(Json::as_f64), approx: f.get("approx").cloned() }))
+            let columns =
+                f.get("columns").and_then(Json::as_array).map(|cs| cs.iter().map(column).collect()).unwrap_or_default();
+            V::Frame(Rc::new(Frame {
+                columns,
+                total_rows: f.get("totalRows").and_then(Json::as_f64),
+                approx: f.get("approx").cloned(),
+            }))
         }
         Json::Object(o) if o.contains_key("__cube") => {
             let columns = o["__cube"]
@@ -56,7 +61,11 @@ pub fn decode(j: &Json) -> V {
                     cs.iter()
                         .map(|c| CubeColumn {
                             name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
-                            cells: c.get("cells").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
+                            cells: c
+                                .get("cells")
+                                .and_then(Json::as_array)
+                                .map(|a| a.iter().map(decode).collect())
+                                .unwrap_or_default(),
                             ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()),
                             format: c.get("format").cloned(),
                         })
@@ -118,7 +127,6 @@ impl serde::Serialize for Cell<'_> {
 
 /// A frame's or a cube's reply, as `Out` writes the rest: `{"frame": {...}}`, `{"cube": {...}}`, `{"json": ...}`.
 pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S::Error> {
-    
     use serde::ser::SerializeMap;
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {
@@ -182,7 +190,6 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
 }
 
 pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::Error> {
-    
     use serde::ser::{SerializeMap, SerializeSeq};
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
@@ -16,13 +16,63 @@ use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "ARGSORT", "COALESCE", "COMBINATIONS", "PERMUTATIONS", "CONCATLISTS", "CONVOLVE", "CUMRETURNS", "DECOMPOSE", "DIFF",
-    "DRAWDOWN", "EWMA", "FILLBACKWARD", "FILLDROP", "FILLFORWARD", "FILLINTERPOLATE", "FILLMEAN", "FILLMEDIAN",
-    "FILLMODE", "FILLVALUE", "FINDPEAKS", "FITDIST", "FORECAST.ETS", "FORECAST.ETS.CONFINT", "FORECAST.ETS.SEASONALITY",
-    "GAUSSIANSMOOTH", "GRADIENT", "INTERLEAVE", "INTERPOLATE", "ISOUTLIER", "LINSPACE", "LOGRETURNS", "LOWESS", "NORM",
-    "NORMALIZE", "NTHELEMENT", "NTILE", "PCTCHANGE", "RANGE", "REVERSE", "RLE", "RUNNING", "SAVGOL", "SETDIFFERENCE",
-    "SETDISJOINT", "SETEQUAL", "SETINTERSECT", "SETSUBSET", "SETSUPERSET", "SETSYMDIFF", "SETUNION", "SHIFT", "SLICE",
-    "SPARKLINE", "SPECTRUM", "TRAPZ", "WHICH", "ZSCORE",
+    "ARGSORT",
+    "COALESCE",
+    "COMBINATIONS",
+    "PERMUTATIONS",
+    "CONCATLISTS",
+    "CONVOLVE",
+    "CUMRETURNS",
+    "DECOMPOSE",
+    "DIFF",
+    "DRAWDOWN",
+    "EWMA",
+    "FILLBACKWARD",
+    "FILLDROP",
+    "FILLFORWARD",
+    "FILLINTERPOLATE",
+    "FILLMEAN",
+    "FILLMEDIAN",
+    "FILLMODE",
+    "FILLVALUE",
+    "FINDPEAKS",
+    "FITDIST",
+    "FORECAST.ETS",
+    "FORECAST.ETS.CONFINT",
+    "FORECAST.ETS.SEASONALITY",
+    "GAUSSIANSMOOTH",
+    "GRADIENT",
+    "INTERLEAVE",
+    "INTERPOLATE",
+    "ISOUTLIER",
+    "LINSPACE",
+    "LOGRETURNS",
+    "LOWESS",
+    "NORM",
+    "NORMALIZE",
+    "NTHELEMENT",
+    "NTILE",
+    "PCTCHANGE",
+    "RANGE",
+    "REVERSE",
+    "RLE",
+    "RUNNING",
+    "SAVGOL",
+    "SETDIFFERENCE",
+    "SETDISJOINT",
+    "SETEQUAL",
+    "SETINTERSECT",
+    "SETSUBSET",
+    "SETSUPERSET",
+    "SETSYMDIFF",
+    "SETUNION",
+    "SHIFT",
+    "SLICE",
+    "SPARKLINE",
+    "SPECTRUM",
+    "TRAPZ",
+    "WHICH",
+    "ZSCORE",
 ];
 
 const MAX_GENERATED: f64 = 1_000_000.0;
@@ -177,7 +227,11 @@ fn percentile_of(sorted: &[f64], p: f64) -> f64 {
     if a == b {
         return a;
     }
-    if a.is_finite() && b.is_finite() { a + (b - a) * t } else { (1.0 - t) * a + t * b }
+    if a.is_finite() && b.is_finite() {
+        a + (b - a) * t
+    } else {
+        (1.0 - t) * a + t * b
+    }
 }
 
 fn iter_min(xs: &[f64]) -> f64 {
@@ -201,7 +255,11 @@ pub enum RunOp {
 
 fn median_of_sorted(sorted: &[f64]) -> f64 {
     let mid = sorted.len() / 2;
-    if sorted.len().is_multiple_of(2) { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
+    if sorted.len().is_multiple_of(2) {
+        (sorted[mid - 1] + sorted[mid]) / 2.0
+    } else {
+        sorted[mid]
+    }
 }
 
 /// `runningPlain`: a window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
@@ -375,7 +433,11 @@ pub fn call(name: &str, a: &[V]) -> V {
                     (0..n)
                         .map(|i| {
                             let j = (i as f64 - m + nf) % nf;
-                            if j.is_nan() { V::Undef } else { l.get(j as usize).cloned().unwrap_or(V::Undef) }
+                            if j.is_nan() {
+                                V::Undef
+                            } else {
+                                l.get(j as usize).cloned().unwrap_or(V::Undef)
+                            }
                         })
                         .collect(),
                 );
@@ -384,7 +446,11 @@ pub fn call(name: &str, a: &[V]) -> V {
                 (0..n)
                     .map(|i| {
                         let j = i as f64 - s;
-                        if j >= 0.0 && j < nf { l[j as usize].clone() } else { V::Null }
+                        if j >= 0.0 && j < nf {
+                            l[j as usize].clone()
+                        } else {
+                            V::Null
+                        }
                     })
                     .collect(),
             )
@@ -515,7 +581,10 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return V::Null;
             }
             let shown = js_string_of(op);
-            if !matches!(js_trim(&shown).to_uppercase().as_str(), "SUM" | "AVERAGE" | "AVG" | "MIN" | "MAX" | "MEDIAN" | "PRODUCT" | "STDEV") {
+            if !matches!(
+                js_trim(&shown).to_uppercase().as_str(),
+                "SUM" | "AVERAGE" | "AVG" | "MIN" | "MAX" | "MEDIAN" | "PRODUCT" | "STDEV"
+            ) {
                 return value(&format!("RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT or STDEV, not \"{shown}\""));
             }
             if matches!(w, V::Null) {
@@ -553,7 +622,15 @@ pub fn call(name: &str, a: &[V]) -> V {
                     (_, None) => -1.0,
                     (Some(x), Some(y)) => {
                         let c = x - y;
-                        if c != 0.0 { if desc { -c } else { c } } else { i as f64 - j as f64 }
+                        if c != 0.0 {
+                            if desc {
+                                -c
+                            } else {
+                                c
+                            }
+                        } else {
+                            i as f64 - j as f64
+                        }
                     }
                 };
                 c.partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
@@ -609,7 +686,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             nums(out)
         }
         "CONCATLISTS" => list(a.iter().flat_map(to_list).collect()),
-        "SETUNION" | "SETINTERSECT" | "SETDIFFERENCE" | "SETSYMDIFF" => set_operation(name, &to_list(a0), &to_list(arg(a, 1))),
+        "SETUNION" | "SETINTERSECT" | "SETDIFFERENCE" | "SETSYMDIFF" => {
+            set_operation(name, &to_list(a0), &to_list(arg(a, 1)))
+        }
         "SETEQUAL" | "SETSUBSET" | "SETSUPERSET" | "SETDISJOINT" => {
             let (sa, sb) = (member_set(&to_list(a0), 0), member_set(&to_list(arg(a, 1)), 1 << 30));
             let subset = |x: &HashSet<Key>, y: &HashSet<Key>| x.iter().all(|k| y.contains(k));
@@ -620,8 +699,8 @@ pub fn call(name: &str, a: &[V]) -> V {
                 _ => !sa.iter().any(|k| sb.contains(k)),
             })
         }
-        "FILLVALUE" | "FILLFORWARD" | "FILLBACKWARD" | "FILLMEAN" | "FILLMEDIAN" | "FILLMODE" | "FILLINTERPOLATE" | "FILLDROP"
-        | "COALESCE" => fill_list(name, &to_list(a0), a),
+        "FILLVALUE" | "FILLFORWARD" | "FILLBACKWARD" | "FILLMEAN" | "FILLMEDIAN" | "FILLMODE" | "FILLINTERPOLATE"
+        | "FILLDROP" | "COALESCE" => fill_list(name, &to_list(a0), a),
         "LOGRETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
         "FINDPEAKS" => find_peaks(&to_list(a0), arg(a, 1), arg(a, 2), arg(a, 3)),
         "GAUSSIANSMOOTH" => gaussian_smooth(&to_list(a0), to_num(arg(a, 1))),
@@ -668,7 +747,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             match p {
                 Some((fit, h)) => V::Num(norm_s_inv(0.5 + c / 2.0) * fit.sigma * h.sqrt()),
-                None => value("FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end"),
+                None => value(
+                    "FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end",
+                ),
             }
         }
         "FITDIST" => fitdist(a0, arg(a, 1)),
@@ -684,7 +765,10 @@ fn capped(f: &str, count: f64) -> Option<V> {
     }
     let k = math_round(count);
     (k > MAX_GENERATED).then(|| {
-        V::err(sol_error(ErrorCode::Overflow, format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED))))
+        V::err(sol_error(
+            ErrorCode::Overflow,
+            format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED)),
+        ))
     })
 }
 
@@ -694,7 +778,11 @@ fn range_count(start: f64, stop: Option<f64>, step: f64) -> f64 {
         return if start == stop { 1.0 } else { f64::INFINITY };
     }
     let n = ((stop - start) / step + 1e-9).floor() + 1.0;
-    if n > 0.0 { n } else { 0.0 }
+    if n > 0.0 {
+        n
+    } else {
+        0.0
+    }
 }
 
 fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
@@ -718,7 +806,13 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
     let count = math_round(count);
     if count > 10_000.0 {
         let kind = if combos { "combinations" } else { "permutations" };
-        return V::err(sol_error(ErrorCode::Overflow, format!("That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.", number_to_string(count))));
+        return V::err(sol_error(
+            ErrorCode::Overflow,
+            format!(
+                "That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.",
+                number_to_string(count)
+            ),
+        ));
     }
     let mut out = Vec::new();
     let mut cur = Vec::new();
@@ -784,7 +878,11 @@ fn ntile(arr: &[V], n: f64) -> V {
                 let (mut lo, mut hi) = (0usize, edges.len());
                 while lo < hi {
                     let m = (lo + hi) >> 1;
-                    if edges[m] < v { lo = m + 1 } else { hi = m }
+                    if edges[m] < v {
+                        lo = m + 1
+                    } else {
+                        hi = m
+                    }
                 }
                 V::Num((lo + 1) as f64)
             })
@@ -794,7 +892,21 @@ fn ntile(arr: &[V], n: f64) -> V {
 
 fn outlier_flags(arr: &[V], method: &str, threshold: f64) -> V {
     let ns = present_numbers(arr);
-    let no = || list(arr.iter().map(|v| if is_sol(v) { v.clone() } else if blank(v) { V::Null } else { V::Bool(false) }).collect());
+    let no = || {
+        list(
+            arr.iter()
+                .map(|v| {
+                    if is_sol(v) {
+                        v.clone()
+                    } else if blank(v) {
+                        V::Null
+                    } else {
+                        V::Bool(false)
+                    }
+                })
+                .collect(),
+        )
+    };
     if ns.len() < 3 {
         return no();
     }
@@ -830,7 +942,11 @@ fn outlier_flags(arr: &[V], method: &str, threshold: f64) -> V {
             Box::new(move |v| ((0.6745 * (v - med)) / mad).abs() > threshold)
         }
     };
-    list(arr.iter().map(|v| if is_sol(v) { v.clone() } else { finite(v).map_or(V::Null, |x| V::Bool(test(x))) }).collect())
+    list(
+        arr.iter()
+            .map(|v| if is_sol(v) { v.clone() } else { finite(v).map_or(V::Null, |x| V::Bool(test(x))) })
+            .collect(),
+    )
 }
 
 fn member_set(arr: &[V], base: usize) -> HashSet<Key> {
@@ -1146,7 +1262,9 @@ fn gaussian_smooth(values: &[V], sigma: f64) -> V {
         return list(Vec::new());
     }
     if !(sigma > 0.0) {
-        return list(values.iter().map(|v| if is_sol(v) || finite(v).is_some() { v.clone() } else { V::Null }).collect());
+        return list(
+            values.iter().map(|v| if is_sol(v) || finite(v).is_some() { v.clone() } else { V::Null }).collect(),
+        );
     }
     let r = (4.0 * sigma).ceil();
     if (2.0 * r + 1.0) * n as f64 > 1e8 {
@@ -1180,7 +1298,11 @@ fn gaussian_smooth(values: &[V], sigma: f64) -> V {
                     num += w * y;
                     den += w;
                 }
-                if den > 0.0 { V::Num(num / den) } else { V::Null }
+                if den > 0.0 {
+                    V::Num(num / den)
+                } else {
+                    V::Null
+                }
             })
             .collect(),
     )
@@ -1344,7 +1466,10 @@ fn lowess(values: &[V], frac: f64, iterations: usize) -> Vec<V> {
                 })
                 .collect();
             let shifted: Vec<f64> = xs.iter().map(|x| x - x0).collect();
-            let c = poly_fit_w(&shifted, &ys, &ws, 1.0).ok().flatten().or_else(|| poly_fit_w(&shifted, &ys, &ws, 0.0).ok().flatten());
+            let c = poly_fit_w(&shifted, &ys, &ws, 1.0)
+                .ok()
+                .flatten()
+                .or_else(|| poly_fit_w(&shifted, &ys, &ws, 0.0).ok().flatten());
             fitted[k] = c.map_or(ys[k], |c| c[0]);
         }
         if it == iterations {
@@ -1362,7 +1487,11 @@ fn lowess(values: &[V], frac: f64, iterations: usize) -> Vec<V> {
             .iter()
             .map(|e| {
                 let u = e / (6.0 * mad);
-                if u.abs() < 1.0 { sq(1.0 - u * u) } else { 0.0 }
+                if u.abs() < 1.0 {
+                    sq(1.0 - u * u)
+                } else {
+                    0.0
+                }
             })
             .collect();
     }
@@ -1577,7 +1706,11 @@ fn sparkline(range: &V, ty: &V) -> V {
     if let Some(e) = first_error(&items) {
         return e;
     }
-    let op = if blank(ty) || matches!(ty, V::Str(s) if s.is_empty()) { "line".to_string() } else { js_lower(js_trim(&to_str(ty))).into_owned() };
+    let op = if blank(ty) || matches!(ty, V::Str(s) if s.is_empty()) {
+        "line".to_string()
+    } else {
+        js_lower(js_trim(&to_str(ty))).into_owned()
+    };
     if !matches!(op.as_str(), "line" | "column" | "winloss") {
         return value("SPARKLINE type is \"line\", \"column\" or \"winloss\"");
     }
@@ -1608,7 +1741,11 @@ fn sparkline(range: &V, ty: &V) -> V {
         let pad = 1.5;
         let y = |v: f64| if hi == lo { 10.0 } else { pad + ((hi - v) / (hi - lo)) * (20.0 - 2.0 * pad) };
         let step = (80.0 - 2.0 * pad) / (pts.len() - 1) as f64;
-        let d: String = pts.iter().enumerate().map(|(i, &v)| format!("{}{} {}", if i == 0 { "M" } else { "L" }, r1(pad + i as f64 * step), r1(y(v)))).collect();
+        let d: String = pts
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| format!("{}{} {}", if i == 0 { "M" } else { "L" }, r1(pad + i as f64 * step), r1(y(v))))
+            .collect();
         format!("<path d='{d}' fill='none' stroke='{gold}' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'/>")
     } else {
         let signed = op == "winloss";
@@ -1622,14 +1759,28 @@ fn sparkline(range: &V, ty: &V) -> V {
         let base = y(0.0);
         let (mut pos, mut neg) = (String::new(), String::new());
         for (i, &v0) in ys.iter().enumerate() {
-            let v = if signed { if v0 > 0.0 { 1.0 } else if v0 < 0.0 { -1.0 } else { v0 } } else { v0 };
+            let v = if signed {
+                if v0 > 0.0 {
+                    1.0
+                } else if v0 < 0.0 {
+                    -1.0
+                } else {
+                    v0
+                }
+            } else {
+                v0
+            };
             if v == 0.0 {
                 continue;
             }
             let top = math_min(y(v), base);
             let h = math_max((y(v) - base).abs(), 0.5);
             let d = format!("M{} {}h{w}v{}h-{w}z", r1(i as f64 * slot + gap / 2.0), r1(top), r1(h));
-            if v > 0.0 || !signed { pos += &d } else { neg += &d }
+            if v > 0.0 || !signed {
+                pos += &d
+            } else {
+                neg += &d
+            }
         }
         let pos_color = if signed { green } else { gold };
         let mut body = String::new();
@@ -1642,7 +1793,10 @@ fn sparkline(range: &V, ty: &V) -> V {
         body
     };
     let svg = format!("<svg xmlns='http://www.w3.org/2000/svg' class='sol-spark' viewBox='0 0 80 20' width='80' height='20'>{body}</svg>");
-    V::str(&format!("data:image/svg+xml,{}", svg.replace('%', "%25").replace('#', "%23").replace('<', "%3C").replace('>', "%3E")))
+    V::str(&format!(
+        "data:image/svg+xml,{}",
+        svg.replace('%', "%25").replace('#', "%23").replace('<', "%3C").replace('>', "%3E")
+    ))
 }
 
 // ─── Forecasting ([[C17]] shareImpl: forecastOps.ts) ─────────────────────────────
@@ -1661,10 +1815,23 @@ fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
     if to_num(period).is_nan() {
         return throw(sol_error(ErrorCode::Value, "Invalid array length"));
     }
-    let d = if mdl == "stl" { stl_decompose(&y, to_num(period)) } else { seasonal_decompose(&y, to_num(period), mdl == "additive") };
+    let d = if mdl == "stl" {
+        stl_decompose(&y, to_num(period))
+    } else {
+        seasonal_decompose(&y, to_num(period), mdl == "additive")
+    };
     match d {
         None => V::Null,
-        Some([t, s, r]) => list(match comp.as_str() { "trend" => t, "seasonal" => s, _ => r }.into_iter().map(num_or_null).collect()),
+        Some([t, s, r]) => list(
+            match comp.as_str() {
+                "trend" => t,
+                "seasonal" => s,
+                _ => r,
+            }
+            .into_iter()
+            .map(num_or_null)
+            .collect(),
+        ),
     }
 }
 
@@ -1702,7 +1869,15 @@ pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool)
         .iter()
         .zip(&trend)
         .map(|(v, t)| match (v, t) {
-            (Some(v), Some(t)) => if additive { Some(v - t) } else if *t == 0.0 { None } else { Some(v / t) },
+            (Some(v), Some(t)) => {
+                if additive {
+                    Some(v - t)
+                } else if *t == 0.0 {
+                    None
+                } else {
+                    Some(v / t)
+                }
+            }
             _ => None,
         })
         .collect();
@@ -1723,12 +1898,33 @@ pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool)
         return None;
     }
     let mean = pa.iter().fold(0.0, |a, b| a + b) / m as f64;
-    let centred: Vec<f64> = pa.iter().map(|v| if additive { v - mean } else if mean == 0.0 { f64::NAN } else { v / mean }).collect();
+    let centred: Vec<f64> = pa
+        .iter()
+        .map(|v| {
+            if additive {
+                v - mean
+            } else if mean == 0.0 {
+                f64::NAN
+            } else {
+                v / mean
+            }
+        })
+        .collect();
     let seasonal: Vec<f64> = (0..n).map(|i| centred[i % m]).collect();
     let residual = det
         .iter()
         .enumerate()
-        .map(|(i, v)| v.and_then(|v| if additive { Some(v - seasonal[i]) } else if seasonal[i] == 0.0 { None } else { Some(v / seasonal[i]) }))
+        .map(|(i, v)| {
+            v.and_then(|v| {
+                if additive {
+                    Some(v - seasonal[i])
+                } else if seasonal[i] == 0.0 {
+                    None
+                } else {
+                    Some(v / seasonal[i])
+                }
+            })
+        })
         .collect();
     Some([trend, seasonal.into_iter().map(Some).collect(), residual])
 }
@@ -1880,7 +2076,14 @@ pub(crate) fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
         let mut improved = true;
         while improved {
             improved = false;
-            for (da, db, dg) in [(step, 0.0, 0.0), (-step, 0.0, 0.0), (0.0, step, 0.0), (0.0, -step, 0.0), (0.0, 0.0, step), (0.0, 0.0, -step)] {
+            for (da, db, dg) in [
+                (step, 0.0, 0.0),
+                (-step, 0.0, 0.0),
+                (0.0, step, 0.0),
+                (0.0, -step, 0.0),
+                (0.0, 0.0, step),
+                (0.0, 0.0, -step),
+            ] {
                 let a = math_min(1.0, math_max(0.0, alpha + da));
                 let b = math_min(1.0, math_max(0.0, beta + db));
                 let g = math_min(1.0, math_max(0.0, gamma + dg));
@@ -1904,7 +2107,9 @@ pub(crate) fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
 
 pub(crate) fn ets_forecast_at(fit: &EtsFit, h: f64) -> f64 {
     let m = fit.season;
-    fit.level + h * fit.trend + if m > 1 { fit.seasonal[((fit.fitted_len as f64 + h - 1.0) % m as f64) as usize] } else { 0.0 }
+    fit.level
+        + h * fit.trend
+        + if m > 1 { fit.seasonal[((fit.fitted_len as f64 + h - 1.0) % m as f64) as usize] } else { 0.0 }
 }
 
 fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -> Result<Option<(EtsFit, f64)>, V> {
@@ -1933,7 +2138,8 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
 
 // ─── Distribution fits (fitOps.ts) ──────────────────────────────────────────────
 
-pub(crate) const FIT_FAMILIES: [&str; 8] = ["normal", "lognorm", "expon", "gamma", "weibull", "uniform", "beta", "poisson"];
+pub(crate) const FIT_FAMILIES: [&str; 8] =
+    ["normal", "lognorm", "expon", "gamma", "weibull", "uniform", "beta", "poisson"];
 
 fn mean(a: &[f64]) -> f64 {
     a.iter().fold(0.0, |x, y| x + y) / a.len() as f64
@@ -1990,7 +2196,8 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
             r -= 1.0 / a;
             a += 1.0;
         }
-        r + log(a) - 1.0 / (2.0 * a) - 1.0 / (12.0 * a * a) + 1.0 / (120.0 * js_pow(a, 4.0)) - 1.0 / (252.0 * js_pow(a, 6.0))
+        r + log(a) - 1.0 / (2.0 * a) - 1.0 / (12.0 * a * a) + 1.0 / (120.0 * js_pow(a, 4.0))
+            - 1.0 / (252.0 * js_pow(a, 6.0))
     };
     let trigamma = |mut a: f64| {
         let mut r = 0.0;
@@ -1998,7 +2205,8 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
             r += 1.0 / (a * a);
             a += 1.0;
         }
-        r + 1.0 / a + 1.0 / (2.0 * a * a) + 1.0 / (6.0 * js_pow(a, 3.0)) - 1.0 / (30.0 * js_pow(a, 5.0)) + 1.0 / (42.0 * js_pow(a, 7.0))
+        r + 1.0 / a + 1.0 / (2.0 * a * a) + 1.0 / (6.0 * js_pow(a, 3.0)) - 1.0 / (30.0 * js_pow(a, 5.0))
+            + 1.0 / (42.0 * js_pow(a, 7.0))
     };
     let mut a = (3.0 - s + (sq(s - 3.0) + 24.0 * s).sqrt()) / (12.0 * s);
     for _ in 0..100 {
@@ -2047,7 +2255,9 @@ pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, 
             if !(sd > 0.0) {
                 return None;
             }
-            let ll = -nf * log(sd * two_pi_sqrt) - lx.iter().fold(0.0, |s, v| s + sq((v - mu) / sd)) / 2.0 - lx.iter().fold(0.0, |s, v| s + v);
+            let ll = -nf * log(sd * two_pi_sqrt)
+                - lx.iter().fold(0.0, |s, v| s + sq((v - mu) / sd)) / 2.0
+                - lx.iter().fold(0.0, |s, v| s + v);
             Some((vec![mu, sd], ll))
         }
         "expon" => {
@@ -2060,12 +2270,14 @@ pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, 
         }
         "gamma" => {
             let (alpha, beta) = fit_gamma(&x)?;
-            let ll = x.iter().fold(0.0, |s, &v| s + (alpha - 1.0) * log(v) - v / beta) - nf * (ln_gamma(alpha) + alpha * log(beta));
+            let ll = x.iter().fold(0.0, |s, &v| s + (alpha - 1.0) * log(v) - v / beta)
+                - nf * (ln_gamma(alpha) + alpha * log(beta));
             Some((vec![alpha, beta], ll))
         }
         "weibull" => {
             let (k, lambda) = fit_weibull(&x)?;
-            let ll = x.iter().fold(0.0, |s, &v| s + log(k / lambda) + (k - 1.0) * log(v / lambda) - js_pow(v / lambda, k));
+            let ll =
+                x.iter().fold(0.0, |s, &v| s + log(k / lambda) + (k - 1.0) * log(v / lambda) - js_pow(v / lambda, k));
             Some((vec![k, lambda], ll))
         }
         "uniform" => {
@@ -2085,7 +2297,8 @@ pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, 
             }
             let common = (m * (1.0 - m)) / v - 1.0;
             let (a, b) = (m * common, (1.0 - m) * common);
-            let ll = x.iter().fold(0.0, |s, &t| s + (a - 1.0) * log(t) + (b - 1.0) * log(1.0 - t)) - nf * (ln_gamma(a) + ln_gamma(b) - ln_gamma(a + b));
+            let ll = x.iter().fold(0.0, |s, &t| s + (a - 1.0) * log(t) + (b - 1.0) * log(1.0 - t))
+                - nf * (ln_gamma(a) + ln_gamma(b) - ln_gamma(a + b));
             Some((vec![a, b], ll))
         }
         _ => {
@@ -2178,10 +2391,18 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
             }
             let (i0, i1, t) = bracket(&sx, x);
             let r = number(&sy[i0]) + t * (number(&sy[i1]) - number(&sy[i0]));
-            if r.is_nan() { V::Null } else { V::Num(r) }
+            if r.is_nan() {
+                V::Null
+            } else {
+                V::Num(r)
+            }
         })
         .collect();
-    if matches!(new_xs, V::List(_)) { list(out) } else { out.into_iter().next().unwrap_or(V::Null) }
+    if matches!(new_xs, V::List(_)) {
+        list(out)
+    } else {
+        out.into_iter().next().unwrap_or(V::Null)
+    }
 }
 
 fn bracket(axis: &[V], x: f64) -> (usize, usize, f64) {
@@ -2196,7 +2417,11 @@ fn bracket(axis: &[V], x: f64) -> (usize, usize, f64) {
     let (mut lo, mut hi) = (0, last);
     while hi - lo > 1 {
         let mid = (lo + hi) >> 1;
-        if at(mid) <= x { lo = mid } else { hi = mid }
+        if at(mid) <= x {
+            lo = mid
+        } else {
+            hi = mid
+        }
     }
     let is_x = |i: usize| matches!(axis[i], V::Num(n) if n == x);
     if is_x(hi) {
@@ -2289,16 +2514,25 @@ fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: b
                 continue;
             }
             let (qx, qy) = (col_xs[j], row_ys[i]);
-            let (Some(rs), Some(cs)) = (sides(&coarse_rows, &|k| row_ys[k], qy), sides(&coarse_cols, &|k| col_xs[k], qx)) else { continue };
+            let (Some(rs), Some(cs)) =
+                (sides(&coarse_rows, &|k| row_ys[k], qy), sides(&coarse_cols, &|k| col_xs[k], qx))
+            else {
+                continue;
+            };
             let cap = |v: &[usize]| v[..v.len().min(WIDEN)].to_vec();
             let (r_lo, r_hi, c_lo, c_hi) = (cap(&rs.0), cap(&rs.1), cap(&cs.0), cap(&cs.1));
             'search: for &rl in &r_lo {
                 for &rh in &r_hi {
                     for &cl in &c_lo {
                         for &ch in &c_hi {
-                            let (Some(z00), Some(z01), Some(z10), Some(z11)) = (z[rl][cl], z[rl][ch], z[rh][cl], z[rh][ch]) else { continue };
+                            let (Some(z00), Some(z01), Some(z10), Some(z11)) =
+                                (z[rl][cl], z[rl][ch], z[rh][cl], z[rh][ch])
+                            else {
+                                continue;
+                            };
                             let (x0, x1, y0, y1) = (col_xs[cl], col_xs[ch], row_ys[rl], row_ys[rh]);
-                            let (xa, xb, ya, yb) = (math_min(x0, x1), math_max(x0, x1), math_min(y0, y1), math_max(y0, y1));
+                            let (xa, xb, ya, yb) =
+                                (math_min(x0, x1), math_max(x0, x1), math_min(y0, y1), math_max(y0, y1));
                             let (degen_row, degen_col) = (rl == rh, cl == ch);
                             let contested = known.iter().any(|&(px, py, pi, pj, _)| {
                                 if (pi == rl || pi == rh) && (pj == cl || pj == ch) {
@@ -2349,7 +2583,14 @@ fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: b
 /// Gauss-Jordan with partial pivoting; None on a pivot under 1e-12.
 fn surface_solve(a: Vec<Vec<f64>>, b: &[f64]) -> Option<Vec<f64>> {
     let n = b.len();
-    let mut m: Vec<Vec<f64>> = a.into_iter().zip(b).map(|(mut r, &x)| { r.push(x); r }).collect();
+    let mut m: Vec<Vec<f64>> = a
+        .into_iter()
+        .zip(b)
+        .map(|(mut r, &x)| {
+            r.push(x);
+            r
+        })
+        .collect();
     for col in 0..n {
         let mut piv = col;
         for r in col + 1..n {
@@ -2382,7 +2623,11 @@ fn surface_solve(a: Vec<Vec<f64>>, b: &[f64]) -> Option<Vec<f64>> {
 
 /// r²·log r, from r².
 fn tps_phi(r2: f64) -> f64 {
-    if r2 <= 1e-12 { 0.0 } else { 0.5 * r2 * log(r2) }
+    if r2 <= 1e-12 {
+        0.0
+    } else {
+        0.5 * r2 * log(r2)
+    }
 }
 
 /// A thin-plate spline through 3 to 220 points, else a ridge plane.
@@ -2393,10 +2638,18 @@ fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64
     }
     let (mut xmin, mut xmax, mut ymin, mut ymax) = (f64::INFINITY, f64::NEG_INFINITY, f64::INFINITY, f64::NEG_INFINITY);
     for &(x, y, _) in points {
-        if x < xmin { xmin = x }
-        if x > xmax { xmax = x }
-        if y < ymin { ymin = y }
-        if y > ymax { ymax = y }
+        if x < xmin {
+            xmin = x
+        }
+        if x > xmax {
+            xmax = x
+        }
+        if y < ymin {
+            ymin = y
+        }
+        if y > ymax {
+            ymax = y
+        }
     }
     let sx = if xmax > xmin { 1.0 / (xmax - xmin) } else { 0.0 };
     let sy = if ymax > ymin { 1.0 / (ymax - ymin) } else { 0.0 };

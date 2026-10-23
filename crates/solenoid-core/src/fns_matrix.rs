@@ -6,18 +6,68 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error_value::{ErrorCode, sol_error};
-use crate::excel_functions::{js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
+use crate::error_value::{sol_error, ErrorCode};
+use crate::excel_functions::{
+    js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, throw, to_num, V,
+};
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "SEQUENCE", "TRANSPOSE", "MMULT", "MDETERM", "MINVERSE", "MUNIT", "HSTACK", "VSTACK", "XSTACK", "TOCOL", "TOROW",
-    "WRAPCOLS", "WRAPROWS", "CHOOSECOLS", "CHOOSEROWS", "EXPAND", "DIAGONAL", "TRACE", "EIGENVALUES", "EIGENVECTORS",
-    "SOLVE", "MATRIXRANK", "CROSSPRODUCT", "OUTER", "LINEST", "LOGEST", "TREND", "GROWTH", "POLYFIT", "POLYROOTS",
-    "QUADRATICROOTS", "FREQUENCY", "MODE.MULT", "MODEMULT", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "ROWS", "COLUMNS",
-    "COLUMN", "DAVERAGE", "DCOUNT", "DCOUNTA", "DGET", "DMAX", "DMIN", "DPRODUCT", "DSTDEV", "DSTDEVP", "DSUM", "DVAR",
-    "DVARP", "HISTOGRAM2D",
+    "SEQUENCE",
+    "TRANSPOSE",
+    "MMULT",
+    "MDETERM",
+    "MINVERSE",
+    "MUNIT",
+    "HSTACK",
+    "VSTACK",
+    "XSTACK",
+    "TOCOL",
+    "TOROW",
+    "WRAPCOLS",
+    "WRAPROWS",
+    "CHOOSECOLS",
+    "CHOOSEROWS",
+    "EXPAND",
+    "DIAGONAL",
+    "TRACE",
+    "EIGENVALUES",
+    "EIGENVECTORS",
+    "SOLVE",
+    "MATRIXRANK",
+    "CROSSPRODUCT",
+    "OUTER",
+    "LINEST",
+    "LOGEST",
+    "TREND",
+    "GROWTH",
+    "POLYFIT",
+    "POLYROOTS",
+    "QUADRATICROOTS",
+    "FREQUENCY",
+    "MODE.MULT",
+    "MODEMULT",
+    "VLOOKUP",
+    "HLOOKUP",
+    "LOOKUP",
+    "MATCH",
+    "ROWS",
+    "COLUMNS",
+    "COLUMN",
+    "DAVERAGE",
+    "DCOUNT",
+    "DCOUNTA",
+    "DGET",
+    "DMAX",
+    "DMIN",
+    "DPRODUCT",
+    "DSTDEV",
+    "DSTDEVP",
+    "DSUM",
+    "DVAR",
+    "DVARP",
+    "HISTOGRAM2D",
 ];
 
 const MAX_GENERATED: f64 = 1_000_000.0;
@@ -55,16 +105,36 @@ fn nums_v(xs: Vec<f64>) -> V {
 
 /// `Math.max`: NaN wins.
 fn js_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() { f64::NAN } else if a == 0.0 && b == 0.0 { if a.is_sign_positive() { a } else { b } } else { a.max(b) }
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else if a == 0.0 && b == 0.0 {
+        if a.is_sign_positive() {
+            a
+        } else {
+            b
+        }
+    } else {
+        a.max(b)
+    }
 }
 
 fn js_sign(x: f64) -> f64 {
-    if x.is_nan() || x == 0.0 { x } else if x > 0.0 { 1.0 } else { -1.0 }
+    if x.is_nan() || x == 0.0 {
+        x
+    } else if x > 0.0 {
+        1.0
+    } else {
+        -1.0
+    }
 }
 
 /// A row of an array of arrays; a row that isn't an array is a shape the generators never make.
 fn row_of(v: &V) -> Option<Vec<V>> {
-    if let V::List(r) = v { Some(r.to_vec()) } else { None }
+    if let V::List(r) = v {
+        Some(r.to_vec())
+    } else {
+        None
+    }
 }
 
 /// `toMatrix` (excelFunctions.ts): blank is none, a flat list one row, a scalar one cell. A table with a row that
@@ -74,7 +144,9 @@ fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
         V::Undef | V::Null => Ok(None),
         V::List(items) => {
             if matches!(items.first(), Some(V::List(_))) {
-                items.iter().map(|r| row_of(r).ok_or(())).collect::<Result<Mat, ()>>().map(Some).map_err(|_| crate::excel_functions::throw(sol_error(ErrorCode::Value, "A table's rows must all be lists")))
+                items.iter().map(|r| row_of(r).ok_or(())).collect::<Result<Mat, ()>>().map(Some).map_err(|_| {
+                    crate::excel_functions::throw(sol_error(ErrorCode::Value, "A table's rows must all be lists"))
+                })
             } else {
                 Ok(Some(vec![items.to_vec()]))
             }
@@ -122,7 +194,14 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
 /// An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork).
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     (math_max(rows, 1.0) * math_max(cols, 1.0) > MAX_GENERATED).then(|| {
-        err(ErrorCode::Overflow, format!("{f} would build {}×{} cells, past the 1000000 element limit", number_to_string(rows), number_to_string(cols)))
+        err(
+            ErrorCode::Overflow,
+            format!(
+                "{f} would build {}×{} cells, past the 1000000 element limit",
+                number_to_string(rows),
+                number_to_string(cols)
+            ),
+        )
     })
 }
 
@@ -216,11 +295,15 @@ fn mat_inverse(m: &NumMat) -> Option<NumMat> {
     if n != mat_cols(m) {
         return None;
     }
-    let mut aug: NumMat = m.iter().enumerate().map(|(i, row)| {
-        let mut r = row.clone();
-        r.extend((0..n).map(|j| if i == j { 1.0 } else { 0.0 }));
-        r
-    }).collect();
+    let mut aug: NumMat = m
+        .iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let mut r = row.clone();
+            r.extend((0..n).map(|j| if i == j { 1.0 } else { 0.0 }));
+            r
+        })
+        .collect();
     for i in 0..n {
         let (mut max, mut max_r) = (aug[i][i].abs(), i);
         for r in i + 1..n {
@@ -256,20 +339,26 @@ fn wrap_count(w: f64, f: &str) -> Result<f64, V> {
         return Err(err(ErrorCode::Domain, format!("{f} needs a wrap count of 1 or more")));
     }
     if n > MAX_GENERATED {
-        return Err(err(ErrorCode::Overflow, format!("{f} count {} exceeds the 1000000 element limit", number_to_string(n))));
+        return Err(err(
+            ErrorCode::Overflow,
+            format!("{f} count {} exceeds the 1000000 element limit", number_to_string(n)),
+        ));
     }
     Ok(n)
 }
 
 fn wrap_cells(items: &[V], w: usize, rows: bool, pad: &dyn Fn() -> V) -> Mat {
     if rows {
-        return items.chunks(w).map(|c| {
-            let mut row = c.to_vec();
-            while row.len() < w {
-                row.push(pad());
-            }
-            row
-        }).collect();
+        return items
+            .chunks(w)
+            .map(|c| {
+                let mut row = c.to_vec();
+                while row.len() < w {
+                    row.push(pad());
+                }
+                row
+            })
+            .collect();
     }
     let n_cols = items.len().div_ceil(w);
     let mut mat: Mat = (0..w).map(|_| (0..n_cols).map(|_| pad()).collect()).collect();
@@ -319,7 +408,10 @@ fn choose_axis(m: &Mat, indices: &[f64], by_row: bool) -> V {
         let p = if i < 0.0 { size + i.trunc() } else { i.trunc() - 1.0 };
         if !(p >= 0.0 && p < size) {
             let (i, size) = (number_to_string(i), number_to_string(size));
-            return err(ErrorCode::Value, format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"));
+            return err(
+                ErrorCode::Value,
+                format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"),
+            );
         }
         resolved.push(p as usize);
     }
@@ -336,16 +428,29 @@ fn expand_mat(m: &Mat, req_r: f64, req_c: f64, fill: V) -> V {
     let c = if req_c > 0.0 { req_c } else { cur_c };
     if r < cur_r || c < cur_c {
         let s = number_to_string;
-        return err(ErrorCode::Value, format!("EXPAND can only grow: the table is {}×{}, the target {}×{}. Use TAKE to shrink", s(cur_r), s(cur_c), s(r), s(c)));
+        return err(
+            ErrorCode::Value,
+            format!(
+                "EXPAND can only grow: the table is {}×{}, the target {}×{}. Use TAKE to shrink",
+                s(cur_r),
+                s(cur_c),
+                s(r),
+                s(c)
+            ),
+        );
     }
     if let Some(e) = cell_cap("EXPAND", r, c) {
         return e;
     }
     let (r, c) = (r as usize, c as usize);
-    mat_v((0..r).map(|i| {
-        let src: &[V] = m.get(i).map_or(&[], |x| x);
-        (0..c).map(|j| src.get(j).cloned().unwrap_or_else(|| fill.clone())).collect()
-    }).collect())
+    mat_v(
+        (0..r)
+            .map(|i| {
+                let src: &[V] = m.get(i).map_or(&[], |x| x);
+                (0..c).map(|j| src.get(j).cloned().unwrap_or_else(|| fill.clone())).collect()
+            })
+            .collect(),
+    )
 }
 
 fn mat_rank(m: &NumMat, tol: f64) -> f64 {
@@ -381,11 +486,15 @@ fn mat_rank(m: &NumMat, tol: f64) -> f64 {
 /// `matSolve` and listOps' `solveLinear`: Gauss-Jordan with partial pivoting.
 fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
     let n = b.len();
-    let mut m: NumMat = a.iter().zip(b).map(|(row, &bi)| {
-        let mut r = row.clone();
-        r.push(bi);
-        r
-    }).collect();
+    let mut m: NumMat = a
+        .iter()
+        .zip(b)
+        .map(|(row, &bi)| {
+            let mut r = row.clone();
+            r.push(bi);
+            r
+        })
+        .collect();
     for col in 0..n {
         let mut piv = col;
         for r in col + 1..n {
@@ -466,7 +575,13 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
     let mut order: Vec<usize> = (0..n).collect();
     crate::js_sort::js_sort_by(&mut order, |&i, &j| {
         let d = a[j][j] - a[i][i];
-        if d < 0.0 { std::cmp::Ordering::Less } else if d > 0.0 { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Equal }
+        if d < 0.0 {
+            std::cmp::Ordering::Less
+        } else if d > 0.0 {
+            std::cmp::Ordering::Greater
+        } else {
+            std::cmp::Ordering::Equal
+        }
     });
     let values: Vec<f64> = order.iter().map(|&i| a[i][i]).collect();
     let mut vectors: NumMat = (0..n).map(|r| order.iter().map(|&i| v[r][i]).collect()).collect();
@@ -524,7 +639,11 @@ fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, 
 /// `arrayCount`.
 fn array_count(n: f64, f: &str) -> Result<f64, V> {
     let k = n.trunc();
-    if k >= 0.0 { Ok(k) } else { Err(err(ErrorCode::Value, format!("{f} needs a count of 0 or more"))) }
+    if k >= 0.0 {
+        Ok(k)
+    } else {
+        Err(err(ErrorCode::Value, format!("{f} needs a count of 0 or more")))
+    }
 }
 
 // ─── listOps.ts ─────────────────────────────────────────────────────────────────
@@ -585,10 +704,17 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
         return e;
     }
     let xs = present_numbers(data);
-    let mut sorted: Vec<(f64, usize)> = bins.iter().enumerate().filter_map(|(i, b)| finite_num(b).map(|b| (b, i))).collect();
+    let mut sorted: Vec<(f64, usize)> =
+        bins.iter().enumerate().filter_map(|(i, b)| finite_num(b).map(|b| (b, i))).collect();
     crate::js_sort::js_sort_by(&mut sorted, |a, c| {
         let d = a.0 - c.0;
-        if d < 0.0 { std::cmp::Ordering::Less } else if d > 0.0 { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Equal }
+        if d < 0.0 {
+            std::cmp::Ordering::Less
+        } else if d > 0.0 {
+            std::cmp::Ordering::Greater
+        } else {
+            std::cmp::Ordering::Equal
+        }
     });
     let mut counts = vec![0.0; bins.len() + 1];
     for x in xs {
@@ -636,7 +762,10 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
         return list(xs.iter().map(|_| V::Null).collect());
     }
     if (n as f64) < d + 1.0 {
-        return err(ErrorCode::Value, format!("A degree-{} fit needs at least {} points", number_to_string(d), number_to_string(d + 1.0)));
+        return err(
+            ErrorCode::Value,
+            format!("A degree-{} fit needs at least {} points", number_to_string(d), number_to_string(d + 1.0)),
+        );
     }
     if d.is_nan() {
         return throw(sol_error(ErrorCode::Value, "Invalid array length"));
@@ -688,10 +817,12 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
         (pr, pi)
     };
     let radius = 1.0 + a[1..].iter().fold(f64::NEG_INFINITY, |m, v| js_max(m, v.abs()));
-    let mut roots: Vec<(f64, f64)> = (0..n).map(|k| {
-        let th = (2.0 * std::f64::consts::PI * k as f64) / n as f64 + 0.4;
-        (radius * crate::fdlibm::cos(th), radius * crate::fdlibm::sin(th))
-    }).collect();
+    let mut roots: Vec<(f64, f64)> = (0..n)
+        .map(|k| {
+            let th = (2.0 * std::f64::consts::PI * k as f64) / n as f64 + 0.4;
+            (radius * crate::fdlibm::cos(th), radius * crate::fdlibm::sin(th))
+        })
+        .collect();
     for _ in 0..500 {
         let mut max_step: f64 = 0.0;
         for i in 0..n {
@@ -750,10 +881,15 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
         }
         *root = (zr, zi);
     }
-    Some(roots.into_iter().map(|(r, i)| {
-        let scale = js_max(1.0, math_hypot(&[r, i]));
-        (if r.abs() < 1e-12 * scale { 0.0 } else { r }, if i.abs() < 1e-7 * scale { 0.0 } else { i })
-    }).collect())
+    Some(
+        roots
+            .into_iter()
+            .map(|(r, i)| {
+                let scale = js_max(1.0, math_hypot(&[r, i]));
+                (if r.abs() < 1e-12 * scale { 0.0 } else { r }, if i.abs() < 1e-7 * scale { 0.0 } else { i })
+            })
+            .collect(),
+    )
 }
 
 /// A sum as JS `+=` builds it from 0: numbers add until a string (or an object, read as its text) turns it into text.
@@ -876,7 +1012,11 @@ fn is_true(v: &V) -> bool {
 
 /// `#VALUE!` where a regression's list holds text, which is never read as a number ([[C131]] noTextGuessing).
 fn no_text(l: &[V], what: &str) -> Result<(), V> {
-    if l.iter().any(crate::excel_functions::holds_text) { Err(err(ErrorCode::Value, format!("{what} need numbers"))) } else { Ok(()) }
+    if l.iter().any(crate::excel_functions::holds_text) {
+        Err(err(ErrorCode::Value, format!("{what} need numbers")))
+    } else {
+        Ok(())
+    }
 }
 
 fn nonpositive_y() -> V {
@@ -894,7 +1034,13 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
     if growth && py.iter().any(|y| !(js_number(y) > 0.0)) {
         return nonpositive_y();
     }
-    let target = if !nullish(new_xs) { new_xs.clone() } else if !nullish(xs) { xs.clone() } else { list(px.clone()) };
+    let target = if !nullish(new_xs) {
+        new_xs.clone()
+    } else if !nullish(xs) {
+        xs.clone()
+    } else {
+        list(px.clone())
+    };
     let targets = match regression_targets(&target) {
         Ok(t) => t,
         Err(e) => return e,
@@ -963,7 +1109,13 @@ fn histogram2d(xs: &[V], ys: &[V], kx: f64, ky: f64) -> V {
         }
         let bins = edges.len() as f64;
         let f = ((v - min) / w).floor();
-        let mut i = if f < 0.0 { 0.0 } else if f > bins - 1.0 { bins - 1.0 } else { f } as usize;
+        let mut i = if f < 0.0 {
+            0.0
+        } else if f > bins - 1.0 {
+            bins - 1.0
+        } else {
+            f
+        } as usize;
         if i > 0 && v < edges[i] {
             i -= 1;
         } else if i + 1 < edges.len() && v >= edges[i + 1] {
@@ -1064,10 +1216,16 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "CHOOSECOLS" | "CHOOSEROWS" => {
             let Some(m) = tri!(to_matrix(arg(a, 0))) else { return V::Null };
-            let idx: Vec<f64> = a.iter().skip(1).flat_map(|v| match v {
-                V::List(items) => items.to_vec(),
-                other => vec![other.clone()],
-            }).filter(|v| !matches!(v, V::Undef)).map(|v| js_number(&v)).collect();
+            let idx: Vec<f64> = a
+                .iter()
+                .skip(1)
+                .flat_map(|v| match v {
+                    V::List(items) => items.to_vec(),
+                    other => vec![other.clone()],
+                })
+                .filter(|v| !matches!(v, V::Undef))
+                .map(|v| js_number(&v))
+                .collect();
             choose_axis(&m, &idx, name == "CHOOSEROWS")
         }
         "EXPAND" => {
@@ -1103,9 +1261,11 @@ pub fn call(name: &str, a: &[V]) -> V {
             let v = arg(a, 0);
             // A text cell is refused, never read as a number ([[C131]] noTextGuessing).
             let read: Vec<V> = match v {
-                V::List(items) if matches!(items.first(), Some(V::List(_))) => {
-                    items.iter().enumerate().filter_map(|(i, row)| if let V::List(r) = row { r.get(i).cloned() } else { None }).collect()
-                }
+                V::List(items) if matches!(items.first(), Some(V::List(_))) => items
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, row)| if let V::List(r) = row { r.get(i).cloned() } else { None })
+                    .collect(),
                 other => to_list(other),
             };
             if read.iter().any(crate::excel_functions::holds_text) {
@@ -1114,10 +1274,16 @@ pub fn call(name: &str, a: &[V]) -> V {
             let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(js_number(c)) };
             if let V::List(items) = v {
                 if matches!(items.first(), Some(V::List(_))) {
-                    return list(items.iter().enumerate().map(|(i, row)| match row {
-                        V::List(r) => r.get(i).map_or(V::Null, num_or_null),
-                        _ => V::Null,
-                    }).collect());
+                    return list(
+                        items
+                            .iter()
+                            .enumerate()
+                            .map(|(i, row)| match row {
+                                V::List(r) => r.get(i).map_or(V::Null, num_or_null),
+                                _ => V::Null,
+                            })
+                            .collect(),
+                    );
                 }
             }
             let vs: Vec<V> = to_list(v).iter().map(num_or_null).collect();
@@ -1131,7 +1297,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             mat_v((0..n).map(|i| (0..n).map(|j| if i == j { vs[i].clone() } else { V::Num(0.0) }).collect()).collect())
         }
         "OUTER" => {
-            let nums = |v: &V| -> Vec<Option<f64>> { to_list(v).iter().map(|c| if let V::Num(n) = c { Some(*n) } else { None }).collect() };
+            let nums = |v: &V| -> Vec<Option<f64>> {
+                to_list(v).iter().map(|c| if let V::Num(n) = c { Some(*n) } else { None }).collect()
+            };
             let (x, y) = (nums(arg(a, 0)), nums(arg(a, 1)));
             if x.is_empty() || y.is_empty() {
                 return V::Null;
@@ -1139,10 +1307,18 @@ pub fn call(name: &str, a: &[V]) -> V {
             if let Some(e) = cell_cap("OUTER", x.len() as f64, y.len() as f64) {
                 return e;
             }
-            mat_v(x.iter().map(|xi| y.iter().map(|yj| match (xi, yj) {
-                (Some(p), Some(q)) => V::Num(p * q),
-                _ => V::Null,
-            }).collect()).collect())
+            mat_v(
+                x.iter()
+                    .map(|xi| {
+                        y.iter()
+                            .map(|yj| match (xi, yj) {
+                                (Some(p), Some(q)) => V::Num(p * q),
+                                _ => V::Null,
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            )
         }
         "TRACE" => {
             let m = tri!(num_mat(arg(a, 0)));
@@ -1158,10 +1334,13 @@ pub fn call(name: &str, a: &[V]) -> V {
         "MATRIXRANK" => V::Num(mat_rank(&tri!(num_mat(arg(a, 0))), 1e-10)),
         "SOLVE" => {
             let m = tri!(num_mat(arg(a, 0)));
-            let bs: Vec<f64> = to_list(arg(a, 1)).iter().filter_map(|v| {
-                let n = to_num(v);
-                (matches!(v, V::Num(_)) || !n.is_nan()).then_some(n)
-            }).collect();
+            let bs: Vec<f64> = to_list(arg(a, 1))
+                .iter()
+                .filter_map(|v| {
+                    let n = to_num(v);
+                    (matches!(v, V::Num(_)) || !n.is_nan()).then_some(n)
+                })
+                .collect();
             if m.len() != mat_cols(&m) || bs.len() != m.len() {
                 return err(ErrorCode::Shape, "SOLVE needs a square A with one b per row");
             }
@@ -1173,7 +1352,13 @@ pub fn call(name: &str, a: &[V]) -> V {
         "EIGENVALUES" | "EIGENVECTORS" => {
             let m = tri!(num_mat(arg(a, 0)));
             match mat_eigh(&m, 1e-12) {
-                Some((values, vectors)) => if name == "EIGENVALUES" { nums_v(values) } else { num_mat_v(vectors) },
+                Some((values, vectors)) => {
+                    if name == "EIGENVALUES" {
+                        nums_v(values)
+                    } else {
+                        num_mat_v(vectors)
+                    }
+                }
                 None => err(ErrorCode::Shape, format!("{name} needs a square, symmetric matrix")),
             }
         }
@@ -1185,7 +1370,8 @@ pub fn call(name: &str, a: &[V]) -> V {
             if name == "MDETERM" {
                 mat_det(&m).map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular"), V::Num)
             } else {
-                mat_inverse(&m).map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular. It has no inverse"), num_mat_v)
+                mat_inverse(&m)
+                    .map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular. It has no inverse"), num_mat_v)
             }
         }
         "WRAPROWS" | "WRAPCOLS" => {
@@ -1196,7 +1382,13 @@ pub fn call(name: &str, a: &[V]) -> V {
             let width = tri!(wrap_count(js_number(w), name)) as usize;
             let rows = name == "WRAPROWS";
             let what = if rows { "row" } else { "column" };
-            let pad = || if nullish(pad_with) { err(ErrorCode::NotAvailable, format!("Padded: the list doesn't fill the last {what}")) } else { pad_with.clone() };
+            let pad = || {
+                if nullish(pad_with) {
+                    err(ErrorCode::NotAvailable, format!("Padded: the list doesn't fill the last {what}"))
+                } else {
+                    pad_with.clone()
+                }
+            };
             mat_v(wrap_cells(&to_list(l), width, rows, &pad))
         }
         "TOCOL" => match tri!(flatten_args("TOCOL", arg(a, 0), arg(a, 1), arg(a, 2))) {
@@ -1217,7 +1409,10 @@ pub fn call(name: &str, a: &[V]) -> V {
             let st = if nullish(step) { 1.0 } else { js_number(step) };
             let total = r * c;
             if total > MAX_GENERATED {
-                return err(ErrorCode::Overflow, format!("SEQUENCE count {} exceeds the 1000000 element limit", number_to_string(total)));
+                return err(
+                    ErrorCode::Overflow,
+                    format!("SEQUENCE count {} exceeds the 1000000 element limit", number_to_string(total)),
+                );
             }
             let n = if total.is_nan() { 0 } else { total.floor().max(0.0) as usize };
             let flat: Vec<V> = (0..n).map(|i| V::Num(s0 + i as f64 * st)).collect();

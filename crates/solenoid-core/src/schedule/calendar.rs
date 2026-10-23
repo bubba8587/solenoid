@@ -59,7 +59,11 @@ fn work_intervals(intervals: Option<&[Interval]>) -> Vec<Interval> {
     let clamp = |x: f64| math_max(0.0, math_min(MINUTES_PER_DAY, x));
     let mut iv: Vec<Interval> = given.iter().map(|&(a, b)| (clamp(a), clamp(b))).filter(|(a, b)| b > a).collect();
     iv.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
-    if iv.is_empty() { DEFAULT_INTERVALS.to_vec() } else { iv }
+    if iv.is_empty() {
+        DEFAULT_INTERVALS.to_vec()
+    } else {
+        iv
+    }
 }
 
 pub fn hours_per_day_of(intervals: Option<&[Interval]>) -> f64 {
@@ -302,7 +306,11 @@ impl Calendar {
     }
 
     pub fn exclusive_end(&self, k: f64) -> Sr<f64> {
-        if self.minutes { self.date_end(k) } else { Ok(self.day_date(k)? + 1.0) }
+        if self.minutes {
+            self.date_end(k)
+        } else {
+            Ok(self.day_date(k)? + 1.0)
+        }
     }
 
     pub fn count_between(&self, a: f64, b: f64) -> Sr<f64> {

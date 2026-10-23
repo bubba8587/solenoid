@@ -1,13 +1,13 @@
 //! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. `nodes/logic.ts`: comparisons, IF and its kin, the Boolean
 //! reducers and the parity tests.
 
-use crate::frame::FrameColType;
-use crate::error_value::ErrorCode;
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
+use crate::frame::FrameColType;
 use crate::unit_dims::{dim_equal, is_dimensionless};
 use crate::unit_value::unit_error;
 use std::rc::Rc;
@@ -44,12 +44,15 @@ fn broadcast_el(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
         return cell(&ops);
     };
     let null = V::Null;
-    list((0..len)
-        .map(|i| {
-            let ops: Vec<&V> = args.iter().map(|a| if let V::List(l) = a { l.get(i).unwrap_or(&null) } else { a }).collect();
-            cell(&ops)
-        })
-        .collect())
+    list(
+        (0..len)
+            .map(|i| {
+                let ops: Vec<&V> =
+                    args.iter().map(|a| if let V::List(l) = a { l.get(i).unwrap_or(&null) } else { a }).collect();
+                cell(&ops)
+            })
+            .collect(),
+    )
 }
 
 /// `triBool`: a wired logical or a typed 0/1, blank unknown.
@@ -70,14 +73,22 @@ fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(false) || b == Some(false) {
         return Some(false);
     }
-    if a.is_none() || b.is_none() { None } else { Some(true) }
+    if a.is_none() || b.is_none() {
+        None
+    } else {
+        Some(true)
+    }
 }
 
 fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(true) || b == Some(true) {
         return Some(true);
     }
-    if a.is_none() || b.is_none() { None } else { Some(false) }
+    if a.is_none() || b.is_none() {
+        None
+    } else {
+        Some(false)
+    }
 }
 
 /// `ifTest`: a value read as a condition; blank and an error pass through.
@@ -102,7 +113,11 @@ fn wired_or(c: &Call, key: &str, literal: V) -> V {
 
 /// `v ?? null`.
 fn or_null(v: V) -> V {
-    if matches!(v, V::Undef) { V::Null } else { v }
+    if matches!(v, V::Undef) {
+        V::Null
+    } else {
+        v
+    }
 }
 
 /// `typedLiteral`: the slot's typed text, else its typed number.
@@ -177,8 +192,16 @@ fn compare_cell(op: &str, x: &V, y: &V) -> V {
             _ => V::err(unit_error(why)),
         };
     }
-    let l = if is_dimensionless(&da) && !is_dimensionless(&db) { adopt_reading(magnitude_of(x), shown(y)) } else { magnitude_of(x) };
-    let r = if is_dimensionless(&db) && !is_dimensionless(&da) { adopt_reading(magnitude_of(y), shown(x)) } else { magnitude_of(y) };
+    let l = if is_dimensionless(&da) && !is_dimensionless(&db) {
+        adopt_reading(magnitude_of(x), shown(y))
+    } else {
+        magnitude_of(x)
+    };
+    let r = if is_dimensionless(&db) && !is_dimensionless(&da) {
+        adopt_reading(magnitude_of(y), shown(x))
+    } else {
+        magnitude_of(y)
+    };
     V::Bool(match op {
         "gt" => l > r,
         "gte" => l >= r,
@@ -299,7 +322,10 @@ fn choose(c: &mut Call) -> Answer {
     let key = (idx >= 1.0 && idx <= keys.len() as f64).then(|| keys[idx as usize - 1].clone());
     select(c, key.as_deref());
     let Some(key) = key else {
-        let e = err(ErrorCode::Value, format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()));
+        let e = err(
+            ErrorCode::Value,
+            format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()),
+        );
         return answer(c, "result", e);
     };
     let result = pick_slot(c, &key);
@@ -419,33 +445,59 @@ fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Opti
         ),
         V::Frame(_) | V::Cube(_) => {
             if matches!(fallback, V::List(_) | V::Frame(_) | V::Cube(_)) {
-                return err(ErrorCode::Value, "Over a Frame or Cube the fallback is one value, used for every caught cell");
+                return err(
+                    ErrorCode::Value,
+                    "Over a Frame or Cube the fallback is one value, used for every caught cell",
+                );
             }
             let cell_for = |cell: &V, name: &str, ty: Option<FrameColType>| match cell {
                 V::Frame(_) | V::Cube(_) | V::List(_) => replace_caught(cell, fallback, caught, ty),
                 x if !caught(x) => x.clone(),
                 _ if fits_column(fallback, ty) => fallback.clone(),
-                _ => err(ErrorCode::Type, format!("The fallback doesn't fit column \"{name}\", which holds {} values", ty.map_or("undefined", FrameColType::as_str))),
+                _ => err(
+                    ErrorCode::Type,
+                    format!(
+                        "The fallback doesn't fit column \"{name}\", which holds {} values",
+                        ty.map_or("undefined", FrameColType::as_str)
+                    ),
+                ),
             };
             match value {
                 V::Frame(f) => V::Frame(Rc::new(Frame {
                     columns: f
                         .columns
                         .iter()
-                        .map(|col| Column { raw: None, values: col.values.iter().map(|v| cell_for(v, &col.name, Some(col.ty))).collect(), ..col.clone() })
+                        .map(|col| Column {
+                            raw: None,
+                            values: col.values.iter().map(|v| cell_for(v, &col.name, Some(col.ty))).collect(),
+                            ..col.clone()
+                        })
                         .collect(),
                     total_rows: None,
                     approx: None,
                 })),
                 V::Cube(q) => V::Cube(Rc::new(Cube {
-                    columns: q.columns.iter().map(|col| CubeColumn { cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty)).collect(), ..col.clone() }).collect(),
+                    columns: q
+                        .columns
+                        .iter()
+                        .map(|col| CubeColumn {
+                            cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty)).collect(),
+                            ..col.clone()
+                        })
+                        .collect(),
                 })),
                 _ => unreachable!(),
             }
         }
         v if !caught(v) => v.clone(),
         _ if fits_column(fallback, ty) => fallback.clone(),
-        _ => err(ErrorCode::Type, format!("The fallback doesn't fit this column, which holds {} values", ty.map_or("undefined", FrameColType::as_str))),
+        _ => err(
+            ErrorCode::Type,
+            format!(
+                "The fallback doesn't fit this column, which holds {} values",
+                ty.map_or("undefined", FrameColType::as_str)
+            ),
+        ),
     }
 }
 
@@ -473,7 +525,18 @@ fn is_test(c: &mut Call) -> Answer {
     let value = match &input {
         V::Frame(f) => {
             let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
-            list((0..rows).map(|i| list(f.columns.iter().map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef))).collect())).collect())
+            list(
+                (0..rows)
+                    .map(|i| {
+                        list(
+                            f.columns
+                                .iter()
+                                .map(|col| or_null(col.values.get(i).cloned().unwrap_or(V::Undef)))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            )
         }
         v => v.clone(),
     };

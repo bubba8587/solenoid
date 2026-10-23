@@ -3,8 +3,8 @@
 //! and `new RegExp(p, "")` reads it by code unit, so the patterns (lowered by `js_regex`) run on `regress` in its
 //! non-Unicode mode over the text's code units.
 
-use regress::{Match, Regex};
 use crate::jsnum::{js_lower, number_to_string};
+use regress::{Match, Regex};
 
 fn utf16(s: &str) -> Vec<u16> {
     s.encode_utf16().collect()
@@ -28,7 +28,8 @@ pub fn exec_from(re: &Regex, text: &[u16], last_index: usize, sticky: bool, unic
     if last_index > text.len() {
         return None;
     }
-    let m = if unicode { re.find_from_utf16(text, last_index).next() } else { re.find_from_ucs2(text, last_index).next() };
+    let m =
+        if unicode { re.find_from_utf16(text, last_index).next() } else { re.find_from_ucs2(text, last_index).next() };
     m.filter(|m| !sticky || m.range.start == last_index)
 }
 
@@ -45,7 +46,10 @@ pub fn matches_with(re: &Regex, text: &[u16], sticky: bool, unicode: bool) -> Ve
     while let Some(m) = exec_from(re, text, last, sticky, unicode) {
         last = if !m.range.is_empty() {
             m.range.end
-        } else if unicode && text.get(m.range.end).is_some_and(|u| (0xd800..0xdc00).contains(u)) && text.get(m.range.end + 1).is_some_and(|u| (0xdc00..0xe000).contains(u)) {
+        } else if unicode
+            && text.get(m.range.end).is_some_and(|u| (0xd800..0xdc00).contains(u))
+            && text.get(m.range.end + 1).is_some_and(|u| (0xdc00..0xe000).contains(u))
+        {
             m.range.end + 2
         } else {
             m.range.end + 1
@@ -297,7 +301,11 @@ pub fn decode_uri_component(text: &str) -> Option<String> {
     let b = text.as_bytes();
     let hex = |k: usize| -> Option<u8> {
         let h = std::str::from_utf8(b.get(k..k + 2)?).ok()?;
-        if h.bytes().all(|c| c.is_ascii_hexdigit()) { u8::from_str_radix(h, 16).ok() } else { None }
+        if h.bytes().all(|c| c.is_ascii_hexdigit()) {
+            u8::from_str_radix(h, 16).ok()
+        } else {
+            None
+        }
     };
     let mut out: Vec<u8> = Vec::with_capacity(b.len());
     let mut k = 0;
@@ -337,8 +345,26 @@ pub fn decode_uri_component(text: &str) -> Option<String> {
 // ─── Spelling ───────────────────────────────────────────────────────────────────
 
 const SPELL_ONES: [&str; 20] = [
-    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
-    "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
 ];
 const SPELL_TENS: [&str; 10] = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
 const SPELL_SCALES: [&str; 5] = ["", " thousand", " million", " billion", " trillion"];
@@ -351,7 +377,11 @@ fn spell_under_1000(mut n: u64) -> String {
     }
     if n >= 20 {
         let tens = SPELL_TENS[(n / 10) as usize];
-        parts.push(if !n.is_multiple_of(10) { format!("{tens}-{}", SPELL_ONES[(n % 10) as usize]) } else { tens.to_string() });
+        parts.push(if !n.is_multiple_of(10) {
+            format!("{tens}-{}", SPELL_ONES[(n % 10) as usize])
+        } else {
+            tens.to_string()
+        });
     } else if n > 0 {
         parts.push(SPELL_ONES[n as usize].to_string());
     }
@@ -389,7 +419,8 @@ pub fn spell_number(n: f64) -> Result<String, &'static str> {
     if let Some((_, frac)) = s.split_once('.') {
         let frac: String = frac.chars().take(6).collect();
         if !frac.is_empty() {
-            let spelled: Vec<&str> = frac.chars().map(|d| d.to_digit(10).map_or("", |d| SPELL_ONES[d as usize])).collect();
+            let spelled: Vec<&str> =
+                frac.chars().map(|d| d.to_digit(10).map_or("", |d| SPELL_ONES[d as usize])).collect();
             words.push_str(" point ");
             words.push_str(&spelled.join(" "));
         }
@@ -507,7 +538,9 @@ pub fn slugify(t: &str, sep: &str) -> String {
     while body[lead..].starts_with(&sep16) {
         lead += n;
     }
-    let tiled = |p: usize| p < body.len() && (body.len() - p).is_multiple_of(n) && body[p..].chunks(n).all(|c| c == sep16.as_slice());
+    let tiled = |p: usize| {
+        p < body.len() && (body.len() - p).is_multiple_of(n) && body[p..].chunks(n).all(|c| c == sep16.as_slice())
+    };
     let tail = (lead..body.len()).find(|&p| tiled(p)).unwrap_or(body.len());
     from_utf16(&body[lead..tail])
 }

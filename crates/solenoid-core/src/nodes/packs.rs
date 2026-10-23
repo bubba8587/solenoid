@@ -4,13 +4,13 @@
 //! `health.ts`, `emSpectrum.ts`, `convert.ts`, `tornado.ts` and `triangle.ts`, with the kernels of their `*Ops.ts`
 //! beside them.
 
-use crate::frame::FrameColType;
-use crate::error_value::ErrorCode;
 use super::units::{broadcast_unit, from_unit};
 use super::values::{Column, Frame};
 use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::fdlibm::{acos, asin, cos, exp, log, log10, pow, sin, tan};
+use crate::frame::FrameColType;
 use crate::jsnum::{math_max, math_min, math_round};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
@@ -62,7 +62,11 @@ fn read_or_null(c: &Call, key: &str) -> V {
 }
 
 fn number(v: &V) -> Option<f64> {
-    if let V::Num(n) = v { Some(*n) } else { None }
+    if let V::Num(n) = v {
+        Some(*n)
+    } else {
+        None
+    }
 }
 
 /// The outputs in order, each also shown on the card under its field.
@@ -111,7 +115,10 @@ fn parallel_combine(c: &mut Call) -> Answer {
     shown(c, &[("result", "cachedResult", result)])
 }
 
-const E24: [f64; 24] = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
+const E24: [f64; 24] = [
+    1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2,
+    9.1,
+];
 
 /// `E_SERIES[op]`: E3 to E24 are IEC 60063's published tables; E48 and E96 are generated.
 pub(crate) fn e_series_table(op: &str) -> Option<Vec<f64>> {
@@ -166,8 +173,19 @@ fn e_series(c: &mut Call) -> Answer {
 /// `AWG_AMPACITY_75C`.
 pub(crate) fn awg_ampacity(n: f64) -> Option<f64> {
     const TABLE: [(f64, f64); 13] = [
-        (-3.0, 230.0), (-2.0, 200.0), (-1.0, 175.0), (0.0, 150.0), (1.0, 130.0), (2.0, 115.0), (3.0, 100.0),
-        (4.0, 85.0), (6.0, 65.0), (8.0, 50.0), (10.0, 35.0), (12.0, 25.0), (14.0, 20.0),
+        (-3.0, 230.0),
+        (-2.0, 200.0),
+        (-1.0, 175.0),
+        (0.0, 150.0),
+        (1.0, 130.0),
+        (2.0, 115.0),
+        (3.0, 100.0),
+        (4.0, 85.0),
+        (6.0, 65.0),
+        (8.0, 50.0),
+        (10.0, 35.0),
+        (12.0, 25.0),
+        (14.0, 20.0),
     ];
     TABLE.iter().find(|(g, _)| *g == n).map(|(_, a)| *a)
 }
@@ -187,12 +205,15 @@ fn awg(c: &mut Call) -> Answer {
         None => [V::Null, V::Null, V::Null, V::Null],
     };
     let [diameter, area, resistance, ampacity] = outs;
-    shown(c, &[
-        ("diameter", "cachedDiameter", diameter),
-        ("area", "cachedArea", area),
-        ("resistance", "cachedResistance", resistance),
-        ("ampacity", "cachedAmpacity", ampacity),
-    ])
+    shown(
+        c,
+        &[
+            ("diameter", "cachedDiameter", diameter),
+            ("area", "cachedArea", area),
+            ("resistance", "cachedResistance", resistance),
+            ("ampacity", "cachedAmpacity", ampacity),
+        ],
+    )
 }
 
 // ─── Resistor code, elements, molar mass, physical constants ───────────────────
@@ -214,9 +235,17 @@ fn resistor_code(c: &mut Call) -> Answer {
 
 /// `decodeResistor`: the ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
 /// colour; a band left out reads as `undefined`.
-pub(crate) fn decode_resistor(digits: &[Option<String>], mult: Option<String>, tol: Option<String>) -> Result<(f64, f64), V> {
+pub(crate) fn decode_resistor(
+    digits: &[Option<String>],
+    mult: Option<String>,
+    tol: Option<String>,
+) -> Result<(f64, f64), V> {
     let named = |b: &Option<String>| b.clone().unwrap_or_else(|| "undefined".into());
-    let digit = |s: &str| ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"].iter().position(|d| *d == s);
+    let digit = |s: &str| {
+        ["black", "brown", "red", "orange", "yellow", "green", "blue", "violet", "gray", "white"]
+            .iter()
+            .position(|d| *d == s)
+    };
     let mut value = 0.0;
     for d in digits {
         let Some(v) = d.as_deref().and_then(digit) else {
@@ -249,23 +278,124 @@ pub(crate) fn decode_resistor(digits: &[Option<String>], mult: Option<String>, t
 
 /// `ELEMENTS`: each element's symbol and standard atomic weight, by atomic number.
 pub(crate) const ELEMENTS: [(&str, f64); 118] = [
-    ("H", 1.008), ("He", 4.002602), ("Li", 6.94), ("Be", 9.0121831), ("B", 10.81), ("C", 12.011), ("N", 14.007), ("O", 15.999),
-    ("F", 18.998403163), ("Ne", 20.1797), ("Na", 22.98976928), ("Mg", 24.305), ("Al", 26.9815385), ("Si", 28.085),
-    ("P", 30.973761998), ("S", 32.06), ("Cl", 35.45), ("Ar", 39.948), ("K", 39.0983), ("Ca", 40.078), ("Sc", 44.955908),
-    ("Ti", 47.867), ("V", 50.9415), ("Cr", 51.9961), ("Mn", 54.938044), ("Fe", 55.845), ("Co", 58.933194), ("Ni", 58.6934),
-    ("Cu", 63.546), ("Zn", 65.38), ("Ga", 69.723), ("Ge", 72.63), ("As", 74.921595), ("Se", 78.971), ("Br", 79.904),
-    ("Kr", 83.798), ("Rb", 85.4678), ("Sr", 87.62), ("Y", 88.90584), ("Zr", 91.224), ("Nb", 92.90637), ("Mo", 95.95),
-    ("Tc", 98.0), ("Ru", 101.07), ("Rh", 102.9055), ("Pd", 106.42), ("Ag", 107.8682), ("Cd", 112.414), ("In", 114.818),
-    ("Sn", 118.71), ("Sb", 121.76), ("Te", 127.6), ("I", 126.90447), ("Xe", 131.293), ("Cs", 132.90545196), ("Ba", 137.327),
-    ("La", 138.90547), ("Ce", 140.116), ("Pr", 140.90766), ("Nd", 144.242), ("Pm", 145.0), ("Sm", 150.36), ("Eu", 151.964),
-    ("Gd", 157.25), ("Tb", 158.92535), ("Dy", 162.5), ("Ho", 164.93033), ("Er", 167.259), ("Tm", 168.93422), ("Yb", 173.045),
-    ("Lu", 174.9668), ("Hf", 178.49), ("Ta", 180.94788), ("W", 183.84), ("Re", 186.207), ("Os", 190.23), ("Ir", 192.217),
-    ("Pt", 195.084), ("Au", 196.966569), ("Hg", 200.592), ("Tl", 204.38), ("Pb", 207.2), ("Bi", 208.9804), ("Po", 209.0),
-    ("At", 210.0), ("Rn", 222.0), ("Fr", 223.0), ("Ra", 226.0), ("Ac", 227.0), ("Th", 232.0377), ("Pa", 231.03588),
-    ("U", 238.02891), ("Np", 237.0), ("Pu", 244.0), ("Am", 243.0), ("Cm", 247.0), ("Bk", 247.0), ("Cf", 251.0), ("Es", 252.0),
-    ("Fm", 257.0), ("Md", 258.0), ("No", 259.0), ("Lr", 266.0), ("Rf", 267.0), ("Db", 268.0), ("Sg", 269.0), ("Bh", 270.0),
-    ("Hs", 269.0), ("Mt", 278.0), ("Ds", 281.0), ("Rg", 282.0), ("Cn", 285.0), ("Nh", 286.0), ("Fl", 289.0), ("Mc", 290.0),
-    ("Lv", 293.0), ("Ts", 294.0), ("Og", 294.0),
+    ("H", 1.008),
+    ("He", 4.002602),
+    ("Li", 6.94),
+    ("Be", 9.0121831),
+    ("B", 10.81),
+    ("C", 12.011),
+    ("N", 14.007),
+    ("O", 15.999),
+    ("F", 18.998403163),
+    ("Ne", 20.1797),
+    ("Na", 22.98976928),
+    ("Mg", 24.305),
+    ("Al", 26.9815385),
+    ("Si", 28.085),
+    ("P", 30.973761998),
+    ("S", 32.06),
+    ("Cl", 35.45),
+    ("Ar", 39.948),
+    ("K", 39.0983),
+    ("Ca", 40.078),
+    ("Sc", 44.955908),
+    ("Ti", 47.867),
+    ("V", 50.9415),
+    ("Cr", 51.9961),
+    ("Mn", 54.938044),
+    ("Fe", 55.845),
+    ("Co", 58.933194),
+    ("Ni", 58.6934),
+    ("Cu", 63.546),
+    ("Zn", 65.38),
+    ("Ga", 69.723),
+    ("Ge", 72.63),
+    ("As", 74.921595),
+    ("Se", 78.971),
+    ("Br", 79.904),
+    ("Kr", 83.798),
+    ("Rb", 85.4678),
+    ("Sr", 87.62),
+    ("Y", 88.90584),
+    ("Zr", 91.224),
+    ("Nb", 92.90637),
+    ("Mo", 95.95),
+    ("Tc", 98.0),
+    ("Ru", 101.07),
+    ("Rh", 102.9055),
+    ("Pd", 106.42),
+    ("Ag", 107.8682),
+    ("Cd", 112.414),
+    ("In", 114.818),
+    ("Sn", 118.71),
+    ("Sb", 121.76),
+    ("Te", 127.6),
+    ("I", 126.90447),
+    ("Xe", 131.293),
+    ("Cs", 132.90545196),
+    ("Ba", 137.327),
+    ("La", 138.90547),
+    ("Ce", 140.116),
+    ("Pr", 140.90766),
+    ("Nd", 144.242),
+    ("Pm", 145.0),
+    ("Sm", 150.36),
+    ("Eu", 151.964),
+    ("Gd", 157.25),
+    ("Tb", 158.92535),
+    ("Dy", 162.5),
+    ("Ho", 164.93033),
+    ("Er", 167.259),
+    ("Tm", 168.93422),
+    ("Yb", 173.045),
+    ("Lu", 174.9668),
+    ("Hf", 178.49),
+    ("Ta", 180.94788),
+    ("W", 183.84),
+    ("Re", 186.207),
+    ("Os", 190.23),
+    ("Ir", 192.217),
+    ("Pt", 195.084),
+    ("Au", 196.966569),
+    ("Hg", 200.592),
+    ("Tl", 204.38),
+    ("Pb", 207.2),
+    ("Bi", 208.9804),
+    ("Po", 209.0),
+    ("At", 210.0),
+    ("Rn", 222.0),
+    ("Fr", 223.0),
+    ("Ra", 226.0),
+    ("Ac", 227.0),
+    ("Th", 232.0377),
+    ("Pa", 231.03588),
+    ("U", 238.02891),
+    ("Np", 237.0),
+    ("Pu", 244.0),
+    ("Am", 243.0),
+    ("Cm", 247.0),
+    ("Bk", 247.0),
+    ("Cf", 251.0),
+    ("Es", 252.0),
+    ("Fm", 257.0),
+    ("Md", 258.0),
+    ("No", 259.0),
+    ("Lr", 266.0),
+    ("Rf", 267.0),
+    ("Db", 268.0),
+    ("Sg", 269.0),
+    ("Bh", 270.0),
+    ("Hs", 269.0),
+    ("Mt", 278.0),
+    ("Ds", 281.0),
+    ("Rg", 282.0),
+    ("Cn", 285.0),
+    ("Nh", 286.0),
+    ("Fl", 289.0),
+    ("Mc", 290.0),
+    ("Lv", 293.0),
+    ("Ts", 294.0),
+    ("Og", 294.0),
 ];
 
 /// `ELEMENT_BY_SYMBOL`: the atomic number and weight.
@@ -380,7 +510,8 @@ fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
 
 /// `molarMass`: each hydrate segment's leading multiplier times its formula's mass.
 pub(crate) fn molar_mass(input: &str) -> V {
-    let s: Vec<u16> = input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
+    let s: Vec<u16> =
+        input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
     if s.is_empty() {
         return err(ErrorCode::Value, "Type a chemical formula, such as H2O");
     }
@@ -489,16 +620,28 @@ pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
     let (declination, eq_of_time) = solar_basis(julian_day(serial));
     let minutes_utc = ((serial % 1.0) + 1.0) % 1.0 * 1440.0;
     let true_solar_time = (((minutes_utc + eq_of_time + 4.0 * lon) % 1440.0) + 1440.0) % 1440.0;
-    let hour_angle = if true_solar_time / 4.0 < 0.0 { true_solar_time / 4.0 + 180.0 } else { true_solar_time / 4.0 - 180.0 };
-    let zenith = DEG * acos(sin(RAD * lat) * sin(RAD * declination) + cos(RAD * lat) * cos(RAD * declination) * cos(RAD * hour_angle));
+    let hour_angle =
+        if true_solar_time / 4.0 < 0.0 { true_solar_time / 4.0 + 180.0 } else { true_solar_time / 4.0 - 180.0 };
+    let zenith = DEG
+        * acos(
+            sin(RAD * lat) * sin(RAD * declination) + cos(RAD * lat) * cos(RAD * declination) * cos(RAD * hour_angle),
+        );
     let elevation = 90.0 - zenith;
     let az_denom = cos(RAD * lat) * sin(RAD * zenith);
     let azimuth = if az_denom.abs() < 1e-9 {
-        if lat > 0.0 { 180.0 } else { 0.0 }
+        if lat > 0.0 {
+            180.0
+        } else {
+            0.0
+        }
     } else {
         let az_rad = (sin(RAD * lat) * cos(RAD * zenith) - sin(RAD * declination)) / az_denom;
         let a = DEG * acos(math_min(1.0, math_max(-1.0, az_rad)));
-        if hour_angle > 0.0 { (a + 180.0) % 360.0 } else { (540.0 - a) % 360.0 }
+        if hour_angle > 0.0 {
+            (a + 180.0) % 360.0
+        } else {
+            (540.0 - a) % 360.0
+        }
     };
     [elevation, azimuth, declination]
 }
@@ -507,7 +650,8 @@ pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
 pub(crate) fn sun_times(serial: f64, lat: f64, lon: f64) -> (Option<f64>, Option<f64>, f64) {
     let day = serial.floor();
     let (declination, eq_of_time) = solar_basis(julian_day(day + 0.5));
-    let cos_ha = cos(RAD * 90.833) / (cos(RAD * lat) * cos(RAD * declination)) - tan(RAD * lat) * tan(RAD * declination);
+    let cos_ha =
+        cos(RAD * 90.833) / (cos(RAD * lat) * cos(RAD * declination)) - tan(RAD * lat) * tan(RAD * declination);
     if cos_ha > 1.0 {
         return (None, None, 0.0);
     }
@@ -545,11 +689,14 @@ fn solar_position(c: &mut Call) -> Answer {
             None => solar_position_of(when, lat, lon).map(V::Num),
         },
     };
-    shown(c, &[
-        ("elevation", "cachedElevation", elevation),
-        ("azimuth", "cachedAzimuth", azimuth),
-        ("declination", "cachedDeclination", declination),
-    ])
+    shown(
+        c,
+        &[
+            ("elevation", "cachedElevation", elevation),
+            ("azimuth", "cachedAzimuth", azimuth),
+            ("declination", "cachedDeclination", declination),
+        ],
+    )
 }
 
 fn sunrise_sunset(c: &mut Call) -> Answer {
@@ -563,7 +710,14 @@ fn sunrise_sunset(c: &mut Call) -> Answer {
             }
         },
     };
-    shown(c, &[("sunrise", "cachedSunrise", sunrise), ("sunset", "cachedSunset", sunset), ("daylength", "cachedDayLength", daylength)])
+    shown(
+        c,
+        &[
+            ("sunrise", "cachedSunrise", sunrise),
+            ("sunset", "cachedSunset", sunset),
+            ("daylength", "cachedDayLength", daylength),
+        ],
+    )
 }
 
 const SYNODIC_MONTH: f64 = 29.530588853;
@@ -574,7 +728,14 @@ fn moon_phase_node(c: &mut Call) -> Answer {
         None => [V::Null, V::Null, V::Null],
         Some(serial) => moon_phase_of(serial).map(V::Num),
     };
-    shown(c, &[("phase", "cachedPhase", phase), ("age", "cachedAge", age), ("illumination", "cachedIllumination", illumination)])
+    shown(
+        c,
+        &[
+            ("phase", "cachedPhase", phase),
+            ("age", "cachedAge", age),
+            ("illumination", "cachedIllumination", illumination),
+        ],
+    )
 }
 
 /// `moonPhase`: the phase (0 new, 0.5 full), the age in days and the lit fraction at a serial.
@@ -589,7 +750,15 @@ pub(crate) fn moon_phase_of(serial: f64) -> [f64; 3] {
 const ISA_R_SPEC: f64 = 287.0531;
 const GM_OVER_R: f64 = 0.034163195;
 const EARTH_R: f64 = 6356766.0;
-const ISA_LAYERS: [(f64, f64); 7] = [(0.0, -0.0065), (11000.0, 0.0), (20000.0, 0.001), (32000.0, 0.0028), (47000.0, 0.0), (51000.0, -0.0028), (71000.0, -0.002)];
+const ISA_LAYERS: [(f64, f64); 7] = [
+    (0.0, -0.0065),
+    (11000.0, 0.0),
+    (20000.0, 0.001),
+    (32000.0, 0.0028),
+    (47000.0, 0.0),
+    (51000.0, -0.0028),
+    (71000.0, -0.002),
+];
 const ISA_TOP: f64 = 84852.0;
 
 /// One layer's base: geopotential altitude, lapse rate, temperature and pressure.
@@ -650,7 +819,15 @@ fn isa_atmosphere(c: &mut Call) -> Answer {
         Some(Err(e)) => [e.clone(), e.clone(), e.clone(), e],
         Some(Ok(pt)) => pt.map(V::Num),
     };
-    shown(c, &[("temp", "cachedT", temp), ("pressure", "cachedP", pressure), ("density", "cachedRho", density), ("sound", "cachedA", sound)])
+    shown(
+        c,
+        &[
+            ("temp", "cachedT", temp),
+            ("pressure", "cachedP", pressure),
+            ("density", "cachedRho", density),
+            ("sound", "cachedA", sound),
+        ],
+    )
 }
 
 /// `ANTOINE[substance]`: log₁₀(p/mmHg) = A − B/(C + T°C).
@@ -675,7 +852,10 @@ fn antoine(c: &mut Call) -> Answer {
     let t = c.read_input("t", c.literal("t"));
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
-        return Err(err(ErrorCode::Error, "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined."));
+        return Err(err(
+            ErrorCode::Error,
+            "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined.",
+        ));
     };
     let pressure = match number(&t) {
         None => V::Null,
@@ -706,7 +886,9 @@ fn colebrook(c: &mut Call) -> Answer {
     let re = c.read_input("re", c.literal("re"));
     let rr = c.read_input("rr", c.literal("rr"));
     let result = match (number(&re), number(&rr)) {
-        (Some(re), Some(rr)) if re <= 0.0 || rr < 0.0 || rr >= 1.0 => domain("Needs Re > 0 and relative roughness 0 ≤ ε/D < 1"),
+        (Some(re), Some(rr)) if re <= 0.0 || rr < 0.0 || rr >= 1.0 => {
+            domain("Needs Re > 0 and relative roughness 0 ≤ ε/D < 1")
+        }
         (Some(re), Some(_)) if re < 2300.0 => V::Num(64.0 / re),
         (Some(re), Some(rr)) => V::Num(colebrook_f(re, rr)),
         _ => V::Null,
@@ -744,16 +926,30 @@ fn pipe_roughness(c: &mut Call) -> Answer {
 
 // ─── Health ────────────────────────────────────────────────────────────────────
 
-pub(crate) const ZONES: [(&str, f64, f64); 5] =
-    [("Z1 Recovery", 0.5, 0.6), ("Z2 Endurance", 0.6, 0.7), ("Z3 Tempo", 0.7, 0.8), ("Z4 Threshold", 0.8, 0.9), ("Z5 Maximum", 0.9, 1.0)];
+pub(crate) const ZONES: [(&str, f64, f64); 5] = [
+    ("Z1 Recovery", 0.5, 0.6),
+    ("Z2 Endurance", 0.6, 0.7),
+    ("Z3 Tempo", 0.7, 0.8),
+    ("Z4 Threshold", 0.8, 0.9),
+    ("Z5 Maximum", 0.9, 1.0),
+];
 
 /// `hrZonesFrame`: a row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
 fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> V {
-    let at = |pct: f64| V::Num(math_round(match resting {
-        Some(r) => r + pct * (max_hr - r),
-        None => pct * max_hr,
-    }));
-    let column = |name: &str, ty: FrameColType, values: Vec<V>| Column { name: name.into(), ty, values, unit: None, format: None, raw: None };
+    let at = |pct: f64| {
+        V::Num(math_round(match resting {
+            Some(r) => r + pct * (max_hr - r),
+            None => pct * max_hr,
+        }))
+    };
+    let column = |name: &str, ty: FrameColType, values: Vec<V>| Column {
+        name: name.into(),
+        ty,
+        values,
+        unit: None,
+        format: None,
+        raw: None,
+    };
     V::Frame(Rc::new(Frame {
         columns: vec![
             column("Zone", FrameColType::String, ZONES.iter().map(|z| V::str(z.0)).collect()),
@@ -833,7 +1029,10 @@ fn em_spectrum_node(c: &mut Call) -> Answer {
             [V::str(em_band(lambda)), V::Num(fq), V::Num(lambda)]
         }
     };
-    shown(c, &[("band", "cachedBand", band), ("freq", "cachedFreq", freq), ("wavelength", "cachedWavelength", wavelength)])
+    shown(
+        c,
+        &[("band", "cachedBand", band), ("freq", "cachedFreq", freq), ("wavelength", "cachedWavelength", wavelength)],
+    )
 }
 
 // ─── Convert ───────────────────────────────────────────────────────────────────
@@ -885,24 +1084,46 @@ fn convert(c: &mut Call) -> Answer {
         }
     };
     if from.2 != to.2 {
-        return done(c, err(ErrorCode::NotAvailable, format!("Can't convert {} to {}: the units measure different things", category_of(from.2), category_of(to.2))));
+        return done(
+            c,
+            err(
+                ErrorCode::NotAvailable,
+                format!(
+                    "Can't convert {} to {}: the units measure different things",
+                    category_of(from.2),
+                    category_of(to.2)
+                ),
+            ),
+        );
     }
     let to_dim = parse_dim(to.2);
     let display: Option<String> = Some(to_key.clone());
     let (from_code, to_code) = (V::str(from.1), V::str(to.1));
     let result = broadcast_unit(&[x], |o| match o[0] {
-        V::Unit(u) if dim_equal(&u.dim, &to_dim) => {
-            V::Unit(Rc::new(crate::unit_dims::UnitCell { value: u.value, dim: u.dim.clone(), display: display.clone(), ratio: false, scale: None, offset: None, unit_dim: None }))
-        }
+        V::Unit(u) if dim_equal(&u.dim, &to_dim) => V::Unit(Rc::new(crate::unit_dims::UnitCell {
+            value: u.value,
+            dim: u.dim.clone(),
+            display: display.clone(),
+            ratio: false,
+            scale: None,
+            offset: None,
+            unit_dim: None,
+        })),
         V::Unit(u) => {
             let shown = |d: &Dim| {
                 let s = crate::unit_lists::format_dim(d);
-                if s.is_empty() { "a plain number".to_string() } else { s }
+                if s.is_empty() {
+                    "a plain number".to_string()
+                } else {
+                    s
+                }
             };
             V::err(unit_error(&format!("This value is {}, but Convert targets {}.", shown(&u.dim), shown(&to_dim))))
         }
         v => match super::kit::core_call("CONVERT", &[v.clone(), from_code.clone(), to_code.clone()]) {
-            V::Num(conv) => crate::unit_lists::tag_dim(conv * to.3 + to.4.unwrap_or(0.0), to_dim.clone(), display.clone()),
+            V::Num(conv) => {
+                crate::unit_lists::tag_dim(conv * to.3 + to.4.unwrap_or(0.0), to_dim.clone(), display.clone())
+            }
             _ => err(ErrorCode::Overflow, "The converted value is too large to represent"),
         },
     });
@@ -1046,7 +1267,13 @@ pub(crate) struct TriangleResult {
 }
 
 pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
-    let done = |values: [V; 6], area: V, perimeter: V, valid: V, solved: Vec<usize>| TriangleResult { values, area, perimeter, valid, solved };
+    let done = |values: [V; 6], area: V, perimeter: V, valid: V, solved: Vec<usize>| TriangleResult {
+        values,
+        area,
+        perimeter,
+        valid,
+        solved,
+    };
     if let Some(e) = cell_err {
         return done(std::array::from_fn(|_| e.clone()), e.clone(), e.clone(), e, Vec::new());
     }
@@ -1081,11 +1308,23 @@ pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleR
     });
     let Some(s) = solved else {
         let e = err(ErrorCode::Solve, "No three of those parts pin down a triangle");
-        return done(std::array::from_fn(|k| given[k].map_or_else(|| e.clone(), V::Num)), e.clone(), e, V::Bool(false), Vec::new());
+        return done(
+            std::array::from_fn(|k| given[k].map_or_else(|| e.clone(), V::Num)),
+            e.clone(),
+            e,
+            V::Bool(false),
+            Vec::new(),
+        );
     };
     let agrees = |got: f64, want: f64| (got - want).abs() <= 1e-6 * math_max(1.0, want.abs());
     let valid = given_keys.iter().all(|&k| agrees(s.parts[k], given[k].unwrap_or(f64::NAN)));
-    done(std::array::from_fn(|k| V::Num(given[k].unwrap_or(s.parts[k]))), V::Num(s.area), V::Num(s.perimeter), V::Bool(valid), unsolved())
+    done(
+        std::array::from_fn(|k| V::Num(given[k].unwrap_or(s.parts[k]))),
+        V::Num(s.area),
+        V::Num(s.perimeter),
+        V::Bool(valid),
+        unsolved(),
+    )
 }
 
 /// A value as `jsonEnc` writes the card's plain-object field.
@@ -1160,7 +1399,10 @@ fn side_unit(read: &[V]) -> Result<Option<SideUnit>, V> {
             }
             found = Some(match fc {
                 Some(f) if dim_equal(&f.dim, &u.dim) => SideUnit { unit: f, id: u.display.clone() },
-                _ => SideUnit { unit: crate::unit_catalog::Unit { dim: u.dim.clone(), scale: 1.0, offset: None }, id: None },
+                _ => SideUnit {
+                    unit: crate::unit_catalog::Unit { dim: u.dim.clone(), scale: 1.0, offset: None },
+                    id: None,
+                },
             });
         }
     }
@@ -1222,7 +1464,9 @@ fn triangle_solver(c: &mut Call) -> Answer {
             let mut cell_err = None;
             for k in 0..6 {
                 let cell = match &raw[k] {
-                    V::List(items) => items.get(i).cloned().map_or(V::Null, |x| if matches!(x, V::Undef) { V::Null } else { x }),
+                    V::List(items) => {
+                        items.get(i).cloned().map_or(V::Null, |x| if matches!(x, V::Undef) { V::Null } else { x })
+                    }
                     v => v.clone(),
                 };
                 match cell {
@@ -1264,14 +1508,21 @@ fn triangle_solver(c: &mut Call) -> Answer {
             V::Num(n) => V::Num(n * pow(su.unit.scale, 2.0)),
             other => other.clone(),
         };
-        let each = |v: &V, f: &dyn Fn(&V) -> V| if let V::List(items) = v { list(items.iter().map(f).collect()) } else { f(v) };
+        let each = |v: &V, f: &dyn Fn(&V) -> V| {
+            if let V::List(items) = v {
+                list(items.iter().map(f).collect())
+            } else {
+                f(v)
+            }
+        };
         for k in [0, 1, 2, 7] {
             outs[k] = each(&outs[k], &side);
         }
         outs[6] = each(&outs[6], &area);
         shown_values[..3].clone_from_slice(&outs[..3]);
     }
-    let values_json: serde_json::Map<String, Json> = PART_KEYS.iter().zip(&shown_values).map(|(k, v)| (k.to_string(), tri_json(v))).collect();
+    let values_json: serde_json::Map<String, Json> =
+        PART_KEYS.iter().zip(&shown_values).map(|(k, v)| (k.to_string(), tri_json(v))).collect();
     c.show("cachedValues", V::Json(Rc::new(Json::Object(values_json))));
     c.show("cachedArea", outs[6].clone());
     c.show("cachedPerimeter", outs[7].clone());

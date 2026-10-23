@@ -4,31 +4,154 @@
 
 use std::rc::Rc;
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
 use crate::jsnum::{js_lower, js_trim, math_round};
 use crate::nodes::packs as k;
 
 pub const NAMES: &[&str] = &[
-    "ELEMENT", "MOLARMASS", "SUNPOSITION", "SUNRISE", "SUNSET", "DAYLENGTH", "MOONPHASE", "PARALLELCOMBINE",
-    "ESERIESVALUE", "AWGWIRE", "RESISTORCOLORCODE", "EMSPECTRUMBAND", "PHYSICSCONSTANT", "COLEBROOK", "PIPEROUGHNESS",
-    "HEARTRATEZONES", "STANDARDATMOSPHERE", "ANTOINE", "ISIN", "TALLY", "TRIANGLESOLVER",
+    "ELEMENT",
+    "MOLARMASS",
+    "SUNPOSITION",
+    "SUNRISE",
+    "SUNSET",
+    "DAYLENGTH",
+    "MOONPHASE",
+    "PARALLELCOMBINE",
+    "ESERIESVALUE",
+    "AWGWIRE",
+    "RESISTORCOLORCODE",
+    "EMSPECTRUMBAND",
+    "PHYSICSCONSTANT",
+    "COLEBROOK",
+    "PIPEROUGHNESS",
+    "HEARTRATEZONES",
+    "STANDARDATMOSPHERE",
+    "ANTOINE",
+    "ISIN",
+    "TALLY",
+    "TRIANGLESOLVER",
 ];
 
 const ELEMENT_NAMES: [&str; 118] = [
-    "Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon",
-    "Sodium", "Magnesium", "Aluminium", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium",
-    "Calcium", "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper",
-    "Zinc", "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium",
-    "Zirconium", "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium",
-    "Indium", "Tin", "Antimony", "Tellurium", "Iodine", "Xenon", "Caesium", "Barium", "Lanthanum", "Cerium",
-    "Praseodymium", "Neodymium", "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium",
-    "Holmium", "Erbium", "Thulium", "Ytterbium", "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium",
-    "Iridium", "Platinum", "Gold", "Mercury", "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon",
-    "Francium", "Radium", "Actinium", "Thorium", "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium",
-    "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium", "Mendelevium", "Nobelium", "Lawrencium",
-    "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium", "Roentgenium",
-    "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson",
+    "Hydrogen",
+    "Helium",
+    "Lithium",
+    "Beryllium",
+    "Boron",
+    "Carbon",
+    "Nitrogen",
+    "Oxygen",
+    "Fluorine",
+    "Neon",
+    "Sodium",
+    "Magnesium",
+    "Aluminium",
+    "Silicon",
+    "Phosphorus",
+    "Sulfur",
+    "Chlorine",
+    "Argon",
+    "Potassium",
+    "Calcium",
+    "Scandium",
+    "Titanium",
+    "Vanadium",
+    "Chromium",
+    "Manganese",
+    "Iron",
+    "Cobalt",
+    "Nickel",
+    "Copper",
+    "Zinc",
+    "Gallium",
+    "Germanium",
+    "Arsenic",
+    "Selenium",
+    "Bromine",
+    "Krypton",
+    "Rubidium",
+    "Strontium",
+    "Yttrium",
+    "Zirconium",
+    "Niobium",
+    "Molybdenum",
+    "Technetium",
+    "Ruthenium",
+    "Rhodium",
+    "Palladium",
+    "Silver",
+    "Cadmium",
+    "Indium",
+    "Tin",
+    "Antimony",
+    "Tellurium",
+    "Iodine",
+    "Xenon",
+    "Caesium",
+    "Barium",
+    "Lanthanum",
+    "Cerium",
+    "Praseodymium",
+    "Neodymium",
+    "Promethium",
+    "Samarium",
+    "Europium",
+    "Gadolinium",
+    "Terbium",
+    "Dysprosium",
+    "Holmium",
+    "Erbium",
+    "Thulium",
+    "Ytterbium",
+    "Lutetium",
+    "Hafnium",
+    "Tantalum",
+    "Tungsten",
+    "Rhenium",
+    "Osmium",
+    "Iridium",
+    "Platinum",
+    "Gold",
+    "Mercury",
+    "Thallium",
+    "Lead",
+    "Bismuth",
+    "Polonium",
+    "Astatine",
+    "Radon",
+    "Francium",
+    "Radium",
+    "Actinium",
+    "Thorium",
+    "Protactinium",
+    "Uranium",
+    "Neptunium",
+    "Plutonium",
+    "Americium",
+    "Curium",
+    "Berkelium",
+    "Californium",
+    "Einsteinium",
+    "Fermium",
+    "Mendelevium",
+    "Nobelium",
+    "Lawrencium",
+    "Rutherfordium",
+    "Dubnium",
+    "Seaborgium",
+    "Bohrium",
+    "Hassium",
+    "Meitnerium",
+    "Darmstadtium",
+    "Roentgenium",
+    "Copernicium",
+    "Nihonium",
+    "Flerovium",
+    "Moscovium",
+    "Livermorium",
+    "Tennessine",
+    "Oganesson",
 ];
 
 /// The period an atomic number sits in.
@@ -55,7 +178,11 @@ fn finite(v: &V) -> Option<f64> {
 
 /// `v == null ? dflt : String(v).toLowerCase()`.
 fn lower_or(v: &V, dflt: &str) -> String {
-    if nullish(v) { dflt.to_string() } else { js_lower(&js_string_of(v)).into_owned() }
+    if nullish(v) {
+        dflt.to_string()
+    } else {
+        js_lower(&js_string_of(v)).into_owned()
+    }
 }
 
 fn num_or_null(v: Option<f64>) -> V {
@@ -77,7 +204,9 @@ fn geo(a: &[V]) -> Result<(f64, f64, f64), V> {
     if (0..3).any(|i| nullish(arg(a, i))) {
         return Err(V::Null);
     }
-    let (Some(w), Some(la), Some(lo)) = (finite(arg(a, 0)), finite(arg(a, 1)), finite(arg(a, 2))) else { return Err(V::Null) };
+    let (Some(w), Some(la), Some(lo)) = (finite(arg(a, 0)), finite(arg(a, 1)), finite(arg(a, 2))) else {
+        return Err(V::Null);
+    };
     match k::lat_lon_error(la, lo) {
         Some(e) => Err(e),
         None => Ok((w, la, lo)),
@@ -91,7 +220,11 @@ pub fn call(name: &str, a: &[V]) -> V {
             v if nullish(v) => V::Null,
             v => {
                 let s = js_string_of(v);
-                if js_trim(&s).is_empty() { V::Null } else { k::molar_mass(&s) }
+                if js_trim(&s).is_empty() {
+                    V::Null
+                } else {
+                    k::molar_mass(&s)
+                }
             }
         },
         "SUNPOSITION" => match geo(a) {
@@ -152,7 +285,10 @@ pub fn call(name: &str, a: &[V]) -> V {
             let Some(n) = (if nullish(gauge) { None } else { finite(gauge) }) else { return V::Null };
             let p = lower_or(arg(a, 1), "diameter");
             if !matches!(p.as_str(), "diameter" | "area" | "resistance" | "ampacity") {
-                return err(ErrorCode::Value, format!("Unknown property \"{p}\". Use diameter, area, resistance or ampacity"));
+                return err(
+                    ErrorCode::Value,
+                    format!("Unknown property \"{p}\". Use diameter, area, resistance or ampacity"),
+                );
             }
             if !(-3.0..=40.0).contains(&n) {
                 return err(ErrorCode::Domain, "AWG runs 4/0 (enter -3) through 40");
@@ -181,10 +317,13 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "EMSPECTRUMBAND" => {
             let num = |v: &V| if let V::Num(n) = v { Some(*n).filter(|n| n.is_finite()) } else { None };
-            let fq = num(arg(a, 0)).or_else(|| num(arg(a, 1)).map(|wl| if wl > 0.0 { k::LIGHT_SPEED / wl } else { f64::NAN }));
+            let fq = num(arg(a, 0))
+                .or_else(|| num(arg(a, 1)).map(|wl| if wl > 0.0 { k::LIGHT_SPEED / wl } else { f64::NAN }));
             match fq {
                 None => V::Null,
-                Some(fq) if !(fq > 0.0) || !fq.is_finite() => err(ErrorCode::Domain, "Needs a positive frequency or wavelength"),
+                Some(fq) if !(fq > 0.0) || !fq.is_finite() => {
+                    err(ErrorCode::Domain, "Needs a positive frequency or wavelength")
+                }
                 Some(fq) => V::str(k::em_band(k::LIGHT_SPEED / fq)),
             }
         }
@@ -193,7 +332,12 @@ pub fn call(name: &str, a: &[V]) -> V {
             v => {
                 let id = js_string_of(v);
                 k::physics_constant_value(&id).map_or_else(
-                    || err(ErrorCode::Name, format!("Unknown constant \"{id}\". Try c, G, h, e, kb or na (case matters)")),
+                    || {
+                        err(
+                            ErrorCode::Name,
+                            format!("Unknown constant \"{id}\". Try c, G, h, e, kb or na (case matters)"),
+                        )
+                    },
                     V::Num,
                 )
             }
@@ -229,10 +373,12 @@ pub fn call(name: &str, a: &[V]) -> V {
             if !(m > 0.0 && r.is_none_or(|r| r > 0.0 && r < m)) {
                 return err(ErrorCode::Domain, "Needs max HR > 0 and resting HR below it");
             }
-            let at = |pct: f64| V::Num(math_round(match r {
-                Some(r) => r + pct * (m - r),
-                None => pct * m,
-            }));
+            let at = |pct: f64| {
+                V::Num(math_round(match r {
+                    Some(r) => r + pct * (m - r),
+                    None => pct * m,
+                }))
+            };
             V::List(Rc::new(k::ZONES.iter().map(|z| V::List(Rc::new(vec![at(z.1), at(z.2)]))).collect()))
         }
         "STANDARDATMOSPHERE" => {
@@ -244,7 +390,12 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "pressure" => 1,
                 "density" => 2,
                 "sound" => 3,
-                _ => return err(ErrorCode::Value, format!("Unknown property \"{key}\". Use temp, pressure, density or sound")),
+                _ => {
+                    return err(
+                        ErrorCode::Value,
+                        format!("Unknown property \"{key}\". Use temp, pressure, density or sound"),
+                    )
+                }
             };
             match k::standard_atmosphere(z) {
                 Ok(pt) => V::Num(pt[field]),

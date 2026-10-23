@@ -6,7 +6,7 @@
 #![allow(clippy::manual_range_contains, clippy::neg_cmp_op_on_partial_ord)]
 
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::js_pow;
 use crate::fdlibm::{exp, log};
 use crate::jsnum::{math_max, math_min, math_round};
@@ -122,7 +122,11 @@ fn use30(basis: f64) -> bool {
 }
 
 fn day_count(basis: f64, a: Date, b: Date) -> f64 {
-    if use30(basis) { days30_360(a, b) } else { actual_days(a, b) }
+    if use30(basis) {
+        days30_360(a, b)
+    } else {
+        actual_days(a, b)
+    }
 }
 
 /// `{ e, dsc, dsbs }`.
@@ -132,7 +136,11 @@ pub fn coup_period_days(prev: Date, next: Date, settle: Date, freq: f64, basis: 
         let dsbs = days30_360(prev, settle);
         return (e, e - dsbs, dsbs);
     }
-    (if basis == 3.0 { 365.0 / freq } else { actual_days(prev, next) }, actual_days(settle, next), actual_days(prev, settle))
+    (
+        if basis == 3.0 { 365.0 / freq } else { actual_days(prev, next) },
+        actual_days(settle, next),
+        actual_days(prev, settle),
+    )
 }
 
 fn valid_freq(f: f64) -> bool {
@@ -144,7 +152,13 @@ fn domain(op: &str, need: &str) -> SolError {
 }
 
 /// Excel's `#NUM!` checks as a `#DOMAIN!`; a left-out frequency or basis goes unchecked.
-fn args_error(op: &str, settle_serial: f64, maturity_serial: f64, freq: Option<f64>, basis: Option<f64>) -> Option<SolError> {
+fn args_error(
+    op: &str,
+    settle_serial: f64,
+    maturity_serial: f64,
+    freq: Option<f64>,
+    basis: Option<f64>,
+) -> Option<SolError> {
     if freq.is_some_and(|f| !valid_freq(f)) {
         return Some(domain(op, "a frequency of 1, 2 or 4"));
     }
@@ -226,7 +240,14 @@ fn oddf_periods(issue: Date, first_coupon: Date, step: f64) -> Vec<(Date, Date)>
 /// Err is the TypeError `periods.find(...)![1]` throws when no quasi-period ends after settlement.
 #[allow(clippy::too_many_arguments)]
 pub fn oddf_price(
-    settle: Date, maturity: Date, issue: Date, first_coupon: Date, coupon_rate: f64, yld: f64, redemption: f64, freq: f64,
+    settle: Date,
+    maturity: Date,
+    issue: Date,
+    first_coupon: Date,
+    coupon_rate: f64,
+    yld: f64,
+    redemption: f64,
+    freq: f64,
 ) -> Result<f64, String> {
     let step = 12.0 / freq;
     let e = 360.0 / freq;
@@ -260,7 +281,15 @@ pub fn oddf_price(
     Ok(price)
 }
 
-pub fn oddl_price(settle: Date, maturity: Date, last_interest: Date, coupon_rate: f64, yld: f64, redemption: f64, freq: f64) -> f64 {
+pub fn oddl_price(
+    settle: Date,
+    maturity: Date,
+    last_interest: Date,
+    coupon_rate: f64,
+    yld: f64,
+    redemption: f64,
+    freq: f64,
+) -> f64 {
     let e = 360.0 / freq;
     let odd_days = days30_360(last_interest, maturity);
     let nc = odd_days / e;
@@ -315,9 +344,14 @@ pub fn vdb(cost: f64, salvage: f64, life: f64, start: f64, end: f64, factor: f64
     }
     let result = math_max(
         0.0,
-        vdb_book_value(cost, salvage, life, start, factor, no_switch) - vdb_book_value(cost, salvage, life, end, factor, no_switch),
+        vdb_book_value(cost, salvage, life, start, factor, no_switch)
+            - vdb_book_value(cost, salvage, life, end, factor, no_switch),
     );
-    if result.is_finite() { Fin::Num(result) } else { Fin::Null }
+    if result.is_finite() {
+        Fin::Num(result)
+    } else {
+        Fin::Null
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -365,7 +399,15 @@ pub fn coupon_value(op: CouponOp, settle_serial: f64, maturity_serial: f64, freq
     })
 }
 
-fn accrual_error(op: &str, issue_serial: f64, settle_serial: f64, rate: f64, par: f64, freq: Option<f64>, basis: f64) -> Option<SolError> {
+fn accrual_error(
+    op: &str,
+    issue_serial: f64,
+    settle_serial: f64,
+    rate: f64,
+    par: f64,
+    freq: Option<f64>,
+    basis: f64,
+) -> Option<SolError> {
     if freq.is_some_and(|f| !valid_freq(f)) {
         return Some(domain(op, "a frequency of 1, 2 or 4"));
     }
@@ -442,7 +484,10 @@ pub fn tbill(op: TBillOp, settle_serial: f64, maturity_serial: f64, x: f64) -> F
         return Fin::Err(e);
     }
     if x <= 0.0 {
-        return Fin::Err(domain(name, if op == TBillOp::Tbillyield { "a price above 0" } else { "a discount above 0" }));
+        return Fin::Err(domain(
+            name,
+            if op == TBillOp::Tbillyield { "a price above 0" } else { "a discount above 0" },
+        ));
     }
     let (y, m, d) = ymd(serial_to_js_date(settle_serial));
     let last_day = utc_date(utc(y + 1.0, m + 1.0, 0.0));
@@ -496,13 +541,24 @@ pub fn security_disc(op: SecurityDiscOp, settle_serial: f64, maturity_serial: f6
         SecurityDiscOp::Intrate => Fin::Num(((b - a) / a) * (bd / dsm)),
         SecurityDiscOp::Received => {
             let denom = 1.0 - b * dsm / bd;
-            if denom <= 0.0 { Fin::Err(domain(name, "a discount below 100% over the term")) } else { Fin::Num(a / denom) }
+            if denom <= 0.0 {
+                Fin::Err(domain(name, "a discount below 100% over the term"))
+            } else {
+                Fin::Num(a / denom)
+            }
         }
     }
 }
 
 /// `priceDisc`: PRICEDISC with `pricedisc`, YIELDDISC otherwise.
-pub fn price_disc(pricedisc: bool, settle_serial: f64, maturity_serial: f64, rate_or_price: f64, redemption: f64, basis: f64) -> Fin {
+pub fn price_disc(
+    pricedisc: bool,
+    settle_serial: f64,
+    maturity_serial: f64,
+    rate_or_price: f64,
+    redemption: f64,
+    basis: f64,
+) -> Fin {
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }
@@ -512,7 +568,10 @@ pub fn price_disc(pricedisc: bool, settle_serial: f64, maturity_serial: f64, rat
         return Fin::Err(e);
     }
     if rate_or_price <= 0.0 || redemption <= 0.0 {
-        return Fin::Err(domain(name, if pricedisc { "a discount and redemption above 0" } else { "a price and redemption above 0" }));
+        return Fin::Err(domain(
+            name,
+            if pricedisc { "a discount and redemption above 0" } else { "a price and redemption above 0" },
+        ));
     }
     let (settle, maturity) = (serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
     let dsm = day_count(b, settle, maturity);
@@ -525,7 +584,15 @@ pub fn price_disc(pricedisc: bool, settle_serial: f64, maturity_serial: f64, rat
 }
 
 /// `priceMat`: PRICEMAT with `pricemat`, YIELDMAT otherwise.
-pub fn price_mat(pricemat: bool, settle_serial: f64, maturity_serial: f64, issue_serial: f64, rate: f64, yld_or_price: f64, basis: f64) -> Fin {
+pub fn price_mat(
+    pricemat: bool,
+    settle_serial: f64,
+    maturity_serial: f64,
+    issue_serial: f64,
+    rate: f64,
+    yld_or_price: f64,
+    basis: f64,
+) -> Fin {
     if ![settle_serial, maturity_serial, issue_serial].iter().all(|x| x.is_finite()) {
         return Fin::Null;
     }
@@ -563,7 +630,15 @@ pub fn price_mat(pricemat: bool, settle_serial: f64, maturity_serial: f64, issue
 }
 
 /// `durationValue`: DURATION, or MDURATION with `modified`.
-pub fn duration_value(modified: bool, settle_serial: f64, maturity_serial: f64, coupon: f64, yld: f64, freq: f64, basis: f64) -> Fin {
+pub fn duration_value(
+    modified: bool,
+    settle_serial: f64,
+    maturity_serial: f64,
+    coupon: f64,
+    yld: f64,
+    freq: f64,
+    basis: f64,
+) -> Fin {
     let (f, b) = (math_round(freq), math_round(basis));
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
@@ -610,13 +685,23 @@ fn price_args_error(op: &str, is_price: bool, rate: f64, yld_or_price: f64, rede
 }
 
 /// `bondPriceYield`: PRICE with `price`, YIELD otherwise.
-pub fn bond_price_yield(price: bool, settle_serial: f64, maturity_serial: f64, rate: f64, yld_or_price: f64, redemption: f64, freq: f64) -> Fin {
+pub fn bond_price_yield(
+    price: bool,
+    settle_serial: f64,
+    maturity_serial: f64,
+    rate: f64,
+    yld_or_price: f64,
+    redemption: f64,
+    freq: f64,
+) -> Fin {
     let f = math_round(freq);
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }
     let name = if price { "price" } else { "yield" };
-    if let Some(e) = args_error(name, settle_serial, maturity_serial, Some(f), None).or_else(|| price_args_error(name, price, rate, yld_or_price, redemption)) {
+    if let Some(e) = args_error(name, settle_serial, maturity_serial, Some(f), None)
+        .or_else(|| price_args_error(name, price, rate, yld_or_price, redemption))
+    {
         return Fin::Err(e);
     }
     let (settle, maturity) = (serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
@@ -625,7 +710,11 @@ pub fn bond_price_yield(price: bool, settle_serial: f64, maturity_serial: f64, r
     } else {
         bond_yield(settle, maturity, rate, yld_or_price, redemption, f)
     };
-    if r.is_finite() { Fin::Num(r) } else { Fin::Null }
+    if r.is_finite() {
+        Fin::Num(r)
+    } else {
+        Fin::Null
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -638,8 +727,15 @@ pub enum OddCouponOp {
 
 #[allow(clippy::too_many_arguments)]
 pub fn odd_coupon(
-    op: OddCouponOp, settle_serial: f64, maturity_serial: f64, issue_serial: f64, fl_serial: f64, rate: f64, yld_or_price: f64,
-    redemption: f64, freq: f64,
+    op: OddCouponOp,
+    settle_serial: f64,
+    maturity_serial: f64,
+    issue_serial: f64,
+    fl_serial: f64,
+    rate: f64,
+    yld_or_price: f64,
+    redemption: f64,
+    freq: f64,
 ) -> Fin {
     let name = match op {
         OddCouponOp::Oddfprice => "oddfprice",
@@ -665,11 +761,14 @@ pub fn odd_coupon(
         maturity_serial > settle_serial && settle_serial > fl_serial
     };
     if !ordered {
-        return Fin::Err(domain(name, if is_first {
-            "maturity after the first coupon, the first coupon after settlement, and settlement on or after issue"
-        } else {
-            "maturity after settlement, and settlement after the last interest date"
-        }));
+        return Fin::Err(domain(
+            name,
+            if is_first {
+                "maturity after the first coupon, the first coupon after settlement, and settlement on or after issue"
+            } else {
+                "maturity after settlement, and settlement after the last interest date"
+            },
+        ));
     }
     let is_price = matches!(op, OddCouponOp::Oddfprice | OddCouponOp::Oddlprice);
     if let Some(e) = price_args_error(name, is_price, rate, yld_or_price, redemption) {
@@ -698,7 +797,11 @@ pub fn odd_coupon(
     if let Some(m) = thrown.into_inner() {
         return Fin::Throw(m);
     }
-    if r.is_finite() { Fin::Num(r) } else { Fin::Null }
+    if r.is_finite() {
+        Fin::Num(r)
+    } else {
+        Fin::Null
+    }
 }
 
 // ─── Cash-flow prep + the IRR / XIRR solver ──────────────────────────────────
@@ -804,7 +907,11 @@ pub fn xnpv(rate: f64, values: &[f64], dates: &[f64], before_first: bool) -> Fin
     for i in 0..n {
         sum += values[i] / js_pow(1.0 + rate, (dates[i] - d0) / 365.0);
     }
-    if sum.is_finite() { Fin::Num(sum) } else { Fin::Null }
+    if sum.is_finite() {
+        Fin::Num(sum)
+    } else {
+        Fin::Null
+    }
 }
 
 pub fn xirr(values: &[f64], dates: &[f64], before_first: bool) -> Fin {
@@ -838,10 +945,17 @@ pub fn mirr(cashflows: &[f64], finrate: f64, reinrate: f64) -> Fin {
         }
     }
     if pv_neg == 0.0 || fv_pos == 0.0 {
-        return Fin::Err(sol_error(ErrorCode::DivZero, "MIRR needs both a negative (investment) and a positive (return) cash flow"));
+        return Fin::Err(sol_error(
+            ErrorCode::DivZero,
+            "MIRR needs both a negative (investment) and a positive (return) cash flow",
+        ));
     }
     let r = js_pow(-fv_pos / pv_neg, 1.0 / (n - 1.0)) - 1.0;
-    if r.is_finite() { Fin::Num(r) } else { Fin::Err(sol_error(ErrorCode::Overflow, "MIRR overflowed: the cash flows or rates are extreme")) }
+    if r.is_finite() {
+        Fin::Num(r)
+    } else {
+        Fin::Err(sol_error(ErrorCode::Overflow, "MIRR overflowed: the cash flows or rates are extreme"))
+    }
 }
 
 // ─── Return-series math, the ops that answer one value ───────────────────────
@@ -872,7 +986,11 @@ fn drawdowns(prices: &[Cell]) -> Result<Vec<Option<f64>>, SolError> {
         }
         out.push(finite(p).map(|p| {
             peak = math_max(peak, p);
-            if peak > 0.0 { p / peak - 1.0 } else { 0.0 }
+            if peak > 0.0 {
+                p / peak - 1.0
+            } else {
+                0.0
+            }
         }));
     }
     Ok(out)
@@ -973,7 +1091,10 @@ pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_ra
     }
     // Each period is a step of the loop below, and past 2^53 a step no longer moves.
     if end - start >= MAX_PERIODS || end > 9_007_199_254_740_991.0 {
-        return Fin::Err(sol_error(ErrorCode::Domain, format!("{} sums at most 1,000,000 periods", if cumipmt { "CUMIPMT" } else { "CUMPRINC" })));
+        return Fin::Err(sol_error(
+            ErrorCode::Domain,
+            format!("{} sums at most 1,000,000 periods", if cumipmt { "CUMIPMT" } else { "CUMPRINC" }),
+        ));
     }
     let r_n = js_pow(1.0 + rate, nper);
     let pmt = -(pv * r_n) * rate / ((1.0 + rate * ty) * (r_n - 1.0));
@@ -989,7 +1110,11 @@ pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_ra
         sum += if cumipmt { ipmt } else { pmt - ipmt };
         per += 1.0;
     }
-    if sum.is_finite() { Fin::Num(sum) } else { Fin::Null }
+    if sum.is_finite() {
+        Fin::Num(sum)
+    } else {
+        Fin::Null
+    }
 }
 
 /// The most periods VDB steps through and CUMIPMT / CUMPRINC sum: each is a step of a loop.

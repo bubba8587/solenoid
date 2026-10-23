@@ -18,4 +18,3 @@ fn a_frame_calls_throw_stays_its_own() {
     invoke("engine_frame_fn", &args).expect("engine_frame_fn answers");
     assert_eq!(abs_of(-2.0), json!({ "num": 2f64.to_bits().to_string() }));
 }
-

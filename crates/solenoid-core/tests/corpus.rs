@@ -51,10 +51,14 @@ fn run_case(verb: &str, kase: &Json) -> Result<Json, ErrorCode> {
         "join" => {
             let mut opts = op.clone();
             opts.as_object_mut().unwrap().remove("kind");
-            invoke("engine_join", &json!({ "left": source(&frames["left"]), "right": source(&frames["right"]), "opts": opts }))
+            invoke(
+                "engine_join",
+                &json!({ "left": source(&frames["left"]), "right": source(&frames["right"]), "opts": opts }),
+            )
         }
         "append" | "bindColumns" => {
-            let handles: Vec<String> = op["frames"].as_array().unwrap().iter().map(|n| source(&frames[n.as_str().unwrap()])).collect();
+            let handles: Vec<String> =
+                op["frames"].as_array().unwrap().iter().map(|n| source(&frames[n.as_str().unwrap()])).collect();
             let cmd = if verb == "append" { "engine_append" } else { "engine_bind_columns" };
             invoke(cmd, &json!({ "handles": handles }))
         }

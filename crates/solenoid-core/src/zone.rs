@@ -130,7 +130,11 @@ fn host_utc(local: f64) -> f64 {
     let in_day = local - days * MS_PER_DAY;
     let (y, m, d) = civil_from_days(days as i64);
     // `new Date` reads a year from 0 to 99 as 1900 to 1999, so such a year is spelled as months from year 100.
-    let (y, m0) = if (0..=99).contains(&y) { (100.0, f64::from(m - 1) - 12.0 * (100 - y) as f64) } else { (y as f64, f64::from(m - 1)) };
+    let (y, m0) = if (0..=99).contains(&y) {
+        (100.0, f64::from(m - 1) - 12.0 * (100 - y) as f64)
+    } else {
+        (y as f64, f64::from(m - 1))
+    };
     host::Date::local(y, m0, f64::from(d), 0.0, 0.0, 0.0, in_day).get_time()
 }
 
@@ -141,11 +145,19 @@ fn host_utc(local: f64) -> f64 {
 
 /// ECMAScript TimeClip.
 pub fn time_clip(t: f64) -> f64 {
-    if t.is_finite() && t.abs() <= 8.64e15 { t.trunc() + 0.0 } else { f64::NAN }
+    if t.is_finite() && t.abs() <= 8.64e15 {
+        t.trunc() + 0.0
+    } else {
+        f64::NAN
+    }
 }
 
 fn to_integer(x: f64) -> f64 {
-    if x.is_nan() { 0.0 } else { x.trunc() + 0.0 }
+    if x.is_nan() {
+        0.0
+    } else {
+        x.trunc() + 0.0
+    }
 }
 
 /// V8's MakeDay: years past ±1e6 and months past ±1e7 are NaN, as is a non-finite day.
@@ -171,7 +183,11 @@ pub fn make_time(h: f64, m: f64, s: f64, ms: f64) -> f64 {
 }
 
 pub fn make_date(day: f64, time: f64) -> f64 {
-    if day.is_finite() && time.is_finite() { day * MS_PER_DAY + time } else { f64::NAN }
+    if day.is_finite() && time.is_finite() {
+        day * MS_PER_DAY + time
+    } else {
+        f64::NAN
+    }
 }
 
 /// A wall clock read as UTC, the year as given (`setUTCFullYear`, not `Date.UTC`, which reads 0 to 99 as 1900 on).
@@ -277,7 +293,8 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
         let mut p = [f64::NAN; 6];
         let mut bc = false;
         for part in parts.iter() {
-            let get = |k: &str| js_sys::Reflect::get(&part, &k.into()).ok().and_then(|v| v.as_string()).unwrap_or_default();
+            let get =
+                |k: &str| js_sys::Reflect::get(&part, &k.into()).ok().and_then(|v| v.as_string()).unwrap_or_default();
             let slot = match get("type").as_str() {
                 "year" => 0,
                 "month" => 1,
@@ -314,7 +331,9 @@ pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
     if !is_valid_zone(zone) {
         return Err(ZoneError::UnknownZone);
     }
-    host::with_clock(zone, |f| f.ok_or(ZoneError::UnknownZone)?.format(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime))
+    host::with_clock(zone, |f| {
+        f.ok_or(ZoneError::UnknownZone)?.format(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime)
+    })
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -335,24 +354,51 @@ mod tzdb {
     /// The names ICU takes that the tzdb has no link for (Java's three-letter IDs and others), each to the zone ICU
     /// reads for it. The fixed SystemV zones are the Etc ones.
     const ICU_ONLY: &[(&str, &str)] = &[
-        ("act", "Australia/Darwin"), ("aet", "Australia/Sydney"), ("agt", "America/Buenos_Aires"), ("art", "Africa/Cairo"),
-        ("ast", "America/Anchorage"), ("bet", "America/Sao_Paulo"), ("bst", "Asia/Dhaka"),
-        ("canada/east-saskatchewan", "America/Regina"), ("cat", "Africa/Maputo"), ("cnt", "America/St_Johns"),
-        ("cst", "America/Chicago"), ("ctt", "Asia/Shanghai"), ("eat", "Africa/Nairobi"), ("ect", "Europe/Paris"),
-        ("iet", "America/Indianapolis"), ("ist", "Asia/Calcutta"), ("jst", "Asia/Tokyo"), ("mit", "Pacific/Apia"),
-        ("net", "Asia/Yerevan"), ("nst", "Pacific/Auckland"), ("plt", "Asia/Karachi"), ("pnt", "America/Phoenix"),
-        ("prt", "America/Puerto_Rico"), ("pst", "America/Los_Angeles"), ("sst", "Pacific/Guadalcanal"),
-        ("systemv/ast4", "Etc/GMT+4"), ("systemv/cst6", "Etc/GMT+6"), ("systemv/est5", "Etc/GMT+5"),
-        ("systemv/hst10", "Etc/GMT+10"), ("systemv/mst7", "Etc/GMT+7"), ("systemv/pst8", "Etc/GMT+8"),
-        ("systemv/yst9", "Etc/GMT+9"), ("us/pacific-new", "America/Los_Angeles"), ("vst", "Asia/Saigon"),
+        ("act", "Australia/Darwin"),
+        ("aet", "Australia/Sydney"),
+        ("agt", "America/Buenos_Aires"),
+        ("art", "Africa/Cairo"),
+        ("ast", "America/Anchorage"),
+        ("bet", "America/Sao_Paulo"),
+        ("bst", "Asia/Dhaka"),
+        ("canada/east-saskatchewan", "America/Regina"),
+        ("cat", "Africa/Maputo"),
+        ("cnt", "America/St_Johns"),
+        ("cst", "America/Chicago"),
+        ("ctt", "Asia/Shanghai"),
+        ("eat", "Africa/Nairobi"),
+        ("ect", "Europe/Paris"),
+        ("iet", "America/Indianapolis"),
+        ("ist", "Asia/Calcutta"),
+        ("jst", "Asia/Tokyo"),
+        ("mit", "Pacific/Apia"),
+        ("net", "Asia/Yerevan"),
+        ("nst", "Pacific/Auckland"),
+        ("plt", "Asia/Karachi"),
+        ("pnt", "America/Phoenix"),
+        ("prt", "America/Puerto_Rico"),
+        ("pst", "America/Los_Angeles"),
+        ("sst", "Pacific/Guadalcanal"),
+        ("systemv/ast4", "Etc/GMT+4"),
+        ("systemv/cst6", "Etc/GMT+6"),
+        ("systemv/est5", "Etc/GMT+5"),
+        ("systemv/hst10", "Etc/GMT+10"),
+        ("systemv/mst7", "Etc/GMT+7"),
+        ("systemv/pst8", "Etc/GMT+8"),
+        ("systemv/yst9", "Etc/GMT+9"),
+        ("us/pacific-new", "America/Los_Angeles"),
+        ("vst", "Asia/Saigon"),
     ];
 
     /// ICU's SystemV zones with daylight saving: their standard offset, and from 1902 on the April to October rule
     /// they kept for ever but in the energy crisis years, which no tzdb zone has.
     const SYSTEMV_DST: &[(&str, &str)] = &[
-        ("systemv/ast4adt", "AST4ADT,M4.5.0,M10.5.0"), ("systemv/cst6cdt", "CST6CDT,M4.5.0,M10.5.0"),
-        ("systemv/est5edt", "EST5EDT,M4.5.0,M10.5.0"), ("systemv/mst7mdt", "MST7MDT,M4.5.0,M10.5.0"),
-        ("systemv/pst8pdt", "PST8PDT,M4.5.0,M10.5.0"), ("systemv/yst9ydt", "YST9YDT,M4.5.0,M10.5.0"),
+        ("systemv/ast4adt", "AST4ADT,M4.5.0,M10.5.0"),
+        ("systemv/cst6cdt", "CST6CDT,M4.5.0,M10.5.0"),
+        ("systemv/est5edt", "EST5EDT,M4.5.0,M10.5.0"),
+        ("systemv/mst7mdt", "MST7MDT,M4.5.0,M10.5.0"),
+        ("systemv/pst8pdt", "PST8PDT,M4.5.0,M10.5.0"),
+        ("systemv/yst9ydt", "YST9YDT,M4.5.0,M10.5.0"),
     ];
     /// 1902-01-01 UTC, where ICU starts a SystemV rule.
     const SYSTEMV_FROM: i64 = -2_145_916_800;
@@ -375,7 +421,8 @@ mod tzdb {
             '\u{2212}' => (-1, &zone['\u{2212}'.len_utf8()..]),
             _ => return None,
         };
-        let digits = |s: &str| (s.len() == 2 && s.bytes().all(|b| b.is_ascii_digit())).then(|| s.parse::<i64>().ok()).flatten();
+        let digits =
+            |s: &str| (s.len() == 2 && s.bytes().all(|b| b.is_ascii_digit())).then(|| s.parse::<i64>().ok()).flatten();
         let (h, m) = match rest.len() {
             2 => (digits(rest)?, 0),
             4 => (digits(rest.get(..2)?)?, digits(rest.get(2..)?)?),
@@ -424,8 +471,13 @@ mod tzdb {
             Found::Fixed(o) => o,
             Found::Zone(z) => offset(&z, s),
             Found::SystemV(_, standard) if s < SYSTEMV_FROM => standard,
-            Found::SystemV(z, standard) => match SYSTEMV_CRISIS.iter().find(|c| c.0 == civil_from_days((s + standard).div_euclid(86_400)).0) {
-                Some(&(_, from, to)) if s >= from * 86_400 + 7200 - standard && s < to * 86_400 + 3600 - standard => standard + 3600,
+            Found::SystemV(z, standard) => match SYSTEMV_CRISIS
+                .iter()
+                .find(|c| c.0 == civil_from_days((s + standard).div_euclid(86_400)).0)
+            {
+                Some(&(_, from, to)) if s >= from * 86_400 + 7200 - standard && s < to * 86_400 + 3600 - standard => {
+                    standard + 3600
+                }
                 Some(_) => standard,
                 None => offset(&z, s),
             },

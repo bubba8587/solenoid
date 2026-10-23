@@ -5,12 +5,12 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use crate::error_value::{ErrorCode, sol_error};
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
-use rustc_hash::{FxHashMap, FxHashSet};
-use crate::jsnum::{math_round, number_to_string};
 use crate::js_sort::js_sort_by;
+use crate::jsnum::{math_round, number_to_string};
 use crate::string_order::compare_strings;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 pub const SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
@@ -35,7 +35,11 @@ fn is_matrix(v: &V) -> bool {
 
 /// A JS row's cells; a row that isn't an array has none.
 fn cells(r: &V) -> Vec<V> {
-    if let V::List(c) = r { c.as_ref().clone() } else { Vec::new() }
+    if let V::List(c) = r {
+        c.as_ref().clone()
+    } else {
+        Vec::new()
+    }
 }
 
 /// `asRowsOf`: a matrix is its rows; anything else is one row, flagged to go back as a list.
@@ -86,7 +90,11 @@ fn compare_list_cells(a: &V, b: &V) -> Option<Ordering> {
     match (a, b) {
         (V::Num(x), V::Num(y)) => {
             let d = x - y;
-            if d.is_nan() { None } else { d.partial_cmp(&0.0) }
+            if d.is_nan() {
+                None
+            } else {
+                d.partial_cmp(&0.0)
+            }
         }
         (V::Str(x), V::Str(y)) => Some(compare_strings(x, y)),
         (V::Bool(x), V::Bool(y)) => Some(x.cmp(y)),
@@ -161,11 +169,19 @@ fn line_axis(m: &Grid, dirs: &[Option<Dir>]) -> Option<bool> {
 }
 
 fn axis_count(m: &Grid, rows: bool) -> usize {
-    if rows { m.len() } else { m.first().map_or(0, Vec::len) }
+    if rows {
+        m.len()
+    } else {
+        m.first().map_or(0, Vec::len)
+    }
 }
 
 fn axis_noun(rows: bool) -> &'static str {
-    if rows { "rows" } else { "columns" }
+    if rows {
+        "rows"
+    } else {
+        "columns"
+    }
 }
 
 /// Keep `keep`'s positions along the axis.
@@ -202,7 +218,11 @@ fn slice<T: Clone>(arr: &[T], start: f64, end: Option<f64>) -> Vec<T> {
         (if x < 0.0 { (len + x).max(0.0) } else { x.min(len) }) as usize
     };
     let (s, e) = (at(start), end.map_or(arr.len(), at));
-    if s < e { arr[s..e].to_vec() } else { Vec::new() }
+    if s < e {
+        arr[s..e].to_vec()
+    } else {
+        Vec::new()
+    }
 }
 
 /// `takeSlice`.
@@ -210,7 +230,11 @@ fn take_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
     if n == 0.0 {
         return arr.to_vec();
     }
-    if n > 0.0 { slice(arr, 0.0, Some(n)) } else { slice(arr, (arr.len() as f64 + n).max(0.0), None) }
+    if n > 0.0 {
+        slice(arr, 0.0, Some(n))
+    } else {
+        slice(arr, (arr.len() as f64 + n).max(0.0), None)
+    }
 }
 
 /// `dropSlice`.
@@ -335,7 +359,11 @@ fn sort(a: &[V]) -> V {
     if !(index.fract() == 0.0 && index >= 1.0 && index <= width as f64) {
         return V::err(sol_error(
             ErrorCode::Value,
-            format!("SORT: sort_index {} is outside the {width} {}", number_to_string(index), if by_col { "rows" } else { "columns" }),
+            format!(
+                "SORT: sort_index {} is outside the {width} {}",
+                number_to_string(index),
+                if by_col { "rows" } else { "columns" }
+            ),
         ));
     }
     let k = index as usize - 1;
@@ -367,7 +395,10 @@ fn sort_by(a: &[V]) -> V {
     }
     let lines: Vec<(Option<Dir>, Vec<V>)> = keys.iter().map(|(k, _)| line_shape(k)).collect();
     let Some(rows) = line_axis(&m, &lines.iter().map(|l| l.0).collect::<Vec<_>>()) else {
-        return V::err(sol_error(ErrorCode::Value, "SORTBY: every sort key must be one row or one column, all the same way"));
+        return V::err(sol_error(
+            ErrorCode::Value,
+            "SORTBY: every sort key must be one row or one column, all the same way",
+        ));
     };
     let n = axis_count(&m, rows);
     if let Some((_, bad)) = lines.iter().find(|l| l.1.len() != n) {

@@ -1,9 +1,9 @@
 //! [[B16]] oneFormulaSurface. `nodes/scalar.ts`: Arithmetic, Math Function and the other one-number cards.
 
-use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, each, guard_finite, num, short_circuit};
 use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit};
 use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::jsnum::{math_round, number_to_string};
 
@@ -56,7 +56,9 @@ fn apply_role(role: &Role, v: &V, label: &str) -> V {
     match (role, v) {
         (_, V::List(items)) => list(items.iter().map(|x| apply_role(role, x, label)).collect()),
         (Role::Setting(blank), V::Null | V::Undef) => blank.clone(),
-        (Role::Required, V::Null | V::Undef) => err(ErrorCode::Syntax, format!("{label} is blank, and it has no default")),
+        (Role::Required, V::Null | V::Undef) => {
+            err(ErrorCode::Syntax, format!("{label} is blank, and it has no default"))
+        }
         _ => v.clone(),
     }
 }
@@ -65,7 +67,9 @@ fn apply_role(role: &Role, v: &V, label: &str) -> V {
 pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
     match v {
         V::Undef => V::Num(dflt),
-        V::List(items) => list(items.iter().map(|x| if matches!(x, V::Undef) { V::Num(dflt) } else { x.clone() }).collect()),
+        V::List(items) => {
+            list(items.iter().map(|x| if matches!(x, V::Undef) { V::Num(dflt) } else { x.clone() }).collect())
+        }
         other => other,
     }
 }
@@ -189,7 +193,9 @@ fn clamp(c: &mut Call) -> Answer {
     let value = c.read_input("value", c.literal("value"));
     let bound = |v: V, open: f64| match v {
         V::Undef => V::Num(open),
-        V::List(items) => list(items.iter().map(|x| if matches!(x, V::Undef) { V::Num(open) } else { x.clone() }).collect()),
+        V::List(items) => {
+            list(items.iter().map(|x| if matches!(x, V::Undef) { V::Num(open) } else { x.clone() }).collect())
+        }
         other => other,
     };
     let min = bound(read_role(c, "min", &Role::Setting(V::Undef)), f64::NEG_INFINITY);
@@ -205,7 +211,11 @@ fn clamp(c: &mut Call) -> Answer {
 
 /// `Math.sign`.
 fn sign(x: f64) -> f64 {
-    if x.is_nan() || x == 0.0 { x } else { x.signum() }
+    if x.is_nan() || x == 0.0 {
+        x
+    } else {
+        x.signum()
+    }
 }
 
 fn mround(c: &mut Call) -> Answer {
@@ -273,7 +283,11 @@ fn combinatorics(c: &mut Call) -> Answer {
     let domain = || err(ErrorCode::Domain, "Counts must be finite and 0 or more");
     let (tn, tk) = (num(&n).trunc(), num(&k).trunc());
     let result = if op == "permutationa" {
-        if tn >= 0.0 && tk >= 0.0 { V::Num(crate::excel_functions::js_pow(tn, tk)) } else { domain() }
+        if tn >= 0.0 && tk >= 0.0 {
+            V::Num(crate::excel_functions::js_pow(tn, tk))
+        } else {
+            domain()
+        }
     } else if tn.is_nan() || (uses_k && tk.is_nan()) {
         domain()
     } else {
@@ -356,7 +370,8 @@ fn multinomial(c: &mut Call) -> Answer {
                 V::Null
             } else {
                 let total: f64 = ns.iter().fold(0.0, |s, v| s + v);
-                let ln = crate::dists::ln_gamma(total + 1.0) - ns.iter().fold(0.0, |s, v| s + crate::dists::ln_gamma(v + 1.0));
+                let ln = crate::dists::ln_gamma(total + 1.0)
+                    - ns.iter().fold(0.0, |s, v| s + crate::dists::ln_gamma(v + 1.0));
                 let ops: Vec<&V> = vals.iter().collect();
                 guard_finite(math_round(crate::fdlibm::exp(ln)), &ops)
             }
@@ -472,7 +487,9 @@ fn math_fx(c: &mut Call) -> Answer {
             let bare = unit.is_none() || rd.is_none();
             if let (false, Some(u)) = (bare, unit) {
                 if MATHFN_PRESERVE.contains(&op.as_str()) {
-                    if let Some(shown) = crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim)) {
+                    if let Some(shown) =
+                        crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim))
+                    {
                         return match compute_raw(crate::unit_expression::display_magnitude_of(u)) {
                             None => domain_err(),
                             Some(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),

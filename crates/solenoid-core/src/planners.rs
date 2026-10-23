@@ -5,7 +5,7 @@
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::decision::sort_by_num;
-use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, string_to_number};
@@ -63,7 +63,8 @@ struct Plan {
 fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> {
     let n = debts.len();
     let rates: Vec<f64> = debts.iter().map(|d| monthly_rate(d.apr)).collect();
-    let mut balances: Vec<f64> = debts.iter().map(|d| math_max(0.0, if d.balance.is_finite() { d.balance } else { 0.0 })).collect();
+    let mut balances: Vec<f64> =
+        debts.iter().map(|d| math_max(0.0, if d.balance.is_finite() { d.balance } else { 0.0 })).collect();
     let mins: Vec<f64> = debts.iter().map(|d| math_max(0.0, if d.min.is_finite() { d.min } else { 0.0 })).collect();
     let mut interest = vec![0.0; n];
     let mut cleared: Vec<i64> = balances.iter().map(|&b| if b <= 0.0 { 0 } else { -1 }).collect();
@@ -72,12 +73,20 @@ fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> 
     if order == "snowball" {
         sort_by_num(&mut rank, |&a, &b| {
             let d = debts[a].balance - debts[b].balance;
-            if d != 0.0 && !d.is_nan() { d } else { a as f64 - b as f64 }
+            if d != 0.0 && !d.is_nan() {
+                d
+            } else {
+                a as f64 - b as f64
+            }
         });
     } else {
         sort_by_num(&mut rank, |&a, &b| {
             let d = monthly_rate(debts[b].apr) - monthly_rate(debts[a].apr);
-            if d != 0.0 && !d.is_nan() { d } else { a as f64 - b as f64 }
+            if d != 0.0 && !d.is_nan() {
+                d
+            } else {
+                a as f64 - b as f64
+            }
         });
     }
     let mut schedule = vec![balances.iter().map(|&b| round2(b)).collect::<Vec<_>>()];
@@ -123,7 +132,8 @@ fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> 
         }
         schedule.push(balances.iter().map(|&b| round2(b)).collect());
     }
-    let per_debt = (0..n).map(|i| (if cleared[i] < 0 { month as f64 } else { cleared[i] as f64 }, round2(interest[i]))).collect();
+    let per_debt =
+        (0..n).map(|i| (if cleared[i] < 0 { month as f64 } else { cleared[i] as f64 }, round2(interest[i]))).collect();
     Ok(Plan { schedule, per_debt })
 }
 
@@ -142,7 +152,8 @@ pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: 
     let nums = number_columns(f);
     let bal = by_name(f, &["balance", "owed", "principal"]).or(nums.first().copied());
     let apr = by_name(f, &["apr", "rate", "interest"]).or(nums.iter().copied().find(|&c| Some(c) != bal));
-    let min = by_name(f, &["min", "minimum", "min payment", "payment"]).or(nums.iter().copied().find(|&c| Some(c) != bal && Some(c) != apr));
+    let min = by_name(f, &["min", "minimum", "min payment", "payment"])
+        .or(nums.iter().copied().find(|&c| Some(c) != bal && Some(c) != apr));
     let (Some(bal), Some(apr), Some(min)) = (bal, apr, min) else {
         return Err(sol_error(ErrorCode::Value, "Payoff Planner needs Balance, APR and Min payment number columns"));
     };
@@ -150,7 +161,8 @@ pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: 
         match f.columns[col].cell_at(i) {
             FrameCell::Err(e) => Err((**e).clone()),
             FrameCell::Null => Ok(0.0),
-            v => is_finite_num(v).ok_or_else(|| sol_error(ErrorCode::Value, format!("Payoff Planner: every {what} must be a number"))),
+            v => is_finite_num(v)
+                .ok_or_else(|| sol_error(ErrorCode::Value, format!("Payoff Planner: every {what} must be a number"))),
         }
     };
     let mut debts = Vec::new();
@@ -159,23 +171,37 @@ pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: 
             None | Some(FrameCell::Null) => format!("Debt {}", i + 1),
             Some(v) => js_string(v).into_owned(),
         };
-        debts.push(Debt { name, balance: num(bal, i, "balance")?, apr: num(apr, i, "APR")?, min: num(min, i, "minimum payment")? });
+        debts.push(Debt {
+            name,
+            balance: num(bal, i, "balance")?,
+            apr: num(apr, i, "APR")?,
+            min: num(min, i, "minimum payment")?,
+        });
     }
-    let plan = payoff_plan(&debts, extra, order).map_err(|m| sol_error(ErrorCode::Value, format!("Payoff Planner: {m}")))?;
+    let plan =
+        payoff_plan(&debts, extra, order).map_err(|m| sol_error(ErrorCode::Value, format!("Payoff Planner: {m}")))?;
     if view == "schedule" {
         let mut cols = vec![num_col("Month", (0..plan.schedule.len()).map(|m| m as f64))];
-        cols.extend(debts.iter().enumerate().map(|(j, d)| num_col(d.name.clone(), plan.schedule.iter().map(|row| row[j]))));
+        cols.extend(
+            debts.iter().enumerate().map(|(j, d)| num_col(d.name.clone(), plan.schedule.iter().map(|row| row[j]))),
+        );
         return Ok(FrameValue { columns: cols });
     }
     Ok(FrameValue {
         columns: vec![
-            text_col(name_col.map_or("Debt".to_string(), |c| f.columns[c].name.clone()), debts.iter().map(|d| d.name.clone())),
+            text_col(
+                name_col.map_or("Debt".to_string(), |c| f.columns[c].name.clone()),
+                debts.iter().map(|d| d.name.clone()),
+            ),
             num_col("Months", plan.per_debt.iter().map(|d| d.0)),
             num_col("Interest", plan.per_debt.iter().map(|d| d.1)),
             FrameColumn::new(
                 "Payoff date",
                 FrameColType::Date,
-                plan.per_debt.iter().map(|d| start.map_or(FrameCell::Null, |s| FrameCell::Num(add_months_serial(s, d.0)))).collect(),
+                plan.per_debt
+                    .iter()
+                    .map(|d| start.map_or(FrameCell::Null, |s| FrameCell::Num(add_months_serial(s, d.0))))
+                    .collect(),
             ),
         ],
     })
@@ -199,7 +225,8 @@ fn min_transfers(balances_in: &[(String, f64)]) -> Vec<Transfer> {
         }
     }
     let side = |sign: f64| {
-        let mut xs: Vec<(String, f64)> = balances.iter().map(|b| (b.0.clone(), round2(sign * b.1))).filter(|x| x.1 > 0.005).collect();
+        let mut xs: Vec<(String, f64)> =
+            balances.iter().map(|b| (b.0.clone(), round2(sign * b.1))).filter(|x| x.1 > 0.005).collect();
         sort_by_num(&mut xs, |a, b| b.1 - a.1);
         xs
     };
@@ -229,7 +256,9 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
     let name_col = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let nums = number_columns(f);
     let share_col = by_name(f, &["share", "weight", "shares"]);
-    let Some(paid_col) = by_name(f, &["paid", "amount", "spent"]).or(nums.iter().copied().find(|&c| Some(c) != share_col)) else {
+    let Some(paid_col) =
+        by_name(f, &["paid", "amount", "spent"]).or(nums.iter().copied().find(|&c| Some(c) != share_col))
+    else {
         return Err(sol_error(ErrorCode::Value, "Group Cost Settle needs a Paid number column"));
     };
     let mut people: Vec<(String, f64, Option<f64>)> = Vec::new();
@@ -266,13 +295,15 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
     let n = people.len();
     let paid: Vec<f64> = people.iter().map(|p| if p.1.is_finite() { p.1 } else { 0.0 }).collect();
     let total = paid.iter().fold(0.0, |s, p| s + p);
-    let weights: Vec<f64> = people.iter().map(|p| p.2.filter(|&s| weighted && s.is_finite() && s >= 0.0).unwrap_or(1.0)).collect();
+    let weights: Vec<f64> =
+        people.iter().map(|p| p.2.filter(|&s| weighted && s.is_finite() && s >= 0.0).unwrap_or(1.0)).collect();
     let wsum = match weights.iter().fold(0.0, |a, b| a + b) {
         w if w == 0.0 || w.is_nan() => n as f64,
         w => w,
     };
     let shares: Vec<f64> = weights.iter().map(|w| if n > 0 { (total * w) / wsum } else { 0.0 }).collect();
-    let transfers = min_transfers(&people.iter().enumerate().map(|(i, p)| (p.0.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
+    let transfers =
+        min_transfers(&people.iter().enumerate().map(|(i, p)| (p.0.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
     // settleNetFrame
     let paid_r: Vec<f64> = people.iter().map(|p| round2(p.1)).collect();
     let net: Vec<f64> = shares.iter().map(|&s| round2(round2(s))).collect();
@@ -282,7 +313,10 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
             text_col("From", transfers.iter().map(|t| t.from.clone())),
             text_col("To", transfers.iter().map(|t| t.to.clone())),
             num_col("Amount", transfers.iter().map(|t| t.amount)),
-            text_col(name_col.map_or("Person".to_string(), |c| f.columns[c].name.clone()), people.iter().map(|p| p.0.clone())),
+            text_col(
+                name_col.map_or("Person".to_string(), |c| f.columns[c].name.clone()),
+                people.iter().map(|p| p.0.clone()),
+            ),
             num_col("Paid", paid_r),
             num_col("Owes", diff.iter().map(|&d| if d > 0.0 { d } else { 0.0 })),
             num_col("Owed", diff.iter().map(|&d| if d < 0.0 { d } else { 0.0 })),
@@ -299,7 +333,21 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
 pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     let amount_col = by_name(f, &["amount", "cost", "total", "price", "spend"]);
     let payer_col = by_name(f, &["paid by", "paidby", "payer", "paid", "by", "who paid", "from"]);
-    let for_col = by_name(f, &["for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by"]);
+    let for_col = by_name(
+        f,
+        &[
+            "for",
+            "split",
+            "split between",
+            "participants",
+            "shared",
+            "shared by",
+            "shared with",
+            "with",
+            "beneficiaries",
+            "owed by",
+        ],
+    );
     let Some(amount_col) = amount_col else {
         return Err(sol_error(ErrorCode::Value, "Group Cost Settle (Transactions) needs an Amount column"));
     };
@@ -315,7 +363,14 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
             FrameCell::Err(e) => return Err((**e).clone()),
             FrameCell::Bool(b) => {
                 let shown = if *b { "TRUE" } else { "FALSE" };
-                return Err(sol_error(ErrorCode::Value, format!("Group Cost Settle (Transactions): {} in row {} holds {shown}. A person's name is text", f.columns[c].name, i + 1)));
+                return Err(sol_error(
+                    ErrorCode::Value,
+                    format!(
+                        "Group Cost Settle (Transactions): {} in row {} holds {shown}. A person's name is text",
+                        f.columns[c].name,
+                        i + 1
+                    ),
+                ));
             }
             _ if unit(c) => return Ok(Vec::new()),
             _ => {}
@@ -340,12 +395,17 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
         let n = match f.columns[amount_col].cell_at(i) {
             FrameCell::Num(n) => *n,
             FrameCell::Str(s) => {
-                let kept: String = s.chars().filter(|&ch| !matches!(ch, ',' | '$' | '£' | '€') && !is_js_space(ch)).collect();
+                let kept: String =
+                    s.chars().filter(|&ch| !matches!(ch, ',' | '$' | '£' | '€') && !is_js_space(ch)).collect();
                 string_to_number(&kept)
             }
             _ => 0.0,
         };
-        if n.is_finite() { n } else { 0.0 }
+        if n.is_finite() {
+            n
+        } else {
+            0.0
+        }
     };
     let mut expenses: Vec<(f64, Vec<String>, Option<Vec<String>>)> = Vec::new();
     for i in 0..frame_row_count(f) {
@@ -397,7 +457,8 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
             shares[see(&mut order, b)] += e.0 / bens.len() as f64;
         }
     }
-    let transfers = min_transfers(&order.iter().enumerate().map(|(i, n)| (n.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
+    let transfers =
+        min_transfers(&order.iter().enumerate().map(|(i, n)| (n.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
     // settleNetFrame
     let paid_r: Vec<f64> = paid.iter().map(|&p| round2(round2(p))).collect();
     let net: Vec<f64> = shares.iter().map(|&s| round2(round2(s))).collect();
@@ -434,14 +495,23 @@ pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Op
         if rate.abs() < 1e-12 {
             -(pv + pmt * (k - 1.0))
         } else {
-            -(pv * fdlibm::pow(1.0 + rate, k - 1.0) + pmt * (1.0 + rate * ty) * (fdlibm::pow(1.0 + rate, k - 1.0) - 1.0) / rate)
+            -(pv * fdlibm::pow(1.0 + rate, k - 1.0)
+                + pmt * (1.0 + rate * ty) * (fdlibm::pow(1.0 + rate, k - 1.0) - 1.0) / rate)
         }
     };
     let mut rows: [Vec<f64>; 5] = Default::default();
     let mut balance = pv;
     let mut k = 1.0;
     while k <= n {
-        let interest = if ty == 1.0 { if k == 1.0 { 0.0 } else { (rbl(k) * rate) / (1.0 + rate) } } else { rbl(k) * rate };
+        let interest = if ty == 1.0 {
+            if k == 1.0 {
+                0.0
+            } else {
+                (rbl(k) * rate) / (1.0 + rate)
+            }
+        } else {
+            rbl(k) * rate
+        };
         let principal = pmt - interest;
         balance += principal;
         if balance.abs() < 1e-9 {
@@ -454,7 +524,13 @@ pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Op
     }
     let [period, payment, interest, principal, balance] = rows;
     Some(FrameValue {
-        columns: vec![num_col("Period", period), num_col("Payment", payment), num_col("Interest", interest), num_col("Principal", principal), num_col("Balance", balance)],
+        columns: vec![
+            num_col("Period", period),
+            num_col("Payment", payment),
+            num_col("Interest", interest),
+            num_col("Principal", principal),
+            num_col("Balance", balance),
+        ],
     })
 }
 
@@ -615,9 +691,17 @@ pub fn kmeans_frame(f: &FrameValue, k: f64) -> Option<FrameValue> {
         FrameColumn::new("Cluster", FrameColType::Number, (0..k).map(|c| cell(c, (c + 1) as f64)).collect()),
     ];
     for (j, &col) in cols.iter().enumerate() {
-        out.push(FrameColumn::new(f.columns[col].name.clone(), FrameColType::Number, (0..k).map(|c| r.centers[c].as_ref().map_or(FrameCell::Null, |v| FrameCell::Num(v[j]))).collect()));
+        out.push(FrameColumn::new(
+            f.columns[col].name.clone(),
+            FrameColType::Number,
+            (0..k).map(|c| r.centers[c].as_ref().map_or(FrameCell::Null, |v| FrameCell::Num(v[j]))).collect(),
+        ));
     }
-    out.push(FrameColumn::new("Count", FrameColType::Number, (0..k).map(|c| cell(c, r.labels.iter().filter(|&&l| l == c + 1).count() as f64)).collect()));
+    out.push(FrameColumn::new(
+        "Count",
+        FrameColType::Number,
+        (0..k).map(|c| cell(c, r.labels.iter().filter(|&&l| l == c + 1).count() as f64)).collect(),
+    ));
     Some(FrameValue { columns: out })
 }
 
@@ -638,15 +722,26 @@ pub fn pca_frame(f: &FrameValue, standardize: bool) -> Option<FrameValue> {
                 return 1.0;
             }
             let v = points.iter().fold(0.0, |s, p| s + fdlibm::pow(p[j] - means[j], 2.0)) / (nf - 1.0);
-            if v > 0.0 { v.sqrt() } else { 1.0 }
+            if v > 0.0 {
+                v.sqrt()
+            } else {
+                1.0
+            }
         })
         .collect();
-    let z: Vec<Vec<f64>> = points.iter().map(|p| p.iter().enumerate().map(|(j, v)| (v - means[j]) / scales[j]).collect()).collect();
-    let cov: Vec<Vec<f64>> = (0..d).map(|i| (0..d).map(|j| z.iter().fold(0.0, |s, r| s + r[i] * r[j]) / (nf - 1.0)).collect()).collect();
+    let z: Vec<Vec<f64>> =
+        points.iter().map(|p| p.iter().enumerate().map(|(j, v)| (v - means[j]) / scales[j]).collect()).collect();
+    let cov: Vec<Vec<f64>> =
+        (0..d).map(|i| (0..d).map(|j| z.iter().fold(0.0, |s, r| s + r[i] * r[j]) / (nf - 1.0)).collect()).collect();
     let (values, vectors) = crate::fns_matrix::mat_eigh(&cov, 1e-12)?;
     let variance: Vec<f64> = values.iter().map(|&v| math_max(0.0, v)).collect();
     let total_var = variance.iter().fold(0.0, |a, b| a + b);
-    let scores: Vec<Vec<f64>> = z.iter().map(|r| (0..vectors[0].len()).map(|c| r.iter().enumerate().fold(0.0, |s, (j, v)| s + v * vectors[j][c])).collect()).collect();
+    let scores: Vec<Vec<f64>> = z
+        .iter()
+        .map(|r| {
+            (0..vectors[0].len()).map(|c| r.iter().enumerate().fold(0.0, |s, (j, v)| s + v * vectors[j][c])).collect()
+        })
+        .collect();
     let pc = |c: usize| format!("PC{}", c + 1);
     let mut out: Vec<FrameColumn> = (0..d)
         .map(|c| {
@@ -668,14 +763,17 @@ fn sigmoid(t: f64) -> f64 {
 }
 
 fn weighted_cross(d: &[Vec<f64>], w: &[f64], p: usize) -> Vec<Vec<f64>> {
-    (0..p).map(|a| (0..p).map(|b| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * row[b])).collect()).collect()
+    (0..p)
+        .map(|a| (0..p).map(|b| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * row[b])).collect())
+        .collect()
 }
 
 /// The Logistic card's outputs side by side: Coefficients (Term, Coefficient, Std Error, z, p), then each row's fitted
 /// probability (blank where skipped). Null where the fit has no answer; None where the target or features are missing.
 pub fn logistic_frame(f: &FrameValue, target: &str) -> Option<Option<FrameValue>> {
     let t = f.columns.iter().position(|c| c.name == target)?;
-    let features: Vec<usize> = (0..f.columns.len()).filter(|&i| i != t && f.columns[i].ty == FrameColType::Number).collect();
+    let features: Vec<usize> =
+        (0..f.columns.len()).filter(|&i| i != t && f.columns[i].ty == FrameColType::Number).collect();
     if features.is_empty() {
         return None;
     }
@@ -727,7 +825,9 @@ fn logistic_fit(x: &[Vec<f64>], y: &[f64]) -> Option<(Vec<f64>, Vec<f64>, Vec<f6
     }
     let d: Vec<Vec<f64>> = x.iter().map(|row| std::iter::once(1.0).chain(row.iter().copied()).collect()).collect();
     let mut beta = vec![0.0; p];
-    let eta_of = |beta: &[f64]| -> Vec<f64> { d.iter().map(|row| row.iter().enumerate().fold(0.0, |s, (j, v)| s + v * beta[j])).collect() };
+    let eta_of = |beta: &[f64]| -> Vec<f64> {
+        d.iter().map(|row| row.iter().enumerate().fold(0.0, |s, (j, v)| s + v * beta[j])).collect()
+    };
     let weights = |mu: &[f64]| -> Vec<f64> { mu.iter().map(|m| math_max(m * (1.0 - m), 1e-12)).collect() };
     for _ in 0..100 {
         let eta = eta_of(&beta);
@@ -735,7 +835,8 @@ fn logistic_fit(x: &[Vec<f64>], y: &[f64]) -> Option<(Vec<f64>, Vec<f64>, Vec<f6
         let w = weights(&mu);
         let z: Vec<f64> = eta.iter().enumerate().map(|(i, e)| e + (y[i] - mu[i]) / w[i]).collect();
         let h = weighted_cross(&d, &w, p);
-        let g: Vec<f64> = (0..p).map(|a| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * z[i])).collect();
+        let g: Vec<f64> =
+            (0..p).map(|a| d.iter().enumerate().fold(0.0, |s, (i, row)| s + w[i] * row[a] * z[i])).collect();
         let next = crate::fns_lists::mat_solve(&h, &g)?;
         let delta = next.iter().zip(&beta).fold(f64::NEG_INFINITY, |m, (v, b)| math_max(m, (v - b).abs()));
         beta = next;

@@ -78,7 +78,11 @@ pub fn make_headers(names: &[String], ncols: usize) -> Vec<String> {
     let raw: Vec<String> = (0..ncols)
         .map(|i| {
             let trimmed = names.get(i).map(|s| js_trim(s)).unwrap_or("");
-            if trimmed.is_empty() { format!("Col{}", i + 1) } else { trimmed.to_string() }
+            if trimmed.is_empty() {
+                format!("Col{}", i + 1)
+            } else {
+                trimmed.to_string()
+            }
         })
         .collect();
     let mut seen = std::collections::HashSet::new();

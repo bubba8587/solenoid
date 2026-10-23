@@ -49,7 +49,12 @@ pub fn dim_div(a: &Dim, b: &Dim) -> Dim {
 }
 
 pub fn dim_pow(a: &Dim, n: f64) -> Dim {
-    a.iter().filter_map(|(k, v)| { let p = v * n; (p != 0.0).then(|| (k.clone(), p)) }).collect()
+    a.iter()
+        .filter_map(|(k, v)| {
+            let p = v * n;
+            (p != 0.0).then(|| (k.clone(), p))
+        })
+        .collect()
 }
 
 pub fn dim_equal(a: &Dim, b: &Dim) -> bool {
@@ -61,27 +66,101 @@ pub fn is_dimensionless(a: &Dim) -> bool {
 }
 
 const DIMENSIONLESS_FNS: &[&str] = &[
-    "SIN", "COS", "TAN", "ASIN", "ACOS", "ATAN", "ATAN2", "SINH", "COSH", "TANH", "ASINH", "ACOSH", "ATANH", "CSC", "SEC", "COT",
-    "ACOT", "EXP", "LN", "LOG", "LOG10",
+    "SIN", "COS", "TAN", "ASIN", "ACOS", "ATAN", "ATAN2", "SINH", "COSH", "TANH", "ASINH", "ACOSH", "ATANH", "CSC",
+    "SEC", "COT", "ACOT", "EXP", "LN", "LOG", "LOG10",
 ];
 
 const RESULT_DIMLESS_FNS: &[&str] = &[
-    "COUNT", "COUNTA", "COUNTBLANK", "COUNTIF", "COUNTIFS", "ISNUMBER", "ISBLANK", "ISERROR", "ISERR", "ISNA", "ISTEXT",
-    "ISNONTEXT", "ISLOGICAL", "ISEVEN", "ISODD", "SIGN", "LEN", "EXACT", "TEXT", "FIXED", "DOLLAR", "CONCAT", "CONCATENATE",
-    "TEXTJOIN", "AND", "OR", "NOT", "XOR", "ROWS", "COLUMNS", "MATCH", "XMATCH", "RANK", "RANK.EQ", "RANK.AVG", "TYPE", "SKEW",
-    "SKEW.P", "KURT", "CORREL", "PEARSON",
+    "COUNT",
+    "COUNTA",
+    "COUNTBLANK",
+    "COUNTIF",
+    "COUNTIFS",
+    "ISNUMBER",
+    "ISBLANK",
+    "ISERROR",
+    "ISERR",
+    "ISNA",
+    "ISTEXT",
+    "ISNONTEXT",
+    "ISLOGICAL",
+    "ISEVEN",
+    "ISODD",
+    "SIGN",
+    "LEN",
+    "EXACT",
+    "TEXT",
+    "FIXED",
+    "DOLLAR",
+    "CONCAT",
+    "CONCATENATE",
+    "TEXTJOIN",
+    "AND",
+    "OR",
+    "NOT",
+    "XOR",
+    "ROWS",
+    "COLUMNS",
+    "MATCH",
+    "XMATCH",
+    "RANK",
+    "RANK.EQ",
+    "RANK.AVG",
+    "TYPE",
+    "SKEW",
+    "SKEW.P",
+    "KURT",
+    "CORREL",
+    "PEARSON",
 ];
 
 const PRESERVE_FNS: &[&str] = &[
-    "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "AVG", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR", "INT",
-    "TRUNC", "MOD", "GEOMEAN", "HARMEAN", "STDEV", "STDEV.S", "STDEV.P", "AVEDEV",
+    "ABS",
+    "MIN",
+    "MAX",
+    "MEDIAN",
+    "SUM",
+    "AVERAGE",
+    "AVG",
+    "ROUND",
+    "ROUNDUP",
+    "ROUNDDOWN",
+    "MROUND",
+    "CEILING",
+    "FLOOR",
+    "INT",
+    "TRUNC",
+    "MOD",
+    "GEOMEAN",
+    "HARMEAN",
+    "STDEV",
+    "STDEV.S",
+    "STDEV.P",
+    "AVEDEV",
 ];
 
 const SQUARE_FNS: &[&str] = &["VAR", "VAR.S", "VAR.P", "DEVSQ", "SUMSQ"];
 
 const PICK_FNS: &[&str] = &[
-    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE",
-    "MODE.SNGL", "INDEX", "SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRANSPOSE", "CHOOSEROWS", "CHOOSECOLS",
+    "LARGE",
+    "SMALL",
+    "PERCENTILE",
+    "PERCENTILE.INC",
+    "PERCENTILE.EXC",
+    "QUARTILE",
+    "QUARTILE.INC",
+    "QUARTILE.EXC",
+    "MODE",
+    "MODE.SNGL",
+    "INDEX",
+    "SORT",
+    "UNIQUE",
+    "TAKE",
+    "DROP",
+    "FILTER",
+    "TRANSPOSE",
+    "CHOOSEROWS",
+    "CHOOSECOLS",
 ];
 
 fn criteria_value_arg(fn_: &str, argc: usize) -> Option<usize> {
@@ -116,7 +195,8 @@ fn resolves(fn_: &str) -> bool {
 
 /// A retired spelling (`STDEVP`): it answers its #NAME?, united input or not.
 fn eliminated(fn_: &str) -> bool {
-    crate::eval::traits(fn_).is_some_and(|t| t.resolves && t.refusal.as_ref().is_some_and(|r| r.code == ErrorCode::Name))
+    crate::eval::traits(fn_)
+        .is_some_and(|t| t.resolves && t.refusal.as_ref().is_some_and(|r| r.code == ErrorCode::Name))
 }
 
 fn dimless() -> Dim {
@@ -137,7 +217,9 @@ fn require_same(args: &[DimResult], what: &str) -> DimResult {
             DimResult::Dim(d) if is_dimensionless(d) => {}
             DimResult::Dim(d) => match acc {
                 None => acc = Some(d),
-                Some(x) if !dim_equal(x, d) => return DimResult::Err(unit_error(&format!("{what} needs matching units."))),
+                Some(x) if !dim_equal(x, d) => {
+                    return DimResult::Err(unit_error(&format!("{what} needs matching units.")))
+                }
                 _ => {}
             },
         }
@@ -151,7 +233,8 @@ fn call_dim(name: &str, args: &[DimResult]) -> DimResult {
     if eliminated(f) {
         return DimResult::Null;
     }
-    let first_err = || args.iter().find_map(|a| if let DimResult::Err(e) = a { Some(DimResult::Err(e.clone())) } else { None });
+    let first_err =
+        || args.iter().find_map(|a| if let DimResult::Err(e) = a { Some(DimResult::Err(e.clone())) } else { None });
     if RESULT_DIMLESS_FNS.contains(&f) {
         return first_err().unwrap_or(DimResult::Dim(dimless()));
     }
@@ -200,7 +283,13 @@ fn call_dim(name: &str, args: &[DimResult]) -> DimResult {
     }
     if f == "POWER" {
         return match arg_or_dimless(args, 0) {
-            DimResult::Dim(d) => if is_dimensionless(&d) { DimResult::Dim(dimless()) } else { DimResult::Null },
+            DimResult::Dim(d) => {
+                if is_dimensionless(&d) {
+                    DimResult::Dim(dimless())
+                } else {
+                    DimResult::Null
+                }
+            }
             r => r,
         };
     }
@@ -243,11 +332,17 @@ fn call_dim(name: &str, args: &[DimResult]) -> DimResult {
         match a {
             DimResult::Null => indeterminate = true,
             DimResult::Err(e) => return DimResult::Err(e.clone()),
-            DimResult::Dim(d) if !is_dimensionless(d) => return DimResult::Err(unit_error(&format!("{f} doesn't carry units."))),
+            DimResult::Dim(d) if !is_dimensionless(d) => {
+                return DimResult::Err(unit_error(&format!("{f} doesn't carry units.")))
+            }
             DimResult::Dim(_) => {}
         }
     }
-    if indeterminate { DimResult::Null } else { DimResult::Dim(dimless()) }
+    if indeterminate {
+        DimResult::Null
+    } else {
+        DimResult::Dim(dimless())
+    }
 }
 
 fn const_num(node: &Ast) -> Option<f64> {
@@ -284,9 +379,13 @@ struct Host {
 
 fn host_of(fn_: &str, argc: usize) -> Option<Host> {
     match fn_ {
-        "REDUCE" | "SCAN" if argc == 3 => Some(Host { lam_arg: 2, params: vec![Some((0, false)), Some((1, false))], fold: true }),
+        "REDUCE" | "SCAN" if argc == 3 => {
+            Some(Host { lam_arg: 2, params: vec![Some((0, false)), Some((1, false))], fold: true })
+        }
         "BYROW" | "BYCOL" if argc == 2 => Some(Host { lam_arg: 1, params: vec![Some((0, true))], fold: false }),
-        "MAP" if argc >= 2 => Some(Host { lam_arg: argc - 1, params: (0..argc - 1).map(|i| Some((i, false))).collect(), fold: false }),
+        "MAP" if argc >= 2 => {
+            Some(Host { lam_arg: argc - 1, params: (0..argc - 1).map(|i| Some((i, false))).collect(), fold: false })
+        }
         "MAKEARRAY" if argc == 3 => Some(Host { lam_arg: 2, params: vec![None, None], fold: false }),
         _ => None,
     }
@@ -296,12 +395,12 @@ fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Op
     match n? {
         Ast::Call { name, args } if name.to_uppercase() == "LAMBDA" && !args.is_empty() => {
             let ps = &args[..args.len() - 1];
-            let params: Vec<String> = ps.iter().filter_map(|p| if let Ast::Name(n) = p { Some(n.clone()) } else { None }).collect();
+            let params: Vec<String> =
+                ps.iter().filter_map(|p| if let Ast::Name(n) = p { Some(n.clone()) } else { None }).collect();
             (params.len() == ps.len()).then(|| Lam { params, body: args[args.len() - 1].clone() })
         }
-        Ast::Name(name) if SCOPE_FNS.with(|f| f.borrow().contains_key(name)) => {
-            SCOPE_FNS.with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() }))
-        }
+        Ast::Name(name) if SCOPE_FNS.with(|f| f.borrow().contains_key(name)) => SCOPE_FNS
+            .with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() })),
         Ast::Name(name) if !is_var(name) && resolves(&name.to_uppercase()) => {
             let params: Vec<String> = (0..arity).map(|i| format!("#{i}")).collect();
             let body = Ast::Call { name: name.clone(), args: params.iter().map(|p| Ast::Name(p.clone())).collect() };
@@ -346,7 +445,9 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
             None => Ok(None),
         },
         Ast::Call { name, args } => {
-            let named = SCOPE_FNS.with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() }));
+            let named = SCOPE_FNS.with(|f| {
+                f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() })
+            });
             if let Some(lam) = named {
                 let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
                 return apply_dim(&lam, &vals, env, codes);
@@ -410,14 +511,21 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                     if is_dimensionless(&r.dim) {
                         return Ok(Some(l));
                     }
-                    Err(unit_error(&format!("Can't {} values with different units.", if *op == BinOp::Add { "add" } else { "subtract" })))
+                    Err(unit_error(&format!(
+                        "Can't {} values with different units.",
+                        if *op == BinOp::Add { "add" } else { "subtract" }
+                    )))
                 }
                 BinOp::Pow => {
                     let Some(l) = l else { return Ok(None) };
                     if let Some(k) = const_num(r) {
                         return plain(dim_pow(&l.dim, k));
                     }
-                    if is_dimensionless(&l.dim) { plain(dimless()) } else { Ok(None) }
+                    if is_dimensionless(&l.dim) {
+                        plain(dimless())
+                    } else {
+                        Ok(None)
+                    }
                 }
                 BinOp::Concat => plain(dimless()),
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
@@ -465,18 +573,26 @@ fn host_dim(args: &[Ast], host: &Host, lam: &Lam, env: &Dim2, codes: &Codes) -> 
             None => return Ok(None),
         }
     }
-    let bound: Vec<Op> = host.params.iter().map(|p| p.map_or(Op { dim: dimless(), code: None }, |(i, _)| vals[i].clone())).collect();
+    let bound: Vec<Op> =
+        host.params.iter().map(|p| p.map_or(Op { dim: dimless(), code: None }, |(i, _)| vals[i].clone())).collect();
     if host.fold {
         let (acc, elem) = (&bound[0], &bound[1]);
         let start = if is_dimensionless(&acc.dim) { elem.clone() } else { acc.clone() };
-        let Some(step) = apply_dim(lam, &[Ok(Some(start.clone())), Ok(Some(elem.clone()))], env, codes)? else { return Ok(None) };
+        let Some(step) = apply_dim(lam, &[Ok(Some(start.clone())), Ok(Some(elem.clone()))], env, codes)? else {
+            return Ok(None);
+        };
         return Ok(dim_equal(&step.dim, &start.dim).then_some(step));
     }
     apply_dim(lam, &bound.into_iter().map(|o| Ok(Some(o))).collect::<Vec<_>>(), env, codes)
 }
 
 /// `dimEvalWithCode`: the result's dimension and currency code, a conflict, or None where it is indeterminate.
-pub fn dim_eval_with_code(node: &Ast, env: &BTreeMap<String, Dim>, codes: &Codes, fns: Option<&NamedLambdas>) -> OpResult {
+pub fn dim_eval_with_code(
+    node: &Ast,
+    env: &BTreeMap<String, Dim>,
+    codes: &Codes,
+    fns: Option<&NamedLambdas>,
+) -> OpResult {
     let Some(fns) = fns else { return op_eval(node, env, codes) };
     let outer = SCOPE_FNS.with(|f| f.replace(fns.clone()));
     let r = op_eval(node, env, codes);
@@ -505,8 +621,19 @@ const AFF_SELECT: &[&str] = &["MIN", "MAX", "MEDIAN", "AVERAGE", "AVG"];
 const AFF_FIRST: &[&str] = &["ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR", "INT", "TRUNC"];
 /// The spreads and the squared spreads: their arguments must agree, and they answer a difference.
 const AFF_SPREADS: &[&str] = &["STDEV", "STDEV.S", "STDEV.P", "AVEDEV", "VAR", "VAR.S", "VAR.P", "DEVSQ"];
-const PICK_SCALAR_FNS: &[&str] =
-    &["LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL", "INDEX"];
+const PICK_SCALAR_FNS: &[&str] = &[
+    "LARGE",
+    "SMALL",
+    "PERCENTILE",
+    "PERCENTILE.INC",
+    "PERCENTILE.EXC",
+    "QUARTILE",
+    "QUARTILE.INC",
+    "QUARTILE.EXC",
+    "MODE",
+    "MODE.SNGL",
+    "INDEX",
+];
 
 fn aff_err() -> SolError {
     unit_error(READINGS_SCALE)
@@ -546,7 +673,11 @@ impl<'a> AffScope<'a> {
         self.locals.contains_key(n) || Self::has(self.points, n) || Self::has(self.lists, n)
     }
     fn point(&self, n: &str) -> f64 {
-        if Self::has(self.points, n) { 1.0 } else { 0.0 }
+        if Self::has(self.points, n) {
+            1.0
+        } else {
+            0.0
+        }
     }
 }
 
@@ -564,7 +695,8 @@ fn aff_host(fn_: &str, args: &[Ast], host: &Host, lam: &Lam, scope: &AffScope) -
     for (i, a) in args.iter().enumerate() {
         vals.push(if i == host.lam_arg { ZERO } else { aff_eval(a, scope)? });
     }
-    let bound: Vec<Aff> = host.params.iter().map(|p| p.map_or(ZERO, |(i, whole)| aff(vals[i].w, whole && vals[i].list))).collect();
+    let bound: Vec<Aff> =
+        host.params.iter().map(|p| p.map_or(ZERO, |(i, whole)| aff(vals[i].w, whole && vals[i].list))).collect();
     if !host.fold {
         let body = aff_apply(&lam.params, &lam.body, &bound, scope)?;
         return Ok(aff(body.w, true));
@@ -600,7 +732,13 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
         }
         Ast::Percent(arg) => {
             let a = aff_eval(arg, scope)?;
-            Ok(Aff { w: a.w / 100.0, list: a.list, konst: a.konst.map(|k| k / 100.0), scaled: a.scaled || a.w != 0.0, bare: false })
+            Ok(Aff {
+                w: a.w / 100.0,
+                list: a.list,
+                konst: a.konst.map(|k| k / 100.0),
+                scaled: a.scaled || a.w != 0.0,
+                bare: false,
+            })
         }
         Ast::Bin { op, l, r } => {
             let l = aff_eval(l, scope);
@@ -612,8 +750,12 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                 _ => None,
             };
             Ok(match op {
-                BinOp::Add => Aff { w: l.w + r.w, list, konst: both(|a, b| a + b), scaled: l.scaled || r.scaled, bare: false },
-                BinOp::Sub => Aff { w: l.w - r.w, list, konst: both(|a, b| a - b), scaled: l.scaled || r.scaled, bare: false },
+                BinOp::Add => {
+                    Aff { w: l.w + r.w, list, konst: both(|a, b| a + b), scaled: l.scaled || r.scaled, bare: false }
+                }
+                BinOp::Sub => {
+                    Aff { w: l.w - r.w, list, konst: both(|a, b| a - b), scaled: l.scaled || r.scaled, bare: false }
+                }
                 BinOp::Mul => {
                     if l.w != 0.0 && r.w != 0.0 {
                         return Err(aff_err());
@@ -696,7 +838,10 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                     return Err(aff_err());
                 }
                 let pick_scalar = PICK_SCALAR_FNS.contains(&f);
-                return Ok(aff(args.first().map_or(0.0, |a| a.w), !pick_scalar && args.first().is_some_and(|a| a.list)));
+                return Ok(aff(
+                    args.first().map_or(0.0, |a| a.w),
+                    !pick_scalar && args.first().is_some_and(|a| a.list),
+                ));
             }
             if let Some(i) = criteria_value_arg(f, args.len()) {
                 let v = args.get(i).copied().unwrap_or(ZERO);
@@ -717,7 +862,11 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                 }
                 return Ok(aff(ws.first().copied().unwrap_or(0.0), list));
             }
-            if args.iter().any(|a| a.w != 0.0) { Err(aff_err()) } else { Ok(ZERO) }
+            if args.iter().any(|a| a.w != 0.0) {
+                Err(aff_err())
+            } else {
+                Ok(ZERO)
+            }
         }
         Ast::Apply { func, args: nodes } => {
             if let Some(lam) = lambda_of(Some(func), nodes.len(), &|n| scope.is_var(n)) {
@@ -771,7 +920,20 @@ pub struct UnitCell {
 /// The bodies that take a value with a unit: the ones that move values without reading them, and those
 /// `unit_lists.rs` reads them for. Any other body answers #UNIT! for one.
 pub const UNIT_READY: &[&str] = &[
-    "REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT", "RUNNING", "SORT", "SORTBY", "UNIQUE", "TAKE", "DROP", "FILTER",
+    "REVERSE",
+    "SLICE",
+    "NTHELEMENT",
+    "INTERLEAVE",
+    "CONCATLISTS",
+    "PADLEFT",
+    "PADRIGHT",
+    "RUNNING",
+    "SORT",
+    "SORTBY",
+    "UNIQUE",
+    "TAKE",
+    "DROP",
+    "FILTER",
 ];
 
 pub fn holds_unit(v: &crate::excel_functions::V) -> bool {

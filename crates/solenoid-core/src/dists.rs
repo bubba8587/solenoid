@@ -156,10 +156,20 @@ pub fn regularized_beta(x: f64, a: f64, b: f64) -> f64 {
             break;
         }
     }
-    if converged { front * f } else { f64::NAN }
+    if converged {
+        front * f
+    } else {
+        f64::NAN
+    }
 }
 
-const CODY_A: [f64; 5] = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249, 0.065682337918207449113];
+const CODY_A: [f64; 5] = [
+    2.2352520354606839287,
+    161.02823106855587881,
+    1067.6894854603709582,
+    18154.981253343561249,
+    0.065682337918207449113,
+];
 const CODY_B: [f64; 4] = [47.20258190468824187, 976.09855173777669322, 10260.932208618978205, 45507.789335026729956];
 const CODY_C: [f64; 9] = [
     0.39894151208813466764,
@@ -182,8 +192,16 @@ const CODY_D: [f64; 8] = [
     38912.003286093271411,
     19685.429676859990727,
 ];
-const CODY_P: [f64; 6] = [0.21589853405795699, 0.1274011611602473639, 0.022235277870649807, 0.001421619193227893466, 2.9112874951168792e-5, 0.02307344176494017303];
-const CODY_Q: [f64; 5] = [1.28426009614491121, 0.468238212480865118, 0.0659881378689285515, 0.00378239633202758244, 7.29751555083966205e-5];
+const CODY_P: [f64; 6] = [
+    0.21589853405795699,
+    0.1274011611602473639,
+    0.022235277870649807,
+    0.001421619193227893466,
+    2.9112874951168792e-5,
+    0.02307344176494017303,
+];
+const CODY_Q: [f64; 5] =
+    [1.28426009614491121, 0.468238212480865118, 0.0659881378689285515, 0.00378239633202758244, 7.29751555083966205e-5];
 const M_1_SQRT_2PI: f64 = 0.398942280401432677939946059934;
 
 pub fn std_norm_cdf(z: f64) -> f64 {
@@ -227,7 +245,11 @@ pub fn std_norm_cdf(z: f64) -> f64 {
         let del = (y - xsq) * (y + xsq);
         exp(-xsq * xsq * 0.5) * exp(-del * 0.5) * temp
     };
-    if z < 0.0 { lower } else { 1.0 - lower }
+    if z < 0.0 {
+        lower
+    } else {
+        1.0 - lower
+    }
 }
 
 pub fn norm_s_inv(p: f64) -> f64 {
@@ -247,19 +269,43 @@ fn norm_s_inv_acklam(p: f64) -> f64 {
     if p >= 1.0 {
         return f64::INFINITY;
     }
-    const A: [f64; 6] = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
-    const B: [f64; 5] = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
-    const C: [f64; 6] = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    const A: [f64; 6] = [
+        -3.969683028665376e+01,
+        2.209460984245205e+02,
+        -2.759285104469687e+02,
+        1.383577518672690e+02,
+        -3.066479806614716e+01,
+        2.506628277459239e+00,
+    ];
+    const B: [f64; 5] = [
+        -5.447609879822406e+01,
+        1.615858368580409e+02,
+        -1.556989798598866e+02,
+        6.680131188771972e+01,
+        -1.328068155288572e+01,
+    ];
+    const C: [f64; 6] = [
+        -7.784894002430293e-03,
+        -3.223964580411365e-01,
+        -2.400758277161838e+00,
+        -2.549732539343734e+00,
+        4.374664141464968e+00,
+        2.938163982698783e+00,
+    ];
     const D: [f64; 4] = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
     let p_low = 0.02425;
     let p_high = 1.0 - p_low;
-    let tail = |q: f64| (((((C[0] * q + C[1]) * q + C[2]) * q + C[3]) * q + C[4]) * q + C[5]) / ((((D[0] * q + D[1]) * q + D[2]) * q + D[3]) * q + 1.0);
+    let tail = |q: f64| {
+        (((((C[0] * q + C[1]) * q + C[2]) * q + C[3]) * q + C[4]) * q + C[5])
+            / ((((D[0] * q + D[1]) * q + D[2]) * q + D[3]) * q + 1.0)
+    };
     if p < p_low {
         tail((-2.0 * log(p)).sqrt())
     } else if p <= p_high {
         let q = p - 0.5;
         let r = q * q;
-        (((((A[0] * r + A[1]) * r + A[2]) * r + A[3]) * r + A[4]) * r + A[5]) * q / (((((B[0] * r + B[1]) * r + B[2]) * r + B[3]) * r + B[4]) * r + 1.0)
+        (((((A[0] * r + A[1]) * r + A[2]) * r + A[3]) * r + A[4]) * r + A[5]) * q
+            / (((((B[0] * r + B[1]) * r + B[2]) * r + B[3]) * r + B[4]) * r + 1.0)
     } else {
         -tail((-2.0 * log(1.0 - p)).sqrt())
     }
@@ -301,27 +347,48 @@ pub(crate) fn ln_combin(n: f64, k: f64) -> f64 {
 pub fn t_cdf(x: f64, df: f64) -> f64 {
     let z = df / (df + x * x);
     let beta_cdf = regularized_beta(z, df / 2.0, 0.5);
-    if x >= 0.0 { 1.0 - beta_cdf / 2.0 } else { beta_cdf / 2.0 }
+    if x >= 0.0 {
+        1.0 - beta_cdf / 2.0
+    } else {
+        beta_cdf / 2.0
+    }
 }
 
 pub fn t_pdf(x: f64, df: f64) -> f64 {
-    exp(ln_gamma((df + 1.0) / 2.0) - ln_gamma(df / 2.0)) / ((df * PI).sqrt() * pow(1.0 + (x * x) / df, (df + 1.0) / 2.0))
+    exp(ln_gamma((df + 1.0) / 2.0) - ln_gamma(df / 2.0))
+        / ((df * PI).sqrt() * pow(1.0 + (x * x) / df, (df + 1.0) / 2.0))
 }
 
 pub fn chi_sq_cdf(x: f64, df: f64) -> f64 {
-    if x <= 0.0 { 0.0 } else { regularized_gamma(df / 2.0, x / 2.0) }
+    if x <= 0.0 {
+        0.0
+    } else {
+        regularized_gamma(df / 2.0, x / 2.0)
+    }
 }
 
 pub fn f_cdf(x: f64, df1: f64, df2: f64) -> f64 {
-    if x <= 0.0 { 0.0 } else { regularized_beta((x * df1) / (x * df1 + df2), df1 / 2.0, df2 / 2.0) }
+    if x <= 0.0 {
+        0.0
+    } else {
+        regularized_beta((x * df1) / (x * df1 + df2), df1 / 2.0, df2 / 2.0)
+    }
 }
 
 pub fn gamma_cdf(x: f64, alpha: f64, beta: f64) -> f64 {
-    if x <= 0.0 { 0.0 } else { regularized_gamma(alpha, x / beta) }
+    if x <= 0.0 {
+        0.0
+    } else {
+        regularized_gamma(alpha, x / beta)
+    }
 }
 
 fn gamma_pdf(x: f64, alpha: f64, beta: f64) -> f64 {
-    if x <= 0.0 { 0.0 } else { exp((alpha - 1.0) * log(x) - x / beta - alpha * log(beta) - ln_gamma(alpha)) }
+    if x <= 0.0 {
+        0.0
+    } else {
+        exp((alpha - 1.0) * log(x) - x / beta - alpha * log(beta) - ln_gamma(alpha))
+    }
 }
 
 pub(crate) fn binom_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
@@ -439,7 +506,9 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             if dfv <= 0.0 {
                 None
             } else if matches!(form, Form::Inv | Form::InvRt) {
-                prob_guard(v).then(|| bisection_inv(|x| chi_sq_cdf(x, dfv), if form == Form::Inv { v } else { 1.0 - v }, 0.0, 1e6))
+                prob_guard(v).then(|| {
+                    bisection_inv(|x| chi_sq_cdf(x, dfv), if form == Form::Inv { v } else { 1.0 - v }, 0.0, 1e6)
+                })
             } else if v < 0.0 {
                 None
             } else if form == Form::Pdf {
@@ -458,7 +527,8 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             if d1 <= 0.0 || d2 <= 0.0 {
                 None
             } else if matches!(form, Form::Inv | Form::InvRt) {
-                prob_guard(v).then(|| bisection_inv(|x| f_cdf(x, d1, d2), if form == Form::Inv { v } else { 1.0 - v }, 0.0, 1e6))
+                prob_guard(v)
+                    .then(|| bisection_inv(|x| f_cdf(x, d1, d2), if form == Form::Inv { v } else { 1.0 - v }, 0.0, 1e6))
             } else if v < 0.0 {
                 None
             } else if form == Form::Cdf {
@@ -468,12 +538,11 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else if v == 0.0 {
                 density_at_zero(d1 / 2.0, 1.0)
             } else {
-                Some(exp(
-                    (d1 / 2.0) * log(d1) + (d2 / 2.0) * log(d2) + (d1 / 2.0 - 1.0) * log(v) - ((d1 + d2) / 2.0) * log(d1 * v + d2)
-                        + ln_gamma((d1 + d2) / 2.0)
-                        - ln_gamma(d1 / 2.0)
-                        - ln_gamma(d2 / 2.0),
-                ))
+                Some(exp((d1 / 2.0) * log(d1) + (d2 / 2.0) * log(d2) + (d1 / 2.0 - 1.0) * log(v)
+                    - ((d1 + d2) / 2.0) * log(d1 * v + d2)
+                    + ln_gamma((d1 + d2) / 2.0)
+                    - ln_gamma(d1 / 2.0)
+                    - ln_gamma(d2 / 2.0)))
             }
         }
         "beta" => {
@@ -493,7 +562,9 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else if v == 1.0 {
                 Some(if bv == 1.0 { 1.0 } else { 0.0 })
             } else {
-                Some(exp((av - 1.0) * log(v) + (bv - 1.0) * log(1.0 - v) - ln_gamma(av) - ln_gamma(bv) + ln_gamma(av + bv)))
+                Some(exp(
+                    (av - 1.0) * log(v) + (bv - 1.0) * log(1.0 - v) - ln_gamma(av) - ln_gamma(bv) + ln_gamma(av + bv)
+                ))
             }
         }
         "gamma" => {
@@ -584,7 +655,11 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                 None
             } else if form == Form::Pmf {
                 Some(if lv == 0.0 {
-                    if ki == 0.0 { 1.0 } else { 0.0 }
+                    if ki == 0.0 {
+                        1.0
+                    } else {
+                        0.0
+                    }
                 } else {
                     exp(-lv + ki * log(lv) - ln_gamma(ki + 1.0))
                 })
@@ -602,7 +677,13 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else {
                 let lo = math_max(0.0, ni + mi - big);
                 let hi = math_min(ni, mi);
-                if ![ki, ni, mi, big].iter().all(|x| x.is_finite()) || big <= 0.0 || mi < 0.0 || ni < 0.0 || mi > big || ni > big {
+                if ![ki, ni, mi, big].iter().all(|x| x.is_finite())
+                    || big <= 0.0
+                    || mi < 0.0
+                    || ni < 0.0
+                    || mi > big
+                    || ni > big
+                {
                     None
                 } else if ki < lo {
                     Some(0.0)

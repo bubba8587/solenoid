@@ -15,7 +15,12 @@ fn load(name: &str) -> Vec<Json> {
 }
 
 fn report(bad: &[String], total: usize) {
-    assert!(bad.is_empty(), "{} of {total} differ:\n{}", bad.len(), bad.iter().take(20).cloned().collect::<Vec<_>>().join("\n"));
+    assert!(
+        bad.is_empty(),
+        "{} of {total} differ:\n{}",
+        bad.len(),
+        bad.iter().take(20).cloned().collect::<Vec<_>>().join("\n")
+    );
 }
 
 fn strings(v: &Json) -> Vec<String> {
@@ -60,11 +65,15 @@ fn frames_as_frozen() {
         let mut lens = out.lens.iter();
         let mut text = || {
             let n = *lens.next().unwrap() as usize;
-            let end = strs.char_indices().scan(0, |u, (i, ch)| {
-                let at = *u;
-                *u += ch.len_utf16();
-                Some((at, i))
-            }).find(|&(u, _)| u == n).map_or(strs.len(), |(_, i)| i);
+            let end = strs
+                .char_indices()
+                .scan(0, |u, (i, ch)| {
+                    let at = *u;
+                    *u += ch.len_utf16();
+                    Some((at, i))
+                })
+                .find(|&(u, _)| u == n)
+                .map_or(strs.len(), |(_, i)| i);
             let (piece, rest) = strs.split_at(end);
             strs = rest;
             piece.to_string()
@@ -96,7 +105,14 @@ fn frames_as_frozen() {
             .as_array()
             .unwrap()
             .iter()
-            .map(|col| (col["name"].as_str().unwrap().into(), col["type"].as_str().unwrap().into(), col["values"].as_array().unwrap().iter().map(want_key).collect(), strings(&col["raw"])))
+            .map(|col| {
+                (
+                    col["name"].as_str().unwrap().into(),
+                    col["type"].as_str().unwrap().into(),
+                    col["values"].as_array().unwrap().iter().map(want_key).collect(),
+                    strings(&col["raw"]),
+                )
+            })
             .collect();
         if got != want {
             bad.push(format!("{:?}\n  got  {got:?}\n  want {want:?}", c["text"]));
@@ -111,12 +127,17 @@ fn sources_as_frozen() {
     let mut bad = Vec::new();
     for c in &cases {
         let text = c["text"].as_str().unwrap();
-        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::js_trim(text)).into_iter().map(|(n, t, cells)| (n, t.as_str().to_string(), cells)).collect();
+        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::js_trim(text))
+            .into_iter()
+            .map(|(n, t, cells)| (n, t.as_str().to_string(), cells))
+            .collect();
         let want: Vec<(String, String, Vec<String>)> = c["columns"]
             .as_array()
             .unwrap()
             .iter()
-            .map(|col| (col["name"].as_str().unwrap().into(), col["type"].as_str().unwrap().into(), strings(&col["cells"])))
+            .map(|col| {
+                (col["name"].as_str().unwrap().into(), col["type"].as_str().unwrap().into(), strings(&col["cells"]))
+            })
             .collect();
         if got != want {
             bad.push(format!("{text:?}\n  got  {got:?}\n  want {want:?}"));

@@ -41,7 +41,9 @@ fn currency() -> Dim {
 
 /// `currencyClash`.
 pub fn currency_clash(a: &str, b: &str) -> SolError {
-    unit_error(&format!("Can't combine {a} and {b}: they are different currencies with no exchange rate. Convert one side first."))
+    unit_error(&format!(
+        "Can't combine {a} and {b}: they are different currencies with no exchange rate. Convert one side first."
+    ))
 }
 
 /// `financeDim`: money in the money arguments' one currency, or a plain number; None where a money argument is

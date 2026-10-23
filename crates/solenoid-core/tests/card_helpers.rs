@@ -3,7 +3,9 @@
 //! `tests/graph/coreCardHelpers.test.ts`).
 
 use serde_json::Value as Json;
-use solenoid_core::card_helpers::{format_number_with_annotation, parse_record_layout, plan_cards, Annotation, CardColumn, NumberDisplay};
+use solenoid_core::card_helpers::{
+    format_number_with_annotation, parse_record_layout, plan_cards, Annotation, CardColumn, NumberDisplay,
+};
 use std::io::Read;
 
 fn load(name: &str) -> Vec<Json> {
@@ -21,7 +23,12 @@ fn num(j: &Json) -> f64 {
 }
 
 fn report(bad: &[String], total: usize) {
-    assert!(bad.is_empty(), "{} of {total} differ:\n{}", bad.len(), bad.iter().take(30).cloned().collect::<Vec<_>>().join("\n"));
+    assert!(
+        bad.is_empty(),
+        "{} of {total} differ:\n{}",
+        bad.len(),
+        bad.iter().take(30).cloned().collect::<Vec<_>>().join("\n")
+    );
 }
 
 #[test]
@@ -32,7 +39,10 @@ fn numbers_show_as_frozen() {
         let n = num(&c["n"]);
         let ann = Annotation::from_json(&c["ann"]);
         let s = &c["settings"];
-        let d = NumberDisplay::from_settings(s.get("numberDecimals").and_then(Json::as_str).or(Some("4")), s.get("sciAbove").and_then(Json::as_str).or(Some("9")));
+        let d = NumberDisplay::from_settings(
+            s.get("numberDecimals").and_then(Json::as_str).or(Some("4")),
+            s.get("sciAbove").and_then(Json::as_str).or(Some("9")),
+        );
         let got = format_number_with_annotation(n, &ann, d);
         if got != c["text"].as_str().unwrap() {
             bad.push(format!("{} {} {}: got {got:?}, want {}", c["n"], c["ann"], c["settings"], c["text"]));

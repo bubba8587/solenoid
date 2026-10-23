@@ -103,7 +103,8 @@ impl Call {
                 Socket { key, ty: text(r, 1), label }
             })
             .collect();
-        let outputs = rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
+        let outputs =
+            rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
         let adopted = |k: &str, at: usize| -> Vec<(String, String)> {
             rows(k).iter().filter_map(|r| Some((text(r, 0)?, text(r, at)?))).collect()
         };
@@ -113,7 +114,8 @@ impl Call {
             .iter()
             .map(|r| {
                 let key = text(r, 0).unwrap_or_default();
-                let values: Vec<V> = r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default();
+                let values: Vec<V> =
+                    r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default();
                 if let Some(u) = r.get(1).and_then(|a| a.get(0)).and_then(|v| v.get("__munit")) {
                     matrix_units_in.push((key.clone(), u.clone()));
                 }
@@ -185,13 +187,19 @@ impl Call {
 
     /// `node.inputs[key].socket.dataType`: the adopted type, else the declared one.
     pub fn input_type(&self, key: &str) -> Option<&str> {
-        self.adopted_in.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
+        self.adopted_in
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, t)| t.as_str())
             .or_else(|| self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()))
     }
 
     /// `node.outputs[key].socket.dataType`.
     pub fn output_type(&self, key: &str) -> Option<&str> {
-        self.adopted_out.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
+        self.adopted_out
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, t)| t.as_str())
             .or_else(|| self.outputs.iter().find(|o| o.key == key).and_then(|o| o.ty.as_deref()))
     }
 
@@ -252,7 +260,8 @@ pub struct NodeReply {
 
 pub fn reply(args: &Json) -> NodeReply {
     let kind = args.get("kind").and_then(Json::as_str).unwrap_or("");
-    let _calc = crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
+    let _calc =
+        crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let mut c = Call::from_json(args);
     let answer = run(kind, &mut c);
     // A field the body shows is often the output itself (`cachedResult = result`): it carries the output's unit too.
@@ -275,8 +284,8 @@ pub fn reply(args: &Json) -> NodeReply {
 impl serde::Serialize for NodeReply {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use crate::frame_backend::Out;
-        use values::Cell;
         use serde::ser::SerializeMap;
+        use values::Cell;
         // An output that is one of the inputs as it came (a frame ref or a LAMBDA passed through) crosses as where it came from,
         // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
         struct Outs<'a>(&'a [(String, V)], &'a [(String, Vec<V>)]);
@@ -307,19 +316,23 @@ impl serde::Serialize for NodeReply {
                 // A field that is an output itself (`cachedResult = frame`) crosses as that output's key, once.
                 let same = |v: &V| -> Option<&str> {
                     let outs = self.1?;
-                    outs.iter().find(|(_, o)| match (v, o) {
-                        (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
-                        (V::Frame(a), V::Frame(b)) => Rc::ptr_eq(a, b),
-                        (V::Cube(a), V::Cube(b)) => Rc::ptr_eq(a, b),
-                        (V::Json(a), V::Json(b)) => Rc::ptr_eq(a, b),
-                        (V::Lambda(a), V::Lambda(b)) => Rc::ptr_eq(a, b),
-                        _ => false,
-                    }).map(|(k, _)| k.as_str())
+                    outs.iter()
+                        .find(|(_, o)| match (v, o) {
+                            (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
+                            (V::Frame(a), V::Frame(b)) => Rc::ptr_eq(a, b),
+                            (V::Cube(a), V::Cube(b)) => Rc::ptr_eq(a, b),
+                            (V::Json(a), V::Json(b)) => Rc::ptr_eq(a, b),
+                            (V::Lambda(a), V::Lambda(b)) => Rc::ptr_eq(a, b),
+                            _ => false,
+                        })
+                        .map(|(k, _)| k.as_str())
                 };
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
                     match v {
-                        Shown::V(v) if same(v).is_some() => m.serialize_entry(k, &serde_json::json!({ "output": same(v) }))?,
+                        Shown::V(v) if same(v).is_some() => {
+                            m.serialize_entry(k, &serde_json::json!({ "output": same(v) }))?
+                        }
                         Shown::V(v) => m.serialize_entry(k, &Cell(v))?,
                         Shown::Undef => m.serialize_entry(k, &serde_json::json!({ "undef": true }))?,
                     }

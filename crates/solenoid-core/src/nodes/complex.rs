@@ -1,9 +1,9 @@
 //! [[C17]] shareImpl. `nodes/complex.ts`: the complex-number cards over the IM* formula bodies. No `guardFinite` here: the complex ops
 //! keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
-use crate::error_value::ErrorCode;
 use super::kit::{core_call, each, num, short_circuit};
 use super::{err, list, Answer, Call};
+use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
@@ -166,18 +166,25 @@ fn poly_roots(c: &mut Call) -> Answer {
         return done(c, err(ErrorCode::Value, "Polynomial Roots needs a finite number in every coefficient"), V::Null);
     }
     match core_call("POLYROOTS", &[V::List(coeffs)]) {
-        V::Err(e) if e.code == ErrorCode::Domain => done(c, err(ErrorCode::Domain, "Polynomial Roots needs at least one non-zero coefficient"), V::Null),
+        V::Err(e) if e.code == ErrorCode::Domain => {
+            done(c, err(ErrorCode::Domain, "Polynomial Roots needs at least one non-zero coefficient"), V::Null)
+        }
         e @ V::Err(_) => done(c, e, V::Null),
         rs => {
             let mut real: Vec<f64> = match &rs {
-                V::List(l) => l.iter().filter_map(|z| match z {
-                    V::Cx(re, im) if *im == 0.0 => Some(*re),
-                    _ => None,
-                }).collect(),
+                V::List(l) => l
+                    .iter()
+                    .filter_map(|z| match z {
+                        V::Cx(re, im) if *im == 0.0 => Some(*re),
+                        _ => None,
+                    })
+                    .collect(),
                 _ => Vec::new(),
             };
             if crate::js_sort::v8_sort_short(&mut real, |x, y| x - y).is_none() {
-                crate::js_sort::js_sort_by(&mut real, |x, y| (x - y).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+                crate::js_sort::js_sort_by(&mut real, |x, y| {
+                    (x - y).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
             done(c, rs, list(real.into_iter().map(V::Num).collect()))
         }
@@ -201,7 +208,8 @@ fn quadratic_roots(a: f64, b: f64, c: f64) -> V {
 }
 
 fn quadratic_roots_node(c: &mut Call) -> Answer {
-    let args = [c.read_input("a", c.literal("a")), c.read_input("b", c.literal("b")), c.read_input("c", c.literal("c"))];
+    let args =
+        [c.read_input("a", c.literal("a")), c.read_input("b", c.literal("b")), c.read_input("c", c.literal("c"))];
     let root = |which: usize| {
         broadcast_complex(&args, |o| {
             let nan = |v: &V| matches!(v, V::Num(n) if n.is_nan());
