@@ -4,7 +4,7 @@
 //! and names it in `uploaded`, so a verb passing that frame through answers the ref it was given. A Cube runs its
 //! verb on its cells here, as `frameVerbs.ts`' cube verbs do, the scalar columns through the core's frame verbs.
 
-use super::frames::{core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame};
+use super::frames::{card_cell, core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list, affine_display, select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame};
 use super::list::{frame_cell_of, infer_column, truthy};
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn};
@@ -34,6 +34,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "DropBlankRowsNode" => drop_blank_rows(c),
         "WindowNode" => window(c),
         "GetColumnNode" => get_column(c),
+        "SumIfsNode" => sum_ifs(c),
         _ => return None,
     })
 }
@@ -561,6 +562,150 @@ fn get_column(c: &mut Call) -> Answer {
             }
         }
     }
+}
+
+// ─── SUMIFS (list.ts) ───────────────────────────────────────────────────────────
+
+/// The columns SUMIFS reads, and how a name finds one: as `getColumn` does, or a ref's, read by the name it was asked
+/// by.
+struct Source {
+    columns: Vec<Column>,
+    by_position: bool,
+}
+
+impl Source {
+    fn find(&self, name: &str) -> Option<&Column> {
+        if self.by_position { column_named(&self.columns, name) } else { self.columns.iter().find(|c| c.name == name) }
+    }
+
+    fn rows(&self) -> usize {
+        self.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)
+    }
+}
+
+fn sum_ifs(c: &mut Call) -> Answer {
+    let source = match first(c, "frame") {
+        V::Cube(k) => Some(Source {
+            columns: k
+                .columns
+                .iter()
+                .filter(|col| !col.cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))))
+                .map(|col| {
+                    let (fc, unit) = flat_column(&k, col);
+                    Column { name: fc.name.clone(), ty: fc.ty, values: fc.values.iter().map(card_cell).collect(), unit, format: col.format.clone(), raw: None }
+                })
+                .collect(),
+            by_position: true,
+        }),
+        V::Json(_) => match first(c, "read") {
+            V::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: false }),
+            e @ V::Err(_) => return sum_ifs_answer(c, e),
+            _ => None,
+        },
+        V::Frame(f) => Some(Source { columns: f.columns.clone(), by_position: true }),
+        _ => None,
+    };
+    let r = match source {
+        Some(s) => sum_ifs_over(c, &s)?,
+        None => V::Null,
+    };
+    sum_ifs_answer(c, r)
+}
+
+fn sum_ifs_answer(c: &mut Call, r: V) -> Answer {
+    c.show("cachedResult", r.clone());
+    Ok(vec![("result".into(), r)])
+}
+
+/// The criteria rows' verdicts over the source, then the op over the Values column's passing cells, in its unit.
+fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
+    let config = c.field("condConfig").and_then(Json::as_object).cloned().unwrap_or_default();
+    let pairs: Vec<(String, String, String, bool)> = c
+        .sockets
+        .iter()
+        .filter(|s| s.key.starts_with("column"))
+        .map(|s| {
+            let id = s.key["column".len()..].to_string();
+            let cfg = config.get(&id);
+            let op = cfg.and_then(|o| o.get("op")).and_then(Json::as_str).unwrap_or("eq").to_string();
+            let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(Json::as_bool).unwrap_or(false);
+            (s.key.clone(), format!("value{id}"), op, match_case)
+        })
+        .collect();
+    let values: Vec<FrameCell> = pairs.iter().map(|(_, v, _, _)| FrameCell::str(&filter_value(c, v).unwrap_or_default())).collect();
+    let mut crits = Vec::new();
+    for ((col_key, _, op_name, match_case), val) in pairs.iter().zip(&values) {
+        let name = filter_value(c, col_key).unwrap_or_default();
+        let name = js_trim(&name);
+        let valueless = op_name == "isblank" || op_name == "notblank";
+        let blank_value = matches!(val, FrameCell::Str(v) if js_trim(v).is_empty());
+        if name.is_empty() || (!valueless && blank_value) {
+            continue;
+        }
+        let Some(col) = src.find(name) else { return Ok(err(ErrorCode::Ref, format!("No column \"{name}\" in the frame"))) };
+        let op: FilterOp = op_name.parse().map_err(|_| thrown(&format!("unknown filter op {op_name}")))?;
+        if let Err(e) = require_text_column(op, col.ty, name) {
+            return Ok(V::err(e));
+        }
+        let pass = compile_filter(op, val, col.ty, *match_case).map_err(V::err)?;
+        crits.push((col.values.iter().map(core_cell).collect::<Vec<_>>(), pass));
+    }
+    if crits.is_empty() {
+        return Ok(V::Null);
+    }
+    let any = c.field_str("match", "all") == "any";
+    let mut passing = Vec::new();
+    for i in 0..src.rows() {
+        // `some` and `every`: the first verdict that settles the row ends its tests.
+        let mut kept = !any;
+        for (cells, pass) in crits.iter_mut() {
+            if pass(cells.get(i).unwrap_or(&FrameCell::Null)).map_err(V::err)? == any {
+                kept = any;
+                break;
+            }
+        }
+        if kept {
+            passing.push(i);
+        }
+    }
+    let op = c.field_str("op", "sumifs");
+    if op == "countifs" {
+        return Ok(V::Num(passing.len() as f64));
+    }
+    let vname = str_input(c, "values", "");
+    if matches!(vname, V::Null) {
+        return Ok(V::Null);
+    }
+    let vname = js_string_of(&vname);
+    let vname = js_trim(&vname);
+    if vname.is_empty() {
+        return Ok(V::Null);
+    }
+    let Some(vcol) = src.find(vname) else { return Ok(err(ErrorCode::Ref, format!("No column \"{vname}\" in the frame"))) };
+    let kept: Vec<&V> = passing.iter().map(|&i| vcol.values.get(i).unwrap_or(&V::Null)).collect();
+    if let Some(e) = kept.iter().find(|v| matches!(v, V::Err(_))) {
+        return Ok((*e).clone());
+    }
+    let nums: Vec<f64> = kept.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
+    // The cells are as typed in the column's unit; readings have no sum, as SUMIFS in a formula ([[C25]]).
+    let unit = vcol.unit.as_ref();
+    let reading = unit.and_then(|u| u.get("display")).and_then(Json::as_str).is_some_and(|d| !d.is_empty() && affine_display(d));
+    if op == "sumifs" && reading {
+        return Ok(V::err(crate::unit_value::unit_error(crate::unit_value::READINGS_ADD)));
+    }
+    let tag = |n: f64| match unit {
+        Some(u) => tag_cell_unit(&V::Num(n), u),
+        None => V::Num(n),
+    };
+    let sum = || nums.iter().fold(0.0, |a, b| a + b);
+    Ok(match op {
+        "sumifs" => tag(sum()),
+        "averageifs" if nums.is_empty() => err(ErrorCode::DivZero, "No rows matched the criteria"),
+        "averageifs" => tag(sum() / nums.len() as f64),
+        "minifs" => tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }) }),
+        "maxifs" => tag(if nums.is_empty() { 0.0 } else { nums.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m }) }),
+        _ => V::Undef,
+    })
 }
 
 // ─── Cube verbs (frameVerbs.ts) ──────────────────────────────────────────────────
