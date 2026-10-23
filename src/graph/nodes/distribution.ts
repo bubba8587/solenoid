@@ -128,10 +128,23 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
+  static coreFields = ["sampleSeed"];
   private lastSampleGen = -1;
   private sampleSeed = 0;
 
+  /** The sample form's seed is drawn here, once per recalc and card; `body` samples from it. */
   data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const gen = getRecalcGen();
+    if (this.form === "sample" && this.lastSampleGen !== gen) {
+      this.lastSampleGen = gen;
+      let h = 2166136261 ^ gen;
+      for (const ch of this.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+      this.sampleSeed = h >>> 0;
+    }
+    return this.body(inputs);
+  }
+
+  body(inputs: Record<string, (number | number[] | null)[] | undefined>) {
     const spec = this.spec;
     const form = this.form;
     if (form === "sample") {
@@ -140,13 +153,6 @@ export class DistributionsNode extends ClassicPreset.Node {
       if (countRaw === null || params.some((v) => v === null)) { this.cachedResult = null; return { result: null }; }
       const n = Math.min(100_000, Math.max(0, Math.round(Array.isArray(countRaw) ? (countRaw[0] ?? 0) : countRaw)));
       const ps = params.map((v) => (Array.isArray(v) ? (v[0] ?? 0) : (v as number)));
-      const gen = getRecalcGen();
-      if (this.lastSampleGen !== gen) {
-        this.lastSampleGen = gen;
-        let h = 2166136261 ^ gen;
-        for (const ch of this.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-        this.sampleSeed = h >>> 0;
-      }
       const rng = mulberry32(this.sampleSeed);
       const out = sampleQuantiles(this.op, Array.from({ length: n }, () => rng()), ps);
       this.cachedResult = out;

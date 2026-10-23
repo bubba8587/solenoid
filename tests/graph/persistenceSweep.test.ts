@@ -227,7 +227,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     // ── [[D46]] freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
     rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
     lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
-    idx: "promo rotation index (session flavor)",
+    roll: "promo rotation draw (session flavor)",
     // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──
     enabled: "sinkRunButtonOnly arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",

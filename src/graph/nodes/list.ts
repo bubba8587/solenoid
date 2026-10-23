@@ -1357,13 +1357,21 @@ export class ShuffleNode extends ClassicPreset.Node {
     this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
+  static coreFields = ["keys"];
+
+  /** The keys are drawn here; `body` orders the list by them. */
   data(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
-    const arr = [...(inputs.list?.[0] ?? [])];
+    const n = [...(inputs.list?.[0] ?? [])].length;
     const gen = getRecalcGen();
-    if (this.lastGen !== gen || this.keys.length !== arr.length) {
-      this.keys = arr.map(() => Math.random());
+    if (this.lastGen !== gen || this.keys.length !== n) {
+      this.keys = Array.from({ length: n }, () => Math.random());
       this.lastGen = gen;
     }
+    return this.body(inputs);
+  }
+
+  body(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
+    const arr = [...(inputs.list?.[0] ?? [])];
     const w = inputs.weights?.[0];
     if (Array.isArray(w) && w.length < arr.length) {
       this.cachedList = [];

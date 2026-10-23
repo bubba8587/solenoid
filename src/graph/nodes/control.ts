@@ -322,8 +322,19 @@ export class ValueInputNode extends ClassicPreset.Node {
     };
   }
 
+  /** A date reads here, where a relative phrase alerts when it re-resolves to a new day; every other type is `body`. */
   data(): { value: unknown } {
-    if (this.op !== "date") this.lastRelative = null;
+    if (this.op !== "date") {
+      this.lastRelative = null;
+      return this.body();
+    }
+    const r = resolveDateText(this, this.value, this.lastRelative);
+    this.lastRelative = r.last;
+    this.cachedValue = r.result;
+    return { value: this.cachedValue };
+  }
+
+  body(): { value: unknown } {
     this.cachedValue = this.compute();
     return { value: this.cachedValue };
   }
@@ -332,11 +343,7 @@ export class ValueInputNode extends ClassicPreset.Node {
     switch (this.op) {
       case "string":  return this.value;
       case "logical": return /^true$/i.test(this.value.trim());
-      case "date": {
-        const r = resolveDateText(this, this.value, this.lastRelative);
-        this.lastRelative = r.last;
-        return r.result;
-      }
+      case "date":    return null;
       case "number": {
         const t = this.value.trim();
         const n = t === "" ? 0 : Number(t);

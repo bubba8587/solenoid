@@ -229,12 +229,19 @@ export class RandBetweenNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
+  static coreFields = ["rawRoll"];
+
+  /** The roll is drawn here; `body` scales it to the bounds. */
   data(inputs: { bound1?: number[]; bound2?: number[] }) {
     const gen = getRecalcGen();
     if (this.lastRollGen !== gen) {
       this.rawRoll = Math.random();
       this.lastRollGen = gen;
     }
+    return this.body(inputs);
+  }
+
+  body(inputs: { bound1?: number[]; bound2?: number[] }) {
     const bound1 = readInput(inputs.bound1, this.literals.bound1 ?? 0);
     const bound2 = readInput(inputs.bound2, this.literals.bound2 ?? 1);
     if (bound1 === null || bound2 === null) { this.cachedResult = null; return { result: null }; }

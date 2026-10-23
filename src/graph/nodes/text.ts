@@ -49,8 +49,9 @@ const PROMO_LINES = [
 export class PromoNode extends ClassicPreset.Node {
   label: string;
   cachedText: string | null = null;
+  static coreFields = ["roll"];
   private lastRollGen = -1;
-  private idx = Math.floor(Math.random() * PROMO_LINES.length);
+  private roll = Math.random();
   width = 220; height = 96;
 
   constructor(init?: { label?: string }) {
@@ -59,13 +60,18 @@ export class PromoNode extends ClassicPreset.Node {
     this.addOutput("value", strOut("Text"));
   }
 
+  /** The roll is drawn here; `body` picks the line. */
   data() {
     const gen = getRecalcGen();
     if (this.lastRollGen !== gen) {
-      this.idx = Math.floor(Math.random() * PROMO_LINES.length);
+      this.roll = Math.random();
       this.lastRollGen = gen;
     }
-    this.cachedText = PROMO_LINES[this.idx];
+    return this.body();
+  }
+
+  body() {
+    this.cachedText = PROMO_LINES[Math.floor(this.roll * PROMO_LINES.length)];
     return { value: this.cachedText };
   }
 }
@@ -698,9 +704,16 @@ export class UuidNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("UUID"));
   }
 
+  static coreFields = ["generated"];
+
+  /** The UUID is drawn here; `body` hands it on. */
   data(): { result: string } {
     const gen = getRecalcGen();
     if (this.lastGen !== gen) { this.generated = uuidV4(); this.lastGen = gen; }
+    return this.body();
+  }
+
+  body(): { result: string } {
     this.cachedText = this.generated;
     return { result: this.generated };
   }

@@ -1899,15 +1899,22 @@ export class SettleNode extends ClassicPreset.Node {
     return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
   }
 
+  /** A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a
+   *  coercion #VALUE!; the canvas says which, so it is read here and `body` settles. */
   data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
+    if (!this.inGhosted()) return this.body(inputs);
+    this.cachedResult = null; this.cachedNet = null;
+    return { transfers: null, net: null };
+  }
+
+  body(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
     const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
     const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
       if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
       this.cachedResult = r.transfers; this.cachedNet = r.net;
       return { transfers: r.transfers, net: r.net };
     };
-    // A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a coercion #VALUE!.
-    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
+    const raw = inputs.in?.[0] ?? null;
     if (this.mode === "transactions") {
       const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
       if (!cube) return none();

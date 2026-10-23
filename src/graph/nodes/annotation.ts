@@ -374,7 +374,13 @@ export class SvgPickerNode extends ClassicPreset.Node {
     return this.cleanSource;
   }
 
+  /** The markup is scrubbed here (`source`), in the browser; `body` reads it scrubbed. */
   data(): { chart: SvgValue | null; layer: string | null } {
+    void this.source;
+    return this.body();
+  }
+
+  body(): { chart: SvgValue | null; layer: string | null } {
     const source = this.source;
     const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
     const chart: SvgValue | null = source
