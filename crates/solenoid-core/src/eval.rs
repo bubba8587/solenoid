@@ -742,14 +742,14 @@ impl Eval<'_> {
             match held {
                 Some(Some(v)) => return v,
                 Some(None) => {
-                    // A value whose calc raised stays per row: the raise is that row's answer.
+                    // A value computed while a raise was pending stays per row: the raise is that row's answer.
                     let raised = crate::excel_functions::thrown_pending();
                     let v = self.eval_node(n, env);
                     let mut hoisted = self.hoisted.borrow_mut();
-                    if raised || !crate::excel_functions::thrown_pending() {
-                        hoisted.insert(key, Some(v.clone()));
-                    } else {
+                    if raised || crate::excel_functions::thrown_pending() {
                         hoisted.remove(&key);
+                    } else {
+                        hoisted.insert(key, Some(v.clone()));
                     }
                     return v;
                 }
@@ -2013,13 +2013,16 @@ fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>
         }
         Ast::Call { name, args } => match name.to_uppercase().as_str() {
             "LAMBDA" if !args.is_empty() => {
-                let mut inner = bound.to_vec();
+                let mut params = Vec::new();
                 for p in &args[..args.len() - 1] {
                     let Ast::Name(v) = p else { return false };
-                    inner.push(v.to_lowercase());
+                    params.push(v.as_str());
                 }
-                visit(&args[args.len() - 1], &inner, &mut kids);
-                reads_none(&args[args.len() - 1], &inner, bound.len(), env)
+                let body = &args[args.len() - 1];
+                let inner: Vec<String> = bound.iter().cloned().chain(params.iter().map(|p| p.to_lowercase())).collect();
+                visit(body, &inner, &mut kids);
+                // A parameter may hold a LAMBDA that reads the row, so a body that calls one isn't row-free.
+                !invokes(body, &inner[bound.len()..]) && reads_none(body, bound, &params, env)
             }
             _ => {
                 let mut ok = !unseen(name) && !varies(name);
@@ -2038,16 +2041,42 @@ fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>
 
 /// Whether `n` reads no row and no name bound past the first `outer` of `bound`: a LAMBDA body's verdict for the
 /// LAMBDA.
-fn reads_none(n: &Ast, bound: &[String], outer: usize, env: &Env) -> bool {
+fn reads_none(n: &Ast, bound: &[String], params: &[&str], env: &Env) -> bool {
     let mut scratch = Vec::new();
-    let own: Vec<String> = bound[outer..].to_vec();
-    // Its own names read as row-free here, since the binding node answers for them.
-    let outer_bound: Vec<String> = bound[..outer].to_vec();
+    // Its own parameters read as row-free here, since the LAMBDA answers for them; a name is looked up as written.
     let mut env = env.clone();
-    for name in own {
-        env.remove(&name);
+    for p in params {
+        env.remove(*p);
     }
-    row_free(n, &outer_bound, &env, &mut scratch)
+    row_free(n, bound, &env, &mut scratch)
+}
+
+/// Whether `n` calls one of `names` (lowered), passes one to a function that calls its LAMBDA, or applies one.
+fn invokes(n: &Ast, names: &[String]) -> bool {
+    let mentions = |a: &Ast| {
+        fn any(a: &Ast, names: &[String]) -> bool {
+            match a {
+                Ast::Name(v) => names.contains(&v.to_lowercase()),
+                Ast::Unary { arg, .. } | Ast::Percent(arg) => any(arg, names),
+                Ast::Bin { l, r, .. } => any(l, names) || any(r, names),
+                Ast::Call { args, .. } => args.iter().any(|x| any(x, names)),
+                Ast::Apply { func, args } => any(func, names) || args.iter().any(|x| any(x, names)),
+                _ => false,
+            }
+        }
+        any(a, names)
+    };
+    match n {
+        Ast::Call { name, args } => {
+            names.contains(&name.to_lowercase())
+                || (LAMBDA_HOSTS.contains(&name.to_uppercase().as_str()) && args.iter().any(mentions))
+                || args.iter().any(|a| invokes(a, names))
+        }
+        Ast::Apply { func, args } => mentions(func) || args.iter().any(mentions),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => invokes(arg, names),
+        Ast::Bin { l, r, .. } => invokes(l, names) || invokes(r, names),
+        _ => false,
+    }
 }
 
 /// A node worth keeping: a call or an operator. A LAMBDA's value holds the scope it was made in, so it isn't kept.

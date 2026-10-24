@@ -168,3 +168,45 @@ fn a_kept_criteria_tally_answers_as_the_scan_does() {
         }
     }
 }
+
+/// A LAMBDA whose parameter holds a wired LAMBDA that reads `@a` reads the row, so the MAP around it is computed per
+/// row rather than kept from the first.
+#[test]
+fn a_lambda_calling_its_parameter_reads_the_row() {
+    use solenoid_core::eval::decode_value;
+    let f = FrameValue {
+        columns: vec![FrameColumn::new(
+            "a",
+            FrameColType::Number,
+            vec![FrameCell::Num(1.0), FrameCell::Num(2.0), FrameCell::Num(3.0)],
+        )],
+    };
+    let wired = serde_json::json!({ "__lambda": { "params": ["v"], "expr": "v + @a" } });
+    let run = |src: &str, side: &str, v: serde_json::Value, lambdas: &[String]| {
+        let ast = solenoid_core::excel_formula::parse_formula(src).expect("parses");
+        let inp = ColumnInputs {
+            table: Table::Frame(&f),
+            sides: [(side.to_string(), decode_value(&v))].into_iter().collect(),
+            row_sides: Default::default(),
+            reserved: vec![],
+            alias: Default::default(),
+            rows: 3,
+        };
+        match column(ColumnSpec::Expr { ast: &ast, lambdas }, inp) {
+            Ok(ColumnOutcome { cells, .. }) => format!("{cells:?}"),
+            Err(e) => format!("{e:?}"),
+        }
+    };
+    let rows = format!("{:?}", [FrameCell::Num(2.0), FrameCell::Num(3.0), FrameCell::Num(4.0)]);
+    let g = ["g".to_string()];
+    for src in [
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, g(G))))",
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, g(1))))",
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, MAP(SEQUENCE(1), g))))",
+    ] {
+        assert_eq!(run(src, "g", wired.clone(), &g), rows, "{src}");
+    }
+    let listed = serde_json::json!([wired.clone()]);
+    assert_eq!(run("SUM(MAP(fs, LAMBDA(f, f(1))))", "fs", listed.clone(), &[]), rows);
+    assert_eq!(run("SUM(MAP(fs, LAMBDA(f, MAP(1, f))))", "fs", listed, &[]), rows);
+}
