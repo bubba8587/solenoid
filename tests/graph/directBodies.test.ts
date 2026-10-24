@@ -51,4 +51,15 @@ describe("direct cards", () => {
       data.mockRestore();
     }
   });
+
+  it("read a lone surrogate in a label as U+FFFD rather than fail the card", async () => {
+    const editor = new GraphEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    const b = new ArithmeticNode({ op: "mul" });
+    b.label = "half \ud800 pair";
+    b.literals = { a: 6, b: 7 };
+    await editor.addNode(b as unknown as Schemes["Node"]);
+    expect((await engine.fetch(b.id)).result).toBe(42);
+  });
 });

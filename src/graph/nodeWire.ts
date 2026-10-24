@@ -2,7 +2,7 @@
 // The values cards hand each other, as the core's card bodies read and answer them (`crates/solenoid-core/src/nodes/
 // values.rs`): a frame and a cube cell by cell, plain data (a chart, a document, an image) whole as JSON with its
 // special numbers tagged, and everything else as `coreValue` sends it.
-import { coreValue, readReply } from "./coreValues";
+import { coreValue, readReply, toWellFormed } from "./coreValues";
 import { solError, type SolErrorCode } from "./errorValue";
 import { cx } from "./cxValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
@@ -41,6 +41,8 @@ function tagged(_key: string, v: unknown): unknown {
       if (Number.isNaN(v)) return { __nf: "nan" };
       if (!Number.isFinite(v)) return { __nf: v > 0 ? "inf" : "-inf" };
       return Object.is(v, -0) ? { __nf: "-0" } : v;
+    case "string":
+      return toWellFormed(v);
     case "undefined":
       return { __undef: 1 };
     case "function":

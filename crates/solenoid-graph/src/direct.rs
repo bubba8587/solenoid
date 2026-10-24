@@ -614,9 +614,6 @@ pub(crate) fn call<'a>(
         .iter()
         .map(|(k, v)| (k.to_owned(), v.clone()))
         .collect();
-    if let Err(m) = header {
-        return ready(Ok(run.thrown_out(Thrown::Message(m))));
-    }
     if !card.facts.sees {
         if let Some((e, slot)) = raw.iter().find_map(|(k, vs)| {
             vs.iter()
@@ -625,6 +622,9 @@ pub(crate) fn call<'a>(
         }) {
             return ready(Ok(run.error_out(e, Some(&slot))));
         }
+    }
+    if let Err(m) = header {
+        return ready(Ok(run.thrown_out(Thrown::Message(m))));
     }
     let t0 = boundary::perf_on().then(|| boundary::now(&run.host));
     let lazy_refs = !card.facts.lazy && raw.iter().any(|(_, vs)| vs.iter().any(Val::is_frame_ref));
