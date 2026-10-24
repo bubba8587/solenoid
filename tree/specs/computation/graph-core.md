@@ -13,18 +13,20 @@ owns how the model and the engine are hosted.
 
 ## The module
 
-- **Its own WebAssembly module**, `src/graph/graphWasm/`, apart from the formula core's `engineWasm/`. The formula
-  core is dropped and instantiated afresh after a trap ([[rust-core]] § Where it runs), and a node's formula call runs
-  while the graph's own frames are on the stack; one instance would lose the graph to any trapping formula.
-- **Built** by `npm run build:wasm` (`node scripts/build-wasm.mjs graph` for this one) and stamped like the core
-  (`source-stamp.txt`, `wasmStamp.test.ts`).
+- **One WebAssembly module with the core**, `src/graph/engineWasm/`: `crates/solenoid-graph` depends on
+  `crates/solenoid-core` and is the one `cdylib`, so the engine calls a card's body in Rust (§ Direct calls) and the
+  formula core's commands (`engine_invoke` and the rest) come out of the same instance. A trap anywhere takes the
+  graph with it, which the graph survives by rebuilding from its handles (§ Traps); the author traded the separate
+  instance for direct calls (2026-10-24).
+- **Built** by `npm run build:wasm` and stamped over both crates and the vendored ones (`source-stamp.txt`,
+  `wasmStamp.test.ts`).
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
-  app's first render waits for `loadGraphEngine()` with no deadline (`main.tsx`); creating an engine before it loads
-  throws. Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at `graphWasmUrl` and calls
-  `loadGraphEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every script that imports
-  the app).
+  app's first render waits for `loadWasmEngine()` (`engineWasm.ts`) with no deadline (`main.tsx`); creating an engine
+  before it loads throws. Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at `wasmUrl`
+  and calls `loadWasmEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every script that
+  imports the app).
 
 ## The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)
 
@@ -134,23 +136,26 @@ the rest); `passSession.ts` keeps the snapshot each answers, which is what `calc
 
 ## Traps
 
-A panic in the core runs the module's panic hook (`setPanicHandler`) before the trap; a trap with no panic (a stack
-overflow) surfaces as a `WebAssembly.RuntimeError` at the call that crossed in. Either way:
+A trap anywhere in the module (a formula, a card body, the graph's own code) drops the instance. A panic runs the
+module's panic hook (`setPanicHandler`) first; a trap with no panic (a stack overflow) surfaces as a
+`WebAssembly.RuntimeError` at the call that crossed in. Either way (`engineWasm.ts`):
 
-- every fetch and `fetchAll` still waiting rejects with `GraphTrap`, and so does the call that trapped, so a pass ends
-  instead of waiting forever;
+- the call that trapped throws `CoreTrap`: a formula or a card's body answers `#ERROR!` with the restart message, and
+  every fetch and `fetchAll` still waiting rejects with `CoreTrap`, so a pass ends instead of waiting forever;
 - once the stack has left the module (a microtask later), the instance is dropped and the compiled module
-  instantiated afresh (`__wbg_reset`), and every live `GraphEditor` builds a new core from what its handle holds:
-  its pipes and the engine in their order, then its nodes (with their ports as they stand) and cables, with the
-  pipes held silent so nothing reruns a node's install or a canvas sync. The engine's caches start empty, so the
-  next pass recomputes everything; until then a call throws `GraphTrap`;
-- the fresh instance gets the boundary's host again and takes back the session's last snapshot (`whenGraphEngineLoads`);
-  a rerun a pass had coalesced is gone;
+  instantiated afresh (`__wbg_reset`); the load hooks run again (`whenWasmEngineLoads`: the boundary's host, the
+  session's last snapshot, the handle numbering past the dead instance's), and every live `GraphEditor` builds a new
+  core from what its handle holds: its pipes and the engine in their order, then its nodes (with their ports as
+  they stand) and cables, with the pipes held silent so nothing reruns a node's install or a canvas sync. The caches
+  and what the core held for each card (§ Direct calls) start empty, so the next pass recomputes everything; until
+  the swap a call throws `CoreTrap`, and a rerun a pass had coalesced is gone;
+- a frame the verb backend held in the dead instance is gone, so a verb over it answers `#REF!` until the document
+  reloads;
 - what the dead instance left in JS never reaches the new one: `build-wasm.mjs` patches wasm-bindgen's glue so a
   dead instance's closure (a node's promise settling late) does nothing, its finalizers free nothing, and the object
   heap starts empty. The build fails if the glue reads differently.
 
-`graphTrap()` is the tests' trigger (`graphTrap.test.ts`).
+`graphTrap()` and `engine_trap` are the tests' triggers (`graphTrap.test.ts`, `coreTrap.test.ts`).
 
 ## Performance
 
@@ -176,23 +181,40 @@ about 0.05 ms against 0.01. Walking each cell across the boundary had made the s
 removed. Loading personal-finance in the built app (Chromium, median of five loads): the first full pass computed in
 472 ms and the cards settled in 3.3 s, against 507 ms and 3.25 s before.
 
-## What blocks phase C (card bodies called with no JavaScript hop)
+## Direct calls (phase C)
 
-- **The values are JavaScript objects.** The engine holds `JsValue`s and every card body on the core (`nodeOnCore.ts`)
-  encodes its inputs into the core's wire and decodes its answer, in a second module (`engineWasm/`). Calling a body
-  directly needs the values in Rust between cards, with their identity (the change test, the format and frame memos,
-  the backend's upload cache, which key on the object) carried by something other than object identity.
-- **Two modules.** The graph and the card bodies are separate instances so a formula's trap can't take the graph
-  with it ([[rust-core]] § Where it runs). One call from the graph into a body needs either one module (and a trap
-  story for it) or a host hop between them.
-- **What the boundary still asks TypeScript for**: lazy frames (`readFrame`, the frame backend's plans), building a
-  frame or cube from rows, unit display magnitudes (the FC unit catalog's resolvers), list literal reading
-  (`coerceFrameCell`, date text), format picks (`frameFormatStore`), display names (the catalog), the error sinks
-  (the Problems store) and the perf probe. Each is a TypeScript module the card bodies would need from Rust too.
-- **Per-node state on the JavaScript object**: `cachedResult` and the other fields the guard and loop seeding set,
-  `lastGen` and the volatile draws, `_resolvedAngleMode` (`resolveTrigModes`, which walks the FC annotations in
-  TypeScript), a composite's `markInternalEdit`; `static coreFields` already sends what a body reads.
-- **Cards whose bodies are still TypeScript** (node-bodies.md's table): a direct call covers only the ported ones.
+The engine calls a card's body on the core in Rust, with no JavaScript between two such cards.
+
+- **Which cards.** A class whose `data()` is its body on the core and nothing else (`return nodeOnCore(this,
+  inputs)`) is direct (`nodes::DIRECT`; `directBodies.test.ts` holds the list to the classes' source). Every other
+  card is called in JavaScript as before: the cards whose body is TypeScript (Note, Report, a composite, a Conduit)
+  and the shells around a body on the core (an upload, a read, a draw, an alert), whose `nodeOnCore` still crosses.
+- **Values live where they were made** (`value.rs`). A value on a cable is one shared cell holding the form its
+  producer made, a core value (`V`, with a table's unit beside it) or a JavaScript object, and the other form once a
+  reader of the other kind first asks for it, kept beside the first so every reader of that kind gets the same one.
+  A direct card's inputs are core values, a JavaScript card's are objects; converting is the card wire
+  (`nodeWire.ts`), one host call per value converted, never per cell.
+- **The boundary on core values.** For a direct card the error guard, the lazy frames' collect, the unit boundary,
+  each rung's coercion, the typed list literals, the format stamp and the origin tagging run on `V`
+  (`boundary_core.rs`), held to the boundary's frozen answers like the JavaScript one (`boundary.rs`), which keeps
+  running the JavaScript cards. What only the app knows stays a host call, made only when a value needs it: a lazy
+  frame's collect, a typed literal's reading, a frame's format picks.
+- **What the core keeps per card.** Its call: class, saved fields (with `static coreFields`), literal maps, sockets,
+  outputs, adopted types, the boundary's flags and keys, which cached fields the object has, and its frame format
+  picks. It is read from the JavaScript object when the node joins, when its ports change, when a pass names it as
+  the change, when every cache is cleared, and on every call for a class with `coreFields` (a resolved trig mode, a
+  draw). The fields a body sets for its component (`cachedResult` and the rest) live on the Rust node too: the
+  object reads each through an accessor installed the first time the body shows it, converted when read, so a field
+  no component reads never crosses ([[C120]] linearWork). Writing one from JavaScript stores it in the core; a node
+  leaving the editor gets them back as plain properties holding what they showed.
+- **The change test and cable values.** The core keeps each node's last landed outputs and compares there (a scalar
+  by value, anything else by identity, as `!==` did); `cableValueStore` reads an output from the main editor's core
+  when something asks, converting it then. The pass makes no JavaScript call per node.
+- **Once per pass, not per node**: the boundary's flags (perf probe, error sinks), the clock a body reads, and the
+  error sinks' reports, queued and handed over in one call when the pass or fetch ends.
+- **Still on the JavaScript object**: the volatile draws (`lastGen`; their shells draw and send it in `coreFields`),
+  `_resolvedAngleMode` (`resolveTrigModes` walks the FC annotations in TypeScript before each pass), a composite's
+  `markInternalEdit`.
 
 ## Enforcement
 
