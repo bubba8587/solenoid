@@ -4,7 +4,8 @@ import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { toggleTaskMarker } from "../../../src/graph/noteMarkdown";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
-import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../../src/graph/errorValue";
+import { throughBoundary } from "../boundaryKit";
 import { isDocumentValue } from "../../../src/graph/documentValue";
 
 const typeOf = (n: NoteNode, key: string) => {
@@ -134,12 +135,12 @@ describe("NoteNode frontmatter outputs", () => {
     expect(n.fieldTypes).toEqual({ id: "string" });
   });
 
-  it("fieldValues() stays safe after installErrorGuards wraps data() (UI read path)", () => {
+  it("fieldValues() stays safe with data() run through the boundary (UI read path)", () => {
     const n = new NoteNode({ body: "---\nx: 1\n---" });
-    installErrorGuards(n); // same wrap the engine applies on node creation
-    // NoteNode is in errorValue.ts's SEES_ERRORS, so the wrapper skips
-    // firstInputError and calls NoteNode's own data() directly, which tolerates a
-    // bare call (a Note has no inputs). fieldValues() is still the UI's accessor of
+    throughBoundary(n); // the call the engine makes
+    // NoteNode sees errors (the guard's SEES_ERRORS), so the boundary scans no
+    // input and calls NoteNode's own data(), which tolerates a bare call (a Note
+    // has no inputs). fieldValues() is still the UI's accessor of
     // choice — it needs no inputs object and matches every node's cached-value read.
     expect(() => (n.data as () => unknown)()).not.toThrow();
     expect(n.fieldValues()).toEqual({ x: 1 });

@@ -6,7 +6,7 @@ import { QuadraticRootsNode, cx } from "../../../src/graph/nodes/complex";
 import { isSolError } from "../../../src/graph/errorValue";
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   it("two lists HSTACK into one long row", () => {
@@ -141,7 +141,7 @@ describe("the [[C49]] filterOneJob table-filter route: a MATRIX widens into the 
     });
     n.stringLiterals.column0 = "Col2";
     n.stringLiterals.value0 = "10";
-    wrapNodeData(n as never);
+    throughBoundary(n as never);
     const out = await (n.data as (i: unknown) => Promise<{ frame: unknown }>)({
       frame: [[[1, 5], [2, 20], [3, 30]]],
     });

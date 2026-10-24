@@ -2,7 +2,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ruggine::classic::Connection;
+use ruggine::classic::{self, Connection};
 use ruggine::future::{now_or_never, ready, LocalBoxFuture};
 use ruggine::keymap;
 use ruggine_engine::{Error, Inputs, Outputs};
@@ -18,10 +18,11 @@ impl Host for Test {
     type Value = f64;
     type Thrown = String;
 
-    fn data(
-        _: &Self::Node,
+    fn data<'a>(
+        _: &'a Self::Node,
+        _: &'a classic::Node,
         inputs: Inputs<f64>,
-    ) -> LocalBoxFuture<'_, Result<Outputs<f64>, Error>> {
+    ) -> LocalBoxFuture<'a, Result<Outputs<f64>, Error>> {
         let sum: f64 = inputs.values().flatten().sum();
         ready(Ok(keymap! { "out" => sum + 1.0 }))
     }

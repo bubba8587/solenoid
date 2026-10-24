@@ -10,6 +10,19 @@ export function setPanicHandler(handler: Function): void;
  */
 export function graphTrap(): void;
 /**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ */
+export function computeNode(node: object, inputs: any, data?: Function | null): any;
+export function isLazyFrameNode(_class: string): boolean;
+export function seesErrors(_class: string): boolean;
+/**
+ * Installs what the boundary asks the app for; every engine call that runs a node needs it.
+ */
+export function setBoundaryHost(host: object): void;
+export function findCellError(v: any): any;
+/**
  * One editor's graph and its dataflow engine.
  */
 export class GraphCore {
@@ -19,9 +32,10 @@ export class GraphCore {
    */
   invalidate(id: string | null | undefined, keep_caches: boolean): string[] | undefined;
   /**
-   * Attaches the engine here in the chain, registering the nodes already in the editor.
+   * Attaches the engine here in the chain, registering the nodes already in the editor. A `raw` engine calls each
+   * node's `data()` as it is; any other runs it through the input boundary.
    */
-  useEngine(): void;
+  useEngine(raw: boolean): void;
   /**
    * `false` when a `noderemove` pipe cancelled it.
    */
@@ -79,6 +93,10 @@ export class GraphCore {
    */
   forget(id: string): void;
   /**
+   * The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
+   */
+  compute(id: string, inputs: any): Promise<any>;
+  /**
    * `false` when a `nodecreate` pipe cancelled it.
    */
   addNode(id: string, object: object, input_keys: string[], input_types: string[], output_keys: string[], output_types: string[]): boolean;
@@ -103,12 +121,15 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_graphcore_free: (a: number, b: number) => void;
+  readonly computeNode: (a: number, b: number, c: number, d: number) => void;
+  readonly findCellError: (a: number) => number;
   readonly graphTrap: () => void;
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addPipe: (a: number, b: number) => number;
   readonly graphcore_addPort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_clear: (a: number, b: number) => void;
+  readonly graphcore_compute: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_connectionIds: (a: number, b: number) => void;
   readonly graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_fetch: (a: number, b: number, c: number) => number;
@@ -129,7 +150,10 @@ export interface InitOutput {
   readonly graphcore_reset: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_retypePort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_seed: (a: number, b: number, c: number, d: number) => void;
-  readonly graphcore_useEngine: (a: number, b: number) => void;
+  readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
+  readonly isLazyFrameNode: (a: number, b: number) => number;
+  readonly seesErrors: (a: number, b: number) => number;
+  readonly setBoundaryHost: (a: number, b: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
   readonly __wbindgen_export_1: WebAssembly.Table;

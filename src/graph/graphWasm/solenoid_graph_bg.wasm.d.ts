@@ -2,12 +2,15 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_graphcore_free: (a: number, b: number) => void;
+export const computeNode: (a: number, b: number, c: number, d: number) => void;
+export const findCellError: (a: number) => number;
 export const graphTrap: () => void;
 export const graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
 export const graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
 export const graphcore_addPipe: (a: number, b: number) => number;
 export const graphcore_addPort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const graphcore_clear: (a: number, b: number) => void;
+export const graphcore_compute: (a: number, b: number, c: number, d: number) => number;
 export const graphcore_connectionIds: (a: number, b: number) => void;
 export const graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_fetch: (a: number, b: number, c: number) => number;
@@ -28,7 +31,10 @@ export const graphcore_reorderNodes: (a: number, b: number, c: number) => number
 export const graphcore_reset: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_retypePort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const graphcore_seed: (a: number, b: number, c: number, d: number) => void;
-export const graphcore_useEngine: (a: number, b: number) => void;
+export const graphcore_useEngine: (a: number, b: number, c: number) => void;
+export const isLazyFrameNode: (a: number, b: number) => number;
+export const seesErrors: (a: number, b: number) => number;
+export const setBoundaryHost: (a: number, b: number) => void;
 export const setPanicHandler: (a: number) => void;
 export const __wbindgen_export_0: (a: number) => void;
 export const __wbindgen_export_1: WebAssembly.Table;

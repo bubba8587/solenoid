@@ -7,7 +7,8 @@ import type { Schemes } from "../../../src/graph/schemes";
 import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
 import { extractInit } from "../../../src/graph/nodeInit";
-import { installErrorGuards, isSolError, solError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
+import { throughBoundary } from "../boundaryKit";
 import { isUncertain } from "../../../src/graph/valueKinds";
 import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
@@ -1318,7 +1319,7 @@ describe("an error crossing the boundary acts as it would unpacked ([[D35]] erro
   // Lane A: A → IFERROR(A, -1) → OutA. Lane B: B → OutB.
   async function twoLanes() {
     const c = new CompositeNode();
-    installErrorGuards(c);
+    throughBoundary(c);
     const inA = new CompositeInputNode({ label: "A" });
     const inB = new CompositeInputNode({ label: "B" });
     const catcher = new IFErrorNode();
@@ -1327,7 +1328,6 @@ describe("an error crossing the boundary acts as it would unpacked ([[D35]] erro
     const outB = new CompositeOutputNode({ label: "OutB" });
     for (const n of [inA, inB, catcher, outA, outB]) {
       await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
-      installErrorGuards(n);
     }
     await connect(c.internalEditor, inA, "value", catcher, "value");
     await connect(c.internalEditor, catcher, "result", outA, "value");

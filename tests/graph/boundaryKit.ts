@@ -1,11 +1,20 @@
 // [[D102]] graphOnCore
-// A node computed through the input boundary on its own, with the inputs given as the engine would hand them.
-import { wrapNodeData } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
+// A node driven on its own through the graph core's input boundary, as an engine computes it.
+import { computeNode } from "../../src/graph/graphWasm/solenoid_graph.js";
 import type { GraphNode } from "../../src/graph/graphModel";
+import "../../src/graph/nodeBoundary";
 
+type DataFn = (inputs: Record<string, unknown[]>) => unknown;
+
+/** The node's outputs on `inputs`, its `data()` run through the boundary. */
 export async function computeAlone(node: GraphNode, inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
-  wrapNodeData(node as never);
-  installErrorGuards(node);
-  return await (node as unknown as { data(i: Record<string, unknown[]>): unknown }).data(inputs) as Record<string, unknown>;
+  return await (computeNode(node, inputs, undefined) as Record<string, unknown> | Promise<Record<string, unknown>>);
+}
+
+/** From here on `node.data(inputs)` runs through the boundary: synchronously when nothing it does waits. */
+export function throughBoundary<T extends object>(node: T): T {
+  const n = node as unknown as { data: DataFn };
+  const own = n.data;
+  n.data = (inputs) => computeNode(node, inputs, own);
+  return node;
 }

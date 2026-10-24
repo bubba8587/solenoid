@@ -5,8 +5,6 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isChartValue } from "../../src/graph/chartValue";
 import { isMermaidValue } from "../../src/graph/mermaidValue";
 import { isLambdaValue } from "../../src/graph/nodes/lambda";
@@ -25,8 +23,6 @@ type SavedNode = { id: string; type: string; init?: Record<string, unknown>; lit
 
 function build() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

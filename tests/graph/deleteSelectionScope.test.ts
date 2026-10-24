@@ -5,8 +5,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
@@ -19,8 +17,6 @@ import { drawnCableStore } from "../../src/graph/drawnCables";
 
 function makeGraph() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const view = { rerenderNode: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;

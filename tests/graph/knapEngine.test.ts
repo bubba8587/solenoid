@@ -4,8 +4,7 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
+import { type SolError } from "../../src/graph/errorValue";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ReportNode } from "../../src/graph/nodes/report";
@@ -20,11 +19,6 @@ function connect(editor: GraphEditor<Schemes>, src: GraphNode, srcOut: string, t
 
 function makeEditor() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

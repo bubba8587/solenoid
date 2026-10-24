@@ -19,15 +19,17 @@ pub trait Host: 'static {
     type Value: Clone + 'static;
     type Thrown: 'static;
 
-    fn data(
-        node: &Self::Node,
+    /// Computes the node; `ports` are its ports as the editor holds them.
+    fn data<'a>(
+        node: &'a Self::Node,
+        ports: &'a classic::Node,
         inputs: Inputs<Self::Value>,
-    ) -> LocalBoxFuture<'_, Result<Outputs<Self::Value>, Error>>;
+    ) -> LocalBoxFuture<'a, Result<Outputs<Self::Value>, Error>>;
 }
 
 /// A node: its ports, as a classic node, and the host's object.
 pub struct GraphNode<H: Host> {
-    classic: classic::Node,
+    pub classic: classic::Node,
     pub object: H::Node,
 }
 
@@ -50,7 +52,7 @@ impl<H: Host> DataflowNode<H::Value> for GraphNode<H> {
         &self,
         inputs: Inputs<H::Value>,
     ) -> LocalBoxFuture<'_, Result<Outputs<H::Value>, Error>> {
-        H::data(&self.object, inputs)
+        H::data(&self.object, &self.classic, inputs)
     }
 }
 
@@ -186,6 +188,11 @@ impl<H: Host> Graph<H> {
             let _ = now_or_never(Plugin::scope(&self.engine).emit(Root::NodeCreated(node)));
         }
         Ok(())
+    }
+
+    /// The node, as the editor holds it.
+    pub fn get_node(&self, id: &str) -> Option<Rc<GraphNode<H>>> {
+        self.editor.get_node(id)
     }
 
     pub fn engine_used(&self) -> bool {

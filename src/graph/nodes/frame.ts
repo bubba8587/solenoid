@@ -15,7 +15,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
-import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
@@ -2231,8 +2231,8 @@ export class ComputedColumnNode extends GraphNode {
     const gen = beginPass(this);
     const asValue = async () => {
       const mat = await readFrame(ref);
-      // As coerceInputs reads a ref for a node that sees no errors: the error is the answer.
-      if (isSolError(mat) && !SEES_ERRORS.has("ComputedColumnNode")) throw mat;
+      // As the input boundary reads a ref for a node that sees no errors: the error is the answer.
+      if (isSolError(mat)) throw mat;
       return gen === this._gen ? this.dataValue({ ...inputs, frame: [mat] }) : { frame: null };
     };
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");

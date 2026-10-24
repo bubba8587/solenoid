@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";
 import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../../src/graph/nodes/scriptRun";
 import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
@@ -13,7 +13,7 @@ const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
 async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
   const node = new ScriptNode({ expr, ...init });
-  wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+  throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
   const out = await (node.data(inputs) as Promise<{ result: unknown }>);
   return { result: out.result, node };
 }

@@ -8,7 +8,7 @@ import {
   type ElementFamily, type SocketDataType,
 } from "../../src/graph/sockets";
 import { familyOf } from "../../src/graph/formatModel";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 
 // Adding an element family is FOUR edits in sockets.ts — and then five more sites
 // that neither the compiler nor any other test can see, because they live in a
@@ -52,7 +52,7 @@ function arrivesAt(dataType: SocketDataType, value: unknown): unknown {
     inputs: { x: { socket: new SolenoidSocket(dataType) } },
     data: (i: Record<string, unknown[]>) => { got = i.x[0]; },
   };
-  wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+  throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
   (node.data as (i: Record<string, unknown[]>) => void)({ x: [value] });
   return got;
 }

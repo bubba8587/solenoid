@@ -1,7 +1,7 @@
 // [[D47]] noMixCurrencies, [[D35]] errorInErrorOut
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { FxNode } from "../../src/graph/nodes/connection";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { magnitudeOf, isUnitCell } from "../../src/graph/unitValue";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
@@ -16,7 +16,7 @@ function fx(from: string, to: string, rate: number): FxNode {
   n.stringLiterals.to = to;
   n.data({});
   n.cached = { rate, serial: 46000 } as FxNode["cached"];
-  wrapNodeData(n as never);
+  throughBoundary(n as never);
   return n;
 }
 
@@ -34,7 +34,7 @@ describe("Currency reads the amount's currency", () => {
   });
   it("passes an error amount on", () => {
     const err = solError("#DIV/0!", "x");
-    expect(fx("USD", "EUR", 0.5).data({ amount: [err] }).converted).toEqual(err);
+    expect(fx("USD", "EUR", 0.5).data({ amount: [err] }).converted).toMatchObject({ code: "#DIV/0!", message: "x" });
   });
 });
 

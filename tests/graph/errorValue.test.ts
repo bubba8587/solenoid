@@ -1,7 +1,8 @@
 // [[C24]], [[D35]], [[E9]]
 import { describe, it, expect } from "vitest";
 import { nodeDisplayName } from "../../src/graph/catalogUtils";
-import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
+import { solError, isSolError, type SolError } from "../../src/graph/errorValue";
+import { throughBoundary } from "./boundaryKit";
 import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
 import { IFErrorNode, IsTestNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
@@ -23,19 +24,12 @@ describe("SolError tagging", () => {
     expect(isSolError(42)).toBe(false);
     expect(isSolError({ code: "#DIV/0!" })).toBe(false); // untagged lookalike
   });
-
-  it("firstInputError scans input arrays", () => {
-    const e = solError("#DOMAIN!", "x");
-    expect(firstInputError({ a: [1], b: [e] })).toBe(e);
-    expect(firstInputError({ a: [1], b: [2] })).toBeNull();
-    expect(firstInputError({})).toBeNull();
-  });
 });
 
-describe("installErrorGuards", () => {
+describe("the error guard", () => {
   it("propagates an error input to every output without running the node", () => {
     const n = new ArithmeticNode({ op: "add" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const e = solError("#DOMAIN!", "upstream");
     const out = n.data({ a: [e as unknown as number], b: [2] }) as { result: unknown };
     // Origin tagging (Tier 1) mints a fresh object the first time an untagged
@@ -50,7 +44,7 @@ describe("installErrorGuards", () => {
   it("a figure card's own cache fields drop the last good figure on an error input", () => {
     const n = { outputs: { chart: {} }, cachedChart: { __chart: true } as unknown, cachedPayload: { kind: "kpi" } as unknown,
       data: () => ({ chart: { __chart: true } }), constructor: { name: "KpiNode" } };
-    installErrorGuards(n);
+    throughBoundary(n);
     (n.data as (i: unknown) => unknown)({ values: [solError("#N/A", "upstream")] });
     expect(isSolError(n.cachedChart)).toBe(true);
     expect(n.cachedPayload).toBeNull();
@@ -59,7 +53,7 @@ describe("installErrorGuards", () => {
   it("converts a throwing data() into a local #ERROR!", () => {
     const n = new ArithmeticNode({ op: "add" });
     n.data = () => { throw new Error("boom"); };
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { result: unknown };
     expect(isSolError(out.result)).toBe(true);
     expect((out.result as SolError).code).toBe("#ERROR!");
@@ -68,13 +62,13 @@ describe("installErrorGuards", () => {
   it("a thrown SolError keeps its code and message (a verb reporting, not crashing)", async () => {
     const sync = new ArithmeticNode({ op: "add" });
     sync.data = () => { throw solError("#REF!", 'column "Date" not found'); };
-    installErrorGuards(sync);
+    throughBoundary(sync);
     const out = sync.data({}) as { result: SolError };
     expect(out.result.code).toBe("#REF!");
     expect(out.result.message).toBe('column "Date" not found');
     const asyncNode = new ArithmeticNode({ op: "add" });
     asyncNode.data = (async () => { throw solError("#REF!", "gone"); }) as never;
-    installErrorGuards(asyncNode);
+    throughBoundary(asyncNode);
     const late = (await asyncNode.data({})) as { result: SolError };
     expect(late.result.code).toBe("#REF!");
   });
@@ -85,7 +79,7 @@ describe("installErrorGuards", () => {
     // generic #ERROR! — so a dimension mismatch reads as a shape problem.
     const n = new ArithmeticNode({ op: "add" });
     n.data = () => { throw new ShapeError("Expected a single value, got 4"); };
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { result: unknown };
     expect(isSolError(out.result)).toBe(true);
     expect((out.result as SolError).code).toBe("#SHAPE!");
@@ -93,17 +87,9 @@ describe("installErrorGuards", () => {
     expect(n.cachedResult).toBe(out.result); // the value box shows it too
   });
 
-  it("is idempotent", () => {
-    const n = new ArithmeticNode({ op: "div" });
-    installErrorGuards(n);
-    installErrorGuards(n);
-    const out = n.data({ a: [6], b: [3] }) as { result: unknown };
-    expect(out.result).toBe(2);
-  });
-
   it("lets error consumers see the raw error", () => {
     const n = new IFErrorNode({ op: "iferror" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const e = solError("#DIV/0!", "x");
     const out = n.data({ value: [e as unknown as number], fallback: [7] }) as { result: unknown };
     expect(out.result).toBe(7); // caught, not propagated
@@ -114,7 +100,7 @@ describe("installErrorGuards", () => {
     // so the `chart` socket always carries a ChartValue — a bare error object out
     // of a figure socket historically crashed the chart consumers.
     const n = new ChartNode({ op: "column" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({ values: [solError("#DIV/0!", "x")] }) as { chart: unknown };
     expect(isSolError(out.chart)).toBe(false);
     expect(isChartValue(out.chart)).toBe(true);
@@ -125,7 +111,7 @@ describe("installErrorGuards", () => {
 describe("SolError origin (provenance Tier 1)", () => {
   it("tags a node's own minted error with nodeId/nodeName, no input slot", () => {
     const n = new ArithmeticNode({ op: "div" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({ a: [1], b: [0] }) as { result: unknown };
     const err = out.result as SolError;
     expect(isSolError(err)).toBe(true);
@@ -137,7 +123,7 @@ describe("SolError origin (provenance Tier 1)", () => {
   it("tags a thrown error the same way", () => {
     const n = new ArithmeticNode({ op: "add" });
     n.data = () => { throw new Error("boom"); };
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { result: unknown };
     const err = out.result as SolError;
     expect(err.origin?.nodeId).toBe(n.id);
@@ -146,7 +132,7 @@ describe("SolError origin (provenance Tier 1)", () => {
 
   it("tags an untagged input error with the input slot it arrived on", () => {
     const n = new ArithmeticNode({ op: "add" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const e = solError("#DOMAIN!", "upstream");
     const out = n.data({ a: [1], b: [e as unknown as number] }) as { result: unknown };
     expect((out.result as SolError).origin?.inputSlot).toBe("b");
@@ -154,11 +140,11 @@ describe("SolError origin (provenance Tier 1)", () => {
 
   it("preserves the ORIGINAL origin through a downstream passthrough (never overwrites)", () => {
     const producer = new ArithmeticNode({ op: "div" });
-    installErrorGuards(producer);
+    throughBoundary(producer);
     const minted = (producer.data({ a: [1], b: [0] }) as { result: SolError }).result;
 
     const downstream = new ArithmeticNode({ op: "add" });
-    installErrorGuards(downstream);
+    throughBoundary(downstream);
     const relayed = (downstream.data({ a: [minted as unknown as number], b: [2] }) as { result: SolError }).result;
 
     expect(relayed.origin?.nodeId).toBe(producer.id); // still the original producer
@@ -167,7 +153,7 @@ describe("SolError origin (provenance Tier 1)", () => {
 
   it("tags a per-cell error inside a list result with its node", () => {
     const n = new ArithmeticNode({ op: "div" });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({ a: [[4, 1, 6]], b: [[2, 0, 3]] }) as { result: unknown[] };
     expect(out.result[0]).toBe(2);
     expect(isSolError(out.result[1])).toBe(true);
@@ -181,7 +167,7 @@ describe("SolError origin (provenance Tier 1)", () => {
       id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
     };
     (n as unknown as { data?: unknown }).data = () => ({ result: [e, 1, e] });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { result: unknown[] };
     expect((out.result[0] as SolError).origin?.nodeName).toBe("Ratio");
     expect(out.result[2]).toBe(out.result[0]);
@@ -196,7 +182,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     (n as unknown as { data?: unknown }).data = () => ({
       out: { __frame: true, columns: [{ name: "c", type: "number", values: [1, e, 3] }] },
     });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
     const cell = out.out.columns[0].values[1] as SolError;
     expect(isSolError(cell)).toBe(true);
@@ -211,7 +197,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     (n as unknown as { data?: unknown }).data = () => ({
       out: { __frame: true, columns: [{ name: "c", type: "number", values: [tagged] }] },
     });
-    installErrorGuards(n);
+    throughBoundary(n);
     const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
     expect(out.out.columns[0].values[0]).toBe(tagged); // unchanged reference
   });

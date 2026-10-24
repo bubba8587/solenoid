@@ -4,7 +4,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
@@ -32,7 +31,6 @@ const col = (f: FrameValue, name: string): FrameColumn => f.columns.find((c) => 
  *  engine, so a frame arrives at the last node exactly as it does on the canvas. */
 async function chain(nodes: GraphNode[], lastKey = "frame"): Promise<Record<string, unknown>> {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);

@@ -5,8 +5,6 @@ import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -17,8 +15,6 @@ import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
 function makeGraph() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const view = { rerenderNode: async () => {}, position: () => null, nodeElement: () => null, hasNode: () => false } as unknown as View;

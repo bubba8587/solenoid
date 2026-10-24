@@ -3,25 +3,29 @@
 //! and cables' JavaScript objects, the pipes `src/graph/graphEditor.ts` adds, and the dataflow
 //! engine `src/graph/dataflowEngine.ts` drives.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
 use js_sys::{Array, Function, Map, Object, Promise, Reflect};
-use ruggine::classic::Connection;
+use ruggine::classic::{self, Connection};
 use ruggine::future::{ready, LocalBoxFuture};
 use ruggine::Root;
 use ruggine_engine::{Error, Inputs, Outputs};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
 
+use crate::boundary::{self, Facts};
 use crate::model::{Failure, Graph, Host, Port, Side, Signal};
 use crate::pass;
 
-/// A canvas node's JavaScript object, whose `data()` computes it.
+/// A canvas node's JavaScript object, whose `data()` computes it, and what its class is.
 struct JsNode {
     object: Object,
     cancelled: Function,
+    facts: Facts,
+    /// The editor's engine runs nodes through the input boundary (`boundary.rs`); off for a raw engine.
+    boundary: Rc<Cell<bool>>,
 }
 
 struct Js;
@@ -32,10 +36,14 @@ impl Host for Js {
     type Value = JsValue;
     type Thrown = JsValue;
 
-    fn data(
-        node: &JsNode,
+    fn data<'a>(
+        node: &'a JsNode,
+        ports: &'a classic::Node,
         inputs: Inputs<JsValue>,
-    ) -> LocalBoxFuture<'_, Result<Outputs<JsValue>, Error>> {
+    ) -> LocalBoxFuture<'a, Result<Outputs<JsValue>, Error>> {
+        if node.boundary.get() {
+            return boundary::call(&node.object, &node.facts, ports, inputs, None);
+        }
         let data = match Reflect::get(&node.object, &JsValue::from_str("data")) {
             Ok(f) if f.is_function() => f.unchecked_into::<Function>(),
             _ => {
@@ -78,7 +86,7 @@ impl fmt::Display for Thrown {
 
 impl std::error::Error for Thrown {}
 
-fn thrown(value: JsValue) -> Error {
+pub(crate) fn thrown(value: JsValue) -> Error {
     Error::node(Thrown(value))
 }
 
@@ -160,11 +168,100 @@ pub fn graph_trap() {
     panic!("graph_trap");
 }
 
+/// The node's ports as its own object holds them (`inputs` and `outputs`, each port's socket `name`).
+fn ports_of(node: &Object) -> classic::Node {
+    let mut ports = classic::Node::new("");
+    ports.id = Reflect::get(node, &"id".into())
+        .ok()
+        .and_then(|v| v.as_string())
+        .unwrap_or_default();
+    let socket_name = |port: &JsValue| {
+        Reflect::get(port, &"socket".into())
+            .and_then(|s| Reflect::get(&s, &"name".into()))
+            .ok()
+            .and_then(|n| n.as_string())
+            .unwrap_or_default()
+    };
+    let side = |name: &str| Reflect::get(node, &name.into()).unwrap_or(JsValue::UNDEFINED);
+    let (ins, outs) = (side("inputs"), side("outputs"));
+    for key in keys_of(&ins) {
+        let port = Reflect::get(&ins, &key.as_str().into()).unwrap_or(JsValue::UNDEFINED);
+        let _ = ports.add_input(
+            key,
+            classic::Input::new(classic::Socket::new(socket_name(&port))),
+        );
+    }
+    for key in keys_of(&outs) {
+        let port = Reflect::get(&outs, &key.as_str().into()).unwrap_or(JsValue::UNDEFINED);
+        let _ = ports.add_output(
+            key,
+            classic::Output::new(classic::Socket::new(socket_name(&port))),
+        );
+    }
+    ports
+}
+
+fn inputs_from_js(inputs: &JsValue) -> Inputs<JsValue> {
+    let mut given = Inputs::new();
+    if !inputs.is_object() {
+        return given;
+    }
+    for key in Object::keys(inputs.unchecked_ref()).iter() {
+        let values = Reflect::get(inputs, &key).unwrap_or(JsValue::UNDEFINED);
+        let list: Vec<JsValue> = values
+            .dyn_ref::<Array>()
+            .map(|a| a.to_vec())
+            .unwrap_or_default();
+        given.insert(key.as_string().unwrap_or_default(), list);
+    }
+    given
+}
+
+/// A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+/// none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+/// node.
+#[wasm_bindgen(js_name = computeNode)]
+pub fn compute_node(
+    node: Object,
+    inputs: JsValue,
+    data: Option<Function>,
+) -> Result<JsValue, JsValue> {
+    use std::future::Future;
+    use std::task::{Context, Poll, Waker};
+    let given = inputs_from_js(&inputs);
+    let mut pending = Box::pin(async move {
+        let (ports, facts) = (ports_of(&node), Facts::of(&node));
+        boundary::call(&node, &facts, &ports, given, data.as_ref()).await
+    });
+    let error = |e: Error| match e {
+        Error::Node(e) => match e.downcast_ref::<Thrown>() {
+            Some(Thrown(value)) => value.clone(),
+            None => js_sys::Error::new(&e.to_string()).into(),
+        },
+        e => js_sys::Error::new(&e.to_string()).into(),
+    };
+    match pending
+        .as_mut()
+        .poll(&mut Context::from_waker(Waker::noop()))
+    {
+        Poll::Ready(Ok(outputs)) => Ok(outputs_to_js(&outputs).into()),
+        Poll::Ready(Err(e)) => Err(error(e)),
+        Poll::Pending => Ok(future_to_promise(async move {
+            pending
+                .await
+                .map(|o| outputs_to_js(&o).into())
+                .map_err(error)
+        })
+        .into()),
+    }
+}
+
 /// One editor's graph and its dataflow engine.
 #[wasm_bindgen]
 pub struct GraphCore {
     graph: Graph<Js>,
     cancelled: Function,
+    boundary: Rc<Cell<bool>>,
 }
 
 fn to_js(cancelled: &Function, error: Error) -> JsValue {
@@ -246,6 +343,7 @@ impl GraphCore {
         GraphCore {
             graph: Graph::new(),
             cancelled,
+            boundary: Rc::new(Cell::new(false)),
         }
     }
 
@@ -266,10 +364,28 @@ impl GraphCore {
         self.graph.remove_pipe(handle)
     }
 
-    /// Attaches the engine here in the chain, registering the nodes already in the editor.
+    /// Attaches the engine here in the chain, registering the nodes already in the editor. A `raw` engine calls each
+    /// node's `data()` as it is; any other runs it through the input boundary.
     #[wasm_bindgen(js_name = useEngine)]
-    pub fn use_engine(&self) -> Result<(), JsValue> {
+    pub fn use_engine(&self, raw: bool) -> Result<(), JsValue> {
+        self.boundary.set(!raw);
         self.graph.use_engine().map_err(failed)
+    }
+
+    /// The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
+    pub fn compute(&self, id: &str, inputs: JsValue) -> Promise {
+        let node = self.graph.get_node(id);
+        let cancelled = self.cancelled.clone();
+        let given = inputs_from_js(&inputs);
+        future_to_promise(async move {
+            let Some(node) = node else {
+                return Err(js_sys::Error::new("cannot find node").into());
+            };
+            match Js::data(&node.object, &node.classic, given).await {
+                Ok(outputs) => Ok(outputs_to_js(&outputs).into()),
+                Err(e) => Err(to_js(&cancelled, e)),
+            }
+        })
     }
 
     /// `false` when a `nodecreate` pipe cancelled it.
@@ -284,8 +400,10 @@ impl GraphCore {
         output_types: Vec<String>,
     ) -> Result<bool, JsValue> {
         let node = JsNode {
+            facts: Facts::of(&object),
             object,
             cancelled: self.cancelled.clone(),
+            boundary: self.boundary.clone(),
         };
         self.graph
             .add_node(

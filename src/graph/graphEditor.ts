@@ -30,9 +30,18 @@ export function graphEngineLoaded(): boolean {
   return _loaded;
 }
 
+const _onLoad: (() => void)[] = [];
+
+/** `fn` runs once the module is loaded (now, when it is), and again in each fresh instance after a trap. */
+export function whenGraphEngineLoads(fn: () => void): void {
+  _onLoad.push(fn);
+  if (_loaded) fn();
+}
+
 function onLoaded(): void {
   _loaded = true;
   setPanicHandler(onPanic);
+  for (const fn of _onLoad) fn();
 }
 
 /** What a fetch rejects with when a reset clears its node mid-run. */
@@ -67,6 +76,7 @@ function recover(): void {
   const module = __wbg_reset();
   initSync({ module });
   setPanicHandler(onPanic);
+  for (const fn of _onLoad) fn();
   _dead = false;
   for (const ref of _live) {
     const editor = ref.deref();
@@ -163,7 +173,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   private install(core: GraphCore, p: Piped): void {
     if (p.removed) return;
-    if (p.engine) { core.useEngine(); return; }
+    if (p.engine) { core.useEngine(this.engine!.raw); return; }
     const run = p.run!;
     p.handle = core.addPipe((type: string, data: unknown) =>
       this.replaying || run((data === undefined ? { type } : { type, data }) as GraphSignal<GraphSchemes>) != null);

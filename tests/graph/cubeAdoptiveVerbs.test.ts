@@ -1,7 +1,7 @@
 // [[C10]]
 import { describe, it, expect } from "vitest";
 import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/nodeClasses";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { cubeFromColumns, flatCubeToFrame, isFrameValue, isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
 import { collectPreview } from "../../src/graph/frameBackend";
@@ -74,7 +74,7 @@ describe("the lattice stays narrow; the nodes widen", () => {
 
 describe("the cube-adoptive input still widens a bare list / matrix (the old frameIn contract)", () => {
   const drive = async (n: object, inputs: Record<string, unknown[]>) => {
-    wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(n as Parameters<typeof throughBoundary>[0]);
     return (n as { data: (i: Record<string, unknown[]>) => Promise<{ frame: unknown }> }).data(inputs);
   };
   it("GROUPBY over a cube reads only its key and value columns, list columns elsewhere included", async () => {

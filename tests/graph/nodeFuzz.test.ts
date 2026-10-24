@@ -3,7 +3,7 @@
 // each body on more than the hand-written tests reach. Runs only while recording: `FREEZE_NODES=1`.
 import { describe, it } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { declaredTypeOf } from "../../src/graph/sockets";
 import { solError } from "../../src/graph/errorValue";
 import { cx } from "../../src/graph/cxValue";
@@ -81,7 +81,7 @@ describe.runIf(!!process.env.FREEZE_NODES)("every card on random values of its s
           if (v === undefined) continue;
           inputs[k] = [v];
         }
-        wrapNodeData(card as never);
+        throughBoundary(card as never);
         try {
           await Promise.race([Promise.resolve(card.data(inputs)), new Promise((res) => setTimeout(res, 2000))]);
         } catch { /* a thrown answer is recorded too */ }

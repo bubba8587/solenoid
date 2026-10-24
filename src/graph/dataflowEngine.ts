@@ -4,6 +4,7 @@
 import { guarded, tracked, type GraphEditor } from "./graphEditor";
 import type { GraphSchemes } from "./graphModel";
 import type { Schemes } from "./schemes";
+import "./nodeBoundary";
 
 /** The engine an editor uses: the graph walks live there, beside the graph they walk. */
 export function engineOf<S extends GraphSchemes>(editor: GraphEditor<S>): DataflowEngine<S> {
@@ -20,6 +21,13 @@ export type DataflowNode = {
 
 export class DataflowEngine<S extends GraphSchemes = Schemes> {
   editor?: GraphEditor<S>;
+  /** Calls each node's `data()` as it is, where every other engine runs it through the input boundary
+   *  (compute-pass.md § The per-node wrappers): the bare rete-engine shape, for the engine's own tests. */
+  readonly raw: boolean;
+
+  constructor(opts?: { raw?: boolean }) {
+    this.raw = opts?.raw === true;
+  }
 
   /** `editor.use(engine)` calls this. */
   attach(editor: GraphEditor<S>): void {
@@ -34,6 +42,12 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
   /** The node's outputs, computing whatever upstream isn't cached. */
   fetch(nodeId: string): Promise<NodeOutputs> {
     return tracked(() => this.core().fetch(nodeId));
+  }
+
+  /** The node computed on `inputs` as a fetch computes it, boundary included, without reading or filling its cache:
+   *  a composite's simulation steps, and a test driving one node. */
+  compute(nodeId: string, inputs: Record<string, unknown[]>): Promise<NodeOutputs> {
+    return tracked(() => this.core().compute(nodeId, inputs));
   }
 
   /** The node's inputs, one list per input key, fetching every predecessor. */

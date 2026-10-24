@@ -5,8 +5,6 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import type { FrameValue, FrameCell } from "../../src/graph/frame";
 import { readFrame, type FrameInput } from "../../src/graph/frameBackend";
 import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
@@ -26,8 +24,6 @@ type SavedNode = {
 describe("pivot-tables seed", () => {
   it("every pivot computes the cross-tab it claims", async () => {
     const editor = new GraphEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 
