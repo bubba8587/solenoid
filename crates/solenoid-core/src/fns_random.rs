@@ -338,6 +338,22 @@ fn uuid_v4() -> String {
 mod tests {
     use super::*;
 
+    fn quantile(key: &str, u: f64, ps: &[f64]) -> Option<f64> {
+        let &(_, continuous, inverse, _) = FAMILIES.iter().find(|(k, ..)| *k == key).unwrap();
+        sample_quantiles(key, continuous, inverse, &[u], ps)[0]
+    }
+
+    #[test]
+    fn a_draw_inverts_every_family() {
+        let e = 1.0 - (-1.0_f64).exp();
+        assert!((quantile("normal", 0.5, &[10.0, 2.0]).unwrap() - 10.0).abs() < 1e-9);
+        assert!((quantile("expon", e, &[1.0]).unwrap() - 1.0).abs() < 1e-6);
+        assert!((quantile("weibull", e, &[2.0, 3.0]).unwrap() - 3.0).abs() < 1e-6);
+        assert_eq!(quantile("poisson", 0.5, &[3.0]), Some(3.0));
+        assert_eq!(quantile("binom", 0.5, &[10.0, 0.5]), Some(5.0));
+        assert_eq!(quantile("normal", 0.5, &[10.0, -1.0]), None);
+    }
+
     #[test]
     fn draws_are_uniform_on_the_unit_interval() {
         let xs: Vec<f64> = (0..10_000).map(|_| random()).collect();

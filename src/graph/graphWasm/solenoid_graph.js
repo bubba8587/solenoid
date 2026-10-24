@@ -483,7 +483,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_129(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_131(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1096,6 +1096,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_getRandomValues_1c61fac11405ffdc = function() { return handleError(function (arg0, arg1) {
         globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
     }, arguments) };
+    imports.wbg.__wbg_get_13495dac72693ecc = function(arg0, arg1) {
+        const ret = getObject(arg0).get(getObject(arg1));
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_get_67b2ba62fc30de12 = function() { return handleError(function (arg0, arg1) {
         const ret = Reflect.get(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
@@ -1183,7 +1187,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_129(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_131(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1309,7 +1313,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper468 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper469 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_38);
         return addHeapObject(ret);
     };

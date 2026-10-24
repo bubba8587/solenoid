@@ -2704,3 +2704,19 @@ fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64
     let c = surface_solve(a, &rhs).unwrap_or_else(|| vec![mean, 0.0, 0.0]);
     Some(Box::new(move |x, y| c[0] + c[1] * nx(x) + c[2] * ny(y)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::run_hw;
+
+    /// y = 10, 20, 12, 22, season 2, α = β = γ = 0.5: level 15, trend 1 and season [−5, 5] to start, so the
+    /// predictions run 11, 21.25, 10.5625, 21.953125 when each season updates against the previous level plus the
+    /// previous trend.
+    #[test]
+    fn holt_winters_updates_the_season_against_the_previous_level_and_trend() {
+        let (sse, fit) = run_hw(&[10.0, 20.0, 12.0, 22.0], 2, 0.5, 0.5, 0.5);
+        assert_eq!(sse, 1.4375_f64.powi(2) + 0.046875_f64.powi(2));
+        assert_eq!((fit.level, fit.trend), (17.6015625, 0.80859375));
+        assert_eq!(fit.seasonal, [-4.78125, 4.3984375]);
+    }
+}

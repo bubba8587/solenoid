@@ -124,12 +124,7 @@ export class DepreciationNode extends GraphNode {
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
     for (const i of after) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
     // Re-insert every key in table order, because Factor sits at a different row in each op.
-    const inputs = this.inputs as Record<string, unknown>;
-    for (const i of after) {
-      const v = inputs[i.key];
-      delete inputs[i.key];
-      inputs[i.key] = v;
-    }
+    for (const i of after) this.moveInputLast(i.key);
     this.seedLiterals();
     this.height = this.heightFor();
   }

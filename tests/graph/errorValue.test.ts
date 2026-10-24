@@ -174,6 +174,20 @@ describe("SolError origin (provenance Tier 1)", () => {
     expect(e.origin).toBeUndefined();
   });
 
+  it("tags many distinct errors in time linear in the cells ([[C120]] linearWork)", () => {
+    const cells = Array.from({ length: 40_000 }, (_, i) => solError("#DIV/0!", `row ${i}`));
+    const n = { id: "n2", label: "Ratio", outputs: {}, constructor: { name: "SomeNode" } } as unknown as {
+      id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
+    };
+    (n as unknown as { data?: unknown }).data = () => ({ result: cells });
+    throughBoundary(n);
+    const t0 = performance.now();
+    const out = n.data({}) as { result: SolError[] };
+    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(out.result[39_999].origin?.nodeName).toBe("Ratio");
+    expect(out.result[0]).not.toBe(out.result[1]);
+  });
+
   it("tags a per-cell error inside a frame-shaped output with its node", () => {
     const e = solError("#VALUE!", "bad cell");
     const n = { id: "n1", label: "Frame Thing", outputs: {}, constructor: { name: "SomeFrameNode" } } as unknown as {

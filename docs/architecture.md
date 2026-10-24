@@ -122,7 +122,7 @@ src/
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `nodeBoundary.ts` | What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`: the error guard and arrival coercion every `data()` call runs through) asks the app for: lazy frame collects, frame and cube construction, unit display magnitudes, list literals, format stamps, names, the error sinks, the perf probe, each array's cell kinds. Mechanics: `../tree/specs/computation/compute-pass.md` § The per-node wrappers |
 | `listLiterals.ts` | The typed list literals: `TYPEABLE_LIST`, how a list input's text splits (`listLiteralItems`, `listLiteralText`) and reads (`parseListLiteral`) |
-| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
+| `planImport.ts` | A Project XML / grammar CSV → the plan cube (Local File's `plan` socket), through `@solenoid/schedule-engine`'s readers. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the core's port of the engine (`crates/solenoid-core/src/schedule/`); the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
@@ -440,7 +440,8 @@ second consumer ([[C69]] ganttPackages): `schedule-engine` (calendar in unit ind
 WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
 `gantt-layout` (payload → render frame at a width; the headless SVG serializer),
 `gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
-the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` above.
+the app calls `schedule-engine` only for `planImport.ts`'s readers and its types;
+scheduling runs on the core's port (above).
 
 ### Landing & showcase (`src/graph/landing/`)
 

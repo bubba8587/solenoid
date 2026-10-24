@@ -1,9 +1,10 @@
 //! [[C130]] rustCore: a Parquet file reads as the frame Local File gives.
 use std::sync::Arc;
 
+use arrow_array::types::Int32Type;
 use arrow_array::{
-    ArrayRef, BooleanArray, Date32Array, Float64Array, Int64Array, RecordBatch, StringArray,
-    TimestampMillisecondArray,
+    ArrayRef, BinaryArray, BooleanArray, Date32Array, DictionaryArray, Float64Array, Int64Array,
+    RecordBatch, StringArray, TimestampMillisecondArray,
 };
 use parquet::arrow::ArrowWriter;
 use serde_json::{json, Value as Json};
@@ -75,4 +76,55 @@ fn a_missing_file_is_a_ref_error() {
     let err = solenoid_parquet::read(std::path::Path::new("__solenoid_does_not_exist__.parquet"))
         .unwrap_err();
     assert_eq!(err.code.as_str(), "#REF!");
+}
+
+#[test]
+fn a_dictionary_column_reads_as_its_values() {
+    let dict: DictionaryArray<Int32Type> = vec![Some("red"), None, Some("red"), Some("blue")]
+        .into_iter()
+        .collect();
+    let path = write("dict", vec![("c", Arc::new(dict) as ArrayRef)]);
+    assert_eq!(
+        read(&path),
+        vec![json!({ "name": "c", "type": "string", "values": ["red", null, "red", "blue"] })]
+    );
+}
+
+#[test]
+fn an_empty_file_keeps_its_column_kinds() {
+    let path = write(
+        "empty",
+        vec![
+            (
+                "s",
+                Arc::new(StringArray::from(Vec::<&str>::new())) as ArrayRef,
+            ),
+            (
+                "b",
+                Arc::new(BooleanArray::from(Vec::<bool>::new())) as ArrayRef,
+            ),
+        ],
+    );
+    assert_eq!(
+        read(&path),
+        vec![
+            json!({ "name": "s", "type": "string", "values": [] }),
+            json!({ "name": "b", "type": "logical", "values": [] }),
+        ]
+    );
+}
+
+#[test]
+fn a_column_that_wont_cast_is_a_value_error_naming_it() {
+    let path = write(
+        "binary",
+        vec![(
+            "raw",
+            Arc::new(BinaryArray::from(vec![&b"\xff\xfe"[..]])) as ArrayRef,
+        )],
+    );
+    let err = solenoid_parquet::read(&path).unwrap_err();
+    std::fs::remove_file(&path).ok();
+    assert_eq!(err.code.as_str(), "#VALUE!");
+    assert!(err.message.contains("\"raw\""), "{}", err.message);
 }

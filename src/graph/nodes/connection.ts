@@ -309,9 +309,9 @@ export class LocalFileNode extends GraphNode {
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
     this.planNotes = [];
-    const fail = (message: string, status: "idle" | "error" = "error") => {
+    const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
-      const out = status === "error" && parquet ? solError("#REF!", message) : null;
+      const out = status === "error" && parquet ? (err ?? solError("#REF!", message)) : null;
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
@@ -326,7 +326,7 @@ export class LocalFileNode extends GraphNode {
     try {
       if (parquet) {
         const frame = await readParquetFrame(folder, name);
-        if (isSolError(frame)) throw new Error(frame.message);
+        if (isSolError(frame)) return fail(frame.message, "error", frame);
         if (stale()) return superseded;
         this.lastKey = key;
         this.cachedResult = frame;

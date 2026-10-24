@@ -2326,6 +2326,24 @@ pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
         .collect()
 }
 
+/// Two equal lists read in step, a position kept only when both sides are numbers to `nums_of`, so a text cell
+/// drops its pair as a blank does (`Prep::Paired`) instead of sliding the lists apart. Anything else reads each side
+/// alone.
+pub(crate) fn paired_nums(x: &V, y: &V) -> (Vec<f64>, Vec<f64>) {
+    match (x, y) {
+        (V::List(xs), V::List(ys)) if xs.len() == ys.len() => {
+            let num = |v: &V| matches!(v, V::Num(_) | V::Bool(_)).then(|| to_num(v));
+            xs.iter().zip(ys.iter()).filter_map(|(a, b)| num(a).zip(num(b))).unzip()
+        }
+        _ => (nums_of(std::slice::from_ref(x)), nums_of(std::slice::from_ref(y))),
+    }
+}
+
+/// `paired_nums` over a call's first two arguments.
+fn pair_args(a: &[V]) -> (Vec<f64>, Vec<f64>) {
+    paired_nums(arg(a, 0), arg(a, 1))
+}
+
 // ─── Order statistics ───────────────────────────────────────────────────────────
 
 fn finite_v(r: f64, inputs: &[f64]) -> V {
@@ -3325,14 +3343,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::SEM => aggregate(Stat::Sem, &nums_of(a)),
         F::CV => aggregate(Stat::Cv, &nums_of(a)),
         F::RMS => aggregate(Stat::Rms, &nums_of(a)),
-        F::CORREL | F::PEARSON => pearson(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), false),
-        F::RSQ => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
-        F::KENDALL => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        F::CORREL | F::PEARSON => {
+            let (x, y) = pair_args(a);
+            pearson(&x, &y, false)
+        }
+        F::RSQ => {
+            let (y, x) = pair_args(a);
+            pearson(&x, &y, true)
+        }
+        F::KENDALL => {
+            let (x, y) = pair_args(a);
+            kendall_tau(&x, &y)
+        }
         F::COVAR | F::COVARIANCE_P | F::COVARIANCE_S => {
-            covariance(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), arm == F::COVARIANCE_S)
+            let (x, y) = pair_args(a);
+            covariance(&x, &y, arm == F::COVARIANCE_S)
         }
         F::SLOPE | F::INTERCEPT | F::STEYX => {
-            regression(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), name)
+            let (y, x) = pair_args(a);
+            regression(&x, &y, name)
         }
         F::RANK | F::RANK_EQ | F::RANK_AVG => {
             let order = arg(a, 2);
@@ -4623,7 +4652,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::err(sol_error(ErrorCode::NotAvailable, "CONVERT: unknown or incompatible units")),
             }
         }
-        F::SPEARMAN => spearman(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        F::SPEARMAN => {
+            let (x, y) = pair_args(a);
+            spearman(&x, &y)
+        }
         F::FORECAST_LINEAR => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {

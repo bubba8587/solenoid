@@ -22,7 +22,8 @@ use solenoid_core::wire::column_to_wire;
 const UNIX_EPOCH_SERIAL: f64 = 25569.0;
 
 /// `folder/name` read whole: a Boolean column is logical, text is string, a `Date` or `Timestamp` is a date serial
-/// (a timestamp's time of day as the fraction), and any other column a number column when it casts to one.
+/// (a timestamp's time of day as the fraction), a dictionary its values' kind, and any other column a number column
+/// when every value casts to one. A column's kind comes from the schema, so an empty file keeps it.
 pub fn read(path: &Path) -> Result<FrameValue, SolError> {
     let file = File::open(path).map_err(|e| {
         sol_error(
@@ -39,7 +40,17 @@ pub fn read(path: &Path) -> Result<FrameValue, SolError> {
     let builder = ParquetRecordBatchReaderBuilder::try_new(file).map_err(|e| failed(&e))?;
     let schema = builder.schema().clone();
     let mut cells: Vec<Vec<FrameCell>> = vec![Vec::new(); schema.fields().len()];
-    let mut types = vec![FrameColType::Number; schema.fields().len()];
+    let mut types = schema
+        .fields()
+        .iter()
+        .map(|f| {
+            append_cells(
+                &mut Vec::new(),
+                &arrow_array::new_empty_array(f.data_type()),
+                f.name(),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     for batch in builder.build().map_err(|e| failed(&e))? {
         let batch = batch.map_err(|e| failed(&e))?;
         for (k, field) in schema.fields().iter().enumerate() {
@@ -73,6 +84,10 @@ fn append_cells(
         each(out, &|i| FrameCell::Num(f(i) + UNIX_EPOCH_SERIAL))
     };
     match a.data_type() {
+        DataType::Dictionary(_, value) => {
+            let a = arrow_cast::cast(a, value).map_err(|e| unreadable(name, &e))?;
+            append_cells(out, &a, name)
+        }
         DataType::Boolean => {
             let b = a.as_boolean();
             each(out, &|i| FrameCell::Bool(b.value(i)));
@@ -117,8 +132,12 @@ fn append_cells(
             Ok(FrameColType::Date)
         }
         _ => {
-            let n: ArrayRef =
-                arrow_cast::cast(a, &DataType::Float64).map_err(|e| unreadable(name, &e))?;
+            let strict = arrow_cast::CastOptions {
+                safe: false,
+                ..Default::default()
+            };
+            let n: ArrayRef = arrow_cast::cast_with_options(a, &DataType::Float64, &strict)
+                .map_err(|e| unreadable(name, &e))?;
             let f = n.as_primitive::<Float64Type>();
             out.extend((0..n.len()).map(|i| {
                 if n.is_null(i) {

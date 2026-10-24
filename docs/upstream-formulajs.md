@@ -1,12 +1,13 @@
 # Upstream candidates — Formula.js bugs we carry overrides for
 
-Ready-to-paste issue texts for `formulajs/formulajs` (verified against 4.6.1, 2026-08-23).
-These are the overrides in `excelFunctions.ts` whose reason is a genuine Formula.js
-defect against Excel — NOT Solenoid design choices (null-skip, `#AMBIGUOUS!`, DATE's
-literal year, the units system, number-only VALUE stay ours; see
-`../tree/specs/computation/formulajs-divergences.md`). Submitting is the author's call, from the author's account.
-An upstream fix changes nothing here: every override stays (the null/error contract needs
-it); `tripwireVendorDrift` is what tells us when the vendor catches up.
+Ready-to-paste issue texts for `formulajs/formulajs` (verified against 4.6.1, 2026-08-23):
+the divergences whose reason is a genuine Formula.js defect against Excel — NOT Solenoid
+design choices (null-skip, `#AMBIGUOUS!`, DATE's literal year, the units system,
+number-only VALUE stay ours; see `../tree/specs/computation/formulajs-divergences.md`).
+Formula.js is no longer a dependency: `crates/solenoid-core` ports it and answers these as
+Excel does, so an upstream fix changes nothing here. Submitting is the author's call, from
+the author's account. Each entry's "ours:" names the TypeScript fix the core's body was
+ported from.
 
 Per entry: title · repro (node, `import * as FX from "@formulajs/formulajs"`) · expected ·
 where our fix lives (the patch shape when it is a clean drop-in).

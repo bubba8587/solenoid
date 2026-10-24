@@ -36,11 +36,15 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - Answers change: the distribution kernels (`statrs`: more accurate, off Formula.js/jStat in the last digits) and Bessel (`libm`/`puruspe`: Formula.js's bessel.js is imprecise by design). Decide jStat parity vs accuracy ([[C14]] currentExcelParity).
 - [ ] **IronCalc as an Excel-parity test oracle** (`ironcalc_base`, MIT/Apache, builds for wasm): a dev-dependency to check PRICE, YIELD, the COUP* functions, WORKDAY and kin against Excel's answers without Excel. Not a runtime dependency (it follows Excel, not Formula.js).
 - [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
+- [ ] **A built `GraphEditor` is never freed**: `core.addPipe` hands the core JS closures, and wasm-bindgen keeps every JsValue the core holds in its module-level heap, so a closure (and every node, whose `listen` points back at the editor) keeps the editor, its core and the engine's cached outputs alive for good. Leaks a Composite's `internalEditor` on every load/undo/redo, each landing or scene mount, and every `HtmlCanvasLayer` effect's pipe. Needs a `dispose()` that frees the core at those sites (a weak dispatcher alone isn't enough: nodes hold the editor).
+- [ ] **Big files on desktop**: `read_parquet` (and CSV) send the whole table over IPC as JSON and then into wasm32 memory (4 GiB ceiling; running out traps, and every resident frame answers #REF! until reload). The Polars path kept the frame native behind a handle. Columnar IPC at least, and `../tree/specs/computation/rust-core.md` § Where it runs should state the size ceiling beside the speed one.
+- [ ] **Text left half-read after [[C131]] noTextGuessing**: pack bodies read text through `to_f64_js` and answer blank (SUNRISE, AWGWIRE, COLEBROOK, STANDARDATMOSPHERE; TRIANGLESOLVER solves a different triangle) where they should refuse; `ACCRINT`/`COUPDAYS` basis, `FORECAST.LINEAR` and `TRIMMEAN` answer #DOMAIN! for text where #VALUE! is meant; IRR/MIRR/XIRR/XNPV, CONVOLVE and SPECTRUM read a text cell as 0 (a third reading beside skip and refuse); the IM* family still reads `"2"` as 2 (author: list IM* as a text-form reader, or refuse).
+- [ ] **`UUID()` draws from `Math.random()`** (`fns_random.rs`) since a7ea3eb; the TS used `crypto.getRandomValues`, as the UUID card still does.
+- [ ] **Invariants deleted with their TS, not yet Rust tests** ([[D99]]): `surfaceFit.test.ts`'s thin-plate cases (exact interpolation, plane reproduction, a single point) for `fit_surface`, and `valueKinds.test.ts`'s Kleene tables (NOT included) and `cellShortCircuit` order.
 - [ ] **Card bodies still on the TS:** Note and Report (knap templating, async frame reads); `tree/specs/computation/node-bodies.md` lists what moved.
 - [ ] **The TS schedule engine** (`packages/schedule-engine`'s cpm, graph, calendar, diagnostics, mermaid, `writeMspdi`) is unused by the app now that Schedule, Gantt and Earned Value run on the core's port; only its own tests use it. Deleting it touches [[C69]] ganttPackages (an MIT package meant to publish on its own): the author's call. The MSPDI round trip and DCMA corpus tests would move onto the card first.
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 - [ ] **CLAUDE.md still routes "a `registerInternal` override"** to `tree/specs/computation/formulajs-divergences.md`; the registry is gone (the core's `route` and `data/call_traits.json`). The author's file: reword the pointer to "before changing a function whose answer differs from Formula.js's".
-- [ ] **Rust doc comments name the TS they were ported from** (`gridAxes` (mathUtils.ts), `fillGrid`), and those TS functions are gone. Reword them as the Rust's own when a module is next touched.
 - [ ] **A big frame crosses the card wire as JSON** ([[node-bodies]]): a million-row, five-column answer is about 130 MB of text and takes a few seconds both ways. The columnar hand-off frames already use (`binary.rs`, `wasmReadBin`) would make it a copy.
 - [ ] **The graph's next step ([[D102]] graphOnCore), phase C:** the graph calls the card bodies on the core with no JavaScript hop, so a pass stops crossing into JS per node. What blocks it: `../tree/specs/computation/graph-core.md` § What blocks phase C.
 - [ ] **Clippy in CI denies dead code**, so a helper that lands a commit before its caller turns `engine-test.yml` red. Decide: keep it strict, or add `-A dead_code` to the two clippy lines.
@@ -182,8 +186,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
 - [ ] **Schedule row faults vs [[C70]] oneScheduleRule (author to rule):** C70 says a per-row fault (a bad
-  Duration, an unparseable date) stays on its row, but `scheduleCpm.ts` throws on every fault and the whole
-  run is one `#VALUE!` on all outputs. Either the code grows a per-row path or C70's line changes.
+  Duration, an unparseable date) stays on its row, but the Schedule card's reader (`read_level` in
+  `crates/solenoid-core/src/nodes/sched.rs`) fails on every fault and the whole run is one `#VALUE!` on all
+  outputs. Either the code grows a per-row path or C70's line changes.
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.

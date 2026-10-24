@@ -286,7 +286,11 @@ pub fn call(name: &str, a: &[V]) -> V {
             opt(if name == "ANOVA" { anova_p(&groups) } else { kruskal_p(&groups) })
         }
         "MANNWHITNEY" | "WILCOXON" | "KSTEST" => {
-            let (x, y) = (nums_of(std::slice::from_ref(arg(a, 0))), nums_of(std::slice::from_ref(arg(a, 1))));
+            let (x, y) = if name == "WILCOXON" {
+                crate::excel_functions::paired_nums(arg(a, 0), arg(a, 1))
+            } else {
+                (nums_of(std::slice::from_ref(arg(a, 0))), nums_of(std::slice::from_ref(arg(a, 1))))
+            };
             opt(match name {
                 "MANNWHITNEY" => mann_whitney_p(&x, &y),
                 "WILCOXON" => wilcoxon_p(&x, &y),
