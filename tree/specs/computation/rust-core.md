@@ -48,29 +48,32 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
 
 ## Tracking develop
 
-Pinned upstream: `develop` @ `31ce0f7`.
+Pinned upstream: `develop` @ `c7da52b`.
 
-`develop` still runs the TypeScript copies this branch deleted. On each rebase, list what moved in them, port each
-change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back: the TS
-copies here are gone.
+`develop` still runs the TypeScript copies this branch deleted. On each merge of `develop`, list what moved in them,
+port each change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back:
+the TS copies here are gone, and a file this branch deleted stays deleted. A change to a card's `data()` in
+`src/graph/nodes/` ports into its body on the core ([[node-bodies]]), and a new card or computation lands there too.
 
 ```
-git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
+git diff c7da52b..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
   src/graph/valueKinds.ts src/graph/stringOrder.ts src/graph/unitValue.ts src/graph/pivotLayout.ts \
   src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
   src/graph/computedColumnCore.ts src/graph/formulaExtensions.ts src/graph/packs src/graph/nodes/statsOps.ts \
   src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
   src/graph/nodes/textOps.ts src/graph/csv.ts src/graph/financeUnits.ts src/graph/nodes/settleOps.ts \
   src/graph/nodes/payoffOps.ts src/graph/nodes/financeOps.ts src/graph/nodes/listOps.ts src/graph/nodes/fitOps.ts \
-  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts fixtures/frame-verbs
+  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts src/graph/describeProfile.ts \
+  src/graph/nodes/visualOps.ts fixtures/frame-verbs
 ```
 
 A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
 
-Moved on develop since the pin (checked at `3a6a667`): nothing in the files above that isn't mirrored. The last were
-the finance functions' currency ([[D101]] financeCarriesMoney, `finance_units.rs`) and PIVOTBY's `details` ([[C128]]
-pivotDetails): the core's layout gives each leaf row its source rows and carries the Details columns, whose formats
-the TS lends from the frame the pivot read (`adoptPivot`).
+The last merge (`c7da52b`, 2026-10-24) found every formula, card and verb fix already mirrored; most began on this
+branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as is), and Describe's Dashboard tiles
+([[C129]] describeDashboard), a TS profile on develop (`describeProfile.ts`) that here is Describe's body on the core
+(`describe_tiles`, `nodes/frames.rs`): shown as `describeTiles` and kept beside the summary frame by the class's
+`coreWatched`.
 
 ## What runs on the core
 

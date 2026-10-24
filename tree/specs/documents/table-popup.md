@@ -236,9 +236,9 @@ A PIVOTBY output opens on the Pivot view ([[C127]] pivotView): the frame drawn a
 
 A Describe output opens on the Dashboard view ([[C129]] describeDashboard): one tile per column of the frame Describe read. The summary frame is unchanged; Grid, Cards and CSV show it as it is, and Copy and Export copy it.
 
-**The tiles.** Describe's pass builds them beside its summary (`withDescribeTiles`, `describeProfile.ts`), kept in a side table keyed by the summary frame (`describeTilesOf`, on the shared `frameSidecar`, which also carries them through a format stamp's copy and refuses them once the row count no longer matches). Each tile takes its counts from the summary row and adds what its charts draw, in one pass over the column:
+**The tiles.** Describe's body on the core builds them beside its summary (`describe_tiles`, `nodes/frames.rs`) and shows them as `describeTiles`; the class's `coreWatched` keeps them in a side table keyed by the summary frame (`setDescribeTiles`, `describeTilesOf`, `describeProfile.ts`, on the shared `frameSidecar`, which also carries them through a format stamp's copy and refuses them once the row count no longer matches). Each tile takes its counts from the summary row and adds what its charts draw, in one pass over the column:
 
-- **A number column** with more than six distinct values: a histogram of equal-width bins (Sturges' count, kept between 5 and 20, `binCount`), its least and greatest values under it, a line of its values in row order averaged into the sparkline's buckets past 40 points (`sparklineSeries`), and its mean and median. With six or fewer distinct values it lists them as a text column does, with the mean and median under them.
+- **A number column** with more than six distinct values: a histogram of equal-width bins (Sturges' count, kept between 5 and 20), its least and greatest values under it, a line of its values in row order averaged into 40 buckets past 40 points, and its mean and median. With six or fewer distinct values it lists them as a text column does, with the mean and median under them.
 - **A date column:** the histogram over its span, with its earliest and latest dates.
 - **A text or logical column:** its five most common values, most first and ties by name, each with a bar scaled to the first and its count, and a line counting the rows that hold any other value.
 

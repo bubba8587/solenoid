@@ -73,12 +73,11 @@ specific item.
   `wrapNodeData`, `installInputCoercion` and `seedLoopErrors` are gone; tests drive one node through
   `boundaryKit.ts`. Per-cell crossings had made a 100k list 25 ms; `cellKinds` (one call per array) brought it to
   1.3 ms, under the TS's 4.9. What blocks phase C is [[graph-core]] § What blocks phase C.
-- **Develop mirrored to `3a6a667`** in the files the core ports: the finance functions carry their money's currency
-  ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's
-  dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the
-  computed-column port and the core didn't; both now do, refrozen with finance calls in the generator. Develop's UI
-  work since the snapshot (charts, the Describe Dashboard, Pele) is not on this branch. Pivot details ([[C128]]) came
-  over with their UI and run on the core: its layout gives each leaf row its source rows.
+- **Develop merged at `c7da52b`** (2026-10-24, [[rust-core]] § Tracking develop): every formula, card and verb fix
+  it carried was mirrored already. Pele draws Mermaid in place of mermaid.js (about 4 MB of lazy chunks gone), and
+  Describe's Dashboard ([[C129]] describeDashboard) runs its tiles in Describe's body on the core, `DescribeNode`
+  refrozen with them. Earlier mirrors: the finance functions' currency ([[D101]] financeCarriesMoney,
+  `finance_units.rs`) and Pivot details ([[C128]]), whose layout gives each leaf row its source rows on the core.
 - **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
   unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
   frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.
