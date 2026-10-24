@@ -37,3 +37,19 @@ jobs:
       # commit of this repo with this command; keep it building here first.
       - name: Build the Obsidian plugin
         run: npm run plugin:build
+
+  # Vercel's build: a fresh install on Node 24 (npm 11 leaves optional peers out), then `npm run build`.
+  vercel-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install JS dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build the site
+        run: npm run build
