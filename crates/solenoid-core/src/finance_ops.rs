@@ -83,9 +83,21 @@ pub fn coupon_date(anchor: Date, months: f64) -> Date {
     utc(y, m + months + 1.0, 0.0)
 }
 
+/// A count of coupons back from `maturity` that still lands after `after`, near the first that doesn't: walking from
+/// there instead of from 0 keeps a maturity centuries out from costing a walk over every coupon in between.
+fn coupons_back_start(after: Date, maturity: Date, step: f64) -> f64 {
+    const MS_PER_MONTH: f64 = MS_PER_DAY * 365.2425 / 12.0;
+    let guess = ((maturity - after) / MS_PER_MONTH / step).floor() - 2.0;
+    let mut k = if guess.is_finite() { math_max(0.0, guess) } else { 0.0 };
+    while k > 0.0 && coupon_date(maturity, -k * step) <= after {
+        k -= 1.0;
+    }
+    k
+}
+
 pub fn coup_dates(settle: Date, maturity: Date, freq: f64) -> (Date, Date) {
     let step = 12.0 / freq;
-    let mut k = 0.0;
+    let mut k = coupons_back_start(settle, maturity, step);
     while coupon_date(maturity, -k * step) > settle {
         k += 1.0;
     }
@@ -193,7 +205,7 @@ pub fn solve_yield(price_at: impl Fn(f64) -> f64, target: f64, coupon_rate: f64)
 
 pub fn bond_coupon_count(next: Date, maturity: Date, freq: f64) -> f64 {
     let step = 12.0 / freq;
-    let mut n = 0.0;
+    let mut n = coupons_back_start(next - 1.0, maturity, step);
     while coupon_date(maturity, -n * step) >= next {
         n += 1.0;
     }

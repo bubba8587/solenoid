@@ -585,6 +585,35 @@ fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
     }
 }
 
+/// Calls nested in one evaluation, a LAMBDA calling itself included. Past `MAX_CALL_DEPTH` the call answers an error
+/// rather than overflowing the stack, which in wasm traps the whole module.
+struct CallDepth;
+
+const MAX_CALL_DEPTH: u32 = 500;
+
+thread_local! {
+    static CALL_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+impl CallDepth {
+    fn enter() -> Option<CallDepth> {
+        CALL_DEPTH.with(|d| (d.get() < MAX_CALL_DEPTH).then(|| d.set(d.get() + 1)).map(|()| CallDepth))
+    }
+
+    fn too_deep() -> V {
+        V::err(sol_error(
+            ErrorCode::Overflow,
+            "This formula nests calls more than 500 deep, for example a LAMBDA that keeps calling itself",
+        ))
+    }
+}
+
+impl Drop for CallDepth {
+    fn drop(&mut self) {
+        CALL_DEPTH.with(|d| d.set(d.get() - 1));
+    }
+}
+
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
@@ -746,6 +775,7 @@ impl Eval<'_> {
                 op2(*op, &l, &r)
             }
             Ast::Apply { func, args } => {
+                let Some(_depth) = CallDepth::enter() else { return CallDepth::too_deep() };
                 let f = self.eval(func, env);
                 if f.is_err() {
                     return f;
@@ -766,7 +796,10 @@ impl Eval<'_> {
                 }
                 self.call_lambda(&lam, &argv)
             }
-            Ast::Call { name: raw, args } => self.call(raw, args, env),
+            Ast::Call { name: raw, args } => match CallDepth::enter() {
+                Some(_depth) => self.call(raw, args, env),
+                None => CallDepth::too_deep(),
+            },
         }
     }
 
@@ -1232,15 +1265,16 @@ impl Eval<'_> {
                 if absent(&arg(0)) || absent(&arg(1)) {
                     return V::Null;
                 }
-                // JS's Math.max: NaN stays NaN, so a NaN side passes the cap and builds nothing.
+                // JS's Math.max: NaN stays NaN, so a NaN side builds nothing along it.
                 let js_max = |a: f64, b: f64| if a.is_nan() { a } else { a.max(b) };
                 if crate::excel_functions::holds_text(&arg(0)) || crate::excel_functions::holds_text(&arg(1)) {
                     return crate::excel_functions::value_err("MAKEARRAY");
                 }
                 let side = |v: &V| js_max(js_unary(v).floor(), 0.0);
                 let (r, c) = (side(&arg(0)), side(&arg(1)));
-                // Each side counts as at least one, so a zero side can't hide a huge other one.
-                let cells = js_max(r, 1.0) * js_max(c, 1.0);
+                // Each side counts as at least one, so a zero or NaN side can't hide a huge other one.
+                let at_least_one = |x: f64| if x.is_nan() { 1.0 } else { x.max(1.0) };
+                let cells = at_least_one(r) * at_least_one(c);
                 if cells > MAX_GENERATED {
                     return V::err(sol_error(
                         ErrorCode::Overflow,

@@ -203,6 +203,9 @@ fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
 }
 
 fn as_numeric(m: &Mat) -> Result<NumMat, V> {
+    if m.iter().any(|row| row.len() != mat_cols(m)) {
+        return Err(err(ErrorCode::Shape, "This matrix operation needs every row the same width"));
+    }
     let mut out = Vec::with_capacity(m.len());
     for row in m {
         let mut r = Vec::with_capacity(row.len());

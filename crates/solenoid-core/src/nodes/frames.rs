@@ -5,6 +5,7 @@
 use super::stats::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{ErrorCode, SolError};
+use crate::eval::MAX_GENERATED;
 use crate::excel_functions::V;
 use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{agg_unit, agg_unit_plan, aggregate_group, AggOp};
@@ -167,9 +168,6 @@ pub(crate) fn first(c: &Call, key: &str) -> V {
     super::stats::first(c, key)
 }
 
-/// A frame's `V8` array cap: a body that builds a longer array throws as JS does.
-const MAX_ARRAY: f64 = 134_217_725.0;
-
 fn number_or_nan(v: &V) -> f64 {
     if let V::Num(n) = v {
         *n
@@ -321,8 +319,9 @@ fn ets_forecast(c: &mut Call) -> Answer {
     let fit =
         crate::fns_lists::fit_ets(&y, m).or_else(|| if m > 1.0 { crate::fns_lists::fit_ets(&y, 1.0) } else { None });
     let Some(fit) = fit else { return blank(c, V::Null) };
-    if h > MAX_ARRAY {
-        return Err(thrown("Invalid array length"));
+    if h > MAX_GENERATED {
+        let msg = format!("A horizon of {} steps exceeds the 1000000 element limit", crate::jsnum::number_to_string(h));
+        return Err(err(ErrorCode::Overflow, msg));
     }
     let steps = if h.is_nan() { 0 } else { h as usize };
     let z = crate::dists::norm_s_inv(0.5 + 0.95 / 2.0);

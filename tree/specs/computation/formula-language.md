@@ -147,6 +147,8 @@ A function's arity lives in the TS (`FUNCTION_ARITY`, `excelFunctions.ts`) for t
 
 The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements) and answers `#OVERFLOW!` past it. The 2-D builders (EXPAND, MUNIT, DIAGONAL, OUTER) apply the same limit to their cell count, and the cards call the same bodies, so the card and the formula refuse together. **One function, one limit** ([[C17]] shareImpl): a formula never generates more values than the matching node allows, rather than quietly allowing more. On a node the count is a spinner the user watches; in a formula one typo can ask for ten million values with nothing on screen to stop it.
 
+Nesting has limits too, so no formula can overflow the stack (a stack overflow in wasm traps the whole module): a formula nested more than 400 deep, in parentheses, argument lists, unary operators or the depth of its tree (a flat sum of 400 terms is 400 deep), doesn't parse (`MAX_DEPTH`, `excel_formula.rs`), and calls nested more than 500 deep in one evaluation, a LAMBDA that keeps calling itself included, answer `#OVERFLOW!` (`MAX_CALL_DEPTH`, `eval.rs`).
+
 ### Blocked and wrong-surface names
 
 Four tables name functions a formula refuses. Each refusal happens before any argument is evaluated, so a blocked name over a list answers one error, never a list of them ([[#Blocked and wrong-surface names]]).

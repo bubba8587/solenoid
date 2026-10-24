@@ -4993,8 +4993,9 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
         return V::Num(if hit { 1.0 } else { 0.0 });
     }
     let mut sum = 0.0;
-    let mut k = lo;
-    while k <= hi {
+    // An integer count: past 2^53, `k += 1.0` stops moving and the loop never ends.
+    for step in 0..=(hi - lo) as u64 {
+        let k = lo + step as f64;
         let c = combinations(n, k);
         sum += if c.is_finite() {
             c * js_pow(p, k) * js_pow(1.0 - p, n - k)
@@ -5003,7 +5004,6 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
                 crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p),
             )
         };
-        k += 1.0;
     }
     V::Num(sum)
 }
@@ -5026,13 +5026,11 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     }
     let p_obs = pmf(a);
     let mut p = 0.0;
-    let mut x = lo;
-    while x <= hi {
-        let px = pmf(x);
+    for step in 0..=(hi - lo) as u64 {
+        let px = pmf(lo + step as f64);
         if px <= p_obs * (1.0 + 1e-7) {
             p += px;
         }
-        x += 1.0;
     }
     Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
