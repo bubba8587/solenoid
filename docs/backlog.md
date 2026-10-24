@@ -42,7 +42,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **CLAUDE.md still routes "a `registerInternal` override"** to `tree/specs/computation/formulajs-divergences.md`; the registry is gone (the core's `route` and `data/call_traits.json`). The author's file: reword the pointer to "before changing a function whose answer differs from Formula.js's".
 - [ ] **Rust doc comments name the TS they were ported from** (`gridAxes` (mathUtils.ts), `fillGrid`), and those TS functions are gone. Reword them as the Rust's own when a module is next touched.
 - [ ] **A big frame crosses the card wire as JSON** ([[node-bodies]]): a million-row, five-column answer is about 130 MB of text and takes a few seconds both ways. The columnar hand-off frames already use (`binary.rs`, `wasmReadBin`) would make it a copy.
-- [ ] **The graph's next steps ([[D102]] graphOnCore):** the rete `NodeEditor` itself (the model the engine mirrors), then node `data()` bodies family by family, so a pass stops crossing into JS per node.
 - [ ] **Clippy in CI denies dead code**, so a helper that lands a commit before its caller turns `engine-test.yml` red. Decide: keep it strict, or add `-A dead_code` to the two clippy lines.
 - [ ] **`V` carries `Frame`, `Cube` and `Json`**, which only card bodies make or read, so every formula body matches them (`V::Frame(_) | V::Cube(_) | V::Json(_) => NaN`) and the type admits a frame where [[C15]] matricesInFormulas says none goes. A card value (`enum Card { V(V), Frame(..), Cube(..), Json(..) }`) for `nodes/` would leave `V` the formula's value.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
@@ -182,8 +181,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
 - [ ] **Schedule row faults vs [[C70]] oneScheduleRule (author to rule):** C70 says a per-row fault (a bad
-  Duration, an unparseable date) stays on its row, but `scheduleCpm.ts` throws on every fault and the whole
-  run is one `#VALUE!` on all outputs. Either the code grows a per-row path or C70's line changes.
+  Duration, an unparseable date) stays on its row, but the Schedule card's reader (`read_level` in
+  `crates/solenoid-core/src/nodes/sched.rs`) fails on every fault and the whole run is one `#VALUE!` on all
+  outputs. Either the code grows a per-row path or C70's line changes.
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.

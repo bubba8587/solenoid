@@ -21,10 +21,11 @@ owns how the model and the engine are hosted.
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
-  app's first render waits for `loadGraphEngine()` with no deadline (`main.tsx`); creating an engine before it loads
-  throws. Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at `graphWasmUrl` and calls
-  `loadGraphEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every script that imports
-  the app).
+  app's first render waits for `loadGraphEngine()` with no deadline (`main.tsx`). An editor or engine made before it
+  loads is fine, since the core is built on first use (`GraphEditor.core()`); the first edit then rejects with "the
+  graph engine isn't loaded". Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at
+  `graphWasmUrl` and calls `loadGraphEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like
+  every script that imports the app).
 
 ## The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)
 
@@ -53,11 +54,12 @@ owns how the model and the engine are hosted.
   already there; the engine sits where `use(engine)` was called. The core calls each pipe with `{ type, data }`, `data`
   being the node's or cable's JavaScript object, for `nodecreate`, `nodecreated`, `noderemove`, `noderemoved`,
   `connectioncreate`, `connectioncreated`, `connectionremove`, `connectionremoved`, `clear`, `clearcancelled` and
-  `cleared`, in rete's order (`clear` removes every cable, then every node, one signal each). A pipe returns the
-  context to go on; returning nothing stops the chain, which on a present-tense signal cancels the change (the edit
-  answers `false`, and a cancelled `clear` signals `clearcancelled`). A pipe that throws stops the chain and the edit
-  rejects with what it threw. Pipes are synchronous. The handle's own pipe is the first, so `getNode(id)` answers in a
-  `nodecreated` pipe and not in a `nodecreate` one, as rete's did.
+  `cleared`, in rete's order (`clear` removes every cable, then every node, one signal each). Each pipe gets a fresh
+  `{ type, data }`: what a pipe returns is never passed on, only whether it returned something. Returning anything
+  goes on; returning nothing (`undefined` or `null`) stops the chain, which on a present-tense signal cancels the
+  change (the edit answers `false`, and a cancelled `clear` signals `clearcancelled`). A pipe that throws stops the
+  chain and the edit rejects with what it threw. Pipes are synchronous. The handle's own pipe is the first, so
+  `getNode(id)` answers in a `nodecreated` pipe and not in a `nodecreate` one, as rete's did.
 - **Edits finish before they return.** `addNode` and the other edits return promises, as rete's did, but the change
   and all its signals have run when the call returns, where rete's landed a microtask or more later.
 - Rete's errors keep their messages: adding an id twice ("node has already been added"), removing a missing node or

@@ -74,14 +74,14 @@ Lists, matrices and Frames carry three distinct kinds besides values ([[C24]] ar
 
 A condition that is a tagged error at scalar level (÷0 is `#DIV/0!`, a domain miss is `#DOMAIN!`, overflow is `#OVERFLOW!`) is the same tag inside a list, per cell. No node may collapse a per-item error to NaN or null.
 
-- The mechanism is `broadcastErr`, the sibling of `broadcast` in `nodes/shared.ts`. Its element function may return a `SolError`, and the call site maps the producer's domain-`null` sentinel through `?? errFactory()`.
-- Arithmetic, Math (MathFn), TwoInputMath (LOG), Standardize and Fisher use `broadcastErr`; Convert gets the same behavior through `broadcastUnit`.
-- `broadcast` doesn't collapse to NaN either: every result passes `guardFinite`, so a NaN result is `#DOMAIN!` per cell. Only an explicit function returning null stays blank.
+- The mechanism is `broadcast_err` (`crates/solenoid-core/src/nodes/kit.rs`), over `each`, the item loop every broadcaster shares. Its element function may answer an error value.
+- Arithmetic, Math (MathFn), TwoInputMath (LOG), Standardize and Fisher use `broadcast_err`; Convert gets the same behavior through `broadcast_unit` (`nodes/units.rs`).
+- The `broadcast` form (`broadcast_num` in `nodes/scalar.rs`, with its own copies in `nodes/date.rs` and `nodes/docs.rs`) doesn't collapse to NaN either: every result passes `guard_finite`, so a NaN result is `#DOMAIN!` per cell. Only an explicit function returning null stays blank.
 - A whole-node error, like Convert's incommensurable unit pick ([[C25]] firstClassUnits), stays a single value at every rank.
 
 ### The per-cell contract and the non-finite guard
 
-One rule per output cell, decided before the op, is built into every element-wise broadcaster (`shared.ts` `broadcast`, `broadcastErr`, `broadcastCells` and `broadcastUnit`; `excelFormula.ts` `broadcastCall` and the operators; `logic.ts` `broadcastEl`):
+One rule per output cell, decided before the op, is built into every element-wise broadcaster (`broadcast_err`, the `broadcast` copies and `broadcast_unit` under `crates/solenoid-core/src/nodes/`; `eval.rs` `broadcast_call` and the operators; `nodes/logic.rs` `broadcast_el`):
 
 1. a `SolError` operand gives that error unchanged, the first in argument order;
 2. otherwise a `null` operand gives `null`;
@@ -89,9 +89,9 @@ One rule per output cell, decided before the op, is built into every element-wis
 
 **Error beats missing.** When a cell is both an error and missing, the error wins and passes on unchanged; it never turns into text, NaN, or `[object Object]`. Of the two, the error is the one the user must see: checking for missing first would drop the error or stringify it, and a real failure would show up as a blank. The same order binds a node that reads its settings and inspects a list for errors ([[input-roles]], "Where the check goes").
 
-Every broadcaster zips ragged lists to the longest, and a padded position is `null`. `broadcastCells` is the broadcaster for the non-numeric families: text operands are mixed and the result is often another family, so it opens up the element type (`string | number | boolean`) and is overloaded by arity so each call site keeps precise operand types.
+Every broadcaster zips ragged lists to the longest, and a padded position is `null`. The non-numeric families (text, whose result is often another family) use `broadcast_err` too: its body may answer any value, and only a number goes through the guard.
 
-The shared helpers are `cellShortCircuit` (the full rule) and `cellError` (errors only, for the Kleene logic family, which feeds `null` to its own function) in `valueKinds.ts`. So a list cell behaves exactly like a scalar or a ragged pad: `[1, #DIV/0!, 3] + 10` keeps the error, and `[1, null, 3] + 10` gives `[11, null, 13]`. `broadcastCall` skips the null short-circuit for the `NULL_INSPECTING` predicates (ISBLANK, ISNUMBER…) that need to see the blank.
+The shared helper is `short_circuit` (`nodes/kit.rs`, the full rule); the Kleene logic family's `broadcast_el` checks errors only and feeds `null` to its own function. So a list cell behaves exactly like a scalar or a ragged pad: `[1, #DIV/0!, 3] + 10` keeps the error, and `[1, null, 3] + 10` gives `[11, null, 13]`. `broadcast_call` skips the null short-circuit for the predicates whose traits say `inspects_null` (ISBLANK, ISNUMBER…), which need to see the blank.
 
 **`guardFinite`** (`valueKinds.ts`) means a computation never yields a bare NaN or Infinity. Per result, and aware of its inputs:
 
@@ -114,7 +114,7 @@ It runs at the producing op, so Expression's `tagResult` trusts it. The guarded 
 - **matrix:** singular → `#DIV/0!`; non-conformable or non-square → `#SHAPE!`.
 - **list:** INDEX out of range → `#REF!`.
 
-The only deliberate null-on-failure sentinels left are the discrete-distribution pmf and cdf helpers (`dist-discrete.ts`), where an argument outside the support is blank by design, not a failed computation. A `broadcast` or `.map` over a list keeps per-item `null`s; only a scalar result becomes a `SolError`. `Displayable` (`standardNode.tsx`) includes `SolError`, so a producer using `makeNodeComponent((n) => n.cachedResult)` renders the badge with no extra work.
+The only deliberate null-on-failure sentinels left are the discrete-distribution pmf and cdf helpers (`binom_pmf`, `binom_cdf`, `hypgeom_pmf` in `crates/solenoid-core/src/dists.rs`), where an argument outside the support is blank by design, not a failed computation. A `broadcast` or `.map` over a list keeps per-item `null`s; only a scalar result becomes a `SolError`. `Displayable` (`standardNode.tsx`) includes `SolError`, so a producer using `makeNodeComponent((n) => n.cachedResult)` renders the badge with no extra work.
 
 ## Detect and recover: one notion of error
 
@@ -122,14 +122,14 @@ Detection and recovery form a 2 × 2 over missing (`null`) and error (`SolError`
 
 | | missing | error |
 |---|---|---|
-| **detect** | ISNULL (per cell, deep, `isMissing`) | ISERROR (`isSolError`), ISNA (`isNaError`) |
+| **detect** | ISNULL (per cell, deep, `isMissing`) | ISERROR (`isSolError`), ISNA |
 | **recover** | Fill (`FillNode`: constant, ffill, bfill, mean, median, mode, interpolate, drop, coalesce) | IFERROR, IFNA (per cell) |
 
 There is one kind of error, never two. With two notions, ISERROR and IFERROR would disagree about the same cell, and a not-a-number counted as an error in one place and as a number in another is a wrong answer nobody sees. These must hold across all of them:
 
 1. A tagged `SolError` is the only definition of an error, so ISERROR and IFERROR agree exactly (`isSolError`). A bare NaN is not an error; `guardFinite` classifies non-finite results first, so an untagged NaN never reaches these nodes.
 2. A `null` is not an error in any of them. It passes through IFERROR and IFNA, and it is what Fill targets. A real "not found" is a tagged `#N/A` (XLOOKUP, for one), not `null`.
-3. The `#N/A` test lives in one place, `isNaError` (`errorValue.ts`), shared by ISNA and IFNA so they can't drift.
+3. The `#N/A` test lives in one place, the `IFNA | ISNA` arm of `error_handler` (`crates/solenoid-core/src/excel_functions.rs`), shared by ISNA and IFNA so they can't drift.
 4. An error consumer reading a wired input that may be `null` uses `readInput`, never `inputs.x?.[0] ?? literal`, which treats a delivered `null` as absent and hides the missing cell.
 
 Fill and IFERROR split cleanly: Fill never touches errors and IFERROR never touches null. Fill's `coalesce` op is IFERROR's shape applied to `null`. Coalesce takes any number of inputs: FillNode's Else rows are extensible (`e0`, `e1`… with CHOOSE-style `valueKeys` round-tripping), the first present value of the List and then each Else wins per position, and a typed literal on an unwired Else row is a last-resort constant, broadcast.
@@ -163,7 +163,7 @@ An input node never rewrites what you type. Storage and computed value are separ
 - **Frame Input** stores a raw `FrameSource` in `frameText`: per column `{name, type, cells: string[]}`, plus the column-source fields `unit?` and `expr?`, exactly as typed. `deriveFrame` produces the typed `FrameValue` (booleans, date serials) at compute time through `coerceFrameCell`, which shares `coerceLogical`. `parseFrameSource` and `frameSourceToText` load and store, and `frameFromInputText = deriveFrame ∘ parseFrameSource`. Old typed-`values` JSON and legacy CSV still parse, with cells kept raw.
 - **Computed columns.** A column may be computed from an inline `expr`, which calls a wired λ by its socket name ([[literal-input-editors]]). `FrameInputNode.data()` derives computed columns in dependency order, refuses cycles (`#REF!` "Circular computed columns"), caches by identity (`_computedFrom`), and carries the source unit onto the derived column. The row rules (a bare name is the whole column, `@` is this row, bracket references; [[C22]] rowFormulaRefs) live on the core (`eval::column`), so this surface and the Computed Column node can't disagree. The popup edits definitions through the live-commit seam (`tablePopupStore` `SourceCommitRefresh` / `onCommitSource`): a blur or pick recomputes through the real engine and refreshes the open popup.
 - **`FrameColumn.raw?: string[]`** carries each cell's typed text, before inference, for source Frames. `inferColumn` fills it, so every CSV, Web and Import Frame has it, and `deriveFrame` carries Frame Input's cells. **Keep `raw` row-aligned:** a transform that changes a column's rows or values drops or remaps `raw`. The Slicer and Get Row remap it to the surviving or picked rows; the relational verbs that move or rewrite cells, and Add Column's replace, drop it ([[frame-verbs]]). A stale `raw` misaligns the Source view.
-- **Table Input** uses the same model. `tableText` is raw text, and `tableRawCells` / `deriveTable` (`matrix.ts`) derive the typed matrix through the same `coerceFrameCell` (blank → null, a bad number or date → NaN, a bad logical → null). The grid popup edits raw cells through the lean `onSaveRaw` mode, never a parse-and-serialize round trip. One `dataType` SegToggle (number, text, date, logical) retypes the output socket in place (`retypeOutputCables`).
+- **Table Input** uses the same model. `tableText` is raw text, and `table_raw_cells` and `table_input` (`crates/solenoid-core/src/nodes/matrix.rs`) derive the typed matrix through `frame_cell_of`, the core's `coerceFrameCell` (blank → null, a bad number or date → NaN, a bad logical → null). The grid popup edits raw cells through the lean `onSaveRaw` mode, never a parse-and-serialize round trip. One `dataType` SegToggle (number, text, date, logical) retypes the output socket in place (`retypeOutputCables`).
 
 The popup's Source and Formatted views, the Form view's fields, the cell affixes and suggestions, and the CSV view's rules are in [[table-popup]].
 

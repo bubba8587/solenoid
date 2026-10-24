@@ -61,10 +61,10 @@ specific item.
   (`FREEZE_NODES=1`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/`), frames, cubes and charts included (the
   card wire, `nodeWire.ts`). The core now loads in every test file and the app waits for it. The display-unit
   catalog runs in Rust too (`unit_catalog.rs`). Molar Mass answered a list with a JS TypeError; it says `#VALUE!`.
-- **The graph moved onto the core** ([[D102]] graphOnCore; mechanics [[graph-core]]): `rete-engine` is gone.
-  The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in Rust on Ruggine
-  (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it), mirroring the rete
-  editor, which stays the model for now. The nodes stay JS objects the core calls back. About 2x rete-engine on a
+- **The graph moved onto the core** ([[D102]] graphOnCore; mechanics [[graph-core]]): `rete` and `rete-engine` are
+  gone. The model, the dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in
+  Rust on Ruggine (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it); the
+  app holds the model through `GraphEditor` (`graphEditor.ts`). The nodes stay JS objects the core calls back. About 2x rete-engine on a
   1,232-node pass. Ruggine's engines gained `with_configure` for any node type to make this possible.
 - **Develop mirrored to `3a6a667`** in the files the core ports: the finance functions carry their money's currency
   ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's

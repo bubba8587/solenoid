@@ -308,7 +308,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     return () => { offRebuildEnd(); Object.assign(s.handlers, idleHandlers()); };
   }, [s, setViewport, syncTopology]);
 
-  // editor.addPipe cannot be removed, so this pipe installs once per stack.
   useEffect(() => {
     if (s.absorbPipeInstalled) return;
     s.absorbPipeInstalled = true;

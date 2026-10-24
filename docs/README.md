@@ -44,9 +44,8 @@ is parked there.
   integrating it, each with the workaround it would retire, re-verified on every
   bump. The list to file upstream.
 - **`../tree/specs/computation/formulajs-divergences.md`** — where Solenoid answers otherwise
-  than Formula.js did, and why. Read before changing one of those functions; an
-  override or widening the fallthrough; the library being wrong is the whole
-  reason the override exists.
+  than Formula.js did, and why. Read before changing one of those functions: the
+  library being wrong is the whole reason the core's answer differs from its.
 - **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
   the declaration, generated name lists, one implementation per gating metric, `every` for
   completeness, the graph-free formula path, lazy heavy libraries.
@@ -109,6 +108,8 @@ is parked there.
   a landed finding deletes its block, as a backlog line would.
 - **`settings-audit.md`** — the settings sweep's proposed roles for review ([[D86]] blankRoles); archived once
   the sweep lands.
+- **`audits/crate-audit-2026-10.md`** — the 2026-10-23 crate audit: each hand-written core module
+  against the crate that could replace it, compared bit for bit; the evidence for the backlog's crate items.
 - Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
   `archive/1.2-plan.md` (the 1.2 build queue, executed).
 
@@ -175,7 +176,7 @@ results get retried and settled rulings relapse.
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts`, the pack kernels (`astroOps.ts`, `chemistryOps.ts`, `electricalOps.ts`, `emSpectrumOps.ts`, `fluidsOps.ts`, `healthOps.ts`, `physicsConstantsOps.ts`, `thermoOps.ts`, `triangleOps.ts`), `packs/*Formulas.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces) |
 | `crates/solenoid-core/src/nodes/columns.rs`, `ComputedColumnNode`, Frame Input and Cube Input Fx columns | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; `../tree/specs/computation/computed-columns.md` |
 | Cube Input's typed columns (`cubeSourceColumns`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
-| `SPARKLINE` (`sparklineImage` in `nodes/visualOps.ts`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
+| `SPARKLINE` (`sparkline` in `crates/solenoid-core/src/fns_lists.rs`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
 | `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts`, `graphWasm/` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |

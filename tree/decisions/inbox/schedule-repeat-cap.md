@@ -13,7 +13,7 @@ A Repeat count above a fixed cap makes that row `#OVERFLOW!`, a per-row fault li
 
 ## Why
 
-`scheduleCpm.ts` builds one occurrence task per Repeat, with no limit. A Repeat of 1e9 tries to build a billion tasks and the app hangs; there is no error to catch because the pass never returns. Every other generator is capped (C21 matchNodeLimits (retired) caps lists at `MAX_GENERATED`, one million), but a million tasks would still stall the critical-path pass and the Gantt, so the list cap is too high here. **Owner's call:** how many occurrences one row may generate.
+The Schedule card (`read_level` in `crates/solenoid-core/src/nodes/sched.rs`) builds one occurrence task per Repeat, with no limit short of JavaScript's array-length error past 2³² − 1. A Repeat of 1e9 tries to build a billion tasks and the app hangs; there is no error to catch because the pass never returns. Every other generator is capped (C21 matchNodeLimits (retired) caps lists at `MAX_GENERATED`, one million), but a million tasks would still stall the critical-path pass and the Gantt, so the list cap is too high here. **Owner's call:** how many occurrences one row may generate.
 
 ## What ratifying means
 

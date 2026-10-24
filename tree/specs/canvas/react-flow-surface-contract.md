@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The canvas is drawn by React Flow (RF) over a headless rete model ([[A1]] visualGraphCalculator). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the small rete core supplies those, and writing our own would add code to maintain with nothing new for the user. Reopen if rete core stops being maintained in a way that hurts, or another library would let us delete code. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
+The canvas is drawn by React Flow (RF) over a headless graph model ([[A1]] visualGraphCalculator). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those ([[graph-core]], [[D102]] graphOnCore). This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 
@@ -26,7 +26,7 @@ Inside a composite the user works on the same canvas as the main one: gestures, 
 
 A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`. The handlers are late-bound: each mount binds them and they fall back to no-ops (`idleHandlers`), so a stack can exist before, and across, mounts. They are `bumpNode`, `bumpConnections`, `bumpAllNodes` (re-render every card after a completed composite pass), `moveNode`, `setViewport`, `getContainer`, `syncTopology` and `syncSelection` (re-derive RF's `selected` from the model flags after a verb wrote them). `isRebuilding` reports a host-level rebuild (a drill-in hydrate, restore or bulk edit), during which live-creation behaviors such as group absorption stand down.
 
-A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSettlePipe`, `cableSettle.ts`), installed by the surface once per stack, since a rete pipe can't be removed and outlives a mount. It is a stack field rather than a hook for the same reason. The surface also re-runs the FC unit-mismatch rescan on every format annotation edit while it is mounted. The main canvas and the drill-in set it; the landing and showcase stacks, whose cables never change live, don't.
+A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSettlePipe`, `cableSettle.ts`), installed by the surface once per stack (`cablePipeInstalled`) and kept across mounts, so `afterCableChange` is a stack field rather than a hook. The surface also re-runs the FC unit-mismatch rescan on every format annotation edit while it is mounted. The main canvas and the drill-in set it; the landing and showcase stacks, whose cables never change live, don't.
 
 ### The hooks
 
@@ -69,23 +69,21 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 
 `view.moveNode(nodeId, …)` is async and never lands in the same paint as a React commit. If a size change would need a matching position change in the same frame, restructure so it doesn't ([[resizable-content-nodes]]).
 
-`SolenoidConnection` takes `ClassicPreset.Node` as its type parameter; a narrower node type fails on variance.
-
 ## The flow model
 
-`flow/flowModel.ts` builds the headless model: a rete `NodeEditor` and `DataflowEngine` with the coercion and error guards installed, its edit verbs, and the projections RF reads. The projections are RF-shaped without importing RF, so they stay testable in the node test environment.
+`flow/flowModel.ts` builds the headless model: a `GraphEditor` and `DataflowEngine` ([[graph-core]]) with the coercion and error guards installed, its edit verbs, and the projections RF reads. The projections are RF-shaped without importing RF, so they stay testable in the node test environment.
 
 - `canConnect` / `connect` are the user's connection gate: the socket lattice rule plus no self-loop, and a single-connection input evicts its existing cable first. RF's connect and quick-wire go through them. Programmatic rewires (paste, ghosts, Conduit insert, the FC splice) still call `editor.addConnection` directly and rely on their own sources being valid.
 - Removing nodes removes their cables through the editor, and their names go too.
 - `toFlowNodes` lists parents before their children, as RF requires.
 
-### What the app uses from rete ([[A1]] visualGraphCalculator)
+### What the surface uses from the model
 
-The rete surface is small: `ClassicPreset.Node / Input / Output / Socket / Connection` (plain data classes; every node class extends `Node`), `NodeEditor` (add, remove and get nodes and connections, and `addPipe` for the `nodecreated`, `connectioncreated` and `noderemoved` events that `coerceInputs`, the error guards, FC reconcile and the RF topology sync hang off), and `DataflowEngine` (`fetch`, `reset` and the public `cache`, which is pre-seeded for `#CIRC!`). That is about 1,500 lines of vendored ESM with one dependency, MIT licensed.
+The model's calls, signals and engine are [[graph-core]]'s: `GraphEditor`, `GraphNode` and `GraphConnection`, and `DataflowEngine`. The signals that `coerceInputs`, the error guards, FC reconcile and the RF topology sync hang off are its `addPipe` pipes.
 
-- React Flow is only a renderer, with no graph model, typed ports or engine. No third-party model fits better: graphology has no ports or dataflow, Flume and nodl bundle their own renderers, and baklava's core is the same shape under another name. Hand-rolling would swap about 1,500 maintained lines for about 400 of ours across some 150 files, for no functional gain.
-- Every rete render package (area, react, connection, render-utils, minimap, history, auto-arrange) and `styled-components` are gone. Tidy calls elkjs directly, undo is the snapshot history below, and the module-singleton stores (`storeKit.ts`) stay as app-wide state.
-- Components may import rete types (`import type`) and construct `ClassicPreset.Connection` when they wire a cable. That is the app's own model type, not a coupling to a renderer.
+- React Flow is only a renderer, with no graph model, typed ports or engine.
+- There are no render plugins: Tidy calls elkjs directly, undo is the snapshot history below, and the module-singleton stores (`storeKit.ts`) stay as app-wide state.
+- Components may import the model's types (`import type`) and construct a `GraphConnection` when they wire a cable. That is the app's own model type, not a coupling to a renderer.
 
 ## Groups are sub-flows
 
@@ -95,7 +93,7 @@ A group is an RF parent node, and each member sets `parentId` to it. The model k
 
 - A membership rebuild re-projects the nodes; it keeps object identity, so only re-parented cards re-render.
 - During a group drag, the model's member positions follow the group by its per-frame delta, collapsed groups included, since RF tows hidden member children either way. Selected members are skipped, because RF already moves them as part of the selection.
-- A node created live (the Add menu, paste) inside an expanded group's box joins it once the card has rendered, since containment needs its size. The pipe that does this is installed once per stack, because `editor.addPipe` cannot be removed, and it stands down during a rebuild.
+- A node created live (the Add menu, paste) inside an expanded group's box joins it once the card has rendered, since containment needs its size. The pipe that does this is installed once per stack (`absorbPipeInstalled`) and stands down during a rebuild.
 
 Why: RF's own parenting gives towing and stacking for free, but everything else in the app (saves, Tidy, standoffs, the lasso, docking) reads absolute positions, and each would need its own conversion. One seam costs less than a relative model everywhere. **Reopen if:** RF drops sub-flows, or the model goes relative for some other reason.
 
@@ -124,7 +122,7 @@ A Conduit gets the same treatment: its node box is a fixed 92 square around a mu
 
 ### Stacking
 
-RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. Within a band, cards stack in the editor's node order, which RF draws in DOM order: a new card lands on top. Bring to front, Bring forward, Send backward and Send to back (`stackSelection` in `selectionOps.ts`; Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[, the Edit menu, and front and back on a card's right-click) rewrite that order: front and back move the selection past everything, forward and backward step each selected card past the nearest card of its band it overlaps, and a card with nothing overlapping it stays put. rete has no reorder call, so `reorderEditorNodes` rewrites its node array in place (pinned by `selectionOps.test.ts`); `stackOrderStore` then re-projects every surface. The save keeps the order ([[save-format#The sidecar]]), so undo and a reload bring it back. Expanding a card by hand (its chevron, Expand selection, a Diagram chip) brings it to the front while the `frontOnExpand` setting is on, the default (`frontOnExpand` in `selectionOps.ts`), so a card grown over its neighbours isn't left underneath them; a load, a composite pass or Collapse never restacks. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
+RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. Within a band, cards stack in the editor's node order, which RF draws in DOM order: a new card lands on top. Bring to front, Bring forward, Send backward and Send to back (`stackSelection` in `selectionOps.ts`; Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[, the Edit menu, and front and back on a card's right-click) rewrite that order: front and back move the selection past everything, forward and backward step each selected card past the nearest card of its band it overlaps, and a card with nothing overlapping it stays put. `GraphEditor.reorderNodes` sets that order in the core (pinned by `selectionOps.test.ts`); `stackOrderStore` then re-projects every surface. The save keeps the order ([[save-format#The sidecar]]), so undo and a reload bring it back. Expanding a card by hand (its chevron, Expand selection, a Diagram chip) brings it to the front while the `frontOnExpand` setting is on, the default (`frontOnExpand` in `selectionOps.ts`), so a card grown over its neighbours isn't left underneath them; a load, a composite pass or Collapse never restacks. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
 
 Why: a group's body has to sit below its members, or it catches their pointer events, and RF's own model for that is `zIndex`. Selecting a node never moves its DOM element, so selection can't close a native popup inside a card; the `pointerdown` swallow on form controls exists only to prevent a drag. **Reopen if:** cards visibly stack wrongly after selection, or a control needs the last-selected card on top, which RF's `zIndex` model does not give.
 
@@ -352,9 +350,9 @@ The showcase audit stage (`StaticFlowStage`, `?showcase`) is a minimal non-inter
 
 ## Ghost cables
 
-A ghost cable is a cable drawn dashed to show it is not yet valid or not yet real. There are two mechanisms, chosen by whether a real connection survives. Both live outside rete's editor, in `cableState.ts`.
+A ghost cable is a cable drawn dashed to show it is not yet valid or not yet real. There are two mechanisms, chosen by whether a real connection survives. Both live outside the graph model, in `cableState.ts`.
 
-- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The rete connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because rete copies and serializes the connection object opaquely. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target.
+- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because the mark is view state, not the model's (it is not saved, below). Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target.
   - A ghost is a real connection to the engine, so it feeds its value like any cable: a splice ghost carries the spliced-out node's input straight through, and a retype ghost feeds whatever its source now holds, which the input's coercion guard turns into an error value when it doesn't fit. A node that must treat a ghosted input as unwired asks the store itself (Group Cost Settle's `inGhosted`).
   - The ghost mark is view state and is not saved: a reload draws every surviving connection solid. Whether it should survive a save is open with the author (inbox `ghost-cables-feed-and-save`).
 - **Option B: the connection is dropped** (the Input Switch pending reconnect: `cablePendingStore` and `cablePendingReconnect.ts`). The Input Switch's One/Many toggle retypes its `out` socket, and `retypeOutputCables` drops the downstream cables the new type can't feed, so there is no connection left to draw dashed.

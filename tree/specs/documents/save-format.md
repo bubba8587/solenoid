@@ -8,7 +8,7 @@ tags: [spec, documents]
 
 Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-A document has three representations: the live graph (rete editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
+A document has three representations: the live graph (the `GraphEditor` plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
 
 ## Where the code lives
 
@@ -62,7 +62,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 
 | Field | Type | Meaning |
 |---|---|---|
-| `id` | string | The node's id within this save. After a text-form round trip it equals `name`. It is never a live rete id across loads. |
+| `id` | string | The node's id within this save. After a text-form round trip it equals `name`. It is never a live node id across loads. |
 | `type` | string | The class name. |
 | `name` | string? | The addressable name, an identifier matching `^[A-Za-z_][A-Za-z0-9_]*$`, unique per document. Always written; optional only in the type. |
 | `x`, `y` | number | Canvas position of the node's top-left corner, rounded to integers on capture. Missing means `0`. |
@@ -293,7 +293,7 @@ A newer file is refused rather than opened with the parts this build doesn't und
 5. **Construct** every node synchronously, in save order:
    - Known type: `new Ctor({ ...init })`. Then, only if the new instance declares a `literals` object, replace it with a copy of the saved `literals`; likewise `stringLiterals` ([[C28]] literalsIffEditable). A saved map on a class that does not declare it is dropped.
    - Unknown type: `new PlaceholderNode({ missingType, savedInit, savedLiterals, savedStringLiterals, inputKeys, outputKeys, label })`, where `label` is `init.label` when it is a string, else the type.
-   - Record `savedId → freshId`. rete mints a fresh random id for every node, so saved ids never survive a load.
+   - Record `savedId → freshId`. Every node mints a fresh random id on construction (`getUID`), so saved ids never survive a load.
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
    - Restore `size`, `collapsed`, `flipped` and `sections` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
@@ -316,7 +316,7 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 
 ## What a save deliberately omits
 
-- Live rete ids. Every load mints new ones; only names are stable.
+- Live node ids. Every load mints new ones; only names are stable.
 - Adopted socket types. A wildcard socket's settled type is derived from the wiring by step 10 on every load, never stored.
 - Derived display and runtime state, per the field classification above: `cached*` and `_*` fields and the `DELIBERATELY_TRANSIENT` list.
 - A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[react-flow-surface-contract#Node width and height]]); for other classes the saved values are inert and a fresh measure wins.

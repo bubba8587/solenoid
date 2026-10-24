@@ -120,7 +120,7 @@ src/
 | `nodeClasses.ts` | The barrel re-exporting every node class |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `coerceInputs.ts` | The `nodecreated` wrapper around every `data()` that normalizes each arriving value to its socket's type. Mechanics: `../tree/specs/computation/compute-pass.md` § Arrival coercion |
-| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
+| `planImport.ts` | A Project XML / grammar CSV → the plan cube (Local File's `plan` socket), through `@solenoid/schedule-engine`'s readers. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the core's port of the engine (`crates/solenoid-core/src/schedule/`); the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
@@ -440,14 +440,15 @@ second consumer ([[C69]] ganttPackages): `schedule-engine` (calendar in unit ind
 WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
 `gantt-layout` (payload → render frame at a width; the headless SVG serializer),
 `gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
-the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` above.
+the app calls `schedule-engine` only for `planImport.ts`'s readers and its types;
+scheduling runs on the core's port (above).
 
 ### Landing & showcase (`src/graph/landing/`)
 
 The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
 footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
-one live rete hero) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
+one live graph hero) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
 `ExamplesPage.tsx` (the seed library from `SEED_GROUPS`; each tile deep-links `/?seed=<id>`,
 which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
 packs from `BUILTIN_PACKS` and `PACK_GROUP_ORDER`). Scenes live in `LandingScenes.tsx` (+

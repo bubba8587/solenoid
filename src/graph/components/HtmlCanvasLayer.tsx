@@ -43,7 +43,7 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
     let live = true;
     const recount = () => setDomWeight(graphDomWeight(editor));
     recount();
-    // editor.addPipe can't be removed, so `live` neutralizes it on cleanup.
+    // The pipe stays in the chain after cleanup; `live` silences it.
     editor.addPipe((ctx) => {
       if (live && ctx && typeof ctx === "object" && "type" in ctx) {
         const t = (ctx as { type: string }).type;
