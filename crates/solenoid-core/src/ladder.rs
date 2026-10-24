@@ -1093,3 +1093,183 @@ fn ladder_inner(
     ]);
     Ok((plan, wire))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn opt(score: f64, costs: &[f64], requires: &[usize], excludes: &[usize]) -> Opt {
+        Opt { score, costs: costs.to_vec(), requires: requires.to_vec(), excludes: excludes.to_vec(), must: false }
+    }
+
+    fn plan(opts: &[Opt], left: &[Option<f64>], need: &[f64]) -> Option<Vec<usize>> {
+        let open: Vec<usize> = (0..opts.len()).collect();
+        best_plan(opts, &open, &[], left, need, false).ok().unwrap().map(|mut p| {
+            p.sort();
+            p
+        })
+    }
+
+    #[test]
+    fn close_is_a_share_of_the_larger_place_within_one_tier() {
+        let p = |tier, p| Pri { tier, p };
+        assert!(is_close(p(1, 1.0), p(1, 0.96), 0.05));
+        assert!(!is_close(p(1, 1.0), p(1, 0.94), 0.05));
+        assert!(!is_close(p(0, 1.0), p(1, 1.0), 0.05));
+    }
+
+    #[test]
+    fn plan_honors_excludes_within_a_countable_limit() {
+        let opts = [opt(0.9, &[1.0], &[], &[1]), opt(0.8, &[1.0], &[], &[0]), opt(0.3, &[1.0], &[], &[])];
+        assert_eq!(plan(&opts, &[Some(2.0)], &[]), Some(vec![0, 2]));
+    }
+
+    #[test]
+    fn plan_meets_a_floor_at_the_least_cost_in_score_and_says_none_when_none_can() {
+        let opts = [
+            opt(0.9, &[5.0, 0.0], &[], &[]),
+            opt(0.8, &[5.0, 0.0], &[], &[]),
+            opt(0.5, &[5.0, 1.0], &[], &[]),
+            opt(0.4, &[5.0, 1.0], &[], &[]),
+        ];
+        let left = [Some(10.0), None];
+        assert_eq!(plan(&opts, &left, &[]), Some(vec![0, 1]));
+        assert_eq!(plan(&opts, &left, &[0.0, 1.0]), Some(vec![0, 2]));
+        assert_eq!(plan(&opts, &left, &[0.0, 3.0]), None);
+    }
+
+    #[test]
+    fn a_worthless_option_rides_along_and_a_worthless_prerequisite_comes_when_needed() {
+        let opts = [opt(0.9, &[10.0], &[], &[]), opt(0.5, &[10.0], &[], &[]), opt(0.0, &[10.0], &[], &[])];
+        assert_eq!(plan(&opts, &[Some(100.0)], &[]), Some(vec![0, 1, 2]));
+        let opts = [opt(0.9, &[5.0], &[2], &[]), opt(0.3, &[5.0], &[], &[]), opt(-0.1, &[5.0], &[], &[])];
+        assert_eq!(plan(&opts, &[Some(10.0)], &[]), Some(vec![0, 2]));
+    }
+
+    #[test]
+    fn with_no_cap_a_harmful_requirement_comes_only_when_the_pair_is_worth_having() {
+        let opts = [opt(0.33, &[], &[1], &[]), opt(-0.67, &[], &[], &[]), opt(0.19, &[], &[], &[])];
+        assert_eq!(plan(&opts, &[], &[]), Some(vec![2]));
+        let opts = [opt(0.9, &[], &[1], &[]), opt(-0.2, &[], &[], &[]), opt(0.19, &[], &[], &[])];
+        assert_eq!(plan(&opts, &[], &[]), Some(vec![0, 1, 2]));
+    }
+
+    /// Park-Miller, as the TS property test drew its problems.
+    struct Rng(f64);
+    impl Rng {
+        fn next(&mut self) -> f64 {
+            self.0 = (self.0 * 16807.0) % 2147483647.0;
+            self.0 / 2147483647.0
+        }
+        fn below(&mut self, n: usize) -> usize {
+            (self.next() * n as f64).floor() as usize
+        }
+    }
+
+    /// A small random problem: scores (some 0 or negative), two resources, and sparse Requires and Excludes.
+    fn problem(seed: u32) -> (Vec<Opt>, f64, f64) {
+        let mut r = Rng(seed as f64);
+        let n = 3 + r.below(6);
+        let mut opts: Vec<Opt> = (0..n)
+            .map(|_| {
+                let score = math_round((r.next() * 1.2 - 0.2) * 100.0) / 100.0;
+                let c0 = 1.0 + r.below(5) as f64;
+                let c1 = if r.next() < 0.4 { 1.0 } else { 0.0 };
+                opt(score, &[c0, c1], &[], &[])
+            })
+            .collect();
+        for i in 0..n {
+            if r.next() < 0.25 {
+                let j = r.below(n);
+                if j != i {
+                    opts[i].requires.push(j);
+                }
+            }
+            if r.next() < 0.25 {
+                let j = r.below(n);
+                if j != i {
+                    opts[i].excludes.push(j);
+                }
+            }
+        }
+        let cap = 4.0 + r.below(8) as f64;
+        let floor = if r.next() < 0.5 { r.below(3) as f64 } else { 0.0 };
+        (opts, cap, floor)
+    }
+
+    fn clashes(o: &[Opt], set: &[usize]) -> bool {
+        set.iter().any(|&a| set.iter().any(|&b| a != b && (o[a].excludes.contains(&b) || o[b].excludes.contains(&a))))
+    }
+
+    fn closed(o: &[Opt], set: &[usize]) -> bool {
+        set.iter().all(|&a| o[a].requires.iter().all(|q| set.contains(q)))
+    }
+
+    fn total(o: &[Opt], set: &[usize]) -> f64 {
+        set.iter().fold(0.0, |s, &i| s + o[i].score)
+    }
+
+    /// Every subset that keeps the cap, meets the floor, clashes nowhere and carries its Requires: the best total.
+    fn brute(o: &[Opt], cap: f64, floor: f64) -> Option<f64> {
+        let mut best: Option<f64> = None;
+        for mask in 0..1u32 << o.len() {
+            let set: Vec<usize> = (0..o.len()).filter(|&i| mask & (1 << i) != 0).collect();
+            let spent = set.iter().fold(0.0, |s, &i| s + o[i].costs[0]);
+            let brought = set.iter().fold(0.0, |s, &i| s + o[i].costs[1]);
+            if spent > cap || brought < floor || clashes(o, &set) || !closed(o, &set) {
+                continue;
+            }
+            let t = total(o, &set);
+            if best.is_none_or(|b| t > b + 1e-9) {
+                best = Some(t);
+            }
+        }
+        best
+    }
+
+    #[test]
+    fn with_a_cap_and_a_floor_the_plan_is_the_best_possible_and_none_means_no_plan() {
+        for seed in 1..=1500 {
+            let (opts, cap, floor) = problem(seed);
+            let got = plan(&opts, &[Some(cap), None], &[0.0, floor]);
+            match brute(&opts, cap, floor) {
+                None => assert_eq!(got, None, "seed {seed}"),
+                Some(want) => {
+                    let got = got.unwrap_or_else(|| panic!("seed {seed}: no plan"));
+                    assert!(!clashes(&opts, &got) && closed(&opts, &got), "seed {seed}");
+                    assert!((total(&opts, &got) - want).abs() < 5e-7, "seed {seed}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn with_no_cap_the_plan_is_consistent_and_no_group_worth_having_could_still_join() {
+        fn pull(o: &[Opt], i: usize, plan: &[usize], group: &mut Vec<usize>) {
+            if group.contains(&i) || plan.contains(&i) {
+                return;
+            }
+            group.push(i);
+            for &q in &o[i].requires {
+                pull(o, q, plan, group);
+            }
+        }
+        for seed in 1..=1500 {
+            let (opts, _, _) = problem(seed);
+            let got = plan(&opts, &[None], &[]).unwrap();
+            assert!(!clashes(&opts, &got) && closed(&opts, &got), "seed {seed}");
+            for o in 0..opts.len() {
+                if got.contains(&o) || opts[o].score < 0.0 {
+                    continue;
+                }
+                let mut group = Vec::new();
+                pull(&opts, o, &got, &mut group);
+                if total(&opts, &group) < 0.0 {
+                    continue;
+                }
+                let joined: Vec<usize> = got.iter().chain(group.iter()).copied().collect();
+                assert!(clashes(&opts, &joined), "seed {seed}: option {o} could join");
+            }
+        }
+    }
+}
