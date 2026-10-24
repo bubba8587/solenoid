@@ -79,7 +79,10 @@ impl Host for Js {
         inputs: Inputs<Val>,
     ) -> LocalBoxFuture<'a, Result<Outputs<Val>, Error>> {
         if node.boundary.get() {
-            if node.direct.is_some() {
+            if node.direct.is_some()
+                && DIRECT_CALLS.with(Cell::get)
+                && !direct::off_core(&node.facts.class, &inputs)
+            {
                 return Box::pin(async move {
                     let card = node.card().expect("a direct card");
                     direct::call(&card, ports, inputs).await
@@ -198,6 +201,14 @@ fn inputs_to_js(inputs: &Inputs<Val>) -> Object {
 
 thread_local! {
     static ON_PANIC: RefCell<Option<Function>> = const { RefCell::new(None) };
+    static DIRECT_CALLS: Cell<bool> = const { Cell::new(true) };
+}
+
+/// Off, every card's `data()` runs in JavaScript, its body crossing through `nodeOnCore`: how the node recorder
+/// (`FREEZE_NODES`) sees every call the suite makes.
+#[wasm_bindgen(js_name = setDirectCalls)]
+pub fn set_direct_calls(on: bool) {
+    DIRECT_CALLS.with(|d| d.set(on));
 }
 
 /// `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on

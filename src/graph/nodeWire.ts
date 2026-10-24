@@ -30,6 +30,26 @@ export function jsonEnc(v: unknown): unknown {
   return v;
 }
 
+/** `JSON.stringify(jsonEnc(v))`, written in one walk. */
+export function jsonText(v: unknown): string {
+  return JSON.stringify(v, tagged);
+}
+
+function tagged(_key: string, v: unknown): unknown {
+  switch (typeof v) {
+    case "number":
+      if (Number.isNaN(v)) return { __nf: "nan" };
+      if (!Number.isFinite(v)) return { __nf: v > 0 ? "inf" : "-inf" };
+      return Object.is(v, -0) ? { __nf: "-0" } : v;
+    case "undefined":
+      return { __undef: 1 };
+    case "function":
+      return undefined;
+    default:
+      return v;
+  }
+}
+
 export function jsonDec(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(jsonDec);
   if (v && typeof v === "object") {

@@ -310,9 +310,7 @@ export class FormatControllerNode extends GraphNode {
   data(inputs: Record<string, unknown[] | undefined>): { out: unknown } {
     const raw = inputs.in?.[0];
     // A value the core can't take back holds no unit: the card reads it as a blank and hands it on.
-    const out = staysOffCore(raw) ? (nodeOnCore(this, { ...inputs, in: [null] }), { out: raw }) : (nodeOnCore(this, inputs) as { out: unknown });
-    this.unit = this.adoptedUnit;
-    return out;
+    return staysOffCore(raw) ? (nodeOnCore(this, { ...inputs, in: [null] }), { out: raw }) : (nodeOnCore(this, inputs) as { out: unknown });
   }
 
   /** The unit the card shows: the Convert's from-unit, else the one the value carries in. The card keeps it. */

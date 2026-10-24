@@ -191,11 +191,14 @@ export class SeriesNode extends GraphNode {
     return SeriesNode.rolesByOp[this.op];
   }
 
+  /** The body's answer changed rank: the output socket follows (`nodeOnCore`'s `coreWatch`). */
+  static coreWatch = "lastRank";
+  coreWatched(): void {
+    this.swapRank(this.lastRank);
+  }
+
   data(inputs: Record<string, unknown[] | undefined>) {
-    const before = this.lastRank;
-    const out = nodeOnCore(this, inputs) as { list: number[] | number[][] | SolError | null };
-    if (this.lastRank !== before) this.swapRank(this.lastRank);
-    return out;
+    return nodeOnCore(this, inputs) as { list: number[] | number[][] | SolError | null };
   }
 
   /** The body sets `lastRank` from its answer's shape; the socket swap runs outside data() in a microtask, on the editor that owns the node, not the one on screen. */

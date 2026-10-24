@@ -96,10 +96,13 @@ export class ExpressionNode extends GraphNode {
     return { added, removed };
   }
 
+  /** The body's answer changed rank: the result socket follows (`nodeOnCore`'s `coreWatch`). */
+  static coreWatch = "lastResultRank";
+  coreWatched(): void {
+    retypeResult(this, this.resultAs);
+  }
+
   data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
-    const rank = this.lastResultRank;
-    const out = nodeOnCore(this, inputs) as { result: unknown };
-    if (this.lastResultRank !== rank) retypeResult(this, this.resultAs);
-    return out;
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }

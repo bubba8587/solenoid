@@ -41,11 +41,15 @@ pub(crate) struct Header {
     /// `init`, `literals`, `stringLiterals`, `sockets` and `outputs`, as `engine_node` takes them.
     call: Json,
     core_fields: Vec<String>,
+    /// The field a class's `static coreWatch` names: its `coreWatched()` runs after a body that changed it.
+    watch: Option<String>,
     facts: core_boundary::Facts,
     has: Vec<String>,
     /// The card's own format picks by column, where it has any.
     picks: Option<Map<String, Json>>,
     name: RefCell<Option<String>>,
+    /// The JSON it was read from, so a read that finds the same text keeps it.
+    text: String,
 }
 
 /// A frame as a card's format picks stamped it: the call that held the picks, the frame that arrived, the stamped one.
@@ -55,6 +59,8 @@ type Stamped = (Rc<Header>, V, Val);
 #[derive(Default)]
 pub(crate) struct Direct {
     header: RefCell<Option<Rc<Header>>>,
+    /// The call as last read, kept past a touch.
+    last: RefCell<Option<Rc<Header>>>,
     shown: RefCell<FxHashMap<String, Val>>,
     adopted: RefCell<FxHashSet<String>>,
     /// Each output's frame as its format picks stamped it, kept while the frame and the picks stand.
@@ -99,9 +105,15 @@ impl Direct {
         let raw = h
             .header
             .call1(&JsValue::NULL, object)
-            .map_err(|e| js_message(&e))?;
-        let j: Json = serde_json::from_str(&raw.as_string().unwrap_or_default())
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| js_message(&e))?
+            .as_string()
+            .unwrap_or_default();
+        let last = self.last.borrow().clone();
+        if let Some(last) = last.filter(|l| l.text == raw) {
+            *self.header.borrow_mut() = Some(last.clone());
+            return Ok(last);
+        }
+        let j: Json = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
         let lists = j
             .get("lists")
             .and_then(Json::as_array)
@@ -125,6 +137,7 @@ impl Direct {
                 .unwrap_or("")
                 .to_string(),
             core_fields: text(&j, "coreFields"),
+            watch: j.get("watch").and_then(Json::as_str).map(String::from),
             facts: core_boundary::Facts {
                 class: facts.class.clone(),
                 sees: facts.sees,
@@ -147,8 +160,10 @@ impl Direct {
             picks: j.get("picks").and_then(Json::as_object).cloned(),
             name: RefCell::new(None),
             call: j,
+            text: raw,
         });
         *self.header.borrow_mut() = Some(made.clone());
+        *self.last.borrow_mut() = Some(made.clone());
         Ok(made)
     }
 
@@ -249,6 +264,15 @@ impl Run<'_> {
         }
     }
 
+    /// A field as the card holds it now: the core's, or its object's own where the core holds none.
+    fn field(&self, field: &str) -> Val {
+        self.card.direct.shown(field).unwrap_or_else(|| {
+            Val::from_js(
+                Reflect::get(self.card.object, &field.into()).unwrap_or(JsValue::UNDEFINED),
+            )
+        })
+    }
+
     fn has(&self, field: &str) -> bool {
         match &self.header {
             Some(hd) => hd.has.iter().any(|f| f == field),
@@ -339,6 +363,7 @@ impl Run<'_> {
                 .unwrap_or_default();
             c.init.extend(fields);
         }
+        let watched = header.watch.as_deref().map(|f| self.field(f));
         let answer = {
             let _calc = solenoid_core::excel_functions::Calc::begin(boundary::clock());
             nodes::run(&header.kind, &mut c)
@@ -378,6 +403,16 @@ impl Run<'_> {
                     })
                     .collect();
                 self.show(display, &vals);
+                if let (Some(f), Some(before)) = (header.watch.as_deref(), watched) {
+                    if before.differs(&self.field(f)) {
+                        let hook = Reflect::get(self.card.object, &"coreWatched".into())
+                            .ok()
+                            .and_then(|h| h.dyn_into::<Function>().ok());
+                        if let Some(hook) = hook {
+                            let _ = hook.call0(self.card.object);
+                        }
+                    }
+                }
                 self.finish(&header, vals)
             }
         }
@@ -487,6 +522,19 @@ impl Run<'_> {
         );
         out
     }
+}
+
+/// Whether the card hands on in TypeScript what its pass-through input holds (`nodes::OFF_CORE`): a LAMBDA, or a
+/// value the card wire doesn't carry.
+pub(crate) fn off_core(class: &str, inputs: &Inputs<Val>) -> bool {
+    let Some(key) = nodes::off_core_input(class) else {
+        return false;
+    };
+    inputs
+        .iter()
+        .find(|(k, _)| *k == key)
+        .and_then(|(_, vs)| vs.first())
+        .is_some_and(|v| matches!(v.core().map(|a| &a.v), None | Some(V::Lambda(_))))
 }
 
 /// The card computed on `inputs`: the guard, the boundary and its body, all in Rust; a lazy frame's collect and the

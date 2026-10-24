@@ -69,6 +69,15 @@ pub fn direct_bodies() -> Vec<String> {
         .collect()
 }
 
+/// The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+#[wasm_bindgen(js_name = offCoreBodies)]
+pub fn off_core_bodies() -> Vec<String> {
+    solenoid_core::nodes::OFF_CORE
+        .iter()
+        .map(|(k, _)| k.to_string())
+        .collect()
+}
+
 #[wasm_bindgen(js_name = isLazyFrameNode)]
 pub fn is_lazy_frame_node(class: &str) -> bool {
     LAZY_FRAME_NODES.contains(&class)

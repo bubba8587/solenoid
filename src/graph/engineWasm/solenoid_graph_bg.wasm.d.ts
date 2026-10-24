@@ -41,6 +41,7 @@ export const graphcore_shown: (a: number, b: number, c: number, d: number, e: nu
 export const graphcore_unnest: (a: number, b: number, c: number) => void;
 export const graphcore_useEngine: (a: number, b: number, c: number) => void;
 export const isLazyFrameNode: (a: number, b: number) => number;
+export const offCoreBodies: (a: number) => void;
 export const seesErrors: (a: number, b: number) => number;
 export const sessionDirty: (a: number) => number;
 export const sessionEnter: (a: number, b: number, c: number, d: number) => void;
@@ -54,6 +55,7 @@ export const sessionRestore: (a: number) => void;
 export const sessionSetMode: (a: number, b: number) => number;
 export const sessionSnapshot: () => number;
 export const setBoundaryHost: (a: number, b: number) => void;
+export const setDirectCalls: (a: number) => void;
 export const setPanicHandler: (a: number) => void;
 export const uid: (a: number) => void;
 export const engine_csv_frame: (a: number, b: number, c: number) => void;

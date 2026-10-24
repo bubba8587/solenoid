@@ -244,49 +244,58 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| qr::run(kind, c))
 }
 
-/// The classes whose `data()` is their body here and nothing else, which the graph calls in Rust with no JavaScript in
-/// between (graph-core.md § Direct calls); `directBodies.test.ts` holds the list to the classes' source.
+/// The classes whose `data()` is their body here and nothing else (for `OFF_CORE`, that and handing on what the core
+/// can't hold), which the graph calls in Rust with no JavaScript in between (graph-core.md § Direct calls); `directBodies.test.ts` holds the list to the classes' source.
 pub const DIRECT: &[&str] = &[
     "AccruedInterestNode", "AddColumnNode", "AggregateNode", "AllocatorNode", "AmortizationNode", "AngleDialNode",
     "AntoineNode", "ArgMinMaxNode", "ArithmeticNode", "AwgNode", "BaseConvertNode", "BesselNode", "BetweenNode",
-    "BinNode", "BinomDistRangeNode", "BitwiseNode", "BondPricingNode", "BooleanOpNode", "BoxplotNode", "BuildCubeNode",
-    "ByAxisNode", "CableSwitchNode", "CalendarHeatmapNode", "CandlestickNode", "CastNode", "CharCodeNode",
-    "ChartBuilderNode", "ChartNode", "ChoiceLadderNode", "ChooseNode", "ClampNode", "ColebrookNode", "ColorBlendNode",
-    "ColorPickerNode", "CombinationsNode", "CombinatoricsNode", "ComparisonNode", "ComplexBinaryNode",
-    "ComplexFromNode", "ComplexPowerNode", "ComplexUnaryNode", "ComplexUnpackNode", "ConcatListsNode", "ConcatNode",
-    "ConfidenceNode", "ConstantNode", "ContainsNode", "ConvertNode", "ConvolveNode", "CorrMatrixNode", "CorrelNode",
-    "CouponNode", "CovarianceNode", "CrossNode", "CubeColumnsNode", "CubeRollupNode", "DateAddNode",
-    "DateConstructNode", "DateDiffNode", "DatePartNode", "DateRangeNode", "DateTimeValueNode", "DateTruncNode",
-    "DecisionMatrixNode", "DecisionSensitivityNode", "DecomposeNode", "DepreciationNode", "DescribeNode", "DiffNode",
-    "DiscountSecurityNode", "DollarNode", "DurationNode", "ESeriesNode", "EarnedValueNode", "ElementNode",
-    "EmSpectrumNode", "EpochNode", "EquationNode", "EtsForecastNode", "EwmaNode", "ExactNode", "ExpandNode",
-    "FillNode", "FindPeaksNode", "FisherNode", "FitDistributionNode", "FixedNode", "ForecastNode", "FormatDollarNode",
-    "FrequencyNode", "FuzzyMatchNode", "FvScheduleNode", "GCDNode", "GanttNode", "GetRowNode", "GroupListsNode",
-    "HashNode", "HeadersNode", "HeatmapNode", "HrZonesNode", "HypothesisTestNode", "IFErrorNode", "IRRNode", "IfNode",
-    "IfsNode", "InterleaveNode", "IsCloseNode", "IsEvenOddNode", "IsInNode", "IsTestNode", "IsaAtmosphereNode",
-    "IspmtNode", "KMeansNode", "LinestNode", "ListInputNode", "ListLengthNode", "LogisticNode", "MRoundNode",
-    "MakeArrayNode", "MapTableNode", "MatDetNode", "MatEigenNode", "MatSolveNode", "MathFXNode", "MergePlotsNode",
-    "MermaidNode", "MirrNode", "ModeNode", "MolarMassNode", "MoonPhaseNode", "MultinomialNode", "NPVNode", "NaNode",
-    "NestJoinNode", "NestNode", "NormalizeNode", "NotNode", "NthElementNode", "OdeIntegrateNode", "OutliersNode",
-    "PadNode", "PadTextNode", "ParallelCombineNode", "PaymentBreakdownNode", "PayoffPlannerNode", "PcaNode",
+    "BinNode", "BinomDistRangeNode", "BitwiseNode", "BondPricingNode", "BooleanOpNode", "BoxplotNode",
+    "BuildCubeNode", "ByAxisNode", "CableSwitchNode", "CalendarHeatmapNode", "CandlestickNode", "CastNode",
+    "CharCodeNode", "ChartBuilderNode", "ChartNode", "ChoiceLadderNode", "ChooseNode", "ClampNode", "ColebrookNode",
+    "ColorBlendNode", "ColorPickerNode", "CombinationsNode", "CombinatoricsNode", "ComparisonNode",
+    "ComplexBinaryNode", "ComplexFromNode", "ComplexPowerNode", "ComplexUnaryNode", "ComplexUnpackNode",
+    "ConcatListsNode", "ConcatNode", "ConfidenceNode", "ConstantNode", "ContainsNode", "ConvertNode", "ConvolveNode",
+    "CorrMatrixNode", "CorrelNode", "CouponNode", "CovarianceNode", "CrossNode", "CubeColumnsNode", "CubeRollupNode",
+    "DateAddNode", "DateConstructNode", "DateDiffNode", "DatePartNode", "DateRangeNode", "DateTimeValueNode",
+    "DateTruncNode", "DecisionMatrixNode", "DecisionSensitivityNode", "DecomposeNode", "DepreciationNode",
+    "DescribeNode", "DiffNode", "DiscountSecurityNode", "DisplayNode", "DollarNode", "DurationNode", "ESeriesNode",
+    "EarnedValueNode", "ElementNode", "EmSpectrumNode", "EpochNode", "EquationNode", "EtsForecastNode", "EwmaNode",
+    "ExactNode", "ExpandNode", "ExpressionNode", "FillNode", "FindPeaksNode", "FisherNode", "FitDistributionNode",
+    "FixedNode", "ForecastNode", "FormatControllerNode", "FormatDollarNode", "FrequencyNode", "FuzzyMatchNode",
+    "FvScheduleNode", "GCDNode", "GanttNode", "GetRowNode", "GroupListsNode", "HashNode", "HeadersNode",
+    "HeatmapNode", "HrZonesNode", "HypothesisTestNode", "IFErrorNode", "IRRNode", "IfNode", "IfsNode",
+    "InterleaveNode", "IsCloseNode", "IsEvenOddNode", "IsInNode", "IsTestNode", "IsaAtmosphereNode", "IspmtNode",
+    "KMeansNode", "LinestNode", "ListInputNode", "ListLengthNode", "LogisticNode", "MRoundNode", "MakeArrayNode",
+    "MapTableNode", "MatDetNode", "MatEigenNode", "MatSolveNode", "MathFXNode", "MergePlotsNode", "MermaidNode",
+    "MirrNode", "ModeNode", "MolarMassNode", "MoonPhaseNode", "MultinomialNode", "NPVNode", "NaNode", "NestJoinNode",
+    "NestNode", "NormalizeNode", "NotNode", "NthElementNode", "OdeIntegrateNode", "OutliersNode", "PadNode",
+    "PadTextNode", "ParallelCombineNode", "PaymentBreakdownNode", "PayoffPlannerNode", "PcaNode",
     "PhysicsConstantNode", "PipeRoughnessNode", "PointPlotterNode", "PolyRootsNode", "PolyfitNode", "ProbNode",
     "ProportionNode", "QrCodeNode", "QuadraticRootsNode", "QuiverNode", "RankPercentileNode", "ReconcileNode",
     "ReduceLambdaNode", "RegexNode", "RegressionNode", "ReptNode", "ResistorCodeNode", "ReturnsNode", "ReverseNode",
     "ReverseTextNode", "RleNode", "RomanArabicNode", "RoundNNode", "RunningNode", "SankeyNode", "ScanLambdaNode",
-    "ScheduleNode", "SeriesSumNode", "SetCellNode", "SetsNode", "ShiftNode", "SliceNode", "SmoothNode",
-    "SolarPositionNode", "SortNode", "SparklineNode", "SpectrumNode", "SpellNumberNode", "SplitFrameNode",
-    "StackNode", "StandardizeNode", "SubstituteNode", "SumProductNode", "SunriseSunsetNode", "SwitchNode",
-    "TableDiagNode", "TableInputNode", "TableMultNode", "TableOuterNode", "TableReshapeNode", "TableSelectNode",
-    "TableTransposeNode", "TableUnitNode", "TakeDropNode", "TallyNode", "TextAfterBeforeNode", "TextFindNode",
-    "TextJoinNode", "TextLenNode", "TextReplaceNode", "TextSimilarityNode", "TextSliceNode", "TextSplitNode",
-    "TextTransformNode", "TimeConstructNode", "TimeZoneConvertNode", "TodayNowNode", "TornadoNode", "TrapzNode",
-    "TriangleSolverNode", "TrimMeanNode", "TruncateTextNode", "TvmNode", "TwoInputMathNode", "UniqueNode",
-    "UnnestNode", "UrlEncodeNode", "WaterfallNode", "WeekInfoNode", "WeightedNode", "WorkdaysNode", "WrapTextNode",
-    "XLookupNode", "XMatchNode", "XYPadNode",
+    "ScheduleNode", "SeriesNode", "SeriesSumNode", "SetCellNode", "SetsNode", "ShiftNode", "SliceNode",
+    "SliderInputNode", "SmoothNode", "SolarPositionNode", "SortNode", "SparklineNode", "SpectrumNode",
+    "SpellNumberNode", "SplitFrameNode", "StackNode", "StandardizeNode", "SubstituteNode", "SumProductNode",
+    "SunriseSunsetNode", "SwitchNode", "TableDiagNode", "TableInputNode", "TableMultNode", "TableOuterNode",
+    "TableReshapeNode", "TableSelectNode", "TableTransposeNode", "TableUnitNode", "TakeDropNode", "TallyNode",
+    "TextAfterBeforeNode", "TextFindNode", "TextJoinNode", "TextLenNode", "TextReplaceNode", "TextSimilarityNode",
+    "TextSliceNode", "TextSplitNode", "TextTransformNode", "TimeConstructNode", "TimeZoneConvertNode", "TodayNowNode",
+    "TornadoNode", "TrapzNode", "TriangleSolverNode", "TrimMeanNode", "TruncateTextNode", "TvmNode",
+    "TwoInputMathNode", "UniqueNode", "UnnestNode", "UrlEncodeNode", "WaterfallNode", "WeekInfoNode", "WeightedNode",
+    "WorkdaysNode", "WrapTextNode", "XLookupNode", "XMatchNode", "XYPadNode",
 ];
 
 pub fn is_direct(kind: &str) -> bool {
     DIRECT.binary_search(&kind).is_ok()
+}
+
+/// Direct classes that hand on in TypeScript a value the core can't hold (a LAMBDA, an object the card wire doesn't
+/// carry): their `data()` runs instead of the body when this input holds one.
+pub const OFF_CORE: &[(&str, &str)] = &[("DisplayNode", "in"), ("FormatControllerNode", "in")];
+
+pub fn off_core_input(kind: &str) -> Option<&'static str> {
+    OFF_CORE.iter().find(|(k, _)| *k == kind).map(|(_, input)| *input)
 }
 
 /// A value as a card's reply carries it (`values::Cell`), the JSON `readNodeReply` reads.

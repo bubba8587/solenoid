@@ -228,6 +228,15 @@ function debugString(val) {
     return className;
 }
 /**
+ * Off, every card's `data()` runs in JavaScript, its body crossing through `nodeOnCore`: how the node recorder
+ * (`FREEZE_NODES`) sees every call the suite makes.
+ * @param {boolean} on
+ */
+export function setDirectCalls(on) {
+    wasm.setDirectCalls(on);
+}
+
+/**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  * @param {Function} handler
@@ -265,28 +274,13 @@ export function graphTrap() {
 }
 
 /**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
- * @param {object} node
- * @param {any} inputs
- * @param {Function | null} [data]
- * @returns {any}
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ * @param {boolean} begin
+ * @returns {boolean}
  */
-export function computeNode(node, inputs, data) {
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-        if (r2) {
-            throw takeObject(r1);
-        }
-        return takeObject(r0);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-    }
+export function sessionRebuild(begin) {
+    const ret = wasm.sessionRebuild(begin);
+    return ret !== 0;
 }
 
 /**
@@ -337,6 +331,31 @@ export function sessionEnter(changed, force) {
 export function sessionExit(finished) {
     const ret = wasm.sessionExit(finished);
     return takeObject(ret);
+}
+
+/**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ * @param {object} node
+ * @param {any} inputs
+ * @param {Function | null} [data]
+ * @returns {any}
+ */
+export function computeNode(node, inputs, data) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
 }
 
 /**
@@ -395,16 +414,6 @@ export function sessionNextGeneration() {
     return ret;
 }
 
-/**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
- * @param {boolean} begin
- * @returns {boolean}
- */
-export function sessionRebuild(begin) {
-    const ret = wasm.sessionRebuild(begin);
-    return ret !== 0;
-}
-
 function getArrayJsValueFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     const mem = getDataViewMemory0();
@@ -422,6 +431,24 @@ export function directBodies() {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         wasm.directBodies(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+ * @returns {string[]}
+ */
+export function offCoreBodies() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.offCoreBodies(retptr);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
@@ -758,7 +785,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_168(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_170(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1557,7 +1584,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_168(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_170(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1695,7 +1722,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper617 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper621 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_38);
         return addHeapObject(ret);
     };

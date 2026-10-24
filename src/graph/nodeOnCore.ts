@@ -8,7 +8,7 @@ import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
 import { TYPEABLE_LIST, parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
@@ -45,7 +45,7 @@ const CACHED = ["cachedResult", "cachedValue", "cachedList", "cachedChart", "cac
 
 /** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
  *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
- *  `static coreFields` come per call (`coreFieldsOf`). JSON text. */
+ *  `static coreFields` come per call (`coreFieldsOf`). JSON text, as `jsonEnc` writes it. */
 export function coreHeader(node: GraphNode): string {
   const n = node as unknown as {
     literals?: unknown; stringLiterals?: Record<string, unknown>; rawInputs?: Iterable<string>; noWidenInputs?: Iterable<string>;
@@ -54,8 +54,8 @@ export function coreHeader(node: GraphNode): string {
   const lits = n.stringLiterals;
   const lists: [string, unknown][] = [];
   if (!n.ownsListLiterals && lits && typeof lits === "object") {
-    for (const [k, input] of Object.entries(node.inputs)) {
-      const rung = input?.socket.name;
+    for (const k in node.inputs) {
+      const rung = node.inputs[k]?.socket.name;
       const text = lits[k];
       if (!rung || typeof text !== "string" || text.trim() === "") continue;
       if (!TYPEABLE_LIST.has(rung) && rung !== "numlist") continue;
@@ -64,34 +64,45 @@ export function coreHeader(node: GraphNode): string {
     }
   }
   const picks = frameFormatStore.forNode(node.id);
-  return JSON.stringify({
+  const sockets: unknown[] = [];
+  for (const k in node.inputs) {
+    const input = node.inputs[k];
+    sockets.push([k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]);
+  }
+  const outputs: unknown[] = [];
+  for (const k in node.outputs) outputs.push([k, declaredTypeOf(node.outputs[k]?.socket) ?? null, ...adopted(node.outputs[k]?.socket)]);
+  const watch = coreWatchOf(node);
+  return jsonText({
     kind: node.constructor.name,
     label: node.label || node.constructor.name,
-    init: jsonEnc(extractInit(node)),
+    init: extractInit(node),
     coreFields: (node.constructor as { coreFields?: readonly string[] }).coreFields ?? [],
-    ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
-    ...(lits ? { stringLiterals: jsonEnc(lits) } : {}),
-    sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]),
-    outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null, ...adopted(output?.socket)]),
+    ...(watch !== undefined ? { watch } : {}),
+    ...(n.literals ? { literals: n.literals } : {}),
+    ...(lits ? { stringLiterals: lits } : {}),
+    sockets,
+    outputs,
     passthrough: typeof n.passthrough === "function" ? n.passthrough().flatMap((s) => s.inputs ?? []) : [],
     raw: [...(n.rawInputs ?? [])],
     noWiden: [...(n.noWidenInputs ?? [])],
     ownsListLiterals: n.ownsListLiterals === true,
     lists,
     has: CACHED.filter((f) => f in n),
-    ...(picks.size ? { picks: Object.fromEntries([...picks].map(([c, f]) => [c, jsonEnc(f)])) } : {}),
+    ...(picks.size ? { picks: Object.fromEntries(picks) } : {}),
   });
 }
 
 /** The run-time fields a direct card's class names in `static coreFields`, as of this call. JSON text. */
 export function coreFieldsOf(node: GraphNode, names: readonly string[]): string {
   const n = node as unknown as Record<string, unknown>;
-  return JSON.stringify(Object.fromEntries(names.map((f) => [f, jsonEnc(n[f])])));
+  return jsonText(Object.fromEntries(names.map((f) => [f, n[f]])));
 }
 
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
 export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown } & Record<string, unknown>;
+  const watch = coreWatchOf(node);
+  const before = watch === undefined ? undefined : n[watch];
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
@@ -136,5 +147,14 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
     if (k.startsWith("display:")) withMatrixUnit(n[k.slice("display:".length)], unit);
     else withMatrixUnit(out[k], unit);
   }
+  if (watch !== undefined && n[watch] !== before) (node as unknown as Watching).coreWatched();
   return out;
+}
+
+/** A class whose `static coreWatch` names a field its body sets: `coreWatched()` runs after a body that changed it. */
+type Watching = { coreWatched(): void };
+
+/** The field a class's `static coreWatch` names, if any. */
+export function coreWatchOf(node: GraphNode): string | undefined {
+  return (node.constructor as { coreWatch?: string }).coreWatch;
 }

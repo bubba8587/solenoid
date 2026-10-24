@@ -1,8 +1,9 @@
 // [[D102]] graphOnCore
 // The cards the engine calls in Rust (graph-core.md § Direct calls) are exactly the classes whose `data()` is their
-// body on the core and nothing else, and such a card in an editor computes with no call to its `data()`.
+// body on the core and nothing else (or that and handing on what the core can't hold), and such a card in an editor
+// computes with no call to its `data()`.
 import { describe, expect, it, vi } from "vitest";
-import { directBodies } from "../../src/graph/engineWasm/solenoid_graph.js";
+import { directBodies, offCoreBodies } from "../../src/graph/engineWasm/solenoid_graph.js";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
@@ -17,13 +18,19 @@ function bodyOnly(data: unknown): boolean {
   return /^return \(0,\s*__vite_ssr_import_\d+__\.nodeOnCore\)\(this, inputs\);?$/.test(body);
 }
 
+const dataOf = (C: unknown) => (C as { prototype: { data?: unknown } }).prototype.data;
+
 describe("direct cards", () => {
-  it("are the classes whose data() is their body on the core", () => {
-    const pure = [...ctorRegistry()]
-      .filter(([, C]) => bodyOnly((C as unknown as { prototype: { data?: unknown } }).prototype.data))
-      .map(([name]) => name)
-      .sort();
-    expect([...directBodies()].sort()).toEqual(pure);
+  it("are the classes whose data() is their body on the core, and the ones that only hand on what it can't hold", () => {
+    const registry = ctorRegistry();
+    const pure = [...registry].filter(([, C]) => bodyOnly(dataOf(C))).map(([name]) => name);
+    const offCore = [...offCoreBodies()];
+    for (const name of offCore) {
+      const src = String(dataOf(registry.get(name)));
+      expect(src, name).toMatch(/staysOffCore\)?\(raw\)/);
+      expect(src, name).toMatch(/nodeOnCore\)\(this, inputs\)/);
+    }
+    expect([...directBodies()].sort()).toEqual([...pure, ...offCore].sort());
   });
 
   it("compute in an editor without their data() being called", async () => {

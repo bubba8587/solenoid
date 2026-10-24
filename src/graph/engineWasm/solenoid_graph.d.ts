@@ -1,6 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Off, every card's `data()` runs in JavaScript, its body crossing through `nodeOnCore`: how the node recorder
+ * (`FREEZE_NODES`) sees every call the suite makes.
+ */
+export function setDirectCalls(on: boolean): void;
+/**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  */
@@ -14,11 +19,9 @@ export function uid(): string;
  */
 export function graphTrap(): void;
 /**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
  */
-export function computeNode(node: object, inputs: any, data?: Function | null): any;
+export function sessionRebuild(begin: boolean): boolean;
 /**
  * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
  */
@@ -33,6 +36,12 @@ export function sessionEnter(changed: string | null | undefined, force: boolean)
  * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
  */
 export function sessionExit(finished: boolean): any;
+/**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ */
+export function computeNode(node: object, inputs: any, data?: Function | null): any;
 /**
  * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
  */
@@ -58,13 +67,13 @@ export function sessionForceExact(begin: boolean): void;
  */
 export function sessionNextGeneration(): number;
 /**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
- */
-export function sessionRebuild(begin: boolean): boolean;
-/**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
 export function directBodies(): string[];
+/**
+ * The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+ */
+export function offCoreBodies(): string[];
 export function isLazyFrameNode(_class: string): boolean;
 export function seesErrors(_class: string): boolean;
 /**
@@ -273,6 +282,7 @@ export interface InitOutput {
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;
+  readonly offCoreBodies: (a: number) => void;
   readonly seesErrors: (a: number, b: number) => number;
   readonly sessionDirty: (a: number) => number;
   readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;
@@ -286,6 +296,7 @@ export interface InitOutput {
   readonly sessionSetMode: (a: number, b: number) => number;
   readonly sessionSnapshot: () => number;
   readonly setBoundaryHost: (a: number, b: number) => void;
+  readonly setDirectCalls: (a: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly uid: (a: number) => void;
   readonly engine_csv_frame: (a: number, b: number, c: number) => void;
