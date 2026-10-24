@@ -373,7 +373,7 @@ const ARRAY: u8 = 5;
 const UNIT_CELL: u8 = 6;
 const SOL_ERROR: u8 = 7;
 const COMPLEX: u8 = 8;
-/// A number that is NaN: the TypeScript walks compared cells with `!==`, so one made the array a copy.
+/// A number that is NaN.
 const NAN: u8 = 12;
 
 fn kinds(h: &BoundaryHost, a: &Array) -> R<Vec<u8>> {
@@ -501,6 +501,14 @@ fn is_2d(a: &Array) -> bool {
     a.length() > 0 && is_array(&a.get(0))
 }
 
+const MIXED_SCALAR: &str = "Expected a single value, got rows mixed with values";
+const MIXED_LIST: &str = "Expected a list, got rows mixed with values";
+
+/// A table whose first cell is a row but some later one a value (`[[1, 2], 3]`) has no shape to narrow from.
+fn every_row_array(a: &Array) -> bool {
+    a.iter().all(|r| is_array(&r))
+}
+
 fn to_matrix(v: &JsValue) -> JsValue {
     if v.is_null() || v.is_undefined() {
         return JsValue::NULL;
@@ -530,6 +538,9 @@ fn to_list(v: &JsValue) -> R<JsValue> {
     }
     if !is_2d(m) {
         return Ok(v.clone());
+    }
+    if !every_row_array(m) {
+        return Err(Thrown::Shape(MIXED_LIST.into()));
     }
     if m.length() == 1 {
         return Ok(Array::from(&m.get(0)).into());
@@ -571,6 +582,9 @@ fn to_scalar(v: &JsValue) -> R<JsValue> {
             "Expected a single value, got {}",
             a.length()
         )));
+    }
+    if !every_row_array(a) {
+        return Err(Thrown::Shape(MIXED_SCALAR.into()));
     }
     let mut count = 0.0_f64;
     let mut only = JsValue::NULL;
@@ -767,12 +781,12 @@ fn strip_unit_cells(h: &BoundaryHost, v: &JsValue) -> R<JsValue> {
     };
     let mut out: Option<Array> = None;
     for (i, kind) in kinds(h, a)?.into_iter().enumerate() {
-        if kind != UNIT_CELL && kind != ARRAY && kind != NAN {
+        if kind != UNIT_CELL && kind != ARRAY {
             continue;
         }
         let c = a.get(i as u32);
         let stripped = strip_unit_cells(h, &c)?;
-        if kind == NAN || stripped != c {
+        if stripped != c {
             out.get_or_insert_with(|| a.slice(0, a.length()))
                 .set(i as u32, stripped);
         }
@@ -1022,11 +1036,9 @@ impl Call {
         } else {
             let t = spread(&err);
             let origin = self.origin();
-            let _ = Reflect::set(
-                &origin,
-                &k.input_slot,
-                &slot.map_or(JsValue::UNDEFINED, JsValue::from_str),
-            );
+            if let Some(slot) = slot {
+                let _ = Reflect::set(&origin, &k.input_slot, &JsValue::from_str(slot));
+            }
             let _ = Reflect::set(&t, &k.origin, &origin);
             t.into()
         };
@@ -1217,8 +1229,8 @@ fn run_data(object: &Object, data: Option<&Function>, coerced: &Object) -> R<Ans
     })
 }
 
-/// Runs the node through the boundary, calling `data` (the node's own `data()` when none). It never fails but where
-/// the TypeScript guard let a failure through: a promise resolving to nothing.
+/// Runs the node through the boundary, calling `data` (the node's own `data()` when none). It never fails: every
+/// failure is the guard's error.
 pub(crate) fn call<'a>(
     object: &'a Object,
     facts: &'a Facts,
@@ -1303,7 +1315,6 @@ pub(crate) fn call<'a>(
             run_data(object, data, &coerce_all(object, facts, ports, &collected)?)
         }
         .await;
-        // The collect made the call a promise, so a node answering nothing rejects, as a resolved promise's did.
         let done = match answer {
             Err(t) => Ok(call.thrown_out(t)),
             Ok(Answer::Now(out)) => settle(&call, Ok(out)),
@@ -1338,12 +1349,6 @@ fn timed(call: &Call, t0: Option<f64>) {
 fn settle(call: &Call, settled: Result<JsValue, JsValue>) -> Result<Outputs<JsValue>, Error> {
     match settled {
         Err(e) => Ok(call.thrown_out(Thrown::Js(e))),
-        Ok(out) => match call.finish(&out) {
-            Ok(o) => Ok(o),
-            Err(Thrown::Js(e)) if out.is_null() || out.is_undefined() => {
-                Err(super::wasm::thrown(e))
-            }
-            Err(t) => Ok(call.thrown_out(t)),
-        },
+        Ok(out) => Ok(call.finish(&out).unwrap_or_else(|t| call.thrown_out(t))),
     }
 }

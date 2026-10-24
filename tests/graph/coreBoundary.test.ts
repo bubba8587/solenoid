@@ -116,6 +116,8 @@ const THROWS: Record<string, () => unknown> = {
   object: () => ({ message: "an object" }),
   nullish: () => null,
 };
+/** Kinds that answer rather than throw: `nothing` answers undefined, at once or resolved. */
+const ANSWERS: Record<string, () => unknown> = { nothing: () => undefined };
 
 describe("the input boundary's frozen answers", () => {
   it("arrival: every rung, coerced, element-coerced and raw, units kept and stripped", async () => {
@@ -164,13 +166,14 @@ describe("the input boundary's frozen answers", () => {
     expect(replay("boundary-origins", cases, (c) => got.get(c))).toEqual([]);
   });
 
-  it("a throw or a rejection becomes the guard's error", async () => {
-    const cases = frozen<Thrown>("boundary-thrown", () => Object.keys(THROWS).flatMap((kind) => [false, true].map((async) => ({ kind, async, want: null }))));
+  it("a throw, a rejection or an answer of nothing becomes the guard's error", async () => {
+    const cases = frozen<Thrown>("boundary-thrown", () => [...Object.keys(THROWS), ...Object.keys(ANSWERS)].flatMap((kind) => [false, true].map((async) => ({ kind, async, want: null }))));
     const got = new Map<Thrown, unknown>();
     for (const c of cases) {
       const n = new ProbeNode("number");
       n.id = "probe";
       n.answer = () => {
+        if (c.kind in ANSWERS) return c.async ? Promise.resolve(ANSWERS[c.kind]()) : ANSWERS[c.kind]();
         const t = THROWS[c.kind]();
         if (c.async) return Promise.reject(t);
         throw t;
