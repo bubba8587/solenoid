@@ -101,8 +101,6 @@ export class GraphCore {
    */
   removeNode(id: string): boolean;
   removePipe(handle: number): boolean;
-  removePort(id: string, output: boolean, key: string): boolean;
-  retypePort(id: string, output: boolean, key: string, ty: string): boolean;
   /**
    * The node's inputs, fetching every predecessor.
    */
@@ -179,7 +177,6 @@ export class GraphCore {
    * throws stops the chain and fails the edit. Returns the handle `removePipe` takes.
    */
   addPipe(pipe: Function): number;
-  addPort(id: string, output: boolean, key: string, ty: string): void;
   nodeIds(): string[];
   /**
    * Every node's outputs in the editor's order, as a `Map`; `null` when `stop_on_cancel` and
@@ -187,6 +184,10 @@ export class GraphCore {
    */
   fetchAll(on_node: Function | null | undefined, stop_on_cancel: boolean): Promise<any>;
   isCached(id: string): boolean;
+  /**
+   * Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
+   */
+  setPorts(id: string, input_keys: string[], input_types: string[], output_keys: string[], output_types: string[]): void;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -200,7 +201,6 @@ export interface InitOutput {
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addPipe: (a: number, b: number) => number;
-  readonly graphcore_addPort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_clear: (a: number, b: number) => void;
   readonly graphcore_compute: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_computeAll: (a: number, b: number, c: number) => number;
@@ -222,12 +222,11 @@ export interface InitOutput {
   readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removePipe: (a: number, b: number) => number;
-  readonly graphcore_removePort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly graphcore_reorderNodes: (a: number, b: number, c: number) => number;
   readonly graphcore_reset: (a: number, b: number, c: number, d: number) => void;
-  readonly graphcore_retypePort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_seed: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_seedLoops: (a: number, b: number, c: number, d: number) => void;
+  readonly graphcore_setPorts: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;

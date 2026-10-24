@@ -3,7 +3,7 @@
 // app's stores and frame code know (tree/specs/computation/compute-pass.md § The per-node wrappers). Installed each
 // time the module loads, a trap's fresh instance included.
 import { setBoundaryHost } from "./graphWasm/solenoid_graph.js";
-import { whenGraphEngineLoads } from "./graphEditor";
+import { whenGraphEngineLoads, flushPortEdits } from "./graphEditor";
 import { frameFromRows, toCube, isFrameValue, type FrameValue } from "./frame";
 import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { displayMagnitudeOf } from "./unitBridge";
@@ -79,4 +79,5 @@ whenGraphEngineLoads(() => setBoundaryHost({
   report: (nodeId: string, err: SolError | null) => reportToErrorSinks(nodeId, err),
   now: () => performance.now(),
   recordNode,
+  flushPorts: flushPortEdits,
 }));

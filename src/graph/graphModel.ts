@@ -10,11 +10,9 @@ export function getUID(): string {
   return uid();
 }
 
-/** Where a node's port changes go: the editors holding it. */
+/** Where a node's port changes go: the editors holding it, which send the node's ports to the core as they stand. */
 export interface PortListener {
-  portAdded(node: GraphNode, output: boolean, key: string, type: string): void;
-  portRemoved(node: GraphNode, output: boolean, key: string): void;
-  portRetyped(node: GraphNode, output: boolean, key: string, type: string): void;
+  portsMoved(node: GraphNode): void;
 }
 
 /** A socket: its `name` is the type the core records for every port holding it. */
@@ -43,11 +41,9 @@ export class GraphSocket {
   }
 }
 
-type Seat = { node: GraphNode; output: boolean; key: string };
-
 /** Which node holds each port, and who hears each node's port changes: off the objects, so a node's own keys are
  *  its fields alone. */
-const seats = new WeakMap<GraphPort, Seat>();
+const seats = new WeakMap<GraphPort, GraphNode>();
 const holders = new WeakMap<GraphSocket, Set<GraphPort>>();
 const listeners = new WeakMap<GraphNode, PortListener[]>();
 
@@ -69,8 +65,7 @@ export class GraphPort<S extends GraphSocket = GraphSocket> {
   }
 
   retyped(): void {
-    const seat = seats.get(this);
-    if (seat) seat.node.portRetyped(seat.output, seat.key, this._socket.name);
+    seats.get(this)?.portRetyped();
   }
 }
 
@@ -131,16 +126,16 @@ export class GraphNode {
     else listeners.delete(this);
   }
 
-  portRetyped(output: boolean, key: string, type: string): void {
-    for (const l of listeners.get(this) ?? []) l.portRetyped(this, output, key, type);
+  portRetyped(): void {
+    for (const l of listeners.get(this) ?? []) l.portsMoved(this);
   }
 
   private seat(output: boolean, key: string, port: GraphPort): void {
     const ports = (output ? this.outputs : this.inputs) as Record<string, GraphPort>;
     Object.defineProperty(ports, key, { value: port, enumerable: true, configurable: true, writable: true });
-    seats.set(port, { node: this, output, key });
+    seats.set(port, this);
     port.socket.attach(port);
-    for (const l of listeners.get(this) ?? []) l.portAdded(this, output, key, port.socket.name);
+    for (const l of listeners.get(this) ?? []) l.portsMoved(this);
   }
 
   private unseat(output: boolean, key: string): void {
@@ -150,7 +145,7 @@ export class GraphNode {
     delete ports[key];
     seats.delete(port);
     port.socket.detach(port);
-    for (const l of listeners.get(this) ?? []) l.portRemoved(this, output, key);
+    for (const l of listeners.get(this) ?? []) l.portsMoved(this);
   }
 }
 

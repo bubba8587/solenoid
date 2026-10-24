@@ -264,46 +264,36 @@ impl<H: Host> Graph<H> {
         self.editor.get_node(id).ok_or(ruggine::Error::NodeNotFound)
     }
 
-    /// Adds a port to a node in the editor, after its others in JavaScript key order.
-    pub fn add_port(
+    /// Gives a node in the editor exactly these ports, in this order: one call for every port a change to the node
+    /// made. A side already as given is left alone.
+    pub fn set_ports(
         &self,
         id: &str,
-        side: Side,
-        key: &str,
-        ty: &str,
+        inputs: &[Port],
+        outputs: &[Port],
     ) -> Result<(), ruggine::Error> {
         let node = self.node(id)?;
-        let socket = Socket::new(ty);
-        match side {
-            Side::Input => node.classic.add_input(key, Input::new(socket)),
-            Side::Output => node.classic.add_output(key, Output::new(socket)),
+        let classic = &node.classic;
+        let same = |held: Vec<Port>, given: &[Port]| held.as_slice() == given;
+        if !same(self.ports(id, Side::Input).unwrap_or_default(), inputs) {
+            let held = classic.inputs().key_list();
+            for key in held {
+                classic.remove_input(&key);
+            }
+            for (key, ty) in inputs {
+                classic.add_input(key.clone(), Input::new(Socket::new(ty.clone())))?;
+            }
         }
-    }
-
-    /// `false` when the node has no such port.
-    pub fn remove_port(&self, id: &str, side: Side, key: &str) -> Result<bool, ruggine::Error> {
-        let node = self.node(id)?;
-        Ok(match side {
-            Side::Input => node.classic.remove_input(key).is_some(),
-            Side::Output => node.classic.remove_output(key).is_some(),
-        })
-    }
-
-    /// `false` when the node has no such port.
-    pub fn retype_port(
-        &self,
-        id: &str,
-        side: Side,
-        key: &str,
-        ty: &str,
-    ) -> Result<bool, ruggine::Error> {
-        let node = self.node(id)?;
-        let socket = Socket::new(ty);
-        Ok(match side {
-            Side::Input => node.classic.input(key).map(|p| p.set_socket(socket)),
-            Side::Output => node.classic.output(key).map(|p| p.set_socket(socket)),
+        if !same(self.ports(id, Side::Output).unwrap_or_default(), outputs) {
+            let held = classic.outputs().key_list();
+            for key in held {
+                classic.remove_output(&key);
+            }
+            for (key, ty) in outputs {
+                classic.add_output(key.clone(), Output::new(Socket::new(ty.clone())))?;
+            }
         }
-        .is_some())
+        Ok(())
     }
 
     /// The node's ports on one side, in order, with their socket types.

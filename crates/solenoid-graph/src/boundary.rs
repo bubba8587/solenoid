@@ -129,6 +129,7 @@ struct Keys {
     owns_literals: JsValue,
     passthrough: JsValue,
     inputs: JsValue,
+    outputs: JsValue,
     cached_result: JsValue,
     cached_chart: JsValue,
     cached_payload: JsValue,
@@ -161,6 +162,7 @@ thread_local! {
         owns_literals: "ownsListLiterals".into(),
         passthrough: "passthrough".into(),
         inputs: "inputs".into(),
+        outputs: "outputs".into(),
         cached_result: "cachedResult".into(),
         cached_chart: "cachedChart".into(),
         cached_payload: "cachedPayload".into(),
@@ -192,6 +194,7 @@ struct BoundaryHost {
     report: Function,
     now: Function,
     record_node: Function,
+    flush_ports: Function,
 }
 
 /// Installs what the boundary asks the app for; every engine call that runs a node needs it.
@@ -217,6 +220,7 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
         report: f("report")?,
         now: f("now")?,
         record_node: f("recordNode")?,
+        flush_ports: f("flushPorts")?,
     };
     HOST.with(|h| *h.borrow_mut() = Some(Rc::new(made)));
     Ok(())
@@ -935,7 +939,6 @@ pub(crate) struct Call {
     pub object: Object,
     pub id: String,
     pub class: String,
-    pub outputs: Vec<String>,
     host: Rc<BoundaryHost>,
     name: RefCell<Option<JsValue>>,
     sinks: bool,
@@ -988,8 +991,11 @@ impl Call {
             t.into()
         };
         let mut out = Outputs::new();
-        for key in &self.outputs {
-            out.insert(key.clone(), tagged.clone());
+        let outputs = get(&self.object, &k.outputs);
+        if outputs.is_object() {
+            for key in Object::keys(outputs.unchecked_ref()).iter() {
+                out.insert(key.as_string().unwrap_or_default(), tagged.clone());
+            }
         }
         let o = &self.object;
         if Reflect::has(o, &k.cached_result).unwrap_or(false) {
@@ -1006,7 +1012,13 @@ impl Call {
     }
 
     fn thrown_out(&self, t: Thrown) -> Outputs<JsValue> {
+        self.ports_moved();
         self.error_out(from_thrown(t), None)
+    }
+
+    /// A node may change its own sockets while it computes; the core reads its ports as they stand now.
+    fn ports_moved(&self) {
+        let _ = self.host.flush_ports.call0(&JsValue::NULL);
     }
 
     /// An untagged error in a value gets this node as its origin: the value itself, a list's cells, a frame's
@@ -1077,6 +1089,7 @@ impl Call {
     /// The node's answer: each output's frame stamped with the node's format picks, then tagged; reported to the
     /// error sinks.
     fn finish(&self, out: &JsValue) -> R<Outputs<JsValue>> {
+        self.ports_moved();
         if out.is_null() || out.is_undefined() {
             return Err(Thrown::Js(
                 js_sys::TypeError::new("Cannot convert undefined or null to object").into(),
@@ -1183,7 +1196,6 @@ pub(crate) fn call<'a>(
         object: object.clone(),
         id: ports.id.clone(),
         class: facts.class.clone(),
-        outputs: ports.outputs().keys().map(str::to_owned).collect(),
         host: h,
         name: RefCell::new(None),
         sinks: bits & 2 != 0,

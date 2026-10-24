@@ -483,7 +483,7 @@ function __wbg_adapter_36(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_129(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_127(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -633,59 +633,6 @@ export class GraphCore {
     removePipe(handle) {
         const ret = wasm.graphcore_removePipe(this.__wbg_ptr, handle);
         return ret !== 0;
-    }
-    /**
-     * @param {string} id
-     * @param {boolean} output
-     * @param {string} key
-     * @returns {boolean}
-     */
-    removePort(id, output, key) {
-        try {
-            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len1 = WASM_VECTOR_LEN;
-            wasm.graphcore_removePort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1);
-            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-            if (r2) {
-                throw takeObject(r1);
-            }
-            return r0 !== 0;
-        } finally {
-            wasm.__wbindgen_add_to_stack_pointer(16);
-        }
-    }
-    /**
-     * @param {string} id
-     * @param {boolean} output
-     * @param {string} key
-     * @param {string} ty
-     * @returns {boolean}
-     */
-    retypePort(id, output, key, ty) {
-        try {
-            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len1 = WASM_VECTOR_LEN;
-            const ptr2 = passStringToWasm0(ty, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len2 = WASM_VECTOR_LEN;
-            wasm.graphcore_retypePort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1, ptr2, len2);
-            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-            if (r2) {
-                throw takeObject(r1);
-            }
-            return r0 !== 0;
-        } finally {
-            wasm.__wbindgen_add_to_stack_pointer(16);
-        }
     }
     /**
      * The node's inputs, fetching every predecessor.
@@ -1007,31 +954,6 @@ export class GraphCore {
         return ret >>> 0;
     }
     /**
-     * @param {string} id
-     * @param {boolean} output
-     * @param {string} key
-     * @param {string} ty
-     */
-    addPort(id, output, key, ty) {
-        try {
-            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len1 = WASM_VECTOR_LEN;
-            const ptr2 = passStringToWasm0(ty, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
-            const len2 = WASM_VECTOR_LEN;
-            wasm.graphcore_addPort(retptr, this.__wbg_ptr, ptr0, len0, output, ptr1, len1, ptr2, len2);
-            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            if (r1) {
-                throw takeObject(r0);
-            }
-        } finally {
-            wasm.__wbindgen_add_to_stack_pointer(16);
-        }
-    }
-    /**
      * @returns {string[]}
      */
     nodeIds() {
@@ -1067,6 +989,37 @@ export class GraphCore {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_isCached(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
+    }
+    /**
+     * Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
+     * @param {string} id
+     * @param {string[]} input_keys
+     * @param {string[]} input_types
+     * @param {string[]} output_keys
+     * @param {string[]} output_types
+     */
+    setPorts(id, input_keys, input_types, output_keys, output_types) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_2);
+            const len2 = WASM_VECTOR_LEN;
+            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_2);
+            const len3 = WASM_VECTOR_LEN;
+            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_2);
+            const len4 = WASM_VECTOR_LEN;
+            wasm.graphcore_setPorts(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            if (r1) {
+                throw takeObject(r0);
+            }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
 }
 
@@ -1212,7 +1165,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_129(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_127(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1331,7 +1284,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper468 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper463 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_36);
         return addHeapObject(ret);
     };

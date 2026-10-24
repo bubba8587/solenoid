@@ -565,33 +565,23 @@ impl GraphCore {
         self.shared.graph.clear().map_err(failed)
     }
 
-    #[wasm_bindgen(js_name = addPort)]
-    pub fn add_port(&self, id: &str, output: bool, key: &str, ty: &str) -> Result<(), JsValue> {
-        self.shared
-            .graph
-            .add_port(id, side(output), key, ty)
-            .map_err(graph_error)
-    }
-
-    #[wasm_bindgen(js_name = removePort)]
-    pub fn remove_port(&self, id: &str, output: bool, key: &str) -> Result<bool, JsValue> {
-        self.shared
-            .graph
-            .remove_port(id, side(output), key)
-            .map_err(graph_error)
-    }
-
-    #[wasm_bindgen(js_name = retypePort)]
-    pub fn retype_port(
+    /// Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
+    #[wasm_bindgen(js_name = setPorts)]
+    pub fn set_ports(
         &self,
         id: &str,
-        output: bool,
-        key: &str,
-        ty: &str,
-    ) -> Result<bool, JsValue> {
+        input_keys: Vec<String>,
+        input_types: Vec<String>,
+        output_keys: Vec<String>,
+        output_types: Vec<String>,
+    ) -> Result<(), JsValue> {
         self.shared
             .graph
-            .retype_port(id, side(output), key, ty)
+            .set_ports(
+                id,
+                &ports(input_keys, input_types),
+                &ports(output_keys, output_types),
+            )
             .map_err(graph_error)
     }
 
