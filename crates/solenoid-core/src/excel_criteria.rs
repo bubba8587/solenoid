@@ -751,9 +751,17 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
     if let Some(v) = values {
         n = n.min(v.len());
     }
+    // Where an `=` criterion's tally names its rows, only those can match; they go in row order, so a sum adds as the
+    // scan would ([[C120]] linearWork).
+    let narrowest =
+        facts.iter().zip(&crits).filter_map(|(f, c)| f.tally.as_ref()?.rows(c)).min_by_key(|rows| rows.len());
+    let candidates: Box<dyn Iterator<Item = usize>> = match narrowest {
+        Some(rows) => Box::new(rows.iter().copied().take_while(move |&i| i < n)),
+        None => Box::new(0..n),
+    };
     let mut kept: Vec<f64> = Vec::new();
     let mut count = 0usize;
-    for i in 0..n {
+    for i in candidates {
         if !pairs.iter().zip(&crits).all(|((r, _), c)| criterion_matches(&r[i], c)) {
             continue;
         }
@@ -789,8 +797,9 @@ struct Facts {
 struct Tally {
     /// The numbers that aren't NaN, sorted.
     nums: Vec<f64>,
-    /// Text cells by their lowered text.
-    text: rustc_hash::FxHashMap<String, usize>,
+    /// The rows of each number other than NaN (-0 as 0), and of each text cell by its lowered text, in order.
+    num_rows: rustc_hash::FxHashMap<u64, Vec<usize>>,
+    text_rows: rustc_hash::FxHashMap<String, Vec<usize>>,
     /// Cells no criterion matches: errors and logicals.
     errs: usize,
     bools: usize,
@@ -798,11 +807,15 @@ struct Tally {
 
 impl Tally {
     fn of(range: &[V]) -> Tally {
-        let mut t = Tally { nums: Vec::new(), text: Default::default(), errs: 0, bools: 0 };
-        for v in range {
+        let mut t =
+            Tally { nums: Vec::new(), num_rows: Default::default(), text_rows: Default::default(), errs: 0, bools: 0 };
+        for (i, v) in range.iter().enumerate() {
             match v {
-                V::Num(n) if !n.is_nan() => t.nums.push(*n),
-                V::Str(s) if !s.is_empty() => *t.text.entry(js_lower(s).into_owned()).or_default() += 1,
+                V::Num(n) if !n.is_nan() => {
+                    t.nums.push(*n);
+                    t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i);
+                }
+                V::Str(s) if !s.is_empty() => t.text_rows.entry(js_lower(s).into_owned()).or_default().push(i),
                 V::Err(_) => t.errs += 1,
                 V::Bool(_) => t.bools += 1,
                 _ => {}
@@ -828,11 +841,24 @@ impl Tally {
                 Op::Lte => upto(*n),
             }),
             Value::Str(_) if c.wild.is_none() && matches!(c.op, Op::Eq | Op::Neq) => {
-                let equal = self.text.get(&c.lowered).copied().unwrap_or(0);
+                let equal = self.text_rows.get(&c.lowered).map_or(0, Vec::len);
                 Some(if c.op == Op::Eq { equal } else { unlike(equal) })
             }
             _ => None,
         }
+    }
+
+    /// The rows an `=` criterion on a number other than ±∞, or on plain text, can match: every other row fails it.
+    fn rows(&self, c: &Criterion) -> Option<&[usize]> {
+        if c.op != Op::Eq {
+            return None;
+        }
+        let rows = match &c.value {
+            Value::Num(n) if n.is_finite() => self.num_rows.get(&(n + 0.0).to_bits()),
+            Value::Str(_) if c.wild.is_none() => self.text_rows.get(&c.lowered),
+            _ => return None,
+        };
+        Some(rows.map_or(&[], Vec::as_slice))
     }
 }
 

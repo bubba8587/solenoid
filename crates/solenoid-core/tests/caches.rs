@@ -82,9 +82,10 @@ fn an_at_lists_verdict_is_its_own() {
     assert_eq!(shown, ["@v: 1 value for 3 rows", "@v: 2 values for 3 rows", "Num(3.0)"]);
 }
 
-/// From a long range's second COUNTIF on, the count comes from the tally the range keeps; it answers as the scan does.
+/// From a long range's second call on, COUNTIF's count and the IFS aggregates' rows come from the tally the range
+/// keeps; they answer as the scan does.
 #[test]
-fn a_kept_criteria_tally_counts_as_the_scan_does() {
+fn a_kept_criteria_tally_answers_as_the_scan_does() {
     use solenoid_core::error_value::{sol_error, ErrorCode};
     use solenoid_core::eval::{formula, Env};
     use solenoid_core::excel_functions::V;
@@ -114,36 +115,56 @@ fn a_kept_criteria_tally_counts_as_the_scan_does() {
             _ => V::Num(((i * 37) % 11) as f64 - 5.0),
         })
         .collect();
+    let vals = V::List(Rc::new(
+        (0..85)
+            .map(|i| if i == 61 { V::err(sol_error(ErrorCode::Ref, "gone")) } else { V::Num(i as f64 * 0.1) })
+            .collect(),
+    ));
+    let formulas = [
+        "COUNTIF(range, crit)",
+        "SUMIFS(vals, range, crit)",
+        "AVERAGEIFS(vals, range, crit)",
+        "MAXIFS(vals, range, crit)",
+        "COUNTIFS(range, crit, vals, \">2\")",
+        "COUNTIFS(vals, \"<5\", range, crit)",
+    ];
     for range in [cells, numbers] {
         let shared = V::List(Rc::new(range.clone()));
-        for crit in [
-            V::Num(0.0),
-            V::Num(5.0),
-            V::Num(-3.0),
-            V::Num(f64::INFINITY),
-            V::str(">3"),
-            V::str(">=-2"),
-            V::str("<0"),
-            V::str("<=0"),
-            V::str("<>0"),
-            V::str("<>"),
-            V::str("="),
-            V::str("apple"),
-            V::str("<>APPLE"),
-            V::str("a*"),
-            V::str("5"),
-            V::Bool(true),
-            V::Null,
-        ] {
-            let count = |list: &V, crit: &V| {
-                let env: Env =
-                    [("range".to_string(), list.clone()), ("crit".to_string(), crit.clone())].into_iter().collect();
-                format!("{:?}", formula("COUNTIF(range, crit)", env))
-            };
-            let scanned = count(&V::List(Rc::new(range.clone())), &crit);
-            // A first call on the range with another criterion, so the formula's own memo can't answer the next.
-            count(&shared, &V::str("warm"));
-            assert_eq!(count(&shared, &crit), scanned, "{crit:?}");
+        for src in formulas {
+            for crit in [
+                V::Num(0.0),
+                V::Num(5.0),
+                V::Num(-3.0),
+                V::Num(f64::INFINITY),
+                V::str(">3"),
+                V::str(">=-2"),
+                V::str("<0"),
+                V::str("<=0"),
+                V::str("<>0"),
+                V::str("<>"),
+                V::str("="),
+                V::str("apple"),
+                V::str("<>APPLE"),
+                V::str("a*"),
+                V::str("5"),
+                V::Bool(true),
+                V::Null,
+            ] {
+                let call = |list: &V, crit: &V| {
+                    let env: Env = [
+                        ("range".to_string(), list.clone()),
+                        ("crit".to_string(), crit.clone()),
+                        ("vals".to_string(), vals.clone()),
+                    ]
+                    .into_iter()
+                    .collect();
+                    format!("{:?}", formula(src, env))
+                };
+                let scanned = call(&V::List(Rc::new(range.clone())), &crit);
+                // A first call on the range with another criterion, so the formula's own memo can't answer the next.
+                call(&shared, &V::str("warm"));
+                assert_eq!(call(&shared, &crit), scanned, "{src} {crit:?}");
+            }
         }
     }
 }

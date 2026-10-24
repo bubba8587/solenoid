@@ -101,7 +101,7 @@ it("range functions per row of a computed column read the column once", async ()
     expect(ms, src).toBeLessThan(3000);
     expect((v as { cells: unknown[] }).cells.length, src).toBe(n);
   }
-  for (const src of ["RANK(@score, score)", "XLOOKUP(@score, score, p)", "XMATCH(@score, score)", "COUNTIF(score, @score)"]) {
+  for (const src of ["RANK(@score, score)", "XLOOKUP(@score, score, p)", "XMATCH(@score, score)", "COUNTIF(score, @score)", "SUMIFS(p, score, @score)", "COUNTIFS(score, @score, p, \">0\")"]) {
     const { v, ms } = timed(() => computeColumnOnEngine(frame, src, n));
     expect(ms, src).toBeLessThan(3000);
     expect((v as { cells: unknown[] }).cells.length, src).toBe(n);
