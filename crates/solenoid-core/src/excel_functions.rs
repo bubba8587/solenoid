@@ -855,6 +855,8 @@ pub(crate) struct Matcher<K: AsRef<[V]>> {
     mm: MatchMode,
     last: bool,
     index: Option<rustc_hash::FxHashMap<ExactKey, usize>>,
+    /// For an approximate match, each distinct finite key (-0 as 0) in order, with the position the scan meets first.
+    steps: Option<Vec<(f64, usize)>>,
 }
 
 impl<K: AsRef<[V]>> Matcher<K> {
@@ -878,12 +880,34 @@ impl<K: AsRef<[V]>> Matcher<K> {
             }
             Some(index)
         });
-        Matcher { keys, mm, last, index: index.flatten() }
+        let steps = (mm != MatchMode::Exact && lookups >= 16).then(|| {
+            let mut steps: Vec<(f64, usize)> = keys
+                .as_ref()
+                .iter()
+                .enumerate()
+                .filter_map(|(i, k)| match k {
+                    V::Num(x) if x.is_finite() => Some((x + 0.0, i)),
+                    _ => None,
+                })
+                .collect();
+            steps.sort_by(|a, b| a.0.total_cmp(&b.0).then(if last { b.1.cmp(&a.1) } else { a.1.cmp(&b.1) }));
+            steps.dedup_by(|later, first| later.0 == first.0);
+            steps
+        });
+        Matcher { keys, mm, last, index: index.flatten(), steps }
     }
 
     pub(crate) fn find(&self, lookup: &V) -> Result<Option<usize>, V> {
-        match (&self.index, exact_key(lookup)) {
-            (Some(index), Some(key)) => Ok(key.and_then(|k| index.get(&k).copied())),
+        match (&self.index, &self.steps, exact_key(lookup), lookup) {
+            (Some(index), _, Some(key), _) => Ok(key.and_then(|k| index.get(&k).copied())),
+            (_, Some(steps), _, V::Num(x)) if x.is_finite() => {
+                let k = steps.partition_point(|&(v, _)| v < *x);
+                Ok(match steps.get(k) {
+                    Some(&(v, i)) if v == *x => Some(i),
+                    _ if self.mm == MatchMode::NextSmaller => k.checked_sub(1).map(|j| steps[j].1),
+                    next => next.map(|&(_, i)| i),
+                })
+            }
             _ => xmatch_index(lookup, self.keys.as_ref(), self.mm, self.last),
         }
     }
@@ -2029,6 +2053,29 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
     }
 }
 
+/// A table's widest row, kept for the last long table: INDEX(column, @i) asks it of the same column row after row
+/// ([[C120]] linearWork). The entry holds its table, so the address can't name another.
+fn width_of(grid: &Rc<Vec<V>>) -> usize {
+    let measure = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+    if grid.len() < 64 {
+        return measure();
+    }
+    thread_local! {
+        static LAST: std::cell::RefCell<Option<(Rc<Vec<V>>, usize)>> = const { std::cell::RefCell::new(None) };
+    }
+    LAST.with(|last| {
+        let mut last = last.borrow_mut();
+        match &*last {
+            Some((g, w)) if Rc::ptr_eq(g, grid) => *w,
+            _ => {
+                let w = measure();
+                *last = Some((grid.clone(), w));
+                w
+            }
+        }
+    })
+}
+
 fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
     if matches!(v, V::Null | V::Undef) || row_null || col_null {
         return V::Null;
@@ -2055,7 +2102,7 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         if row_all && col_all {
             return v.clone();
         }
-        let width = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+        let width = || width_of(grid);
         // One position on a one-row or one-column table walks along it, as Excel's INDEX does ([[D85]] columnsStayColumns).
         if col.is_none() && !row_all {
             if grid.len() == 1 {
@@ -6415,5 +6462,49 @@ mod tests {
         }
         assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), V::Num(n) if n == 1.0));
         assert!(matches!(call_function("VALUE", &[s("5")]), V::Num(n) if n == 5.0));
+    }
+}
+
+#[cfg(test)]
+mod matcher_tests {
+    use super::*;
+
+    #[test]
+    fn an_indexed_matcher_finds_what_the_scan_finds() {
+        let mut seed = 11u64;
+        let mut next = |m: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) % m
+        };
+        let pick = |r: u64| match r {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::INFINITY),
+            2 => V::Num(f64::NEG_INFINITY),
+            3 => V::Num(f64::NAN),
+            4 => V::Null,
+            5 => V::str("Ab"),
+            6 => V::str("ab"),
+            7 => V::Bool(true),
+            r => V::Num((r % 7) as f64 - 3.0),
+        };
+        for _ in 0..400 {
+            let keys: Vec<V> = (0..1 + next(30)).map(|_| pick(next(16))).collect();
+            for mm in [MatchMode::Exact, MatchMode::NextLarger, MatchMode::NextSmaller] {
+                for last in [false, true] {
+                    let m = Matcher::new(keys.clone(), mm, last, usize::MAX);
+                    for r in 0..18 {
+                        let x = if r == 16 {
+                            V::Num(-3.5)
+                        } else if r == 17 {
+                            V::Num(9.0)
+                        } else {
+                            pick(r)
+                        };
+                        let want = format!("{:?}", xmatch_index(&x, &keys, mm, last));
+                        assert_eq!(format!("{:?}", m.find(&x)), want, "{keys:?} {x:?} last={last}");
+                    }
+                }
+            }
+        }
     }
 }

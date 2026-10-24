@@ -291,14 +291,18 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
         }
     };
     let mut out = Vec::with_capacity(rows);
+    let mut ops = Vec::with_capacity(args.len());
     for i in 0..rows {
         let mut row = Vec::with_capacity(cols);
         for j in 0..cols {
-            let ops: Option<Vec<V>> = (0..args.len()).map(|k| cell_at(k, i, j)).collect();
-            row.push(match ops {
-                Some(ops) => cell(&ops),
-                None => V::Null,
-            });
+            ops.clear();
+            for k in 0..args.len() {
+                match cell_at(k, i, j) {
+                    Some(v) => ops.push(v),
+                    None => break,
+                }
+            }
+            row.push(if ops.len() == args.len() { cell(&ops) } else { V::Null });
         }
         out.push(V::List(Rc::new(row)));
     }
