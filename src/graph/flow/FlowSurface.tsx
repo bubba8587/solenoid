@@ -187,8 +187,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   hooksRef.current = hooks;
   const [nodes, setNodes] = useState<SolFlowNode[]>([]);
   const [edges, setEdges] = useState<SolFlowEdge[]>([]);
-  const heldIds = useRef(new Set<string>());
-  heldIds.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   const [menu, setMenu] = useState<{
@@ -250,12 +248,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, []);
 
   useEffect(() => {
-    // A card React Flow doesn't hold yet (a load's, before its one topology sync, which reads every position and
-    // version from the editor) has nothing to update, and the update would still cost a commit. While a rebuild
-    // runs, re-renders wait and land in one commit when it ends: a load's compute pass re-renders every card.
-    const held = (id: string) => heldIds.current.has(id);
+    // An update to a card React Flow doesn't hold yet returns the same array, so it costs no commit; it can't be
+    // skipped up front, since a card just added is in the queued state before it is in the rendered one. While a
+    // rebuild runs, re-renders wait and land in one commit when it ends: a load's compute pass re-renders every card.
     const bumpAll = (ids: Set<string>) =>
-      setNodes((ns) => ns.map((n) => (ids.has(n.id) ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n)));
+      setNodes((ns) => {
+        if (!ns.some((n) => ids.has(n.id))) return ns;
+        return ns.map((n) => (ids.has(n.id) ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n));
+      });
     const pendingBumps = new Set<string>();
     const offRebuildEnd = onGraphRebuildEnd(() => {
       if (pendingBumps.size === 0) return;
@@ -265,13 +265,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
     s.handlers.bumpNode = (id) => {
       if (isGraphRebuilding()) { pendingBumps.add(id); return; }
-      if (held(id)) bumpAll(new Set([id]));
+      bumpAll(new Set([id]));
     };
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
       setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
     s.handlers.moveNode = (id, pos) => {
-      if (!held(id)) return;
       const isGroup = s.editor.getNode(id) instanceof GroupNode;
       setNodes((ns) => {
         let changed = false;
