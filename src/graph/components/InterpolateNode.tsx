@@ -32,7 +32,7 @@ async function applyInterpolateMode(node: InterpolateNodeType, mode: Interpolate
   node._rebuildSockets();
 
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeType>) {

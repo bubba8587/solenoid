@@ -17,7 +17,7 @@ export function AccruedInterestComponent({ data, emit }: NodeProps<AccruedIntere
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

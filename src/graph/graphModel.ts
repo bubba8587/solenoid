@@ -10,20 +10,22 @@ export function getUID(): string {
   return uid();
 }
 
-/** Where a node's port changes go: the editors holding it, which send the node's ports to the core as they stand. */
+/** Where a node's port changes and in-place edits go: the editors holding it, which tell the core. */
 export interface PortListener {
   portsMoved(node: GraphNode): void;
+  edited(node: GraphNode): void;
 }
 
 /** A socket: its `name` is the type the core records for every port holding it. */
 export class GraphSocket {
   constructor(public name: string) {}
 
-  /** Whether the name can change in place, so the socket must know the ports holding it. */
-  protected get renames(): boolean { return false; }
+  /** Whether the socket can change in place (its name, or the type it adopted), so it must know the ports holding
+   *  it. */
+  protected get changes(): boolean { return false; }
 
   attach(port: GraphPort): void {
-    if (!this.renames) return;
+    if (!this.changes) return;
     const held = holders.get(this);
     if (held) held.add(port);
     else holders.set(this, new Set([port]));
@@ -38,6 +40,11 @@ export class GraphSocket {
     if (name === this.name) return;
     this.name = name;
     for (const port of holders.get(this) ?? []) port.retyped();
+  }
+
+  /** Tells every node holding the socket that it changed in place, where no port type records the change. */
+  protected heldEdited(): void {
+    for (const port of holders.get(this) ?? []) seats.get(port)?.edited();
   }
 }
 
@@ -124,6 +131,12 @@ export class GraphNode {
     if (!on && at >= 0) list.splice(at, 1);
     if (list.length) listeners.set(this, list);
     else listeners.delete(this);
+  }
+
+  /** Its fields, literals or label changed in place: every editor holding it reads its call afresh
+   *  (graph-core.md § Direct calls). An edit that then asks for a full pass calls this first. */
+  edited(): void {
+    for (const l of listeners.get(this) ?? []) l.edited(this);
   }
 
   portRetyped(): void {

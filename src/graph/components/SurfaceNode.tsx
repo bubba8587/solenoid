@@ -65,7 +65,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   const rotate = (dYaw: number, dPitch: number) => {

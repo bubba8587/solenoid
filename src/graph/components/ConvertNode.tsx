@@ -99,7 +99,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
       }
     }
     refreshFcs();
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function onToChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -107,7 +107,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     node.toUnit = next;
     setToUnit(next);
     refreshFcs();
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   // Display-only: these formats affect Convert's own boxes, so no recompute.
@@ -115,12 +115,14 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     const next = e.target.value as FormatStyle;
     node.inFormat = next;
     setInFormat(next);
+    node.edited();
     notifyGraphChanged();
   }
   function onOutFormatChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as FormatStyle;
     node.outFormat = next;
     setOutFormat(next);
+    node.edited();
     notifyGraphChanged();
   }
 

@@ -17,7 +17,7 @@ export function BinComponent({ data, emit }: NodeProps<BinNodeType>) {
     data.setMode(next);
     setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

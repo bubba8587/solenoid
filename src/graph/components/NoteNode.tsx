@@ -134,7 +134,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion(); // re-route cables whose source row shifted
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   // The body stays a local draft while typing and reaches the node here ([[C95]] commitOnEnter).

@@ -17,7 +17,7 @@ import { nodeDisplayName } from "../catalogUtils";
 
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
   node.op = newOp;
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 const CHART_OPS = Object.keys(CHART_OP_META) as ChartOp[];

@@ -23,6 +23,12 @@ export function flushPortEdits(): void {
   for (const editor of [..._portsMoved]) editor.flushPorts();
 }
 
+/** Node `id` changed in place, in whichever editor holds it: for what a card's call reads from outside the node (its
+ *  frame format picks). */
+export function nodeEdited(id: string): void {
+  for (const ref of _live) ref.deref()?.getNode(id)?.edited();
+}
+
 // After a trap every live editor builds its graph again in the fresh instance, on its next call.
 onWasmEngineReset(() => {
   for (const ref of _live) {
@@ -254,6 +260,17 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   portsMoved(node: GraphNode): void {
     this.movedPorts.add(node as S["Node"]);
     _portsMoved.add(this as unknown as GraphEditor<GraphSchemes>);
+  }
+
+  edited(node: GraphNode): void {
+    this.named(node.id);
+  }
+
+  /** The node `id`, here or inside a composite here, changed in place: its call is read afresh on its next compute.
+   *  With no core yet, or a dead one, the core built next reads every call. */
+  named(id: string): void {
+    const core = this._core;
+    if (core && wasmEngineLoaded()) guarded(() => core.named(id));
   }
 
   /** Sends each changed node's ports, as they stand, in one call per node. */

@@ -744,6 +744,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
               if (pos) await s.view.moveNode(fc.id, pos);
               await insertFcInline(s.editor, fc);
+              fc.edited();
               await processGraph();
             })();
           } else if (target) {

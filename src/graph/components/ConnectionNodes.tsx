@@ -122,7 +122,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
 
   function commit() {
     const next = url.trim();
-    if (next !== data.url) { data.url = next; void processGraph(); }
+    if (next !== data.url) { data.url = next; data.edited(); void processGraph(); }
   }
 
   return (
@@ -161,7 +161,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
     const nextIdx = Math.max(1, Math.round(Number(idx) || 1));
     setIdx(String(nextIdx));
     if (nextUrl !== data.url || nextIdx !== data.tableIndex) {
-      data.url = nextUrl; data.tableIndex = nextIdx; void processGraph();
+      data.url = nextUrl; data.tableIndex = nextIdx; data.edited(); void processGraph();
     }
   }
 
@@ -213,7 +213,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
     const nextUrl = url.trim();
     const nextQuery = query;
     if (nextUrl !== data.url || nextQuery !== data.query) {
-      data.url = nextUrl; data.query = nextQuery; void processGraph();
+      data.url = nextUrl; data.query = nextQuery; data.edited(); void processGraph();
     }
   }
 
@@ -280,7 +280,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   function pick(next: string) {
     setName(next);
     data.fileName = next;
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   function refresh() {
@@ -356,17 +356,17 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
     // Refinements are provider-specific, so a stale one would build a bad URL — reset them.
     data.stringLiterals.freq = ""; data.stringLiterals.start = ""; data.stringLiterals.end = "";
     setFreq(""); setStart(""); setEnd("");
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function commitInput(next: string) {
     const v = next.trim();
     setInput(v);
-    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processGraph(); }
+    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; data.edited(); void processGraph(); }
   }
   function setParam(key: "freq" | "start" | "end", v: string) {
     data.stringLiterals[key] = v;
     if (key === "freq") setFreq(v); else if (key === "start") setStart(v); else setEnd(v);
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   return (
@@ -432,7 +432,7 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
             className="sol-conn__select"
             value={data.pickedLabel || data.matches[0].label}
             title="Which match"
-            onChange={(e) => { data.pickedLabel = e.target.value; void processGraph(); }}
+            onChange={(e) => { data.pickedLabel = e.target.value; data.edited(); void processGraph(); }}
           >
             {data.matches.map((m2) => <option key={m2.label} value={m2.label}>{m2.label}</option>)}
           </LazySelect>
@@ -470,7 +470,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
     setPast(String(nPast)); setFwd(String(nFwd));
     if (nPast !== data.pastDays || nFwd !== data.forecastDays) {
       data.pastDays = nPast; data.forecastDays = nFwd;
-      void processGraph();
+      data.edited(); void processGraph();
     }
   }
   const numField = (label: string, val: string, set: (s: string) => void) => (
@@ -493,7 +493,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
         <SegToggle
           value={data.unit}
           options={WEATHER_UNIT_OPTIONS}
-          onChange={(u) => { data.unit = u; void processGraph(); }}
+          onChange={(u) => { data.unit = u; data.edited(); void processGraph(); }}
         />
       </div>
       <InlineInputs node={data} emit={emit} />
@@ -537,12 +537,12 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   function commitYear() {
     const n = Math.max(0, Math.round(Number(year) || 0));
     setYear(n ? String(n) : "");
-    if (n !== data.year) { data.year = n; void processGraph(); }
+    if (n !== data.year) { data.year = n; data.edited(); void processGraph(); }
   }
   function commitRegion() {
     const next = region.trim();
     setRegion(next);
-    if (next !== data.region) { data.region = next; void processGraph(); }
+    if (next !== data.region) { data.region = next; data.edited(); void processGraph(); }
   }
 
   const applicable = filterHolidays(data.cached ?? [], data.region);
@@ -558,7 +558,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
           className="sol-conn__select"
           value={data.country}
           title="Country"
-          onChange={(e) => { data.country = e.target.value; void processGraph(); }}
+          onChange={(e) => { data.country = e.target.value; data.edited(); void processGraph(); }}
         >
           <option value="">Pick a country…</option>
           {NAGER_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -622,7 +622,7 @@ function CurrencyRow({ data, emit, socketKey, label }: {
           className="sol-conn__select"
           value={data.stringLiterals[socketKey] ?? ""}
           title={label}
-          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; void processGraph(); }}
+          onChange={(e) => { data.stringLiterals[socketKey] = e.target.value; data.edited(); void processGraph(); }}
           {...stopDrag}
         >
           <option value="">Pick…</option>
@@ -644,7 +644,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
   useEffect(() => { setVal(data.stringLiterals[socketKey] ?? ""); }, [data.stringLiterals[socketKey]]);
   function commit() {
     const v = val.trim();
-    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; void processGraph(); }
+    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; data.edited(); void processGraph(); }
   }
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={data.id} emit={emit} payload={socket}>
@@ -675,7 +675,7 @@ async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => vo
   data.setMode(next);
   set(next);
   await getOwningView(data.id)?.rerenderNode(data.id);
-  await processGraph();
+  data.edited(); await processGraph();
 }
 
 export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
@@ -758,7 +758,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   }, [vault]);
   function pickFolder(next: string) {
     setFolder(next);
-    if (next !== data.folder) { data.folder = next; void processGraph(); }
+    if (next !== data.folder) { data.folder = next; data.edited(); void processGraph(); }
   }
   function refresh() {
     void listVaultFolders(vault).then(setFolders);
@@ -768,7 +768,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
     set(v);
-    if (v !== current) { apply(v); void processGraph(); }
+    if (v !== current) { apply(v); data.edited(); void processGraph(); }
   }
 
   const cube = data.cached;
@@ -841,7 +841,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             <label className="sol-conn__field" title="Add a body column with each note's markdown">
               <input
                 type="checkbox" checked={data.includeBody}
-                onChange={(e) => { data.includeBody = e.target.checked; void processGraph(); }}
+                onChange={(e) => { data.includeBody = e.target.checked; data.edited(); void processGraph(); }}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               />
               Include body
@@ -880,7 +880,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
     data.setProvider(next);
     setProvider(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   function commitToken() {
     if (token.trim() !== apiKeyStore.get(TASKNOTES_KEY_ID)) {

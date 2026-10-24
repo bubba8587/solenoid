@@ -31,7 +31,7 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   const on = isOnValue(node.stringLiterals[socketKey]);
   const set = (checked: boolean) => {
     node.stringLiterals[socketKey] = checked ? "on" : "off";
-    void processGraph();
+    node.edited(); void processGraph();
   };
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
@@ -72,7 +72,7 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   const value = node.stringLiterals[socketKey] || clearValue || options[0].value;
   const set = (v: string) => {
     node.stringLiterals[socketKey] = v === clearValue ? "" : v;
-    void processGraph();
+    node.edited(); void processGraph();
   };
   return (
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>

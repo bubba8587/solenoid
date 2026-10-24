@@ -33,7 +33,7 @@ async function applyCastTarget(node: CastNodeType, target: CastTarget): Promise<
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
 
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {

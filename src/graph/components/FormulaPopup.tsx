@@ -77,7 +77,7 @@ function formulaHostOf(node: GraphNode | undefined): FormulaHost | null {
       label,
       text: n.stringLiterals.formula ?? "",
       locked: false,
-      setText: async (s) => { n.stringLiterals.formula = s; await processGraph(); },
+      setText: async (s) => { n.stringLiterals.formula = s; n.edited(); await processGraph(); },
     };
   }
   return null;

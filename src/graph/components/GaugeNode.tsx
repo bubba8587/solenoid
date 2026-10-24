@@ -42,7 +42,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     data.setMode(next);
     setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   const dial = mode === "dial";

@@ -27,6 +27,7 @@ if (import.meta.env.DEV) {
       const n = getEditor()?.getNode(id);
       if (!n) return false;
       Object.assign(n, fields);
+      n.edited();
       // An FC's popup re-registers its annotation on every pick; mirror that.
       const ed = getEditor();
       const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };

@@ -22,7 +22,7 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
 
   node.height = computeExprHeight(node.varNames.length);
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 function computeScriptHeight(varCount: number): number {
@@ -40,7 +40,7 @@ export async function applyScriptChange(node: ScriptNode, src: string): Promise<
 
   node.height = computeScriptHeight(node.varNames.length);
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 function computeEquationHeight(varCount: number): number {
@@ -68,7 +68,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
 
   node.height = computeEquationHeight(node.varNames.length);
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 /** Sockets re-derive from both fields: captured = variables − params. */
@@ -87,6 +87,6 @@ export async function applyLambdaChange(
 
   node.height = computeExprHeight(node.captured.length) + INPUT_ROW_PITCH;
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 

@@ -6,18 +6,26 @@
  */
 export function setDirectCalls(on: boolean): void;
 /**
+ * On, every full clear checks that no direct card's call changed with its node unnamed (`unnamedEdits`).
+ */
+export function auditNamedEdits(on: boolean): void;
+/**
+ * The cards whose call changed with their node unnamed, as "Class label", since the last ask.
+ */
+export function unnamedEdits(): string[];
+/**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  */
 export function setPanicHandler(handler: Function): void;
 /**
- * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ * Opens (`true`) or closes a force-exact bracket.
  */
-export function uid(): string;
+export function sessionForceExact(begin: boolean): void;
 /**
- * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ * A new recalc generation, which every volatile node rolls on.
  */
-export function graphTrap(): void;
+export function sessionNextGeneration(): number;
 /**
  * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
  */
@@ -36,6 +44,14 @@ export function sessionEnter(changed: string | null | undefined, force: boolean)
  * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
  */
 export function sessionExit(finished: boolean): any;
+/**
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ */
+export function uid(): string;
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap(): void;
 /**
  * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
  * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
@@ -58,14 +74,6 @@ export function sessionSetMode(mode: string): boolean;
  * Sets (`true`) or clears the dirty flag; `true` on a transition.
  */
 export function sessionDirty(dirty: boolean): boolean;
-/**
- * Opens (`true`) or closes a force-exact bracket.
- */
-export function sessionForceExact(begin: boolean): void;
-/**
- * A new recalc generation, which every volatile node rolls on.
- */
-export function sessionNextGeneration(): number;
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
@@ -185,6 +193,11 @@ export class GraphCore {
    */
   fetch(id: string): Promise<any>;
   /**
+   * The node changed in place (a field, a literal, a label), here or inside a composite here: its call is read
+   * afresh on its next compute. `false` when no editor here holds it.
+   */
+  named(id: string): boolean;
+  /**
    * The node's ports on one side as `[key, type]` pairs, in order; `undefined` for a node not
    * here.
    */
@@ -243,6 +256,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_graphcore_free: (a: number, b: number) => void;
+  readonly auditNamedEdits: (a: number) => void;
   readonly computeNode: (a: number, b: number, c: number, d: number) => void;
   readonly directBodies: (a: number) => void;
   readonly findCellError: (a: number) => number;
@@ -264,6 +278,7 @@ export interface InitOutput {
   readonly graphcore_landed: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly graphcore_loopMembers: (a: number, b: number) => void;
   readonly graphcore_markNested: (a: number, b: number, c: number, d: number) => void;
+  readonly graphcore_named: (a: number, b: number, c: number) => number;
   readonly graphcore_nest: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_new: (a: number, b: number) => number;
   readonly graphcore_nodeIds: (a: number, b: number) => void;
@@ -299,6 +314,7 @@ export interface InitOutput {
   readonly setDirectCalls: (a: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly uid: (a: number) => void;
+  readonly unnamedEdits: (a: number) => void;
   readonly engine_csv_frame: (a: number, b: number, c: number) => void;
   readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;

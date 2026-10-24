@@ -13,7 +13,7 @@ export async function applyGetColumnReadAs(node: GetColumnNode, readAs: GetColum
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "values");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnAddAs): Promise<void> {
@@ -23,7 +23,7 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
   const view = getOwningView(node.id);
   if (editor) await retypeInputCables(editor, view, node.id, "values");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export async function applySplitColType(node: SplitFrameNode, colType: SplitColType): Promise<void> {
@@ -33,5 +33,5 @@ export async function applySplitColType(node: SplitFrameNode, colType: SplitColT
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "matrix");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }

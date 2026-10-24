@@ -98,6 +98,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       else if (n instanceof AngleDialNode) {
         const next = Math.round(n.value + dir * n.step);
         n.value = ((next % 360) + 360) % 360;
+        n.edited();
         dials++;
       }
     }

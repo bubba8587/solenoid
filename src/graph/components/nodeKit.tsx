@@ -70,6 +70,7 @@ export type ShellNode = {
   height: number;
   inputs: Record<string, Port | undefined>;
   outputs: Record<string, Port | undefined>;
+  edited(): void;
 };
 
 export type NodeProps<N> = {
@@ -79,7 +80,7 @@ export type NodeProps<N> = {
 
 export type Emit = (ctx: unknown) => void;
 
-export function useNodeField<N extends object, K extends keyof N>(
+export function useNodeField<N extends { id: string; edited(): void }, K extends keyof N>(
   node: N,
   key: K,
 ): [N[K], (next: N[K]) => void] {
@@ -89,11 +90,10 @@ export function useNodeField<N extends object, K extends keyof N>(
       node[key] = next;
       setVal(next);
       // Config can feed a derived socket type (a GROUPBY aggregate's column type), and no connection event fires here.
-      const id = (node as { id?: string }).id;
-      const ed = id ? getOwningEditor(id) : null;
-      const ar = id ? getOwningView(id) : null;
+      const ed = getOwningEditor(node.id);
+      const ar = getOwningView(node.id);
       if (ed && ar) reconcileTypesAfterEdit(ed, ar);
-      void processGraph();
+      node.edited(); void processGraph();
     },
     [node, key],
   );
@@ -276,7 +276,7 @@ export function NodeShell({
     node.label ?? "",
     (v) => v,
     (t) => t,
-    (v) => { node.label = v; void processGraph(); },
+    (v) => { node.label = v; node.edited(); void processGraph(); },
   );
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);

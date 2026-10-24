@@ -18,7 +18,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
       onPick: (symbol) => {
         data.symbol = symbol;
         void getOwningView(data.id)?.rerenderNode(data.id);
-        void processGraph();
+        data.edited(); void processGraph();
       },
     });
   };

@@ -31,7 +31,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     if (drop.length) await dropInputCables(data.id, drop);
     data.setMode(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (
