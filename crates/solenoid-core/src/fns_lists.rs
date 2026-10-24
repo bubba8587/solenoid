@@ -1229,30 +1229,35 @@ fn find_peaks(values: &[V], height: &V, distance: &V, prominence: &V) -> V {
         }
         yp - math_max(left_min, right_min)
     };
-    // (position, value, prominence)
-    let mut out: Vec<(usize, f64, f64)> = keep.iter().map(|&p| (p + 1, y(p), prominence_of(p))).collect();
-    if let Some(pr) = prominence {
-        out.retain(|pk| pk.2 >= pr);
-    }
+    // (position, value), in position order; prominence only when it filters.
+    let mut out: Vec<(usize, f64)> =
+        keep.iter().filter(|&&p| prominence.is_none_or(|pr| prominence_of(p) >= pr)).map(|&p| (p + 1, y(p))).collect();
     if let Some(d) = distance.filter(|d| *d > 1.0) {
-        let mut by_height = out.clone();
-        js_sort_by(&mut by_height, |a, b| {
-            let c = b.1 - a.1;
-            let c = if c != 0.0 && !c.is_nan() { c } else { a.0 as f64 - b.0 as f64 };
+        let mut by_height: Vec<usize> = (0..out.len()).collect();
+        js_sort_by(&mut by_height, |&a, &b| {
+            let c = out[b].1 - out[a].1;
+            let c = if c != 0.0 && !c.is_nan() { c } else { out[a].0 as f64 - out[b].0 as f64 };
             c.partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
         });
-        let mut removed = HashSet::new();
-        for pk in &by_height {
-            if removed.contains(&pk.0) {
+        // Positions ascend, so the peaks closer than `d` to one sit next to it on either side.
+        let mut removed = vec![false; out.len()];
+        let near = |i: usize, j: usize| ((out[j].0 as f64) - (out[i].0 as f64)).abs() < d;
+        for &k in &by_height {
+            if removed[k] {
                 continue;
             }
-            for other in &out {
-                if other.0 != pk.0 && !removed.contains(&other.0) && ((other.0 as f64 - pk.0 as f64).abs()) < d {
-                    removed.insert(other.0);
-                }
+            for j in (0..k).rev().take_while(|&j| near(k, j)) {
+                removed[j] = true;
+            }
+            for j in (k + 1..out.len()).take_while(|&j| near(k, j)) {
+                removed[j] = true;
             }
         }
-        out.retain(|pk| !removed.contains(&pk.0));
+        let mut i = 0;
+        out.retain(|_| {
+            i += 1;
+            !removed[i - 1]
+        });
     }
     nums(out.into_iter().map(|p| p.0 as f64).collect())
 }

@@ -2848,9 +2848,12 @@ fn rank_nested(
         }
     }
     let ranked = rank_any(&pooled, wf, normalize, breakdown)?;
+    let mut by_table: Vec<Vec<usize>> = vec![Vec::new(); out.len()];
+    for (k, &p) in ranked.at.iter().enumerate() {
+        by_table[group[p]].push(k);
+    }
     for (_, i) in &tables {
-        let mine: Vec<usize> = ranked.at.iter().enumerate().filter(|(_, &p)| group[p] == *i).map(|(k, _)| k).collect();
-        let sub = table_pick(&ranked.table, &mine);
+        let sub = table_pick(&ranked.table, &by_table[*i]);
         out[*i] = within_group(&sub, ranked.score_at, ranked.rank_at);
     }
     Ok(Some(out))

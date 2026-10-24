@@ -54,3 +54,10 @@ it("the ETS Forecast card caps its horizon at the generated-values limit", () =>
   const n = new EtsForecastNode();
   expect(() => n.data({ values: [[1, 2, 3, 4, 5, 6, 7, 8]], horizon: [1e8] })).toThrow(/exceeds the 1000000 element limit/);
 });
+
+it("FINDPEAKS with a distance walks each peak's neighbours, not every peak", () => {
+  const xs = Array.from({ length: 100_000 }, (_, i) => Math.sin(i * 2.1) + Math.sin(i * 0.001));
+  const { v, ms } = timed(() => evaluateOnCore("FINDPEAKS(xs, , 3)", { xs }));
+  expect(ms).toBeLessThan(2000);
+  expect(Array.isArray(v) && v.length).toBeGreaterThan(1000);
+});

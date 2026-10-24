@@ -544,13 +544,17 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
 
     let mut seen = vec![false; g.sources.len()];
     let mut links: Vec<ScheduleLink> = Vec::new();
+    let mut task_at: HashMap<&str, usize> = HashMap::new();
+    for (i, t) in tasks.iter().enumerate() {
+        task_at.entry(t.name.as_str()).or_insert(i);
+    }
     for (k, e) in edges.iter().enumerate() {
         if seen[e.source] {
             continue;
         }
         seen[e.source] = true;
         let src = &g.sources[e.source];
-        let to = tasks.iter().position(|t| t.name == src.to).expect("a link's successor is a task");
+        let to = *task_at.get(src.to.as_str()).expect("a link's successor is a task");
         let from = e.from;
         let demanded = cx.link_early_start(&p, e, p.dur[e.to])?;
         let driving = p.driver[to] == Some(k)

@@ -18,18 +18,28 @@ pub fn diagnose(
         out.push(Diagnostic { check: check.into(), task: task.into(), detail })
     };
     let lower = |s: &str| js_lower(s).into_owned();
+    // Each task's parent, the nearest earlier task at a lower level, found in one pass with a stack of open levels.
+    let mut parent: Vec<Option<usize>> = vec![None; tasks.len()];
+    let mut open: Vec<usize> = Vec::new();
+    for (i, t) in tasks.iter().enumerate() {
+        while open.last().is_some_and(|&o| tasks[o].level >= t.level) {
+            open.pop();
+        }
+        parent[i] = open.last().copied();
+        open.push(i);
+    }
+    let mut first_named: HashMap<&str, usize> = HashMap::new();
+    for (i, t) in tasks.iter().enumerate() {
+        first_named.entry(t.name.as_str()).or_insert(i);
+    }
     let with_ancestors = |name: &str| -> Vec<String> {
-        let i = tasks.iter().position(|t| t.name == name);
         let mut names = vec![lower(name)];
-        let mut level = i.map_or(0.0, |i| tasks[i].level);
-        let mut j = i.map_or(-1, |i| i as isize - 1);
-        while j >= 0 && level > 0.0 {
-            let t = &tasks[j as usize];
-            if t.level < level {
-                names.push(lower(&t.name));
-                level = t.level;
+        let mut at = first_named.get(name).copied();
+        while let Some(i) = at.filter(|&i| tasks[i].level > 0.0) {
+            at = parent[i];
+            if let Some(p) = at {
+                names.push(lower(&tasks[p].name));
             }
-            j -= 1;
         }
         names
     };

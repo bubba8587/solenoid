@@ -726,6 +726,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
         None => groups.push((None, (0..rows).collect())),
     }
     let (mut s_vals, mut c_nums, mut c_cats) = (Vec::new(), Vec::new(), Vec::<String>::new());
+    let mut c_seen = std::collections::HashSet::<String>::new();
     let mut series: Vec<Obj> = Vec::new();
     for &y in &y_cols {
         for (key, rs) in &groups {
@@ -742,7 +743,10 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
                     }
                     if let Some(cv) = c_at(r) {
                         match &cv {
-                            Json::String(s) if !c_cats.contains(s) => c_cats.push(s.clone()),
+                            Json::String(s) if !c_seen.contains(s) => {
+                                c_seen.insert(s.clone());
+                                c_cats.push(s.clone());
+                            }
                             Json::String(_) => {}
                             n => c_nums.push(json_num(n)),
                         }
