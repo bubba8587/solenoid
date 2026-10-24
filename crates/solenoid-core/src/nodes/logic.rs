@@ -6,7 +6,7 @@ use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::V;
+use crate::excel_functions::{kleene_and, kleene_or, V};
 use crate::frame::FrameColType;
 use crate::unit_dims::{dim_equal, is_dimensionless};
 use crate::unit_value::unit_error;
@@ -67,28 +67,6 @@ fn tri_bool(x: &V) -> Option<bool> {
 
 fn tri(t: Option<bool>) -> V {
     t.map_or(V::Null, V::Bool)
-}
-
-fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
-    if a == Some(false) || b == Some(false) {
-        return Some(false);
-    }
-    if a.is_none() || b.is_none() {
-        None
-    } else {
-        Some(true)
-    }
-}
-
-fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
-    if a == Some(true) || b == Some(true) {
-        return Some(true);
-    }
-    if a.is_none() || b.is_none() {
-        None
-    } else {
-        Some(false)
-    }
 }
 
 /// A value read as a condition; blank and an error pass through.

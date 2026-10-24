@@ -1400,7 +1400,8 @@ pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, 
     }
 }
 
-fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+/// Three-valued AND, blank as unknown: FALSE if either is FALSE, else blank if either is blank, else TRUE.
+pub(crate) fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(false) || b == Some(false) {
         Some(false)
     } else if a.is_none() || b.is_none() {
@@ -1410,7 +1411,8 @@ fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     }
 }
 
-fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+/// Three-valued OR: TRUE if either is TRUE, else blank if either is blank, else FALSE.
+pub(crate) fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(true) || b == Some(true) {
         Some(true)
     } else if a.is_none() || b.is_none() {
@@ -6106,6 +6108,24 @@ fn fx_finance(name: &str, a: &[V]) -> V {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn kleene_tables_match_sql_three_valued_logic() {
+        let (t, f, n) = (Some(true), Some(false), None);
+        for (a, b, and, or) in [
+            (t, t, t, t),
+            (t, f, f, t),
+            (f, t, f, t),
+            (f, f, f, f),
+            (t, n, n, t),
+            (n, t, n, t),
+            (f, n, f, n),
+            (n, f, f, n),
+            (n, n, n, n),
+        ] {
+            assert_eq!((super::kleene_and(a, b), super::kleene_or(a, b)), (and, or), "{a:?} {b:?}");
+        }
+    }
+
     use super::*;
 
     /// A name answered in two places runs only the first `route` finds, and the other body is dead code.

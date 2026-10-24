@@ -2707,7 +2707,43 @@ fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64
 
 #[cfg(test)]
 mod tests {
-    use super::run_hw;
+    use super::{fit_surface, run_hw};
+
+    fn close(a: f64, b: f64, tol: f64) {
+        assert!((a - b).abs() < tol, "{a} vs {b}");
+    }
+
+    #[test]
+    fn a_thin_plate_fit_passes_through_its_points() {
+        let pts = [(0.0, 0.0, 1.0), (1.0, 0.0, 4.0), (0.0, 1.0, 2.0), (1.0, 1.0, 9.0), (0.5, 0.5, 3.0)];
+        let f = fit_surface(&pts).unwrap();
+        for (x, y, z) in pts {
+            close(f(x, y), z, 1e-6);
+        }
+    }
+
+    #[test]
+    fn a_thin_plate_fit_reproduces_a_plane_inside_and_out() {
+        let plane = |x: f64, y: f64| 2.0 + 3.0 * x - y;
+        let pts: Vec<_> = [(0.0, 0.0), (2.0, 0.0), (0.0, 2.0), (2.0, 2.0)].map(|(x, y)| (x, y, plane(x, y))).into();
+        let f = fit_surface(&pts).unwrap();
+        close(f(1.0, 1.0), plane(1.0, 1.0), 1e-4);
+        close(f(5.0, -3.0), plane(5.0, -3.0), 1e-4);
+    }
+
+    #[test]
+    fn collinear_points_fit_a_plane_that_extends_the_trend() {
+        let f = fit_surface(&[(0.0, 0.0, 5.0), (10.0, 0.0, 15.0)]).unwrap();
+        close(f(20.0, 0.0), 25.0, 1e-3);
+    }
+
+    #[test]
+    fn one_point_fills_flat_and_none_fits_nothing() {
+        let f = fit_surface(&[(3.0, 3.0, 42.0)]).unwrap();
+        close(f(0.0, 0.0), 42.0, 1e-6);
+        close(f(99.0, -99.0), 42.0, 1e-6);
+        assert!(fit_surface(&[]).is_none());
+    }
 
     /// y = 10, 20, 12, 22, season 2, α = β = γ = 0.5: level 15, trend 1 and season [−5, 5] to start, so the
     /// predictions run 11, 21.25, 10.5625, 21.953125 when each season updates against the previous level plus the

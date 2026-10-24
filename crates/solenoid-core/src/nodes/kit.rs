@@ -104,3 +104,23 @@ pub fn num(v: &V) -> f64 {
         _ => f64::NAN,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::short_circuit;
+    use crate::error_value::{sol_error, ErrorCode};
+    use crate::excel_functions::V;
+
+    #[test]
+    fn the_first_error_wins_then_a_blank_then_nothing() {
+        let e1 = V::err(sol_error(ErrorCode::DivZero, "one"));
+        let e2 = V::err(sol_error(ErrorCode::NotAvailable, "two"));
+        let (one, two, blank, zero) = (V::Num(1.0), V::Num(2.0), V::Null, V::Num(0.0));
+        let first = |args: &[&V]| short_circuit(args).map(|v| format!("{v:?}"));
+        assert_eq!(first(&[&one, &e1, &two]), Some(format!("{e1:?}")));
+        assert_eq!(first(&[&e2, &e1]), Some(format!("{e2:?}")));
+        assert_eq!(first(&[&blank, &e1]), Some(format!("{e1:?}")));
+        assert_eq!(first(&[&one, &blank, &two]), Some(format!("{blank:?}")));
+        assert_eq!(first(&[&one, &two, &zero]), None);
+    }
+}
