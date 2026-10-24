@@ -1,10 +1,7 @@
 // [[C120]] linearWork, [[D99]] rustIsSpec
 // Timing, not a check: cards mapping one core body over a 50,000-item list.
 // `BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts` prints the table; a plain run skips it.
-import { describe, it, beforeAll } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { loadWasmEngineSync } from "../../src/graph/engineWasm";
+import { describe, it } from "vitest";
 import { TextTransformNode } from "../../src/graph/nodes/text";
 import { RoundNNode } from "../../src/graph/nodes/scalar";
 import { IsEvenOddNode } from "../../src/graph/nodes/logic";
@@ -25,9 +22,6 @@ function time(run: () => unknown, reps = 3): number {
 }
 
 describe.skipIf(!process.env.BENCH)("cards over a list on the core", () => {
-  beforeAll(() => {
-    loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
-  });
 
   it("prints the table", () => {
     const upper = new TextTransformNode({ op: "upper" });

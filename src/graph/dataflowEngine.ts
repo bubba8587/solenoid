@@ -1,7 +1,8 @@
 // [[D102]] graphOnCore
 // The dataflow engine, on the graph core (`crates/solenoid-graph`, Ruggine's port of rete-engine): a handle attached
 // with `editor.use(engine)`, running on that editor's core, which calls each node's own `data()` back.
-import { guarded, tracked, type GraphEditor } from "./graphEditor";
+import type { GraphEditor } from "./graphEditor";
+import { guarded, tracked } from "./engineWasm";
 import type { GraphSchemes } from "./graphModel";
 import type { Schemes } from "./schemes";
 import "./nodeBoundary";

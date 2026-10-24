@@ -69,6 +69,28 @@ export function seesErrors(_class: string): boolean;
 export function setBoundaryHost(host: object): void;
 export function findCellError(v: any): any;
 /**
+ * `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
+ */
+export function engine_invoke(command: string, args: string): string;
+export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
+/**
+ * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+ * `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
+ */
+export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
+/**
+ * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+ */
+export function engine_csv_frame(text: string): string;
+/**
+ * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+ */
+export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
+export function take_tags(): Uint8Array;
+export function take_nums(): Float64Array;
+export function take_strs(): string;
+export function take_lens(): Uint32Array;
+/**
  * One editor's graph and its dataflow engine.
  */
 export class GraphCore {
@@ -245,10 +267,19 @@ export interface InitOutput {
   readonly setBoundaryHost: (a: number, b: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly uid: (a: number) => void;
+  readonly engine_csv_frame: (a: number, b: number, c: number) => void;
+  readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly take_lens: (a: number) => void;
+  readonly take_nums: (a: number) => void;
+  readonly take_strs: (a: number) => void;
+  readonly take_tags: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
-  readonly __wbindgen_export_1: WebAssembly.Table;
-  readonly __wbindgen_export_2: (a: number, b: number) => number;
-  readonly __wbindgen_export_3: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_1: (a: number, b: number) => number;
+  readonly __wbindgen_export_2: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_3: WebAssembly.Table;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_export_4: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_5: (a: number, b: number, c: number) => void;

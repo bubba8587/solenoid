@@ -617,7 +617,8 @@ export function setFrameBackend(backend: FrameBackend): void {
 
 /** Loads the core and starts it empty: a webview reload would otherwise orphan every stored frame. */
 export async function initFrameBackend(): Promise<void> {
-  if (await loadWasmEngine()) await wasmInvoke("engine_clear", {});
+  await loadWasmEngine();
+  await wasmInvoke("engine_clear", {});
   setFrameBackend(new EngineBackend());
 }
 

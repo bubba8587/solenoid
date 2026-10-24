@@ -5,8 +5,8 @@ import { it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
-import { GraphTrap } from "../../src/graph/graphEditor";
-import { graphTrap } from "../../src/graph/graphWasm/solenoid_graph.js";
+import { CoreTrap } from "../../src/graph/engineWasm";
+import { graphTrap } from "../../src/graph/engineWasm/solenoid_graph.js";
 import type { Schemes } from "../../src/graph/schemes";
 
 class N extends GraphNode {
@@ -32,7 +32,7 @@ it("a trap rejects the fetch in flight, and the engine computes again on a fresh
 
   const pending = engine.fetch(b.id);
   expect(() => graphTrap()).toThrow();
-  await expect(pending).rejects.toBeInstanceOf(GraphTrap);
+  await expect(pending).rejects.toBeInstanceOf(CoreTrap);
   release();
   await Promise.resolve();
 

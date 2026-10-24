@@ -2,8 +2,9 @@
 // What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`) asks the app for: only what the
 // app's stores and frame code know (tree/specs/computation/compute-pass.md § The per-node wrappers). Installed each
 // time the module loads, a trap's fresh instance included.
-import { setBoundaryHost } from "./graphWasm/solenoid_graph.js";
-import { whenGraphEngineLoads, flushPortEdits } from "./graphEditor";
+import { setBoundaryHost } from "./engineWasm/solenoid_graph.js";
+import { flushPortEdits } from "./graphEditor";
+import { whenWasmEngineLoads } from "./engineWasm";
 import { frameFromRows, toCube, isFrameValue, type FrameValue } from "./frame";
 import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { displayMagnitudeOf } from "./unitBridge";
@@ -93,7 +94,7 @@ function cellKinds(a: readonly unknown[]): Uint8Array {
   return k;
 }
 
-whenGraphEngineLoads(() => setBoundaryHost({
+whenWasmEngineLoads(() => setBoundaryHost({
   collect: (ref: FrameRef) => readFrame(ref),
   frameFromRows: (rows: unknown[][]) => frameFromRows(rows),
   toCube: (v: unknown) => toCube(v),

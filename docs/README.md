@@ -176,9 +176,9 @@ results get retried and settled rulings relapse.
 | Cube Input's typed columns (`cubeSourceColumns`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
 | `SPARKLINE` (`sparklineImage` in `nodes/visualOps.ts`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
-| `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts`, `graphWasm/` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
+| `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
 | `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |
-| `crates/solenoid-core/`, `engineWasm.ts`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
+| `crates/solenoid-core/`, `engineWasm.ts`, `engineWasm/`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
 | `frameOps.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |

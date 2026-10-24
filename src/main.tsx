@@ -11,8 +11,6 @@ import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
-import { loadGraphEngine } from "./graph/graphEditor";
-import { loadWasmEngine } from "./graph/engineWasm";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
@@ -116,12 +114,8 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-// Nothing computes without the graph engine and the core the cards' bodies and table verbs run on ([[D102]] graphOnCore).
-const backendReady = Promise.all([
-  initFrameBackend(),
-  loadGraphEngine(),
-  loadWasmEngine(),
-]);
+// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[D102]] graphOnCore).
+const backendReady = initFrameBackend();
 
 initDevtoolsHotkey();
 

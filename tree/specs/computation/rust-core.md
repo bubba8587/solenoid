@@ -6,7 +6,7 @@ tags: [spec, computation]
 
 # Spec: the Rust core
 
-Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solenoid's headless core (it began as a port of the TypeScript one), built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
+Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solenoid's headless core (it began as a port of the TypeScript one), built for two targets: WebAssembly for the app, linked into the graph engine's module (`npm run build:wasm` writes `src/graph/engineWasm/`, [[graph-core]] § The module), and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
 
 ## The rule: the Rust is the spec ([[D99]] rustIsSpec)
 
@@ -83,7 +83,7 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 | Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone and IANA zones through `zone.rs` (`Intl` in wasm, jiff's bundled tzdb natively, with the names only ICU takes mapped beside it) and text dates through `date_parse.rs` | the frozen function-body cases |
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
-| The dataflow engine, the compute pass (its walks, seeding, invalidation, fetch and render set) and its state (calc mode, dirty flag, recalc generation, rebuild scopes, single flight), node and cable ids | `crates/solenoid-graph` on Ruggine, its own wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the session's native tests; the whole suite |
+| The dataflow engine, the compute pass (its walks, seeding, invalidation, fetch and render set) and its state (calc mode, dirty flag, recalc generation, rebuild scopes, single flight), node and cable ids | `crates/solenoid-graph` on Ruggine, in the same wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the session's native tests; the whole suite |
 | The input boundary every node's call goes through: the error guard and arrival coercion ([[compute-pass]] § The per-node wrappers) | `boundary.rs` in the graph module, over the app's JavaScript values | the frozen boundary answers (`boundary-*`, `coreBoundary.test.ts`); the whole suite |
 | Node `data()` | the card bodies ([[node-bodies]]); a body over a list runs its loop on the core | `fixtures/core/nodes/` ([[node-bodies]]); each family's tests |
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, the Choice Ladder (its plan, and its ladder beside it as `ladderWire` lays it out), Group Cost Settle's totals and its ledger, Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `ladder.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
@@ -117,11 +117,10 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
   the desktop ran it, took 1.17 s, nearly all of it the computed column's round trip out of Polars and back (its
   verbs alone were 60 ms, the core's 90 ms in wasm). Reopen [[C130]] if a table people open is slow in wasm.
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
-  where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
-  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue, guarding it as [[graph-core]] § Traps says), numbering its handles past the dead one's
-  (`engine_handle_base`). The call that trapped answers #ERROR! (`onCore`); a frame the verb backend held in the
-  dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
-  tests' trigger (`coreTrap.test.ts`).
+  where it stopped, so the instance is dropped and the compiled module instantiated afresh, the graph with it, as
+  [[graph-core]] § Traps says; the core numbers its handles past the dead one's (`engine_handle_base`). The call that
+  trapped answers #ERROR! (`onCore`); a frame the verb backend held in the dead instance is gone, so a verb over it
+  answers #REF! until the document reloads. `engine_trap` is the tests' trigger (`coreTrap.test.ts`).
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 

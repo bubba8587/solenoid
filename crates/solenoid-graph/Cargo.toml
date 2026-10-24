@@ -9,6 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+solenoid-core = { path = "../solenoid-core" }
 ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
 ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
 

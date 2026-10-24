@@ -1,6 +1,6 @@
 // [[D102]] graphOnCore
 // A node driven on its own through the graph core's input boundary, as an engine computes it.
-import { computeNode } from "../../src/graph/graphWasm/solenoid_graph.js";
+import { computeNode } from "../../src/graph/engineWasm/solenoid_graph.js";
 import type { GraphNode } from "../../src/graph/graphModel";
 import "../../src/graph/nodeBoundary";
 

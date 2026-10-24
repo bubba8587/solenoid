@@ -2,9 +2,7 @@
 // Every catalog card fed long lists and extreme scalars on every input: none may run unbounded. Slow, so opt-in:
 // `SWEEP=1 npx vitest run tests/graph/cardSweep.test.ts`. A card that spins synchronously stalls the run itself rather
 // than failing it; `SWEEP_FROM=<catalog key>` resumes past it once it's fixed.
-import { describe, it, expect, beforeAll } from "vitest";
-import * as fs from "node:fs";
-import { loadWasmEngineSync } from "../../src/graph/engineWasm";
+import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 
 type Card = { inputs?: Record<string, unknown>; data: (i: Record<string, unknown[]>) => unknown };
@@ -32,9 +30,6 @@ async function slowCards(values: unknown[], limitMs: number): Promise<string[]> 
 }
 
 describe.runIf(!!process.env.SWEEP)("every card on hostile inputs", () => {
-  beforeAll(() => {
-    loadWasmEngineSync(fs.readFileSync(new URL("../../src/graph/engineWasm/solenoid_core_bg.wasm", import.meta.url)));
-  });
 
   it("long lists of numbers and of text", async () => {
     const nums = Array.from({ length: 300 }, (_, i) => i * 1.7 - 40);

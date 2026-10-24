@@ -6,7 +6,7 @@ license = "MIT"
 publish = false
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

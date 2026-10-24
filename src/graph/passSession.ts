@@ -6,8 +6,8 @@
 import {
   sessionSnapshot, sessionRestore, sessionSetMode, sessionDirty, sessionForceExact, sessionNextGeneration,
   sessionRebuild, sessionRebuildScope, sessionMarkTopoDirty, sessionEnter, sessionExit,
-} from "./graphWasm/solenoid_graph.js";
-import { graphEngineLoaded, whenGraphEngineLoads } from "./graphEditor";
+} from "./engineWasm/solenoid_graph.js";
+import { guarded, wasmEngineLoaded, whenWasmEngineLoads } from "./engineWasm";
 
 export type CalcMode = "auto" | "manual" | "sketch";
 
@@ -32,19 +32,20 @@ export function session(): SessionSnapshot {
 }
 
 function step<T>(transition: () => T): T {
-  if (!graphEngineLoaded()) throw new Error("the graph engine isn't loaded (loadGraphEngine)");
-  const out = transition();
-  _snap = sessionSnapshot() as SessionSnapshot;
-  return out;
+  return guarded(() => {
+    const out = transition();
+    _snap = sessionSnapshot() as SessionSnapshot;
+    return out;
+  });
 }
 
 /** The mode a browser persisted, before the core loads; the core takes it when it does. */
 export function seedMode(mode: CalcMode): void {
-  if (graphEngineLoaded()) step(() => sessionSetMode(mode));
+  if (wasmEngineLoaded()) step(() => sessionSetMode(mode));
   else _snap = { ..._snap, mode };
 }
 
-whenGraphEngineLoads(() => { sessionRestore(_snap); _snap = sessionSnapshot() as SessionSnapshot; });
+whenWasmEngineLoads(() => { sessionRestore(_snap); _snap = sessionSnapshot() as SessionSnapshot; });
 
 export const setMode = (m: CalcMode): boolean => step(() => sessionSetMode(m));
 export const setDirty = (dirty: boolean): boolean => step(() => sessionDirty(dirty));
