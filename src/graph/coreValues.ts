@@ -2,7 +2,7 @@
 // Values across the boundary with the Rust core: what a JS value looks like to `eval.rs` `decode_value`, what the
 // core's reply (`frame_backend.rs` `call_reply`) looks like back, and the table that lets an error cell come back as
 // the very SolError that went in.
-import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
+import { solError, isSolError, type SolError, type SolErrorCode, type SolErrorOrigin } from "./errorValue";
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
 import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
@@ -28,10 +28,13 @@ export function errorRef(e: SolError): number | undefined {
   return id;
 }
 
-/** The error that went in under `ref`, if it is still alive and still this code; else a fresh one. */
-export function errorFromCore(code: string, message: string, ref: number | undefined): SolError {
+/** The error that went in under `ref`, if it is still alive and still this code; else a fresh one, with the origin the
+ *  core kept for it. */
+export function errorFromCore(code: string, message: string, ref: number | undefined, origin?: SolErrorOrigin): SolError {
   const original = ref === undefined || Number.isNaN(ref) ? undefined : errorRefs.get(ref)?.deref();
-  return original && original.code === code ? original : solError(code as SolErrorCode, message);
+  if (original && original.code === code) return original;
+  const e = solError(code as SolErrorCode, message);
+  return origin ? { ...e, origin } : e;
 }
 
 /** Text as the core holds it: a lone surrogate reads as U+FFFD ([[rust-core]] § Follow-ups, text is always well formed). */
@@ -41,7 +44,7 @@ export const toWellFormed = (s: string): string => (s as string & { toWellFormed
 export function wireCell(v: unknown): unknown {
   if (typeof v === "number" && !Number.isFinite(v)) return { __nf: Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf" };
   if (typeof v === "number" && Object.is(v, -0)) return { __nf: "-0" };
-  if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }) }; }
+  if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }), ...(v.origin ? { origin: v.origin } : {}) }; }
   return v;
 }
 
@@ -90,12 +93,12 @@ function fromReply(r: unknown): unknown {
   if (r === null) return null;
   if (typeof r === "number") return r;
   if (Array.isArray(r)) throw new Uncrossable();
-  const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true;
+  const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; origin?: SolErrorOrigin; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true;
     unit?: { value: string; dim: [string, string][]; display: string | null; ratio: boolean } };
   if (o.num !== undefined) return fromBits(o.num);
   if (o.str !== undefined) return o.str;
   if (o.bool !== undefined) return o.bool;
-  if (o.err !== undefined) return errorFromCore(o.err, o.msg ?? "", o.ref);
+  if (o.err !== undefined) return errorFromCore(o.err, o.msg ?? "", o.ref, o.origin);
   if (o.list) return o.list.map(fromReply);
   if (o.undef) return undefined;
   if (o.fx !== undefined) return new Error(o.fx);

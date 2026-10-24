@@ -1,7 +1,8 @@
 // [[D102]] graphOnCore
 //! The WebAssembly entry: one `GraphCore` per editor, holding its graph (`model.rs`) with the nodes'
 //! and cables' JavaScript objects, the pipes `src/graph/graphEditor.ts` adds, and the dataflow
-//! engine `src/graph/dataflowEngine.ts` drives.
+//! engine `src/graph/dataflowEngine.ts` drives, which calls a direct card's body in Rust
+//! (`direct.rs`) and every other card's `data()` in JavaScript.
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -18,9 +19,11 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
 
 use crate::boundary::{self, Facts};
+use crate::direct::{self, Card, Direct};
 use crate::model::{Failure, Graph, Host, Port, Side, Signal};
 use crate::pass;
 use crate::session::{Entry, Mode, Session};
+use crate::value::Val;
 
 /// A canvas node's JavaScript object, whose `data()` computes it, and what its class is.
 struct JsNode {
@@ -29,23 +32,62 @@ struct JsNode {
     facts: Facts,
     /// The editor's engine runs nodes through the input boundary (`boundary.rs`); off for a raw engine.
     boundary: Rc<Cell<bool>>,
+    /// What the core keeps for a card whose body it calls in Rust; `None` for every other card.
+    direct: Option<Direct>,
+    /// `GraphEditor.adopt`: a field the core holds for the card, read through the object.
+    adopt: Function,
+}
+
+impl JsNode {
+    fn card(&self) -> Option<Card<'_>> {
+        Some(Card {
+            object: &self.object,
+            facts: &self.facts,
+            direct: self.direct.as_ref()?,
+            adopt: &self.adopt,
+        })
+    }
 }
 
 struct Js;
 
+fn vals_to_js(inputs: Inputs<Val>) -> Inputs<JsValue> {
+    let mut out = Inputs::new();
+    for (key, values) in inputs.iter() {
+        out.insert(key.to_owned(), values.iter().map(Val::js).collect());
+    }
+    out
+}
+
+fn outputs_to_vals(outputs: Outputs<JsValue>) -> Outputs<Val> {
+    let mut out = Outputs::new();
+    for (key, value) in outputs.iter() {
+        out.insert(key.to_owned(), Val::from_js(value.clone()));
+    }
+    out
+}
+
 impl Host for Js {
     type Node = JsNode;
     type Connection = JsValue;
-    type Value = JsValue;
+    type Value = Val;
     type Thrown = JsValue;
 
     fn data<'a>(
         node: &'a JsNode,
         ports: &'a classic::Node,
-        inputs: Inputs<JsValue>,
-    ) -> LocalBoxFuture<'a, Result<Outputs<JsValue>, Error>> {
+        inputs: Inputs<Val>,
+    ) -> LocalBoxFuture<'a, Result<Outputs<Val>, Error>> {
         if node.boundary.get() {
-            return boundary::call(&node.object, &node.facts, ports, inputs, None);
+            if node.direct.is_some() {
+                return Box::pin(async move {
+                    let card = node.card().expect("a direct card");
+                    direct::call(&card, ports, inputs).await
+                });
+            }
+            let pending =
+                boundary::call(&node.object, &node.facts, ports, vals_to_js(inputs), None);
+            return Box::pin(async move { pending.await.map(outputs_to_vals) });
         }
         let data = match Reflect::get(&node.object, &JsValue::from_str("data")) {
             Ok(f) if f.is_function() => f.unchecked_into::<Function>(),
@@ -118,18 +160,18 @@ fn keys_of(value: &JsValue) -> Vec<String> {
         .collect()
 }
 
-fn outputs_from_js(value: JsValue) -> Outputs<JsValue> {
+fn outputs_from_js(value: JsValue) -> Outputs<Val> {
     let mut out = Outputs::new();
     if value.is_object() {
         for key in keys_of(&value) {
             let v = Reflect::get(&value, &JsValue::from_str(&key)).unwrap_or(JsValue::UNDEFINED);
-            out.insert(key, v);
+            out.insert(key, Val::from_js(v));
         }
     }
     out
 }
 
-fn outputs_to_js(outputs: &Outputs<JsValue>) -> Object {
+fn js_outputs_to_js(outputs: &Outputs<JsValue>) -> Object {
     let object = Object::new();
     for (key, value) in outputs.iter() {
         let _ = Reflect::set(&object, &JsValue::from_str(key), value);
@@ -137,10 +179,18 @@ fn outputs_to_js(outputs: &Outputs<JsValue>) -> Object {
     object
 }
 
-fn inputs_to_js(inputs: &Inputs<JsValue>) -> Object {
+fn outputs_to_js(outputs: &Outputs<Val>) -> Object {
+    let object = Object::new();
+    for (key, value) in outputs.iter() {
+        let _ = Reflect::set(&object, &JsValue::from_str(key), &value.js());
+    }
+    object
+}
+
+fn inputs_to_js(inputs: &Inputs<Val>) -> Object {
     let object = Object::new();
     for (key, values) in inputs.iter() {
-        let list: Array = values.iter().collect();
+        let list: Array = values.iter().map(Val::js).collect();
         let _ = Reflect::set(&object, &JsValue::from_str(key), &list);
     }
     object
@@ -226,6 +276,26 @@ fn inputs_from_js(inputs: &JsValue) -> Inputs<JsValue> {
     given
 }
 
+fn vals_from_js(inputs: &JsValue) -> Inputs<Val> {
+    let mut given = Inputs::new();
+    for (key, values) in inputs_from_js(inputs).iter() {
+        given.insert(
+            key.to_owned(),
+            values.iter().cloned().map(Val::from_js).collect(),
+        );
+    }
+    given
+}
+
+/// A call into the engine: the flags and the clock read once for it, and the error sinks' reports handed over when it
+/// ends.
+async fn entry<T>(work: impl std::future::Future<Output = T>) -> T {
+    boundary::enter();
+    let out = work.await;
+    boundary::flush_reports();
+    out
+}
+
 /// A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
 /// none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
 /// node.
@@ -238,10 +308,10 @@ pub fn compute_node(
     use std::future::Future;
     use std::task::{Context, Poll, Waker};
     let given = inputs_from_js(&inputs);
-    let mut pending = Box::pin(async move {
+    let mut pending = Box::pin(entry(async move {
         let (ports, facts) = (ports_of(&node), Facts::of(&node));
         boundary::call(&node, &facts, &ports, given, data.as_ref()).await
-    });
+    }));
     let error = |e: Error| match e {
         Error::Node(e) => match e.downcast_ref::<Thrown>() {
             Some(Thrown(value)) => value.clone(),
@@ -253,12 +323,12 @@ pub fn compute_node(
         .as_mut()
         .poll(&mut Context::from_waker(Waker::noop()))
     {
-        Poll::Ready(Ok(outputs)) => Ok(outputs_to_js(&outputs).into()),
+        Poll::Ready(Ok(outputs)) => Ok(js_outputs_to_js(&outputs).into()),
         Poll::Ready(Err(e)) => Err(error(e)),
         Poll::Pending => Ok(future_to_promise(async move {
             pending
                 .await
-                .map(|o| outputs_to_js(&o).into())
+                .map(|o| js_outputs_to_js(&o).into())
                 .map_err(error)
         })
         .into()),
@@ -272,6 +342,8 @@ struct Shared {
     nests: RefCell<FxHashMap<String, Weak<Shared>>>,
     /// The loop set the last pass computed, which a value edit's targeted pass reuses.
     loops: RefCell<Option<Vec<String>>>,
+    /// Each node's outputs as the last pass landed them: the change test's and the cable readouts' values.
+    landed: RefCell<FxHashMap<String, Vec<(String, Val)>>>,
 }
 
 type Node = Rc<crate::model::GraphNode<Js>>;
@@ -309,6 +381,57 @@ impl Shared {
         chain.last().map(|n| n.id().to_owned())
     }
 
+    /// A direct card's call is read afresh on its next compute: `id`'s, or every card's.
+    fn touch(&self, id: Option<&str>) {
+        match id {
+            Some(id) => {
+                if let Some(d) = self
+                    .graph
+                    .get_node(id)
+                    .as_ref()
+                    .and_then(|n| n.object.direct.as_ref())
+                {
+                    d.touch();
+                }
+            }
+            None => {
+                for node in self.graph.editor().get_nodes() {
+                    if let Some(d) = &node.object.direct {
+                        d.touch();
+                    }
+                }
+            }
+        }
+    }
+
+    /// Whether the outputs differ from what the node last landed (`!==` per key), which they then are.
+    fn land(&self, id: &str, outputs: &Outputs<Val>) -> bool {
+        let mut landed = self.landed.borrow_mut();
+        let held = landed.entry(id.to_owned()).or_default();
+        let mut moved = false;
+        for (key, v) in outputs.iter() {
+            match held.iter_mut().find(|(k, _)| k == key) {
+                Some((_, old)) => {
+                    moved |= old.differs(v);
+                    *old = v.clone();
+                }
+                None => {
+                    moved = true;
+                    held.push((key.to_owned(), v.clone()));
+                }
+            }
+        }
+        moved
+    }
+
+    /// The node left the editor: the fields the core held for it go back to its object.
+    fn left(&self, node: &Node) {
+        self.landed.borrow_mut().remove(node.id());
+        if let Some(d) = &node.object.direct {
+            d.restore(&node.object.object);
+        }
+    }
+
     fn loop_set(&self, reuse: bool) -> Vec<String> {
         if reuse {
             if let Some(loops) = self.loops.borrow().as_ref() {
@@ -326,7 +449,7 @@ impl Shared {
         if members.is_empty() {
             return;
         }
-        let circ = boundary::sol_error("#CIRC!", message);
+        let circ = Val::from_js(boundary::sol_error("#CIRC!", message));
         for id in members {
             let Some(node) = self.graph.get_node(id) else {
                 continue;
@@ -336,21 +459,20 @@ impl Shared {
                 outputs.insert(key.to_owned(), circ.clone());
             }
             let object = &node.object.object;
-            for field in [
-                "cachedResult",
-                "cachedValue",
-                "cachedList",
-                "cachedChart",
-                "cachedPayload",
-            ] {
-                let key = JsValue::from_str(field);
-                if Reflect::has(object, &key).unwrap_or(false) {
-                    let v = if field == "cachedPayload" {
-                        JsValue::NULL
-                    } else {
-                        circ.clone()
-                    };
-                    let _ = Reflect::set(object, &key, &v);
+            for field in direct::CACHED {
+                let v = if field == "cachedPayload" {
+                    Val::from_js(JsValue::NULL)
+                } else {
+                    circ.clone()
+                };
+                match node.object.card() {
+                    Some(card) => card.direct.seed_field(&card, field, v),
+                    None => {
+                        let key = JsValue::from_str(field);
+                        if Reflect::has(object, &key).unwrap_or(false) {
+                            let _ = Reflect::set(object, &key, &v.js());
+                        }
+                    }
                 }
             }
             let seeded = ruggine_engine::Cancellable::resolved(Ok(Rc::new(outputs)));
@@ -369,6 +491,7 @@ pub struct GraphCore {
     shared: Rc<Shared>,
     cancelled: Function,
     boundary: Rc<Cell<bool>>,
+    adopt: Function,
 }
 
 fn to_js(cancelled: &Function, error: Error) -> JsValue {
@@ -444,17 +567,20 @@ fn signal_to_js(signal: &Signal<Js>) -> (JsValue, JsValue) {
 
 #[wasm_bindgen]
 impl GraphCore {
-    /// `cancelled` is the class of error a fetch cut short by a reset rejects with.
+    /// `cancelled` is the class of error a fetch cut short by a reset rejects with; `adopt(node, field)` makes the
+    /// object read a field the core holds for it (`GraphEditor.adopt`).
     #[wasm_bindgen(constructor)]
-    pub fn new(cancelled: Function) -> GraphCore {
+    pub fn new(cancelled: Function, adopt: Function) -> GraphCore {
         GraphCore {
             shared: Rc::new(Shared {
                 graph: Graph::new(),
                 nests: RefCell::new(FxHashMap::default()),
                 loops: RefCell::new(None),
+                landed: RefCell::new(FxHashMap::default()),
             }),
             cancelled,
             boundary: Rc::new(Cell::new(false)),
+            adopt,
         }
     }
 
@@ -487,16 +613,19 @@ impl GraphCore {
     pub fn compute(&self, id: &str, inputs: JsValue) -> Promise {
         let node = self.shared.graph.get_node(id);
         let cancelled = self.cancelled.clone();
-        let given = inputs_from_js(&inputs);
-        future_to_promise(async move {
+        let given = vals_from_js(&inputs);
+        future_to_promise(entry(async move {
             let Some(node) = node else {
                 return Err(js_sys::Error::new("cannot find node").into());
             };
+            if let Some(d) = &node.object.direct {
+                d.touch();
+            }
             match Js::data(&node.object, &node.classic, given).await {
                 Ok(outputs) => Ok(outputs_to_js(&outputs).into()),
                 Err(e) => Err(to_js(&cancelled, e)),
             }
-        })
+        }))
     }
 
     /// `false` when a `nodecreate` pipe cancelled it.
@@ -510,11 +639,14 @@ impl GraphCore {
         output_keys: Vec<String>,
         output_types: Vec<String>,
     ) -> Result<bool, JsValue> {
+        let facts = Facts::of(&object);
         let node = JsNode {
-            facts: Facts::of(&object),
+            direct: solenoid_core::nodes::is_direct(&facts.class).then(Direct::default),
+            facts,
             object,
             cancelled: self.cancelled.clone(),
             boundary: self.boundary.clone(),
+            adopt: self.adopt.clone(),
         };
         self.shared
             .graph
@@ -530,7 +662,12 @@ impl GraphCore {
     /// `false` when a `noderemove` pipe cancelled it.
     #[wasm_bindgen(js_name = removeNode)]
     pub fn remove_node(&self, id: &str) -> Result<bool, JsValue> {
-        self.shared.graph.remove_node(id).map_err(failed)
+        let node = self.shared.graph.get_node(id);
+        let removed = self.shared.graph.remove_node(id).map_err(failed)?;
+        if let (true, Some(node)) = (removed, node) {
+            self.shared.left(&node);
+        }
+        Ok(removed)
     }
 
     /// `false` when a `connectioncreate` pipe cancelled it.
@@ -562,7 +699,14 @@ impl GraphCore {
 
     /// Every cable, then every node; `false` when a `clear` pipe cancelled it.
     pub fn clear(&self) -> Result<bool, JsValue> {
-        self.shared.graph.clear().map_err(failed)
+        let nodes = self.shared.graph.editor().get_nodes();
+        let cleared = self.shared.graph.clear().map_err(failed)?;
+        for node in nodes {
+            if self.shared.graph.get_node(node.id()).is_none() {
+                self.shared.left(&node);
+            }
+        }
+        Ok(cleared)
     }
 
     /// Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
@@ -575,6 +719,7 @@ impl GraphCore {
         output_keys: Vec<String>,
         output_types: Vec<String>,
     ) -> Result<(), JsValue> {
+        self.shared.touch(Some(id));
         self.shared
             .graph
             .set_ports(
@@ -614,32 +759,35 @@ impl GraphCore {
 
     /// The node's outputs, from the cache when present.
     pub fn fetch(&self, id: &str) -> Promise {
-        let pending = self.shared.graph.engine().fetch(id);
+        let engine = self.shared.graph.engine().clone();
+        let id = id.to_owned();
         let cancelled = self.cancelled.clone();
-        future_to_promise(async move {
-            match pending.await {
+        future_to_promise(entry(async move {
+            match engine.fetch(&id).await {
                 Ok(outputs) => Ok(outputs_to_js(&outputs).into()),
                 Err(e) => Err(to_js(&cancelled, e)),
             }
-        })
+        }))
     }
 
     /// The node's inputs, fetching every predecessor.
     #[wasm_bindgen(js_name = fetchInputs)]
     pub fn fetch_inputs(&self, id: &str) -> Promise {
-        let pending = self.shared.graph.engine().fetch_inputs(id);
+        let engine = self.shared.graph.engine().clone();
+        let id = id.to_owned();
         let cancelled = self.cancelled.clone();
-        future_to_promise(async move {
-            match pending.await {
+        future_to_promise(entry(async move {
+            match engine.fetch_inputs(&id).await {
                 Ok(inputs) => Ok(inputs_to_js(&inputs).into()),
                 Err(e) => Err(to_js(&cancelled, e)),
             }
-        })
+        }))
     }
 
     /// Clears the node's cache and everything downstream through the outputs it computes;
     /// without a node, every cache.
     pub fn reset(&self, id: Option<String>) -> Result<(), JsValue> {
+        self.shared.touch(id.as_deref());
         self.shared
             .graph
             .engine()
@@ -655,7 +803,38 @@ impl GraphCore {
 
     /// Clears the node's cache alone, cancelling a run in flight.
     pub fn forget(&self, id: &str) {
+        self.shared.touch(Some(id));
         self.shared.graph.engine().cache().delete(id);
+    }
+
+    /// A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
+    pub fn shown(&self, id: &str, field: &str) -> JsValue {
+        self.shared
+            .graph
+            .get_node(id)
+            .and_then(|n| n.object.direct.as_ref().and_then(|d| d.shown(field)))
+            .map_or(JsValue::UNDEFINED, |v| v.js())
+    }
+
+    /// JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
+    #[wasm_bindgen(js_name = setShown)]
+    pub fn set_shown(&self, id: &str, field: &str, value: JsValue) -> bool {
+        self.shared.graph.get_node(id).is_some_and(|n| {
+            n.object
+                .direct
+                .as_ref()
+                .is_some_and(|d| d.set_shown(field, value))
+        })
+    }
+
+    /// The output `key` of node `id` as the last pass landed it; `undefined` before one did.
+    pub fn landed(&self, id: &str, key: &str) -> JsValue {
+        let landed = self.shared.landed.borrow();
+        landed
+            .get(id)
+            .and_then(|outs| outs.iter().find(|(k, _)| k == key))
+            .map(|(_, v)| v.clone())
+            .map_or(JsValue::UNDEFINED, |v| v.js())
     }
 
     #[wasm_bindgen(js_name = isCached)]
@@ -696,6 +875,7 @@ impl GraphCore {
     #[wasm_bindgen(js_name = computeAll)]
     pub fn compute_all(&self, changed: Option<String>) -> Promise {
         let g = &self.shared.graph;
+        self.shared.touch(changed.as_deref());
         pass::invalidate(g.editor(), g.engine(), changed.as_deref(), false);
         self.seed_loops(None);
         self.fetch_all(None, false)
@@ -703,15 +883,14 @@ impl GraphCore {
 
     /// The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
     /// what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
-    /// (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
-    /// outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
-    /// cancelled the pass.
+    /// (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order and landed (its
+    /// outputs held for the cable readouts, the change test against what it landed before). The nodes to re-render, in
+    /// order; `null` when a reset cancelled the pass.
     pub fn pass(
         &self,
         changed: Option<String>,
         render_only: Option<Vec<String>>,
         topology: bool,
-        on_node: Function,
     ) -> Promise {
         let shared = self.shared.clone();
         let cancelled = self.cancelled.clone();
@@ -724,21 +903,20 @@ impl GraphCore {
         });
         let render_only: Option<FxHashSet<String>> =
             render_only.map(|ids| ids.into_iter().collect());
+        if render_only.is_none() {
+            shared.touch(changed.as_deref());
+        }
         let (editor, engine) = (shared.graph.editor().clone(), shared.graph.engine().clone());
         let cone: Option<FxHashSet<String>> =
             pass::invalidate(&editor, &engine, changed.as_deref(), render_only.is_some())
                 .map(|ids| ids.into_iter().collect());
         let loops = shared.loop_set(changed.is_some() && !topology);
         shared.seed_loops(&loops, CIRC_MESSAGE);
-        future_to_promise(async move {
+        future_to_promise(entry(async move {
             let mut moved: FxHashSet<String> = FxHashSet::default();
             let mut sinks: FxHashSet<String> = FxHashSet::default();
-            let landed = |id: &str, outputs: &Rc<Outputs<JsValue>>| {
-                let object = outputs_to_js(outputs);
-                let differs = on_node
-                    .call2(&JsValue::NULL, &JsValue::from_str(id), &object)
-                    .map_err(thrown)?
-                    .is_truthy();
+            let landed = |id: &str, outputs: &Rc<Outputs<Val>>| {
+                let differs = shared.land(id, outputs);
                 if cone.is_some() {
                     if outputs.is_empty() {
                         sinks.insert(id.to_owned());
@@ -762,7 +940,7 @@ impl GraphCore {
                 Ok(None) => Ok(JsValue::NULL),
                 Err(e) => Err(to_js(&cancelled, e)),
             }
-        })
+        }))
     }
 
     #[wasm_bindgen(js_name = loopMembers)]
@@ -777,6 +955,9 @@ impl GraphCore {
 
     /// What a change to `id` reaches, its caches cleared; `undefined` without a node.
     pub fn invalidate(&self, id: Option<String>, keep_caches: bool) -> Option<Vec<String>> {
+        if !keep_caches {
+            self.shared.touch(id.as_deref());
+        }
         pass::invalidate(
             self.shared.graph.editor(),
             self.shared.graph.engine(),
@@ -794,9 +975,9 @@ impl GraphCore {
             self.shared.graph.engine().clone(),
             self.cancelled.clone(),
         );
-        future_to_promise(async move {
+        future_to_promise(entry(async move {
             let mut objects = Vec::new();
-            let landed = |id: &str, outputs: &Rc<Outputs<JsValue>>| {
+            let landed = |id: &str, outputs: &Rc<Outputs<Val>>| {
                 let object = outputs_to_js(outputs);
                 objects.push(object.clone());
                 match &on_node {
@@ -823,7 +1004,7 @@ impl GraphCore {
                 Ok(None) => Ok(JsValue::NULL),
                 Err(e) => Err(to_js(&cancelled, e)),
             }
-        })
+        }))
     }
 }
 

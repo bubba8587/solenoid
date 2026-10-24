@@ -405,6 +405,33 @@ export function sessionRebuild(begin) {
     return ret !== 0;
 }
 
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(takeObject(mem.getUint32(i, true)));
+    }
+    return result;
+}
+/**
+ * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
+ * @returns {string[]}
+ */
+export function directBodies() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.directBodies(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
 /**
  * @param {string} _class
  * @returns {boolean}
@@ -452,16 +479,6 @@ export function setBoundaryHost(host) {
 export function findCellError(v) {
     const ret = wasm.findCellError(addHeapObject(v));
     return takeObject(ret);
-}
-
-function getArrayJsValueFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    const mem = getDataViewMemory0();
-    const result = [];
-    for (let i = ptr; i < ptr + 4 * len; i += 4) {
-        result.push(takeObject(mem.getUint32(i, true)));
-    }
-    return result;
 }
 
 function passArrayJsValueToWasm0(array, malloc) {
@@ -741,7 +758,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_129(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_168(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1023,11 +1040,13 @@ export class GraphCore {
         }
     }
     /**
-     * `cancelled` is the class of error a fetch cut short by a reset rejects with.
+     * `cancelled` is the class of error a fetch cut short by a reset rejects with; `adopt(node, field)` makes the
+     * object read a field the core holds for it (`GraphEditor.adopt`).
      * @param {Function} cancelled
+     * @param {Function} adopt
      */
-    constructor(cancelled) {
-        const ret = wasm.graphcore_new(addHeapObject(cancelled));
+    constructor(cancelled, adopt) {
+        const ret = wasm.graphcore_new(addHeapObject(cancelled), addHeapObject(adopt));
         this.__wbg_ptr = ret >>> 0;
         GraphCoreFinalization.register(this, { ptr: this.__wbg_ptr, epoch: __wbg_epoch }, this);
         return this;
@@ -1046,21 +1065,20 @@ export class GraphCore {
     /**
      * The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
      * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
-     * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
-     * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
-     * cancelled the pass.
+     * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order and landed (its
+     * outputs held for the cable readouts, the change test against what it landed before). The nodes to re-render, in
+     * order; `null` when a reset cancelled the pass.
      * @param {string | null | undefined} changed
      * @param {string[] | null | undefined} render_only
      * @param {boolean} topology
-     * @param {Function} on_node
      * @returns {Promise<any>}
      */
-    pass(changed, render_only, topology, on_node) {
+    pass(changed, render_only, topology) {
         var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len0 = WASM_VECTOR_LEN;
         var ptr1 = isLikeNone(render_only) ? 0 : passArrayJsValueToWasm0(render_only, wasm.__wbindgen_export_1);
         var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.graphcore_pass(this.__wbg_ptr, ptr0, len0, ptr1, len1, topology, addHeapObject(on_node));
+        const ret = wasm.graphcore_pass(this.__wbg_ptr, ptr0, len0, ptr1, len1, topology);
         return takeObject(ret);
     }
     /**
@@ -1137,6 +1155,20 @@ export class GraphCore {
         }
     }
     /**
+     * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
+     * @param {string} id
+     * @param {string} field
+     * @returns {any}
+     */
+    shown(id, field) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(field, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_shown(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return takeObject(ret);
+    }
+    /**
      * Clears the node's cache alone, cancelling a run in flight.
      * @param {string} id
      */
@@ -1144,6 +1176,20 @@ export class GraphCore {
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         wasm.graphcore_forget(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * The output `key` of node `id` as the last pass landed it; `undefined` before one did.
+     * @param {string} id
+     * @param {string} key
+     * @returns {any}
+     */
+    landed(id, key) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_landed(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return takeObject(ret);
     }
     /**
      * @param {string} id
@@ -1279,6 +1325,21 @@ export class GraphCore {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
     }
+    /**
+     * JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
+     * @param {string} id
+     * @param {string} field
+     * @param {any} value
+     * @returns {boolean}
+     */
+    setShown(id, field, value) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(field, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_setShown(this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(value));
+        return ret !== 0;
+    }
 }
 
 async function __wbg_load(module, imports) {
@@ -1350,6 +1411,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_construct_b91ff0e53b60c0c3 = function() { return handleError(function (arg0, arg1) {
         const ret = Reflect.construct(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
+    }, arguments) };
+    imports.wbg.__wbg_defineProperty_5e0378dd0a5920ab = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = Reflect.defineProperty(getObject(arg0), getObject(arg1), getObject(arg2));
+        return ret;
     }, arguments) };
     imports.wbg.__wbg_formatToParts_eaf78fdffce01b9c = function() { return handleError(function (arg0, arg1) {
         const ret = getObject(arg0).formatToParts(getObject(arg1));
@@ -1492,7 +1557,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_129(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_168(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1566,6 +1631,10 @@ function __wbg_get_imports() {
         const ret = Math.random();
         return ret;
     };
+    imports.wbg.__wbg_reject_b3fcf99063186ff7 = function(arg0) {
+        const ret = Promise.reject(getObject(arg0));
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_resolve_4851785c9c5f573d = function(arg0) {
         const ret = Promise.resolve(getObject(arg0));
         return addHeapObject(ret);
@@ -1626,8 +1695,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper482 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper617 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

@@ -3,7 +3,7 @@
 // (`crates/solenoid-graph`, tree/specs/computation/graph-core.md § The model). The handle keeps each node's and cable's
 // JavaScript object by id, as the core's signals report them.
 import { GraphCore } from "./engineWasm/solenoid_graph.js";
-import { guarded, onWasmEngineReset, wasmEngineLoaded } from "./engineWasm";
+import { guarded, onCore, onWasmEngineReset, wasmEngineLoaded } from "./engineWasm";
 import type { DataflowEngine } from "./dataflowEngine";
 import type { GraphNode, GraphSchemes, PortListener } from "./graphModel";
 import type { Schemes } from "./schemes";
@@ -76,7 +76,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     }
     this.movedPorts.clear();
     if (!wasmEngineLoaded()) throw new Error("the wasm engine isn't loaded (loadWasmEngine)");
-    const core = new GraphCore(Cancelled);
+    const core = new GraphCore(Cancelled, (node: S["Node"], field: string) => this.adopt(node, field));
     this._core = core;
     this.replaying = true;
     try {
@@ -96,6 +96,21 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   /** After a trap: the next call builds a core in the fresh instance. */
   rebuild(): void {
     this._core = null;
+  }
+
+  /** A field the core holds for a direct card (graph-core.md § Direct calls): the object reads it from the core,
+   *  converted when read, and writing it stores it there; once the core holds none for it, it is a plain field again. */
+  private adopt(node: S["Node"], field: string): void {
+    const editor = this;
+    const plain = (value: unknown) => Object.defineProperty(node, field, { value, writable: true, enumerable: true, configurable: true });
+    Object.defineProperty(node, field, {
+      configurable: true,
+      enumerable: true,
+      get: () => onCore(() => guarded(() => editor.core().shown(node.id, field)), undefined),
+      set: (value: unknown) => {
+        if (!onCore(() => guarded(() => editor.core().setShown(node.id, field, value)), false)) plain(value);
+      },
+    });
   }
 
   private install(core: GraphCore, p: Piped): void {

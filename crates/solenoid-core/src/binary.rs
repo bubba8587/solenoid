@@ -91,7 +91,7 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
                     let code = ErrorCode::from_wire(cut.next()?);
                     let message = cut.next()?.to_string();
                     let reference = (!nums[i].is_nan()).then_some(nums[i] as u32);
-                    FrameCell::Err(Rc::new(SolError { code, message, reference }))
+                    FrameCell::Err(Rc::new(SolError { code, message, reference, origin: None }))
                 }
                 _ => FrameCell::Null,
             });
@@ -173,7 +173,7 @@ mod tests {
                 FrameCell::Num(-0.0),
                 FrameCell::Num(f64::NEG_INFINITY),
                 FrameCell::Bool(true),
-                FrameCell::err(SolError { code: ErrorCode::NotAvailable, message: "m".into(), reference: Some(7) }),
+                FrameCell::err(SolError { code: ErrorCode::NotAvailable, message: "m".into(), reference: Some(7), origin: None }),
                 FrameCell::str(""),
             ],
         );

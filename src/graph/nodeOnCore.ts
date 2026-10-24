@@ -4,7 +4,9 @@
 // The mechanism is tree/specs/computation/node-bodies.md.
 import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
-import { declaredTypeOf, AdoptiveSocket } from "./sockets";
+import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
+import { TYPEABLE_LIST, parseListLiteral } from "./listLiterals";
+import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
 import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
@@ -37,6 +39,54 @@ export function coreInit(node: GraphNode): Record<string, unknown> {
   const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
   for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
   return init;
+}
+
+const CACHED = ["cachedResult", "cachedValue", "cachedList", "cachedChart", "cachedPayload"] as const;
+
+/** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
+ *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
+ *  `static coreFields` come per call (`coreFieldsOf`). JSON text. */
+export function coreHeader(node: GraphNode): string {
+  const n = node as unknown as {
+    literals?: unknown; stringLiterals?: Record<string, unknown>; rawInputs?: Iterable<string>; noWidenInputs?: Iterable<string>;
+    ownsListLiterals?: boolean; passthrough?: () => { inputs?: string[] }[];
+  } & Record<string, unknown>;
+  const lits = n.stringLiterals;
+  const lists: [string, unknown][] = [];
+  if (!n.ownsListLiterals && lits && typeof lits === "object") {
+    for (const [k, input] of Object.entries(node.inputs)) {
+      const rung = input?.socket.name;
+      const text = lits[k];
+      if (!rung || typeof text !== "string" || text.trim() === "") continue;
+      if (!TYPEABLE_LIST.has(rung) && rung !== "numlist") continue;
+      const w = nodeWire(parseListLiteral(text, rung as SocketDataType));
+      if (w !== undefined) lists.push([k, w]);
+    }
+  }
+  const picks = frameFormatStore.forNode(node.id);
+  return JSON.stringify({
+    kind: node.constructor.name,
+    label: node.label || node.constructor.name,
+    init: jsonEnc(extractInit(node)),
+    coreFields: (node.constructor as { coreFields?: readonly string[] }).coreFields ?? [],
+    ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
+    ...(lits ? { stringLiterals: jsonEnc(lits) } : {}),
+    sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]),
+    outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null, ...adopted(output?.socket)]),
+    passthrough: typeof n.passthrough === "function" ? n.passthrough().flatMap((s) => s.inputs ?? []) : [],
+    raw: [...(n.rawInputs ?? [])],
+    noWiden: [...(n.noWidenInputs ?? [])],
+    ownsListLiterals: n.ownsListLiterals === true,
+    lists,
+    has: CACHED.filter((f) => f in n),
+    ...(picks.size ? { picks: Object.fromEntries([...picks].map(([c, f]) => [c, jsonEnc(f)])) } : {}),
+  });
+}
+
+/** The run-time fields a direct card's class names in `static coreFields`, as of this call. JSON text. */
+export function coreFieldsOf(node: GraphNode, names: readonly string[]): string {
+  const n = node as unknown as Record<string, unknown>;
+  return JSON.stringify(Object.fromEntries(names.map((f) => [f, jsonEnc(n[f])])));
 }
 
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */

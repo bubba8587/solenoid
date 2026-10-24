@@ -8,7 +8,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Map, Value as Json};
 
-use crate::error_value::{ErrorCode, SolError};
+use crate::error_value::{ErrorCode, Origin, SolError};
 use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub fn decode_cell(v: &Json) -> FrameCell {
@@ -31,6 +31,7 @@ pub fn decode_cell(v: &Json) -> FrameCell {
                     code: ErrorCode::from_wire(code),
                     message: o.get("msg").and_then(Json::as_str).unwrap_or("").to_string(),
                     reference: o.get("ref").and_then(Json::as_u64).map(|r| r as u32),
+                    origin: o.get("origin").and_then(Origin::from_json).map(Rc::new),
                 }));
             }
             FrameCell::Null

@@ -2,7 +2,7 @@
 // The dataflow engine, on the graph core (`crates/solenoid-graph`, Ruggine's port of rete-engine): a handle attached
 // with `editor.use(engine)`, running on that editor's core, which calls each node's own `data()` back.
 import type { GraphEditor } from "./graphEditor";
-import { guarded, tracked } from "./engineWasm";
+import { guarded, onCore, tracked } from "./engineWasm";
 import type { GraphSchemes } from "./graphModel";
 import type { Schemes } from "./schemes";
 import "./nodeBoundary";
@@ -113,15 +113,19 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
 
   /** The app's pass body (compute-pass.md § The pass body): `changed` retargeted into the composite holding it, its
    *  reach cleared (everything when none; nothing for an additive pass, `renderOnly`), the loops seeded (a value
-   *  edit reuses the last set unless `topology`), every node fetched with `onNode` answering whether its outputs
-   *  changed. The nodes to re-render, or `null` when a reset cancelled the pass. */
+   *  edit reuses the last set unless `topology`), every node fetched and landed (`landed`). The nodes to re-render,
+   *  or `null` when a reset cancelled the pass. */
   pass(
     changed: string | undefined,
     renderOnly: ReadonlySet<string> | undefined,
     topology: boolean,
-    onNode: (id: string, outputs: NodeOutputs) => boolean,
   ): Promise<string[] | null> {
-    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology, onNode));
+    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology));
+  }
+
+  /** A node's output as the last pass landed it, converted when asked; `undefined` before a pass landed it. */
+  landed(nodeId: string, key: string): unknown {
+    return onCore(() => guarded(() => this.core().landed(nodeId, key)), undefined);
   }
 
   /** Every node's outputs in the editor's order (`null` for one a reset cancelled), calling `onNode` as each lands;

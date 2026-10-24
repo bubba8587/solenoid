@@ -1256,7 +1256,7 @@ pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> V {
 }
 
 /// A column per position, each inferred.
-pub(crate) fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
+pub fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
     let ncols = rows.iter().map(Vec::len).max().unwrap_or(0);
     let names = crate::frame::make_headers(&[], ncols);
     let columns = names
@@ -1473,7 +1473,7 @@ fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str
 }
 
 /// Each column's cells in its unit.
-pub(crate) fn frame_to_cube(f: &Frame) -> Cube {
+pub fn frame_to_cube(f: &Frame) -> Cube {
     Cube {
         columns: f
             .columns

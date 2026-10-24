@@ -79,9 +79,8 @@ src/graph/seedGraphs
 why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
 prerender
 
-why: wasm-bindgen output for the Rust core and the graph engine; `npm run build:wasm` writes them from crates/solenoid-core and crates/solenoid-graph, which cite
+why: wasm-bindgen output for the one module, the graph engine linking the Rust core; `npm run build:wasm` writes it from crates/solenoid-graph and crates/solenoid-core, which cite
 src/graph/engineWasm
-src/graph/graphWasm
 
 why: JSON can't carry a citation; the core's call table is frozen from the TypeScript by tests/graph/coreCallTable.test.ts, which cites [[D99]] rustIsSpec
 crates/solenoid-core/data
