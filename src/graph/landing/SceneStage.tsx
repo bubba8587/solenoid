@@ -7,8 +7,6 @@ import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
 import { measuredBox } from "../nodeSize";
@@ -21,11 +19,6 @@ const ensureElk = makeEnsureElk(() => false);
 
 function makeSceneStack(): SurfaceStack {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();

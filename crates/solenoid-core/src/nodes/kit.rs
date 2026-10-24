@@ -51,7 +51,7 @@ pub fn guard_finite(r: f64, inputs: &[&V]) -> V {
     }
 }
 
-/// A body's answer with `guardFinite` on a number, as `broadcastErr` and `broadcastCells` guard it.
+/// A body's answer with `guard_finite` on a number.
 fn guarded(r: V, ops: &[&V]) -> V {
     match r {
         V::Num(n) => guard_finite(n, ops),

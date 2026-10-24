@@ -159,8 +159,7 @@ fn truthy(v: &V) -> bool {
     }
 }
 
-/// `parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null))`: wired anything but text or a
-/// blank, `input.split` throws.
+/// The options input, parsed: wired, anything but text or a blank is the crash `input.split` throws.
 fn read_options(c: &Call) -> Result<Obj, V> {
     let lit = match c.string_literal("options") {
         V::Undef => V::Null,
@@ -358,7 +357,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
 
 // ─── Frame columns ──────────────────────────────────────────────────────────────
 
-/// `dateAnnotationPattern(format) || DEFAULT_DATE_FORMAT`.
+/// The format's date pattern, else `DEFAULT_DATE_FORMAT`.
 fn date_pattern(format: Option<&Json>) -> String {
     let style = format.and_then(|f| f.get("format")).and_then(Json::as_str).unwrap_or("");
     if !(style.starts_with("date_") || style.starts_with("time_") || style == "datetime") {
@@ -384,7 +383,7 @@ fn date_pattern(format: Option<&Json>) -> String {
     }
 }
 
-/// `formatFrameCell`: an error as its code, a logical as TRUE or FALSE, a date as its text, the rest as it is.
+/// An error as its code, a logical as TRUE or FALSE, a date as its text, the rest as it is.
 fn format_cell(ty: FrameColType, v: &V, format: Option<&Json>) -> V {
     match v {
         V::Undef => V::Null,
@@ -488,7 +487,7 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
     Column { name: name.to_string(), ty, values, unit: None, format: None, raw: None }
 }
 
-/// `flatCubeToFrame(cube, "scalar")`: the cube's flat columns as a frame, a value with a unit read as its number.
+/// The cube's flat columns as a frame, a value with a unit read as its number.
 fn flat_cube(cube: &Cube) -> Frame {
     let nested = |cells: &[V]| cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_)));
     let rows = cube.columns.iter().map(|c| c.cells.len()).max().unwrap_or(0);
@@ -1496,7 +1495,7 @@ fn histogram_bins(vals: &[V], k: &V) -> Result<Vec<f64>, V> {
     Ok(counts)
 }
 
-/// `histogram2d`: `counts[yBin][xBin]` and each axis' lower edges.
+/// `counts[yBin][xBin]` and each axis' lower edges.
 type Histogram2d = (Vec<Vec<f64>>, Vec<f64>, Vec<f64>);
 
 fn histogram2d(xs: &[V], ys: &[V], kx: &V, ky: &V) -> Result<Option<Histogram2d>, V> {

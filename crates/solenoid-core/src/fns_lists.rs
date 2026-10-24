@@ -199,7 +199,7 @@ fn key_of(v: &V, id: usize) -> Key {
         V::Bool(b) => Key::Bool(*b),
         V::Null => Key::Null,
         V::Undef => Key::Undef,
-        // `setKey`: a complex keys by its parts.
+        // A complex keys by its parts.
         V::Cx(re, im) => Key::Str(format!("\u{0}cx:{},{}", number_to_string(*re), number_to_string(*im)).into()),
         _ => Key::Obj(id),
     }
@@ -2485,7 +2485,7 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
 }
 
 /// Each gap bilinear between the nearest known corners no other known point sits between, then the
-/// rest from `fitSurface` when `forecast`. The axes are finite here.
+/// rest from `fit_surface` when `forecast`. The axes are finite here.
 fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: bool) -> Vec<Vec<Option<f64>>> {
     let (r_n, c_n) = (z.len(), col_xs.len());
     let mut out: Vec<Vec<Option<f64>>> = z.to_vec();
@@ -2686,7 +2686,6 @@ fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64
             }));
         }
     }
-    // `planeFit`.
     let mut a = vec![vec![0.0; 3]; 3];
     let mut rhs = [0.0; 3];
     for i in 0..n {

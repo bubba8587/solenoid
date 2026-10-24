@@ -1,4 +1,4 @@
-//! [[C70]] oneScheduleRule. The engine's own tests, from `packages/schedule-engine/src/{engine,minutes,rules,regressions}.test.ts`.
+//! [[C70]] oneScheduleRule. The engine's own tests.
 
 use super::calendar::{day_of_week, intervals_for_hours, Calendar, CalendarSpec};
 use super::*;
@@ -482,7 +482,7 @@ fn a_zero_float_milestone_has_its_date_as_every_date() {
     assert_eq!([m.early_start, m.early_finish, m.late_start, m.late_finish], [m.start, m.finish, m.start, m.finish]);
 }
 
-// ─── Minutes mode (minutes.test.ts) ─────────────────────────────────────────────────────────────────────────────────
+// ─── Minutes mode ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn minutes_map_through_the_working_day_and_back() {
@@ -562,7 +562,7 @@ fn minutes_a_half_day_lag_a_clock_deadline_and_the_status_date() {
     assert_eq!(stamp(by(&st, "A").finish), "2026-01-07 17:00");
 }
 
-// ─── Rules (rules.test.ts) ──────────────────────────────────────────────────────────────────────────────────────────
+// ─── Rules ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 fn own(cal: TaskCalendar, task: PlanTask) -> PlanTask {
     PlanTask { calendar: Some(cal), ..task }
@@ -739,7 +739,7 @@ fn unstarted_and_finished_tasks_ignore_the_status_date() {
     assert_eq!(iso(by(&o, "B").start), "2026-01-07");
 }
 
-// ─── Regressions (regressions.test.ts) ──────────────────────────────────────────────────────────────────────────────
+// ─── Regressions ────────────────────────────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn serials_stay_whole_days_across_a_dst_switch() {
@@ -792,7 +792,7 @@ fn a_walk_past_the_date_range_is_an_error_at_once() {
     }
 }
 
-// ─── MSPDI (formats.test.ts) ────────────────────────────────────────────────────────────────────────────────────────
+// ─── MSPDI ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn mspdi_writes_a_midnight_minutes_finish_on_the_day_it_ended() {

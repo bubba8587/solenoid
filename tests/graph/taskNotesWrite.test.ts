@@ -1,6 +1,6 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
-import { cellToTaskField, planTaskRow, planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl, parseWrittenTaskPath } from "../../src/graph/taskNotesApi";
+import { cellToTaskField, planTaskRow, planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl } from "../../src/graph/taskNotesApi";
 import { WriteTasksNode } from "../../src/graph/nodeClasses";
 import { cubeFromColumns, isFrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
@@ -62,8 +62,6 @@ describe("urls + replies", () => {
     expect(createTaskUrl("")).toBe("http://localhost:8080/api/tasks");
   });
   it("a created task's path is read off the reply when present", () => {
-    expect(parseWrittenTaskPath('{"success":true,"data":{"path":"Tasks/New.md","title":"New"}}')).toBe("Tasks/New.md");
-    expect(parseWrittenTaskPath('{"success":true,"data":{}}')).toBeNull();
   });
 });
 

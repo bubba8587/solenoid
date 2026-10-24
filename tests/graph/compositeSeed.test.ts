@@ -4,8 +4,6 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { loopMembers } from "../../src/graph/graphCompute";
@@ -27,8 +25,6 @@ type SavedNode = {
 
 function buildEditor() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

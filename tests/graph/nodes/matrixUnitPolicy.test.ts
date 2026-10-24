@@ -5,7 +5,7 @@ import * as M from "../../../src/graph/nodes/matrix";
 import { ListIndexNode } from "../../../src/graph/nodes/list";
 import { InterpolateNode } from "../../../src/graph/nodes/stats";
 import { NODE_COMPONENTS } from "../../../src/graph/nodeRegistry";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { MutableSocket } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
 import { fcUnitToUnit, applyFcUnit } from "../../../src/graph/unitBridge";
@@ -139,19 +139,19 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
     const kmList = () => [fromUnit(1, km, "km"), fromUnit(2, km, "km")];
     const v = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(v);
+    throughBoundary(v);
     const out = (v.data({ t0: [kmList()], t1: [kmList()] }) as { result: unknown }).result;
     expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
     expect((out as number[][])[0][0]).toBe(1);              // as-typed magnitude, never a UnitCell
     expect((out as unknown[][]).flat().some(isUnitCell)).toBe(false);
     // A km list stacked on a km GRID still agrees — both sides reduce to the same tag.
     const mixedRank = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(mixedRank);
+    throughBoundary(mixedRank);
     expect(matrixUnitOf((mixedRank.data({ t0: [kmList()], t1: [kmGrid()] }) as { result: unknown }).result))
       .toMatchObject({ display: "km" });
     // Disagreeing units strip, same uniform-or-nothing rule as the grid case.
     const h = new M.StackNode({ op: "hstack",  valueKeys: ["t0", "t1"] });
-    wrapNodeData(h);
+    throughBoundary(h);
     expect(matrixUnitOf((h.data({ t0: [kmList()], t1: [[fromUnit(3, kg, "kg")]] }) as { result: unknown }).result))
       .toBeUndefined();
   });
@@ -165,10 +165,10 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
 
   it("convert-to-matrix: WRAPROWS lifts a uniform-unit list into a grid unit (through the real boundary)", () => {
     // A list of km UnitCells (base-SI values, display km) wraps into a km grid whose
-    // cells are bare as-typed magnitudes. Run through wrapNodeData because the list
+    // cells are bare as-typed magnitudes. Run through throughBoundary because the list
     // input would otherwise be unit-stripped at the boundary (the node is unitAware).
     const n = new M.TableReshapeNode({ op: "wraprows" });
-    wrapNodeData(n);
+    throughBoundary(n);
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
     const kmList = [fromUnit(1, km, "km"), fromUnit(2, km, "km"), fromUnit(3, km, "km"), fromUnit(4, km, "km")];
     const out = (n.data({ list: [kmList], wrapCount: [2] }) as { result: unknown }).result;
@@ -177,7 +177,7 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     // A mixed-unit list can't claim one grid unit → strips.
     const mixed = [fromUnit(1, km, "km"), fromUnit(2, kg, "kg")];
     const m2 = new M.TableReshapeNode({ op: "wraprows" });
-    wrapNodeData(m2);
+    throughBoundary(m2);
     expect(matrixUnitOf((m2.data({ list: [mixed], wrapCount: [2] }) as { result: unknown }).result)).toBeUndefined();
   });
 
@@ -210,7 +210,7 @@ describe("matrix-unit policy — INDEX extraction (list.ts) carries the unit out
   it("through the real boundary (socket adopts 'table')", () => {
     const n = new ListIndexNode();
     (n.inputs.list!.socket as MutableSocket).setType("table");
-    wrapNodeData(n);
+    throughBoundary(n);
     const cell = (n.data({ list: [kmGrid()], index: [1], column: [2] }) as { result: unknown }).result;
     expect(isUnitCell(cell)).toBe(true);
     expect((cell as UnitCell).display).toBe("km");

@@ -5,7 +5,7 @@ import { cx } from "../../../src/graph/cxValue";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 
 // No editor singleton in tests → sourceKind() is null, so complex INPUTS can't
 // be disambiguated here — those paths are typed by the live socket. Everything
@@ -161,7 +161,7 @@ describe("Cast node", () => {
 describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstClassUnits)", () => {
   const through = (target: CastTarget, value: unknown) => {
     const n = new CastNode({ target });
-    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     return n.data({ value: [value] }).result;
   };
   it("text names the unit the value reads in", () => {

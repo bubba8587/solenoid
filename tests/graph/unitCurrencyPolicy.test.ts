@@ -1,7 +1,8 @@
 // [[D47]]
 import { describe, it, expect } from "vitest";
-import * as UV from "../../src/graph/unitValue";
-import { arithmeticCell, forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { AggregateNode } from "../../src/graph/nodes/list";
+import { arithmeticCell } from "./coreVerbs";
 import { ComparisonNode } from "../../src/graph/nodes/logic";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -13,8 +14,7 @@ import { isSolError } from "../../src/graph/errorValue";
 // checks lived in some combinators and not others — the live arithmetic path
 // answered $5 + 5€ = $10 and minted $10 ÷ 5€ into a 2:1 "ratio" (a fabricated FX
 // rate) while the currency-aware copy sat DEAD — so this sweep quantifies the
-// policy over EVERY op and every combinator, with a completeness check that a
-// new one must join.
+// policy over EVERY op and every combinator.
 
 const money = (value: number, code: string): UnitCell =>
   ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
@@ -58,22 +58,8 @@ describe("the non-arithmetic combinators carry the same policy", () => {
   it("Comparison: $5 vs 5€ → #UNIT!", () => {
     expect(err(new ComparisonNode({ op: "gt" }).data({ a: [usd5], b: [eur5] }).result)).toBe(true);
   });
-  it("forAggregateUnits: mixed codes → #UNIT!", () => {
-    const r = forAggregateUnits([usd5, eur5]);
-    expect(r.error?.code).toBe("#UNIT!");
-  });
-});
-
-describe("completeness — a new combinator must join this sweep", () => {
-  it("the swept set IS unitValue's combinator surface", () => {
-    // Every exported function that COMBINES two-or-more dimensioned operands is
-    // listed here with its sweep above. A new `*Units` export (or arithmetic
-    // entry point) fails this until it registers — the matrixUnitPolicy pattern.
-    const SWEPT = ["arithmeticCell", "forAggregateUnits"];
-    const combinators = Object.keys(UV).filter(
-      (k) => /Units$/.test(k) || k === "arithmeticCell",
-    ).filter((k) => typeof (UV as Record<string, unknown>)[k] === "function");
-    expect(combinators.sort()).toEqual([...SWEPT].sort());
+  it("Aggregate: mixed codes → #UNIT!", () => {
+    expect(err(new AggregateNode({ op: "sum" }).data({ list: [[usd5, eur5]] }).result)).toBe(true);
   });
 });
 

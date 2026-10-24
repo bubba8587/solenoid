@@ -4,8 +4,7 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError } from "../../src/graph/errorValue";
+import { isSolError } from "../../src/graph/errorValue";
 import { SEEDS } from "../../src/graph/seeds";
 
 // Every seed, run through a real editor + DataflowEngine: no node may compute an
@@ -46,8 +45,6 @@ type SavedConn = { source: string; sourceOutput: string; target: string; targetI
 
 async function buildSeed(graph: { nodes: SavedNode[]; connections: SavedConn[] }) {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 

@@ -18,7 +18,7 @@ These are the author's standing calls about the shape of a card.
 
 - **Scalars get fine-grained one-op nodes; lists and tables get bundled, task-shaped nodes with op selectors** (one Aggregate with an op selector, not five separate sum and average nodes). A variant is a mode or op selector on the existing card, never a sibling node ([[B11]] maximalMerge).
 - **Aligned parallel columns are one Frame input, not parallel list sockets** (charts, SUMIFS, the frame verbs). Outputs follow the same rule: correlated lists (the t and y of a solution, the parts of a decomposition) leave as one Frame, never as parallel list sockets. This is about row-aligned data, a value per row; that is why the Allocator's per-category weights are a Weight column, not a socket. A vector that runs orthogonal to the Frame, one value per column like Decision Matrix's per-criterion weights, is not parallel data and stays a list socket.
-- **A node that takes a user formula takes it as a LAMBDA input** (`lambdaIn` + `lambdaSig` + `resolveFn`, the λ family in `tableLambda.ts`), never as a string socket holding an expression.
+- **A node that takes a user formula takes it as a LAMBDA input** (`lambdaIn` + `lambdaSig`, the λ family in `tableLambda.ts`), never as a string socket holding an expression.
 - **Meaningful differences from Excel**, especially ones that change an output, go in the catalog as `parity: false` with a note (`nodeExcel.ts`).
 
 ### Labeled slots versus a list input
@@ -29,7 +29,7 @@ Use a single list socket only when the elements are interchangeable: all the sam
 
 ### Picking a socket by the input's role
 
-The socket type both gates connections (`canConnect`) and drives coercion at the engine boundary (`coerceInputs.ts`), so it must match what `data()` actually consumes. Every node input has been audited against its `data()`.
+The socket type both gates connections (`canConnect`) and drives coercion at the engine's input boundary (`crates/solenoid-graph/src/boundary.rs`), so it must match what `data()` actually consumes. Every node input has been audited against its `data()`.
 
 - **Element-wise operand**, paired with each element through a broadcaster: the family's combo, `numlist`, `strcombo`, `datecombo`, `logicalcombo` or `complexcombo`. An operand can be a per-element vector, as in Excel's `=ROUND(A1:A10, B1:B10)` or `=LEFT(A1:A10, B1:B10)`.
   - This covers Arithmetic's `a` and `b`; the secondary operands `RoundN.digits`, `Clamp.min` / `max`, `MRound.multiple` and `Gcd.b`; every date operand (DatePart, DateAdd, DateDiff, DATEDIF, WORKDAY, NETWORKDAYS, DATE, TIME); every text operand (UPPER, LEN, LEFT / MID / RIGHT, FIND, SUBSTITUTE, REPLACE, REPT, CHAR / CODE, TEXTAFTER / BEFORE, EXACT, NUMBERVALUE, ROMAN / ARABIC, FIXED, DOLLAR, ENCODEURL, Reverse Text, Spell Number); and every complex operand (COMPLEX, IM Unpack, the IM unary and binary ops, IMPOWER, Quadratic Roots).
@@ -162,7 +162,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 - Their value inputs are adoptive sockets (`adoptiveTableIn` / `adoptiveListIn`: an `AdoptiveSocket` with an `anytable` / `anylist` base instead of `trueany`). They accept any element family and adopt the wired cable's concrete type through `settleWildcardTypes`, so a `datetable` / `datelist` gives date columns.
 - This is the only way `date` survives, because a serial is indistinguishable from a number at the value level.
   - `colTypeForSocket` maps the adopted socket to a `FrameColType`. It returns `null` for a not-yet-adopted `anytable` / `anylist` or for `complex`, which falls back to value inference.
-  - `typedColumn` / `buildFrameTyped` (core `frame.ts`) do the typing. A numeric matrix still routes through the unchanged `buildFrame`.
+  - The cards' bodies on the core do the typing, column by column as `typedColumn` types it.
   - There is no `columnFromCells`, and Frame from Lists does not deliver dates as numbers to retype downstream.
 - Headless (`run-graph.ts`, no settle pass) degrades to value inference (date to number).
 
@@ -195,21 +195,21 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Planners
 
-**Payoff Planner** (`nodes/frame.ts` `PayoffPlannerNode` + the pure `nodes/payoffOps.ts`, frame kind, Table verbs › Plan): rows are debts.
+**Payoff Planner** (`nodes/frame.ts` `PayoffPlannerNode`, its body the core's `planners.rs`, frame kind, Table verbs › Plan): rows are debts.
 - Columns: the first text column names them, then `Balance` / `APR` (a fraction, or a percent of 1 or more) / `Min`, or else the first three number columns in that order.
 - Inputs: `extra` (a number literal) is the monthly amount on top of the minimums. `start` is a date; unwired, it is the first of this month.
 - `order` is Avalanche (highest APR first) or Snowball (smallest balance first), through ArgSelect (`PAYOFF_ORDER_META`). `mode` is Summary (Debt · Months · Interest · Payoff date) or Schedule (Month · a balance column per debt).
 - Month by month, interest accrues, every open debt gets its minimum, and the extra plus every freed minimum cascades down the order. A plan whose payments never cover the interest is `#VALUE!` naming the debt (600-month cap).
 - Balance's unit and format ride onto the money columns.
-- Seed: `planners.json` (avalanche and snowball side by side). Tests: `payoffOps.test.ts`, `nodes/payoffPlanner.test.ts`.
+- Seed: `planners.json` (avalanche and snowball side by side). Tests: `nodes/payoffPlanner.test.ts`.
 
-**Group Cost Settle** (`nodes/frame.ts` `SettleNode` + the pure `nodes/settleOps.ts`, frame kind, Table verbs › Plan): rows are people.
+**Group Cost Settle** (`nodes/frame.ts` `SettleNode`, its body the core's `planners.rs`, frame kind, Table verbs › Plan): rows are people.
 - `mode` is Totals or Transactions. Switching it retypes the single `in` socket in place (People Frame or Ledger Cube), so a wired cable survives; a cable the new type no longer accepts is ghosted for a one-click reconnect and feeds nothing, so the card shows empty.
 - **Totals** reads a people Frame. The first text column names them, `Paid` (or the first number column) is what each paid, and an optional `Share` column weighs what each owes (blank means 1). Two rows with the same name (trimmed, case-insensitive, first spelling shown) are one person whose Paid and Share add up, so nobody settles against themselves. `split` is Equal split or By Share (SegToggle; persisted) and applies to Totals only.
 - **Transactions** reads a ledger Cube, one row per expense: an Amount column (Amount, Cost, Total, Price or Spend), a Paid by column and an optional For column, whose cell is a list, one name or comma-separated names; a blank For splits among everyone. It is equal split only. A refund is a negative row and settles like any other; a row with no payer is skipped.
 - Each person is netted against their fair share (paid total × weight / Σ weights). Then the biggest creditor takes from the biggest debtor. That gives the fewest transfers a greedy pass can, exact to the cent (a residual cent lands on the last transfer).
 - Outputs: `transfers` (From · To · Amount) and `net` (Person · Paid · Owes · Owed · Net). Net is each person's fair share, their true cost. Net − Paid above zero is still owed to the group (Owes), below zero comes back (Owed, negative), and one of the two is always 0; in an equal-split Totals run every Net matches. The money unit and format (Paid's in Totals; in Transactions the first per-cell currency found on Amount, a mixed-currency ledger being out of scope) ride onto every money column.
-- Seed: `planners.json`. Tests: `settleOps.test.ts`.
+- Seed: `planners.json`. Tests: `settle.test.ts`.
 - Hours balancing is the **Allocator**, not a separate node. Its copy says "range" (a price, hours, anything you spread), and people with Min · Max · Weight in `hr` over a 160 h budget use the same card.
 
 **Allocator** (`nodes/frame.ts` `AllocatorNode` + the pure `nodes/allocateOps.ts`, frame kind, Table verbs › Plan): rows are categories with a range and a weight, and three modes (Fit budget, Min for target, Min proportional) spread an amount across them. The kernels are in `../tree/specs/computation/frame-verbs.md`.

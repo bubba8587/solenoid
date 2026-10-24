@@ -37,7 +37,7 @@ trust from a third party and often runs only on desktop, which is why it is the 
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
 declared rank: a scalar widens into a `[scalar]` list, a list into a matrix, and so on
-(the socket lattice guarantees lower-rank values *can* flow in; `coerceInputs.ts` does
+(the socket lattice guarantees lower-rank values *can* flow in; the engine's input boundary does
 the widening so 95% of nodes can assume their shape). Two painless opt-outs exist for the
 node that handles shape itself — the socket is UNCHANGED either way (same glyph, same
 accepted types), only the value handed to `data()` differs:
@@ -49,7 +49,7 @@ accepted types), only the value handed to `data()` differs:
   branches on the raw runtime shape (frame-vs-cube, etc.).
 
 Both are captured once, so a node with dynamic keys keeps the same Set and mutates it in
-place. See the per-input coercion policy note in `coerceInputs.ts`.
+place. The policy is `../tree/specs/computation/compute-pass.md` § Arrival coercion.
 
 ## Locked to the user, open to the author
 

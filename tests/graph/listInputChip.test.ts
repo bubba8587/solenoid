@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ListInputNode } from "../../src/graph/nodes/list";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 
 // The List Input's value box draws the list through ValueDisplay, whose chip opens the
 // ordinary list value popup (one element per cell, Row / Column switcher). The card never
@@ -39,7 +39,7 @@ describe("List Input: the plain value box", () => {
   it("reads its typed text itself inside the engine, where the input wrapper would parse it first", () => {
     const n = new ListInputNode({ dataType: "date" });
     n.stringLiterals[Object.keys(n.inputs)[0]] = "2024, abc";
-    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({});
     expect(out.list).toEqual([2024, NaN]);
     expect(n.cachedSource).toEqual(["2024", "abc"]);

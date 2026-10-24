@@ -5,8 +5,7 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
+import { type SolError } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -38,11 +37,6 @@ function connect(
 
 function makeGraph() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);                  // same wrappers Canvas installs
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   // runGraphPass touches the view only via `area.rerenderNode(id)` — stub it.

@@ -27,7 +27,7 @@ const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 const IMAGE_SRC_RE = /^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml);base64,)/i;
 
 /** Each column under the format it carries, which includes the source card's pick (stamped on its output). */
-export function frameToHtmlTable(frame: FrameValue): string {
+function frameToHtmlTable(frame: FrameValue): string {
   const cols = frame.columns;
   if (cols.length === 0) return "";
   const rows = cols.reduce((m, c) => Math.max(m, c.values.length), 0);
@@ -39,7 +39,7 @@ export function frameToHtmlTable(frame: FrameValue): string {
 }
 
 /** The export's markup for one span's value; null leaves the span (an unwired fixed input). Values are escaped here, after the markdown render, so their text never reads as markdown or HTML. */
-export function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
+function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
   if (value === undefined) return null;
   if (isFrameValue(value)) return { html: frameToHtmlTable(value), block: true };
   if (isSvgValue(value) && value.source) {
@@ -145,7 +145,7 @@ export function reportReferencedNodeIds(
   return out;
 }
 
-export function buildReportExportHtml(
+function buildReportExportHtml(
   report: ReportNode,
   opts: { canvasImage: string | null; body: string },
 ): string {

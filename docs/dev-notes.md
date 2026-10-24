@@ -66,6 +66,13 @@ specific item.
   Rust on Ruggine (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it); the
   app holds the model through `GraphEditor` (`graphEditor.ts`). The nodes stay JS objects the core calls back. About 2x rete-engine on a
   1,232-node pass. Ruggine's engines gained `with_configure` for any node type to make this possible.
+- **The boundary, the pass and the ids moved into the graph core** (2026-10-24, phase B; [[graph-core]]): the error
+  guard and arrival coercion are the engine's call of every node (`boundary.rs`; frozen first, `boundary-*`), the
+  pass body is `GraphCore.pass`, its state (calc mode, dirty, generation, rebuild depth, single flight) is
+  `session.rs`, ids are Ruggine's `get_uid`, and a node's port edits go over as one `setPorts`. `installErrorGuards`,
+  `wrapNodeData`, `installInputCoercion` and `seedLoopErrors` are gone; tests drive one node through
+  `boundaryKit.ts`. Per-cell crossings had made a 100k list 25 ms; `cellKinds` (one call per array) brought it to
+  1.3 ms, under the TS's 4.9. What blocks phase C is [[graph-core]] § What blocks phase C.
 - **Develop mirrored to `3a6a667`** in the files the core ports: the finance functions carry their money's currency
   ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's
   dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the

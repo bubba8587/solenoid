@@ -1,9 +1,9 @@
 // [[C25]] firstClassUnits, [[B16]]
 import { describe, it, expect } from "vitest";
 import { type Dim } from "../../src/graph/dimension";
-import { dimensionsAdd, isUniversalDim } from "../../src/graph/unitLattice";
-import { arithmeticCell } from "../../src/graph/nodes/scalar";
-import { forAggregateUnits, tagDim, isUnitCell } from "../../src/graph/unitValue";
+import { arithmeticCell } from "./coreVerbs";
+import { tagDim, isUnitCell } from "../../src/graph/unitValue";
+import { AggregateNode } from "../../src/graph/nodes/list";
 import { isSolError } from "../../src/graph/errorValue";
 
 // A representative cross-section of the dimension lattice: the universal
@@ -17,6 +17,9 @@ const DIMS: Record<string, Dim> = {
   speed: { length: 1, time: -1 },
 };
 const NAMES = Object.keys(DIMS);
+const isUniversalDim = (dim: Dim) => Object.keys(dim).length === 0;
+/** The +, − and compare contract: equal dims, or either side dimensionless. */
+const dimensionsAdd = (a: string, b: string) => a === b || isUniversalDim(DIMS[a]) || isUniversalDim(DIMS[b]);
 const cellOf = (dim: Dim) => (isUniversalDim(dim) ? 2 : tagDim(2, dim));
 const isUnitErr = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#UNIT!";
 
@@ -32,9 +35,7 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
 
   it("+/− combine when equal OR either is dimensionless; two real dims → #UNIT!", () => {
     for (const a of NAMES) for (const b of NAMES) {
-      const combines = dimensionsAdd(DIMS[a], DIMS[b]);
-      // combinable iff same dim, or a bare number adopts the other (dimensionless side)
-      expect(combines).toBe(a === b || isUniversalDim(DIMS[a]) || isUniversalDim(DIMS[b]));
+      const combines = dimensionsAdd(a, b);
       for (const op of ["add", "sub"] as const) {
         const r = arithmeticCell(op, cellOf(DIMS[a]), cellOf(DIMS[b]));
         expect(isUnitErr(r)).toBe(!combines);
@@ -44,11 +45,11 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
 
   it("aggregation reduces when equal OR either is dimensionless; two real dims → #UNIT!", () => {
     for (const a of NAMES) for (const b of NAMES) {
-      const prep = forAggregateUnits([cellOf(DIMS[a]), cellOf(DIMS[b])]);
+      const sum = new AggregateNode({ op: "sum" }).data({ list: [[cellOf(DIMS[a]), cellOf(DIMS[b])]] }).result;
       // a bare number (dimensionless) adopts the other's unit — only two genuinely
       // different real dimensions separate.
       const shouldErr = a !== b && !isUniversalDim(DIMS[a]) && !isUniversalDim(DIMS[b]);
-      expect(!!prep.error).toBe(shouldErr);
+      expect(isUnitErr(sum)).toBe(shouldErr);
     }
   });
 

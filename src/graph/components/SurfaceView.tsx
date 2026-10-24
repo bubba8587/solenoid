@@ -14,7 +14,7 @@ const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 function unit(v: V3): V3 { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; }
 
-export function heightColor(t: number): [number, number, number] {
+function heightColor(t: number): [number, number, number] {
   return heightRampColor(t);
 }
 

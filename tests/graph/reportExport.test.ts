@@ -4,7 +4,7 @@ import { exportBodyHtml, exportFileName, buildExportCss, reportReferencedNodeIds
 import { renderNoteMarkdown } from "../../src/graph/noteMarkdown";
 import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { frameFormatStore } from "../../src/graph/frameFormatStore";
 
 const md = (m: string) => renderNoteMarkdown(m);
@@ -63,7 +63,7 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
     ] };
     // The source card's output carries its pick: the data wrapper stamps it onto the column.
     const src = { id: "export-src", data: (_inputs: Record<string, unknown[]>) => ({ result: frame }) };
-    wrapNodeData(src);
+    throughBoundary(src);
     frameFormatStore.set("export-src", "b", dec(2));
     try {
       const wired = (src.data({}) as { result: unknown }).result;

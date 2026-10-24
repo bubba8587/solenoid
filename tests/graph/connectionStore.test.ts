@@ -13,8 +13,6 @@ import { alertStore } from "../../src/graph/alertStore";
 import { noticeStore } from "../../src/graph/noticeStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { isGraphRebuilding } from "../../src/graph/process";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import type { Schemes } from "../../src/graph/schemes";
 
 // Tier 1/2 live-data (bundle 07, #3): refreshConnection(id) — the function a
@@ -51,8 +49,6 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
     globalThis.fetch = vi.fn(async () => mockCsvResponse(call++ === 0 ? "v\n50" : "v\n150"));
 
     const editor = new GraphEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 

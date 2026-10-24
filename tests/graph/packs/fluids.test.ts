@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { PipeRoughnessNode, ColebrookNode } from "../../../src/graph/nodes/fluids";
-import { PIPE_ROUGHNESS, colebrookF } from "../../../src/graph/nodes/fluidsOps";
+import { PIPE_ROUGHNESS } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -67,6 +67,7 @@ describe("Fluid Mechanics formulas", () => {
 });
 
 describe("Colebrook friction factor", () => {
+  const colebrookF = (re: number, rr: number) => evalPackFormula(`COLEBROOK(${re}, ${rr})`) as number;
   it("satisfies the Colebrook residual to machine precision", () => {
     for (const [re, rr] of [[1e5, 1e-4], [1e5, 1e-3], [1e7, 1e-5], [4e3, 0.05]] as const) {
       const f = colebrookF(re, rr);
@@ -111,7 +112,7 @@ describe("Pipe Roughness", () => {
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("COLEBROOK matches the node core, laminar hand-off included", () => {
-    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(colebrookF(100000, 0.0001));
+    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(new ColebrookNode().data({ re: [100000], rr: [0.0001] }).result);
     expect(evalPackFormula("COLEBROOK(1000, 0)")).toBeCloseTo(0.064, 12);
     const bad = evalPackFormula("COLEBROOK(-5, 0)");
     expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");

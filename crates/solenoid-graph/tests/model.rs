@@ -2,7 +2,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use ruggine::classic::Connection;
+use ruggine::classic::{self, Connection};
 use ruggine::future::{now_or_never, ready, LocalBoxFuture};
 use ruggine::keymap;
 use ruggine_engine::{Error, Inputs, Outputs};
@@ -18,10 +18,11 @@ impl Host for Test {
     type Value = f64;
     type Thrown = String;
 
-    fn data(
-        _: &Self::Node,
+    fn data<'a>(
+        _: &'a Self::Node,
+        _: &'a classic::Node,
         inputs: Inputs<f64>,
-    ) -> LocalBoxFuture<'_, Result<Outputs<f64>, Error>> {
+    ) -> LocalBoxFuture<'a, Result<Outputs<f64>, Error>> {
         let sum: f64 = inputs.values().flatten().sum();
         ready(Ok(keymap! { "out" => sum + 1.0 }))
     }
@@ -186,9 +187,20 @@ fn ports_keep_javascript_key_order_and_their_types() {
             &[port("out", "number")],
         )
         .unwrap();
-    graph.add_port("n", Side::Input, "a", "string").unwrap();
-    graph.add_port("n", Side::Input, "0", "date").unwrap();
-    assert!(graph.add_port("n", Side::Input, "a", "string").is_err());
+    let inputs = |ports: &[(&str, &str)]| ports.iter().map(|(k, t)| port(k, t)).collect::<Vec<_>>();
+    let out = [port("out", "number")];
+    graph
+        .set_ports(
+            "n",
+            &inputs(&[
+                ("b", "number"),
+                ("1", "list"),
+                ("a", "string"),
+                ("0", "date"),
+            ]),
+            &out,
+        )
+        .unwrap();
     let keys = |g: &Graph<Test>| g.ports("n", Side::Input).unwrap();
     assert_eq!(
         keys(&graph),
@@ -199,10 +211,21 @@ fn ports_keep_javascript_key_order_and_their_types() {
             port("a", "string")
         ]
     );
-    assert!(graph.remove_port("n", Side::Input, "b").unwrap());
-    graph.add_port("n", Side::Input, "b", "number").unwrap();
-    assert!(graph.retype_port("n", Side::Input, "a", "frame").unwrap());
-    assert!(!graph.retype_port("n", Side::Input, "zz", "frame").unwrap());
+    assert!(graph
+        .set_ports("n", &inputs(&[("a", "string"), ("a", "string")]), &out)
+        .is_err());
+    graph
+        .set_ports(
+            "n",
+            &inputs(&[
+                ("0", "date"),
+                ("1", "list"),
+                ("a", "frame"),
+                ("b", "number"),
+            ]),
+            &out,
+        )
+        .unwrap();
     assert_eq!(
         keys(&graph),
         [
@@ -212,6 +235,7 @@ fn ports_keep_javascript_key_order_and_their_types() {
             port("b", "number")
         ]
     );
+    assert!(graph.set_ports("zz", &[], &out).is_err());
     assert_eq!(
         graph.ports("n", Side::Output).unwrap(),
         [port("out", "number")]
@@ -229,7 +253,7 @@ fn the_engine_reads_the_model_ports_and_registers_nodes_added_before_it() {
     let fetch = |id: &str| now_or_never(graph.engine().fetch(id)).unwrap().unwrap();
     assert_eq!(fetch("b").get("out"), Some(&2.0));
 
-    graph.remove_port("b", Side::Input, "x").unwrap();
+    graph.set_ports("b", &[], &[port("out", "number")]).unwrap();
     graph.engine().reset(None).unwrap();
     assert_eq!(fetch("b").get("out"), Some(&1.0));
     assert!(loop_members(graph.editor()).is_empty());

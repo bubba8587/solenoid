@@ -134,7 +134,7 @@ fn complex_power(c: &mut Call) -> Answer {
     let z = cx_op(&first(c, "z"), &label(c));
     let n = c.read_num("n", 2.0);
     let result = broadcast_complex(&[z, n], |o| match o[1] {
-        // `cxPow` on a NaN exponent, which the formula refuses.
+        // `cx_pow` on a NaN exponent, which the formula refuses.
         V::Num(p) if p.is_nan() => match parts(o[0]) {
             (re, im) if re == 0.0 && im == 0.0 => V::Cx(0.0, 0.0),
             _ => V::Cx(f64::NAN, f64::NAN),

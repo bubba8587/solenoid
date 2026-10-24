@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { flattenLeaves } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
 
-export const HELP_DIR = "src/graph/help";
-export const SEED_DIR = "src/graph/seedGraphs";
+const HELP_DIR = "src/graph/help";
+const SEED_DIR = "src/graph/seedGraphs";
 
 export type CopyKind =
   | "help-file"
@@ -35,7 +35,7 @@ export type CopyRecord = {
 
 export type Unit = { src: string; text: string; opener: boolean };
 
-export function sentences(src: string, text: string): Unit[] {
+function sentences(src: string, text: string): Unit[] {
   return text
     .split(/(?<=[.!?;])\s+/)
     .map((s) => s.trim())
@@ -71,7 +71,7 @@ export function attrStrings(line: string): { kind: string; text: string }[] {
 }
 
 /** Skips string literals, so a brace inside one can't end the walk; null when the braces don't close on this line. */
-export function bracedExpr(s: string): string | null {
+function bracedExpr(s: string): string | null {
   let depth = 0;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
@@ -83,7 +83,7 @@ export function bracedExpr(s: string): string | null {
   return null;
 }
 
-export function walkTsx(dir: string, acc: string[] = []): string[] {
+function walkTsx(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);
     if (name.isDirectory()) walkTsx(p, acc);
@@ -93,7 +93,7 @@ export function walkTsx(dir: string, acc: string[] = []): string[] {
 }
 
 /** Option-table literals, which never appear as a JSX attribute. */
-export function optStrings(line: string): { key: "label" | "title" | "description"; text: string }[] {
+function optStrings(line: string): { key: "label" | "title" | "description"; text: string }[] {
   const out: { key: "label" | "title" | "description"; text: string }[] = [];
   for (const m of line.matchAll(/\b(label|title|description)\s*:\s*"((?:[^"\\]|\\.)*)"/g)) {
     const text = m[2];
@@ -103,7 +103,7 @@ export function optStrings(line: string): { key: "label" | "title" | "descriptio
 }
 
 /** nodeCatalog and packs are skipped: their labels and descriptions are the catalog records. */
-export function walkCode(dir: string, acc: string[] = []): string[] {
+function walkCode(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);
     if (name.isDirectory()) {
@@ -197,7 +197,7 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
 }
 
 /** The `src` formats are what the copy rules' `where` clauses key on. */
-export function unitsFromRecords(records: CopyRecord[]): Unit[] {
+function unitsFromRecords(records: CopyRecord[]): Unit[] {
   const out: Unit[] = [];
   for (const r of records) {
     switch (r.kind) {

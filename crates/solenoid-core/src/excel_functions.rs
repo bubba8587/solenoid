@@ -116,7 +116,7 @@ pub fn is_ported(name: &str) -> bool {
     !matches!(route(name), Route::None)
 }
 
-/// The whole-list functions (`listArgs`) whose body reads a whole column as it comes.
+/// The whole-list functions whose body reads a whole column as it comes.
 pub fn takes_whole_lists(name: &str) -> bool {
     matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
         || is_finance_whole(name)
@@ -240,7 +240,7 @@ impl Drop for Calc {
     }
 }
 
-/// The computed column's current row, from 1, that ROW() reads (`currentRowNumber`).
+/// The computed column's current row, from 1, that ROW() reads.
 pub fn set_row_number(n: Option<f64>) {
     ROW_NUMBER.with(|r| r.set(n));
 }
@@ -314,7 +314,7 @@ pub fn js_string_of(v: &V) -> String {
     }
 }
 
-/// The evaluator's `toNum`: a number, or a logical as 1 or 0. Text is NaN ([[C131]] noTextGuessing).
+/// A number, or a logical as 1 or 0. Text is NaN ([[C131]] noTextGuessing).
 pub(crate) fn to_num(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
@@ -511,7 +511,6 @@ pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
     a.iter().fold(0.0, |x, y| x + js_pow(y - m, 2.0))
 }
 
-/// `iterMin` / `iterMax`.
 fn fold_min(arr: &[f64]) -> f64 {
     arr.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m })
 }
@@ -1684,7 +1683,6 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
     }
 }
 
-/// `indexRefError`.
 /// A table's one row or one column, a list as it is, a value as a list of one; None for a 2-D table.
 fn as_one_dim(v: &V) -> Option<Vec<V>> {
     match v {
@@ -1721,7 +1719,7 @@ enum Ax {
     Many(Rc<Vec<V>>),
 }
 
-/// `indexInto`: an empty list of positions is the positions left out ([[D86]] blankRoles).
+/// An empty list of positions is the positions left out ([[D86]] blankRoles).
 fn index_at(v: &V, row: Ax, col: Ax) -> V {
     if matches!(v, V::Null | V::Undef) {
         return V::Null;
@@ -1814,7 +1812,7 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
             }
         }
     }
-    // `asGrid`: a table as it is, a list as one row, anything else as one cell.
+    // A table as it is, a list as one row, anything else as one cell.
     let as_grid = |x: &Ax| -> Option<Vec<V>> {
         match x {
             Ax::Undef => None,
@@ -2380,7 +2378,7 @@ pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     }
 }
 
-/// `guardFinite(undefined, inputs)`: not finite and not NaN, so it stands only beside an infinite input.
+/// No answer is an overflow, except beside an infinite input.
 fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
     match r {
         Some(r) => finite_v(r, inputs),
@@ -3976,7 +3974,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     Ok(None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
                 })
             };
-            // `spillLookup`: a list of lookups answers one each; a table only as one row or column.
+            // A list of lookups answers one each; a table only as one row or column.
             match arg(a, 0) {
                 l @ V::List(items) if matches!(items.first(), Some(V::List(_))) => match as_one_dim(l) {
                     Some(cells) => V::List(Rc::new(cells.iter().map(&pick).collect())),
@@ -4168,7 +4166,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 };
                 return V::Num((h * 3600.0 + m * 60.0 + sec) / 86400.0);
             }
-            // `parseDateToSerial`: any failure is NaN, an ambiguous date included.
+            // Any failure is NaN, an ambiguous date included.
             match parse_date(t) {
                 DateReading::Serial(d) if !d.is_nan() => V::Num(d - d.floor()),
                 _ => bad("time"),
@@ -4181,7 +4179,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("FIXED");
             }
             let dd = crate::jsnum::math_min(d.trunc(), 100.0);
-            // `preRound`: ROUND's reading first, unless it rounds to 0, which keeps the value as given.
+            // ROUND's reading first, unless it rounds to 0, which keeps the value as given.
             let r = round_digits(n, dd, "round");
             let x = if r == 0.0 { n } else { r } + 0.0;
             let no_commas = !matches!(arg(a, 2), V::Null | V::Undef) && truthy(arg(a, 2));
@@ -5194,7 +5192,7 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
     }
 }
 
-/// Formula.js EDATE under the registration's `toSerialIfDate`: the start's local day of the month, moved by whole
+/// Formula.js EDATE over a serial: the start's local day of the month, moved by whole
 /// months with the day clamped to the month's last, its time back to a serial rounded to the day.
 fn fx_edate(start: &V, months: &V) -> V {
     use crate::fns_stats::{parse_date, FxDate};
@@ -5448,7 +5446,7 @@ pub(crate) fn intl_usd(x: f64, fd: usize) -> String {
     out
 }
 
-/// DOLLAR: `preRound`, then Formula.js DOLLAR, its negative form rewritten in parentheses.
+/// DOLLAR: ROUND's reading first (as FIXED's), then Formula.js DOLLAR, its negative form rewritten in parentheses.
 fn dollar(value: &V, decimals: &V) -> V {
     let n = to_num(value);
     let d = opt_num(decimals, 2.0);
@@ -5602,7 +5600,7 @@ fn error_type_num(code: ErrorCode) -> f64 {
     }
 }
 
-/// The IFERROR family (`applyErrorHandler`), for a formula's call and a body called by name alike.
+/// The IFERROR family, for a formula's call and a body called by name alike.
 pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
     let as_sol = |v: &V| -> Option<SolError> {
         match v {
@@ -5622,7 +5620,7 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
         }
     };
     let value = arg(a, 0);
-    // A list maps cell by cell: the fallback pairs with each value (`mapCells`), the tests walk the items.
+    // A list maps cell by cell: the fallback pairs with each value (`map_cells`), the tests walk the items.
     fn walk(v: &V, f: &dyn Fn(&V) -> V) -> V {
         match v {
             V::List(items) => V::List(Rc::new(items.iter().map(|x| walk(x, f)).collect())),
@@ -5653,7 +5651,7 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
 
 // ─── Finance ────────────────────────────────────────────────────────────────────
 
-/// The finance functions that read a whole list of cash flows (`listArgs`).
+/// The finance functions that read a whole list of cash flows.
 const FINANCE_WHOLE: &[&str] =
     &["IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO"];
 

@@ -1,4 +1,4 @@
-//! `calendar.ts`: the working calendar and its unit index space ([[C44]] dateSerials, [[D36]] nullSkippedNotZero,
+//! The working calendar and its unit index space ([[C44]] dateSerials, [[D36]] nullSkippedNotZero,
 //! [[D66]] daysMinutesModes).
 
 use super::{ScheduleError, Sr};

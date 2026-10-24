@@ -76,17 +76,15 @@ concrete tagged-shape implementation of exactly this kind — scoped to composit
 not threaded through app-wide arithmetic. The eventual app-wide representation call can
 build on it.
 
-**Value-kind pattern to mirror — `src/graph/valueKinds.ts`:** every existing extra kind
-(null/logical/error) is a plain runtime value acting as its own tag, not a wrapper
-object: `Missing = null` (21-25, predicate `isMissing`), logical = raw `boolean` (29-31,
-`isLogical`), error = `SolError` object (imported from `errorValue.ts`, tested via
-`isSolError`). Cross-kind coercion lives in dedicated functions
-(`logicalToNumber`/`numberToLogical`/`coerceLogical`, 37-65), Kleene 3-valued logic
-(67-90), and one central chokepoint `forAggregate(values): AggregatePrep` (99-109) every
-reducer routes through. **An "uncertain number" kind can't literally be `null`/`boolean`**
+**Value-kind pattern to mirror — the core's `value_kinds.rs` (the editor's `valueKinds.ts`
+keeps the types):** every existing extra kind (null/logical/error) is a plain runtime value
+acting as its own tag, not a wrapper object: `Missing = null`, logical = raw `boolean`,
+error = `SolError`. Cross-kind coercion lives in dedicated functions (`number_to_logical`,
+`coerce_logical`), Kleene 3-valued logic (`kleene_and`, `kleene_or`), and one central
+chokepoint `for_aggregate` every reducer routes through. **An "uncertain number" kind can't literally be `null`/`boolean`**
 — it needs a distinct tagged shape, e.g. `{value: number; error: number}`, with an
 `isUncertain(v): v is UncertainNumber` predicate, coercion helpers, and — critically —
-its own propagation rule added to `forAggregate` (99-109) and every element-wise
+its own propagation rule added to `for_aggregate` and every element-wise
 arithmetic op, mirroring exactly how `SolError` propagates and `Missing` gets skipped.
 
 **Authoring surface — a number Value Input:** `ValueInputNode` (`src/graph/nodes/control.ts`),
@@ -97,7 +95,7 @@ in Number mode, switching the output to emit an `UncertainNumber` when nonzero).
 **Build (once representation chosen):**
 1. Add the `UncertainNumber` tagged shape + predicate to `valueKinds.ts`, following the
    exact pattern above.
-2. Wire propagation into `forAggregate` (99-109) and the four arithmetic ops (sums add
+2. Wire propagation into `for_aggregate` and the four arithmetic ops (sums add
    uncertainties, products compound — real error-propagation math).
 3. Display: render the `±` like a unit suffix (reuse `ValueDisplay`'s formatting stack,
    detailed in bundle 13).

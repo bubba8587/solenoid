@@ -34,7 +34,7 @@ pub(crate) enum Role {
     Required,
 }
 
-/// `readAsRole`: unwired, the typed literal; wired, the cable's value; read by its role.
+/// Unwired, the typed literal; wired, the cable's value; read by its role.
 pub(crate) fn read_role(c: &Call, key: &str, role: &Role) -> V {
     let literal = match c.literal(key) {
         V::Undef | V::Null => c.string_literal(key),
@@ -48,7 +48,6 @@ pub(crate) fn read_role(c: &Call, key: &str, role: &Role) -> V {
     apply_role(role, &v, &c.label(key))
 }
 
-/// `applyRole` for a setting or a required input.
 fn apply_role(role: &Role, v: &V, label: &str) -> V {
     if v.is_sol_error() {
         return v.clone();
@@ -84,7 +83,7 @@ pub(crate) fn guard_any(r: V, ops: &[&V]) -> V {
     }
 }
 
-/// `broadcast`: as `broadcastErr`, every answer but null through `guardFinite`.
+/// As `broadcast_err`, every answer but null through `guard_any`.
 fn broadcast_num(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     each(args, |ops| match short_circuit(ops) {
         Some(sc) => sc,

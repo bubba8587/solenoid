@@ -8,10 +8,6 @@ export const ZONES: Array<{ name: string; lo: number; hi: number }> = [
   { name: "Z5 Maximum", lo: 0.9, hi: 1 },
 ];
 
-export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
-  return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
-}
-
 export function hrZoneBounds(maxHr: number, restingHr: number | null): number[][] {
   const at = (pct: number) =>
     Math.round(restingHr !== null ? restingHr + pct * (maxHr - restingHr) : pct * maxHr);

@@ -1,14 +1,13 @@
 // [[C120]] linearWork
 import { it, expect } from "vitest";
 import { coreFunction } from "../coreFunction";
-import { DIST_SPECS as DISTRIBUTIONS } from "../../../src/graph/nodes/distributionOps";
 it("the cumulative hypergeometric sums only the window where terms are nonzero: the full loop's answer, fast", () => {
   const f = coreFunction("HYPGEOM.DIST")!;
   // Against the full loop on mid-size cases where the window applies.
   let seed = 9; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const full = (k: number, n: number, M: number, N: number) => {
     const lo = Math.max(0, n + M - N), hi = Math.min(n, M); let sum = 0;
-    for (let j = lo; j <= Math.min(k, hi); j++) sum += (DISTRIBUTIONS.hypgeom.compute("pmf", j, [n, M, N]) as number);
+    for (let j = lo; j <= Math.min(k, hi); j++) sum += f(j, n, M, N, false) as number;
     return Math.min(1, Math.max(0, sum));
   };
   for (let t = 0; t < 40; t++) {

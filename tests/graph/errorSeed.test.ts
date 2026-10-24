@@ -5,8 +5,7 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError, type SolError } from "../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { computeAll } from "../../src/graph/graphCompute";
 import seed from "../../src/graph/seedGraphs/null-and-logical.json";
 
@@ -38,11 +37,6 @@ const EXPECTED: Record<string, string> = {
 describe("errors-null-logic seed (error-codes tour)", () => {
   it("every ISERROR cluster reports the code its row demonstrates", async () => {
     const editor = new GraphEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => {
-      if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-      return ctx;
-    });
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 

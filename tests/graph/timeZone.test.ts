@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { isValidZone, zoneOffsetMs } from "../../src/graph/timeZone";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -9,27 +8,6 @@ const convertZone = (serial: number, from: string, to: string) => coreFunction("
 // (widget rule 5). Serials are wall-clock-as-UTC, so a serial is built the same way.
 const serial = (y: number, mo: number, d: number, h = 0, mi = 0) =>
   Date.UTC(y, mo - 1, d, h, mi, 0) / 86400000 + 25569;
-
-describe("isValidZone", () => {
-  it("accepts IANA names, rejects junk", () => {
-    expect(isValidZone("America/New_York")).toBe(true);
-    expect(isValidZone("UTC")).toBe(true);
-    expect(isValidZone("Not/AZone")).toBe(false);
-    expect(isValidZone("")).toBe(false);
-  });
-});
-
-describe("zoneOffsetMs", () => {
-  const H = 3600000;
-  it("UTC is always zero", () => {
-    expect(zoneOffsetMs("UTC", Date.UTC(2026, 0, 1))).toBe(0);
-    expect(zoneOffsetMs("UTC", Date.UTC(2026, 6, 1))).toBe(0);
-  });
-  it("tracks DST: New York is -5h in winter, -4h in summer", () => {
-    expect(zoneOffsetMs("America/New_York", Date.UTC(2026, 0, 15, 12))).toBe(-5 * H);
-    expect(zoneOffsetMs("America/New_York", Date.UTC(2026, 6, 15, 12))).toBe(-4 * H);
-  });
-});
 
 describe("convertZone", () => {
   it("winter: 9:00 in New York (EST) is 14:00 in London", () => {

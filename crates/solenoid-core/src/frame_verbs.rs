@@ -341,7 +341,7 @@ fn with_formats(f: &FrameValue, formats: &serde_json::Map<String, Json>) -> Fram
     )
 }
 
-/// A number's bits as an unsigned key in the number's order, -0 with 0 (`compareNumbers` holds them equal).
+/// A number's bits as an unsigned key in the number's order, -0 with 0 (`compare_numbers` holds them equal).
 fn ordered_bits(n: f64) -> u64 {
     let bits = (n + 0.0).to_bits();
     if bits >> 63 == 1 {
@@ -362,8 +362,7 @@ fn compare_numbers(a: f64, b: f64) -> Ordering {
     }
 }
 
-/// A cell's equality class, as `encodeCell` (and a Map's SameValueZero on a lone column) keys it:
-/// 0 and -0 one value, every NaN one value, errors by code.
+/// A cell's equality class: 0 and -0 one value, every NaN one value, errors by code.
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CellKey<'a> {
     Null,
@@ -1558,7 +1557,7 @@ fn sum_group(values: &[FrameCell]) -> FrameCell {
     }
 }
 
-/// `formatFrameCell` with no format annotation.
+/// A cell's shown text with no format annotation.
 pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     match v {
         FrameCell::Err(e) => e.code.to_string(),
@@ -2178,7 +2177,7 @@ pub fn drop_blank_rows(f: &FrameValue, mode: BlankRows) -> FrameValue {
     reorder_rows(f, &keep)
 }
 
-/// Renamed columns with their names run through `makeHeaders`, so a clash gets a suffix.
+/// Renamed columns with their names run through `make_headers`, so a clash gets a suffix.
 fn with_unique_names(mut out: Vec<FrameColumn>) -> FrameValue {
     let unique = make_headers(&out.iter().map(|c| c.name.clone()).collect::<Vec<_>>(), out.len());
     for (c, name) in out.iter_mut().zip(unique) {

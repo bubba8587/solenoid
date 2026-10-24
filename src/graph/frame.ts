@@ -3,10 +3,9 @@ import { wasmInvokeSync } from "./engineWasm";
 import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
-import { type ColumnUnit, type UnitCell, isUnitCell, roundAtLargerTerm } from "./unitValue";
-import { formatDim, dimEqual, type Dim } from "./dimension";
+import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
-import { displayMagnitudeOf, fcUnitToUnit } from "./unitBridge";
+import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
 import { typesAt, isFrameAt, type ColumnTypes, type NestedTables } from "./cubeTypes";
@@ -100,30 +99,6 @@ export function typedColumn(
   return { name, type, values };
 }
 
-/** Named lists as typed columns, as long as the longest (Frame from Lists). */
-export function frameFromLists(cols: ReadonlyArray<{ name: string; cells: ReadonlyArray<unknown>; known: FrameColType | null }>): FrameValue {
-  const length = Math.max(...cols.map((c) => c.cells.length));
-  const names = makeHeaders(cols.map((c) => c.name), cols.length);
-  return { __frame: true, columns: cols.map((c, i) => typedColumn(names[i], c.cells, length, c.known)) };
-}
-
-export function buildFrameTyped(
-  matrix: ReadonlyArray<ReadonlyArray<unknown>>,
-  names?: ReadonlyArray<string>,
-  colType?: FrameColType | null,
-): FrameValue {
-  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
-  const cleanNames = (names ?? []).map((_, i) => parsed[i]?.clean ?? names![i]);
-  const headers = makeHeaders(cleanNames, ncols);
-  const columns: FrameColumn[] = headers.map((name, j) => {
-    const cells = matrix.map((row) => (j < row.length ? row[j] : null));
-    const col = typedColumn(name, cells, matrix.length, colType ?? undefined);
-    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j].unit } : col;
-  });
-  return { __frame: true, columns };
-}
-
 export function colTypeForSocket(dataType: string | undefined): FrameColType | null {
   switch (elementFamilyOf(dataType as SocketDataType)) {
     case "number": return "number";
@@ -132,25 +107,6 @@ export function colTypeForSocket(dataType: string | undefined): FrameColType | n
     case "logical": return "logical";
     default: return null;
   }
-}
-
-export function splitFrame(f: FrameValue): { matrix: number[][] | null; headers: string[] } {
-  const headers = f.columns.map((c) => c.name);
-  if (frameHasTextColumns(f)) return { matrix: null, headers };
-  const rows = frameRowCount(f);
-  const matrix: number[][] = Array.from({ length: rows }, (_, i) =>
-    f.columns.map((c) => {
-      const v = c.values[i];
-      if (typeof v === "number") return v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      return NaN;
-    }),
-  );
-  return { matrix, headers };
-}
-
-export function frameHasTextColumns(f: FrameValue): boolean {
-  return f.columns.some((c) => c.type === "string");
 }
 
 export function formatFrameCell(type: FrameColType, v: FrameCell, format?: FormatAnnotation): number | string | null {
@@ -296,19 +252,6 @@ export function frameColumnsToInputText(columns: ReadonlyArray<FrameColumn>): st
 
 export function frameFromInputText(text: string): FrameValue {
   return deriveFrame(parseFrameSource(text));
-}
-
-
-export function frameFromInput(headers: ReadonlyArray<string>, matrix: number[][]): FrameValue {
-  const bodyCols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const ncols = Math.max(headers.length, bodyCols);
-  const names = makeHeaders(headers, ncols);
-  const columns: FrameColumn[] = names.map((name, j) => ({
-    name,
-    type: "number",
-    values: matrix.map((row) => (row[j] === undefined ? null : row[j])),
-  }));
-  return { __frame: true, columns };
 }
 
 // ─── Type-inferring builders (CSV / JSON imports keep text) ─────────────────────
@@ -549,7 +492,7 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
+function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
   return col.unit
     ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)
     : [...col.values];
@@ -609,125 +552,6 @@ export function toCube(v: unknown): CubeValue {
       : cubeFromRows([v as CubeCell[]]);
   }
   return cubeFromRows([[v as CubeCell]]);
-}
-
-// ─── Relate: nest two frames into a cube (the relational producer) ─────────────
-
-function dimKeyId(base: number, dim: Dim, display: string | undefined): string {
-  const cur = dimEqual(dim, { currency: 1 }) ? (display ?? "") : "";
-  const offset = (display ? fcUnitToUnit(display)?.offset : undefined) ?? 0;
-  const key = roundAtLargerTerm(base, Math.max(Math.abs(base - offset), Math.abs(offset)));
-  return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(key)}`;
-}
-
-function keyId(v: FrameCell | UnitCell): string {
-  if (v === null || v === undefined) return "~null";
-  if (typeof v === "boolean") return v ? "1" : "0";
-  if (isSolError(v)) return "~err:" + v.code;
-  if (isUnitCell(v)) return v.ratio ? String(v.value) : dimKeyId(v.value, v.dim, v.display);
-  return String(v);
-}
-
-function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
-  if (unit && typeof v === "number" && Number.isFinite(v)) return keyId(tagFrameCellUnit(v, unit) as FrameCell | UnitCell);
-  return keyId(v);
-}
-
-function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
-  if (cell === null || isSolError(cell)) return null;
-  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell, unit);
-  if (isUnitCell(cell)) return keyId(cell);
-  return null;
-}
-
-function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
-  return {
-    __frame: true,
-    columns: child.columns.map((c) => ({
-      name: c.name,
-      type: c.type,
-      ...(c.unit ? { unit: c.unit } : {}),
-      ...(c.format ? { format: c.format } : {}),
-      values: rowIdxs.map((i) => c.values[i] ?? null),
-      ...(c.raw ? { raw: rowIdxs.map((i) => c.raw![i] ?? "") } : {}),
-    })),
-  };
-}
-
-export function selectCubeRows(cube: CubeValue, indices: readonly number[]): CubeValue {
-  return makeCube(cube.columns.map((c) => ({
-    name: c.name,
-    ...(c.type ? { type: c.type } : {}),
-    ...(c.format ? { format: c.format } : {}),
-    cells: indices.map((i) => c.cells[i] ?? null),
-  })));
-}
-
-function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
-  return selectCubeRows(child, rowIdxs);
-}
-
-export function relateFramesToCube(
-  parent: FrameValue,
-  child: FrameValue | CubeValue,
-  key: string,
-  nestedName: string,
-): CubeValue | null {
-  const pKey = getColumn(parent, key);
-  if (!pKey) return null;
-  const cKeyCol = isCubeValue(child) ? null : getColumn(child, key);
-  const cKeyCells: readonly CubeCell[] | null = isCubeValue(child)
-    ? (child.columns.find((c) => c.name === key)?.cells ?? null)
-    : (cKeyCol?.values ?? null);
-  if (!cKeyCells) return null;
-  const cRows = isCubeValue(child) ? cubeRowCount(child) : frameRowCount(child);
-
-  const childByKey = new Map<string, number[]>();
-  for (let i = 0; i < cRows; i++) {
-    const id = cellKeyId(cKeyCells[i] ?? null, cKeyCol?.unit);
-    if (id === null) continue;
-    const arr = childByKey.get(id);
-    if (arr) arr.push(i);
-    else childByKey.set(id, [i]);
-  }
-
-  const pRows = frameRowCount(parent);
-  const names = makeHeaders(
-    [...parent.columns.map((c) => c.name), nestedName.trim() || "items"],
-    parent.columns.length + 1,
-  );
-  const columns: CubeColumn[] = parent.columns.map((c, j) => {
-    const cells = cubeCellsFromColumn(c);
-    return { name: names[j], type: c.type, cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
-  });
-  const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
-    const idxs = childByKey.get(keyIdInColumn(pKey.values[i] ?? null, pKey.unit)) ?? [];
-    return isCubeValue(child) ? subCube(child, idxs) : subFrame(child, idxs);
-  });
-  columns.push({ name: names[parent.columns.length], cells: nestedCells });
-  return makeCube(columns);
-}
-
-export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue {
-  let nestedIdx = -1;
-  for (let j = 0; j < parent.columns.length; j++) {
-    if (parent.columns[j].cells.some((c) => isFrameValue(c) || isCubeValue(c))) { nestedIdx = j; break; }
-  }
-  if (nestedIdx < 0) return parent;
-  const newCells: CubeCell[] = parent.columns[nestedIdx].cells.map((cell) =>
-    isCubeValue(cell) ? relateCubeToFrame(cell, child, key, nestedName)
-    : isFrameValue(cell) ? (relateFramesToCube(cell, child, key, nestedName) ?? cell)
-    : cell,
-  );
-  return makeCube(parent.columns.map((c, j) => (j === nestedIdx ? { name: c.name, cells: newCells } : c)));
-}
-
-export function cubeColumnFromValue(value: unknown): CubeCell[] {
-  if (value == null) return [];
-  if (isCubeValue(value)) return [...(value.columns[0]?.cells ?? [])];
-  if (isFrameValue(value)) return [value];
-  if (Array.isArray(value)) return value as CubeCell[];
-  return [value as CubeCell];
 }
 
 export function frameFromColumnar(obj: Record<string, unknown>): FrameValue {

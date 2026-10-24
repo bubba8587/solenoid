@@ -8,8 +8,6 @@ import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { setEditorRefs, processGraph } from "../process";
 import { computeStack, latestOnlyQueue } from "./landingCompute";
 import { nodeNameStore } from "../nodeNameStore";
@@ -31,11 +29,6 @@ const SURVEY_GRID = [
 
 function makeLandingStack(): SurfaceStack {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();

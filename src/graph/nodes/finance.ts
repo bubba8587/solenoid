@@ -7,7 +7,7 @@ import type { Shape } from "../frameShape";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import { EquationNode } from "./equation";
-import { amortizationSchedule, RETURNS_OP_META, type ReturnsOp } from "./financeOps";
+import { RETURNS_OP_META, type ReturnsOp } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
 import type {
@@ -23,8 +23,6 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
   end: "End of period (0)",
   beg: "Beginning of period (1)",
 };
-
-// ─── Coupon / accrual date helpers ────────────────────────────────────────────
 
 // ─── Bitwise ──────────────────────────────────────────────────────────────────
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
@@ -138,7 +136,7 @@ export class DepreciationNode extends GraphNode {
 
 // ─── TVM (Time Value of Money) ────────────────────────────────────────────────
 
-export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
+const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };
@@ -170,12 +168,6 @@ export class TvmNode extends EquationNode {
     this._rebuild();
   }
 }
-
-// ─── NPV ──────────────────────────────────────────────────────────────────────
-export const NPV_META = {
-  label: "NPV",
-  description: "Net present value of cash flows at a given discount rate (first value = period `1`). Excel: `NPV`.",
-};
 
 // ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
 
@@ -266,10 +258,6 @@ export class IRRNode extends GraphNode {
 }
 
 // ─── MIRR ─────────────────────────────────────────────────────────────────────
-export const MIRR_META = {
-  label: "MIRR",
-  description: "Modified `IRR`: accounts for cost of capital and reinvestment rate. Excel: `MIRR`.",
-};
 
 export class MirrNode extends GraphNode {
   unitAware = true;
@@ -297,10 +285,6 @@ export class MirrNode extends GraphNode {
 }
 
 // ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
-export const FVSCHEDULE_META = {
-  label: "FVSCHEDULE",
-  description: "Future value of principal after a schedule of compound interest rates. Excel: `FVSCHEDULE`.",
-};
 
 export class FvScheduleNode extends GraphNode {
   unitAware = true;
@@ -327,10 +311,6 @@ export class FvScheduleNode extends GraphNode {
 }
 
 // ─── ISPMT ────────────────────────────────────────────────────────────────────
-export const ISPMT_META = {
-  label: "ISPMT",
-  description: "Interest paid in a given period of a straight-line-principal loan. Excel: `ISPMT`.",
-};
 
 export class IspmtNode extends GraphNode {
   unitAware = true;
@@ -390,9 +370,6 @@ export class DollarNode extends GraphNode {
     return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
-
-
-
 
 // ─── Spec-table op cards ──────────────────────────────────────────────────────
 
@@ -482,7 +459,6 @@ export class DiscountSecurityNode extends GraphNode {
     return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
-
 
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
@@ -657,7 +633,6 @@ export class PaymentBreakdownNode extends GraphNode {
   }
 }
 
-
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
 export const DURATION_OP_META = {
@@ -764,7 +739,6 @@ export class BondPricingNode extends GraphNode {
   }
 }
 
-
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
 export class AmortizationNode extends GraphNode {
   unitAware = true;
@@ -799,17 +773,6 @@ export class AmortizationNode extends GraphNode {
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
-}
-
-export function amortizationFrame(rate: number, nper: number, pv: number, fv: number, type: 0 | 1): FrameValue | null {
-  const rows = amortizationSchedule(rate, nper, pv, fv, type);
-  return rows.length === 0 ? null : { __frame: true, columns: [
-    { name: "Period",    type: "number", values: rows.map((r) => r.period) },
-    { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
-    { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
-    { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
-    { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
-  ] };
 }
 
 // ─── RETURNS (return-series quant one-liners) ────────────────────────────────

@@ -43,7 +43,7 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-export function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
+function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
     /\.json(\?|$)/i.test(url) ||
@@ -141,7 +141,7 @@ async function fetchParsed<T>(
   }
 }
 
-export function htmlTableToFrame(html: string, index1: number): FrameValue {
+function htmlTableToFrame(html: string, index1: number): FrameValue {
   if (typeof DOMParser === "undefined") throw new Error("HTML parsing needs a browser environment.");
   const doc = new DOMParser().parseFromString(html, "text/html");
   const tables = doc.querySelectorAll("table");
@@ -156,7 +156,7 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   return frameFromCells(headers, body);
 }
 
-export function xpathToList(html: string, query: string): string[] {
+function xpathToList(html: string, query: string): string[] {
   if (typeof DOMParser === "undefined") throw new Error("XML parsing needs a browser environment.");
   const q = query.trim();
   if (q === "") return [];

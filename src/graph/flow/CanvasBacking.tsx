@@ -4,7 +4,7 @@ import { useStore } from "@xyflow/react";
 import { DOT_SPACING } from "../gridSnapStore";
 
 /** Half the backing's side in canvas units, a multiple of DOT_SPACING so a dot sits on every multiple of it. */
-export const BACKING_SPAN = DOT_SPACING * 83334;
+const BACKING_SPAN = DOT_SPACING * 83334;
 const SIDE = BACKING_SPAN * 2;
 
 /** The color is the box's own background, which the browser knows is opaque; an SVG fill, or a fill under a scale, it doesn't.

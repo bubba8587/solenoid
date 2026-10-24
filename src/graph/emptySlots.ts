@@ -34,7 +34,7 @@ const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
 };
 
 /** Excel's reading for this empty slot when it isn't the parameter's usual one. */
-export function emptySlotOverride(name: string, i: number): { value: unknown } | null {
+function emptySlotOverride(name: string, i: number): { value: unknown } | null {
   const fn = EXCEL_EMPTY_SLOT[name.toUpperCase()];
   return fn && i in fn ? { value: fn[i] } : null;
 }

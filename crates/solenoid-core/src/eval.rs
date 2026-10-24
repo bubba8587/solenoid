@@ -37,7 +37,7 @@ pub struct LambdaV {
 
 const MAX_GENERATED: f64 = 1_000_000.0;
 
-/// A function's dispatch facts (`formulaCallTable`'s entry), frozen into data/call_traits.json. Its per-position lists
+/// A function's dispatch facts, frozen into data/call_traits.json. Its per-position lists
 /// hold only their head; past it they repeat with period two.
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +61,7 @@ pub struct Traits {
     pub fast: Fast,
 }
 
-/// How a call reads its arguments (`formulaCallTable`'s kind).
+/// How a call reads its arguments.
 #[derive(serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
@@ -71,7 +71,7 @@ pub enum Kind {
     Handler,
 }
 
-/// How a range call readies its lists before the body reads them (`prepRangeArgs`).
+/// How a range call readies its lists before the body reads them (`prep_range_args`).
 #[derive(serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Prep {
@@ -304,7 +304,7 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
     V::List(Rc::new(out))
 }
 
-/// `formatCx` at four digits.
+/// A complex number as text, at four digits.
 pub(crate) fn format_cx(re: f64, im: f64) -> String {
     let fmt = |n: f64| {
         if n.fract() == 0.0 && n.is_finite() {
@@ -444,7 +444,7 @@ impl Col<'_> {
     }
 }
 
-/// A computed column's row (`runColumn`'s row frame): what `@name`, `[name]` and ROW() read.
+/// A computed column's row: what `@name`, `[name]` and ROW() read.
 pub struct RowCtx<'a> {
     cols: FxHashMap<&'a str, Col<'a>>,
     alias: FxHashMap<String, String>,
@@ -645,7 +645,7 @@ impl Eval<'_> {
         site
     }
 
-    /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
+    /// A formula's answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
             V::Lambda(_) => V::err(sol_error(
@@ -911,7 +911,7 @@ impl Eval<'_> {
         })
     }
 
-    /// Steps 9 to 11 of the dispatch ladder (`routeCall`).
+    /// Steps 9 to 11 of the dispatch ladder.
     fn route_call(&self, name: &str, t: &Traits, mut argv: Vec<V>, settled: &[bool]) -> V {
         let mut column = false;
         if t.free {
@@ -1093,7 +1093,7 @@ impl Eval<'_> {
         let V::Lambda(lam) = last else {
             return V::err(sol_error(ErrorCode::Value, format!("{name} needs a LAMBDA as its last argument")));
         };
-        // `etaFn`: a function named bare gets only the arguments that mean something to it.
+        // A function named bare gets only the arguments that mean something to it.
         let call = |args: &[V], meaningful: usize| -> V {
             if lam.eta.is_some() {
                 self.call_lambda(&lam, &args[..meaningful.min(args.len())])
@@ -1102,7 +1102,7 @@ impl Eval<'_> {
             }
         };
         let absent = |v: &V| matches!(v, V::Null | V::Undef);
-        // `oneValue`: the LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
+        // The LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
         // A list or table of one cell is that cell, as Excel reads a 1×1 array.
         let one = |each: &str, r: V| match r {
             V::List(l) => {
@@ -1460,7 +1460,7 @@ fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Op
     Some(settled)
 }
 
-/// A picks role is read with `required` off, as `applyArgRoles` reads it.
+/// With `picks_optional`, a picks role is read with `required` off.
 fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bool) -> V {
     if v.is_sol_error() {
         return v.clone();
@@ -1541,7 +1541,7 @@ fn lambda_scope(args: &[Ast], bound: &[String]) -> Vec<String> {
     inner
 }
 
-/// `extractVariables`: the bare names a formula reads, first-seen order, past constants, LAMBDA parameters and the
+/// The bare names a formula reads, first-seen order, past constants, LAMBDA parameters and the
 /// functions an eta host takes by name.
 pub fn variables(ast: &Ast) -> Vec<String> {
     fn walk(n: &Ast, out: &mut Vec<String>, bound: &[String]) {
@@ -1585,7 +1585,7 @@ pub fn variables(ast: &Ast) -> Vec<String> {
     out
 }
 
-/// `rowRefNames`: the names read by `@name` or `[name]`, first-seen order, past LAMBDA parameters.
+/// The names read by `@name` or `[name]`, first-seen order, past LAMBDA parameters.
 pub fn row_refs(ast: &Ast) -> Vec<String> {
     fn walk(n: &Ast, out: &mut Vec<String>, bound: &[String]) {
         match n {
@@ -1633,9 +1633,8 @@ thread_local! {
 }
 
 thread_local! {
-    /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call, as
-    /// `compileEvaluator` keeps its AST and `rangeMemo` across calls: `x - AVERAGE(vals)` over each item of a held
-    /// list reads `vals` once ([[C120]] linearWork).
+    /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call:
+    /// `x - AVERAGE(vals)` over each item of a held list reads `vals` once ([[C120]] linearWork).
     static FORMULAS: RefCell<Vec<(String, Rc<Compiled>)>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -1647,7 +1646,7 @@ struct Compiled {
 
 const FORMULAS_KEPT: usize = 16;
 
-/// `compileEvaluator(src)(env)`; None where it doesn't parse.
+/// `src` evaluated over `env`; None where it doesn't parse.
 pub fn formula(src: &str, env: Env) -> Option<V> {
     let hit = FORMULAS.with(|f| f.borrow().iter().find(|(s, _)| s == src).map(|(_, c)| c.clone()));
     let compiled = match hit {
@@ -1800,13 +1799,12 @@ pub struct ColumnOutcome<C = crate::frame::FrameCell> {
     pub side_vars: Vec<String>,
 }
 
-/// `computeColumnCells`: each row's cell and the side inputs the formula reads, or the error that stops it.
+/// Each row's cell and the side inputs the formula reads, or the error that stops it.
 pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crate::error_value::SolError> {
     column_with(spec, inp, crate::excel_formula::tag_computed_cell)
 }
 
-/// `runColumn` with each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a
-/// list (`tagCubeComputedCell`).
+/// As `column`, each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a list.
 pub fn column_with<C>(
     spec: ColumnSpec,
     inp: ColumnInputs,

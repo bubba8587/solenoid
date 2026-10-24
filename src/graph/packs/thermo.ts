@@ -8,7 +8,7 @@ import { THERMO_PACK_FORMULAS } from "./thermoFormulas";
 const R_GAS = "8.314462618";   // J/(mol·K)
 const SIGMA = "5.670374419*10^-8"; // Stefan–Boltzmann
 
-export const THERMO_GAS: FormulaPackEntry[] = [
+const THERMO_GAS: FormulaPackEntry[] = [
   { type: "th-ideal-gas", label: "Ideal Gas (pV = nRT)", expr: `p * vol = n * ${R_GAS} * tk`, equation: true,
     description: "The ideal-gas law with any one of p (Pa), vol (m³), n (mol), tk (K) unwired: the node solves for it",
     keywords: "pv nrt pressure volume moles temperature gas law",
@@ -19,7 +19,7 @@ export const THERMO_GAS: FormulaPackEntry[] = [
     units: { tk: "K" } },
 ];
 
-export const THERMO_HEAT: FormulaPackEntry[] = [
+const THERMO_HEAT: FormulaPackEntry[] = [
   { type: "th-sensible-heat", label: "Sensible Heat", expr: "m*cp*dt",
     description: "Heat Q = mcΔT in joules to change temperature: mass m (kg), specific heat cp (J/kg·K, water 4186), rise dt in kelvin." },
   { type: "th-latent-heat", label: "Latent Heat", expr: "m*lh",
@@ -45,7 +45,7 @@ export const THERMO_HEAT: FormulaPackEntry[] = [
     description: "Length change ΔL = αLΔT: coefficient alpha (1/K, steel 12e-6, aluminum 23e-6), length len, ΔT dt." },
 ];
 
-export const THERMO_AIR: FormulaPackEntry[] = [
+const THERMO_AIR: FormulaPackEntry[] = [
   { type: "th-svp", label: "Saturation Vapor Pressure", expr: "610.94*EXP(17.625*tc/(tc+243.04))",
     description: "Over water at tc °C (Magnus, Alduchov–Eskridge form) → pascals",
     keywords: "magnus psychrometric humidity", units: { tc: "degC" } },

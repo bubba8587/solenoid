@@ -12,7 +12,7 @@ A collapsed group draws as a small card. Expanding it back to full size would co
 
 ## The world the push works on
 
-The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush`, `separateOverlaps` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
+The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
 - **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
 - A loose node's box reaches over its docked FCs (FC width plus 8), rightward for an FC docked to an output and leftward for one docked to an input, because a docked FC has no box of its own.
@@ -51,7 +51,7 @@ Three more passes run over the same boxes, after every expanding group has had i
 2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the clusters this expansion touched (`standoffsTouching`: those holding an expanding group or a moved box), with the expanding groups and any position-locked group pinned. An unrelated cluster keeps its slant. Its corrections are added to the same totals, credited to every expanding group.
 3. **Overlap backstop** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too. Each standoff cluster moves as one unit, so it can't tear, but only its members' own boxes collide: a card sitting between a group and its standoff partner, touching neither, stays put. Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield. Its moves are credited to every expanding group.
 
-`separateAll` runs `separateOverlaps` twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. `separateOverlaps` places the boxes one at a time, pinned ones first, then the rest from the top-left (by `x + y`). A pinned box stays where it is. Every other box, while it overlaps one already placed, moves right or down, whichever is cheaper, to clear the placed box it overlaps most by `PUSH_GAP`. So the top-left box keeps its anchor corner, a pinned box's partner yields, and two pinned boxes are left alone. Moves only ever go right or down, so it always finishes, and a few hundred boxes take milliseconds. Afterwards only two fixed units can still overlap.
+`separateAll` runs its placement pass (`separateUnits`) twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. The pass places the boxes one at a time, pinned ones first, then the rest from the top-left (by `x + y`). A pinned box stays where it is. Every other box, while it overlaps one already placed, moves right or down, whichever is cheaper, to clear the placed box it overlaps most by `PUSH_GAP`. So the top-left box keeps its anchor corner, a pinned box's partner yields, and two pinned boxes are left alone. Moves only ever go right or down, so it always finishes, and a few hundred boxes take milliseconds. Afterwards only two fixed units can still overlap.
 
 ## What is not a layout op
 

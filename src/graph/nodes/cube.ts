@@ -159,7 +159,7 @@ export class CubeRollupNode extends GraphNode {
 /** A Cube Input's records as its formula columns read them: the records' cube in the source's column order, each
  *  formula column empty, beside each column's formula (null for a data column). The text's key order and the
  *  records' reading are JS's, shared with the Cube popup's editor ([[D90]] cubeTypesAtDepth). */
-export function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs: (string | null)[] } {
+function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs: (string | null)[] } {
   const data = recordsToCube(source.rows, sourcePicks(source), source.nested);
   const keys = recordKeys(source.rows);
   const rows = source.rows.length;

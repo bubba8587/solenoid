@@ -100,7 +100,7 @@ fn shown(display: &Option<String>) -> bool {
     display.as_deref().is_some_and(|d| !d.is_empty())
 }
 
-/// `isAffineDisplay` of a cell's own display unit.
+/// Whether a cell's own display unit has an offset (°C, °F).
 fn affine(u: &UnitCell) -> bool {
     shown(&u.display) && u.offset.is_some_and(|o| o != 0.0)
 }
@@ -109,7 +109,7 @@ fn pure_currency(d: &Dim) -> bool {
     dim_equal(d, &Dim::from([("currency".to_string(), 1.0)]))
 }
 
-/// `forAggregateUnits`' answer: the shared dimension, the display unit of the first cell that carries it, and the
+/// An aggregate's units: the shared dimension, the display unit of the first cell that carries it, and the
 /// present cells' magnitudes.
 pub(crate) struct Prep {
     pub(crate) dim: Dim,
@@ -117,7 +117,7 @@ pub(crate) struct Prep {
     pub(crate) nums: Vec<f64>,
 }
 
-/// `forAggregateUnits` over values with no error. `bare_is_reading`: a bare number beside readings on an offset scale
+/// Over values with no error. `bare_is_reading`: a bare number beside readings on an offset scale
 /// (°C) is a reading, not a delta.
 pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Result<Prep, SolError> {
     let present: Vec<&V> = values.iter().copied().filter(|v| !matches!(v, V::Null)).collect();
@@ -241,7 +241,7 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
     )
 }
 
-/// `setKey` of a unit cell: its base-SI magnitude at 15 significant digits and its dimension, so 5 km and 5000 m are
+/// A unit cell's set key: its base-SI magnitude at 15 significant digits and its dimension, so 5 km and 5000 m are
 /// one member.
 pub fn unit_set_key(u: &UnitCell) -> String {
     // A zero exponent is no dimension; JS's truthiness drops NaN with it.

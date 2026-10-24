@@ -13,8 +13,6 @@ import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, isGraphReb
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
 import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { scheduleAutosave } from "../persistence";
 import { documentStore, ensureFirstDocument } from "../documentStore";
@@ -54,11 +52,6 @@ let _stack: Stack | null = null;
 function getStack(): Stack {
   if (_stack) return _stack;
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers = idleHandlers();

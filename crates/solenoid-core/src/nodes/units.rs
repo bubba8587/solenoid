@@ -34,7 +34,7 @@ pub fn shown(v: &V) -> Option<&UnitCell> {
     }
 }
 
-/// `isAffineDisplay` of the value's display unit.
+/// Whether the value's display unit has an offset (°C, °F).
 pub fn affine(v: &V) -> bool {
     shown(v).is_some_and(|u| u.offset.is_some_and(|o| o != 0.0))
 }
@@ -47,7 +47,7 @@ pub fn adopt_magnitude(face: f64, unit: Option<&UnitCell>) -> f64 {
     }
 }
 
-/// As `adoptMagnitude`, the offset too.
+/// As `adopt_magnitude`, the offset too.
 pub fn adopt_reading(face: f64, unit: Option<&UnitCell>) -> f64 {
     let base = adopt_magnitude(face, unit);
     match unit {
@@ -56,7 +56,7 @@ pub fn adopt_reading(face: f64, unit: Option<&UnitCell>) -> f64 {
     }
 }
 
-/// `tagDim`, the display unit (and its scale and offset) borrowed from `from`.
+/// A value of `dim`, the display unit (and its scale and offset) borrowed from `from`.
 pub fn tag(value: f64, dim: Dim, from: Option<&UnitCell>) -> V {
     if is_dimensionless(&dim) {
         return V::Num(value);
@@ -200,7 +200,7 @@ fn guard_cell(r: V, ops: &[&V]) -> V {
     }
 }
 
-/// As `broadcastErr`, over cells that may carry a unit.
+/// As `broadcast_err`, over cells that may carry a unit.
 pub fn broadcast_unit(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     super::kit::each(args, |ops| match short_circuit(ops) {
         Some(sc) => sc,
@@ -208,7 +208,7 @@ pub fn broadcast_unit(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     })
 }
 
-/// `fromUnit(value, unit, display)`: a face value in `unit` as a cell in base units, its display unit named `id` and
+/// A face value in `unit` as a cell in base units, its display unit named `id` and
 /// resolved (`unit_catalog`), so later arithmetic can read the display's scale off the cell.
 pub fn from_unit(value: f64, unit: &crate::unit_catalog::Unit, id: Option<&str>) -> V {
     let base = value * unit.scale + unit.offset.unwrap_or(0.0);

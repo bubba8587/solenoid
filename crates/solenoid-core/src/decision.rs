@@ -499,7 +499,7 @@ pub(crate) fn criteria_names(f: &FrameValue) -> Vec<String> {
     decision_columns(f).1.iter().map(|&i| f.columns[i].name.clone()).collect()
 }
 
-/// The Decision Matrix node's reading: `resolveDecisionWeights` over the Weights, then `decisionMatrix`.
+/// The Decision Matrix node's reading: the Weights resolved, then the options scored.
 pub fn decision_matrix(
     f: &FrameValue,
     wf: Option<&FrameValue>,

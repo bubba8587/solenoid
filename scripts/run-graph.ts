@@ -13,8 +13,6 @@ import { DataflowEngine } from "../src/graph/dataflowEngine";
 import { GraphEditor, graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../src/graph/graphEditor";
 import * as Nodes from "../src/graph/nodeClasses";
 import type { Schemes } from "../src/graph/schemes";
-import { installInputCoercion } from "../src/graph/coerceInputs";
-import { installErrorGuards } from "../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
 import { computeAll } from "../src/graph/graphCompute";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
@@ -70,11 +68,6 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 

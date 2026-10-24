@@ -4,7 +4,7 @@ import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
   ComplexPowerNode, QuadraticRootsNode, PolyRootsNode, cx, isCx, type Cx,
 } from "../../../src/graph/nodes/complex";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
@@ -137,11 +137,11 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   // rather than a complex special case.
   it("survives the coerceInputs boundary with its shape intact", () => {
     const scalar = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(scalar as never);
+    throughBoundary(scalar as never);
     expect(scalar.data({ z: [cx(1, 2) as never] }).result).toEqual(cx(1, -2));
 
     const list = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(list as never);
+    throughBoundary(list as never);
     expect(list.data({ z: [[cx(1, 2), cx(3, 4)] as never] }).result).toEqual([cx(1, -2), cx(3, -4)]);
   });
 });

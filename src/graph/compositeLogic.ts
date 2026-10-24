@@ -4,7 +4,6 @@ import type { GraphEditor } from "./graphEditor";
 import { GraphConnection } from "./graphModel";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
 import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./nodeClasses";
-import { installErrorGuards } from "./errorValue";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
 import { dockedNodeStore } from "./dockedNodeStore";
@@ -80,9 +79,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       if (!targetInputDef) continue;
       const portLabel = `${target.label || target.constructor.name} · ${targetInputDef.label || c.targetInput}`;
       const marker = new CompositeInputNode({ label: portLabel });
-      // After addNode, so the guard wraps outside coercion.
       await composite.internalEditor.addNode(marker as SolenoidNode);
-      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new GraphConnection(marker, "value", target, c.targetInput) as SolenoidConnection,
       );
@@ -104,9 +101,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       if (!sourceOutputDef) continue;
       const portLabel = `${source.label || source.constructor.name} · ${sourceOutputDef.label || c.sourceOutput}`;
       const marker = new CompositeOutputNode({ label: portLabel });
-      // After addNode, so the guard wraps outside coercion.
       await composite.internalEditor.addNode(marker as SolenoidNode);
-      installErrorGuards(marker);
       await composite.internalEditor.addConnection(
         new GraphConnection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );

@@ -277,7 +277,7 @@ export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "custom", label: "",     group: "custom" },
 ];
 
-export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
+const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   none:        "—",
   angle:       "Angle",
   length:      "Length",
@@ -326,10 +326,6 @@ export function registerPackFormats(formats: PackFormat[]): void {
 
 export function unitGroupLabel(group: string): string {
   return UNIT_GROUP_LABELS[group as UnitGroup] ?? _packUnitGroupLabels.get(group) ?? group;
-}
-
-export function packFormatLabel(id: string): string | undefined {
-  return _packFormats.get(id)?.label;
 }
 
 export function unitById(id: string): UnitAnnotation {
@@ -564,16 +560,6 @@ export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
   if (!unit) return text;
   const body = hasBothParts ? `(${text})` : text;
   return ann.unit !== "custom" && unitById(ann.unit).prefix ? `${unit}${body}` : `${body}${unit}`;
-}
-
-export function formatWithAnnotation(
-  n: number,
-  nodeId: string,
-  socketKey: string,
-): string {
-  const ann = formatAnnotationStore.get(nodeId, socketKey);
-  if (!ann) return autoFormat(n);
-  return formatNumberWithAnnotation(n, ann);
 }
 
 registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));

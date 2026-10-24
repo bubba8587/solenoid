@@ -109,7 +109,7 @@ pub(crate) enum Role {
     Required,
 }
 
-/// `readAsRole`: unwired, the typed literal; wired, the cable's; a blank as the role reads it.
+/// Unwired, the typed literal; wired, the cable's; a blank as the role reads it.
 pub(crate) fn read_role(c: &Call, key: &str, role: Role) -> V {
     let literal = match c.literal(key) {
         V::Undef | V::Null => c.string_literal(key),
@@ -707,7 +707,7 @@ fn interpolate(c: &mut Call) -> Answer {
     answer(c, r)
 }
 
-/// An axis as `gridAxes` reads it: unwired counts 1, 2, 3…, a wired blank blanks the card.
+/// An axis as `grid_axes` reads it: unwired counts 1, 2, 3…, a wired blank blanks the card.
 fn grid_axis(raw: &V, n: usize, name: &str) -> Option<Result<(), V>> {
     match raw {
         V::Undef => Some(Ok(())),

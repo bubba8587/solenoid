@@ -3,15 +3,12 @@ import { GraphEditor } from "../graphEditor";
 import { GraphConnection } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import * as Nodes from "../nodeClasses";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
 import { isolateStore } from "../isolateStore";
 import { SolenoidSocket } from "../sockets";
-import { FLAT_CATALOG } from "../catalogUtils";
 
 export type SavedNodeLite = {
   id: string;
@@ -40,7 +37,7 @@ export type FlowModel = {
   engine: DataflowEngine<Schemes>;
 };
 
-export function resolveCtor(type: string): NodeCtor | undefined {
+function resolveCtor(type: string): NodeCtor | undefined {
   const fromBarrel = (Nodes as unknown as Record<string, unknown>)[type];
   if (typeof fromBarrel === "function") return fromBarrel as NodeCtor;
   return ctorRegistry().get(type);
@@ -48,11 +45,6 @@ export function resolveCtor(type: string): NodeCtor | undefined {
 
 export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
@@ -125,36 +117,6 @@ export async function connect(
   return true;
 }
 
-export async function disconnect(m: FlowModel, connectionId: string): Promise<void> {
-  if (m.editor.getConnection(connectionId)) await m.editor.removeConnection(connectionId);
-}
-
-export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
-  const doomed = new Set(ids);
-  for (const c of m.editor.getConnections()) {
-    if (doomed.has(c.source) || doomed.has(c.target)) await m.editor.removeConnection(c.id);
-  }
-  for (const id of ids) {
-    if (!m.editor.getNode(id)) continue;
-    await m.editor.removeNode(id);
-    nodeNameStore.forget(id);
-  }
-}
-
-export async function addNode(
-  m: FlowModel,
-  catalogType: string,
-  position: { x: number; y: number },
-): Promise<SolenoidNode | null> {
-  const entry = FLAT_CATALOG.get(catalogType);
-  if (!entry) return null;
-  const node = entry.create() as SolenoidNode;
-  node.position = { x: Math.round(position.x), y: Math.round(position.y) };
-  await m.editor.addNode(node);
-  nodeNameStore.ensure(node.id, node.constructor.name);
-  return node;
-}
-
 export function moveNode(m: FlowModel, id: string, position: { x: number; y: number }): void {
   const node = m.editor.getNode(id);
   if (node) node.position = { x: position.x, y: position.y };
@@ -172,7 +134,7 @@ export type RFNodeLite = {
   data: { node: SolenoidNode; version: number };
 };
 
-export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
+function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
   for (const g of m.editor.getNodes()) {
     if (g instanceof Nodes.GroupNode && g.members.includes(id)) return g;
   }
@@ -203,7 +165,7 @@ export function nodeClassName(node: SolenoidNode): string | undefined {
   return cls.length ? cls.join(" ") : undefined;
 }
 
-export function nodeZIndex(node: SolenoidNode): number {
+function nodeZIndex(node: SolenoidNode): number {
   if (node instanceof Nodes.GroupNode) return -2;
   if (node instanceof Nodes.ConduitNode) return -1;
   return 0;

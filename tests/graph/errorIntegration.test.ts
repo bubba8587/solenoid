@@ -4,8 +4,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { loopMembers } from "../../src/graph/graphCompute";
 import { solError } from "../../src/graph/errorValue";
@@ -29,17 +27,11 @@ function connect(
   );
 }
 
-// End-to-end checks that wire nodes through a real editor + DataflowEngine with
-// the SAME two wrappers Canvas installs — central input coercion (inner) and the
-// error-value guard (outer). These cover the seed's cases that a bare node.data()
+// End-to-end checks that wire nodes through a real editor + DataflowEngine, whose
+// input boundary coerces each input and guards each call as the canvas's does. These cover the seed's cases that a bare node.data()
 // can't: the coercion #SHAPE! path and an error riding a cable into a consumer.
 function makeEditor() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);                 // wraps data() first (inner)
-  editor.addPipe((ctx) => {                      // wraps data() second (outer)
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

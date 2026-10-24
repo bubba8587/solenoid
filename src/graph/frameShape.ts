@@ -163,7 +163,7 @@ export function shapeOfAddIndex(input: Shape, name: string): Shape {
 }
 
 /** `mergeColumns`' columns: the merged text column sits where the first source was. */
-export function shapeOfMergeColumns(input: Shape, columns: readonly string[], name: string): Shape {
+function shapeOfMergeColumns(input: Shape, columns: readonly string[], name: string): Shape {
   const sources = columns.map((c) => requireCol(input, c));
   if (sources.length < 2) throw solError("#VALUE!", "Merge needs at least two columns");
   const drop = new Set(sources.map((c) => c.name));

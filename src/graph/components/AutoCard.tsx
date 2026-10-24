@@ -13,7 +13,7 @@ import { CloseIcon } from "./CloseIcon";
 import "./AutoCard.css";
 
 // A folded card shows this many field tiles until it is opened.
-export const TILE_LIMIT = 6;
+const TILE_LIMIT = 6;
 
 function isErrCode(s: string): boolean {
   return Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());

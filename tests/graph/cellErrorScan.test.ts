@@ -1,8 +1,8 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
+import { findCellError } from "../../src/graph/graphWasm/solenoid_graph.js";
 import {
   solError,
-  findCellError,
   sampledCellIndices,
   CELL_SCAN_HEAD,
   CELL_SCAN_STRIDE_SAMPLES,

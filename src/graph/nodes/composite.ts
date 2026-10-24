@@ -9,16 +9,14 @@ import { settleWildcardTypes } from "../trueAnyAdopt";
 import { reconcileFcTypes } from "../fcReconcile";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
 import { forgetNodeDeep } from "../nodeStoreRegistry";
-import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
   mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
-import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
-import { seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
@@ -108,7 +106,7 @@ export function byRowValues(v: unknown): unknown[] {
 export const BY_ROW_MAX_ROWS = 500;
 
 /** A wired exposed port wins even when it carries a blank; only an unwired or hidden one takes the default ([[D86]] blankRoles). */
-export function portSource(
+function portSource(
   port: CompositeInputPort,
   marker: { defaultValue: number | null } | undefined,
   inputs: Record<string, unknown[] | undefined>,
@@ -280,8 +278,6 @@ export class CompositeNode extends GraphNode {
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new GraphEditor<Schemes>();
-    // Coercion installs first, so it is the inner wrapper, as on the main canvas.
-    installInputCoercion(this.internalEditor);
     this.internalEditor.addPipe((ctx) => {
       const t = (ctx as { type?: string }).type;
       if (t === "nodecreated" || t === "noderemoved" || t === "connectioncreated" || t === "connectionremoved") {
@@ -334,9 +330,7 @@ export class CompositeNode extends GraphNode {
       built.set(sn.id, node);
       this._savedIds.set(node.id, sn.id);
       restoreNodeState(node.id, sn);
-      // Guard after addNode, outside the coercion wrapper, so a ShapeError thrown while narrowing lands in the guard as #SHAPE!.
       await this.internalEditor.addNode(node as SolenoidNode);
-      installErrorGuards(node);
       if (typeof sn.x === "number" && typeof sn.y === "number") {
         this.internalPositions[node.id] = { x: sn.x, y: sn.y };
       }
@@ -550,10 +544,7 @@ export class CompositeNode extends GraphNode {
   // ─── Compute ─────────────────────────────────────────────────────────────
 
   private seedInternalLoopErrors(): void {
-    seedLoopErrors(
-      this.internalEditor,
-      this.internalEngine,
-      this.internalEngine.loopMembers(),
+    this.internalEngine.seedLoops(
       "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop.",
     );
   }
@@ -640,7 +631,6 @@ export class CompositeNode extends GraphNode {
     const state = new Map<string, Record<string, unknown>>();
     for (let step = 0; step < steps; step++) {
       for (const id of loopOrder) {
-        const node = this.internalEditor.getNode(id) as unknown as { data: (i: Record<string, unknown[]>) => unknown };
         const nodeInputs: Record<string, unknown[]> = { ...staticInputs.get(id) };
         for (const c of incomingByTarget.get(id) ?? []) {
           if (!loop.has(c.source)) continue;
@@ -648,7 +638,7 @@ export class CompositeNode extends GraphNode {
           if (srcOut === undefined) continue;
           (nodeInputs[c.targetInput] ??= []).push(srcOut[c.sourceOutput] ?? null);
         }
-        state.set(id, await Promise.resolve(node.data(nodeInputs)) as Record<string, unknown>);
+        state.set(id, await this.internalEngine.compute(id, nodeInputs));
       }
       const snapshot: Record<string, Record<string, unknown>> = {};
       for (const id of loopOrder) snapshot[id] = state.get(id)!;

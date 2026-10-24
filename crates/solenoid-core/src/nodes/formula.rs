@@ -25,7 +25,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     })
 }
 
-/// A formula over named values as `compileEvaluator` runs it; `Err` where the evaluation throws.
+/// A formula over named values; `Err` where the evaluation throws.
 fn evaluate(src: &str, env: Env) -> Result<V, ()> {
     let v = crate::eval::formula(src, env).ok_or(())?;
     if crate::excel_functions::take_thrown().is_some() {
@@ -154,7 +154,6 @@ fn js_json(v: &V) -> Json {
 
 // ─── Expression ────────────────────────────────────────────────────────────────────
 
-/// `formulaSyntaxHint`.
 fn syntax_hint(expr: &str) -> Option<String> {
     super::matrix::syntax_hint(expr)
 }

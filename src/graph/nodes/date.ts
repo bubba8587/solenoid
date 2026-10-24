@@ -349,10 +349,6 @@ export class WorkdaysNode extends GraphNode {
 
 // ─── Epoch (Unix time ↔ date) ─────────────────────────────────────────────────
 export type EpochOp = "from" | "to";
-export const EPOCH_OP_META = {
-  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since `1970-01-01` UTC) → a date. pandas `to_datetime`, R `as.POSIXct`." },
-  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas `astype(int64)`, R `as.numeric`." },
-} satisfies Record<EpochOp, { label: string; description: string }>;
 export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string; title: string }> = [
   { value: "s",  label: "s",  title: "Seconds since 1970-01-01 UTC (the Unix convention; 10 digits today)" },
   { value: "ms", label: "ms", title: "Milliseconds since 1970-01-01 UTC (JavaScript's Date.now(); 13 digits today)" },

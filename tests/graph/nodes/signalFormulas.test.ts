@@ -1,8 +1,10 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import { savgol, lowess } from "../../../src/graph/nodes/signalOps";
 import { coreFunction } from "../coreFunction";
+import { isSolError } from "../../../src/graph/errorValue";
 
+const savgol = (x: unknown[], window: number, order: number) => coreFunction("SAVGOL")!(x, window, order) as (number | null)[];
+const lowess = (x: unknown[], frac?: number) => (frac === undefined ? coreFunction("LOWESS")!(x) : coreFunction("LOWESS")!(x, frac)) as (number | null)[];
 const gaussianSmooth = (x: unknown[], sigma: number) => coreFunction("GAUSSIANSMOOTH")!(x, sigma);
 /** FINDPEAKS's 1-based positions. */
 const findPeaks = (y: number[], o: { height?: number; distance?: number; prominence?: number } = {}) =>
@@ -26,7 +28,7 @@ describe("Savitzky–Golay", () => {
     const out = savgol([1, 2, null, 4, 5, 6, 7], 3, 1) as (number | null)[];
     expect(out[2]).toBeNull();
     expect(out[3]).toBeCloseTo(4, 6); // linear data, line fit through (4,5) at x=0 → 4
-    expect(savgol(X, 4, 2).every((v) => v === null)).toBe(true);
+    expect(isSolError(savgol(X, 4, 2))).toBe(true);
   });
 });
 

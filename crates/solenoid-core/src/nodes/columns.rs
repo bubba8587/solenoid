@@ -124,7 +124,7 @@ fn shown_magnitude(v: &V) -> V {
     }
 }
 
-/// `typedColumn` as text: a blank stays blank, an error stays, anything else is its `String(x)`.
+/// As text: a blank stays blank, an error stays, anything else is its `String(x)`.
 fn text_values(cells: &[V]) -> Vec<V> {
     cells
         .iter()
@@ -406,7 +406,7 @@ pub(crate) fn computed_column_type(
 
 // ─── The unit plan ─────────────────────────────────────────────────────────────
 
-/// A LAMBDA reading its captured values, `units` (with their units), through `side` (`lambdaInPlan`).
+/// A LAMBDA reading its captured values, `units` (with their units), through `side`.
 pub(crate) fn lambda_with_captures(lam: &Rc<LambdaV>, units: &[V], side: &dyn Fn(&V) -> V) -> Rc<LambdaV> {
     let Some(captured) = &lam.captured else { return lam.clone() };
     if captured.is_empty() || captured.len() != units.len() {
@@ -842,7 +842,7 @@ fn names_list(names: &[String]) -> V {
 
 const RESERVED: [&str; 4] = ["frame", "name", "fn", "after"];
 
-/// `colTypeForAddAs`, or None for Auto.
+/// The pinned column type, or None for Auto.
 fn pinned_type(c: &Call) -> Option<FrameColType> {
     match c.field_str("addAs", "auto") {
         "number" => Some(FrameColType::Number),
@@ -874,7 +874,7 @@ fn name_and_after(c: &Call) -> Result<Option<(String, String)>, V> {
     Ok(Some((if name.is_empty() { "computed".into() } else { name }, after)))
 }
 
-/// `addColumn` with a computed column's unit (`null` drops a replaced column's): the columns, and whether it
+/// Add Column with a computed column's unit (`null` drops a replaced column's): the columns, and whether it
 /// replaced one.
 fn add_column(
     columns: &[Column],
@@ -1073,7 +1073,7 @@ fn computed_column(c: &mut Call) -> Answer {
     let tag: fn(V) -> V = if cube.is_some() { tag_cube_cell } else { tag_cell };
     let computed =
         run_cells(&run_table, spec, sides, row_sides, &RESERVED, &alias, tag).and_then(|(cells, mut side_vars)| {
-            // A wired λ's `@` reads past its captures grow side inputs too, as `rowRefs` does for a formula.
+            // A wired λ's `@` reads past its captures grow side inputs too, as `row_refs` does for a formula.
             if let Some(l) = &lam {
                 let captured = l.captured.clone().unwrap_or_default();
                 for p in body_refs.iter().filter(|p| !captured.contains(p)) {

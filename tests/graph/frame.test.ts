@@ -14,11 +14,9 @@ import {
   isFrameValue,
   makeHeaders,
   buildFrame,
-  buildFrameTyped,
   typedColumn,
   colTypeForSocket,
   addColumn,
-  frameHasTextColumns,
   columnTypesAfterCsvEdit,
   type FrameValue,
 } from "../../src/graph/frame";
@@ -289,25 +287,6 @@ describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
   });
 });
 
-// ─── frameHasTextColumns ─────────────────────────────────────────────────────
-
-describe("frameHasTextColumns", () => {
-  it("false when all columns are numeric", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-
-  it("true when at least one column is string", () => {
-    const f = frameFromCells(["Num", "Label"], [[42, "foo"]]);
-    expect(frameHasTextColumns(f)).toBe(true);
-  });
-
-  it("false for date columns (date serials don't block the matrix)", () => {
-    const f = frameFromCells(["D"], [["2026-01-03"]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-});
-
 describe("frameFromInputText — a blank CSV cell is null, not 0 (round-trips)", () => {
   it("CSV: a blank numeric cell imports as null", () => {
     const f = frameFromInputText("vals, tag\n1, a\n, b\n3, c\n4, d");
@@ -351,13 +330,6 @@ describe("logical columns", () => {
     const node = new GetColumnNode({ readAs: "text" });
     node.stringLiterals.name = "Flag";
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
-  });
-
-  it("a logical column splits to a 1/0 numeric matrix", async () => {
-    const { splitFrame } = await import("../../src/graph/frame");
-    const f = frameFromCells(["a", "b"], [["TRUE", "1"], ["FALSE", "2"]]);
-    // 'a' is logical, 'b' numeric → no text column → clean numeric matrix
-    expect(splitFrame(f).matrix).toEqual([[1, 1], [0, 2]]);
   });
 
   it("Split Frame filters columns by type (the colType toggle)", async () => {
@@ -613,23 +585,6 @@ describe("typedColumn", () => {
   });
 });
 
-describe("buildFrameTyped — a matrix of any element family", () => {
-  it("a string matrix → all string columns", () => {
-    const f = buildFrameTyped([["a", "b"], ["c", "d"]], ["p", "q"], "string");
-    expect(f.columns.map((c) => c.type)).toEqual(["string", "string"]);
-    expect(f.columns[0].values).toEqual(["a", "c"]);
-  });
-  it("colType null → per-column value inference", () => {
-    const f = buildFrameTyped([[1, "x"], [2, "y"]], ["n", "s"], null);
-    expect(f.columns.map((c) => c.type)).toEqual(["number", "string"]);
-  });
-  it("carries a (unit) header onto a numeric column", () => {
-    const f = buildFrameTyped([[5], [6]], ["Revenue ($0.00)"], "number");
-    expect(f.columns[0].name).toBe("Revenue");
-    expect(f.columns[0].unit).toBeTruthy();
-  });
-});
-
 describe("BuildFrameNode — types columns by the adopted matrix socket", () => {
   const adopt = (n: BuildFrameNode, t: string) => (n.inputs.matrix!.socket as MutableSocket).setType(t as never);
 
@@ -651,6 +606,11 @@ describe("BuildFrameNode — types columns by the adopted matrix socket", () => 
     adopt(n, "strtable");
     const out = n.data({ matrix: [[["x"], ["y"]]], headers: [["name"]] }).frame!;
     expect(out.columns[0].type).toBe("string");
+  });
+  it("carries a (unit) header onto a numeric column", () => {
+    const out = new BuildFrameNode().data({ matrix: [[[5], [6]]], headers: [["Revenue ($0.00)"]] }).frame!;
+    expect(out.columns[0].name).toBe("Revenue");
+    expect(out.columns[0].unit).toBeTruthy();
   });
   it("an unadopted anytable falls back to value inference", () => {
     const n = new BuildFrameNode(); // socket base is anytable (never wired/settled)

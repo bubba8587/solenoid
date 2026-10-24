@@ -12,7 +12,7 @@ describes only what the system **does** and what it **blocks** — a rule that i
 absent is simply not listed.
 
 The machine-readable source for the connection lists below is `src/graph/sockets.ts`;
-the arrival behavior is `src/graph/coerceInputs.ts`; the drawing is
+the arrival behavior is the engine's input boundary (`crates/solenoid-graph/src/boundary.rs`); the drawing is
 `src/graph/components/SocketComponent.tsx`. Regenerate the port counts with
 `node scripts/vite-run.mjs scripts/socket-inventory.ts`.
 
@@ -109,8 +109,8 @@ exception (see the second rule below).
 one-element list arriving at a rung whose rank can be 0 is unwrapped to the value
 it contains.
 
-**The boundary** — the single wrapper (`wrapNodeData`) placed around every node's
-compute function. It reshapes each incoming value to what the receiving socket
+**The boundary** — the engine's input boundary, which every node's compute function
+runs through. It reshapes each incoming value to what the receiving socket
 declares before the node runs. Every "on arrival" description in this document is
 the boundary's work.
 
@@ -1224,15 +1224,15 @@ unplugged.
 | `string` | `strIn` | `strOut` |
 | `strlist` | `strListIn` | `strListOut` |
 | `strcombo` | `strComboIn` | `strComboOut` |
-| `strtable` | `strTableIn` | `strTableOut` |
+| `strtable` | — | `strTableOut` |
 | `date` | `dateIn` | `dateOut` |
 | `datelist` | `dateListIn` | `dateListOut` |
 | `datecombo` | `dateComboIn` | `dateComboOut` |
-| `datetable` | `dateTableIn` | `dateTableOut` |
-| `complex` | `complexIn` | `complexOut` |
-| `complexlist` | `complexListIn` | `complexListOut` |
+| `datetable` | — | `dateTableOut` |
+| `complex` | — | `complexOut` |
+| `complexlist` | — | `complexListOut` |
 | `complexcombo` | `complexComboIn` | `complexComboOut` |
-| `complextable` | `complexTableIn` | `complexTableOut` |
+| `complextable` | — | — |
 | `logical` | `logicalIn` | `logicalOut` |
 | `logicallist` | `logicalListIn` | `logicalListOut` |
 | `logicalcombo` | `logicalComboIn` | `logicalComboOut` |
@@ -1336,7 +1336,7 @@ Nothing in the type system catches these — each one leaves a family that conne
 correctly but misbehaves. `socketFamilyCompleteness.test.ts` now fails on all five,
 naming the family and the site, so this list is enforced rather than remembered:
 
-1. **`coerceInputs.ts` — `coerceValue`.** The new strict-list and combo rungs fall
+1. **`boundary.rs` — `coerce_value`.** The new strict-list and combo rungs fall
    through to `default: return v`. The list rung then does **not** widen a scalar
    to a singleton, and the combo rung does **not** collapse a one-element list —
    so a connection the lattice allows delivers the wrong rank. Add the new rungs

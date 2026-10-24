@@ -12,21 +12,6 @@ export function dateFromParts(rawY: number, rawM: number, rawD: number): number 
   return jsDateToSerial(d);
 }
 
-export function isoWeek(d: Date): number {
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const weekStart = new Date(jan4);
-  weekStart.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7));
-  const week = Math.floor((d.getTime() - weekStart.getTime()) / (7 * 86400000)) + 1;
-  if (week < 1) return isoWeek(new Date(Date.UTC(d.getUTCFullYear() - 1, 11, 28)));
-  if (week > 52) {
-    const nextJan4 = new Date(Date.UTC(d.getUTCFullYear() + 1, 0, 4));
-    const nextStart = new Date(nextJan4);
-    nextStart.setUTCDate(nextJan4.getUTCDate() - ((nextJan4.getUTCDay() + 6) % 7));
-    if (d.getTime() >= nextStart.getTime()) return 1;
-  }
-  return week;
-}
-
 export type WeekInfoOp = "weekday" | "weeknum" | "isoweeknum";
 
 export type DateDiffOp =

@@ -20,7 +20,7 @@ Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides w
 1. **The grid.** The regular types are an element × dimension product: `FAMILIES` (number, string, date, complex, logical) × `DIMS` (scalar, list, combo, matrix). Each family's rank-1 rung comes in two forms: `list` (strict) and `combo` (scalar or list). [[C10]] socketLattice, [[#New socket types are derived]].
 2. **One predicate derives the within-family accept-sets.** `dimFlows(dOut, dIn)` is `rank(dOut) ≤ rank(dIn)`, or the one exception the rank model can't express: a combo may narrow into its element scalar. `SOCKET_ACCEPTS` is built from it. [[C10]] socketLattice.
 3. **The bridge is built by the same predicate.** `logical ↔ number` is the one cross-family bridge (0 and 1 for FALSE and TRUE, as in Excel, and the multiply-by-a-condition idiom). It is mirrored through `dimFlows` on both sides, so the combo-to-scalar exception can't hold on one side and not the other (`logicalcombo → number` flows wherever `logical → number` does). `coerceInputs` does the runtime conversion. [[C10]] socketLattice.
-4. **A combo collapses a singleton on arrival.** A one-element list arriving at a combo or any scalar rung is that scalar (`coerceInputs.collapseSingleton`); a strict list rung keeps its list and re-widens a scalar on the way in, so the round trip is lossless. A complex is a tagged scalar and collapses like one. This is what makes the combo-to-scalar edge true rather than merely permitted.
+4. **A combo collapses a singleton on arrival.** A one-element list arriving at a combo or any scalar rung is that scalar (the input boundary's `collapse`, `boundary.rs`); a strict list rung keeps its list and re-widens a scalar on the way in, so the round trip is lossless. A complex is a tagged scalar and collapses like one. This is what makes the combo-to-scalar edge true rather than merely permitted.
 5. **Cross-type dimensional edges are explicit in `accepts()`**, because rank derivation can't express them and they are the edges a rework is most likely to lose. The complete list:
    - `combo → scalar` within a family (req. 2), and `anycombo → any` for the same reason.
    - `any` as an input takes every family scalar and combo, plus `anycombo`. As an output it reaches everything but the object family (lambda, chart, document).
@@ -96,7 +96,7 @@ A shared mutable socket means wiring a date into one card retypes another card's
 
 ## Out of scope
 
-Unit separation (`#UNIT!` at compute time, `unitLattice.ts`, [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 ([[compute-pass]], "Arrival coercion"). In-place retype reconciliation ([[B11]] maximalMerge, [[type-propagation-on-in-place-socket-retype]]).
+Unit separation (`#UNIT!` at compute time, [[unit-flow]], [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 ([[compute-pass]], "Arrival coercion"). In-place retype reconciliation ([[B11]] maximalMerge, [[type-propagation-on-in-place-socket-retype]]).
 
 ## Gaps
 

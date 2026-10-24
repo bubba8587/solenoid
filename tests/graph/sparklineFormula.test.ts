@@ -1,7 +1,7 @@
 // [[D82]] sparklineCell
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { sparklineSeries, repaintSparkline, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
+import { repaintSparkline } from "../../src/graph/nodes/visualOps";
 import { coreFunction } from "./coreFunction";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { parse } from "yaml";
@@ -52,7 +52,7 @@ describe("SPARKLINE", () => {
 
   it("is blank with no numbers, and skips text and blanks", () => {
     expect(ev("SPARKLINE(x)", { x: ["a", null] })).toBeNull();
-    expect(sparklineSeries([1, "a", null, 2, true])).toEqual([1, 2]);
+    expect(ev("SPARKLINE(x)", { x: [1, "a", null, 2, true] })).toBe(sparklineImage([1, 2], "line"));
   });
 
   it("reads a matrix row by row", () => {
@@ -61,8 +61,6 @@ describe("SPARKLINE", () => {
 
   it("caps a long range, so the picture's size doesn't grow with the data", () => {
     const long = Array.from({ length: 10_000 }, (_, i) => Math.sin(i / 50));
-    const series = sparklineSeries(long);
-    expect(series).toHaveLength(SPARKLINE_MAX_POINTS);
     const a = sparklineImage(long, "column")!;
     const b = sparklineImage(long.slice(0, 400), "column")!;
     expect(a.length).toBeLessThan(3000);

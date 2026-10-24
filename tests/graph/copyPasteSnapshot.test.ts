@@ -5,7 +5,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { setSelectNode, setUnselectAllNodes } from "../../src/graph/canvasCommands";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -29,7 +28,6 @@ let editor: GraphEditor<Schemes>;
 
 beforeEach(() => {
   editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const view = {

@@ -20,7 +20,7 @@ const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|w
 /** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
 const plainLink = (d: PlanDependency) => d.type === "FS" && d.lag === 0 && !d.elapsed;
 
-export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
+function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
   if (!typed) return deps.map((d) => d.task);
   return cubeFromColumns([
     { name: "Predecessor", cells: deps.map((d) => d.task), type: "string" },
@@ -32,7 +32,7 @@ export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plai
 
 /** A Predecessors column is one kind: name lists while every link is a plain FS, else a table in every row, so Unnest
  *  reads it whole. A null row (an inactive task) stays null. */
-export function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
+function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
   const typed = rows.some((deps) => deps != null && !deps.every(plainLink));
   return rows.map((deps) => (deps == null ? null : predecessorCell(deps, typed)));
 }

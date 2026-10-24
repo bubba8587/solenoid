@@ -1,7 +1,7 @@
 // [[C51]] formulaNaming
 import { describe, it, expect } from "vitest";
 import { FORMULA_SIGNATURES, signatureFor, signatureParams, genericSignature } from "../../src/graph/formulaSignatures";
-import { formulaSyntaxHint } from "../../src/graph/excelFormula";
+import { syntaxHint } from "./coreVerbs";
 import { FUNCTION_ARITY, FRAME_SURFACE_NAMES, formulaFunctionNames } from "../../src/graph/excelFunctions";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
@@ -73,21 +73,21 @@ describe("formula signatures (display hints)", () => {
   });
 });
 
-describe("formulaSyntaxHint (why a formula fails to parse)", () => {
+describe("the syntax hint (why a formula fails to parse)", () => {
   it("names the actual problem for the common traps", () => {
-    expect(formulaSyntaxHint("{ INDEX(c,row)*INDEX(c,col) }")).toMatch(/Braces/);
-    expect(formulaSyntaxHint("=SUM(a, b)")).toMatch(/leading =/);
-    expect(formulaSyntaxHint("SUM(a; b)")).toMatch(/commas/);
-    expect(formulaSyntaxHint("SUM([Unit Price")).toMatch(/Unclosed \[/);
+    expect(syntaxHint("{ INDEX(c,row)*INDEX(c,col) }")).toMatch(/Braces/);
+    expect(syntaxHint("=SUM(a, b)")).toMatch(/leading =/);
+    expect(syntaxHint("SUM(a; b)")).toMatch(/commas/);
+    expect(syntaxHint("SUM([Unit Price")).toMatch(/Unclosed \[/);
     // Balanced brackets are legal tableRefSemantics structured references — the hint must NOT
     // blame them; the real problem here is the parenthesis.
-    expect(formulaSyntaxHint("SUM([Unit Price]")).toMatch(/Missing 1 closing/);
-    expect(formulaSyntaxHint("SUM(a, MAX(b")).toMatch(/Missing 2 closing/);
-    expect(formulaSyntaxHint("SUM(a))")).toMatch(/extra closing/);
-    expect(formulaSyntaxHint("a + b *")).toMatch(/mid-expression/);
+    expect(syntaxHint("SUM([Unit Price]")).toMatch(/Missing 1 closing/);
+    expect(syntaxHint("SUM(a, MAX(b")).toMatch(/Missing 2 closing/);
+    expect(syntaxHint("SUM(a))")).toMatch(/extra closing/);
+    expect(syntaxHint("a + b *")).toMatch(/mid-expression/);
   });
   it("stays quiet on a parseable formula and ignores braces inside strings", () => {
-    expect(formulaSyntaxHint("INDEX(c,row)*INDEX(c,col)")).toBeNull();
-    expect(formulaSyntaxHint('CONCAT("{", x, "}")')).toBeNull();
+    expect(syntaxHint("INDEX(c,row)*INDEX(c,col)")).toBeNull();
+    expect(syntaxHint('CONCAT("{", x, "}")')).toBeNull();
   });
 });

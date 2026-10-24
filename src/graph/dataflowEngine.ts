@@ -4,6 +4,7 @@
 import { guarded, tracked, type GraphEditor } from "./graphEditor";
 import type { GraphSchemes } from "./graphModel";
 import type { Schemes } from "./schemes";
+import "./nodeBoundary";
 
 /** The engine an editor uses: the graph walks live there, beside the graph they walk. */
 export function engineOf<S extends GraphSchemes>(editor: GraphEditor<S>): DataflowEngine<S> {
@@ -20,6 +21,13 @@ export type DataflowNode = {
 
 export class DataflowEngine<S extends GraphSchemes = Schemes> {
   editor?: GraphEditor<S>;
+  /** Calls each node's `data()` as it is, where every other engine runs it through the input boundary
+   *  (compute-pass.md § The per-node wrappers): the bare rete-engine shape, for the engine's own tests. */
+  readonly raw: boolean;
+
+  constructor(opts?: { raw?: boolean }) {
+    this.raw = opts?.raw === true;
+  }
 
   /** `editor.use(engine)` calls this. */
   attach(editor: GraphEditor<S>): void {
@@ -34,6 +42,12 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
   /** The node's outputs, computing whatever upstream isn't cached. */
   fetch(nodeId: string): Promise<NodeOutputs> {
     return tracked(() => this.core().fetch(nodeId));
+  }
+
+  /** The node computed on `inputs` as a fetch computes it, boundary included, without reading or filling its cache:
+   *  a composite's simulation steps, and a test driving one node. */
+  compute(nodeId: string, inputs: Record<string, unknown[]>): Promise<NodeOutputs> {
+    return tracked(() => this.core().compute(nodeId, inputs));
   }
 
   /** The node's inputs, one list per input key, fetching every predecessor. */
@@ -78,6 +92,35 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
       return null;
     }
     return new Set(guarded(() => this.core().invalidate(nodeId, false)) ?? []);
+  }
+
+  /** Seeds `#CIRC!` (with `message`, or the default) on every node on a cable cycle, so no fetch recurses into one; the
+   *  members. */
+  seedLoops(message?: string): Set<string> {
+    return new Set(guarded(() => this.core().seedLoops(message)));
+  }
+
+  /** Marks every composite holding `nodeId` as edited inside; the outermost one's id. */
+  markNested(nodeId: string): string | undefined {
+    return guarded(() => this.core().markNested(nodeId));
+  }
+
+  /** The model pass: `nodeId`'s reach cleared (every cache without it), the loops seeded, every node fetched. */
+  computeAll(nodeId?: string): Promise<Map<string, NodeOutputs | null> | null> {
+    return tracked(() => this.core().computeAll(nodeId));
+  }
+
+  /** The app's pass body (compute-pass.md § The pass body): `changed` retargeted into the composite holding it, its
+   *  reach cleared (everything when none; nothing for an additive pass, `renderOnly`), the loops seeded (a value
+   *  edit reuses the last set unless `topology`), every node fetched with `onNode` answering whether its outputs
+   *  changed. The nodes to re-render, or `null` when a reset cancelled the pass. */
+  pass(
+    changed: string | undefined,
+    renderOnly: ReadonlySet<string> | undefined,
+    topology: boolean,
+    onNode: (id: string, outputs: NodeOutputs) => boolean,
+  ): Promise<string[] | null> {
+    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology, onNode));
   }
 
   /** Every node's outputs in the editor's order (`null` for one a reset cancelled), calling `onNode` as each lands;

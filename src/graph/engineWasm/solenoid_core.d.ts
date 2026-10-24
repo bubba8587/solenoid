@@ -7,7 +7,7 @@ export function engine_invoke(command: string, args: string): string;
 export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
 /**
  * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
- * `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
+ * `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
  */
 export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
 /**

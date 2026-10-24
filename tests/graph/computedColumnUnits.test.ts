@@ -8,7 +8,7 @@ import { frameSourceToText, type FrameColumn, type FrameValue } from "../../src/
 import { ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import type { LambdaValue } from "../../src/graph/lambdaValue";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const num = (name: string, values: number[], spec?: string): FrameColumn =>
@@ -141,7 +141,7 @@ describe("a computed column infers its unit from its formula", () => {
 describe("a wired LAMBDA's captured values keep their units in a computed column", () => {
   const lambda = (params: string, expr: string, captured: Record<string, unknown>) => {
     const n = new LambdaNode({ params, expr });
-    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(n as unknown as Parameters<typeof throughBoundary>[0]);
     return n.data(Object.fromEntries(Object.entries(captured).map(([k, v]) => [k, [v]]))).result as LambdaValue;
   };
   const withLam = (f: FrameValue, lam: LambdaValue) => {

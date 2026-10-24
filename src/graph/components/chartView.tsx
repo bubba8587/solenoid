@@ -62,7 +62,7 @@ export function ChartView(props: ChartViewProps) {
   );
 }
 
-export function TreemapView(props: { names: string[]; values: number[]; width: number; height: number; fscale?: number }) {
+function TreemapView(props: { names: string[]; values: number[]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <TreemapViewInner {...props} />
@@ -70,7 +70,7 @@ export function TreemapView(props: { names: string[]; values: number[]; width: n
   );
 }
 
-export function SankeyView(props: { sources: string[]; targets: string[]; values: number[]; width: number; height: number; fscale?: number }) {
+function SankeyView(props: { sources: string[]; targets: string[]; values: number[]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <SankeyViewInner {...props} />
@@ -78,7 +78,7 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-export function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
+function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <XYViewInner {...props} />
@@ -86,7 +86,7 @@ export function XYView(props: { payload: XYPayload; width: number; height: numbe
   );
 }
 
-export function MultiSeriesView(props: {
+function MultiSeriesView(props: {
   op: ChartShape; series: { name: string; values: (number | null)[] }[];
   labels?: (string | number)[]; width: number; height: number; axes: boolean;
   opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
@@ -98,7 +98,7 @@ export function MultiSeriesView(props: {
   );
 }
 
-export function OverlayView(props: { payload: OverlayPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
+function OverlayView(props: { payload: OverlayPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <OverlayViewInner {...props} />
@@ -106,7 +106,7 @@ export function OverlayView(props: { payload: OverlayPayload; width: number; hei
   );
 }
 
-export function GanttView({ payload, width, height, virtualize, fontScale }: {
+function GanttView({ payload, width, height, virtualize, fontScale }: {
   payload: GanttPayload; width: number; height: number; virtualize?: boolean; fontScale?: number;
 }) {
   const hostId = useHostNodeId();
@@ -237,7 +237,7 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
   );
 }
 
-export function ScaleDial({ payload, width, size, fscale = 1 }: { payload: ScalePayload; width?: number; size?: number; fscale?: number }) {
+function ScaleDial({ payload, width, size, fscale = 1 }: { payload: ScalePayload; width?: number; size?: number; fscale?: number }) {
   const { track } = useChartColors();
   const v = typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
   const frac = v === null ? 0 : Math.min(1, Math.max(0, v));

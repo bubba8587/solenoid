@@ -28,7 +28,7 @@ The code is `src/graph/nodes/composite.ts` (`CompositeNode`, `CompositeInputNode
 
 A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). The card has sockets and a `data()`; a Group has neither.
 
-- The constructor builds `internalEditor`, installs input coercion on it (`installInputCoercion`, so a member narrows its inputs exactly as on the main canvas), adds a pipe (below), then builds `internalEngine` and attaches it with `internalEditor.use(internalEngine)`. The error guard is not a pipe here: whoever adds a node to the internal editor calls `installErrorGuards(node)` directly after `addNode`, which puts the guard outside the coercion wrapper, the same order as the main canvas ([[compute-pass]] § wrappers).
+- The constructor builds `internalEditor`, adds a pipe (below), then builds `internalEngine` and attaches it with `internalEditor.use(internalEngine)`. Its engine runs every member through the same input boundary as the main canvas's, so a member narrows its inputs and is guarded exactly as there ([[compute-pass]] § The per-node wrappers).
 - Nothing inside the subgraph is registered with the outer engine, appears in the outer cache, or gets a value in `cableValueStore`. The outer engine sees one node, the card, whose `data()` returns one value per output port.
 - The composite's own cache of results is `cachedOutputs`, keyed by output port id. In a multi-run mode each value is an array with one entry per run, in run order.
 - The internal pipe reacts to `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`: each calls `markInternalEdit()` (bumps `internalEditSeq`), and a connection event outside `hydrate()` also calls `settleInternalTypes()`.
@@ -128,7 +128,7 @@ Every mode is built from `runPass(inputs, overrides?)`:
 
 1. For each input port with a marker, set `marker.value` by the fallback order.
 2. `internalEngine.reset()`.
-3. Seed `#CIRC!` on the internal loop members (`seedLoopErrors` over `loopMembers(internalEditor)`), with the message "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop."
+3. Seed `#CIRC!` on the internal loop members (`internalEngine.seedLoops(message)`), with the message "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop."
 4. For each output port, `internalEngine.fetch(marker.id)` and take `.value ?? null`. A missing marker gives null; a fetch that throws gives null.
 
 Values that are `SolError`s travel through the subgraph like any other value; an internal error reaches the output as that error.
@@ -223,11 +223,10 @@ Config: `monteCarlo: { samples, seed, correlations? }` or null; the defaults are
 
 #### The uncertain number
 
-An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`uncertainCenter`, `coerceNumber`).
+An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`coerceNumber`).
 
 - `samples` holds the raw Monte Carlo draws behind a summary and powers the histogram. It is not part of the value's identity, so a hand-built `value ± error` omits it.
 - `dropped` counts the draws the summary could not use (an errored or blank pass), so the readout can say "200 of 500 draws" instead of a confident mean over a fraction.
-- The propagation ops (`addUncertain`, `subUncertain`, `mulUncertain`, `divUncertain`, each normalizing plain numbers through `asUncertain` with error 0) use first-order Gaussian propagation for independent variables, with no covariance term. A sum or difference adds the errors in quadrature. A product's error is `√((b·σa)² + (a·σb)²)` and a quotient's is `√((σa/b)² + (a·σb/b²)²)`, the forms that stay finite when a or b is 0; a zero denominator still gives ±Inf or NaN.
 
 ### Simulation
 

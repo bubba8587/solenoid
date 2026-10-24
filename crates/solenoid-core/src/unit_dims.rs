@@ -600,7 +600,7 @@ pub fn dim_eval_with_code(
     r
 }
 
-// ─── Affine units (°C, °F): `affineWeight` ───────────────────────────────────────
+// ─── Affine units (°C, °F): `affine_weight` ──────────────────────────────────────
 
 #[derive(Clone, Copy, Debug)]
 struct Aff {

@@ -64,7 +64,7 @@ fn rows_of(m: &V) -> Vec<V> {
     }
 }
 
-/// `matCols`: the first row's width.
+/// The first row's width.
 fn width(m: &V) -> usize {
     match m {
         V::List(r) => match r.first() {
@@ -169,7 +169,7 @@ fn table_mult(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), r)])
 }
 
-/// `matUnit` / `matDiag`'s square: `diag(i)` on the diagonal, `off` elsewhere.
+/// `diag(i)` on the diagonal, `off` elsewhere.
 fn square(n: usize, diag: impl Fn(usize) -> V, off: &V) -> V {
     grid((0..n).map(|i| (0..n).map(|j| if i == j { diag(i) } else { off.clone() }).collect()))
 }
@@ -290,7 +290,7 @@ fn mat_eigen(c: &mut Call) -> Answer {
 
 // ─── MAP, BYROW / BYCOL, REDUCE, MAKEARRAY ───────────────────────────────────────────────────────────────────────
 
-/// `toAnyMatrix`: a list is one row, a lone value one cell, and a later item that isn't a row a one-cell row.
+/// A list is one row, a lone value one cell, and a later item that isn't a row a one-cell row.
 pub(crate) fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
     match v {
         V::Null | V::Undef => None,
@@ -310,7 +310,7 @@ pub(crate) fn matrix_v(m: &[Vec<V>]) -> V {
     grid(m.iter().cloned())
 }
 
-/// `formulaSyntaxHint`: what is wrong with a formula that doesn't parse, where a common slip says.
+/// What is wrong with a formula that doesn't parse, where a common slip says.
 pub(crate) fn syntax_hint(expr: &str) -> Option<String> {
     let mut quoted = String::new();
     let mut chars = expr.chars().peekable();
@@ -395,7 +395,7 @@ pub(crate) enum Body {
     Inline(Ast, Vec<String>),
 }
 
-/// `resolveFn`: the body, or the message the card shows and the code its error carries.
+/// The body, or the message the card shows and the code its error carries.
 pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, SolError> {
     if let V::Lambda(lam) = slot(c, "lambda") {
         let unknown: Vec<&str> = lam.params.iter().map(String::as_str).filter(|p| !vars.contains(p)).collect();
@@ -443,7 +443,6 @@ impl Body {
         }
     }
 
-    /// `fn(...args)`, its answer as `compileEvaluator` hands it back.
     pub(crate) fn call(&self, ev: &Eval, args: &[V]) -> V {
         let r = match self {
             Body::Lambda(lam, order) => {
@@ -619,7 +618,7 @@ fn make_array(c: &mut Call) -> Answer {
     lambda_done(c, matrix_v(&out), None)
 }
 
-// ─── The table cards that keep a table's unit (`matrixUnitOf`) ───────────────────────────────────────────────────────
+// ─── The table cards that keep a table's unit ────────────────────────────────────────────────────────────────────────
 
 /// A number as JSON writes it: an integer without a fraction, as the frozen units hold their exponents.
 fn json_num(x: f64) -> Json {
@@ -648,7 +647,6 @@ fn unit_display(u: &Json) -> &str {
     u.get("display").and_then(Json::as_str).unwrap_or("")
 }
 
-/// `sameColumnUnit`.
 fn same_unit(a: Option<&Json>, b: Option<&Json>) -> bool {
     match (a, b) {
         (Some(a), Some(b)) => dim_equal(&unit_dim(a), &unit_dim(b)) && unit_display(a) == unit_display(b),
@@ -656,7 +654,7 @@ fn same_unit(a: Option<&Json>, b: Option<&Json>) -> bool {
     }
 }
 
-/// `withMatrixUnit(out, unit)`: a table's unit, kept only where it has a dimension.
+/// A table's unit, kept only where it has a dimension.
 fn put_unit(c: &mut Call, key: &str, out: &V, unit: Option<Json>) {
     if let (V::List(_), Some(u)) = (out, unit) {
         if !is_dimensionless(&unit_dim(&u)) {
@@ -665,7 +663,7 @@ fn put_unit(c: &mut Call, key: &str, out: &V, unit: Option<Json>) {
     }
 }
 
-/// `matrixUnitOf(toAnyMatrix(inputs[key]?.[0]))`: the input's unit where the reading is the input's own table.
+/// The first cable's table unit, where the reading is the input's own table.
 fn table_unit_of(c: &Call, key: &str) -> Option<Json> {
     match slot(c, key) {
         V::List(rows) if !rows.is_empty() && rows.iter().all(|r| matches!(r, V::List(_))) => {
@@ -702,7 +700,7 @@ fn table_input(c: &mut Call) -> Answer {
     };
     let mut tag = None;
     if ty == "number" && !cells.is_empty() {
-        // `applyFcUnit` on a table: its unit where the first filled cell is a number.
+        // The FC's unit tags the table where the first filled cell is a number.
         let rows = rows_of(&m);
         let first_cell = rows.iter().flat_map(rows_of).find(|x| !nullish(x) && !matches!(x, V::Str(s) if s.is_empty()));
         if let (Some(u), Some(V::Num(_))) = (fc_unit_to_unit(&unit), first_cell) {
@@ -722,7 +720,7 @@ fn table_transpose(c: &mut Call) -> Answer {
     result(c, core_call("TRANSPOSE", &[matrix_v(&m)]), unit)
 }
 
-/// `matrixCellsFromList`: each unit cell as its display magnitude, and the one unit they share.
+/// Each unit cell as its display magnitude, and the one unit they share.
 fn cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
     let mags =
         cells.iter().map(|x| if let V::Unit(u) = x { V::Num(display_magnitude_of(u)) } else { x.clone() }).collect();
@@ -747,7 +745,7 @@ fn stack(c: &mut Call) -> Answer {
         if m.is_empty() {
             continue;
         }
-        // `demoteUnitCells`: a row of unit cells becomes bare magnitudes under one table unit.
+        // A row of unit cells becomes bare magnitudes under one table unit.
         if m.iter().any(|r| r.iter().any(|x| matches!(x, V::Unit(_)))) {
             let flat: Vec<V> = m.iter().flatten().cloned().collect();
             let (mags, unit) = cells_from_list(&flat);
@@ -771,7 +769,7 @@ fn stack(c: &mut Call) -> Answer {
     result(c, out, shared)
 }
 
-/// `tagFrameCellUnit`: a finite number in the table's display unit as a cell with that unit.
+/// A finite number in the table's display unit as a cell with that unit.
 fn tag_cell(v: &V, unit: &Json) -> V {
     let V::Num(n) = v else { return v.clone() };
     if !n.is_finite() {
@@ -836,7 +834,7 @@ fn or_null(v: V) -> V {
     }
 }
 
-/// `readRole` for required picks: a blank position dropped, a blank inside a table of positions `#SYNTAX!`, none left
+/// Required picks: a blank position dropped, a blank inside a table of positions `#SYNTAX!`, none left
 /// the picks left out, which is `#SYNTAX!`.
 fn required_picks(c: &Call, key: &str) -> V {
     let label = c.label(key);
@@ -919,7 +917,7 @@ fn table_select(c: &mut Call) -> Answer {
     result(c, picked, unit)
 }
 
-/// `Math.round(readRole(…) ?? 0)` for a setting left out by default.
+/// A setting left out by default, rounded; left out, 0.
 fn rounded_setting(c: &Call, key: &str) -> f64 {
     match read_role(c, key, &Role::Setting(V::Undef)) {
         V::Undef => 0.0,

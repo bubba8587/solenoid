@@ -2,56 +2,13 @@
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType, type ResultDim } from "./shared";
-import { compilePositional, formulaSyntaxHint, extractVariables } from "../excelFormula";
-import { isLambdaValue } from "./lambda";
-import { type SolError, type SolErrorCode } from "../errorValue";
+import { type SolError } from "../errorValue";
 import type { UnitCell } from "../unitValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
 type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
-type LambdaFn = (...args: unknown[]) => unknown;
-
-export function compileLambda(expr: string, varNames: string[]): LambdaFn | null {
-  return compilePositional(expr, varNames) as LambdaFn | null;
-}
-
-/** `err` is the inline node message; `code` tags the propagating SolError. */
-export function resolveFn(
-  lam: unknown, inline: string | undefined,
-  fallback: string, varNames: string[], provided: number,
-  byName = false,
-): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
-  if (isLambdaValue(lam)) {
-    if (byName) {
-      const unknown = lam.params.filter((p) => !varNames.includes(p));
-      if (unknown.length) {
-        return { fn: null, err: `Lambda param ${unknown.join(", ")} isn't one of this node's variables (${varNames.join(", ")})`, code: "#VALUE!" };
-      }
-      const base = lam.fn as LambdaFn;
-      const order = lam.params.map((p) => varNames.indexOf(p));
-      const byNameFn: LambdaFn = (...nodeArgs) => base(...order.map((i) => nodeArgs[i]));
-      return { fn: byNameFn, err: null, code: "#VALUE!" };
-    }
-    if (lam.params.length > provided) {
-      return { fn: null, err: `Lambda takes ${lam.params.length} values; this node passes ${provided}`, code: "#VALUE!" };
-    }
-    return { fn: lam.fn as LambdaFn, err: null, code: "#VALUE!" };
-  }
-  const src = inline && inline.trim() ? inline : fallback;
-  const fn = compileLambda(src, varNames);
-  if (!fn) return { fn: null, err: formulaSyntaxHint(src) ?? "Syntax error", code: "#SYNTAX!" };
-  const unknown = extractVariables(src).filter((v) => !varNames.includes(v));
-  if (unknown.length) {
-    return {
-      fn: null,
-      err: `Unknown name ${unknown.join(", ")} — this formula sees only (${varNames.join(", ")}). To use an outside value, put the formula in a LAMBDA node (extra names become inputs) and wire it into the Lambda socket`,
-      code: "#NAME?",
-    };
-  }
-  return { fn, err: null, code: "#SYNTAX!" };
-}
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
 
@@ -206,7 +163,6 @@ export class ScanLambdaNode extends GraphNode {
 }
 
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
-
 
 export class MakeArrayNode extends GraphNode {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */

@@ -48,10 +48,6 @@ export function subscribeActiveGraph(fn: () => void): () => void {
   return () => { listeners.delete(fn); };
 }
 
-export function isSubgraphActive(): boolean {
-  return _override !== null;
-}
-
 /** The scope a bulk edit of `editor` runs under: the open drill-in's own, or the main canvas's. */
 export function editScopeFor(editor: GraphEditor<Schemes>): EditScope {
   return (_override?.editor === editor ? _override.scope : undefined) ?? MAIN_EDIT_SCOPE;

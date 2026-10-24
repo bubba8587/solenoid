@@ -7,7 +7,7 @@ import { isSolError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { XLookupNode } from "../../src/graph/nodes/frame";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 
@@ -130,7 +130,7 @@ describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
   };
   const run = (frameInput: unknown, lookup: string) => {
     const n = new XLookupNode();
-    wrapNodeData(n); // exercise the real coerceInputs pipeline, not a raw data() call
+    throughBoundary(n); // the real input boundary, not a raw data() call
     n.stringLiterals = { lookup, inColumn: "d", returnColumn: "v", ifNotFound: "" };
     return (n.data({ frame: [frameInput] }) as { value: unknown }).value;
   };

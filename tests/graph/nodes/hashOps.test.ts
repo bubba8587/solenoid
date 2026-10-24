@@ -1,6 +1,13 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import { md5Hex, sha1Hex, sha256Hex, crc32Hex, fnv1a32Hex, fnv1a64Hex, base64Encode, base64Decode, uuidV4 } from "../../../src/graph/nodes/hashOps";
+import { uuidV4 } from "../../../src/graph/nodes/hashOps";
+import { coreFunction } from "../coreFunction";
+
+const hash = (algorithm: string) => (text: string) => coreFunction("HASH")!(text, algorithm) as string;
+const md5Hex = hash("md5"), sha1Hex = hash("sha1"), sha256Hex = hash("sha256"), crc32Hex = hash("crc32");
+const fnv1a32Hex = hash("fnv1a32"), fnv1a64Hex = hash("fnv1a64");
+const base64Encode = (text: string) => coreFunction("ENCODEBASE64")!(text);
+const base64Decode = (text: string) => coreFunction("DECODEBASE64")!(text);
 
 // Reference digests from Python hashlib / zlib / base64 (2026-08-23).
 describe("digests match hashlib", () => {
@@ -36,14 +43,14 @@ describe("digests match hashlib", () => {
 });
 
 describe("base64 + uuid", () => {
-  it("round-trips UTF-8; rejects garbage", () => {
+  it("round-trips UTF-8; leaves garbage as it is", () => {
     expect(base64Encode("abc")).toBe("YWJj");
     expect(base64Encode("hello world")).toBe("aGVsbG8gd29ybGQ=");
     expect(base64Encode("Cr\u00e8me br\u00fbl\u00e9e")).toBe("Q3LDqG1lIGJyw7tsw6ll");
     expect(base64Decode("Q3LDqG1lIGJyw7tsw6ll")).toBe("Cr\u00e8me br\u00fbl\u00e9e");
     expect(base64Decode("aGVsbG8gd29ybGQ=")).toBe("hello world");
     expect(base64Decode("aGVsbG8gd29ybGQ")).toBe("hello world"); // unpadded tolerated
-    expect(base64Decode("not base64!")).toBeNull();
+    expect(base64Decode("not base64!")).toBe("not base64!"); // text that is not base64 passes through
     expect(base64Decode("")).toBe("");
   });
   it("uuidV4 is RFC 4122 shaped and fresh each call", () => {

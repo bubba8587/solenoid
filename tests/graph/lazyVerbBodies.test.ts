@@ -4,7 +4,7 @@
 // card over its ops and settings, so the recorder freezes each body on the inputs that matter.
 import { describe, it, expect, beforeEach } from "vitest";
 import { GraphNode } from "../../src/graph/graphModel";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { useWasmBackend, readFrame, uploadFrame, runFrameUnary, isFrameRef, type FrameRef } from "../../src/graph/frameBackend";
 import { frameToCube, frameFromRows, cubeFromColumns, isCubeValue, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { solError } from "../../src/graph/errorValue";
@@ -71,7 +71,7 @@ type Card = GraphNode & {
 };
 
 function card<T extends GraphNode>(n: T): T & Card {
-  wrapNodeData(n as never);
+  throughBoundary(n as never);
   return n as T & Card;
 }
 

@@ -7,10 +7,9 @@ import { type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, type ArithmeticOp } from "../unitValue";
+export type { ArithmeticOp } from "../unitValue";
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
-
-export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
   add:      { label: "Add",        carry: true,  description: "`A + B`" },
@@ -104,8 +103,8 @@ export const MATH_FN_OP_META = {
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
 
 // Only these show the angle-mode toggle; hyperbolic ops take and return plain reals.
-export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
-export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
+const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
+const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
 export function isTrigOp(op: MathFnOp): boolean {
   return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
 }
@@ -158,11 +157,6 @@ export class MathFXNode extends GraphNode {
 }
 
 // ─── Base Convert ─────────────────────────────────────────────────────────────
-
-export const BASE_CONVERT_META = {
-  label: "Base Convert",
-  description: "Bases 2–36, digits 0–9 only: a digit outside the source base or a result needing letters is `null`. Excel: `DEC2BIN`, `BIN2DEC`, `BASE`, `DECIMAL`.",
-};
 
 export class BaseConvertNode extends GraphNode {
   static inputRoles = { from: required, to: required };

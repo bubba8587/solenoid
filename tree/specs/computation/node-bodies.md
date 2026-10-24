@@ -15,7 +15,7 @@ then the Rust held to them, then the TypeScript body deleted.
 - **Moves:** the body, everything `data()` computes from its inputs and saved fields, and the shared readers it leans
   on (`readInput`, the broadcasters, the non-finite guard, unit arithmetic).
 - **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), arrival
-  coercion (`coerceInputs.ts`) and the error guard (`errorValue.ts` `installErrorGuards`), which wrap the body as
+  coercion and the error guard (the graph core's input boundary, `boundary.rs`), which run around the body as
   before; a card whose body needs the browser (a file, the network, the vault) or the canvas.
 
 ## The call (`nodeOnCore.ts`, `engine_node`)

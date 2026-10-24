@@ -1,18 +1,17 @@
 // [[B2]] webTryDesktopFull, [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
-import { bondPrice, bondYield } from "../../src/graph/nodes/financeOps";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
 
-const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m - 1, day));
+const d = (y: number, m: number, day: number) => Date.UTC(y, m - 1, day) / 86400000 + 25569;
 
 describe("review pins", () => {
   it("PRICE with one coupon period left uses Excel's simple-interest form; YIELD inverts it", () => {
     // =PRICE(DATE(2024,1,15),DATE(2024,6,15),0.06,0.07,100,2,0) = 99.58097
-    const p = bondPrice(d(2024, 1, 15), d(2024, 6, 15), 0.06, 0.07, 100, 2);
+    const p = coreFunction("PRICE")!(d(2024, 1, 15), d(2024, 6, 15), 0.06, 0.07, 100, 2, 0) as number;
     expect(p).toBeCloseTo(99.58097, 4);
-    expect(bondYield(d(2024, 1, 15), d(2024, 6, 15), 0.06, p, 100, 2)).toBeCloseTo(0.07, 6);
+    expect(coreFunction("YIELD")!(d(2024, 1, 15), d(2024, 6, 15), 0.06, p, 100, 2, 0)).toBeCloseTo(0.07, 6);
   });
 
   it("a chart label cap counts code points, never splitting a surrogate pair", () => {
@@ -141,9 +140,8 @@ describe("review pins: formula surface parity", () => {
 });
 
 describe("review pins: INDEX, RUNNING, VDB", () => {
-  it("INDEX truncates a fractional row like Excel", async () => {
-    const { resolveAxes } = await import("../../src/graph/nodes/indexAccess");
-    expect((resolveAxes(1.9, undefined) as { r?: number }).r).toBe(0);
+  it("INDEX truncates a fractional row like Excel", () => {
+    expect(coreFunction("INDEX")!([10, 20, 30], 1.9)).toBe(10);
   });
   it("RUNNING with a negative window is #DOMAIN! on the formula, like the card", () => {
     expect(isSolError(coreFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
@@ -157,7 +155,8 @@ describe("review pins: INDEX, RUNNING, VDB", () => {
 
 describe("review pins: Nest Join blank keys", () => {
   it("a blank key cell never matches, like the Join verb and the socket doc say", async () => {
-    const { relateFramesToCube, buildFrame, frameRowCount } = await import("../../src/graph/frame");
+    const { buildFrame, frameRowCount } = await import("../../src/graph/frame");
+    const { relateFramesToCube } = await import("./coreVerbs");
     const parent = buildFrame([[1], [null]] as never, ["k"]);
     const child = buildFrame([[1, 10], [null, 20], [null, 30]] as never, ["k", "v"]);
     const cube = relateFramesToCube(parent, child, "k", "kids")!;
@@ -233,10 +232,10 @@ describe("review pins: whole-argument formulas", () => {
 
 describe("review pins: one-element lists into list-consuming matrix nodes", () => {
   it("Diagonal, Outer and Solve take a single-element list as a list", async () => {
-    const { wrapNodeData } = await import("../../src/graph/coerceInputs");
+    const { throughBoundary } = await import("./boundaryKit");
     const { TableDiagNode, TableOuterNode, MatSolveNode } = await import("../../src/graph/nodes/matrix");
     const drive = async (n: object, inputs: Record<string, unknown[]>) => {
-      wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
+      throughBoundary(n as Parameters<typeof throughBoundary>[0]);
       return (n as { data: (i: Record<string, unknown[]>) => Promise<Record<string, unknown>> | Record<string, unknown> }).data(inputs);
     };
     expect((await drive(new TableDiagNode(), { diag: [[5]] })).result).toEqual([[5]]);

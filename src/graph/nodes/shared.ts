@@ -1,6 +1,6 @@
 // [[D51]], [[D36]] nullSkippedNotZero (aggregators skip null)
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { applyRole, type InputRole } from "../inputRoles";
@@ -13,8 +13,6 @@ export const numIn      = (label: string) => new GraphInput(numberSocket, label)
 export const listIn     = (label: string) => new GraphInput(listSocket, label);
 export const numListIn  = (label: string) => new GraphInput(numListSocket, label);
 export const tableIn    = (label: string) => new GraphInput(tableSocket, label);
-export const strTableIn = (label: string) => new GraphInput(strTableSocket, label);
-export const dateTableIn= (label: string) => new GraphInput(dateTableSocket, label);
 export const strIn      = (label: string) => new GraphInput(stringSocket,  label);
 export const strListIn  = (label: string) => new GraphInput(strListSocket, label);
 export const dateIn     = (label: string) => new GraphInput(dateSocket,    label);
@@ -50,14 +48,10 @@ export const strComboIn   = (label: string) => new GraphInput(strComboSocket,   
 export const strComboOut  = (label: string) => new GraphOutput(strComboSocket,  label);
 export const dateComboIn  = (label: string) => new GraphInput(dateComboSocket,  label);
 export const dateComboOut = (label: string) => new GraphOutput(dateComboSocket, label);
-export const complexIn    = (label: string) => new GraphInput(complexSocket,  label);
 export const complexOut   = (label: string) => new GraphOutput(complexSocket, label);
-export const complexListIn  = (label: string) => new GraphInput(complexListSocket,  label);
 export const complexListOut = (label: string) => new GraphOutput(complexListSocket, label);
 export const complexComboIn  = (label: string) => new GraphInput(complexComboSocket,  label);
 export const complexComboOut = (label: string) => new GraphOutput(complexComboSocket, label);
-export const complexTableIn  = (label: string) => new GraphInput(complexTableSocket,  label);
-export const complexTableOut = (label: string) => new GraphOutput(complexTableSocket, label);
 export const logicalIn       = (label: string) => new GraphInput(logicalSocket,  label);
 export const logicalOut      = (label: string) => new GraphOutput(logicalSocket, label);
 export const logicalListIn   = (label: string) => new GraphInput(logicalListSocket,  label);
@@ -117,15 +111,8 @@ export function readRole<T = unknown>(node: GraphNode, key: string, wired: reado
   return readAsRole<T>(node, key, wired, role);
 }
 
-/** A setting read as left out takes the card's default, whole or item by item in a list ([[D86]] blankRoles). */
-export function leftOutAs<T>(v: T | readonly (T | undefined)[] | undefined, dflt: T): T | T[] {
-  if (v === undefined) return dflt;
-  // Array.isArray narrows a generic to any[], so the list is named for what it is.
-  return Array.isArray(v) ? (v as readonly (T | undefined)[]).map((x) => (x === undefined ? dflt : x)) : (v as T);
-}
-
 /** `readRole` with the role given, for a card whose roles change with its op (Series). */
-export function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
   const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
   const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];

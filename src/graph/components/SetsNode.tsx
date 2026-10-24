@@ -20,7 +20,7 @@ const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAl
 }));
 
 // An operation (list) and relation (logical) switch swaps the result socket in place and retypes downstream cables.
-export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
+async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
   if (node.op === op) return;
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);
   node.op = op;

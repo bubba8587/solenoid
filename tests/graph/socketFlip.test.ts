@@ -1,7 +1,7 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import { describe, it, expect, beforeEach } from "vitest";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
-import { isFlippableNode, registerFlippable } from "../../src/graph/flippableNodes";
+import { isFlippableNode } from "../../src/graph/flippableNodes";
 import { forgetNode, forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 
 describe("socketFlipStore", () => {
@@ -55,11 +55,5 @@ describe("isFlippableNode", () => {
   it("rejects a node type that hasn't opted in", () => {
     expect(isFlippableNode(fake("ArithmeticNode"))).toBe(false);
     expect(isFlippableNode(null)).toBe(false);
-  });
-
-  it("lets a new type opt in", () => {
-    expect(isFlippableNode(fake("WidgetNode"))).toBe(false);
-    registerFlippable("WidgetNode");
-    expect(isFlippableNode(fake("WidgetNode"))).toBe(true);
   });
 });

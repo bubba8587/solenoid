@@ -6,8 +6,7 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, solError } from "../../src/graph/errorValue";
+import { solError } from "../../src/graph/errorValue";
 import { loopMembers } from "../../src/graph/graphCompute";
 import { csvToFrame } from "../../src/graph/frameBackend";
 import { connectionStore } from "../../src/graph/connectionStore";
@@ -57,11 +56,6 @@ const NodeCtors = Nodes as unknown as Record<string, new (i?: Record<string, unk
  *  real frame synchronously (no network in a headless run). */
 async function buildGraph(copies: number) {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 

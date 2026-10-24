@@ -527,6 +527,6 @@ export function settleOverlaps(editor: Editor, view: View, prefer: ReadonlySet<s
 }
 
 /** Two frames later, so React Flow has measured whatever the op just resized. */
-export function settleOverlapsAfterPaint(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
+function settleOverlapsAfterPaint(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
   requestAnimationFrame(() => requestAnimationFrame(() => settleOverlaps(editor, view, prefer)));
 }

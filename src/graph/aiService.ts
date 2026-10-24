@@ -7,7 +7,7 @@ import { groundingSpec } from "./aiGrounding";
 import { validateText, formatIssues, hardIssues } from "./graphValidate";
 import { writeTextForm, readTextForm } from "./textForm";
 
-export const AI_MODEL = "claude-opus-5";
+const AI_MODEL = "claude-opus-5";
 const MAX_REPAIRS = 2;
 
 export type AiOutcome =

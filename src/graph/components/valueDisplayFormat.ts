@@ -40,7 +40,7 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
 }
 
 export type RowCell = number | boolean | string | Cx | SolError | null;
-export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
+function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
@@ -173,10 +173,6 @@ function displayedType(nodeId: string, outKey?: string): SocketDataType | undefi
   const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
   const sock = out?.socket;
   return sock instanceof SolenoidSocket ? sock.dataType : undefined;
-}
-
-export function nodeOutputIsDate(nodeId: string | null): boolean {
-  return nodeOutputElemFamily(nodeId) === "date";
 }
 
 /** `undefined` (a wildcard or no family) is the only case where a caller may scan cells. */

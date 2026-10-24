@@ -368,7 +368,6 @@ describe("Running — last N (window slides)", () => {
     expect(windowed("product").data({ list: [[1, 2, 3, 4]], window: [2] }).result).toEqual([1, 2, 6, 12]);
   });
 
-  // v1.0 audit finding 14: each window runs through forAggregate.
   it("a per-cell error lands in exactly the windows that contain it", () => {
     const err = solError("#DIV/0!", "boom");
     const r = windowed("sum").data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
@@ -935,6 +934,10 @@ describe("Running — the window's domain", () => {
 });
 
 describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
+  const uniqueList = async (list: unknown[]) => {
+    const { UniqueNode } = await import("../../../src/graph/nodes/list");
+    return new UniqueNode({ byCol: true }).data({ list: [list] }).result;
+  };
   it("dedupes text like the formula does, and passes its input type through", async () => {
     const { UniqueNode } = await import("../../../src/graph/nodes/list");
     const { compileEvaluator } = await import("../../../src/graph/excelFormula");
@@ -944,26 +947,23 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
     expect(n.passthrough()).toEqual([{ output: "result", inputs: ["list"], combine: "single" }]);
   });
   it("5 km and 5000 m are one member", async () => {
-    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
     const { fromUnit } = await import("../../../src/graph/unitValue");
     const { parseUnit } = await import("../../../src/graph/dimension");
     const km = fromUnit(5, parseUnit("km")!, "km");
     const m = fromUnit(5000, parseUnit("m")!, "m");
     const s = fromUnit(5, parseUnit("s")!, "s");
-    expect(uniqueList([km, m, s])).toEqual([km, s]);
+    expect(await uniqueList([km, m, s])).toEqual([km, s]);
   });
   it("1.1 h and 3960 s are one member despite the float residue", async () => {
-    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
     const { fromUnit } = await import("../../../src/graph/unitValue");
     const { parseUnit } = await import("../../../src/graph/dimension");
     const h = fromUnit(1.1, parseUnit("h")!, "h");
     const s = fromUnit(3960, parseUnit("s")!, "s");
-    expect(uniqueList([h, s])).toEqual([h]);
+    expect(await uniqueList([h, s])).toEqual([h]);
   });
   it("a zero exponent is no dimension, as everywhere else units compare", async () => {
-    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
     const a = { __unitCell: true as const, value: 4, dim: { length: 2 } };
     const b = { __unitCell: true as const, value: 4, dim: { length: 2, "custom:b": 0 } };
-    expect(uniqueList([a, b])).toEqual([a]);
+    expect(await uniqueList([a, b])).toEqual([a]);
   });
 });

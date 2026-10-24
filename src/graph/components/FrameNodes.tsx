@@ -105,7 +105,7 @@ import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 import { ALLOCATE_MODE_META } from "../nodeClasses";
 import type { AllocateMode } from "../nodes/allocateOps";
-import type { PayoffOrder } from "../nodes/payoffOps";
+import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
@@ -287,7 +287,7 @@ export const FILTER_OP_OPTIONS_WITH_ERROR: { value: FilterOp; label: string }[] 
   { value: "iserror", label: "has error" },
 ];
 
-export const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] = [
+const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] = [
   ...FILTER_OP_OPTIONS_WITH_ERROR,
   { value: "listContains", label: "list contains" },
   { value: "listContainsAny", label: "list contains any" },

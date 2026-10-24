@@ -232,12 +232,10 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(code(ev("INDEX(m, 9, 1)", { m: M }))).toBe("#REF!");
   });
 
-  it("INDEX reads a blank row in a table of positions as its blank cells ([[D86]] blankRoles)", async () => {
-    const { indexInto } = await import("../../src/graph/nodes/indexAccess");
+  it("INDEX reads a blank row in a table of positions as #SYNTAX! cells ([[D86]] blankRoles)", () => {
     const t = ev("INDEX(v, p)", { v: [1, 2], p: [[1], null] }) as unknown[][];
     expect(t[0]).toEqual([1]);
     expect(code(t[1][0])).toBe("#SYNTAX!");
-    expect(indexInto([1, 2], [[1], null] as never, undefined)).toEqual([[1], [null]]);
   });
 
   it("TAKE / DROP — one rank-preserving node equals the formula at every rank", async () => {

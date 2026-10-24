@@ -4,16 +4,14 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { TableInputNode, TableReshapeNode } from "../../src/graph/nodes/matrix";
 import { MapTableNode } from "../../src/graph/nodes/tableLambda";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { TextSplitNode } from "../../src/graph/nodes/text";
 import { DisplayNode } from "../../src/graph/nodes/display";
 
-// End-to-end polyform checks through a real editor + DataflowEngine with the
-// same two wrappers Canvas installs (central input coercion + error guard).
+// End-to-end polyform checks through a real editor + DataflowEngine and its
+// input boundary (central input coercion + error guard), as on the canvas.
 // These cover what a bare node.data() can't: that a value flows across a
 // connection into a polyform node's `any` input UN-coerced (coerceInputs only
 // normalizes the numeric lattice), and that a text/date result flows back out
@@ -30,11 +28,6 @@ function connect(
 
 function makeEditor() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

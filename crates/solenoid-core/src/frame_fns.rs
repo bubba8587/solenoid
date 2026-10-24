@@ -796,7 +796,7 @@ fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
 
 // ─── Columns ────────────────────────────────────────────────────────────────────
 
-/// `addColumn` with the header's unit already parsed off (the caller tags it): args are the name, the cells and the
+/// Add Column with the header's unit already parsed off (the caller tags it): args are the name, the cells and the
 /// type. Beside the frame, the index the column landed at.
 fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let name = str_arg(args, 0)?;
@@ -843,7 +843,7 @@ fn split_frame(f: &FrameValue) -> V {
     V::List(Rc::new(vec![V::List(Rc::new(rows)), headers]))
 }
 
-/// `cellToNumber` over the cells that cross (a unit cell doesn't).
+/// A number the cell reads as, over the cells that cross (a unit cell doesn't).
 fn cell_to_number(c: &FrameCell) -> Option<f64> {
     match c {
         FrameCell::Num(n) => n.is_finite().then_some(*n),
@@ -911,8 +911,8 @@ fn matrix_arg(args: &[V], i: usize) -> Res<Vec<Vec<FrameCell>>> {
         .collect()
 }
 
-/// `buildFrame` (every column a number column, the cells as they come) or `buildFrameTyped` (each column typed by
-/// `typedColumn`), over names whose units the caller parsed off.
+/// Every column a number column, the cells as they come, or with `typed` each column typed by its cells, over names
+/// whose units the caller parsed off.
 fn build_frame(args: &[V], typed: bool) -> Res<FrameOut> {
     let matrix = matrix_arg(args, 0)?;
     let names = names_arg(args, 1)?;

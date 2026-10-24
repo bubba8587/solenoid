@@ -153,7 +153,7 @@ pub(crate) fn to_json(v: &V) -> Json {
     }
 }
 
-/// `readInput(inputs[key], this.stringLiterals[key] ?? dflt)`.
+/// Unwired, the typed text, else `dflt`; wired, the first cable's value.
 pub(crate) fn str_input(c: &Call, key: &str, dflt: &str) -> V {
     let lit = match c.string_literal(key) {
         V::Undef | V::Null => V::str(dflt),
@@ -180,7 +180,7 @@ fn number_or_nan(v: &V) -> f64 {
 
 // ─── Amortization ───────────────────────────────────────────────────────────────
 
-/// `readMoneyInputs`: each money input read in one currency, every other input as a plain number; the currency read,
+/// Each money input read in one currency, every other input as a plain number; the currency read,
 /// as a column unit, beside them.
 fn read_money(c: &mut Call, name: &str, money: &[&str]) -> Result<Option<Json>, V> {
     use crate::finance_units::currency_clash;
@@ -346,7 +346,7 @@ const FIT_LABELS: [(&str, &str); 8] = [
     ("poisson", "Poisson"),
 ];
 
-/// `fitDistribution`'s parameter names and its Kolmogorov–Smirnov distance from the sorted sample.
+/// A fit's parameter names and its Kolmogorov–Smirnov distance from the sorted sample.
 fn fit_names_and_ks(family: &str, p: &[f64], sorted: &[f64]) -> (&'static [&'static str], f64) {
     use crate::dists::{regularized_beta, regularized_gamma, std_norm_cdf};
     use crate::fdlibm::{exp, log, pow};
@@ -602,7 +602,7 @@ fn carry_money(col: &mut Column, from: &Column) {
     }
 }
 
-/// `runVerb`'s answer as a body's: the frame, or the error it threw.
+/// A verb's answer as a body's: the frame, or the error it threw.
 fn frame_or_error(r: Result<FrameValue, SolError>) -> Result<Frame, V> {
     r.map(|f| from_core(&f)).map_err(V::err)
 }
@@ -763,7 +763,7 @@ fn choice_ladder(c: &mut Call) -> Answer {
 
 // ─── Headers, Split Frame, Describe, Correlation Matrix, PCA ─────────────────────
 
-/// A frame function's one frame, a thrown error as the card's error, as `runVerb` reads `frameOnCore`.
+/// A frame function's one frame, a thrown error as the card's error.
 fn frame_fn_frame(name: &str, f: &Frame, args: &[V]) -> Option<Result<FrameValue, V>> {
     use crate::frame_fns::FrameOut;
     match crate::frame_fns::call(name, &[&to_core(f)], args) {
@@ -987,7 +987,7 @@ fn settle(c: &mut Call) -> Answer {
     if c.field_str("mode", "totals") == "transactions" {
         let cube: Vec<(String, Vec<V>)> = match &raw {
             V::Cube(k) => k.columns.iter().map(|col| (col.name.clone(), col.cells.clone())).collect(),
-            // `frameToCube`: a unit column's numbers become unit cells.
+            // A unit column's numbers become unit cells.
             V::Frame(f) => f.columns.iter().map(|col| (col.name.clone(), frame_cube_cells(col))).collect(),
             _ => return settle_shown(c, Ok((V::Null, V::Null))),
         };
@@ -1022,7 +1022,7 @@ fn settle(c: &mut Call) -> Answer {
     settle_shown(c, r)
 }
 
-/// `cubeCellsFromColumn`: a unit column's finite numbers as unit cells (`tagFrameCellUnit`).
+/// A unit column's finite numbers as unit cells.
 fn frame_cube_cells(col: &Column) -> Vec<V> {
     let Some(unit) = &col.unit else { return col.values.clone() };
     let dim: crate::unit_dims::Dim = unit
@@ -1200,7 +1200,7 @@ pub(crate) fn parse_column_unit_from_header(header: &str) -> (String, Option<Jso
     }
 }
 
-/// `tagFrameCellUnit`: a finite number as a cell in the column's unit.
+/// A finite number as a cell in the column's unit.
 pub(crate) fn tag_cell_unit(v: &V, unit: &Json) -> V {
     let V::Num(n) = v else { return v.clone() };
     if !n.is_finite() {
@@ -1236,7 +1236,7 @@ pub(crate) fn cube_row_count(c: &Cube) -> usize {
     c.columns.iter().map(|col| col.cells.len()).max().unwrap_or(0)
 }
 
-/// The names made unique as `makeHeaders` makes them.
+/// The names made unique as `make_headers` makes them.
 pub(crate) fn cube_from_columns(cols: Vec<CubeColumn>) -> V {
     let names: Vec<String> = cols.iter().map(|c| c.name.clone()).collect();
     let names = crate::frame::make_headers(&names, cols.len());
@@ -1255,7 +1255,7 @@ pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> V {
     )
 }
 
-/// A column per position, each inferred (`inferColumn`).
+/// A column per position, each inferred.
 pub(crate) fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
     let ncols = rows.iter().map(Vec::len).max().unwrap_or(0);
     let names = crate::frame::make_headers(&[], ncols);
@@ -1285,7 +1285,7 @@ pub(crate) fn widen_to_frame(v: &V) -> Frame {
 
 // ─── Add Column, Get Row ────────────────────────────────────────────────────────
 
-/// The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items
+/// Add Column on a Cube: a Cube carries its unit on its cells, so `unit` tags each number, list items
 /// included, and a replaced column keeps its place and format.
 fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, unit: Option<&Json>) -> V {
     let (clean, _) = parse_column_unit_from_header(name);
@@ -1454,7 +1454,7 @@ fn infer_cube_key_type(cells: &[V]) -> FrameColType {
     }
 }
 
-/// Row indices over a Cube's key column (a frame's read as `frameToCube` reads it): its keys as the numbers
+/// Row indices over a Cube's key column (a frame read as a Cube): its keys as the numbers
 /// they show, matched on the core.
 fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str) -> Result<i64, V> {
     let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else {
@@ -1677,7 +1677,7 @@ fn shown_value(c: &mut Call, v: V) -> Answer {
 
 // ─── Nest, Unnest ───────────────────────────────────────────────────────────────
 
-/// `readColumnList`: the names a text list holds, null where it reads blank.
+/// The names a text list holds, null where it reads blank.
 fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
     match c.read_input(key, list(Vec::new())) {
         V::Null => None,
@@ -1758,7 +1758,7 @@ fn shown_cube(c: &mut Call, v: V) -> Answer {
     Ok(vec![("cube".into(), v)])
 }
 
-/// `inferColumn` under the name given, the format kept.
+/// A column inferred under the name given, the format kept.
 fn inferred(name: &str, cells: &[V], format: Option<Json>) -> Column {
     let mut col = super::list::infer_column(name, cells);
     if format.is_some() {
@@ -1994,7 +1994,7 @@ fn cube_columns(c: &mut Call) -> Answer {
 
 // ─── Nest Join ──────────────────────────────────────────────────────────────────
 
-/// `getColumn`: by name, or by a 1-based position written as digits.
+/// By name, or by a 1-based position written as digits.
 fn card_column<'a>(f: &'a Frame, name: &str) -> Option<&'a Column> {
     let key = js_trim(name);
     if let Some(col) = f.columns.iter().find(|c| c.name == key) {
@@ -2074,7 +2074,7 @@ fn sub_frame(f: &Frame, rows: &[usize]) -> V {
     )
 }
 
-/// `relateFramesToCube`: each parent row with the child rows sharing its key as a nested table.
+/// Each parent row with the child rows sharing its key as a nested table.
 fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Option<V> {
     let p_key = card_column(parent, key)?;
     let (c_cells, c_unit, c_rows): (Vec<V>, Option<Json>, usize) = match child {
@@ -2128,7 +2128,7 @@ fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Opt
     Some(cube_v(columns))
 }
 
-/// `relateCubeToFrame`: the join made inside the Cube's first nested column, at whatever depth.
+/// The join made inside the Cube's first nested column, at whatever depth.
 fn relate_cube(parent: &Cube, child: &V, key: &str, nested_name: &str) -> V {
     let Some(at) = parent.columns.iter().position(|c| c.cells.iter().any(|v| matches!(v, V::Frame(_) | V::Cube(_))))
     else {
@@ -2208,7 +2208,7 @@ pub(crate) fn affine_display(d: &str) -> bool {
     crate::unit_catalog::fc_unit_to_unit(d).and_then(|u| u.offset).is_some_and(|o| o != 0.0)
 }
 
-/// `typedColumn` as text: each filled cell as the text it reads.
+/// A text column: each filled cell as the text it reads.
 fn text_column(name: &str, cells: &[V]) -> Column {
     let values = cells
         .iter()
@@ -2445,7 +2445,7 @@ fn table_columns(t: &V) -> Vec<(String, Option<FrameColType>, Vec<V>)> {
     }
 }
 
-/// `flatCubeToFrame(c, "scalar")`: the Cube's flat columns as a frame, cells in one unit read in it.
+/// The Cube's flat columns as a frame, cells in one unit read in it.
 fn flat_cube_scalar(c: &Cube) -> FrameValue {
     let rows = cube_row_count(c);
     let nested = |col: &CubeColumn| col.cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_)));
@@ -2487,7 +2487,7 @@ fn rank_any(t: &V, wf: Option<&FrameValue>, normalize: Normalize, breakdown: boo
     Ok(Ranked { table: V::Frame(Rc::new(from_core(&frame))), at, score_at, rank_at: score_at + 1 })
 }
 
-/// Rows of a table, as `frameRows` or `selectCubeRows` picks them.
+/// A frame's or a Cube's rows at `rows`.
 fn table_pick(t: &V, rows: &[usize]) -> V {
     match t {
         V::Cube(k) => select_cube_rows(k, rows),
@@ -2845,7 +2845,7 @@ fn to_any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
     }
 }
 
-/// `parseColumnUnitFromHeader` over each header (`(header ?? "").trim()`).
+/// Each header and the unit it names (`parse_column_unit_from_header`), a blank as "".
 fn parsed_headers(headers: &V) -> Vec<(String, Option<Json>)> {
     super::stats::items(headers)
         .iter()

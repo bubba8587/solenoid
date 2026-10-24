@@ -1,8 +1,10 @@
 // [[C23]]
-// Import nothing but the notifier: process.ts imports this module.
+// The calc mode and the dirty flag as the UI reads them. The state machine is the graph core's (`passSession.ts`);
+// this store persists the mode per browser and tells subscribers when the mode or the flag moves.
 import { createNotifier } from "./storeKit";
+import { session, seedMode, setMode, setDirty, forceExact, type CalcMode } from "./passSession";
 
-export type CalcMode = "auto" | "manual" | "sketch";
+export type { CalcMode };
 
 const LS_KEY = "solenoid.calcMode";
 const _notifier = createNotifier();
@@ -14,42 +16,46 @@ function readMode(): CalcMode {
   } catch { return "auto"; }
 }
 
-let _mode: CalcMode = readMode();
-let _dirty = false;
-let _forceExact = 0;
+seedMode(readMode());
 
 function persist(): void {
-  try { localStorage.setItem(LS_KEY, _mode); } catch { /* storage can be missing or throw */ }
+  try { localStorage.setItem(LS_KEY, session().mode); } catch { /* storage can be missing or throw */ }
 }
 
 export const calcModeStore = {
-  mode: (): CalcMode => _mode,
-  isManual: (): boolean => _mode === "manual",
-  isSketch: (): boolean => _mode === "sketch",
-  dirty: (): boolean => _dirty,
+  mode: (): CalcMode => session().mode,
+  isManual: (): boolean => session().mode === "manual",
+  isSketch: (): boolean => session().mode === "sketch",
+  dirty: (): boolean => session().dirty,
   subscribe: _notifier.subscribe,
   version: _notifier.version,
 
   setMode(m: CalcMode): boolean {
-    if (_mode === m) return false;
-    _mode = m;
-    if (m === "auto" || m === "sketch") _dirty = false;
+    if (!setMode(m)) return false;
     persist();
     _notifier.notify();
     return true;
   },
 
   markDirty(): void {
-    if (!_dirty) { _dirty = true; _notifier.notify(); }
+    if (setDirty(true)) _notifier.notify();
   },
 
   clearDirty(): void {
-    if (_dirty) { _dirty = false; _notifier.notify(); }
+    if (setDirty(false)) _notifier.notify();
   },
 
-  sketchActive: (): boolean => _mode === "sketch" && _forceExact === 0,
-  forcingExact: (): boolean => _forceExact > 0,
+  /** Runs a session transition made on the pass's behalf (its gate, its end), notifying when the flag moved. */
+  track<T>(transition: () => T): T {
+    const was = session().dirty;
+    const out = transition();
+    if (session().dirty !== was) _notifier.notify();
+    return out;
+  },
 
-  beginForceExact(): void { _forceExact++; },
-  endForceExact(): void { _forceExact = Math.max(0, _forceExact - 1); },
+  sketchActive: (): boolean => session().mode === "sketch" && session().forceExact === 0,
+  forcingExact: (): boolean => session().forceExact > 0,
+
+  beginForceExact(): void { forceExact(true); },
+  endForceExact(): void { forceExact(false); },
 };
