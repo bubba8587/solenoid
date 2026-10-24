@@ -5,8 +5,6 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount, type CubeValue } from "../../src/graph/frame";
 import seed from "../../src/graph/seedGraphs/cubes.json";
 
@@ -26,8 +24,6 @@ type SavedNode = {
 describe("cubes seed", () => {
   it("nests, deepens, reads, unnests, assembles, and climbs depth as claimed", async () => {
     const editor = new GraphEditor<Schemes>();
-    installInputCoercion(editor);
-    editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
 

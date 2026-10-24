@@ -4,8 +4,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
 import { CastNode } from "../../src/graph/nodes/cast";
@@ -13,8 +11,6 @@ const connect = (e: GraphEditor<Schemes>, a: GraphNode, ao: string, b: GraphNode
 // A list mixing kinds in an untyped column claims no kind; Cast reads it item by item.
 it("a mixed list cell from a cube passes through Cast, item by item", async () => {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>(); editor.use(engine);
   const cube = new CubeInputNode({ cubeText: '[{"a":"x","l":[5,7,"seven"]}]' });
   const idx = new ListIndexNode(); idx.literals.index = 1; idx.literals.column = 2;

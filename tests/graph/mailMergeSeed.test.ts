@@ -5,8 +5,6 @@ import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { isDocumentValue, type DocumentValue } from "../../src/graph/documentValue";
 import type { ReportNode } from "../../src/graph/nodes/report";
 import seed from "../fixtures/mail-merge.json"; // the retired seed, kept as the Report mail-merge fixture (2026-09-16)
@@ -20,8 +18,6 @@ type SavedNode = { id: string; type: string; init?: Record<string, unknown>; lit
 
 function build() {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   return { editor, engine };

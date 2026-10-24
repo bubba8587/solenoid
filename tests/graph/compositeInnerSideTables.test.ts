@@ -4,7 +4,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode, type CompositeInternalSnapshot } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -29,7 +28,6 @@ let view: View;
 beforeEach(() => {
   forgetAllNodes();
   editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const pos = new Map<string, { x: number; y: number }>();

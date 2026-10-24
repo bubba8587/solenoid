@@ -14,7 +14,6 @@ import { repositionDockedFor } from "../fcDocking";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
-import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { deleteSelection as deleteSelectionIn } from "../canvasActions";
 import { isolateStore } from "../isolateStore";
@@ -171,7 +170,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     const label = kind === "input" ? `Input ${n}` : `Output ${n}`;
     const marker = kind === "input" ? new CompositeInputNode({ label }) : new CompositeOutputNode({ label });
     await comp.internalEditor.addNode(marker as SolenoidNode);
-    installErrorGuards(marker);
     const pos = screenToFlowPosition({
       x: kind === "input" ? rect.left + 80 : rect.right - 260,
       y: rect.top + rect.height / 2,

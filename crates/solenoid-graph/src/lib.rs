@@ -4,7 +4,10 @@
 //! walks (`tree/specs/computation/graph-core.md`). Its own WebAssembly module, apart from
 //! `solenoid-core`, so a formula's trap and the instance swap after it never reach the graph.
 
+#[cfg(target_arch = "wasm32")]
+mod boundary;
 pub mod model;
 pub mod pass;
+pub mod session;
 #[cfg(target_arch = "wasm32")]
 mod wasm;

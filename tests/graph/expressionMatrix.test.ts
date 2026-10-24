@@ -1,7 +1,7 @@
 // [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
-import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { throughBoundary } from "./boundaryKit";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
 
 // ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
@@ -12,7 +12,7 @@ import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
 
 const run = (expr: string, inputs: Record<string, unknown[]>) => {
   const node = new ExpressionNode({ expr });
-  wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+  throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
   return (node.data(inputs) as { result: unknown }).result;
 };
 
@@ -60,7 +60,7 @@ describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
 describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[B11]] maximalMerge)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
-    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     // Headless (no active editor): the socket swap is skipped by design, but the
     // rank tracking that drives it must still follow the value.
     node.data({ a: [M] });
@@ -72,7 +72,7 @@ describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice
 
   it("an error result leaves the rank alone (no flapping on failure)", () => {
     const node = new ExpressionNode({ expr: "a * 2" });
-    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
     node.data({ a: [M] });
     expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
     node.data({ a: [{ __solError: true, code: "#DIV/0!", message: "x" }] });

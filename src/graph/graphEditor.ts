@@ -30,9 +30,18 @@ export function graphEngineLoaded(): boolean {
   return _loaded;
 }
 
+const _onLoad: (() => void)[] = [];
+
+/** `fn` runs once the module is loaded (now, when it is), and again in each fresh instance after a trap. */
+export function whenGraphEngineLoads(fn: () => void): void {
+  _onLoad.push(fn);
+  if (_loaded) fn();
+}
+
 function onLoaded(): void {
   _loaded = true;
   setPanicHandler(onPanic);
+  for (const fn of _onLoad) fn();
 }
 
 /** What a fetch rejects with when a reset clears its node mid-run. */
@@ -46,6 +55,12 @@ export class Cancelled extends Error {
 export class GraphTrap extends Error {}
 
 const _live = new Set<WeakRef<GraphEditor<GraphSchemes>>>();
+const _portsMoved = new Set<GraphEditor<GraphSchemes>>();
+
+/** Every editor's pending port changes, sent: the core reads a node's ports when the node's `data()` returns. */
+export function flushPortEdits(): void {
+  for (const editor of [..._portsMoved]) editor.flushPorts();
+}
 const _pending = new Set<(e: unknown) => void>();
 let _dead = false;
 
@@ -67,6 +82,7 @@ function recover(): void {
   const module = __wbg_reset();
   initSync({ module });
   setPanicHandler(onPanic);
+  for (const fn of _onLoad) fn();
   _dead = false;
   for (const ref of _live) {
     const editor = ref.deref();
@@ -127,6 +143,8 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   private nodeList: S["Node"][] | null = [];
   private connectionList: S["Connection"][] | null = [];
   private piped: Piped[] = [];
+  /** Nodes here whose ports changed since the core last heard. */
+  private movedPorts = new Set<S["Node"]>();
   /** Set while a rebuilt core takes the graph back: the pipes stay silent. */
   private replaying = false;
   engine?: DataflowEngine<S>;
@@ -136,9 +154,14 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     this.piped.push({ run: (signal) => { this.track(signal as GraphSignal<S>); return signal; } });
   }
 
-  /** The core, built on first use (and again after a trap) from what the handle holds. */
+  /** The core, built on first use (and again after a trap) from what the handle holds; the nodes' port changes
+   *  since the last call reach it first. */
   core(): GraphCore {
-    if (this._core) return this._core;
+    if (this._core) {
+      if (this.movedPorts.size) this.flushPorts(this._core);
+      return this._core;
+    }
+    this.movedPorts.clear();
     if (!_loaded) throw new Error("the graph engine isn't loaded (loadGraphEngine)");
     const core = new GraphCore(Cancelled);
     this._core = core;
@@ -148,6 +171,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       for (const node of this.nodes.values()) {
         const [ik, it] = portsOf(node.inputs), [ok, ot] = portsOf(node.outputs);
         core.addNode(node.id, node, ik, it, ok, ot);
+        this.nest(core, node, true);
       }
       for (const c of this.connections.values()) this.sendConnection(core, c);
     } finally {
@@ -163,7 +187,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   private install(core: GraphCore, p: Piped): void {
     if (p.removed) return;
-    if (p.engine) { core.useEngine(); return; }
+    if (p.engine) { core.useEngine(this.engine!.raw); return; }
     const run = p.run!;
     p.handle = core.addPipe((type: string, data: unknown) =>
       this.replaying || run((data === undefined ? { type } : { type, data }) as GraphSignal<GraphSchemes>) != null);
@@ -175,11 +199,13 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.nodes.set(signal.data.id, signal.data);
         this.nodeList = null;
         signal.data.listen(this, true);
+        this.nest(this._core!, signal.data, true);
         break;
       case "noderemoved":
         this.nodes.delete(signal.data.id);
         this.nodeList = null;
         signal.data.listen(this, false);
+        this.nest(this._core!, signal.data, false);
         break;
       case "connectioncreated":
         this.connections.set(signal.data.id, signal.data);
@@ -190,6 +216,14 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.connectionList = null;
         break;
     }
+  }
+
+  /** A composite's own editor, made known to this core so a pass can retarget an edit inside it. */
+  private nest(core: GraphCore, node: S["Node"], on: boolean): void {
+    const inner = (node as unknown as { internalEditor?: unknown }).internalEditor;
+    if (!(inner instanceof GraphEditor)) return;
+    if (on) core.nest(node.id, inner.core());
+    else core.unnest(node.id);
   }
 
   private sendConnection(core: GraphCore, c: S["Connection"]): boolean {
@@ -286,17 +320,26 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     return guarded(() => ({ nodes: this.core().nodeIds(), connections: this.core().connectionIds() }));
   }
 
-  // A node's port changes, while the node is here. With no core yet, or a dead one, the core built next reads the
-  // node's ports as they stand.
-  portAdded(node: GraphNode, output: boolean, key: string, type: string): void {
-    if (this._core && !_dead) guarded(() => this._core!.addPort(node.id, output, key, type));
+  // A node's port changes, while the node is here, reach the core as one call per node, before the next call into
+  // it (or a node's `data()` returning, `flushPortEdits`). With no core yet, or a dead one, the core built next reads
+  // the node's ports as they stand.
+  portsMoved(node: GraphNode): void {
+    this.movedPorts.add(node as S["Node"]);
+    _portsMoved.add(this as unknown as GraphEditor<GraphSchemes>);
   }
 
-  portRemoved(node: GraphNode, output: boolean, key: string): void {
-    if (this._core && !_dead) guarded(() => this._core!.removePort(node.id, output, key));
-  }
-
-  portRetyped(node: GraphNode, output: boolean, key: string, type: string): void {
-    if (this._core && !_dead) guarded(() => this._core!.retypePort(node.id, output, key, type));
+  /** Sends each changed node's ports, as they stand, in one call per node. */
+  flushPorts(core: GraphCore | null = this._core): void {
+    _portsMoved.delete(this as unknown as GraphEditor<GraphSchemes>);
+    if (!core || _dead || this.movedPorts.size === 0) return;
+    const moved = [...this.movedPorts];
+    this.movedPorts.clear();
+    guarded(() => {
+      for (const node of moved) {
+        if (this.nodes.get(node.id) !== node) continue;
+        const [ik, it] = portsOf(node.inputs), [ok, ot] = portsOf(node.outputs);
+        core.setPorts(node.id, ik, it, ok, ot);
+      }
+    });
   }
 }

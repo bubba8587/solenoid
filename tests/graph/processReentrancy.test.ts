@@ -29,9 +29,9 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
-    let resetCount = 0;
-    const origReset = engine.reset.bind(engine);
-    (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
+    let passCount = 0;
+    const origPass = engine.pass.bind(engine);
+    engine.pass = (...args) => { passCount++; return origPass(...args); };
 
     // Hold the first pass open at its render step, as a slow pass would be.
     let release!: () => void;
@@ -44,9 +44,9 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
 
     const running = processGraph();
     await processGraph(); // an outside caller, coalesced: returns before its pass has run
-    expect(resetCount).toBe(1);
+    expect(passCount).toBe(1);
     let passesAtSettle = -1;
-    const settled = graphSettled().then(() => { passesAtSettle = resetCount; });
+    const settled = graphSettled().then(() => { passesAtSettle = passCount; });
     release();
     await running;
     await settled;
@@ -60,32 +60,32 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
     await editor.addNode(new Src("b") as unknown as Schemes["Node"]);
 
-    // Each FULL pass calls engine.reset() exactly once (process.ts) — so reset count == pass count.
-    let resetCount = 0;
-    const origReset = engine.reset.bind(engine);
-    (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
+    // Each pass calls engine.pass() exactly once (process.ts) — so the count is the pass count.
+    let passCount = 0;
+    const origPass = engine.pass.bind(engine);
+    engine.pass = (...args) => { passCount++; return origPass(...args); };
 
     // The stub area's render step re-enters processGraph ONCE, mimicking the Conduit's
     // `useEffect(processGraph, [realLanes])` firing while a node mounts mid-render.
     let reentered = false;
-    let resetSeenByReentrantCall: number | null = null;
+    let passesInReentrantCall: number | null = null;
     const view = {
       rerenderNode: async (_id: string) => {
         if (reentered) return;
         reentered = true;
-        const before = resetCount;
+        const before = passCount;
         await processGraph();               // the re-entrant recompute
-        resetSeenByReentrantCall = resetCount - before;
+        passesInReentrantCall = passCount - before;
       },
     } as unknown as View;
 
     setEditorRefs(editor, engine, view);
     await expect(processGraph()).resolves.toBeUndefined(); // no throw, no unhandled rejection
 
-    // The re-entrant call itself ran NO pass (it coalesced): no reset happened during it.
-    expect(resetSeenByReentrantCall).toBe(0);
+    // The re-entrant call itself ran NO pass (it coalesced): none happened during it.
+    expect(passesInReentrantCall).toBe(0);
     // Exactly two passes total: the initial one + one coalesced trailing rerun (not a storm).
-    expect(resetCount).toBe(2);
+    expect(passCount).toBe(2);
   });
 
   it("a coalesced FORCED call (F9 during a pass) stays forced — manual mode's gate must not swallow the rerun", async () => {
@@ -93,9 +93,9 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);
     await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
-    let resetCount = 0;
-    const origReset = engine.reset.bind(engine);
-    (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
+    let passCount = 0;
+    const origPass = engine.pass.bind(engine);
+    engine.pass = (...args) => { passCount++; return origPass(...args); };
     let reentered = false;
     const view = {
       rerenderNode: async () => {
@@ -109,7 +109,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     try {
       await processGraph(undefined, undefined, { force: true });
       // Without the carried flag the rerun would be an unforced call → markDirty + return: one pass.
-      expect(resetCount).toBe(2);
+      expect(passCount).toBe(2);
       expect(calcModeStore.dirty()).toBe(false);
     } finally {
       calcModeStore.setMode("auto");

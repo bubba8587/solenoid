@@ -22,7 +22,7 @@ import { HypothesisTestNode, RankPercentileNode } from "../../../src/graph/nodes
 import { DistributionsNode } from "../../../src/graph/nodes/distribution";
 import { SetCellNode, TableMultNode } from "../../../src/graph/nodes/matrix";
 import { MakeArrayNode } from "../../../src/graph/nodes/tableLambda";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { extractInit } from "../../../src/graph/nodeInit";
 import type { FrameValue } from "../../../src/graph/frame";
@@ -428,9 +428,9 @@ describe("Kleene logic THROUGH the real coercion wrapper", () => {
   // The bare-data() tests above pass raw numbers, but the live engine coerces a
   // wired logical to a REAL boolean first (`numsToBools`), and `false !== 0` is
   // true — so AND(false, TRUE) computed as AND(true, true). These pin the family
-  // through wrapNodeData, the exact path Canvas installs.
+  // through the input boundary, the call the engine makes.
   function wrapped<T extends { data: (i: never) => unknown }>(node: T): T {
-    wrapNodeData(node as never);
+    throughBoundary(node as never);
     return node;
   }
 

@@ -41,11 +41,11 @@ IFERROR catches every code; IFNA and ISNA match only `#N/A`. The IFERROR card ca
 
 ### The guard
 
-`installErrorGuards(node)` wraps every node's `data()` at `nodecreated` (the call sequence is in [[compute-pass]], "The error guard"). An error in means that error out, without running the node. A `data()` that throws degrades to a local `#ERROR!`, so one bad node can't half-kill a recompute pass; a thrown `SolError` (a verb reporting a missing column or a bad shape) is kept as itself. `cachedResult` mirrors the error, so the value box renders the red code badge (`ValueDisplay`, with the structural message as its tooltip). A figure card's own field is cleared too (`cachedChart` gets the error, `cachedPayload` becomes `null`), so it never keeps drawing the last good figure.
+The error guard runs around every node's `data()` call, in the graph core's input boundary (the call sequence is in [[compute-pass]], "The error guard"). An error in means that error out, without running the node. A `data()` that throws degrades to a local `#ERROR!`, so one bad node can't half-kill a recompute pass; a thrown `SolError` (a verb reporting a missing column or a bad shape) is kept as itself. `cachedResult` mirrors the error, so the value box renders the red code badge (`ValueDisplay`, with the structural message as its tooltip). A figure card's own field is cleared too (`cachedChart` gets the error, `cachedPayload` becomes `null`), so it never keeps drawing the last good figure.
 
 ### Nodes that see raw errors
 
-`SEES_ERRORS` names the classes, by constructor name, whose `data()` receives error values instead of short-circuiting ([[D35]] errorInErrorOut):
+`SEES_ERRORS` (`crates/solenoid-graph/src/boundary.rs`) names the classes, by constructor name, whose `data()` receives error values instead of short-circuiting ([[D35]] errorInErrorOut):
 
 - **IFERROR and the IS-checks** consume errors; that is their whole job.
 - **Conduit and CableSwitch** route lanes independently, and the any-error-to-every-output rule would poison sibling lanes.
@@ -136,7 +136,7 @@ Fill and IFERROR split cleanly: Fill never touches errors and IFERROR never touc
 
 ## Shape errors are part of this system
 
-The central input coercion (`coerceInputs.ts`) wraps every node's `data()` inside the error guard: the canvas installs coercion first and the guard second. A narrowing failure throws `ShapeError`, which reaches the guard's catch, where `fromThrown` (matched by `e.name`, with no import coupling) maps it to a tagged `#SHAPE!`. So a dimension mismatch renders the badge and propagates like every other error; there is no separate shape-error path.
+The central input coercion runs inside the error guard, both in the graph core's input boundary. A narrowing failure is a shape error, which the guard reads as a tagged `#SHAPE!` (a `ShapeError` a card's own `data()` throws is matched by `e.name` the same way). So a dimension mismatch renders the badge and propagates like every other error; there is no separate shape-error path.
 
 The shared result displays all tolerate a `SolError` in `cachedResult` and render the badge instead of crashing: `ValueDisplay`, `TableDisplay`, `FrameDisplay` and the collapsed GroupNode readout. A new custom result display gets an `isSolError(v)` branch up front.
 

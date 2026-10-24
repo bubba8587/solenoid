@@ -353,7 +353,7 @@ describe("[[B12]] losslessSaves — the text form carries every SavedGraph field
 describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
-  // a dispatch key (SEES_ERRORS, groupCollapse, pinStore…). A build without
+  // a dispatch key (the graph core's SEES_ERRORS and LAZY_FRAME_NODES, groupCollapse, pinStore…). A build without
   // keepNames mangles class names, so production saves carry one-letter types
   // (permanent corruption) and error-sink dispatch silently stops matching —
   // while dev and tests, which keep names, stay green.
@@ -645,8 +645,8 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
 });
 
 describe("components never call node.data() (tree/specs/floors/components.md § The rules)", () => {
-  // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
-  // nodes, installErrorGuards) has run; a component calling it raw gets
+  // `data()` assumes the engine's input boundary (coercion and, for most
+  // nodes, the error guard) has run; a component calling it raw gets
   // un-coerced inputs and can throw during render (the NoteNode/CurveNode
   // comments record exactly this). Components extract a pure helper instead.
   it("no component source calls .data(", () => {
@@ -666,7 +666,7 @@ describe("components never call node.data() (tree/specs/floors/components.md § 
     expect(
       offenders,
       `Components must not call node.data() (tree/specs/floors/components.md § The rules) — extract a pure helper ` +
-      `(the coerceInputs wrapper assumes engine-driven calls):\n  ` + offenders.join("\n  "),
+      `(the input boundary assumes engine-driven calls):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
 });

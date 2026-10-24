@@ -1,12 +1,14 @@
-// [[A1]], [[C23]] calcModes, [[D46]] freezeVolatilePerCalc (getRecalcGen)
+// [[A1]], [[C23]] calcModes, [[D46]] freezeVolatilePerCalc (getRecalcGen), [[D102]] graphOnCore
+// The app's pass: its entry order and its body run in the graph core (`passSession.ts`, `engine.pass`); this module
+// holds the main editor, engine and view and does what touches them: the overlay, the cable values, the render.
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import type { DataflowEngine } from "./dataflowEngine";
 import { cableValueStore } from "./cableValueStore";
-import { seedLoopErrors } from "./graphCompute";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
+import { session, nextGeneration, rebuild, openRebuildScope, closeRebuildScope, markTopoDirty, enterPass, exitPass } from "./passSession";
 import { compositePassStore } from "./compositeEditorStore";
 import { clearCollectMemo } from "./frameBackend";
 import { resolveTrigModes } from "./trigMode";
@@ -38,28 +40,27 @@ export function getEngine() {
   return _engine;
 }
 
-let _rebuilding = 0;
 const rebuildEndListeners = new Set<() => void>();
-export function beginGraphRebuild() { _rebuilding++; }
+export function beginGraphRebuild() { rebuild(true); }
 export function endGraphRebuild() {
-  _rebuilding = Math.max(0, _rebuilding - 1);
-  if (_rebuilding === 0) for (const fn of [...rebuildEndListeners]) fn();
+  if (rebuild(false)) rebuildEnded();
+}
+function rebuildEnded() {
+  for (const fn of [...rebuildEndListeners]) fn();
 }
 /** Runs when the outermost rebuild ends, so a surface can apply what it held back during one. */
 export function onGraphRebuildEnd(fn: () => void): () => void {
   rebuildEndListeners.add(fn);
   return () => { rebuildEndListeners.delete(fn); };
 }
-export function isGraphRebuilding() { return _rebuilding > 0; }
-
-let _recalcGen = 0;
+export function isGraphRebuilding() { return session().rebuilding > 0; }
 
 export function getRecalcGen() {
-  return _recalcGen;
+  return session().gen;
 }
 
 export async function requestRecalc() {
-  _recalcGen++;
+  nextGeneration();
   calcModeStore.beginForceExact();
   try {
     await processGraph(undefined, undefined, { force: true });
@@ -74,7 +75,7 @@ export async function withExactPass<T>(fn: () => Promise<T>): Promise<T> {
   calcModeStore.beginForceExact();
   try {
     // A pass in flight would only queue this one and return before it ran.
-    while (_passActive) await new Promise((r) => setTimeout(r, 16));
+    while (session().passActive) await new Promise((r) => setTimeout(r, 16));
     await processGraph(undefined, undefined, { force: true });
     return await fn();
   } finally {
@@ -104,115 +105,71 @@ export function bulkSettle(renderOnly?: Set<string>) {
   return _bulkSettle(renderOnly);
 }
 
-let _bulkTopoDirty = false;
-export function markBulkTopoDirty() { _bulkTopoDirty = true; }
+export function markBulkTopoDirty() { markTopoDirty(); }
 
 // Never nest: the topology-dirty flag is a single global.
 export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
-  _bulkTopoDirty = false;
-  beginGraphRebuild();
+  openRebuildScope();
   try {
     return await fn();
   } finally {
-    endGraphRebuild();
-    const dirty = _bulkTopoDirty;
-    _bulkTopoDirty = false;
+    const [ended, dirty] = closeRebuildScope();
+    if (ended) rebuildEnded();
     if (dirty) await bulkSettle();
   }
 }
 
 let _pgCount = 0;
 
-let _cachedLoop: Set<string> | null = null;
-
-let _passActive = false;
-let _rerunQueued = false;
-let _rerunForce = false;
-let _rerunExact = false;
-const _rerunChanged = new Set<string>();
-
 let _settleWaiters: Array<() => void> = [];
 
 /** Resolves once no pass is running and no rerun is queued, so a caller that just asked for a pass reads its result. */
 export function graphSettled(): Promise<void> {
-  if (!_passActive) return Promise.resolve();
+  if (!session().passActive) return Promise.resolve();
   return new Promise((resolve) => { _settleWaiters.push(resolve); });
 }
 
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
-  if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
-    calcModeStore.markDirty();
-    // The edit that asked for this pass still changed the document, so it saves now rather than at the next F9.
-    _graphChanged();
-    return;
-  }
-  if (_passActive) {
-    _rerunQueued = true;
-    _rerunForce ||= opts?.force === true;
-    _rerunExact ||= calcModeStore.forcingExact();
-    if (changedNodeId) _rerunChanged.add(changedNodeId);
-    return;
-  }
-  _passActive = true;
+  const entry = calcModeStore.track(() => enterPass(changedNodeId, opts?.force === true));
+  // The edit that asked for this pass still changed the document, so it saves now rather than at the next F9.
+  if (entry === "gated") { _graphChanged(); return; }
+  if (entry === "queued") return;
   beginCompute();
+  let finished = false;
+  let rerun = null;
   try {
     await runGraphPass(changedNodeId, renderOnly, opts?.topology === true);
-    calcModeStore.clearDirty();
+    finished = true;
   } finally {
-    _passActive = false;
+    rerun = calcModeStore.track(() => exitPass(finished));
     endCompute();
   }
-  if (_rerunQueued) {
-    const force = _rerunForce, exact = _rerunExact;
-    _rerunQueued = false; _rerunForce = false; _rerunExact = false;
+  if (rerun) {
     // The full rerun has no changed node to retarget, so a coalesced composite-internal edit marks its chain here.
-    if (_editor) for (const id of _rerunChanged) if (!_editor.getNode(id)) markInternalEditChain(_editor, id);
-    _rerunChanged.clear();
-    if (exact) calcModeStore.beginForceExact();
+    if (_editor && _engine) for (const id of rerun.changed) if (!_editor.getNode(id)) _engine.markNested(id);
+    if (rerun.exact) calcModeStore.beginForceExact();
     try {
-      await processGraph(undefined, undefined, force ? { force } : undefined);
+      await processGraph(undefined, undefined, rerun.force ? { force: true } : undefined);
     } finally {
-      if (exact) calcModeStore.endForceExact();
+      if (rerun.exact) calcModeStore.endForceExact();
     }
   }
-  if (!_passActive && _settleWaiters.length) {
+  if (!session().passActive && _settleWaiters.length) {
     const waiters = _settleWaiters;
     _settleWaiters = [];
     for (const w of waiters) w();
   }
 }
 
-// Duck-typed on `internalEditor`: composite.ts imports this module, so importing it would cycle.
-function findCompositeOwner(editor: GraphEditor<Schemes>, innerId: string): string | null {
-  for (const n of editor.getNodes()) {
-    const inner = (n as unknown as { internalEditor?: GraphEditor<Schemes> }).internalEditor;
-    if (!inner) continue;
-    if (inner.getNode(innerId) || findCompositeOwner(inner, innerId)) return n.id;
-  }
-  return null;
-}
-
-function markInternalEditChain(editor: GraphEditor<Schemes>, innerId: string): boolean {
-  for (const n of editor.getNodes()) {
-    const c = n as unknown as { internalEditor?: GraphEditor<Schemes>; markInternalEdit?: () => void };
-    if (!c.internalEditor) continue;
-    if (c.internalEditor.getNode(innerId) || markInternalEditChain(c.internalEditor, innerId)) {
-      c.markInternalEdit?.();
-      return true;
-    }
-  }
-  return false;
+/** Whether the node's outputs differ by identity from what the cable value store holds, which it then holds. */
+function landed(id: string, outputs: Record<string, unknown>): boolean {
+  const moved = Object.keys(outputs).some((k) => cableValueStore.get(id, k) !== outputs[k]);
+  cableValueStore.setNodeOutputs(id, outputs);
+  return moved;
 }
 
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_view) return;
-  if (changedNodeId && !_editor.getNode(changedNodeId)) {
-    const owner = findCompositeOwner(_editor, changedNodeId);
-    if (owner) {
-      markInternalEditChain(_editor, changedNodeId);
-      changedNodeId = owner;
-    }
-  }
   clearCollectMemo();
   // Before the engine pull: MathFn.data() reads the resolved angle mode.
   resolveTrigModes(_editor);
@@ -220,44 +177,11 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
-  const affected = _engine.invalidate(changedNodeId, !!renderOnly);
-
-  // Seed before fetching: the engine resolves inputs before data(), so an unseeded loop never returns.
-  // An additive pass follows a paste, which can bring its own loop, so only a value edit reuses the set.
-  const loop = changedNodeId && !topologyChanged
-    ? (_cachedLoop ?? (_cachedLoop = _engine.loopMembers()))
-    : (_cachedLoop = _engine.loopMembers());
-  seedLoopErrors(_editor, _engine, loop);
-
-  const changedOut = affected ? new Set<string>() : null;
-  const sinks = affected ? new Set<string>() : null;
-  const values = await _engine.fetchAll((id, outputs) => {
-    if (changedOut) {
-      const keys = Object.keys(outputs);
-      if (keys.length === 0) sinks!.add(id);
-      else if (keys.some((k) => cableValueStore.get(id, k) !== outputs[k])) changedOut.add(id); // must compare before setNodeOutputs overwrites
-    }
-    cableValueStore.setNodeOutputs(id, outputs);
-  }, true);
-  if (!values) return;
+  const toRender = await _engine.pass(changedNodeId, renderOnly, topologyChanged, landed);
+  if (!toRender) return;
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();
-  let toRender = _editor.getNodes();
-  if (renderOnly) {
-    toRender = toRender.filter((n) => renderOnly.has(n.id));
-  } else if (affected) {
-    const srcOf = new Map<string, string[]>();
-    for (const c of _editor.getConnections()) {
-      (srcOf.get(c.target) ?? srcOf.set(c.target, []).get(c.target)!).push(c.source);
-    }
-    toRender = toRender.filter((n) => {
-      if (!affected.has(n.id)) return false;
-      if (changedOut!.has(n.id)) return true;
-      if (sinks!.has(n.id)) return (srcOf.get(n.id) ?? []).some((s) => changedOut!.has(s));
-      return false;
-    });
-  }
-  await Promise.all(toRender.map((node) => _view!.rerenderNode(node.id)));
+  await Promise.all(toRender.map((id) => _view!.rerenderNode(id)));
   if (perf) {
     const t2 = performance.now();
     const ipc1 = ipcSnapshot();
@@ -269,7 +193,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       .join(" ");
     console.log(
       `[perf] processGraph #${++_pgCount}  nodes=${_editor.getNodes().length} conns=${_editor.getConnections().length}  ` +
-      `${affected ? `targeted=${changedNodeId} rendered=${toRender.length}  ` : renderOnly ? `additive rendered=${toRender.length}  ` : "FULL  "}` +
+      `${renderOnly ? `additive rendered=${toRender.length}  ` : changedNodeId ? `targeted=${changedNodeId} rendered=${toRender.length}  ` : "FULL  "}` +
       `compute=${(t1 - t0).toFixed(1)}ms  render=${(t2 - t1).toFixed(1)}ms  total=${(t2 - t0).toFixed(1)}ms  ` +
       `ipc=${ipcCalls}call/${ipcMs.toFixed(1)}ms${top ? `  slowest: ${top}` : ""}`,
     );

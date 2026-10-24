@@ -16,8 +16,6 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { toFlowNodes, toFlowEdges, toFlowPosition, type FlowModel } from "./flowModel";
 import { makeFlowView, type FlowView } from "./flowView";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);
@@ -40,11 +38,6 @@ export type StaticStack = FlowModel & {
 
 export function makeStaticStack(): StaticStack {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const handlers: StageHandlers = {

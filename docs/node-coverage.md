@@ -29,7 +29,7 @@ Use a single list socket only when the elements are interchangeable: all the sam
 
 ### Picking a socket by the input's role
 
-The socket type both gates connections (`canConnect`) and drives coercion at the engine boundary (`coerceInputs.ts`), so it must match what `data()` actually consumes. Every node input has been audited against its `data()`.
+The socket type both gates connections (`canConnect`) and drives coercion at the engine's input boundary (`crates/solenoid-graph/src/boundary.rs`), so it must match what `data()` actually consumes. Every node input has been audited against its `data()`.
 
 - **Element-wise operand**, paired with each element through a broadcaster: the family's combo, `numlist`, `strcombo`, `datecombo`, `logicalcombo` or `complexcombo`. An operand can be a per-element vector, as in Excel's `=ROUND(A1:A10, B1:B10)` or `=LEFT(A1:A10, B1:B10)`.
   - This covers Arithmetic's `a` and `b`; the secondary operands `RoundN.digits`, `Clamp.min` / `max`, `MRound.multiple` and `Gcd.b`; every date operand (DatePart, DateAdd, DateDiff, DATEDIF, WORKDAY, NETWORKDAYS, DATE, TIME); every text operand (UPPER, LEN, LEFT / MID / RIGHT, FIND, SUBSTITUTE, REPLACE, REPT, CHAR / CODE, TEXTAFTER / BEFORE, EXACT, NUMBERVALUE, ROMAN / ARABIC, FIXED, DOLLAR, ENCODEURL, Reverse Text, Spell Number); and every complex operand (COMPLEX, IM Unpack, the IM unary and binary ops, IMPOWER, Quadratic Roots).

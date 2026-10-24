@@ -233,10 +233,10 @@ describe("review pins: whole-argument formulas", () => {
 
 describe("review pins: one-element lists into list-consuming matrix nodes", () => {
   it("Diagonal, Outer and Solve take a single-element list as a list", async () => {
-    const { wrapNodeData } = await import("../../src/graph/coerceInputs");
+    const { throughBoundary } = await import("./boundaryKit");
     const { TableDiagNode, TableOuterNode, MatSolveNode } = await import("../../src/graph/nodes/matrix");
     const drive = async (n: object, inputs: Record<string, unknown[]>) => {
-      wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
+      throughBoundary(n as Parameters<typeof throughBoundary>[0]);
       return (n as { data: (i: Record<string, unknown[]>) => Promise<Record<string, unknown>> | Record<string, unknown> }).data(inputs);
     };
     expect((await drive(new TableDiagNode(), { diag: [[5]] })).result).toEqual([[5]]);

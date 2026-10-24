@@ -3,8 +3,6 @@ import { GraphEditor } from "../graphEditor";
 import { GraphConnection } from "../graphModel";
 import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
-import { installInputCoercion } from "../coerceInputs";
-import { installErrorGuards } from "../errorValue";
 import * as Nodes from "../nodeClasses";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
@@ -48,11 +46,6 @@ export function resolveCtor(type: string): NodeCtor | undefined {
 
 export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => {
-    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-    return ctx;
-  });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 

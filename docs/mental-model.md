@@ -40,15 +40,16 @@ The compute path, in order (the full mechanics, including every coercion rung, a
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
    node's `literals` / `stringLiterals` map (values edited on the card) or its init fields,
    then calls `processGraph()`.
-2. **processGraph** (`process.ts`) resets or targets the `DataflowEngine` and pulls
-   outputs. Manual calc mode stops here unless F9 forces a pass. Cycles are found up front
+2. **processGraph** (`process.ts`) asks the graph core's session whether to run (manual calc
+   mode stops here unless F9 forces a pass), then the engine's `pass` resets or targets the
+   cache and pulls outputs ([[D102]] graphOnCore). Cycles are found up front
    (Tarjan SCC) and pre-seeded as `#CIRC!`, so the engine never deadlocks. A topology change
    recomputes only the target's downstream closure.
-3. **Per node, the wrappers run first.** Every `data()` is wrapped at `nodecreated` in two
-   layers: `coerceInputs` inside, `installErrorGuards` outside.
+3. **Per node, the input boundary runs first.** The engine calls every `data()` through it
+   (`crates/solenoid-graph/src/boundary.rs`): coercion inside, the error guard outside.
    - The guard short-circuits: an error on any input becomes the output and `data()` never
-     runs. Nodes that must see errors (IFERROR, Display, figure sinks) register for raw
-     delivery.
+     runs. Nodes that must see errors (IFERROR, Display, figure sinks) are named for raw
+     delivery (`SEES_ERRORS`).
    - Coercion normalizes each arriving value to the socket's declared type: widening,
      singleton collapse, the logical ↔ number bridge, `#SHAPE!` on failure. It strips
      `UnitCell`s to display magnitudes unless the node is `unitAware` or a declared

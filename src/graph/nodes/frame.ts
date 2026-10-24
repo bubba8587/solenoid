@@ -15,7 +15,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
-import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
   getColumn, addColumn, frameRowCount, makeHeaders,
@@ -40,7 +40,7 @@ import {
   emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
-import { listLiteralText } from "../coerceInputs";
+import { listLiteralText } from "../listLiterals";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
@@ -63,7 +63,7 @@ function runVerb<T>(fn: () => T): T | SolError {
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
 export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | CubeValue | SolError | null }
 
-// widenToFrame repeats coerceInputs' frame-socket widening, which the cube-adoptive port skips; keep the two identical.
+// widenToFrame repeats the input boundary's frame-rung widening (crates/solenoid-graph/src/boundary.rs), which the cube-adoptive port skips; keep the two identical.
 function widenToFrame(v: unknown): FrameValue {
   if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
   return frameFromRows([[v]]);
@@ -2231,8 +2231,8 @@ export class ComputedColumnNode extends GraphNode {
     const gen = beginPass(this);
     const asValue = async () => {
       const mat = await readFrame(ref);
-      // As coerceInputs reads a ref for a node that sees no errors: the error is the answer.
-      if (isSolError(mat) && !SEES_ERRORS.has("ComputedColumnNode")) throw mat;
+      // As the input boundary reads a ref for a node that sees no errors: the error is the answer.
+      if (isSolError(mat)) throw mat;
       return gen === this._gen ? this.dataValue({ ...inputs, frame: [mat] }) : { frame: null };
     };
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");

@@ -7,7 +7,7 @@ import { ListInputNode, type ListElemType } from "../../../src/graph/nodes/list"
 import { IfNode, NaNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { dateSocket, numberSocket, SolenoidSocket, canConnect } from "../../../src/graph/sockets";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
+import { throughBoundary } from "../boundaryKit";
 import { jsDateToSerial } from "../../../src/graph/nodes/date";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import { setEditorRefs, getEditor } from "../../../src/graph/process";
@@ -191,7 +191,7 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
     // Every entry is NaN, so nothing here could vote for a family.
     const node = n as unknown as ListInputNode;
     node.stringLiterals.v0 = "xyz, pqr";
-    wrapNodeData(node as never);
+    throughBoundary(node as never);
     expect((node.data({}) as { list: unknown[] }).list).toEqual([NaN, NaN]);
     // The socket is unmoved, so the box stays a Bool list.
     expect(nodeOutputElemFamily(n.id)).toBe("logical");
@@ -233,7 +233,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     // Production runs this on every connection change (reconcileFcTypes → here), and
     // it is what WRITES the resolved type onto each adoptive socket. A display test
     // that skips it isn't testing what ships — the same smell as a node test that
-    // skips wrapNodeData (List Input audit, 2026-07-25c).
+    // skips throughBoundary (List Input audit, 2026-07-25c).
     settleWildcardTypes(editor);
     return { iff, disp };
   }

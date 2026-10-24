@@ -21,7 +21,7 @@ class N extends GraphNode {
 
 async function graph() {
   const editor = new GraphEditor<Schemes>();
-  const engine = new DataflowEngine<Schemes>();
+  const engine = new DataflowEngine<Schemes>({ raw: true });
   editor.use(engine);
   const add = async (n: N) => { await editor.addNode(n as unknown as Schemes["Node"]); return n; };
   const wire = (a: N, out: string, b: N, input: string) =>
@@ -86,7 +86,7 @@ describe("DataflowEngine on the graph core", () => {
     await editor.addNode(a as unknown as Schemes["Node"]);
     await editor.addNode(b as unknown as Schemes["Node"]);
     await editor.addConnection(new GraphConnection(a, "out", b, "x") as unknown as Schemes["Connection"]);
-    const engine = new DataflowEngine<Schemes>();
+    const engine = new DataflowEngine<Schemes>({ raw: true });
     editor.use(engine);
     expect(engineOf(editor)).toBe(engine);
     expect((await engine.fetch(b.id)).out).toBe(20);

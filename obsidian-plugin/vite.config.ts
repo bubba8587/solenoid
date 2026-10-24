@@ -77,7 +77,7 @@ function pluginGlobals(): Plugin {
       const used = new Set<string>();
       walk(this.parse(code) as never, {
         enter(node: any, parent: any) {
-          if (node.type !== "Identifier" || !(node.name in names) || !parent) return;
+          if (node.type !== "Identifier" || !Object.hasOwn(names, node.name) || !parent) return;
           if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return;
           if (/^(Property|PropertyDefinition|MethodDefinition)$/.test(parent.type) && parent.key === node && !parent.computed) return;
           if (parent.type === "UnaryExpression" && parent.operator === "typeof") return;

@@ -8,8 +8,6 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 
 import { setFrameBackend, useWasmBackend, clearCollectMemo, type FrameBackend, type FrameHandle } from "../../src/graph/frameBackend";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards } from "../../src/graph/errorValue";
 import { FrameInputNode, DistinctNode, FillBlanksNode } from "../../src/graph/nodes/frame";
 import type { FrameColumn, FrameColType } from "../../src/graph/frame";
 
@@ -48,8 +46,6 @@ afterEach(() => useWasmBackend());
 
 async function chain(nodes: GraphNode[], lastKey = "frame") {
   const editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
-  editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);
@@ -83,7 +79,7 @@ describe("verb chain backend cost through real node data()", () => {
 // set, or coerceInputs collects its INPUT and the chain re-sources mid-way — the
 // 2026-08-25 finding (BindColumns / FillBlanks / ReplaceValues / Window were missing).
 import { readFileSync } from "node:fs";
-import { LAZY_FRAME_NODES } from "../../src/graph/coerceInputs";
+import { isLazyFrameNode } from "../../src/graph/graphWasm/solenoid_graph.js";
 
 describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
   it("frame.ts: a class calling runFrame* is lazy", () => {
@@ -91,7 +87,7 @@ describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
     const classes = [...src.matchAll(/^export class (\w+) extends GraphNode[\s\S]*?(?=^export class |\Z)/gm)];
     const emitters = classes.filter((m) => /\b(runFrame(Unary|Join|Append|BindColumns)|lazyPass|lazyFramePass|planOnBody)\(/.test(m[0])).map((m) => m[1]);
     expect(emitters.length).toBeGreaterThan(10);
-    const missing = emitters.filter((c) => !LAZY_FRAME_NODES.has(c));
+    const missing = emitters.filter((c) => !isLazyFrameNode(c));
     expect(missing).toEqual([]);
   });
 });

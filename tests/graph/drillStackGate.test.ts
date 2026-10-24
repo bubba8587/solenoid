@@ -5,7 +5,6 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
-import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode } from "../../src/graph/nodes/composite";
 import { ValueInputNode } from "../../src/graph/nodes/control";
@@ -23,7 +22,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal("document", { createElement: () => ({}), querySelector: () => null });
   editor = new GraphEditor<Schemes>();
-  installInputCoercion(editor);
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   const pos = new Map<string, { x: number; y: number }>();

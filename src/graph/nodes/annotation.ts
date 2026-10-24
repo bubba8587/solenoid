@@ -273,7 +273,7 @@ export class NoteNode extends GraphNode {
     });
   }
 
-  /** Use from the UI: the error-guard wrapper calls firstInputError outside its try/catch, so data() with no args throws. */
+  /** The UI reads the fields here: `data()` is the engine's to call (tree/specs/floors/components.md). */
   fieldValues(): Record<string, EmittedValue> {
     const out: Record<string, EmittedValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
