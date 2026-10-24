@@ -365,6 +365,8 @@ struct Shared {
     nests: RefCell<FxHashMap<String, Weak<Shared>>>,
     /// The loop set the last pass computed, which a value edit's targeted pass reuses.
     loops: RefCell<Option<Vec<String>>>,
+    /// Cables added so far: a pass that sees this move re-seeds its loop set before its next fetch.
+    wired: Cell<u64>,
     /// Each node's outputs as the last pass landed them: the change test's and the cable readouts' values.
     landed: RefCell<FxHashMap<String, Vec<(String, Val)>>>,
 }
@@ -615,6 +617,7 @@ impl GraphCore {
                 graph: Graph::new(),
                 nests: RefCell::new(FxHashMap::default()),
                 loops: RefCell::new(None),
+                wired: Cell::new(0),
                 landed: RefCell::new(FxHashMap::default()),
             }),
             cancelled,
@@ -727,7 +730,15 @@ impl GraphCore {
             source_output,
             target_input,
         };
-        self.shared.graph.add_connection(c, object).map_err(failed)
+        let added = self
+            .shared
+            .graph
+            .add_connection(c, object)
+            .map_err(failed)?;
+        if added {
+            self.shared.wired.set(self.shared.wired.get() + 1);
+        }
+        Ok(added)
     }
 
     /// `false` when a `connectionremove` pipe cancelled it.
@@ -957,10 +968,21 @@ impl GraphCore {
                 .map(|ids| ids.into_iter().collect());
         let loops = shared.loop_set(changed.is_some() && !topology);
         shared.seed_loops(&loops, CIRC_MESSAGE);
+        let seeded = Cell::new(shared.wired.get());
         future_to_promise(entry(async move {
+            // A cable added while the pass waits can close a loop the seeding never saw, and a fetch into it waits on
+            // itself forever. A node's fetch starts its whole upstream at once, so re-seeding before each one does.
+            let reseed = || {
+                if seeded.get() != shared.wired.get() {
+                    seeded.set(shared.wired.get());
+                    shared.seed_loops(&shared.loop_set(false), CIRC_MESSAGE);
+                }
+            };
+            reseed();
             let mut moved: FxHashSet<String> = FxHashSet::default();
             let mut sinks: FxHashSet<String> = FxHashSet::default();
             let landed = |id: &str, outputs: &Rc<Outputs<Val>>| {
+                reseed();
                 let differs = shared.land(id, outputs);
                 if cone.is_some() {
                     if outputs.is_empty() {
