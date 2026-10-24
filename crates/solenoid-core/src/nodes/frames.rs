@@ -614,6 +614,9 @@ fn shown_frame(c: &mut Call, key: &str, v: V) -> Answer {
 fn allocator(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "categories") else { return shown_frame(c, "frame", V::Null) };
     let amount = super::list::or(c.read_num("amount", 0.0), V::Num(0.0));
+    if amount.is_sol_error() {
+        return shown_frame(c, "frame", amount);
+    }
     let mode = c.field_str("mode", "budget").to_string();
     let out = match crate::decision::allocate_frame(&to_core(&f), &mode, super::kit::num(&amount)) {
         Some(r) => frame_or_error(r),

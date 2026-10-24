@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { AllocatorNode } from "../../../src/graph/nodes/frame";
 import { type FrameValue, type FrameColumn, frameFromInputText } from "../../../src/graph/frame";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
 import type { AllocateMode } from "../../../src/graph/nodes/allocateOps";
 import { extractInit } from "../../../src/graph/nodeInit";
 import seed from "../../../src/graph/seedGraphs/allocator.json";
@@ -24,6 +24,15 @@ describe("AllocatorNode", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
     expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // no Weight column → equal
+  });
+
+  it("an amount that isn't a number is #VALUE!, and an error amount passes through (it recursed until the stack ran out)", () => {
+    const n = new AllocatorNode();
+    const nan = n.data({ categories: [wcats([1, 3])], amount: [NaN] }).frame;
+    expect(isSolError(nan) && nan.code).toBe("#VALUE!");
+    const e = solError("#DIV/0!", "upstream");
+    const out = n.data({ categories: [wcats([1, 3])], amount: [e as unknown as number] }).frame;
+    expect(isSolError(out) && out.code).toBe("#DIV/0!");
   });
 
   it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {
