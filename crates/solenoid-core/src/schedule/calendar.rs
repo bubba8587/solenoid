@@ -81,7 +81,7 @@ pub struct CalendarSpec {
     pub intervals: Option<Vec<Interval>>,
 }
 
-/// `calendarKey`: two specs with one key make one calendar.
+/// Two specs with one key make one calendar.
 pub fn calendar_key(spec: &CalendarSpec) -> String {
     let mut hol: Vec<f64> = spec.holidays.iter().flatten().flatten().copied().collect();
     hol.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));

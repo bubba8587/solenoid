@@ -1,5 +1,5 @@
 // [[C130]] rustCore
-//! Port of `src/graph/excelCriteria.ts`: COUNTIF-style criteria and the IFS aggregates.
+//! COUNTIF-style criteria and the IFS aggregates.
 
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -703,7 +703,7 @@ fn is_text(v: &V) -> bool {
     matches!(v, V::Str(s) if !s.is_empty())
 }
 
-/// `asRange`: a list as its items, anything else as a one-item range.
+/// A list as its items, anything else as a one-item range.
 pub fn as_range(v: &V) -> Rc<Vec<V>> {
     match v {
         V::List(items) => items.clone(),
@@ -766,7 +766,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
     }
 }
 
-/// `ifsPairs`: the arguments after the values as range, criterion pairs.
+/// The arguments after the values as range, criterion pairs.
 pub type Pair = (Rc<Vec<V>>, V);
 
 pub fn ifs_pairs(rest: &[V]) -> Result<Vec<Pair>, V> {

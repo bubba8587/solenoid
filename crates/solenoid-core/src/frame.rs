@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[C25]] firstClassUnits
-//! Port of `src/graph/frame.ts` (the frame model and the helpers the verbs use).
+//! The frame model and the helpers the verbs use.
 
 use std::rc::Rc;
 
@@ -78,14 +78,14 @@ impl ColumnUnit {
         self.display.as_deref().filter(|d| !d.is_empty())
     }
 
-    /// `readingScaleOf`: the display scale of an offset unit (°C 1, °F 5/9), else `None`.
+    /// The display scale of an offset unit (°C 1, °F 5/9), else `None`.
     pub fn reading_scale(&self) -> Option<f64> {
         let u = fc_unit_to_unit(self.shown()?);
         u.as_ref().and_then(|u| u.offset).filter(|o| *o != 0.0)?;
         Some(u.map_or(1.0, |u| u.scale))
     }
 
-    /// `linearScaleOf`: the display scale of a linear unit other than its base (km 1000), else `None`.
+    /// The display scale of a linear unit other than its base (km 1000), else `None`.
     pub fn linear_scale(&self) -> Option<f64> {
         let u = fc_unit_to_unit(self.shown()?)?;
         if u.offset.is_some_and(|o| o != 0.0) || u.scale == 1.0 {
@@ -95,7 +95,6 @@ impl ColumnUnit {
     }
 }
 
-/// `sameColumnUnit`.
 pub fn same_column_unit(a: Option<&ColumnUnit>, b: Option<&ColumnUnit>) -> bool {
     match (a, b) {
         (Some(a), Some(b)) => dim_equal(&a.dim, &b.dim) && a.shown().unwrap_or("") == b.shown().unwrap_or(""),
@@ -129,7 +128,7 @@ impl FrameColumn {
         self
     }
 
-    /// `cellAt`: past the column's end reads blank.
+    /// Past the column's end reads blank.
     pub fn cell_at(&self, i: usize) -> &FrameCell {
         self.values.get(i).unwrap_or(NULL)
     }

@@ -1,8 +1,6 @@
 //! [[B17]] typedValueModel, [[C48]] appendLadder, [[C10]] socketLattice, [[C28]] literalsIffEditable, [[B11]]
-//! maximalMerge, [[C17]] shareImpl. The table cards' bodies: `nodes/frame.ts`' builders, readers and planners (the lazy
-//! verbs stay on the frame backend), `nodes/cube.ts`, and the cards in `nodes/stats.ts` and `nodes/finance.ts` whose
-//! answer is a frame. The computations are the core's own (`frame_fns.rs`, `decision.rs`, `planners.rs`, `ladder.rs`,
-//! `fns_lists.rs`); a body reads its inputs, calls them on the core's frame, and carries the units and formats back.
+//! maximalMerge, [[C17]] shareImpl. The bodies of the cards whose answer is a frame or a cube (the lazy verbs stay on
+//! the frame backend): a body reads its inputs, calls the core on its frame, and carries the units and formats back.
 
 use super::stats::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
@@ -106,12 +104,12 @@ pub(crate) fn num_column(name: &str, values: Vec<V>) -> Column {
     Column { name: name.to_string(), ty: FrameColType::Number, values, unit: None, format: None, raw: None }
 }
 
-/// What the error guard shows for a JS exception the TS body throws ([[node-bodies]] § Freezing).
+/// What the error guard shows for an exception a body throws ([[node-bodies]] § Freezing).
 pub(crate) fn thrown(message: &str) -> V {
     err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
 
-/// `raw.trim()` on what `readInput` gave a text socket: text trims, anything else throws as JS's `trim` does.
+/// A text input trimmed: text trims, anything else throws as JS's `trim` does.
 pub(crate) fn trimmed(v: &V, name: &str) -> Result<String, V> {
     match v {
         V::Str(s) => Ok(js_trim(s).to_string()),
@@ -180,7 +178,7 @@ fn number_or_nan(v: &V) -> f64 {
     }
 }
 
-// ─── Amortization (finance.ts) ──────────────────────────────────────────────────
+// ─── Amortization ───────────────────────────────────────────────────────────────
 
 /// `readMoneyInputs`: each money input read in one currency, every other input as a plain number; the currency read,
 /// as a column unit, beside them.
@@ -288,9 +286,9 @@ fn amortization(c: &mut Call) -> Answer {
     Ok(vec![("frame".into(), V::Frame(Rc::new(frame)))])
 }
 
-// ─── Forecast (ETS), Fit Distribution, Decompose (stats.ts) ─────────────────────
+// ─── Forecast (ETS), Fit Distribution, Decompose ────────────────────────────────
 
-/// `forAggregate`: the first error, else the number cells.
+/// The first error, else the number cells.
 fn for_aggregate(v: &V) -> Result<Vec<f64>, V> {
     let xs = super::stats::items(v);
     if let Some(e) = xs.iter().find(|x| x.is_sol_error()) {
@@ -496,7 +494,7 @@ fn decompose(c: &mut Call) -> Answer {
     blank(c, frame)
 }
 
-// ─── K-Means, Logistic (frame.ts) ───────────────────────────────────────────────
+// ─── K-Means, Logistic ──────────────────────────────────────────────────────────
 
 fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
     match first(c, key) {
@@ -583,7 +581,7 @@ fn logistic(c: &mut Call) -> Answer {
     }
 }
 
-// ─── Allocator, Payoff Planner (frame.ts) ───────────────────────────────────────
+// ─── Allocator, Payoff Planner ──────────────────────────────────────────────────
 
 /// `c.name.trim().toLowerCase()` is one of `names`.
 fn named(col: &Column, names: &[&str]) -> bool {
@@ -636,7 +634,7 @@ fn allocator(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out.unwrap_or_else(|e| e))
 }
 
-/// `localMonthStartSerial`: the first of this month.
+/// The first of this month.
 fn month_start() -> f64 {
     let V::Num(today) = super::kit::core_call("TODAY", &[]) else { return f64::NAN };
     let (y, m, _) = crate::date_serial::civil_from_days(today as i64 - 25569);
@@ -671,13 +669,13 @@ fn payoff_planner(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out.unwrap_or_else(|e| e))
 }
 
-// ─── Choice Ladder (frame.ts) ───────────────────────────────────────────────────
+// ─── Choice Ladder ──────────────────────────────────────────────────────────────
 
 fn normalize_of(c: &Call) -> crate::decision::Normalize {
     crate::decision::Normalize::from_tag(c.field_str("normalize", "max")).unwrap_or(crate::decision::Normalize::Max)
 }
 
-/// `ladderFromWire`: the plan's cost columns dressed in their resource's unit and format, and the ladder's payload.
+/// The plan's cost columns dressed in their resource's unit and format, and the ladder's payload.
 fn ladder_from_wire(f: &Frame, plan: &FrameValue, wire: &V) -> (Frame, Json) {
     let part = |i: usize| super::stats::items(wire).get(i).cloned().unwrap_or(V::Null);
     let rows = |i: usize| super::stats::items(&part(i)).to_vec();
@@ -763,7 +761,7 @@ fn choice_ladder(c: &mut Call) -> Answer {
     }
 }
 
-// ─── Headers, Split Frame, Describe, Correlation Matrix, PCA (frame.ts) ──────────
+// ─── Headers, Split Frame, Describe, Correlation Matrix, PCA ─────────────────────
 
 /// A frame function's one frame, a thrown error as the card's error, as `runVerb` reads `frameOnCore`.
 fn frame_fn_frame(name: &str, f: &Frame, args: &[V]) -> Option<Result<FrameValue, V>> {
@@ -888,7 +886,7 @@ fn pca(c: &mut Call) -> Answer {
     out(c, frame_v(cols), frame_v(loadings), explained)
 }
 
-// ─── Group Cost Settle (frame.ts) ───────────────────────────────────────────────
+// ─── Group Cost Settle ──────────────────────────────────────────────────────────
 
 fn settle_shown(c: &mut Call, r: Result<(V, V), V>) -> Answer {
     let (t, n) = r.unwrap_or_else(|e| (e.clone(), e));
@@ -930,7 +928,7 @@ fn cell_money(u: &crate::unit_dims::UnitCell) -> Json {
     }
 }
 
-/// `settleLedgerOnCore`: a ledger's scalar cells on the core, a unit column crossing as its amounts. A row's list
+/// A ledger's scalar cells on the core, a unit column crossing as its amounts. A row's list
 /// reads as the names it holds, and as no amount.
 fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
     let amount_names = ["amount", "cost", "total", "price", "spend"];
@@ -1045,9 +1043,9 @@ fn frame_cube_cells(col: &Column) -> Vec<V> {
         .collect()
 }
 
-// ─── Decision Sensitivity (frame.ts, frameVerbs.ts) ─────────────────────────────
+// ─── Decision Sensitivity ───────────────────────────────────────────────────────
 
-/// `decisionSensitivity`: the options ranked under each scenario's weights.
+/// The options ranked under each scenario's weights.
 fn decision_sensitivity_cube(
     scores: &FrameValue,
     scen: &FrameValue,
@@ -1159,7 +1157,7 @@ fn decision_sensitivity(c: &mut Call) -> Answer {
 }
 // ─── The core's frame functions ───────────────────────────────────────────────
 
-// ─── Units on columns (unitColumn.ts) ───────────────────────────────────────────
+// ─── Units on columns ───────────────────────────────────────────────────────────
 
 /// A unit's dimension as a column unit's JSON holds it.
 fn dim_json(dim: &crate::unit_dims::Dim) -> Json {
@@ -1168,7 +1166,7 @@ fn dim_json(dim: &crate::unit_dims::Dim) -> Json {
 
 const CURRENCY_SYMBOL: [(&str, &str); 4] = [("$", "usd"), ("€", "eur"), ("£", "gbp"), ("¥", "jpy")];
 
-/// `columnUnitFromSpec`: a currency symbol, or a display unit's id once the format's digits are stripped.
+/// A currency symbol, or a display unit's id once the format's digits are stripped.
 pub(crate) fn column_unit_from_spec(spec: &str) -> Option<Json> {
     let s = js_trim(spec);
     for (sym, id) in CURRENCY_SYMBOL {
@@ -1185,7 +1183,7 @@ pub(crate) fn column_unit_from_spec(spec: &str) -> Option<Json> {
     Some(json!({ "dim": dim_json(&u.dim), "display": token }))
 }
 
-/// `parseColumnUnitFromHeader`: `Price (usd)` is the column `Price` in usd; a header with no unit reads whole.
+/// `Price (usd)` is the column `Price` in usd; a header with no unit reads whole.
 pub(crate) fn parse_column_unit_from_header(header: &str) -> (String, Option<Json>) {
     let name = js_trim(header);
     // /^(.*?)\s*\(([^)]+)\)\s*$/
@@ -1220,7 +1218,7 @@ pub(crate) fn tag_cell_unit(v: &V, unit: &Json) -> V {
     super::units::tag(*n, dim, None)
 }
 
-/// `tagCubeCellUnit`: a list item by item.
+/// A list item by item.
 pub(crate) fn tag_cube_cell_unit(v: &V, unit: &Json) -> V {
     match v {
         V::List(l) => list(l.iter().map(|x| tag_cube_cell_unit(x, unit)).collect()),
@@ -1228,7 +1226,7 @@ pub(crate) fn tag_cube_cell_unit(v: &V, unit: &Json) -> V {
     }
 }
 
-// ─── Cubes (frame.ts) ───────────────────────────────────────────────────────────
+// ─── Cubes ──────────────────────────────────────────────────────────────────────
 
 pub(crate) fn cube_v(columns: Vec<CubeColumn>) -> V {
     V::Cube(Rc::new(Cube { columns }))
@@ -1238,14 +1236,13 @@ pub(crate) fn cube_row_count(c: &Cube) -> usize {
     c.columns.iter().map(|col| col.cells.len()).max().unwrap_or(0)
 }
 
-/// `cubeFromColumns`: the names made unique as `makeHeaders` makes them.
+/// The names made unique as `makeHeaders` makes them.
 pub(crate) fn cube_from_columns(cols: Vec<CubeColumn>) -> V {
     let names: Vec<String> = cols.iter().map(|c| c.name.clone()).collect();
     let names = crate::frame::make_headers(&names, cols.len());
     cube_v(cols.into_iter().zip(names).map(|(c, name)| CubeColumn { name, ..c }).collect())
 }
 
-/// `selectCubeRows`.
 pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> V {
     cube_v(
         cube.columns
@@ -1258,7 +1255,7 @@ pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> V {
     )
 }
 
-/// `frameFromRows`: a column per position, each inferred (`inferColumn`).
+/// A column per position, each inferred (`inferColumn`).
 pub(crate) fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
     let ncols = rows.iter().map(Vec::len).max().unwrap_or(0);
     let names = crate::frame::make_headers(&[], ncols);
@@ -1275,7 +1272,7 @@ pub(crate) fn frame_from_rows(rows: &[Vec<V>]) -> Frame {
     Frame { columns, total_rows: None, approx: None }
 }
 
-/// `widenToFrame`: a table, a list as one row, a value as one cell.
+/// A table, a list as one row, a value as one cell.
 pub(crate) fn widen_to_frame(v: &V) -> Frame {
     match v {
         V::List(rows) if matches!(rows.first(), Some(V::List(_))) => frame_from_rows(
@@ -1286,7 +1283,7 @@ pub(crate) fn widen_to_frame(v: &V) -> Frame {
     }
 }
 
-// ─── Add Column, Get Row (frame.ts) ─────────────────────────────────────────────
+// ─── Add Column, Get Row ────────────────────────────────────────────────────────
 
 /// The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items
 /// included, and a replaced column keeps its place and format.
@@ -1406,9 +1403,9 @@ fn get_row(c: &mut Call) -> Answer {
     shown_frame(c, "frame", frame_v(columns))
 }
 
-// ─── XLOOKUP (frame.ts) ─────────────────────────────────────────────────────────
+// ─── XLOOKUP ────────────────────────────────────────────────────────────────────
 
-/// `keysInDisplayUnit`: a unit key column read as the numbers it shows in its first cell's unit; a key of another
+/// A unit key column read as the numbers it shows in its first cell's unit; a key of another
 /// dimension never matches.
 fn keys_in_display_unit(cells: &[V]) -> Vec<V> {
     use crate::unit_expression::display_magnitude_of;
@@ -1435,7 +1432,7 @@ fn keys_in_display_unit(cells: &[V]) -> Vec<V> {
         .collect()
 }
 
-/// `inferCubeKeyType`: the one kind every filled cell is, text otherwise.
+/// The one kind every filled cell is, text otherwise.
 fn infer_cube_key_type(cells: &[V]) -> FrameColType {
     let (mut num, mut bool, mut other) = (false, false, false);
     for v in cells {
@@ -1457,7 +1454,7 @@ fn infer_cube_key_type(cells: &[V]) -> FrameColType {
     }
 }
 
-/// `lookupRowIndex` over a Cube's key column (a frame's read as `frameToCube` reads it): its keys as the numbers
+/// Row indices over a Cube's key column (a frame's read as `frameToCube` reads it): its keys as the numbers
 /// they show, matched on the core.
 fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str) -> Result<i64, V> {
     let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else {
@@ -1475,7 +1472,7 @@ fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str
     }
 }
 
-/// `frameToCube`: each column's cells in its unit.
+/// Each column's cells in its unit.
 pub(crate) fn frame_to_cube(f: &Frame) -> Cube {
     Cube {
         columns: f
@@ -1494,8 +1491,8 @@ pub(crate) fn frame_to_cube(f: &Frame) -> Cube {
     }
 }
 
-/// `lookupOnCore`: every lookup's match over a frame in one call, each row index (`ret` None) or Return cell
-/// (`undefined` where nothing matched), the Return column's unit tagged back on. None where the TS reads the Cube.
+/// Every lookup's match over a frame in one call, each row index (`ret` None) or Return cell (`undefined` where
+/// nothing matched), the Return column's unit tagged back on. None where the lookup reads the Cube instead.
 fn lookup_on_core(
     src: &Frame,
     in_col: &str,
@@ -1546,7 +1543,7 @@ fn lookup_on_core(
     }))
 }
 
-/// `frameRowAt`: the row as a one-row frame, its columns' units and formats kept.
+/// The row as a one-row frame, its columns' units and formats kept.
 fn frame_row_at(f: &Frame, i: usize) -> V {
     frame_v(
         f.columns
@@ -1556,7 +1553,6 @@ fn frame_row_at(f: &Frame, i: usize) -> V {
     )
 }
 
-/// `cubeRowAt`.
 fn cube_row_at(c: &Cube, i: usize) -> V {
     cube_from_columns(
         c.columns
@@ -1679,7 +1675,7 @@ fn shown_value(c: &mut Call, v: V) -> Answer {
     Ok(vec![("value".into(), v)])
 }
 
-// ─── Nest, Unnest (frame.ts) ────────────────────────────────────────────────────
+// ─── Nest, Unnest ───────────────────────────────────────────────────────────────
 
 /// `readColumnList`: the names a text list holds, null where it reads blank.
 fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
@@ -1694,7 +1690,7 @@ fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
     }
 }
 
-/// `nestFrame`: a row per distinct key, the other columns as a nested table in it.
+/// A row per distinct key, the other columns as a nested table in it.
 fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<V, V> {
     use crate::frame_fns::FrameOut;
     let args = [list(keys.iter().map(|k| V::str(k)).collect()), V::str(name)];
@@ -1771,7 +1767,7 @@ fn inferred(name: &str, cells: &[V], format: Option<Json>) -> Column {
     col
 }
 
-/// `unnestCube`: each nested row (a list's items, a table's or a Cube's rows) under a copy of its parent row.
+/// Each nested row (a list's items, a table's or a Cube's rows) under a copy of its parent row.
 fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
     let Some(at) = c.columns.iter().position(|col| col.name == nested_name) else {
         return Err(err(ErrorCode::Ref, format!("column \"{nested_name}\" not found")));
@@ -1912,9 +1908,9 @@ fn unnest(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out)
 }
 
-// ─── Build Cube, Cube Columns (cube.ts) ─────────────────────────────────────────
+// ─── Build Cube, Cube Columns ───────────────────────────────────────────────────
 
-/// `literalCell`: the typed literal, else the text one, else blank.
+/// The typed literal, else the text one, else blank.
 fn literal_cell(c: &Call, key: &str) -> V {
     if c.literals.contains_key(key) {
         return c.literal(key);
@@ -1950,7 +1946,7 @@ fn build_cube(c: &mut Call) -> Answer {
     shown_cube(c, out)
 }
 
-/// `cubeColumnFromValue`: a Cube's first column, a table as one cell, a list's items, a value as one cell.
+/// A Cube's first column, a table as one cell, a list's items, a value as one cell.
 fn cube_column_from_value(v: &V) -> Vec<V> {
     match v {
         V::Null | V::Undef => Vec::new(),
@@ -1996,7 +1992,7 @@ fn cube_columns(c: &mut Call) -> Answer {
     shown_cube(c, cube_from_columns(padded))
 }
 
-// ─── Nest Join (cube.ts) ────────────────────────────────────────────────────────
+// ─── Nest Join ──────────────────────────────────────────────────────────────────
 
 /// `getColumn`: by name, or by a 1-based position written as digits.
 fn card_column<'a>(f: &'a Frame, name: &str) -> Option<&'a Column> {
@@ -2011,7 +2007,7 @@ fn card_column<'a>(f: &'a Frame, name: &str) -> Option<&'a Column> {
     None
 }
 
-/// `keyId`: the text a cell keys a join by, a unit cell by its dimension, currency and rounded base value.
+/// The text a cell keys a join by, a unit cell by its dimension, currency and rounded base value.
 fn key_id(v: &V) -> String {
     match v {
         V::Null | V::Undef => "~null".into(),
@@ -2037,7 +2033,7 @@ fn key_id(v: &V) -> String {
     }
 }
 
-/// `keyIdInColumn`: a number in a unit column keys as the unit cell it shows.
+/// A number in a unit column keys as the unit cell it shows.
 fn key_id_in_column(v: &V, unit: Option<&Json>) -> String {
     match (unit, v) {
         (Some(u), V::Num(n)) if n.is_finite() => key_id(&tag_cell_unit(v, u)),
@@ -2045,7 +2041,7 @@ fn key_id_in_column(v: &V, unit: Option<&Json>) -> String {
     }
 }
 
-/// `cellKeyId`: none for a blank, an error or a nested cell.
+/// None for a blank, an error or a nested cell.
 fn cell_key_id(v: &V, unit: Option<&Json>) -> Option<String> {
     match v {
         V::Null | V::Undef | V::Err(_) => None,
@@ -2055,7 +2051,7 @@ fn cell_key_id(v: &V, unit: Option<&Json>) -> Option<String> {
     }
 }
 
-/// `subFrame`: the rows picked, their typed text kept.
+/// The rows picked, their typed text kept.
 fn sub_frame(f: &Frame, rows: &[usize]) -> V {
     frame_v(
         f.columns
@@ -2176,7 +2172,7 @@ fn nest_join(c: &mut Call) -> Answer {
     shown_cube(c, out)
 }
 
-// ─── Cube Rollup (cube.ts) ──────────────────────────────────────────────────────
+// ─── Cube Rollup ────────────────────────────────────────────────────────────────
 
 /// A unit cell's column unit, `{ dim, display }`.
 fn cell_column_unit(u: &crate::unit_dims::UnitCell) -> Json {
@@ -2188,7 +2184,7 @@ fn cell_column_unit(u: &crate::unit_dims::UnitCell) -> Json {
     Json::Object(o)
 }
 
-/// `matrixCellsFromList`: each unit cell as the number it shows, and the one unit they share, if they do.
+/// Each unit cell as the number it shows, and the one unit they share, if they do.
 pub(crate) fn matrix_cells_from_list(cells: &[V]) -> (Vec<V>, Option<Json>) {
     let mags = cells
         .iter()
@@ -2323,7 +2319,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
     shown_frame(c, "frame", frame_v(columns))
 }
 
-// ─── Decision Matrix (frame.ts) ─────────────────────────────────────────────────
+// ─── Decision Matrix ────────────────────────────────────────────────────────────
 
 use crate::decision::{Normalize, Resolved};
 
@@ -2336,7 +2332,7 @@ fn round4(n: f64) -> f64 {
     }
 }
 
-/// `rankOptions`: the ranking, the input row behind each of its rows, and where its Score column sits (Rank follows).
+/// The ranking, the input row behind each of its rows, and where its Score column sits (Rank follows).
 fn rank_options(
     f: &FrameValue,
     r: &Resolved,
@@ -2478,7 +2474,7 @@ fn flat_cube_scalar(c: &Cube) -> FrameValue {
     }
 }
 
-/// `rankAny`: a frame ranked as the Decision Matrix ranks it, a Cube with its nested choices.
+/// A frame ranked as the Decision Matrix ranks it, a Cube with its nested choices.
 fn rank_any(t: &V, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Result<Ranked, SolError> {
     if let V::Cube(k) = t {
         return rank_cube(k, wf, normalize, breakdown);
@@ -2508,7 +2504,7 @@ fn table_pick(t: &V, rows: &[usize]) -> V {
     }
 }
 
-/// `withinGroup`: a slice of a pooled ranking with its ranks recounted within the slice, and its best row.
+/// A slice of a pooled ranking with its ranks recounted within the slice, and its best row.
 fn within_group(t: &V, score_at: usize, rank_at: usize) -> (V, Best) {
     let cols = table_columns(t);
     let scores = cols.get(score_at).map(|c| c.2.clone()).unwrap_or_default();
@@ -2559,7 +2555,7 @@ fn strict_eq(a: &V, b: &V) -> bool {
     }
 }
 
-/// `poolTables`: tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube.
+/// Tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube.
 fn pool_tables(ts: &[V]) -> V {
     let mut names: Vec<String> = Vec::new();
     let mut types: Vec<Option<FrameColType>> = Vec::new();
@@ -2626,7 +2622,7 @@ fn pool_tables(ts: &[V]) -> V {
     )
 }
 
-/// `rankNested`: one nested column's tables scored together and split back to their rows, each ranked within itself;
+/// One nested column's tables scored together and split back to their rows, each ranked within itself;
 /// None where the tables hold nothing to score.
 fn rank_nested(
     cells: &[V],
@@ -2717,7 +2713,7 @@ fn rank_nested(
     Ok(Some(out))
 }
 
-/// `rankCube` ([[C126]] chainedDecisions): the nested tables under each column ranked together, each row counting its
+/// [[C126]] chainedDecisions: the nested tables under each column ranked together, each row counting its
 /// best acceptable one as a criterion named after the column, a row with nothing acceptable inside ruled out by it.
 fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Result<Ranked, SolError> {
     let rows = cube_row_count(c);
@@ -2822,9 +2818,9 @@ fn decision_matrix(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out.unwrap_or_else(V::err))
 }
 
-// ─── Reconcile, Build Frame, Frame from Lists (frame.ts) ────────────────────────
+// ─── Reconcile, Build Frame, Frame from Lists ───────────────────────────────────
 
-/// `colTypeForSocket`: the element family of a socket's type, as a frame column's type.
+/// The element family of a socket's type, as a frame column's type.
 fn col_type_for_socket(dt: Option<&str>) -> Option<&'static str> {
     Some(match dt? {
         "number" | "list" | "numlist" | "table" => "number",
@@ -2835,7 +2831,7 @@ fn col_type_for_socket(dt: Option<&str>) -> Option<&'static str> {
     })
 }
 
-/// `toAnyMatrix`: a table as it is, a list as one row, a value as one cell; a later item that isn't a row is a
+/// A table as it is, a list as one row, a value as one cell; a later item that isn't a row is a
 /// one-cell row.
 fn to_any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
     match v {
@@ -2983,7 +2979,7 @@ fn locale_number(n: f64, fd: usize) -> String {
     }
 }
 
-/// `summarizeReconcile`: markdown without headings, so it reads as plain text in a hero box.
+/// Markdown without headings, so it reads as plain text in a hero box.
 fn summarize_reconcile(s: &V) -> String {
     use crate::jsnum::number_to_string as js;
     let items = super::stats::items(s);

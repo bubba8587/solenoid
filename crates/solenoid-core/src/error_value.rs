@@ -1,10 +1,10 @@
 // [[C130]] rustCore
-//! Port of `src/graph/errorValue.ts` (the parts the frame verbs use).
+//! Solenoid's error values, the parts the core uses.
 
 use crate::spelled::spelled;
 
 spelled! {
-    /// Solenoid's error codes (`SolErrorCode` in errorValue.ts).
+    /// Solenoid's error codes.
     pub enum ErrorCode {
         DivZero = "#DIV/0!",
         NotAvailable = "#N/A",

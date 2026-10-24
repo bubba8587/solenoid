@@ -1,7 +1,6 @@
 // [[C130]] rustCore
-//! Port of the distribution kernels in `src/graph/nodes/mathUtils.ts` and of `DIST_SPECS` (distributionOps.ts):
-//! the same series, continued fractions and bisections, over V8's `Math`.
-// The constants are the TS's digits as written; a range test has to let a NaN through as the TS's does.
+//! The distribution kernels: series, continued fractions and bisections over V8's `Math`.
+// The constants' digits are as written; a range test has to let a NaN through.
 #![allow(clippy::excessive_precision, clippy::manual_range_contains)]
 
 use crate::fdlibm::{exp, log, sin};
@@ -405,7 +404,7 @@ pub(crate) fn binom_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
     Some(exp(ln_combin(n, k) + k * log(p) + (n - k) * log(1.0 - p)))
 }
 
-/// `binomInvBySearch` (distributionOps.ts): the least k whose CDF reaches `alpha`, by capped halvings of [0, n].
+/// The least k whose CDF reaches `alpha`, by capped halvings of [0, n].
 fn binom_inv_by_search(n: f64, p: f64, alpha: f64) -> Option<f64> {
     let (mut lo, mut hi) = (0.0f64, n);
     let mut step = 0;

@@ -91,7 +91,7 @@ fn env_currency_code(v: &V, dim: &Dim) -> Option<String> {
     code
 }
 
-/// `sharedDisplay`: the one display unit every dimensioned input cell is shown in.
+/// The one display unit every dimensioned input cell is shown in.
 fn shared_display(values: &[&V]) -> Option<(String, DisplayUnit)> {
     let all: Vec<V> = values.iter().flat_map(|v| flat(v, 2)).collect();
     let mut id: Option<&UnitCell> = None;
@@ -121,7 +121,7 @@ fn all_readings(values: &[&V]) -> bool {
     !dimmed.is_empty() && dimmed.iter().all(|u| is_affine_display(u))
 }
 
-/// `dimPowerOf`: the k with dim = base^k, or None.
+/// The k with dim = base^k, or None.
 pub(crate) fn dim_power_of(dim: &Dim, base: &Dim) -> Option<f64> {
     let mut k: Option<f64> = None;
     for key in dim.keys().chain(base.keys().filter(|b| !dim.contains_key(*b))) {
@@ -150,7 +150,7 @@ fn js_max(a: f64, b: f64) -> f64 {
     }
 }
 
-/// `displayMagnitudeOf`: a cell's magnitude in its display unit, rounded at the larger term's precision.
+/// A cell's magnitude in its display unit, rounded at the larger term's precision.
 pub fn display_magnitude_of(c: &UnitCell) -> f64 {
     match display_unit(c) {
         Some(u) if dim_equal(&u.dim, &c.dim) => {
@@ -188,7 +188,7 @@ fn strip_units(v: &V) -> V {
     }
 }
 
-/// `tagResult`: a cell the result may hold, an engine error as a SolError, NaN as #DOMAIN!, anything else blank.
+/// A cell the result may hold, an engine error as a SolError, NaN as #DOMAIN!, anything else blank.
 fn tag_result(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) | V::Cx(..) => v.clone(),

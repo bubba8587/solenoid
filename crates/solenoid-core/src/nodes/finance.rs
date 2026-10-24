@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[D101]] financeCarriesMoney. `nodes/finance.ts`'s card bodies:
+//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[D101]] financeCarriesMoney. The finance cards' bodies:
 //! depreciation, cash flows, securities, coupons, bonds, payments and returns. A card reads its money as its formula
 //! does, and a money answer carries that currency.
 
@@ -85,12 +85,12 @@ fn cells(v: &V) -> Vec<Cell> {
         .collect()
 }
 
-/// `cashPrep`: the first error, else each cell as a number, anything else 0.
+/// The first error, else each cell as a number, anything else 0.
 fn cash_prep(v: &V) -> Result<Vec<V>, V> {
     f::cash_prep(&cells(v)).map(|ns| ns.into_iter().map(V::Num).collect()).map_err(V::err)
 }
 
-/// `datedPrep`: the values' first error, then the dates', then `None` for a blank date.
+/// The values' first error, then the dates', then `None` for a blank date.
 type Dated = Option<(Vec<V>, Vec<V>)>;
 
 fn dated_prep(values: &V, dates: &V) -> Result<Dated, V> {

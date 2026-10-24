@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! Solenoid's headless core, for wasm and native. The Rust is the spec: it began as a port of the TypeScript and keeps
-//! its names and order of operations where a fixture depends on them (`tree/specs/computation/rust-core.md`).
+//! Solenoid's headless core, for wasm and native. The Rust is the spec, and keeps its names and order of operations
+//! where a fixture depends on them (`tree/specs/computation/rust-core.md`).
 #![allow(clippy::neg_cmp_op_on_partial_ord, reason = "`!(a < b)` is how JS reads a comparison that NaN fails")]
 #![allow(clippy::manual_range_contains, reason = "`x < lo || x > hi` lets NaN through, and `contains` would not")]
 #![allow(clippy::needless_range_loop, reason = "the matrix bodies index rows and columns as the math writes them")]

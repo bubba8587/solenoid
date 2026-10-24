@@ -1,5 +1,5 @@
 // [[C130]] rustCore
-//! Excel's FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP (`excelFunctions.ts`, over `listOps.ts`' grid helpers), over
+//! Excel's FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP, over
 //! JavaScript-shaped values: a matrix is a table, a list one row, a lone value one cell.
 
 use std::cmp::Ordering;
@@ -42,7 +42,7 @@ fn cells(r: &V) -> Vec<V> {
     }
 }
 
-/// `asRowsOf`: a matrix is its rows; anything else is one row, flagged to go back as a list.
+/// A matrix is its rows; anything else is one row, flagged to go back as a list.
 fn as_rows_of(v: &V) -> (Grid, bool) {
     match v {
         V::List(rows) if is_matrix(v) => (rows.iter().map(cells).collect(), false),
@@ -56,7 +56,7 @@ fn matrix(m: Grid) -> V {
     V::List(Rc::new(m.into_iter().map(|r| V::List(Rc::new(r))).collect()))
 }
 
-/// `backToList`: a list's answer is a list again while one row is left.
+/// A list's answer is a list again while one row is left.
 fn back_to_list(mut m: Grid, list: bool) -> V {
     if list && m.len() <= 1 {
         return V::List(Rc::new(m.pop().unwrap_or_default()));
@@ -74,7 +74,7 @@ fn sorts_last(v: &V) -> bool {
     matches!(v, V::Null | V::Undef | V::Err(_)) || matches!(v, V::Num(n) if n.is_nan())
 }
 
-/// `compareListCells`, with `a - b` for numbers: two equal infinities give NaN, which the sort reads as a tie that
+/// With `a - b` for numbers: two equal infinities give NaN, which the sort reads as a tie that
 /// ends the comparison, so the caller returns `None` there.
 fn compare_list_cells(a: &V, b: &V) -> Option<Ordering> {
     let kind = |v: &V| match v {
@@ -102,7 +102,7 @@ fn compare_list_cells(a: &V, b: &V) -> Option<Ordering> {
     }
 }
 
-/// `sortedIndexByKeys`: a stable order of `n` positions, earliest key first, blanks, errors and NaN last either way.
+/// A stable order of `n` positions, earliest key first, blanks, errors and NaN last either way.
 fn sorted_index_by_keys(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..n).collect();
     js_sort_by(&mut idx, |&i, &j| {
@@ -133,7 +133,7 @@ enum Dir {
     Any,
 }
 
-/// `lineShape`: a list or 1 × n table is a row, an n × 1 table a column, one value either; anything else neither.
+/// A list or 1 × n table is a row, an n × 1 table a column, one value either; anything else neither.
 fn line_shape(v: &V) -> (Option<Dir>, Vec<V>) {
     match v {
         V::List(rows) if is_matrix(v) => {
@@ -151,7 +151,7 @@ fn line_shape(v: &V) -> (Option<Dir>, Vec<V>) {
     }
 }
 
-/// `lineAxis`: Some(true) for rows when the lines are columns, Some(false) for columns when they are rows; lines that
+/// Some(true) for rows when the lines are columns, Some(false) for columns when they are rows; lines that
 /// are all one value follow the table's long side. None when they disagree or one is neither.
 fn line_axis(m: &Grid, dirs: &[Option<Dir>]) -> Option<bool> {
     if dirs.iter().any(Option::is_none) {
@@ -193,12 +193,12 @@ fn pick(m: &Grid, rows: bool, keep: &[usize]) -> Grid {
     }
 }
 
-/// `truthy` in excelFunctions.ts: anything but a blank, FALSE or 0.
+/// Anything but a blank, FALSE or 0.
 fn truthy(v: &V) -> bool {
     !absent(v) && !matches!(v, V::Bool(false)) && !matches!(v, V::Num(n) if *n == 0.0)
 }
 
-/// `sortOrder`: 1 ascends, -1 descends.
+/// 1 ascends, -1 descends.
 fn sort_order(f: &str, o: &V) -> Result<bool, V> {
     let n = if absent(o) { 1.0 } else { to_num(o) };
     if n == 1.0 {
@@ -225,7 +225,6 @@ fn slice<T: Clone>(arr: &[T], start: f64, end: Option<f64>) -> Vec<T> {
     }
 }
 
-/// `takeSlice`.
 fn take_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
     if n == 0.0 {
         return arr.to_vec();
@@ -237,7 +236,6 @@ fn take_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
     }
 }
 
-/// `dropSlice`.
 fn drop_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
     if n == 0.0 {
         return arr.to_vec();

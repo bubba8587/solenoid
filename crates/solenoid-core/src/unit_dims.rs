@@ -413,7 +413,7 @@ fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Op
 type Dim2 = BTreeMap<String, Dim>;
 
 thread_local! {
-    /// `scopeFns`: the LAMBDAs the formula being read calls by name (a computed column's `λ1`).
+    /// The LAMBDAs the formula being read calls by name (a computed column's `λ1`).
     static SCOPE_FNS: std::cell::RefCell<NamedLambdas> = const { std::cell::RefCell::new(BTreeMap::new()) };
 }
 
@@ -586,7 +586,7 @@ fn host_dim(args: &[Ast], host: &Host, lam: &Lam, env: &Dim2, codes: &Codes) -> 
     apply_dim(lam, &bound.into_iter().map(|o| Ok(Some(o))).collect::<Vec<_>>(), env, codes)
 }
 
-/// `dimEvalWithCode`: the result's dimension and currency code, a conflict, or None where it is indeterminate.
+/// The result's dimension and currency code, a conflict, or None where it is indeterminate.
 pub fn dim_eval_with_code(
     node: &Ast,
     env: &BTreeMap<String, Dim>,
@@ -887,7 +887,7 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
     }
 }
 
-/// `affineWeight`: 1 is a reading, 0 a difference or a plain number, else #UNIT!.
+/// 1 is a reading, 0 a difference or a plain number, else #UNIT!.
 pub fn affine_weight(node: &Ast, scope: &AffScope) -> Result<u8, SolError> {
     let r = aff_eval(node, scope)?;
     if (r.w - 1.0).abs() < 1e-12 {

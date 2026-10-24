@@ -1,4 +1,4 @@
-//! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. `nodes/logic.ts`: comparisons, IF and its kin, the Boolean
+//! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. Comparisons, IF and its kin, the Boolean
 //! reducers and the parity tests.
 
 use super::kit::core_call;
@@ -31,7 +31,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     })
 }
 
-/// `broadcastEl`: the body over the arguments, item by item where any is a list, a ragged position null; a cell
+/// The body over the arguments, item by item where any is a list, a ragged position null; a cell
 /// holding an error answers it, a missing one flows into the body.
 fn broadcast_el(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     let cell = |ops: &[&V]| match ops.iter().find(|a| a.is_sol_error()) {
@@ -55,7 +55,7 @@ fn broadcast_el(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     )
 }
 
-/// `triBool`: a wired logical or a typed 0/1, blank unknown.
+/// A wired logical or a typed 0/1, blank unknown.
 fn tri_bool(x: &V) -> Option<bool> {
     match x {
         V::Null => None,
@@ -91,7 +91,7 @@ fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     }
 }
 
-/// `ifTest`: a value read as a condition; blank and an error pass through.
+/// A value read as a condition; blank and an error pass through.
 fn if_test(v: &V) -> V {
     match v {
         V::Null | V::Err(_) | V::Bool(_) => v.clone(),
@@ -120,7 +120,7 @@ fn or_null(v: V) -> V {
     }
 }
 
-/// `typedLiteral`: the slot's typed text, else its typed number.
+/// The slot's typed text, else its typed number.
 fn typed_literal(c: &Call, key: &str) -> V {
     match c.string_literal(key) {
         V::Undef => c.literal(key),
@@ -128,7 +128,7 @@ fn typed_literal(c: &Call, key: &str) -> V {
     }
 }
 
-/// `pickSlot`: a connected cable wins even carrying null.
+/// A connected cable wins even carrying null.
 pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
     match c.wired(key) {
         Some([first, ..]) => first.clone(),
@@ -139,7 +139,7 @@ pub(crate) fn pick_slot(c: &Call, key: &str) -> V {
     }
 }
 
-/// `isSet`: a cable or a typed literal.
+/// A cable or a typed literal.
 fn is_set(c: &Call, key: &str) -> bool {
     c.wired(key).is_some() || !matches!(typed_literal(c, key), V::Undef)
 }
@@ -172,7 +172,7 @@ fn select(c: &mut Call, key: Option<&str>) {
     c.show("_selectedUnitKey", key.map_or(V::Null, V::str));
 }
 
-/// `compareUnits` then `compareOp`; different dimensions are unequal and unordered.
+/// Units compared, then the op; different dimensions are unequal and unordered.
 fn compare_cell(op: &str, x: &V, y: &V) -> V {
     if matches!(x, V::Null) || matches!(y, V::Null) {
         return V::Null;
@@ -413,7 +413,7 @@ fn if_error(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), r)])
 }
 
-/// `fitsColumn`: whether a fallback can sit in a column of this type without blending families.
+/// Whether a fallback can sit in a column of this type without blending families.
 fn fits_column(fallback: &V, ty: Option<FrameColType>) -> bool {
     let Some(ty) = ty else { return true };
     match fallback {
@@ -426,7 +426,7 @@ fn fits_column(fallback: &V, ty: Option<FrameColType>) -> bool {
     }
 }
 
-/// `replaceCaught`: each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
+/// Each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
 /// where a fallback that doesn't suit its column is that cell's `#TYPE!`.
 fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Option<FrameColType>) -> V {
     match value {

@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! Port of `frameVerbs.ts`' weighted scoring: the Decision Matrix ranking, its flip points, and the Allocator.
+//! The weighted scoring: the Decision Matrix ranking, its flip points, and the Allocator.
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -133,7 +133,7 @@ pub(crate) fn round4(n: f64) -> f64 {
     }
 }
 
-/// `decisionColumns`: the first text column labels the options; every other number or logical column is a criterion.
+/// The first text column labels the options; every other number or logical column is a criterion.
 pub(crate) fn decision_columns(f: &FrameValue) -> (Option<usize>, Vec<usize>) {
     let label = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let criteria = (0..f.columns.len())
@@ -249,7 +249,6 @@ pub struct Resolved {
     pub(crate) bounds: Option<Vec<Bound>>,
 }
 
-/// `resolveDecisionWeights`.
 pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> Res<Resolved> {
     let Some(wf) = wf else { return Ok(Resolved { weights: None, overrides: HashMap::new(), bounds: None }) };
     let rows = criterion_row_index(wf);
@@ -518,7 +517,6 @@ struct Flip {
     who: usize,
 }
 
-/// `flipPoints`.
 pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize) -> Res<FrameValue> {
     let criteria = criteria_names(f);
     if criteria.is_empty() {
@@ -601,7 +599,7 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
     })
 }
 
-// ─── Allocator (allocateOps.ts) ─────────────────────────────────────────────────
+// ─── Allocator ──────────────────────────────────────────────────────────────────
 
 fn sum(xs: &[f64]) -> f64 {
     xs.iter().fold(0.0, |a, b| a + b)
@@ -718,7 +716,7 @@ fn allocate_proportional(mins: &[f64], maxs: &[f64], weights: &[f64]) -> Vec<f64
     (0..mins.len()).map(|i| clamp_range(if w[i] > 0.0 { k * w[i] } else { mins[i] }, mins[i], maxs[i])).collect()
 }
 
-/// `allocateFrame`: None for a mode it doesn't know.
+/// None for a mode it doesn't know.
 pub fn allocate_frame(f: &FrameValue, mode: &str, amount: f64) -> Option<Res<FrameValue>> {
     if !matches!(mode, "budget" | "minTarget" | "minProportional") {
         return None;

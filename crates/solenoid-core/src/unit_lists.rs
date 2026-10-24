@@ -1,5 +1,5 @@
 // [[C25]] firstClassUnits, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
-//! The list bodies that read values with a unit (`listOps.ts` over `unitValue.ts`): RUNNING's unit branch, and the
+//! The list bodies that read values with a unit: RUNNING's unit branch, and the
 //! key a unit cell takes in a set.
 
 use std::rc::Rc;
@@ -43,7 +43,6 @@ fn sorted_keys(dim: &Dim) -> Vec<&String> {
     keys
 }
 
-/// `formatDim` (`dimension.ts`).
 pub fn format_dim(dim: &Dim) -> String {
     if is_dimensionless(dim) {
         return String::new();
@@ -176,7 +175,7 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
     Ok(Prep { dim: dim.unwrap_or_default(), display, nums })
 }
 
-/// `tagDim`: a dimensionless value is a plain number.
+/// A dimensionless value is a plain number.
 pub fn tag_dim(value: f64, dim: Dim, display: Option<String>) -> V {
     if is_dimensionless(&dim) {
         return V::Num(value);
@@ -245,7 +244,7 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
 /// `setKey` of a unit cell: its base-SI magnitude at 15 significant digits and its dimension, so 5 km and 5000 m are
 /// one member.
 pub fn unit_set_key(u: &UnitCell) -> String {
-    // A zero exponent is no dimension (`dimEqual`); JS's truthiness drops NaN with it.
+    // A zero exponent is no dimension; JS's truthiness drops NaN with it.
     let dims: Vec<String> = sorted_keys(&u.dim)
         .into_iter()
         .filter(|k| u.dim[*k] != 0.0 && !u.dim[*k].is_nan())

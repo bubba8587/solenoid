@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C15]] matricesInFormulas
-//! The array-aware evaluator (`excelFormula.ts`' `evalAst`): a formula over named values, the Expression card's
+//! The array-aware evaluator: a formula over named values, the Expression card's
 //! core. A value is a JS value: a list is an array, a matrix an array of arrays, a LAMBDA a `V::Lambda`.
 
 use crate::excel_formula::cell_to_v;
@@ -214,7 +214,7 @@ fn row_len(r: &V) -> Option<usize> {
     }
 }
 
-/// `mapCells`: the function over each cell of its arguments, by the broadcast-rules table.
+/// The function over each cell of its arguments, by the broadcast-rules table.
 pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
     if argv.iter().any(too_deep) {
         return V::err(sol_error(
@@ -364,7 +364,7 @@ fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
     }
 }
 
-/// `applyOp`, with complex and LAMBDA operands caught first.
+/// With complex and LAMBDA operands caught first.
 fn op2(op: BinOp, a: &V, b: &V) -> V {
     if a.is_err() {
         return a.clone();
@@ -478,7 +478,7 @@ impl<'a> RowCtx<'a> {
         ))
     }
 
-    /// `wholeOf`: a column as a one-column table, or its own whole read, built once.
+    /// A column as a one-column table, or its own whole read, built once.
     fn whole_of(&self, c: Col) -> V {
         self.wholes
             .borrow_mut()
@@ -589,7 +589,7 @@ pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
     /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
     memo_calls: bool,
-    /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
+    /// A range function called again with the very same arguments (a whole column, row after row).
     memo: RefCell<FxHashMap<*const Ast, Memo>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
     sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
@@ -1061,7 +1061,7 @@ impl Eval<'_> {
         })
     }
 
-    /// `dispatch`: the body itself, its JavaScript failure read as #VALUE!.
+    /// The body itself, its JavaScript failure read as #VALUE!.
     fn dispatch(&self, name: &str, t: Option<&Traits>, argv: &[V]) -> V {
         let (lambda_host, ported) = match t {
             Some(t) => (t.fast.lambda_host, t.fast.ported),
@@ -1082,7 +1082,7 @@ impl Eval<'_> {
         call_caught(name, argv)
     }
 
-    /// MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY (excelFunctions.ts), which call their LAMBDA back.
+    /// MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY, which call their LAMBDA back.
     fn host(&self, name: &str, a: &[V]) -> V {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(V::Undef);
         let last = if name == "MAP" {
@@ -1299,7 +1299,7 @@ fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
 }
 
-/// `asRows`: a matrix's rows, a list as one row, a value as a one-cell grid.
+/// A matrix's rows, a list as one row, a value as a one-cell grid.
 fn as_rows(v: &V) -> Option<Vec<Vec<V>>> {
     match v {
         V::Null | V::Undef => None,
@@ -1311,7 +1311,7 @@ fn as_rows(v: &V) -> Option<Vec<Vec<V>>> {
     }
 }
 
-/// `likeInput`: a matrix in answers a matrix; a list in answers its one row.
+/// A matrix in answers a matrix; a list in answers its one row.
 fn like_input(v: &V, mut rows: Vec<Vec<V>>) -> V {
     if !is_matrix(v) && rows.len() == 1 {
         return list(rows.pop().unwrap_or_default());
@@ -1331,7 +1331,7 @@ fn flat1(v: &V) -> V {
     }
 }
 
-/// `readVectors` ([[D85]] columnsStayColumns): a one-column or one-row table reads as its items.
+/// A one-column or one-row table reads as its items ([[D85]] columnsStayColumns).
 fn read_vectors(argv: &[V]) -> Option<(Vec<V>, bool)> {
     let mut first: Option<bool> = None;
     let mut changed = false;
@@ -1361,7 +1361,7 @@ fn read_vectors(argv: &[V]) -> Option<(Vec<V>, bool)> {
     changed.then_some((out, first == Some(true)))
 }
 
-/// `asColumn`: a list answer back as the column its input came in as.
+/// A list answer back as the column its input came in as.
 fn as_column(r: V) -> V {
     match &r {
         V::List(l) if !l.iter().any(is_arr) => list(l.iter().map(|x| list(vec![x.clone()])).collect()),
@@ -1369,8 +1369,8 @@ fn as_column(r: V) -> V {
     }
 }
 
-/// The error a body called by name answers before it runs, as a formula's call scans for one (`argumentError` in
-/// excelFormula.ts): an error argument, or for a range function an error among a list's cells. None for the error
+/// The error a body called by name answers before it runs, as a formula's call scans for one: an error argument,
+/// or for a range function an error among a list's cells. None for the error
 /// handlers, which read errors.
 pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
     let t = traits(name);
@@ -1388,7 +1388,7 @@ pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
     prep_range_args(t.prep, flat).err()
 }
 
-/// `prepRangeArgs`: a list's first error answers, then its blanks go as `prep` says.
+/// A list's first error answers, then its blanks go as `prep` says.
 fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
     if matches!(prep, Prep::Raw | Prep::Positional) {
         return Ok(argv);
@@ -1439,7 +1439,7 @@ fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
     })
 }
 
-/// `applyArgRoles`: each argument read by its role; the answer is which slots the null rule must not blank on.
+/// Each argument read by its role; the answer is which slots the null rule must not blank on.
 /// The slots a role settled beside the empty ones, or None where no role applies.
 fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Option<Vec<bool>> {
     if !t.has_roles() {
@@ -1460,7 +1460,7 @@ fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Op
     Some(settled)
 }
 
-/// `applyRole`; a picks role is read with `required` off, as `applyArgRoles` reads it.
+/// A picks role is read with `required` off, as `applyArgRoles` reads it.
 fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bool) -> V {
     if v.is_sol_error() {
         return v.clone();

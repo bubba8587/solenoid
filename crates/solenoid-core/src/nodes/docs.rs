@@ -1,8 +1,7 @@
-//! The cards that watch, format and write up values: Display and Alert (`nodes/display.ts`), Expect
-//! (`nodes/quality.ts`, [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format
-//! Controller (`nodes/formatController.ts`, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue), Template
-//! (`nodes/text.ts`), Frame Input (`nodes/frame.ts`, [[B17]] typedValueModel, [[D100]] computedColumnInfersUnit) and
-//! Record (`nodes/visual.ts`, [[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
+//! The cards that watch, format and write up values: Display and Alert, Expect ([[D79]] effectsEdgeTriggered,
+//! [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format Controller ([[D41]] formatFlowsDownstream, [[C118]]
+//! formatTravelsWithValue), Template, Frame Input ([[B17]] typedValueModel, [[D100]] computedColumnInfersUnit) and
+//! Record ([[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
 //! reconcile and a frame ref's read stay with the TS around these bodies.
 
 use super::columns::{
@@ -51,7 +50,7 @@ fn pass_on(c: &mut Call, from: &str, to: &str, v: V) -> (String, V) {
     (to.to_string(), v)
 }
 
-/// What the error guard answers for a TypeError the TS body throws.
+/// What the error guard answers for a TypeError a body throws.
 fn crashed(message: &str) -> V {
     err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
@@ -181,7 +180,7 @@ fn alert(c: &mut Call) -> Answer {
 
 // ─── Expect ─────────────────────────────────────────────────────────────────────
 
-/// `shownMagnitude`: a quantity in its display unit, else its base unit.
+/// A quantity in its display unit, else its base unit.
 fn shown_magnitude(u: &crate::unit_dims::UnitCell) -> f64 {
     match u.display.as_deref().and_then(crate::unit_catalog::fc_unit_to_unit) {
         Some(unit) => (u.value - unit.offset.unwrap_or(0.0)) / unit.scale,
@@ -189,7 +188,7 @@ fn shown_magnitude(u: &crate::unit_dims::UnitCell) -> f64 {
     }
 }
 
-/// `scalarCells`: every scalar cell, through lists, frames, cubes and the tables a cube's cells hold.
+/// Every scalar cell, through lists, frames, cubes and the tables a cube's cells hold.
 fn scalar_cells(v: &V, out: &mut Vec<V>) {
     match v {
         V::List(items) => items.iter().for_each(|x| scalar_cells(x, out)),
@@ -226,7 +225,7 @@ fn json_of(v: &V) -> String {
     }
 }
 
-/// `cellKey`: a quantity by its base value, so 5 m and 500 cm collide; anything else by type and text.
+/// A quantity by its base value, so 5 m and 500 cm collide; anything else by type and text.
 fn cell_key(v: &V) -> String {
     match v {
         V::Unit(u) => format!("u:{}", number_to_string(u.value)),
@@ -250,7 +249,7 @@ fn num_key(n: f64) -> u64 {
     }
 }
 
-/// `allowMatcher`: membership by meaning, numbers as numbers, TRUE/FALSE and text caseless, a typed date as its serial.
+/// Membership by meaning, numbers as numbers, TRUE/FALSE and text caseless, a typed date as its serial.
 struct Allowed {
     texts: HashSet<String>,
     nums: HashSet<u64>,
@@ -424,7 +423,7 @@ pub(crate) fn json_f64(v: &Json) -> f64 {
     }
 }
 
-/// `heldUnit`: a cell's unit, a flat list's first dimensioned cell's, or a table's own.
+/// A cell's unit, a flat list's first dimensioned cell's, or a table's own.
 fn held_unit(c: &Call, key: &str, v: &V) -> Option<UnitParts> {
     match v {
         V::Unit(u) => Some((u.dim.clone(), u.display.clone())),
@@ -440,7 +439,7 @@ fn held_unit(c: &Call, key: &str, v: &V) -> Option<UnitParts> {
     }
 }
 
-/// `withDisplay`: the same quantity shown in `id`.
+/// The same quantity shown in `id`.
 fn with_display(u: &UnitCell, id: &str) -> V {
     let shown = crate::unit_catalog::fc_unit_to_unit(id);
     V::Unit(Rc::new(UnitCell {
@@ -458,7 +457,7 @@ pub(crate) fn unit_err(detail: String) -> V {
     V::err(crate::unit_value::unit_error(&detail))
 }
 
-/// `applyFcUnit`: a number takes the unit, a quantity of its dimension shows in it, a table takes it as its own.
+/// A number takes the unit, a quantity of its dimension shows in it, a table takes it as its own.
 fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, custom_unit: &str) -> V {
     use crate::unit_lists::format_dim;
     let custom = id == "custom" && !js_trim(custom_unit).is_empty();
@@ -676,7 +675,7 @@ fn json_text(x: &Json, logical_upper: bool) -> String {
     }
 }
 
-/// `parseFrameSource`: the JSON columns a save writes, else CSV with a header row, each column's type read off its
+/// The JSON columns a save writes, else CSV with a header row, each column's type read off its
 /// cells.
 fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
     let trimmed = js_trim(text);
@@ -735,7 +734,7 @@ fn derive_column(s: &SourceColumn) -> Column {
 /// How many records Gallery, Cards, Board and List draw (`RECORD_CARD_CAP`).
 const RECORD_CARD_CAP: usize = 60;
 
-/// `recordRows`: the 0-based rows the picks name, in their order, 1-based with a negative counting from the end; no
+/// The 0-based rows the picks name, in their order, 1-based with a negative counting from the end; no
 /// picks is every row.
 fn record_rows(picked: &V, total: usize) -> Vec<usize> {
     let want: Vec<V> = match picked {
@@ -805,7 +804,7 @@ fn frame_cell_text(col: &Column, v: &V) -> V {
     }
 }
 
-/// `recordCell`: a number column's number stays a number for `recordNumberText`; anything else is its shown text.
+/// A number column's number stays a number for `recordNumberText`; anything else is its shown text.
 fn record_cell(col: &Column, r: usize) -> V {
     let v = match col.values.get(r) {
         None | Some(V::Null | V::Undef) => return V::Null,
@@ -821,7 +820,7 @@ fn record_cell(col: &Column, r: usize) -> V {
     }
 }
 
-/// `recordNumberText`: a number in its column's number format, never its unit; a date format reads as General.
+/// A number in its column's number format, never its unit; a date format reads as General.
 fn record_number_text(n: f64, format: Option<&Json>, d: crate::card_helpers::NumberDisplay) -> String {
     use crate::card_helpers::{format_number_with_annotation, is_date_style, Annotation};
     let ann = match format.map(Annotation::from_json) {
@@ -831,7 +830,7 @@ fn record_number_text(n: f64, format: Option<&Json>, d: crate::card_helpers::Num
     format_number_with_annotation(n, &ann, d)
 }
 
-/// `columnUnitLabel`: a known display unit by its id, else the dimension.
+/// A known display unit by its id, else the dimension.
 fn column_unit_label(unit: &Json) -> String {
     let (dim, display) = column_unit_parts(unit);
     match display {
@@ -859,7 +858,7 @@ fn format_json(col: &Column) -> Json {
     col.format.clone().unwrap_or_else(|| serde_json::json!({ "__undef": 1 }))
 }
 
-/// `recordDeck` ([[C114]] cardsView): the plan reads every row up to `PROFILE_ROWS`, so the cards match the Table
+/// [[C114]] cardsView: the plan reads every row up to `PROFILE_ROWS`, so the cards match the Table
 /// popup's.
 fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberDisplay) -> Json {
     use crate::card_helpers::{is_date_style, plan_cards, CardColumn, PROFILE_ROWS};
@@ -1157,7 +1156,7 @@ fn record(c: &mut Call) -> Answer {
     Ok(vec![("chart".into(), chart)])
 }
 
-/// `lambdaSocketName`: a wired λ's name in the formulas, `fn1` as `λ1`.
+/// A wired λ's name in the formulas, `fn1` as `λ1`.
 fn lambda_socket_name(key: &str) -> String {
     format!("λ{}", key.strip_prefix("fn").unwrap_or(key))
 }

@@ -16,7 +16,7 @@ use regress::{Flags, Regex};
 
 #[derive(Clone)]
 pub enum Compiled {
-    /// V8 throws: the TS answers null.
+    /// V8 throws.
     Invalid,
     /// V8 takes it but the lowering can't promise regress agrees: the caller refuses it.
     Unsure,

@@ -1,5 +1,5 @@
 // [[D101]] financeCarriesMoney, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
-//! Port of `FINANCE_MONEY` and `financeDim` (`src/graph/financeUnits.ts`): which finance arguments are money, and the
+//! Which finance arguments are money, and the
 //! dimension a finance call answers.
 
 use crate::error_value::SolError;
@@ -39,14 +39,13 @@ fn currency() -> Dim {
     Dim::from([("currency".to_string(), 1.0)])
 }
 
-/// `currencyClash`.
 pub fn currency_clash(a: &str, b: &str) -> SolError {
     unit_error(&format!(
         "Can't combine {a} and {b}: they are different currencies with no exchange rate. Convert one side first."
     ))
 }
 
-/// `financeDim`: money in the money arguments' one currency, or a plain number; None where a money argument is
+/// Money in the money arguments' one currency, or a plain number; None where a money argument is
 /// indeterminate.
 pub fn finance_dim(fn_: &str, sig: &MoneySignature, args: &[OpResult]) -> OpResult {
     let mut code: Option<String> = None;

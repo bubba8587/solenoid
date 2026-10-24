@@ -1,6 +1,6 @@
 // [[C130]] rustCore
-//! The JavaScript semantics the TS leans on implicitly: `String(x)`, `Number(x)`, `trim()`,
-//! string `<`, `Math.round`. Named after tsrs's `jsnum`.
+//! The JavaScript semantics the formula language leans on implicitly: `String(x)`, `Number(x)`, `trim()`,
+//! string `<`, `Math.round`.
 
 use std::borrow::Cow;
 use std::cmp::Ordering;

@@ -1,9 +1,8 @@
 //! [[C28]] literalsIffEditable, [[D54]] relativeDatesOptIn, [[C118]] formatTravelsWithValue, [[D46]]
-//! freezeVolatilePerCalc, [[C103]] untrustedContentSeams. The input widgets' bodies: `nodes/control.ts` and
-//! `nodes/input.ts` (Value Input but its dates, Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter,
-//! Point Plotter, Date Range, Constant, Input Switch), RAND (`nodes/display.ts`) over the roll its shell drew, and SVG
-//! Picker (`nodes/annotation.ts`) over the markup its shell scrubbed. Colours read as `colord` with its names plugin
-//! reads them.
+//! freezeVolatilePerCalc, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input but its dates,
+//! Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter, Point Plotter, Date Range, Constant, Input
+//! Switch), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
+//! `colord` with its names plugin reads them.
 
 use super::frames::{cube_from_columns, json_num};
 use super::values::{Column, CubeColumn, Frame};
@@ -61,7 +60,7 @@ fn literal_num(c: &Call, key: &str, dflt: f64) -> f64 {
     js_number_of(&literal_or(c, key, V::Num(dflt)))
 }
 
-/// `clamp` (mathUtils.ts): NaN passes through.
+/// NaN passes through.
 fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
     if v < lo {
         lo
@@ -589,7 +588,7 @@ fn constant(c: &mut Call) -> Answer {
 
 // ─── The drawn widgets (points, curve, grid) ────────────────────────────────────
 
-/// `parsePoints`: each `x, y` line whose two leading parts read as finite numbers.
+/// Each `x, y` line whose two leading parts read as finite numbers.
 pub(crate) fn parse_points(text: &str) -> Vec<(f64, f64)> {
     let mut out = Vec::new();
     for line in text.split('\n') {
@@ -615,7 +614,7 @@ fn point_plotter(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), f)])
 }
 
-/// `curvePoints`: sorted by x, a repeated x keeping its last point.
+/// Sorted by x, a repeated x keeping its last point.
 fn curve_points(text: &str) -> Vec<(f64, f64)> {
     let mut sorted = parse_points(text);
     crate::decision::sort_by_num(&mut sorted, |a, b| a.0 - b.0);
@@ -629,7 +628,7 @@ fn curve_points(text: &str) -> Vec<(f64, f64)> {
     out
 }
 
-/// `monotoneCubic`: the Fritsch–Carlson interpolant through the points, flat beyond the ends.
+/// The Fritsch–Carlson interpolant through the points, flat beyond the ends.
 fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 {
     let n = xs.len();
     let (mut h, mut slope) = (Vec::new(), Vec::new());
@@ -809,7 +808,7 @@ fn rand_between(c: &mut Call) -> Answer {
 
 // ─── SVG Picker ─────────────────────────────────────────────────────────────────
 
-/// `decodeEntities` (svgLayer.ts): numeric references and the six names it knows.
+/// Numeric references and the six named ones.
 fn decode_entities(text: &str) -> String {
     let mut out = String::new();
     let mut rest = text;
@@ -863,7 +862,7 @@ fn decode_entities(text: &str) -> String {
     out
 }
 
-/// `sourceHasLayer`: some `inkscape:label`, `data-name`, `aria-label` or `id` attribute names the layer.
+/// Some `inkscape:label`, `data-name`, `aria-label` or `id` attribute names the layer.
 fn source_has_layer(source: &str, name: &str) -> bool {
     if name.is_empty() {
         return false;

@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! Port of `src/graph/nodes/textOps.ts`'s regex, URL, spelling, accent and template helpers. A JS string is UTF-16
+//! The regex, URL, spelling, accent and template helpers. A JS string is UTF-16
 //! and `new RegExp(p, "")` reads it by code unit, so the patterns (lowered by `js_regex`) run on `regress` in its
 //! non-Unicode mode over the text's code units.
 
@@ -178,7 +178,7 @@ pub fn replace_matches(matches: &[Match], text: &[u16], replacement: &[u16]) -> 
     out
 }
 
-/// `expandReplacement`: the `/\$(\$|&|`|'|<([^>]*)>|(\d\d?))/g` reading of a replacement, for one match.
+/// The `/\$(\$|&|`|'|<([^>]*)>|(\d\d?))/g` reading of a replacement, for one match.
 fn expand_replacement(replacement: &[u16], m: &Match, text: &[u16]) -> Vec<u16> {
     let (offset, end) = (m.range.start, m.range.end);
     let groups = m.captures.len();
@@ -259,12 +259,12 @@ fn expand_replacement(replacement: &[u16], m: &Match, text: &[u16]) -> Vec<u16> 
     out
 }
 
-/// `replaceNth`: only the nth match (1-based; negative counts from the end) is replaced.
+/// Only the nth match (1-based; negative counts from the end) is replaced.
 pub fn replace_nth(re: &Regex, text: &[u16], replacement: &[u16], n: f64) -> Vec<u16> {
     replace_nth_of(&match_all(re, text), text, replacement, n)
 }
 
-/// `replaceNth` over the matches the regex found.
+/// The nth replacement over the matches the regex found.
 pub fn replace_nth_of(all: &[Match], text: &[u16], replacement: &[u16], n: f64) -> Vec<u16> {
     let target = if n < 0.0 { all.len() as f64 + n + 1.0 } else { n };
     if target < 1.0 {
@@ -388,7 +388,7 @@ fn spell_under_1000(mut n: u64) -> String {
     parts.join(" ")
 }
 
-/// `spellNumber`; `Err` carries the #DOMAIN! message.
+/// `Err` carries the #DOMAIN! message.
 pub fn spell_number(n: f64) -> Result<String, &'static str> {
     if !n.is_finite() {
         return Err("Not a finite number");

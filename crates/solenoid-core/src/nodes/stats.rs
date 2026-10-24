@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[C17]] shareImpl. `nodes/stats.ts`'s card bodies: order statistics,
+//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[C17]] shareImpl. The stats cards' bodies: order statistics,
 //! correlation and regression, the hypothesis tests, interpolation and the fits. Most share their kernel with a
 //! formula function.
 
@@ -153,7 +153,7 @@ pub(crate) fn or(v: V, dflt: V) -> V {
     }
 }
 
-/// `forAggregate`: the first error, else the number cells.
+/// The first error, else the number cells.
 fn for_aggregate(v: &V) -> Result<Vec<V>, V> {
     let xs = items(v);
     if let Some(e) = xs.iter().find(|x| x.is_sol_error()) {
@@ -162,7 +162,7 @@ fn for_aggregate(v: &V) -> Result<Vec<V>, V> {
     Ok(xs.iter().filter(|x| matches!(x, V::Num(_))).cloned().collect())
 }
 
-/// `pairPresent`: the first error in either list, else the pairs with neither side blank, the tail cut to the shorter.
+/// The first error in either list, else the pairs with neither side blank, the tail cut to the shorter.
 fn pair_present(x: &V, y: &V) -> Result<(V, V), V> {
     let (xs, ys) = (items(x), items(y));
     if let Some(e) = xs.iter().chain(ys.iter()).find(|v| v.is_sol_error()) {
@@ -518,7 +518,7 @@ fn prob(c: &mut Call) -> Answer {
 
 // ─── Hypothesis tests ──────────────────────────────────────────────────────────
 
-/// `groupsOf`: each column of a table, its finite numbers only.
+/// Each column of a table, its finite numbers only.
 fn groups_of(m: &V) -> Option<Vec<V>> {
     if no_list(m) {
         return None;
@@ -770,7 +770,7 @@ fn interpolate_grid(c: &mut Call) -> Answer {
 
 // ─── Fit ───────────────────────────────────────────────────────────────────────
 
-/// `linearFitR2` over the logs: `expFitR2`.
+/// The R² of a linear fit over the logs.
 fn exp_fit_r2(xs: &[f64], ys: &[f64]) -> Option<(f64, f64, f64)> {
     let n = xs.len().min(ys.len());
     let ys = &ys[..n];
@@ -845,7 +845,7 @@ fn linest(c: &mut Call) -> Answer {
     }
 }
 
-// ─── Distributions (distribution.ts) ────────────────────────────────────────────
+// ─── Distributions ──────────────────────────────────────────────────────────────
 
 /// `DIST_SPECS`' x socket and parameter sockets, by family.
 fn dist_keys(op: &str) -> Option<(&'static str, &'static [&'static str])> {
@@ -884,7 +884,7 @@ fn dist_fx(op: &str) -> (Option<&'static str>, Option<&'static str>, Option<&'st
     }
 }
 
-/// `distCall`: the formula call a family's form makes, where it has one.
+/// The formula call a family's form makes, where it has one.
 fn dist_call(op: &str, form: &str, v: &V, ps: &[V]) -> Option<(&'static str, Vec<V>)> {
     let (dist, inv, rt) = dist_fx(op);
     let with_v = |name: &'static str| {

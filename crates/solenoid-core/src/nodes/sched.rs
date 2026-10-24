@@ -1,9 +1,6 @@
 //! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[C25]] firstClassUnits, [[C50]]
-//! lambdaBindsByName. The plan cards on the scheduling engine (`crate::schedule`): `nodes/schedule.ts` with
-//! `scheduleCpm.ts` (the tasks cube into the engine and the computed columns back), `nodes/gantt.ts` with
-//! `ganttPayload.ts` and the view keys of `@solenoid/gantt-layout`'s `payload.ts`, and `nodes/earnedValue.ts` with
-//! `earnedValueOps.ts`; beside them SCAN (`nodes/tableLambda.ts`) and ODE Integrate (`nodes/stats.ts`), the LAMBDA
-//! hosts whose bodies run on the core.
+//! lambdaBindsByName. The plan cards on the scheduling engine (`crate::schedule`): Schedule, Gantt (its view keys
+//! those of `@solenoid/gantt-layout`'s `payload.ts`) and Earned Value, and the LAMBDA hosts SCAN and ODE Integrate.
 
 use super::frames::{frame_v, json_num, tag_cell_unit, thrown};
 use super::list::{js_number, nullish, slot, truthy};
@@ -65,7 +62,7 @@ fn is_table(v: &V) -> bool {
     matches!(v, V::Cube(_) | V::Frame(_))
 }
 
-/// `asCube`: a frame as its cube, each column's cells in its unit.
+/// A frame as its cube, each column's cells in its unit.
 fn as_cube(v: &V) -> Option<Rc<Cube>> {
     match v {
         V::Cube(c) => Some(c.clone()),
@@ -82,7 +79,7 @@ fn cell(col: Option<&CubeColumn>, i: usize) -> Option<&V> {
     col.and_then(|c| c.cells.get(i)).filter(|v| !matches!(v, V::Undef))
 }
 
-/// `findColumn`: the first name that matches, else the first column `pick` takes.
+/// The first name that matches, else the first column `pick` takes.
 /// A fallback that takes a column by its place and cells.
 type Pick<'a> = Option<&'a dyn Fn(usize, &CubeColumn) -> bool>;
 
@@ -99,7 +96,6 @@ fn has_text(col: &CubeColumn) -> bool {
     col.cells.iter().any(is_text)
 }
 
-/// `readLogicalCell`.
 fn read_logical(v: Option<&V>) -> bool {
     match v {
         Some(V::Bool(b)) => *b,
@@ -109,7 +105,7 @@ fn read_logical(v: Option<&V>) -> bool {
     }
 }
 
-/// `isInactive`: an Active cell that is set and false.
+/// An Active cell that is set and false.
 fn is_inactive(v: Option<&V>) -> bool {
     match v {
         None | Some(V::Null) => false,
@@ -141,7 +137,7 @@ fn link_type(raw: Option<&V>) -> String {
     js_trim(&s).to_uppercase()
 }
 
-// ─── scheduleCpm.ts ─────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── Schedule ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 const TASK_NAMES: &[&str] = &["task", "name", "title"];
 const DURATION_NAMES: &[&str] = &["duration", "days"];
@@ -205,7 +201,7 @@ impl From<SolError> for Fail {
 
 type Rd<T> = Result<T, Fail>;
 
-/// The project's hours a day as the TS carries it: the number, and whether it came as a number at all (a value of
+/// The project's hours a day: the number, and whether it came as a number at all (a value of
 /// another kind compares unequal to every task's own Hours).
 #[derive(Clone, Copy)]
 struct Hours {
@@ -213,7 +209,6 @@ struct Hours {
     is_num: bool,
 }
 
-/// `readPredecessors`.
 fn read_predecessors(v: Option<&V>, task_name: &str) -> Rd<Vec<Dependency>> {
     let Some(v) = v.filter(|v| !nullish(v)) else { return Ok(Vec::new()) };
     match v {
@@ -267,7 +262,6 @@ fn read_predecessors(v: Option<&V>, task_name: &str) -> Rd<Vec<Dependency>> {
     }
 }
 
-/// `readDuration`.
 fn read_duration(v: Option<&V>, hours_per_day: f64, name: &str) -> Rd<f64> {
     let v = match v {
         None | Some(V::Null) => return Ok(0.0),
@@ -301,7 +295,6 @@ fn parse_date_text(s: &str) -> Rd<f64> {
     }
 }
 
-/// `readDate`.
 fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
     match v {
         None | Some(V::Null) => Ok(None),
@@ -322,7 +315,7 @@ fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
     }
 }
 
-/// `checkActiveCell`: an error or a cell that reads as neither true nor false is the row's fault.
+/// An error or a cell that reads as neither true nor false is the row's fault.
 fn check_active(v: Option<&V>, task: &str) -> Rd<()> {
     match v {
         None | Some(V::Null | V::Bool(_)) => Ok(()),
@@ -379,7 +372,6 @@ fn holds_plan(v: &V) -> bool {
         && as_cube(v).is_some_and(|c| find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))).is_some())
 }
 
-/// `predecessorCell`.
 fn predecessor_cell(deps: &[Dependency], typed: bool) -> V {
     if !typed {
         return list(deps.iter().map(|d| V::str(&d.task)).collect());
@@ -419,7 +411,7 @@ fn plain_link(d: &Dependency) -> bool {
     d.ty == LinkType::FS && d.lag == 0.0 && d.elapsed != Some(true)
 }
 
-/// `predecessorColumn`: name lists while every link is plain, else a table in every row.
+/// Name lists while every link is plain, else a table in every row.
 fn predecessor_column(rows: &[Option<&[Dependency]>]) -> Vec<V> {
     let typed = rows.iter().flatten().any(|deps| !deps.iter().all(plain_link));
     rows.iter().map(|deps| deps.map_or(V::Null, |d| predecessor_cell(d, typed))).collect()
@@ -429,7 +421,6 @@ fn col_of(name: &str, cells: Vec<V>, ty: Option<FrameColType>) -> CubeColumn {
     CubeColumn { name: name.into(), cells, ty, format: None }
 }
 
-/// `readLevel`.
 fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     let find = |names: &[&str]| find_column(&c, names, None);
     let Some(task) = find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))) else {
@@ -598,7 +589,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     Ok((Level { cube: c.clone(), cols, child_levels, names, inactive }, tasks))
 }
 
-/// `taskCalendar`: the row's own Weekend, Hours and Holidays, or nothing.
+/// The row's own Weekend, Hours and Holidays, or nothing.
 fn task_calendar(cols: &Cols, c: &Cube, i: usize, hours: Hours) -> Option<TaskCalendar> {
     let at = |k: Option<usize>| cell(k.map(|k| &c.columns[k]), i);
     let mut spec = TaskCalendar::default();
@@ -625,7 +616,7 @@ fn inactive_names(level: &Level, out: &mut HashSet<String>) {
     }
 }
 
-/// `applyLinksFrame`: the flat Links frame's rows added to each successor's predecessors.
+/// The flat Links frame's rows added to each successor's predecessors.
 fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<String>) -> Rd<()> {
     let find = |names: &[&str]| links.columns.iter().position(|c| names.contains(&norm(&c.name).as_str()));
     let (Some(succ_col), Some(pred_col)) = (find(LINK_SUCC_NAMES), find(LINK_PRED_NAMES)) else {
@@ -692,7 +683,7 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
 
 const DATETIME_FORMAT: &str = "DD-MMM-YYYY HH:mm";
 
-/// `writeLevel`: the level's cube with its computed columns.
+/// The level's cube with its computed columns.
 fn write_level(
     level: &Level,
     by_name: &HashMap<String, &ScheduledTask>,
@@ -1034,14 +1025,14 @@ fn schedule_card(c: &mut Call) -> Answer {
     }
 }
 
-// ─── ganttPayload.ts ────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── Gantt ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// `col`: the first of the names a column carries.
 fn gantt_col<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
     names.iter().find_map(|n| c.columns.iter().find(|x| norm(&x.name) == *n))
 }
 
-/// `depsOf`: a Predecessors cell as the figure reads it, never refused.
+/// A Predecessors cell as the figure reads it, never refused.
 fn deps_of(v: Option<&V>) -> Vec<Dependency> {
     let Some(v) = v.filter(|v| !nullish(v)) else { return Vec::new() };
     match v {
@@ -1255,7 +1246,6 @@ struct GanttInputs<'a> {
     holidays: Option<Vec<Option<f64>>>,
 }
 
-/// `ganttPayloadFromSchedule`.
 fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
     let mut rows = Vec::new();
     gantt_flatten(cube, 0.0, &mut rows)?;
@@ -1456,7 +1446,7 @@ fn gantt_card(c: &mut Call) -> Answer {
     done(c, V::Json(Rc::new(chart)))
 }
 
-// ─── earnedValue.ts, earnedValueOps.ts ──────────────────────────────────────────────────────────────────────────────
+// ─── Earned Value ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// `byName`: the first column, in the table's order, carrying one of the names.
 fn ev_col<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
@@ -1473,7 +1463,7 @@ fn magnitude(v: Option<&V>) -> f64 {
     }
 }
 
-/// `unitOf`: the column's first unit cell as a column unit.
+/// The column's first unit cell as a column unit.
 fn unit_of(col: Option<&CubeColumn>) -> Option<Json> {
     let V::Unit(u) = col?.cells.iter().find(|v| matches!(v, V::Unit(_)))? else { return None };
     let mut o = Map::new();
@@ -1530,7 +1520,7 @@ fn metrics_for(bac: f64, bcws: f64, bcwp: f64, acwp: f64) -> Metrics {
     }
 }
 
-/// `plannedFraction`: how much of the planned span the status date has reached, in working days.
+/// How much of the planned span the status date has reached, in working days.
 fn planned_fraction(start: Option<f64>, finish: Option<f64>, status: f64, cal: &engine::Calendar) -> engine::Sr<f64> {
     let (Some(s), Some(f)) = (start, finish) else { return Ok(0.0) };
     if status.floor() < s.floor() {
@@ -1694,7 +1684,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
     Ok(vec![("frame".into(), frame), ("spi".into(), spi), ("cpi".into(), cpi), ("eac".into(), eac)])
 }
 
-// ─── SCAN (tableLambda.ts), ODE Integrate (stats.ts, odeOps.ts) ─────────────────────────────────────────────────────
+// ─── SCAN, ODE Integrate ────────────────────────────────────────────────────────────────────────────────────────────
 
 fn scan_lambda(c: &mut Call) -> Answer {
     use super::matrix::{any_matrix, fn_error, holds_unit_cell, lambda_done, resolve, result_cell};

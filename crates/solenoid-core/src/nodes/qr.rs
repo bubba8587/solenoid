@@ -1,4 +1,4 @@
-//! [[C100]] chartIsAValue, [[B2]] webTryDesktopFull. `nodes/qr.ts` and `qrCode.ts`: the QR Code card, a text, a Wi-Fi
+//! [[C100]] chartIsAValue, [[B2]] webTryDesktopFull. The QR Code card, a text, a Wi-Fi
 //! network or a contact as a QR image: the payload and the SVG are Solenoid's, the symbol is `qrcodegen`'s.
 
 use super::{err, Answer, Call};
@@ -35,7 +35,7 @@ fn esc_wifi(s: &str) -> String {
     out
 }
 
-/// `buildQrPayload`, the template's fields read by `lit`: an empty essential field gives "" (no code).
+/// The template's fields read by `lit`: an empty essential field gives "" (no code).
 fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
     match template {
         "wifi" => {
@@ -79,7 +79,7 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
     }
 }
 
-/// `qrModulesToSvg` with its four-module quiet zone, as a `data:` URL (`svgDataUrl`).
+/// The symbol as SVG with its four-module quiet zone, as a `data:` URL (`svgDataUrl`).
 fn svg_src(size: usize, dark: &dyn Fn(usize, usize) -> bool) -> String {
     let margin = 4;
     let dim = size + margin * 2;

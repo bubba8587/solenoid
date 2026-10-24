@@ -1,6 +1,5 @@
-//! [[C47]] equationNode, [[C25]] firstClassUnits. `nodes/expression.ts`: the Expression card, its formula read over
-//! its inputs and wrapped in their units; `nodes/equation.ts` with `equationSolve.ts`: the Equation card and Time
-//! Value of Money (`nodes/finance.ts`), a relation solved for its one unwired variable.
+//! [[C47]] equationNode, [[C25]] firstClassUnits. The Expression card, its formula read over its inputs and wrapped
+//! in their units; the Equation card and Time Value of Money, a relation solved for its one unwired variable.
 
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
@@ -88,7 +87,7 @@ fn unit_label(id: &str) -> Option<&'static str> {
     })
 }
 
-/// `readInDeclaredUnit`: a preset's input read in its declared unit. A bare number is taken as already in it, a
+/// A preset's input read in its declared unit. A bare number is taken as already in it, a
 /// dimensioned cell converts, and another dimension is #UNIT!.
 pub(crate) fn read_in_declared_unit(v: &V, id: &str) -> V {
     let Some(u) = fc_unit_to_unit(id) else { return v.clone() };
@@ -168,7 +167,7 @@ fn has_unit_cell(v: &V) -> bool {
     }
 }
 
-/// `tagResult`: a cell the result may hold, an engine error as a SolError, NaN as #DOMAIN!, anything else blank.
+/// A cell the result may hold, an engine error as a SolError, NaN as #DOMAIN!, anything else blank.
 fn tag_result(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) | V::Cx(..) => v.clone(),
@@ -181,7 +180,7 @@ fn tag_result(v: &V) -> V {
 
 fn expression_done(c: &mut Call, result: V, error: Option<&str>, ranked: bool) -> Answer {
     if ranked && !result.is_sol_error() {
-        // `reconcileResultRank`: a table answers at rank 2, anything else at 1; the TS retypes the socket on a change.
+        // A table answers at rank 2, anything else at 1; the TS retypes the socket on a change.
         let table = matches!(&result, V::List(items) if matches!(items.first(), Some(V::List(_))));
         c.show("lastResultRank", V::Num(if table { 2.0 } else { 1.0 }));
     }
@@ -260,7 +259,7 @@ fn contains_equals(n: &Ast) -> bool {
     }
 }
 
-/// `parseEquation`: the two sides, or the shape problem the card shows.
+/// The two sides, or the shape problem the card shows.
 fn parse_equation(expr: &str) -> Result<Parsed, String> {
     let Some(root) = parse_formula(expr) else { return Err("Syntax error".into()) };
     let Ast::Bin { op, l, r } = root else { return Err("An equation needs one = sign, like V = I * R".into()) };
@@ -292,7 +291,7 @@ fn is_ident(s: &str) -> bool {
     cs.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_') && cs.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// `astToFormula`: the tree as formula text, every operation parenthesized.
+/// The tree as formula text, every operation parenthesized.
 fn ast_to_formula(n: &Ast) -> String {
     let args = |a: &[Ast]| a.iter().map(ast_to_formula).collect::<Vec<_>>().join(",");
     match n {
@@ -421,7 +420,7 @@ fn isolate(side: &Ast, other: &Ast, unknown: &str) -> Option<Ast> {
     }
 }
 
-/// `compileSolver`'s text: the side isolated for the unknown, where it appears once.
+/// The solver's text: the side isolated for the unknown, where it appears once.
 fn solver_text(eq: &Parsed, unknown: &str) -> Option<String> {
     let (in_l, in_r) = (count_occurrences(&eq.lhs, unknown), count_occurrences(&eq.rhs, unknown));
     if in_l + in_r != 1 {
@@ -449,7 +448,7 @@ struct Quad {
     c: f64,
 }
 
-/// `sniffQuadratic`: the residual's quadratic fit, where seven probes agree with one.
+/// The residual's quadratic fit, where seven probes agree with one.
 fn sniff_quadratic(residual: &dyn Fn(f64) -> Option<f64>) -> Option<Quad> {
     let probe = |x: f64| residual(x).filter(|f| f.is_finite());
     let (f0, f1, fm1) = (probe(0.0)?, probe(1.0)?, probe(-1.0)?);
@@ -509,7 +508,7 @@ fn solve_linear(q: &Quad) -> Option<f64> {
     (q.b.abs() > 1e-12 * scale).then(|| -q.c / q.b)
 }
 
-/// `solveNumeric`: the root nearest zero, by bisection between sign changes on a grid out to ±10¹².
+/// The root nearest zero, by bisection between sign changes on a grid out to ±10¹².
 fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
     let mut grid = vec![0.0];
     for k in -6..=12 {
@@ -621,7 +620,7 @@ fn equals_within(l: f64, r: f64) -> bool {
     (l - r).abs() <= 1e-9 * jmax(&[1.0, l.abs(), r.abs()])
 }
 
-/// `guardVal`: a finite number or unit cell, an error, a list of them; anything else blank.
+/// A finite number or unit cell, an error, a list of them; anything else blank.
 fn guard_val(raw: &V) -> V {
     let cell = |e: &V| match e {
         V::Err(_) => e.clone(),
@@ -635,7 +634,7 @@ fn guard_val(raw: &V) -> V {
     }
 }
 
-/// `checkEquals`: whether the two sides agree, cell by cell for lists.
+/// Whether the two sides agree, cell by cell for lists.
 fn check_equals(l: &V, r: &V) -> V {
     if l.is_sol_error() {
         return l.clone();

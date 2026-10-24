@@ -1,5 +1,5 @@
-//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob. The lazy frame verbs of `nodes/frame.ts`
-//! and SUMIFS of `nodes/list.ts`. A verb never runs on a frame: it reads its settings and extends the input ref's plan
+//! [[B17]] typedValueModel, [[C48]] appendLadder, [[C49]] filterOneJob. The lazy frame verbs
+//! and SUMIFS. A verb never runs on a frame: it reads its settings and extends the input ref's plan
 //! (`{__frameRef, __plan}`) by one op, in the shape the backend reads, which runs the plan later. The card's shell
 //! uploads a frame value for its ref first and names it in `uploaded`, so a verb passing that frame through answers
 //! the ref it was given. A Cube runs its verb on its cells here, the scalar columns through the core's frame verbs.
@@ -629,7 +629,7 @@ fn get_column(c: &mut Call) -> Answer {
     }
 }
 
-// ─── SUMIFS (list.ts) ───────────────────────────────────────────────────────────
+// ─── SUMIFS ─────────────────────────────────────────────────────────────────────
 
 /// The columns SUMIFS reads, and how a name finds one: as `getColumn` does, or a ref's, read by the name it was asked
 /// by.
@@ -796,12 +796,12 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     })
 }
 
-// ─── Cube verbs (frameVerbs.ts) ──────────────────────────────────────────────────
+// ─── Cube verbs ──────────────────────────────────────────────────────────────────
 
 /// The column that numbers a cube's rows in the frame a cube verb hands the core.
 const CUBE_ROW: &str = "\u{0}row";
 
-/// `cubeScalarColumn`: a Cube's column read as a frame reads it, its unit beside it, refused where it nests.
+/// A Cube's column read as a frame reads it, its unit beside it, refused where it nests.
 fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>), SolError> {
     let Some(col) = cube.columns.iter().find(|c| c.name == name) else {
         return Err(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")));
@@ -862,7 +862,7 @@ fn sort_cube(cube: &Cube, by: &str, dir: &str) -> Result<V, SolError> {
     Ok(select_cube_rows(cube, &rows))
 }
 
-/// `encodeCubeCell` as a key: two rows are the same row where every cell's key is.
+/// A Cube cell as a key: two rows are the same row where every cell's key is.
 fn cell_key(v: &V, out: &mut String) {
     use std::fmt::Write;
     match v {
@@ -949,7 +949,7 @@ fn select_cube_columns(cube: &Cube, names: &[String], drop: bool) -> Result<V, S
     Ok(cube_from_columns(cols))
 }
 
-/// `passesListFilter`: a cell's items, or the cell as one, against a list condition.
+/// A cell's items, or the cell as one, against a list condition.
 fn passes_list_filter(cell: &V, op: &str, value: &str, match_case: bool) -> bool {
     let items: Vec<&V> = match cell {
         V::List(l) => l.iter().collect(),

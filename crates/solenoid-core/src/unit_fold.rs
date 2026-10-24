@@ -1,6 +1,6 @@
 // The LAMBDA folds' unit wrapper ([[C25]] firstClassUnits, unit-flow § LAMBDA hosts over a 1-D list): REDUCE, SCAN,
 // BYROW and BYCOL strip the cells to the display unit they share (else base SI), fold, and tag the result with the
-// formula's dimension, as `tableLambda.ts` does once its formula resolves.
+// formula's dimension once its formula resolves.
 
 use std::rc::Rc;
 
@@ -29,7 +29,7 @@ struct Elem {
     display: Option<String>,
 }
 
-/// `elemUnitOf` and `foldUnit`: the cells' one dimension, the display they all share, and that display's unit when it
+/// The cells' one dimension, the display they all share, and that display's unit when it
 /// is linear or affine in the same dimension.
 fn elem_unit(m: &[Vec<V>]) -> Result<Option<(Elem, Option<DisplayUnit>)>, V> {
     let mut first: Option<&crate::unit_dims::UnitCell> = None;

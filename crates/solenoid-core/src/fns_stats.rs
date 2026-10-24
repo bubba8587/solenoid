@@ -345,7 +345,6 @@ fn fx_is_leap(year: f64) -> bool {
     zone::get_month(zone::new_local(year, 1.0, 29.0, 0.0, 0.0, 0.0, 0.0)) == 1.0
 }
 
-/// `daysBetween`.
 fn fx_days_between(s: f64, e: f64) -> f64 {
     ((e - s) / 1000.0 / 60.0 / 60.0 / 24.0).ceil()
 }
@@ -682,13 +681,13 @@ fn besselk1(x: f64) -> f64 {
     exp(-x) / x.sqrt() * horner(&K1_B, 2.0 / x)
 }
 
-// ─── Hypothesis tests beyond Excel's four (statsOps.ts) ─────────────────────────
+// ─── Hypothesis tests beyond Excel's four ───────────────────────────────────────
 
 fn two_sided_z(z: f64) -> f64 {
     2.0 * (1.0 - std_norm_cdf(z.abs()))
 }
 
-/// `tieTerm`: the sum of c³ − c over each repeated value's count c.
+/// The sum of c³ − c over each repeated value's count c.
 fn tie_term(values: &[f64]) -> f64 {
     let mut counts: Vec<(f64, f64)> = Vec::new();
     for &v in values {
@@ -971,7 +970,6 @@ pub(crate) enum FxDate {
     Err(FxError),
 }
 
-/// `serialToDate`.
 fn serial_to_date(mut serial: f64) -> f64 {
     if serial < 60.0 {
         serial += 1.0;
@@ -1007,7 +1005,7 @@ pub(crate) fn parse_date(v: &V) -> FxDate {
     FxDate::Err(FxError::Value)
 }
 
-/// `validateFrequency` / `validateBasis`: the parsed number when it is one of `allowed`.
+/// The parsed number when it is one of `allowed`.
 fn one_of(v: &V, allowed: &[f64]) -> Option<f64> {
     match parse_number(v) {
         V::Num(n) if allowed.contains(&n) => Some(n),
@@ -1028,7 +1026,6 @@ fn not_a_function(method: &str) -> V {
     throw(sol_error(ErrorCode::Value, format!("{method} is not a function")))
 }
 
-/// `dateToSerial`.
 fn date_to_serial(t: f64) -> f64 {
     let d1900 = zone::new_local(1900.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
     let add_on = if t > -22038912e5 { 2.0 } else { 1.0 };
@@ -1043,7 +1040,6 @@ fn datedif_days(start: f64, end: f64) -> Result<f64, V> {
     Ok(date_to_serial(zone::start_of_day(end)) - date_to_serial(zone::start_of_day(start)))
 }
 
-/// `lastCoupDateBeforeSettlement`.
 fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
     let mut date = zone::set_full_year(maturity, zone::get_full_year(settlement));
     if date < settlement {

@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The complex-number bodies (`cxValue.ts` and the IM* registrations in `excelFunctions.ts`), with the text
-//! similarity ones (`textOps.ts`), the list padders and BIN (`listOps.ts`) and TIMEZONECONVERT (`timeZone.ts`).
+//! The complex-number bodies (the IM* functions), with the text
+//! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_pow, js_string_of, math_hypot, throw, to_num, to_str, V};
@@ -58,7 +58,6 @@ fn is_nullish(v: &V) -> bool {
     matches!(v, V::Undef | V::Null)
 }
 
-/// `toList` (excelFunctions.ts).
 fn to_list(v: &V) -> Vec<V> {
     match v {
         V::List(items) => items.as_ref().clone(),
@@ -220,7 +219,6 @@ fn skip_space(s: &str, mut i: usize) -> usize {
     i
 }
 
-/// `parseCx`.
 fn parse_cx(text: &str) -> Option<Cx> {
     let s = js_trim(text);
     if s.is_empty() {
@@ -256,7 +254,6 @@ fn parse_cx(text: &str) -> Option<Cx> {
     None
 }
 
-/// `toCx`.
 fn to_cx(v: &V, name: &str) -> Result<Cx, V> {
     match v {
         V::Cx(re, im) => Ok((*re, *im)),
@@ -372,7 +369,6 @@ enum Sim {
     JaroWinkler,
 }
 
-/// `simMethod`.
 fn sim_method(m: &V) -> Option<Sim> {
     if is_nullish(m) {
         return Some(Sim::Ratio);
@@ -471,7 +467,6 @@ fn jaro_winkler(s: &[char], t: &[char]) -> f64 {
     jaro + prefix as f64 * 0.1 * (1.0 - jaro)
 }
 
-/// `textSimilarity`.
 fn text_similarity(a: &str, b: &str, m: Sim) -> f64 {
     let (s, t): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
     match m {
@@ -520,7 +515,7 @@ fn pad_list(arr: Vec<V>, n: f64, fill: V, left: bool) -> Vec<V> {
     }
 }
 
-/// `binIndex`: each value's count of break edges at or below it.
+/// Each value's count of break edges at or below it.
 fn bin_index(arr: &[V], breaks: &[V]) -> Vec<V> {
     let mut edges: Vec<f64> =
         breaks.iter().filter_map(|v| if let V::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
@@ -536,7 +531,7 @@ fn bin_index(arr: &[V], breaks: &[V]) -> Vec<V> {
 
 // ─── Time zones ─────────────────────────────────────────────────────────────────
 
-/// `convertZone`: the wall clock in `from` read as an instant (two offset reads settle a time beside a DST
+/// The wall clock in `from` read as an instant (two offset reads settle a time beside a DST
 /// transition), then that instant's wall clock in `to`.
 fn convert_zone(serial: f64, from: &str, to: &str) -> V {
     use crate::zone::{is_valid_zone, zone_offset_ms, ZoneError};
@@ -648,7 +643,7 @@ mod tests {
         assert_eq!(parse_cx("1e+i"), None);
     }
 
-    /// Complex operands, against the TS's answers on the same inputs.
+    /// Complex operands, against frozen answers on the same inputs.
     #[test]
     fn answers_complex_operands_as_the_ts() {
         #![allow(non_upper_case_globals)]

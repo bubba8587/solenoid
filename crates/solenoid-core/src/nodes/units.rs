@@ -1,4 +1,4 @@
-//! A card's arithmetic on values with a unit ([[C25]] firstClassUnits), as `unitValue.ts` has it. A cell carries its
+//! A card's arithmetic on values with a unit ([[C25]] firstClassUnits). A cell carries its
 //! display unit's scale and offset across the wire, so a body reads them off the cell; a cell it makes in another
 //! cell's unit borrows that cell's.
 
@@ -39,7 +39,7 @@ pub fn affine(v: &V) -> bool {
     shown(v).is_some_and(|u| u.offset.is_some_and(|o| o != 0.0))
 }
 
-/// `adoptMagnitude`: a bare face value read in `unit`'s display unit.
+/// A bare face value read in `unit`'s display unit.
 pub fn adopt_magnitude(face: f64, unit: Option<&UnitCell>) -> f64 {
     match unit.and_then(|u| u.scale) {
         Some(s) if s != 1.0 => face * s,
@@ -47,7 +47,7 @@ pub fn adopt_magnitude(face: f64, unit: Option<&UnitCell>) -> f64 {
     }
 }
 
-/// `adoptReading`: as `adoptMagnitude`, the offset too.
+/// As `adoptMagnitude`, the offset too.
 pub fn adopt_reading(face: f64, unit: Option<&UnitCell>) -> f64 {
     let base = adopt_magnitude(face, unit);
     match unit {
@@ -84,7 +84,7 @@ fn pure_currency(v: &V) -> bool {
     dim_equal(&dim_of(v), &Dim::from([("currency".to_string(), 1.0)]))
 }
 
-/// `currencyMismatch`: two amounts in different currencies.
+/// Two amounts in different currencies.
 pub fn currency_mismatch(a: &V, b: &V) -> bool {
     let code = |v: &V| if let V::Unit(u) = v { u.display.clone() } else { None };
     pure_currency(a) && pure_currency(b) && matches!((code(a), code(b)), (Some(x), Some(y)) if x != y)
@@ -98,7 +98,7 @@ pub fn any_dimensioned(args: &[&V]) -> bool {
     })
 }
 
-/// `arithmeticCell`: one of Arithmetic's ops on two cells, either or both with a unit.
+/// One of Arithmetic's ops on two cells, either or both with a unit.
 pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
     let (da, db) = (dim_of(a), dim_of(b));
     let (x, y) = (magnitude_of(a), magnitude_of(b));
@@ -187,7 +187,7 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
     }
 }
 
-/// `guardCell`: the non-finite guard on a cell's magnitude, the unit kept.
+/// The non-finite guard on a cell's magnitude, the unit kept.
 fn guard_cell(r: V, ops: &[&V]) -> V {
     match r {
         V::Unit(u) => match guard_finite(u.value, ops) {
@@ -200,7 +200,7 @@ fn guard_cell(r: V, ops: &[&V]) -> V {
     }
 }
 
-/// `broadcastUnit`: as `broadcastErr`, over cells that may carry a unit.
+/// As `broadcastErr`, over cells that may carry a unit.
 pub fn broadcast_unit(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     super::kit::each(args, |ops| match short_circuit(ops) {
         Some(sc) => sc,

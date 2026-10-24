@@ -1,8 +1,6 @@
 // [[C103]] untrustedContentSeams
 import { createNotifier, createToggleStore } from "./storeKit";
 
-// A module singleton so Rete's separate React root can read it.
-
 export interface DocMeta {
   author?: string;
   tags?: string[];

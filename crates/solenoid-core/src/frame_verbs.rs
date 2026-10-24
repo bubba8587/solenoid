@@ -1,6 +1,6 @@
 // [[C130]] rustCore
-//! Port of `src/graph/frameVerbs.ts`: the frame verbs the backend runs (every `FrameOp` but
-//! pivot, plus join, append, bindColumns and sampling). Same names, same order of operations.
+//! The frame verbs the backend runs (every `FrameOp` but
+//! pivot, plus join, append, bindColumns and sampling).
 //! Each verb also decides the unit and format its columns carry ([[C25]] firstClassUnits, [[D41]]
 //! formatFlowsDownstream): a column that keeps its cells keeps them; the rest are below, verb by verb.
 
@@ -35,7 +35,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 type Res<T> = Result<T, SolError>;
 
-// ─── Names the ops carry (frameVerbs.ts's unions) ─────────────────────────────────
+// ─── Names the ops carry ──────────────────────────────────────────────────────────
 
 spelled! {
     pub enum SortDir {
@@ -385,7 +385,7 @@ pub fn cell_key(v: &FrameCell) -> CellKey<'_> {
     }
 }
 
-/// `rowKeyer`'s grouping: rows by their cells in `cols`, groups in first-seen order. A lone column
+/// Rows by their cells in `cols`, groups in first-seen order. A lone column
 /// keys on its cell alone, with no row vector to build.
 fn buckets_of(n: usize, cols: &[&FrameColumn]) -> Vec<Vec<usize>> {
     match cols {
@@ -1959,7 +1959,7 @@ pub fn bind_columns(frames: &[&FrameValue]) -> FrameValue {
 }
 
 /// An op as the TS writes it, its `kind` beside its fields. The derived internally tagged form buffers the whole op
-/// before reading it and was the module's largest function; this moves `kind` out to the external tag instead.
+/// before reading it; this moves `kind` out to the external tag instead.
 pub struct TaggedOp(pub FrameOp);
 
 impl<'de> Deserialize<'de> for TaggedOp {

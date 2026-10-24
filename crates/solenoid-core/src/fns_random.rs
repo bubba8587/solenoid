@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE and UUID
-//! (`excelFunctions.ts`, over `listOps.ts`, `distributionOps.ts` and `hashOps.ts`). Each draw is `Math.random()`'s
+//! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE and UUID. Each draw is
+//! `Math.random()`'s
 //! kind, uniform over [0, 1) and fresh per call: the browser's own in wasm, a seeded generator natively.
 
 use crate::dists::{bisection_inv, compute, Form};
@@ -57,7 +57,7 @@ fn err(code: ErrorCode, msg: impl Into<String>) -> V {
     V::err(sol_error(code, msg))
 }
 
-/// `isTrue`: true, 1, or the text true or 1.
+/// True, 1, or the text true or 1.
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -92,7 +92,7 @@ fn randbetween(bottom: &V, top: &V) -> V {
     V::Num(b + ((t - b + 1.0) * random()).ceil() - 1.0)
 }
 
-/// `arrayCount`: a generated array's row or column count, truncated, and `#VALUE!` below 0 or unreadable.
+/// A generated array's row or column count, truncated, and `#VALUE!` below 0 or unreadable.
 pub(crate) fn array_count(n: f64) -> Result<f64, V> {
     let k = n.trunc();
     if k >= 0.0 {
@@ -102,7 +102,7 @@ pub(crate) fn array_count(n: f64) -> Result<f64, V> {
     }
 }
 
-/// `randArrayRange`: RANDARRAY's bounds check.
+/// RANDARRAY's bounds check.
 fn rand_array_range(lo: f64, hi: f64, whole: bool) -> Option<V> {
     if lo.is_nan() || hi.is_nan() {
         return Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers"));
@@ -116,7 +116,7 @@ fn rand_array_range(lo: f64, hi: f64, whole: bool) -> Option<V> {
     None
 }
 
-/// `randArrayDraw`: uniform over [lo, hi), or over the whole numbers in [lo, hi] with each equally likely.
+/// Uniform over [lo, hi), or over the whole numbers in [lo, hi] with each equally likely.
 fn rand_array_draw(roll: f64, lo: f64, hi: f64, whole: bool) -> f64 {
     if !whole {
         return lo + roll * (hi - lo);
@@ -192,7 +192,7 @@ fn clamp_draw(u: f64) -> f64 {
     }
 }
 
-/// `sampleQuantile`: one draw's quantile.
+/// One draw's quantile.
 fn sample_quantile(key: &str, continuous: bool, inverse: bool, u: f64, ps: &[f64]) -> Option<f64> {
     let uu = clamp_draw(u);
     if inverse {
@@ -221,7 +221,7 @@ fn ascending(uu: &[f64]) -> Vec<usize> {
     order
 }
 
-/// `binomSampleWalk`: binomial draws by one sweep up the CDF over the sorted draws.
+/// Binomial draws by one sweep up the CDF over the sorted draws.
 fn binom_sample_walk(us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
     let mut out = vec![None; us.len()];
     let (nv, pv) = (ps.first().copied().unwrap_or(f64::NAN), ps.get(1).copied().unwrap_or(f64::NAN));
@@ -249,7 +249,7 @@ fn binom_sample_walk(us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
     out
 }
 
-/// `sampleQuantiles`: many draws' quantiles in draw order; a discrete family sweeps its CDF once over the sorted draws.
+/// Many draws' quantiles in draw order; a discrete family sweeps its CDF once over the sorted draws.
 pub(crate) fn sample_quantiles(key: &str, continuous: bool, inverse: bool, us: &[f64], ps: &[f64]) -> Vec<Option<f64>> {
     if key == "binom" {
         return binom_sample_walk(us, ps);
@@ -312,7 +312,7 @@ fn randdist(a: &[V]) -> V {
     list(sample_quantiles(name, continuous, inverse, &us, &ps).into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())
 }
 
-/// `shuffleList` over `toList(list)`: the items in the order of one draw each.
+/// The items in the order of one draw each.
 fn shuffle(v: &V) -> V {
     let items: Vec<V> = match v {
         V::List(items) => items.as_ref().clone(),
@@ -325,7 +325,7 @@ fn shuffle(v: &V) -> V {
     list(order.into_iter().map(|i| items[i].clone()).collect())
 }
 
-/// `uuidV4`: 16 random bytes, the version and variant bits set.
+/// 16 random bytes, the version and variant bits set.
 fn uuid_v4() -> String {
     let mut b: [u8; 16] = std::array::from_fn(|_| (random() * 256.0) as u8);
     b[6] = (b[6] & 0x0f) | 0x40;

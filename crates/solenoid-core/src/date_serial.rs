@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[C44]] dateSerials
-//! Port of `src/graph/nodes/dateSerial.ts` `formatDateSerial`: a serial day, read as UTC.
+//! A serial day formatted, read as UTC.
 
 const FORMAT_MONTHS: [&str; 12] = [
     "January",

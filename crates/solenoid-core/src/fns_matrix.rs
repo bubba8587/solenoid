@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The matrix, lookup and database bodies: `excelFunctions.ts`' registrations over `matrixOps.ts`, `listOps.ts`,
-//! `mathUtils.ts` and `visualOps.ts`, each named as there. A matrix is a list of row lists, as the JS array of
-//! arrays is; the superseded lookups and database functions only answer which name replaces them.
+//! The matrix, lookup and database bodies. A matrix is a list of row lists, as the JS array of arrays is; the
+//! superseded lookups and database functions only answer which name replaces them.
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -137,7 +136,7 @@ fn row_of(v: &V) -> Option<Vec<V>> {
     }
 }
 
-/// `toMatrix` (excelFunctions.ts): blank is none, a flat list one row, a scalar one cell. A table with a row that
+/// Blank is none, a flat list one row, a scalar one cell. A table with a row that
 /// isn't a list throws.
 fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
     match v {
@@ -155,7 +154,7 @@ fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
     }
 }
 
-/// `numMat`: as `toMatrix`, but a blank is one blank cell.
+/// As `toMatrix`, but a blank is one blank cell.
 fn num_mat_rows(v: &V) -> Result<Mat, V> {
     match v {
         V::List(_) => Ok(to_matrix(v)?.unwrap_or_default()),
@@ -167,7 +166,6 @@ fn mat_cols<T>(m: &[Vec<T>]) -> usize {
     m.first().map_or(0, |r| r.len())
 }
 
-/// `toList` (excelFunctions.ts).
 fn to_list(v: &V) -> Vec<V> {
     match v {
         V::List(items) => items.to_vec(),
@@ -205,7 +203,6 @@ fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     })
 }
 
-/// `asNumericMatrix`.
 fn as_numeric(m: &Mat) -> Result<NumMat, V> {
     let mut out = Vec::with_capacity(m.len());
     for row in m {
@@ -224,7 +221,7 @@ fn as_numeric(m: &Mat) -> Result<NumMat, V> {
     Ok(out)
 }
 
-/// `numMatrix`: None for a blank.
+/// None for a blank.
 fn num_matrix(v: &V) -> Result<Option<NumMat>, V> {
     match to_matrix(v)? {
         None => Ok(None),
@@ -236,7 +233,7 @@ fn num_mat(v: &V) -> Result<NumMat, V> {
     as_numeric(&num_mat_rows(v)?)
 }
 
-// ─── matrixOps.ts ───────────────────────────────────────────────────────────────
+// ─── Matrices ───────────────────────────────────────────────────────────────────
 
 fn mat_mul(a: &NumMat, b: &NumMat) -> Option<NumMat> {
     let (m, n, p) = (a.len(), mat_cols(a), mat_cols(b));
@@ -601,7 +598,7 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
     Some((values, vectors))
 }
 
-/// `flattenArgs` (TOCOL / TOROW).
+/// TOCOL / TOROW's flattening.
 fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, V> {
     let Some(m) = to_matrix(v)? else { return Ok(None) };
     let code = if nullish(ignore) { 0.0 } else { to_num(ignore) };
@@ -636,7 +633,6 @@ fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, 
     Ok(Some(out))
 }
 
-/// `arrayCount`.
 fn array_count(n: f64, f: &str) -> Result<f64, V> {
     let k = n.trunc();
     if k >= 0.0 {
@@ -646,7 +642,7 @@ fn array_count(n: f64, f: &str) -> Result<f64, V> {
     }
 }
 
-// ─── listOps.ts ─────────────────────────────────────────────────────────────────
+// ─── Lists ──────────────────────────────────────────────────────────────────────
 
 #[derive(Hash, PartialEq, Eq)]
 pub(crate) enum Key {
@@ -794,7 +790,7 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
     list(xs.iter().map(|x| finite_num(x).map_or(V::Null, |x| V::Num(eval_at(x)))).collect())
 }
 
-// ─── mathUtils.ts ───────────────────────────────────────────────────────────────
+// ─── Math ───────────────────────────────────────────────────────────────────────
 
 fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
     let c: Vec<f64> = coeffs.iter().copied().skip_while(|&v| v == 0.0).collect();
@@ -920,7 +916,7 @@ fn acc_number(acc: Acc) -> f64 {
     }
 }
 
-/// `linearFit` / `linearFitR2` over raw values, as the regressions hand them over: (slope, intercept, r2).
+/// A linear fit over raw values, as the regressions hand them over: (slope, intercept, r2).
 fn linear_fit(xs: &[V], ys: &[V], with_r2: bool) -> Option<(f64, f64, f64)> {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -951,7 +947,7 @@ fn linear_fit(xs: &[V], ys: &[V], with_r2: bool) -> Option<(f64, f64, f64)> {
     Some((slope, y_mean - slope * x_mean, r2))
 }
 
-/// `expFit`: (m, b).
+/// (m, b).
 fn exp_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let n = xs.len().min(ys.len());
     if !ys[..n].iter().all(|y| js_number(y) > 0.0) {
@@ -962,7 +958,7 @@ fn exp_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     Some((crate::fdlibm::exp(slope), crate::fdlibm::exp(intercept)))
 }
 
-/// `regressionPair`: the present pairs, raw.
+/// The present pairs, raw.
 fn regression_pair(ys: &V, xs: &V) -> Result<(Vec<V>, Vec<V>), V> {
     let ys_list = to_list(ys);
     let xs_list = if nullish(xs) { (1..=ys_list.len()).map(|i| V::Num(i as f64)).collect() } else { to_list(xs) };
@@ -1001,7 +997,7 @@ fn slope_through_origin(xs: &[V], ys: &[f64]) -> Option<f64> {
     (!xs.is_empty() && sxx > 0.0).then(|| sxy / sxx)
 }
 
-/// excelFunctions.ts `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -1074,7 +1070,7 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
     }
 }
 
-// ─── visualOps.ts ───────────────────────────────────────────────────────────────
+// ─── Visual ─────────────────────────────────────────────────────────────────────
 
 fn histogram2d(xs: &[V], ys: &[V], kx: f64, ky: f64) -> V {
     let bins_bad = |k: f64| !k.is_finite() || k.floor() < 1.0;

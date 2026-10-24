@@ -1,4 +1,4 @@
-//! [[B11]] maximalMerge, [[C48]] appendLadder, [[C49]] filterOneJob. `nodes/list.ts`: the list cards, most of them
+//! [[B11]] maximalMerge, [[C48]] appendLadder, [[C49]] filterOneJob. The list cards, most of them
 //! one call to the list function they share their kernel with.
 
 use super::kit::core_call;
@@ -387,7 +387,7 @@ fn unique(c: &mut Call) -> Answer {
     shown(c, "cachedList", "result", r)
 }
 
-/// `stripUnitCells`: each unit cell as the magnitude it reads in its display unit.
+/// Each unit cell as the magnitude it reads in its display unit.
 pub(crate) fn strip_unit_cells(v: &V) -> V {
     match v {
         V::Unit(u) => V::Num(crate::unit_expression::display_magnitude_of(u)),
@@ -739,7 +739,7 @@ fn list_input(c: &mut Call) -> Answer {
     Ok(vec![("list".into(), result)])
 }
 
-/// `listElemColType`: the type of the first item that has one.
+/// The type of the first item that has one.
 fn elem_col_type(arr: &[V]) -> FrameColType {
     for v in arr {
         match v {
@@ -944,7 +944,7 @@ fn aggregate_dim(op: &str, dim: &Dim, n: usize) -> Dim {
     }
 }
 
-/// `aggregate` (statsOps.ts) for the ops whose formula reads a list differently.
+/// `excel_functions::aggregate` for the ops whose formula reads a list differently.
 fn aggregate_plain(op: &str, arr: &[f64]) -> V {
     let cell = |c: FrameCell| match c {
         FrameCell::Num(n) => V::Num(n),
@@ -1086,7 +1086,7 @@ fn date_serial(v: &V) -> Option<f64> {
     crate::csv::date_text_serial(s)
 }
 
-/// `inferColumn`: a column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.
+/// A column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.
 pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
     let mut cells: Vec<V> = cells.to_vec();
     let mut unit: Option<serde_json::Value> = None;
@@ -1357,7 +1357,7 @@ fn find_peaks(c: &mut Call) -> Answer {
     shown(c, "cachedResult", "result", frame)
 }
 
-// ─── INDEX (list.ts) ────────────────────────────────────────────────────────────
+// ─── INDEX ──────────────────────────────────────────────────────────────────────
 
 /// A list takes one Position and anything else a Row and a Column ([[D85]] columnsStayColumns); the class swaps the
 /// sockets, and until it has, the sockets on the card say what the numbers mean.
@@ -1417,7 +1417,7 @@ fn trunc_of(v: &V) -> f64 {
     super::kit::num(v).trunc()
 }
 
-/// `resolveAxes`: `None` where a position is blank; else whether each axis is whole, and the 0-based positions.
+/// `None` where a position is blank; else whether each axis is whole, and the 0-based positions.
 fn resolve_axes(row: &V, col: &V) -> Option<(bool, bool, f64, f64)> {
     if matches!(row, V::Null) || matches!(col, V::Null) {
         return None;
@@ -1453,7 +1453,7 @@ fn or_null(x: Option<&V>) -> V {
     }
 }
 
-/// `indexIntoContainer`: a frame or a cube sliced here, anything else as the INDEX formula reads it, a table's
+/// A frame or a cube sliced here, anything else as the INDEX formula reads it, a table's
 /// cells in its unit.
 fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     use super::frames::{cube_from_columns, cube_row_count, tag_cell_unit};
@@ -1535,7 +1535,7 @@ fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) ->
     }
 }
 
-/// `indexInto` (indexAccess.ts) with `tagFrameCellUnit`: an empty list of positions is the positions left out
+/// INDEX with the frame cell's unit tagged back on: an empty list of positions is the positions left out
 /// ([[D86]] blankRoles).
 fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     if matches!(v, V::Null | V::Undef) {
@@ -1654,7 +1654,7 @@ fn is_grid(x: &V) -> bool {
     matches!(x, V::List(l) if matches!(l.first(), Some(V::List(_))))
 }
 
-/// `positionOf`: blank, an error as it is, a number, or #VALUE!.
+/// Blank, an error as it is, a number, or #VALUE!.
 fn position_of(x: &V) -> V {
     let n = match x {
         V::Null | V::Undef => return V::Null,
@@ -1671,7 +1671,7 @@ fn position_of(x: &V) -> V {
     }
 }
 
-/// `indexMany`: on a table whose other axis is whole, a list of rows or columns picks those, as CHOOSEROWS and
+/// On a table whose other axis is whole, a list of rows or columns picks those, as CHOOSEROWS and
 /// CHOOSECOLS do; otherwise the two axes pair up as Excel's array arguments do, one value per pair.
 fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     let (row_many, col_many) = (matches!(row, V::List(_)), matches!(col, V::List(_)));
@@ -1759,7 +1759,7 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
 
 // ─── Shuffle, over the keys its shell drew ([[D46]] freezeVolatilePerCalc) ──────
 
-/// `weightedShuffleKey`: an exponential draw's key, so a heavier weight tends to land earlier.
+/// An exponential draw's key, so a heavier weight tends to land earlier.
 fn weighted_shuffle_key(u: f64, weight: f64) -> f64 {
     if !(weight > 0.0) || !weight.is_finite() {
         return f64::INFINITY;

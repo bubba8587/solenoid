@@ -1,7 +1,7 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The Formula.js 4.6.1 bodies a formula reaches straight through `resolveExcelFunction` (no internal registration
-//! over them), with the jStat kernels they call, each named as there. Their JavaScript coercions are ported with
-//! them: a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.
+//! The Formula.js 4.6.1 bodies a formula reaches straight through (no internal registration
+//! over them), with the jStat kernels they call, each named as there. They keep their JavaScript coercions:
+//! a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
@@ -75,7 +75,7 @@ fn is_nan(v: &V) -> bool {
     js_number(v).is_nan()
 }
 
-/// `anyError`: the first argument that is a Formula.js error.
+/// The first argument that is a Formula.js error.
 fn any_error(vs: &[&V]) -> Option<V> {
     vs.iter().find(|v| matches!(v, V::Fx(_))).map(|v| (*v).clone())
 }
@@ -100,7 +100,7 @@ fn flatten_args(a: &[V]) -> Vec<V> {
     a.iter().flat_map(flatten).collect()
 }
 
-/// `parseNumberArray`: each item parsed from the last, the first error met answering; an empty array is #VALUE!.
+/// Each item parsed from the last, the first error met answering; an empty array is #VALUE!.
 fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
     if arr.is_empty() {
         return Err(VALUE);

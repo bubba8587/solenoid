@@ -1,4 +1,4 @@
-//! [[C17]] shareImpl. `nodes/complex.ts`: the complex-number cards over the IM* formula bodies. No `guardFinite` here: the complex ops
+//! [[C17]] shareImpl. The complex-number cards over the IM* formula bodies. No non-finite guard here: the complex ops
 //! keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
 use super::kit::{core_call, each, num, short_circuit};
@@ -19,7 +19,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     })
 }
 
-/// `toCx`: a complex number, a real, or its text read as `a+bi`.
+/// A complex number, a real, or its text read as `a+bi`.
 fn to_cx(v: &V, name: &str) -> V {
     match v {
         V::Cx(..) => v.clone(),
@@ -32,7 +32,7 @@ fn to_cx(v: &V, name: &str) -> V {
     }
 }
 
-/// `cxOp`: each cell read as a complex number, a blank or an error kept.
+/// Each cell read as a complex number, a blank or an error kept.
 fn cx_op(v: &V, name: &str) -> V {
     let one = |e: &V| match e {
         V::Null | V::Undef => V::Null,
@@ -45,7 +45,7 @@ fn cx_op(v: &V, name: &str) -> V {
     }
 }
 
-/// `broadcastComplex`: the body over the operands, item by item where any is a list; each cell short-circuits.
+/// The body over the operands, item by item where any is a list; each cell short-circuits.
 fn broadcast_complex(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     each(args, |ops| short_circuit(ops).unwrap_or_else(|| f(ops)))
 }
@@ -191,7 +191,7 @@ fn poly_roots(c: &mut Call) -> Answer {
     }
 }
 
-/// `quadraticRoots` (cxValue.ts), for the NaN coefficient the formula refuses.
+/// The quadratic's roots, for the NaN coefficient the formula refuses.
 fn quadratic_roots(a: f64, b: f64, c: f64) -> V {
     if a == 0.0 {
         return err(ErrorCode::Domain, "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");

@@ -1,6 +1,6 @@
-//! [[B11]] maximalMerge, [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue. `nodes/visual.ts`: the figure
+//! [[B11]] maximalMerge, [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue. The figure
 //! cards, each answering its chart whole as `V::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
-//! reader (`chartOptions.ts`), the XY reader (`xyPlot.ts`) and the frame-column readers they share.
+//! reader, the XY reader and the frame-column readers they share.
 
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, Frame};
@@ -112,7 +112,7 @@ fn opt_nums(items: &[Option<f64>]) -> Json {
     Json::Array(items.iter().map(|n| jopt(*n)).collect())
 }
 
-/// What the error guard answers for a TypeError the TS body throws.
+/// What the error guard answers for a TypeError a body throws.
 fn crashed(message: &str) -> V {
     err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
@@ -173,7 +173,7 @@ fn read_options(c: &Call) -> Result<Obj, V> {
     }
 }
 
-// ─── chartOptions.ts ────────────────────────────────────────────────────────────
+// ─── Chart options ──────────────────────────────────────────────────────────────
 
 fn to_bool(v: &str) -> Option<bool> {
     match js_lower(js_trim(v)).as_ref() {
@@ -225,7 +225,7 @@ const CMAPS: [&str; 21] = [
     "Greys", "YlOrRd", "YlGnBu", "coolwarm", "RdBu", "RdYlBu", "RdYlGn", "PiYG", "BrBG", "Spectral",
 ];
 
-/// `normalizeCmap`: a map's own spelling, `_r` kept for a reversed one.
+/// A map's own spelling, `_r` kept for a reversed one.
 fn normalize_cmap(text: &str) -> Option<String> {
     let s = js_trim(text);
     let reversed = s.len() >= 2 && s.is_char_boundary(s.len() - 2) && s[s.len() - 2..].eq_ignore_ascii_case("_r");
@@ -235,7 +235,7 @@ fn normalize_cmap(text: &str) -> Option<String> {
     Some(if reversed { format!("{base}_r") } else { base.to_string() })
 }
 
-/// `isNumberSpec`: `^(\+)?(,)?(?:\.(\d{1,2}))?([fFeEgGd%])?$` on the trimmed text.
+/// `^(\+)?(,)?(?:\.(\d{1,2}))?([fFeEgGd%])?$` on the trimmed text.
 fn is_number_spec(spec: &str) -> bool {
     let s = js_trim(spec);
     if s.is_empty() {
@@ -253,7 +253,7 @@ fn is_number_spec(spec: &str) -> bool {
     rest.is_empty() || (rest.len() == 1 && "fFeEgGd%".contains(rest))
 }
 
-/// `parseChartOptions`: `key=value` pairs by matplotlib's names; an unknown key or an unreadable value is skipped.
+/// `key=value` pairs by matplotlib's names; an unknown key or an unreadable value is skipped.
 pub(crate) fn parse_chart_options(input: &str) -> Obj {
     let mut o = Obj::new();
     let put_num = |o: &mut Obj, k: &str, n: Option<f64>| {
@@ -420,14 +420,14 @@ fn finite(v: &V) -> Option<f64> {
     }
 }
 
-/// `colAsStrings`: each cell as shown, a blank as "".
+/// Each cell as shown, a blank as "".
 fn col_strings(col: Option<&Column>) -> Vec<String> {
     col.map_or_else(Vec::new, |col| {
         (0..col.values.len()).map(|r| shown_text(col, r, None).unwrap_or_default()).collect()
     })
 }
 
-/// `colAsNumbers`: each cell as a number, read from its shown text where that is text.
+/// Each cell as a number, read from its shown text where that is text.
 fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
     let Some(col) = col else { return Vec::new() };
     col.values
@@ -440,7 +440,7 @@ fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
         .collect()
 }
 
-/// `readFrameColumns`: a frame's columns, anything else none.
+/// A frame's columns, anything else none.
 fn frame_columns(v: &V) -> &[Column] {
     match v {
         V::Frame(f) => &f.columns,
@@ -448,7 +448,7 @@ fn frame_columns(v: &V) -> &[Column] {
     }
 }
 
-/// `typedColumn`: the cells as one column of its known type, else the type every present cell shares.
+/// The cells as one column of its known type, else the type every present cell shares.
 fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType>) -> Column {
     let present: Vec<&V> = cells.iter().filter(|c| !matches!(c, V::Null | V::Undef | V::Err(_))).collect();
     let ty = known.unwrap_or_else(|| {
@@ -545,7 +545,7 @@ fn sparkline(c: &mut Call) -> Answer {
 
 // ─── Chart ──────────────────────────────────────────────────────────────────────
 
-/// `readChartRefs`: a References table's rows as reference marks, its columns found by name.
+/// A References table's rows as reference marks, its columns found by name.
 fn read_chart_refs(f: &V) -> Vec<Json> {
     let V::Frame(f) = f else { return Vec::new() };
     let col = |name: &str| f.columns.iter().find(|c| js_lower(js_trim(&c.name)) == name);
@@ -588,7 +588,7 @@ fn marker_for(op: &str, opts: &Obj, series: usize) -> bool {
     op != "xyline" || opts.get("marker").and_then(Json::as_bool).unwrap_or(series == 1)
 }
 
-/// `listXY`: a list plots at x = 1, 2, 3, …; a number is one point at x = 1.
+/// A list plots at x = 1, 2, 3, …; a number is one point at x = 1.
 fn list_xy(op: &str, raw: &V, opts: &Obj) -> Option<Obj> {
     let ys: Vec<V> = match raw {
         V::List(items) => items.to_vec(),
@@ -605,7 +605,7 @@ fn list_xy(op: &str, raw: &V, opts: &Obj) -> Option<Obj> {
     Some(json!({ "kind": "xy", "names": {}, "series": series }).as_object().cloned().unwrap_or_default())
 }
 
-/// `buildXY`: a frame, a list or a number as XY series, the columns picked by the options' names. A named column the
+/// A frame, a list or a number as XY series, the columns picked by the options' names. A named column the
 /// frame lacks is `#REF!`, a text column in a number role `#TYPE!`; `None` is nothing to plot.
 fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     let V::Frame(f) = raw else { return Ok(list_xy(op, raw, opts)) };
@@ -1246,7 +1246,7 @@ fn merge_overlay(sources: &[(Rc<Json>, usize)]) -> Json {
 /// One plot's series on the shared plane: `(series, xcats, xDate)`.
 type XySource = (Vec<Json>, Option<Json>, Option<Json>);
 
-/// `sourceAsXY`: one Merge Plots source as XY series on a shared numeric plane, its own options as each series' style.
+/// One Merge Plots source as XY series on a shared numeric plane, its own options as each series' style.
 fn source_as_xy(cv: &Json, plot_no: usize) -> Result<XySource, V> {
     let empty = json!({});
     let o = field(cv, "options").unwrap_or(&empty);
@@ -1442,7 +1442,7 @@ fn bin_count(k: &V) -> Result<f64, V> {
     }
 }
 
-/// `equalWidthBins`: the lower edges over `[min, max]` (min < max), and each value's bin by them, the last closed.
+/// The lower edges over `[min, max]` (min < max), and each value's bin by them, the last closed.
 fn equal_width_bins(min: f64, max: f64, bins: usize) -> (Vec<f64>, impl Fn(f64) -> usize) {
     let w = (max - min) / bins as f64;
     let edges: Vec<f64> = (0..bins).map(|i| min + i as f64 * w).collect();
@@ -1629,7 +1629,7 @@ fn proportion(c: &mut Call) -> Answer {
     figure(c, "proportion", values, payload, opts, "Proportion")
 }
 
-/// `mergeFlows`: repeated from-to pairs summed into one flow.
+/// Repeated from-to pairs summed into one flow.
 fn merge_flows(sources: &[String], targets: &[String], values: &[f64]) -> (Vec<String>, Vec<String>, Vec<f64>) {
     let mut at: HashMap<(String, String), usize> = HashMap::new();
     let (mut s, mut t, mut v) = (Vec::new(), Vec::new(), Vec::new());
@@ -1650,7 +1650,7 @@ fn merge_flows(sources: &[String], targets: &[String], values: &[f64]) -> (Vec<S
 
 type Flows = (Vec<String>, Vec<String>, Vec<f64>);
 
-/// `acyclicFlows`: a flow that would close a loop is dropped and counted.
+/// A flow that would close a loop is dropped and counted.
 fn acyclic_flows((sources, targets, values): Flows) -> (Flows, usize) {
     let mut adj: HashMap<String, Vec<String>> = HashMap::new();
     let reaches = |adj: &HashMap<String, Vec<String>>, from: &str, to: &str| {
@@ -1725,7 +1725,7 @@ fn index_names(n: usize) -> Vec<String> {
     (1..=n).map(|i| i.to_string()).collect()
 }
 
-/// `heatmapFromColumns`: the number columns are the heat columns; a first column that is not numbers names the rows.
+/// The number columns are the heat columns; a first column that is not numbers names the rows.
 fn heatmap_from_columns(cols: &[Column]) -> Grid {
     let named = cols.len() >= 2 && cols[0].ty != FrameColType::Number;
     let data: Vec<&Column> = cols[usize::from(named)..].iter().filter(|c| c.ty == FrameColType::Number).collect();
@@ -1737,7 +1737,7 @@ fn heatmap_from_columns(cols: &[Column]) -> Grid {
     (z, rows, data.iter().map(|c| c.name.clone()).collect())
 }
 
-/// `heatmapFromTable`: a plain table plots as it stands, rows and columns numbered; a list is one row.
+/// A plain table plots as it stands, rows and columns numbered; a list is one row.
 fn heatmap_from_table(t: &[V]) -> Grid {
     let rows: Vec<Vec<V>> = if !t.is_empty() && t.iter().all(|r| matches!(r, V::List(_))) {
         t.iter().map(|r| if let V::List(r) = r { r.to_vec() } else { Vec::new() }).collect()
@@ -1784,7 +1784,7 @@ fn heatmap(c: &mut Call) -> Answer {
 /// A table of heights with its axes: the coordinates per column, per row, and the heights.
 type Axes = (Vec<f64>, Vec<f64>, Vec<Vec<Option<f64>>>);
 
-/// `gridAxes`: a table of heights with a coordinate per column and per row, 1, 2, 3… where unwired; `None` for a
+/// A table of heights with a coordinate per column and per row, 1, 2, 3… where unwired; `None` for a
 /// table with no cells, a blank axis, or an axis that doesn't fit it.
 fn grid_axes(z: &V, xs: Option<&V>, ys: Option<&V>) -> Option<Axes> {
     let V::List(z) = z else { return None };
@@ -1855,14 +1855,14 @@ fn waterfall(c: &mut Call) -> Answer {
     figure(c, "waterfall", known(&values), payload, opts, "Waterfall")
 }
 
-/// `quantileSorted`: the `p` quantile of sorted numbers, interpolated linearly.
+/// The `p` quantile of sorted numbers, interpolated linearly.
 fn quantile_sorted(sorted: &[f64], p: f64) -> f64 {
     let idx = (sorted.len() - 1) as f64 * p;
     let (lo, hi) = (idx.floor() as usize, idx.ceil() as usize);
     sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo as f64)
 }
 
-/// `boxplotStats`: the quartiles, the whiskers at the farthest values inside 1.5 IQR, and the outliers past them.
+/// The quartiles, the whiskers at the farthest values inside 1.5 IQR, and the outliers past them.
 fn boxplot_stats(sample: &[Option<f64>]) -> Option<Obj> {
     let mut nums: Vec<f64> = sample.iter().flatten().copied().filter(|v| v.is_finite()).collect();
     if nums.is_empty() {
@@ -1989,7 +1989,7 @@ const CB_STR_KEYS: [&str; 43] = [
 ];
 const CB_NUM_KEYS: [&str; 8] = ["linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"];
 
-/// `serializeChartOptions` over the card's fields: each one given a value, as `key=value` joined by semicolons.
+/// The chart options over the card's fields: each one given a value, as `key=value` joined by semicolons.
 fn chart_builder(c: &mut Call) -> Answer {
     let text = |k: &str| match c.read_input(k, c.string_literal(k)) {
         V::Null | V::Undef => None,

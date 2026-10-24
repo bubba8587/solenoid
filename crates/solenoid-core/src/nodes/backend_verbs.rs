@@ -1,6 +1,6 @@
 //! [[B17]] typedValueModel, [[C48]] appendLadder. The frame cards whose verb is a backend call of its own or a read
-//! of a ref: Join, Append, Bind Columns and PIVOTBY of `nodes/frame.ts`, Table Size of `nodes/matrix.ts`, Slicer of
-//! `nodes/control.ts`. A body never calls the backend: Join, Append and Bind Columns answer the call for the shell to
+//! of a ref: Join, Append, Bind Columns, PIVOTBY, Table Size and Slicer. A body never calls the backend: Join,
+//! Append and Bind Columns answer the call for the shell to
 //! make (the keys and how, or the inputs to stack, in order), or one frame passed on. Table Size counts a zero-row
 //! preview the shell reads or takes. Slicer and PIVOTBY over a ref are called on its schema, answer the columns they
 //! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
@@ -129,7 +129,7 @@ fn same_value_zero(a: &V, b: &V) -> bool {
     }
 }
 
-/// `slicerUniques`: a column's distinct filled values, numbers by value and anything else by its text.
+/// A column's distinct filled values, numbers by value and anything else by its text.
 fn slicer_uniques(values: &[V]) -> Vec<V> {
     let mut out: Vec<V> = Vec::new();
     for v in values {
@@ -258,7 +258,7 @@ fn slicer(c: &mut Call) -> Answer {
 
 const AXES: [&str; 3] = ["rowFields", "colFields", "values"];
 
-/// `pivotCellKey`: the text a field-value filter keys a cell by.
+/// The text a field-value filter keys a cell by.
 fn pivot_cell_key(v: &V) -> String {
     match v {
         V::Null | V::Undef => String::new(),
@@ -269,7 +269,7 @@ fn pivot_cell_key(v: &V) -> String {
     }
 }
 
-/// `distinctKeys`: a column's first 200 distinct keys, for the editor's checklist.
+/// A column's first 200 distinct keys, for the editor's checklist.
 fn distinct_keys(values: &[V]) -> Vec<String> {
     let mut seen = HashSet::new();
     let mut out = Vec::new();
@@ -295,7 +295,7 @@ fn show_sources(c: &mut Call, sources: Vec<Json>) {
     c.show("sourceColumns", v);
 }
 
-/// `csvList`: a list literal's items.
+/// A list literal's items.
 fn csv_list(c: &Call, key: &str) -> Vec<String> {
     match c.string_literal(key) {
         V::Str(s) if !s.is_empty() => literal_items(&s),
@@ -334,7 +334,7 @@ fn kept(c: &Call, valid: &HashSet<String>) -> Fields {
     }
 }
 
-/// `combineFilter`: the hidden value keys as a row mask, ANDed with the wired one.
+/// The hidden value keys as a row mask, ANDed with the wired one.
 fn combine_filter(f: &Frame, exclude: &Map<String, Json>, wired: &V) -> Option<Vec<Option<bool>>> {
     let active: Vec<(Vec<String>, Option<&Column>)> = exclude
         .iter()
@@ -473,7 +473,7 @@ fn pivot(c: &mut Call) -> Answer {
     pivot_over(c, f, None)
 }
 
-/// `computePivot`: the pivot of `fv` (a frame), or `source` (a ref) passed on where no value field names a column.
+/// The pivot of `fv` (a frame), or `source` (a ref) passed on where no value field names a column.
 fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
     let V::Frame(f) = &fv else { unreachable!() };
     let mut names: Vec<String> = Vec::new();

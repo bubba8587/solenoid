@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore. `nodes/control.ts`'s card bodies. (Stub: the family's port fills it and cites its leaves here.)
+//! [[D102]] graphOnCore. `nodes/control.ts`'s card bodies, none of which runs on the core yet.
 
 use super::{Answer, Call};
 

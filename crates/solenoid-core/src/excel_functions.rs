@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[C14]] currentExcelParity
-//! Port of the function bodies the row-formula evaluator runs: `src/graph/excelFunctions.ts`'s internal ones and
-//! the Formula.js ones it passes through to (`@formulajs/formulajs` 4.6.1), each named as there. A value is a JS
-//! value: `Fx` is a Formula.js `Error` object, which flows until `normalizeFxResult` turns it into a SolError.
+//! The function bodies the row-formula evaluator runs, Solenoid's own and Formula.js 4.6.1's. A value is a JS
+//! value: `Fx` is a Formula.js `Error` object, which flows until `nodes::kit::normalize` turns it into a SolError.
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -26,13 +25,13 @@ pub enum V {
     Fx(FxError),
     /// A whole column, as a range function takes it (flattened, its cells in order).
     List(Rc<Vec<V>>),
-    /// A complex number (`cxValue.ts`' `Cx`): real part, imaginary part.
+    /// A complex number: real part, imaginary part.
     Cx(f64, f64),
     /// A LAMBDA, or a function named bare where a LAMBDA goes.
     Lambda(Rc<crate::eval::LambdaV>),
-    /// A value with a unit (`unitValue.ts`' `UnitCell`), opaque to every body but the unit-aware ones.
+    /// A value with a unit, opaque to every body but the unit-aware ones.
     Unit(Rc<crate::unit_dims::UnitCell>),
-    /// A card's frame (`frame.ts`' `FrameValue`), which only card bodies take ([[node-bodies]]).
+    /// A card's frame, which only card bodies take ([[node-bodies]]).
     Frame(Rc<crate::nodes::Frame>),
     /// A card's cube (`CubeValue`).
     Cube(Rc<crate::nodes::Cube>),
@@ -49,7 +48,7 @@ impl V {
         V::Str(Rc::from(s))
     }
 
-    /// `isErr`: a SolError or a Formula.js `Error`.
+    /// A SolError or a Formula.js `Error`.
     pub fn is_err(&self) -> bool {
         matches!(self, V::Err(_) | V::Fx(_))
     }
@@ -104,7 +103,7 @@ pub fn ported_names() -> Vec<&'static str> {
         .collect()
 }
 
-/// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
+/// Whether a body reads a matrix (an array of arrays); the rest read flat lists.
 pub fn reads_matrices(name: &str) -> bool {
     matches!(name, "XLOOKUP" | "XMATCH" | "INDEX")
         || crate::fns_random::NAMES.contains(&name)
@@ -117,7 +116,7 @@ pub fn is_ported(name: &str) -> bool {
     !matches!(route(name), Route::None)
 }
 
-/// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
+/// The whole-list functions (`listArgs`) whose body reads a whole column as it comes.
 pub fn takes_whole_lists(name: &str) -> bool {
     matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
         || is_finance_whole(name)
@@ -185,7 +184,7 @@ pub fn reads_lists(name: &str) -> bool {
     )
 }
 
-/// The moment a calc reads, lowered from the TS (`engineClock`, [[D46]] freezeVolatilePerCalc): NOW's serial, the
+/// The moment a calc reads, ([[D46]] freezeVolatilePerCalc): NOW's serial, the
 /// local wall clock read as UTC.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 pub struct Clock {
@@ -324,7 +323,7 @@ pub(crate) fn to_num(v: &V) -> f64 {
     }
 }
 
-/// `optNum`: a blank reads as the default.
+/// A blank reads as the default.
 fn opt_num(v: &V, dflt: f64) -> f64 {
     if matches!(v, V::Null | V::Undef) {
         dflt
@@ -333,7 +332,6 @@ fn opt_num(v: &V, dflt: f64) -> f64 {
     }
 }
 
-/// `numberToText` (excelFunctions.ts).
 pub fn number_to_text(x: f64) -> String {
     if !x.is_finite() {
         return number_to_string(x);
@@ -350,7 +348,6 @@ pub fn number_to_text(x: f64) -> String {
     number_to_string(v)
 }
 
-/// `toStr` (excelFunctions.ts).
 pub(crate) fn to_str(v: &V) -> String {
     match v {
         V::Str(s) => String::from(&**s),
@@ -365,7 +362,7 @@ pub(crate) fn value_err(f: &str) -> V {
     V::err(sol_error(ErrorCode::Value, format!("{f} needs a number")))
 }
 
-/// `fxErrorToSol`: Formula.js's codes read as Solenoid's.
+/// Formula.js's codes read as Solenoid's.
 pub fn fx_error_to_sol(code: FxError) -> SolError {
     let mapped = match code {
         FxError::DivZero => ErrorCode::DivZero,
@@ -504,7 +501,7 @@ fn clamp_index(x: f64, len: usize) -> usize {
     }
 }
 
-// ─── Statistics (statsOps.ts `aggregate`) ───────────────────────────────────────
+// ─── Statistics ─────────────────────────────────────────────────────────────────
 
 pub(crate) fn sum(a: &[f64]) -> f64 {
     a.iter().fold(0.0, |x, y| x + y)
@@ -750,7 +747,6 @@ pub(crate) enum MatchMode {
     NextSmaller,
 }
 
-/// `xMatchModeArg`.
 fn x_match_mode(v: &V) -> Result<MatchMode, V> {
     if matches!(v, V::Undef) {
         return Ok(MatchMode::Exact);
@@ -769,7 +765,7 @@ fn x_match_mode(v: &V) -> Result<MatchMode, V> {
     })
 }
 
-/// `xSearchModeArg`: whether the search runs from the last item.
+/// Whether the search runs from the last item.
 fn x_search_mode(v: &V) -> Result<bool, V> {
     if matches!(v, V::Undef) {
         return Ok(false);
@@ -789,7 +785,7 @@ fn x_search_mode(v: &V) -> Result<bool, V> {
     }
 }
 
-/// `lookupEq`: text compares without case, anything else strictly.
+/// Text compares without case, anything else strictly.
 fn lookup_eq(a: &V, b: &V) -> bool {
     match (a, b) {
         (V::Str(x), V::Str(y)) => crate::jsnum::js_lower(x) == crate::jsnum::js_lower(y),
@@ -797,7 +793,6 @@ fn lookup_eq(a: &V, b: &V) -> bool {
     }
 }
 
-/// `xmatchIndex` (listOps.ts): None where it answers -1.
 pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Option<usize>, V> {
     let n = keys.len();
     let at = |s: usize| if last { n - 1 - s } else { s };
@@ -841,7 +836,6 @@ fn finite_of(r: f64, xs: &[f64], ys: &[f64]) -> V {
     finite_v(r, &[xs, ys].concat())
 }
 
-/// `pearson` (statsOps.ts).
 pub(crate) fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -872,10 +866,10 @@ fn js_sign(x: f64) -> f64 {
     }
 }
 
-/// `kendallCounts` (statsOps.ts): the pairwise counts in O(n log n), finite values only.
+/// The pairwise counts in O(n log n), finite values only.
 fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
     let n = xs.len();
-    // In f64, as the TS counts: usize is 32 bits in wasm.
+    // In f64: usize is 32 bits in wasm.
     let pairs = |t: usize| {
         let t = t as f64;
         t * (t - 1.0) / 2.0
@@ -947,7 +941,6 @@ fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
     (pairs(n) - n1 - n2 + n3 - swaps, swaps, n1 - n3, n2 - n3)
 }
 
-/// `kendallTau` (statsOps.ts).
 pub(crate) fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -982,7 +975,6 @@ pub(crate) fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     V::Num((conc - disc) / den)
 }
 
-/// `covariance` (statsOps.ts).
 pub(crate) fn covariance(xs: &[f64], ys: &[f64], sample: bool) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -993,7 +985,6 @@ pub(crate) fn covariance(xs: &[f64], ys: &[f64], sample: bool) -> V {
     finite_of(if sample { cov / (n - 1) as f64 } else { cov / n as f64 }, xs, ys)
 }
 
-/// `regression` (statsOps.ts), named by its Excel function.
 fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -1030,7 +1021,6 @@ fn as_number_cmp(v: &V) -> f64 {
     }
 }
 
-/// `excelRank` (excelFunctions.ts).
 fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
@@ -1124,7 +1114,6 @@ pub(crate) fn js_mean(arr: &[V]) -> f64 {
     arr.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / arr.len() as f64
 }
 
-/// `arrSampleVar` over JS values.
 fn js_sample_var(arr: &[V]) -> f64 {
     let m = js_mean(arr);
     arr.iter().fold(0.0, |s, v| s + js_pow(to_f64_js(v) - m, 2.0)) / (arr.len() as f64 - 1.0)
@@ -1136,7 +1125,7 @@ pub(crate) fn js_slice_index(k: f64, len: usize) -> usize {
     (if k < 0.0 { (l + k).max(0.0) } else { k.min(l) }) as usize
 }
 
-/// `excelTrimmean`: `values.length` is `n` (a string's UTF-16 length, None where it is `undefined`) and `items`
+/// `values.length` is `n` (a string's UTF-16 length, None where it is `undefined`) and `items`
 /// what `[...values]` spreads (None where that throws).
 fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
     let n = n.unwrap_or(f64::NAN);
@@ -1154,7 +1143,6 @@ fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
     V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
 }
 
-/// `excelPercentRank` (excelFunctions.ts).
 fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
     if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
         return e.clone();
@@ -1189,7 +1177,6 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
     V::Num((rank * f).trunc() / f)
 }
 
-/// `gcdLcm` (mathUtils.ts).
 fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
     let name = if gcd { "GCD" } else { "LCM" };
     if values.is_empty() {
@@ -1223,7 +1210,7 @@ fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
     V::Num(acc)
 }
 
-/// TEXT (excelFunctions.ts), its patched codes up front and Formula.js's TEXT after.
+/// TEXT: its patched codes up front and Formula.js's TEXT after.
 fn excel_text(value: &V, fmt: &V) -> V {
     let f = to_str(fmt);
     let n = to_num(value);
@@ -1434,7 +1421,6 @@ fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     }
 }
 
-/// `ordinalText` (textOps.ts).
 fn ordinal_text(n: f64) -> String {
     const SUFFIX: [&str; 4] = ["th", "st", "nd", "rd"];
     let i = n.trunc();
@@ -1444,7 +1430,7 @@ fn ordinal_text(n: f64) -> String {
     format!("{}{suffix}", number_to_string(i))
 }
 
-/// `textAfterBefore` (textOps.ts), over UTF-16 units: a caseless search finds its places in the lowercased text.
+/// Over UTF-16 units: a caseless search finds its places in the lowercased text.
 fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, caseless: bool, match_end: bool) -> V {
     let n = instance.trunc();
     if n == 0.0 {
@@ -1492,7 +1478,7 @@ fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, ca
     V::str(&if after { from_utf16(&t16[(hit_i + hit_len).min(end)..]) } else { from_utf16(&t16[..hit_i.min(end)]) })
 }
 
-/// `padText` (textOps.ts), counting code points.
+/// Counts code points.
 fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
     let chars: Vec<char> = t.chars().collect();
     let w = crate::jsnum::math_max(0.0, width.floor());
@@ -1522,7 +1508,7 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
     })
 }
 
-/// `truncateText` (textOps.ts), counting code points.
+/// Counts code points.
 fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
     let chars: Vec<char> = t.chars().collect();
     let w = crate::jsnum::math_max(0.0, width.floor());
@@ -1542,7 +1528,7 @@ fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
     }
 }
 
-/// `numberValue` (textOps.ts), over UTF-16 units: a separator is its `[0]`, half of an astral character included.
+/// Over UTF-16 units: a separator is its `[0]`, half of an astral character included.
 fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     let bad = || V::err(sol_error(ErrorCode::Value, "NUMBERVALUE needs a number"));
     let (dot, comma, percent) = (u16::from(b'.'), u16::from(b','), u16::from(b'%'));
@@ -1588,8 +1574,8 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     }
 }
 
-/// `splitText` (textOps.ts). A caseless split finds the delimiter in the lowercased text and cuts the original at
-/// those UTF-16 offsets, as the TS does, even where lowercasing changed the length.
+/// A caseless split finds the delimiter in the lowercased text and cuts the original at those UTF-16 offsets, even
+/// where lowercasing changed the length.
 fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bool, caseless: bool, pad: &V) -> V {
     let cut = |t: &[u16], d: Option<&str>| -> Vec<Vec<u16>> {
         let Some(d) = d else { return vec![t.to_vec()] };
@@ -1632,7 +1618,7 @@ fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bo
     ))
 }
 
-/// `wrapText` (textOps.ts): words split on JS whitespace, a word's length in code points. A NaN width wraps every word.
+/// Words split on JS whitespace, a word's length in code points. A NaN width wraps every word.
 fn wrap_text(t: &str, width: f64) -> Vec<String> {
     let w = crate::jsnum::math_max(1.0, width.floor());
     let mut lines = Vec::new();
@@ -1672,7 +1658,6 @@ fn finite_or_null(r: f64) -> V {
     }
 }
 
-/// `cdfOrPdf`.
 fn cdf_or_pdf(cum: &V, discrete: bool) -> Form {
     if is_true(cum) {
         Form::Cdf
@@ -1683,7 +1668,7 @@ fn cdf_or_pdf(cum: &V, discrete: bool) -> Form {
     }
 }
 
-/// `dist` (excelFunctions.ts): a NaN argument is blank, a refusal `#DOMAIN!`, a non-finite answer blank.
+/// A NaN argument is blank, a refusal `#DOMAIN!`, a non-finite answer blank.
 fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
     let vn = to_num(v);
     let ps: Vec<f64> = params.iter().map(to_num).collect();
@@ -1700,7 +1685,7 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
 }
 
 /// `indexRefError`.
-/// `asOneDim`: a table's one row or one column, a list as it is, a value as a list of one; None for a 2-D table.
+/// A table's one row or one column, a list as it is, a value as a list of one; None for a 2-D table.
 fn as_one_dim(v: &V) -> Option<Vec<V>> {
     match v {
         V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
@@ -1725,7 +1710,7 @@ fn index_ref_error(n: f64, max: usize, what: &str) -> V {
     V::err(sol_error(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))))
 }
 
-/// `indexInto` (indexAccess.ts) at one position per axis: a table, a list (one row) or one value. A null position
+/// INDEX at one position per axis: a table, a list (one row) or one value. A null position
 /// (`row_null`) is a blank answer; None is a position left out.
 /// An INDEX position: left out, blank, a number, or several (`IndexAxis`).
 #[derive(Clone)]
@@ -1757,7 +1742,7 @@ fn index_at(v: &V, row: Ax, col: Ax) -> V {
     index_into(v, one(&row), one(&col), matches!(row, Ax::Null), matches!(col, Ax::Null))
 }
 
-/// `positionOf`: blank, an error as it is, a number, or #VALUE!.
+/// Blank, an error as it is, a number, or #VALUE!.
 fn position_of(x: &V) -> Result<Ax, V> {
     let n = match x {
         V::Null | V::Undef => return Ok(Ax::Null),
@@ -1773,7 +1758,7 @@ fn position_of(x: &V) -> Result<Ax, V> {
     }
 }
 
-/// `indexMany`: on a table whose other axis is whole, a list picks rows or columns; otherwise the axes pair up as
+/// On a table whose other axis is whole, a list picks rows or columns; otherwise the axes pair up as
 /// Excel's array arguments do, one value per pair.
 fn index_many(v: &V, row: Ax, col: Ax) -> V {
     let is_grid = |x: &[V]| matches!(x.first(), Some(V::List(_)));
@@ -2060,7 +2045,7 @@ fn clock_time(t: &str) -> Option<(f64, f64, f64, Option<bool>)> {
     Some((h.parse().ok()?, m.parse().ok()?, sec, meridiem))
 }
 
-/// `toList`: a list as its items, a blank as none, anything else as one.
+/// A list as its items, a blank as none, anything else as one.
 fn to_list(v: &V) -> Rc<Vec<V>> {
     match v {
         V::List(items) => items.clone(),
@@ -2069,7 +2054,7 @@ fn to_list(v: &V) -> Rc<Vec<V>> {
     }
 }
 
-/// `weighted` (listOps.ts), over JS values: the weight sum adds as JS does, text joining; every other sum reads numbers.
+/// The weight sum adds as JS does, text joining; every other sum reads numbers.
 fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if let Some(e) = values.iter().chain(weights).find(|v| v.is_sol_error()) {
         return e.clone();
@@ -2203,7 +2188,7 @@ fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     V::Num(interest * rate)
 }
 
-/// `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -2212,7 +2197,7 @@ fn is_true(v: &V) -> bool {
     }
 }
 
-/// `epochUnit`: Some(true) for milliseconds, Some(false) for seconds.
+/// Some(true) for milliseconds, Some(false) for seconds.
 fn epoch_unit(u: &V) -> Option<bool> {
     if matches!(u, V::Null | V::Undef) {
         return Some(false);
@@ -2228,7 +2213,7 @@ fn epoch_unit(u: &V) -> Option<bool> {
     }
 }
 
-/// `weekendOf`: a weekend code, or a seven-character 0/1 mask from Monday.
+/// A weekend code, or a seven-character 0/1 mask from Monday.
 fn weekend_of(w: &V) -> Option<crate::date_ops::Weekend> {
     match w {
         V::Null | V::Undef => crate::date_ops::weekend_days(1.0),
@@ -2244,7 +2229,7 @@ fn weekend_of(w: &V) -> Option<crate::date_ops::Weekend> {
     }
 }
 
-/// `holidaySet`: whole-day serials, once each, in the order given.
+/// Whole-day serials, once each, in the order given.
 fn holiday_set(h: &V) -> Vec<f64> {
     let items: Vec<V> = match h {
         V::List(items) => items
@@ -2267,7 +2252,7 @@ fn holiday_set(h: &V) -> Vec<f64> {
     out
 }
 
-/// `properCase` (textOps.ts): a letter after a non-letter is capitalized, every other letter lowercased.
+/// A letter after a non-letter is capitalized, every other letter lowercased.
 fn proper_case(t: &str) -> V {
     let mut out = String::with_capacity(t.len());
     let mut after_letter = false;
@@ -2285,7 +2270,7 @@ fn proper_case(t: &str) -> V {
     V::str(&out)
 }
 
-/// `parseValueText` (textOps.ts) with the US separators, VALUE's reading.
+/// VALUE's reading, with the US separators.
 fn parse_value_text(text: &str) -> f64 {
     let mut t = js_trim(text);
     let mut pct = 0;
@@ -2328,7 +2313,7 @@ fn parse_value_text(text: &str) -> f64 {
     (if neg { -n } else { n }) / js_pow(100.0, f64::from(pct))
 }
 
-/// `numsOf`: numbers and logicals, lists flattened; text is skipped ([[C131]] noTextGuessing).
+/// Numbers and logicals, lists flattened; text is skipped ([[C131]] noTextGuessing).
 pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
         .flat_map(|v| match v {
@@ -2343,7 +2328,7 @@ pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
         .collect()
 }
 
-// ─── Order statistics (statsOps.ts) ─────────────────────────────────────────────
+// ─── Order statistics ───────────────────────────────────────────────────────────
 
 fn finite_v(r: f64, inputs: &[f64]) -> V {
     match guard_finite(r, inputs) {
@@ -2359,7 +2344,7 @@ fn sorted_nums(arr: &[f64]) -> Vec<f64> {
     s
 }
 
-/// `percentileOf`. A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
+/// A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
 /// `undefined` (None); one `undefined` end makes the blend NaN.
 pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     let n = sorted.len() as f64;
@@ -2386,7 +2371,7 @@ fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
     }
 }
 
-#[allow(clippy::manual_range_contains)] // a NaN must pass these checks, as it does in the TS
+#[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
     let n = arr.len() as f64;
     if arr.is_empty() {
@@ -2404,7 +2389,7 @@ fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
     finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
 }
 
-#[allow(clippy::manual_range_contains)] // a NaN must pass these checks, as it does in the TS
+#[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
     let qi = q.trunc();
     if arr.is_empty() {
@@ -2462,7 +2447,7 @@ fn mode_single(arr: &[f64]) -> V {
     arr.iter().find(|&&v| counts[&key(v)] == max_count).map_or(V::Null, |&v| V::Num(v))
 }
 
-// ─── Rounding (mathUtils.ts `roundDigits`) ──────────────────────────────────────
+// ─── Rounding ───────────────────────────────────────────────────────────────────
 
 fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     let d = digits.trunc();
@@ -2501,7 +2486,7 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     sign * (if d >= 0.0 { r / scale } else { r * scale })
 }
 
-// ─── Conditions (valueKinds.ts `ifTest`) ────────────────────────────────────────
+// ─── Conditions ─────────────────────────────────────────────────────────────────
 
 pub enum Cond {
     Missing,
@@ -2855,7 +2840,7 @@ arms! {
     WRAPTEXT,
 }
 
-/// Where a name's body lives: an arm of `call_function`'s match, a module's own table, or nowhere ported.
+/// Where a name's body lives: an arm of `call_function`'s match, a module's own table, or nowhere yet.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Route {
@@ -3094,8 +3079,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
     if let Some(e) = text_refused(name, a) {
         return e;
     }
-    // A range body ported for flat arguments reads a list or a table among them as its items, as the TS's does. A
-    // value nested past a table is read differently by each TS body, which no ported one follows yet.
+    // A range body written for flat arguments reads a list or a table among them as its items.
     if a.iter().any(|v| matches!(v, V::List(_)))
         && !reads_lists(name)
         && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range)
@@ -3651,7 +3635,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(crate::fdlibm::atan2(y, x))
         }
-        // Excel's ACOT lies in (0, π), and GAMMALN refuses x <= 0 as Excel's #NUM! does (excelFunctions.ts `num1`).
+        // Excel's ACOT lies in (0, π), and GAMMALN refuses x <= 0 as Excel's #NUM! does.
         F::ACOT | F::GAMMALN | F::GAMMALN_PRECISE => {
             let x = to_num(arg(a, 0));
             if x.is_nan() {
@@ -4825,14 +4809,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
     }
 }
 
-/// `EXACT_TEST_OUTCOMES` (statsOps.ts): the outcomes an exact test may sum.
+/// The most outcomes an exact test may sum.
 const MAX_OUTCOMES: f64 = 1e6;
 
 fn exact_test_too_large() -> V {
     V::err(sol_error(ErrorCode::Domain, "An exact test sums at most 1,000,000 outcomes"))
 }
 
-/// `combinatoric` (mathUtils.ts): counts truncate, products run from the small end and stop once infinite, and
+/// Counts truncate, products run from the small end and stop once infinite, and
 /// COMBIN divides as it multiplies. A count left out reads as NaN, which no loop runs on.
 fn combinatoric(op: &str, args: &[f64]) -> V {
     let ns: Vec<f64> = args.iter().map(|x| x.trunc()).collect();
@@ -4916,7 +4900,6 @@ fn int_gcd(mut a: f64, mut b: f64) -> f64 {
     a
 }
 
-/// `binomDistRange` (mathUtils.ts).
 fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
     let (n, lo, hi) = (trials.trunc(), s.trunc(), s2.unwrap_or(s).trunc());
     let ok =
@@ -4950,7 +4933,6 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
     V::Num(sum)
 }
 
-/// `fisherExactP` (statsOps.ts).
 fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     use crate::dists::ln_combin;
     let cells = [a, b, c, d].map(math_round);
@@ -4980,7 +4962,6 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
 
-/// `twoProportionP` (statsOps.ts).
 fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
     if !(n1 > 0.0 && n2 > 0.0) || x1 < 0.0 || x2 < 0.0 || x1 > n1 || x2 > n2 {
         return None;
@@ -4993,7 +4974,6 @@ fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
     Some(2.0 * (1.0 - crate::dists::std_norm_cdf(((p1 - p2) / se).abs())))
 }
 
-/// `binomTestP` (statsOps.ts).
 fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
     let (k, n) = (math_round(k), math_round(n));
     if n.is_nan() || n < 1.0 || k < 0.0 || k > n || !(0.0..=1.0).contains(&p0) {
@@ -5023,7 +5003,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
     Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
 
-/// `averageRanks` (statsOps.ts): ties share the mean of their places.
+/// Ties share the mean of their places.
 pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     let mut idx: Vec<usize> = (0..arr.len()).collect();
     crate::js_sort::js_sort_by(&mut idx, |&x, &y| {
@@ -5045,7 +5025,6 @@ pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     ranks
 }
 
-/// `spearman` (statsOps.ts).
 pub(crate) fn spearman(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -5069,7 +5048,7 @@ fn raw_numbers(v: &V) -> Result<Option<Vec<f64>>, ()> {
     }
 }
 
-/// `linearFit` over JS values: the means add as JS does, text joining.
+/// The means add as JS does, text joining.
 fn js_linear_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let n = xs.len().min(ys.len());
     if n < 2 {
@@ -5110,7 +5089,7 @@ enum TTestKind {
     UnequalVar,
 }
 
-/// `tTestP` (mathUtils.ts): the two-tailed p.
+/// The two-tailed p.
 fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
     if a.len() < 2 || b.len() < 2 {
         return None;
@@ -5152,7 +5131,7 @@ fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
     p.is_finite().then(|| clamp01(p))
 }
 
-/// `probBetween` (mathUtils.ts) over `pairPresent`. Text added to the total turns it into text, which isn't finite.
+/// Text added to the total turns it into text, which isn't finite.
 fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
     if let Some(e) = range.iter().chain(probs).find(|v| v.is_sol_error()) {
         return e.clone();
@@ -5220,11 +5199,11 @@ fn fx_edate(start: &V, months: &V) -> V {
     V::Num(crate::jsnum::math_round(date / 86_400_000.0 + 25569.0))
 }
 
-// ─── Regex and text utilities (textOps.ts, hashOps.ts) ──────────────────────────
+// ─── Regex and text utilities ───────────────────────────────────────────────────
 
 /// Text that crossed the wire with half a surrogate pair holds U+FFFD where the TS holds the half, which a regex,
 /// an encoder or a joined pair reads differently.
-/// `caseFlag`: whether the match ignores case.
+/// Whether the match ignores case.
 fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
     let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { to_f64_js(cs) };
     if v == 0.0 {
@@ -5236,7 +5215,7 @@ fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
     }
 }
 
-/// `regexOccurrence`: blank is 0 (every match), a fraction truncates; None when non-finite.
+/// Blank is 0 (every match), a fraction truncates; None when non-finite.
 fn regex_occurrence(raw: &V) -> Option<f64> {
     if matches!(raw, V::Null | V::Undef) || matches!(raw, V::Str(s) if s.is_empty()) {
         return Some(0.0);
@@ -5308,7 +5287,7 @@ fn regex_call(name: &str, a: &[V]) -> V {
     }
 }
 
-/// `templateFormat`, numbers through TEXT.
+/// Numbers through TEXT.
 fn template_format(v: &V, spec: Option<&str>) -> String {
     match v {
         V::Null | V::Undef => String::new(),
@@ -5495,7 +5474,7 @@ fn to_int32(x: f64) -> i32 {
     (x.trunc().rem_euclid(4_294_967_296.0) as u64 as u32) as i32
 }
 
-/// dateOps.ts `dateFromParts`: `Date.UTC`'s month and day carry, without its 0–99 year remap.
+/// `Date.UTC`'s month and day carry, without its 0–99 year remap.
 fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
     let (year, month, day) = (raw_y.floor(), raw_m.floor(), raw_d.floor());
     if !(1.0..=9999.0).contains(&year) {
@@ -5522,7 +5501,7 @@ fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
     V::Num(days + 25569.0)
 }
 
-/// excelFunctions.ts `sumLikeFx`: Formula.js's SUM, a nested list adding as its own subtotal.
+/// Formula.js's SUM, a nested list adding as its own subtotal.
 fn sum_like_fx(a: &[V]) -> V {
     let mut result = 0.0;
     for v in a {
@@ -5551,7 +5530,6 @@ impl AddWeek for f64 {
     }
 }
 
-/// dateOps.ts `isoWeek`.
 fn iso_week(ms: f64) -> f64 {
     let p = parts_of_ms(ms);
     let week_start = |year: f64| -> Option<f64> {
@@ -5592,7 +5570,6 @@ fn error_type_num(code: ErrorCode) -> f64 {
     }
 }
 
-/// `applyErrorHandler` (excelFormula.ts) over scalars.
 /// The IFERROR family (`applyErrorHandler`), for a formula's call and a body called by name alike.
 pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
     let as_sol = |v: &V| -> Option<SolError> {
@@ -5642,7 +5619,7 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
     }
 }
 
-// ─── Finance (financeOps.ts, and Formula.js's own) ──────────────────────────────
+// ─── Finance ────────────────────────────────────────────────────────────────────
 
 /// The finance functions that read a whole list of cash flows (`listArgs`).
 const FINANCE_WHOLE: &[&str] =
@@ -5708,7 +5685,7 @@ fn fin(r: crate::finance_ops::Fin) -> V {
     }
 }
 
-/// `numList` as financeOps reads its cells.
+/// A finance list's numbers, as the finance ops read its cells.
 fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
     use crate::finance_ops::Cell;
     to_list(v)
@@ -5721,7 +5698,7 @@ fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
         .collect()
 }
 
-/// `datedPrep`: the values' first error, then the dates', then null for a blank date.
+/// The values' first error, then the dates', then null for a blank date.
 fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
     let values = crate::finance_ops::cash_prep(&fin_cells(values)).map_err(V::err)?;
     let dates = to_list(dates);
@@ -5734,7 +5711,7 @@ fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
     Ok((values, dates))
 }
 
-/// The first `n` dates as numbers; None where one isn't, since JS's `<` and `-` would read it, which only the TS does.
+/// The first `n` dates as numbers; None where one isn't.
 fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
     let ds = &dates[..n.min(dates.len())];
     let before = ds.iter().skip(1).any(|d| js_less(d, &ds[0]));
@@ -5892,7 +5869,7 @@ fn finance_function(name: &str, a: &[V]) -> V {
     }
 }
 
-/// Formula.js's finance bodies the TS passes through to.
+/// Formula.js's finance bodies.
 fn fx_finance(name: &str, a: &[V]) -> V {
     let p = |i: usize| parse_number(arg(a, i));
     // `x === undefined ? d : x`: only a left-out argument takes the default.

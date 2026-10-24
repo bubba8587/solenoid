@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl
-//! Port of `src/graph/nodes/hashOps.ts`: the digests HASH offers and base64. UTF-8 in, lowercase hex out; text a
+//! The digests HASH offers and base64. UTF-8 in, lowercase hex out; text a
 //! JS string holds reaches here well formed, and a lone surrogate encodes as U+FFFD either way (`TextEncoder`).
 
 use base64::engine::general_purpose::{GeneralPurpose, NO_PAD, STANDARD};
@@ -41,7 +41,7 @@ pub fn fnv1a64_hex(text: &str) -> String {
     format!("{:016x}", text.bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x100000001b3)))
 }
 
-/// `hashText`, for one of `HASH_ALGORITHMS`.
+/// For one of `HASH_ALGORITHMS`.
 pub fn hash_text(text: &str, algorithm: &str) -> Option<String> {
     Some(match algorithm {
         "sha256" => sha256_hex(text),
@@ -58,7 +58,7 @@ pub fn base64_encode(text: &str) -> String {
     STANDARD.encode(text.as_bytes())
 }
 
-/// The padding is checked here, so the body decodes bare; stray low bits in its last symbol are dropped, as the TS does.
+/// The padding is checked here, so the body decodes bare; stray low bits in its last symbol are dropped.
 const BODY: GeneralPurpose =
     GeneralPurpose::new(&base64::alphabet::STANDARD, NO_PAD.with_decode_allow_trailing_bits(true));
 
@@ -82,7 +82,7 @@ pub fn base64_decode(text: &str) -> Option<String> {
     {
         return None;
     }
-    // A last symbol alone in its quantum carries no whole byte, and the TS drops it.
+    // A last symbol alone in its quantum carries no whole byte, so it is dropped.
     let body = &clean[..body_end - usize::from(body_end % 4 == 1)];
     let bytes = BODY.decode(body).ok()?;
     // `TextDecoder` drops a leading byte-order mark.

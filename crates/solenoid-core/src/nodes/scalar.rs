@@ -1,4 +1,4 @@
-//! [[B16]] oneFormulaSurface. `nodes/scalar.ts`: Arithmetic, Math Function and the other one-number cards.
+//! [[B16]] oneFormulaSurface. Arithmetic, Math Function and the other one-number cards.
 
 use super::kit::{broadcast_err, core_call, each, guard_finite, num, short_circuit};
 use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit};
@@ -63,7 +63,7 @@ fn apply_role(role: &Role, v: &V, label: &str) -> V {
     }
 }
 
-/// `leftOutAs`: a setting read as left out takes the card's default, whole or item by item.
+/// A setting read as left out takes the card's default, whole or item by item.
 pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
     match v {
         V::Undef => V::Num(dflt),
@@ -74,8 +74,8 @@ pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
     }
 }
 
-/// `guardFinite` on whatever a body answered: a non-number isn't finite, so it is `#OVERFLOW!` unless an input is
-/// infinite, as the TS's guard reads an object.
+/// The non-finite guard on whatever a body answered: a non-number isn't finite, so it is `#OVERFLOW!` unless an
+/// input is infinite.
 pub(crate) fn guard_any(r: V, ops: &[&V]) -> V {
     match r {
         V::Num(n) => guard_finite(n, ops),
@@ -404,7 +404,7 @@ const FORWARD_TRIG: &[&str] = &["sin", "cos", "tan", "cot", "csc", "sec"];
 const INVERSE_TRIG: &[&str] = &["asin", "acos", "atan", "acot"];
 const MATHFN_PRESERVE: &[&str] = &["abs", "trunc", "int", "even", "odd"];
 
-/// `mathFnResultDim`: the result's dimension, `#UNIT!` where the op can't take it, `None` for a dimensionless input.
+/// The result's dimension, `#UNIT!` where the op can't take it, `None` for a dimensionless input.
 fn math_fn_result_dim(op: &str, dim: &crate::unit_dims::Dim) -> Result<Option<crate::unit_dims::Dim>, V> {
     use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim};
     if is_dimensionless(dim) {

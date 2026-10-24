@@ -31,12 +31,12 @@ pub(crate) const UNITS: [(&str, &str, &str, f64, Option<f64>); ${rows.length}] =
 ${rows.join("\n")}
 ];
 
-/// \`convertUnitKey\`: the CONVERT formula's unit argument, an Excel code (\`"oz"\` is the fluid ounce), or else a key.
+/// The CONVERT formula's unit argument, an Excel code (\`"oz"\` is the fluid ounce), or else a key.
 pub fn convert_unit_key(code: &str) -> Option<&'static str> {
     UNITS.iter().rev().find(|u| u.1 == code).or_else(|| UNITS.iter().find(|u| u.0 == code)).map(|u| u.0)
 }
 
-/// \`convertValue\`: None for a key the table lacks, for units of different dimensions, or for a non-finite answer.
+/// None for a key the table lacks, for units of different dimensions, or for a non-finite answer.
 pub fn convert_value(x: f64, from_key: &str, to_key: &str) -> Option<f64> {
     let unit = |k: &str| UNITS.iter().find(|u| u.0 == k);
     let (from, to) = (unit(from_key)?, unit(to_key)?);

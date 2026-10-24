@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C22]] rowFormulaRefs, [[C80]] blankArgIsExcelBlank
-//! The formula language's tokenizer and parser (ported from `src/graph/excelFormula.ts`). The table-driven facts a
+//! The formula language's tokenizer and parser. The table-driven facts a
 //! call needs (argument roles, an empty slot's reading, the null rule, range or broadcast) are `data/call_traits.json`.
 
 use std::rc::Rc;
@@ -397,7 +397,7 @@ impl Parser {
         self.primary()
     }
 
-    /// Starts at the open paren. Like the TS, the closing test reads only a token's text.
+    /// Starts at the open paren. The closing test reads only a token's text.
     fn arg_list(&mut self) -> Option<Vec<Ast>> {
         self.eat();
         let mut args = Vec::new();
@@ -595,7 +595,6 @@ fn num_of(v: &V) -> V {
     }
 }
 
-/// `numberToText` in excelFunctions.ts.
 pub fn number_to_text(x: f64) -> String {
     crate::excel_functions::number_to_text(x)
 }
@@ -711,7 +710,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
     }
 }
 
-/// `tagComputedCell` after `normalizeFxResult`.
+/// A computed cell tagged after a Formula.js error is read as Solenoid's.
 pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
     match v {
         V::Num(n) if n.is_nan() => {

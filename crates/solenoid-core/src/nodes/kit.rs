@@ -1,5 +1,5 @@
-//! What every card body leans on, as `nodes/shared.ts` and `valueKinds.ts` have it: a formula body called as
-//! `callCore` calls it, the per-cell short circuit and non-finite guard, and the broadcasters that map a body over
+//! What every card body leans on: a formula body called by name, the per-cell short circuit and non-finite guard,
+//! and the broadcasters that map a body over
 //! lists ([[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[D48]] classifyNonFinite).
 
 use super::list;
@@ -7,8 +7,8 @@ use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::value_kinds::guard_finite as guard_cells;
 
-/// `callCore(name, args)`: the function body by name, an error argument read first as the formula's call reads it,
-/// and a Formula.js error answered as its SolError (`normalizeFxResult`).
+/// The function body by name, an error argument read first as the formula's call reads it,
+/// and a Formula.js error answered as its SolError.
 pub fn core_call(name: &str, args: &[V]) -> V {
     let upper = name.to_uppercase();
     let v =
@@ -19,7 +19,7 @@ pub fn core_call(name: &str, args: &[V]) -> V {
     normalize(v)
 }
 
-/// `normalizeFxResult`, through lists.
+/// A Formula.js error answered as its SolError, through lists.
 pub fn normalize(v: V) -> V {
     match v {
         V::Fx(m) => V::err(crate::excel_functions::fx_error_to_sol(m)),
@@ -30,7 +30,7 @@ pub fn normalize(v: V) -> V {
     }
 }
 
-/// `cellShortCircuit`: the first error among the cells, else null where one is missing, else nothing.
+/// The first error among the cells, else null where one is missing, else nothing.
 pub fn short_circuit(args: &[&V]) -> Option<V> {
     if let Some(e) = args.iter().find(|a| a.is_sol_error()) {
         return Some((*e).clone());
@@ -38,7 +38,7 @@ pub fn short_circuit(args: &[&V]) -> Option<V> {
     args.iter().any(|a| matches!(a, V::Null)).then_some(V::Null)
 }
 
-/// `guardFinite`: NaN is `#DOMAIN!`, an infinity from finite inputs `#OVERFLOW!`.
+/// NaN is `#DOMAIN!`, an infinity from finite inputs `#OVERFLOW!`.
 pub fn guard_finite(r: f64, inputs: &[&V]) -> V {
     if r.is_finite() {
         return V::Num(r);
@@ -59,7 +59,7 @@ fn guarded(r: V, ops: &[&V]) -> V {
     }
 }
 
-/// `broadcastErr` (and `broadcastCells`): the body over the arguments, item by item where any is a list, a ragged
+/// The body over the arguments, item by item where any is a list, a ragged
 /// position null; each cell short-circuits on an error or a missing value first.
 pub fn broadcast_err(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     each(args, |ops| match short_circuit(ops) {

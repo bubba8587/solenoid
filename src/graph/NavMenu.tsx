@@ -19,7 +19,7 @@ async function zoomBy(delta: number) {
   const { k, x, y } = view.transform;
   const next = clamp(k * delta, 0.1, 4);
   if (next === k) return;
-  // rete adds (ox, oy) after scaling; keeping screen point (cx, cy) fixed gives dx = (cx − x) * (1 − next/k).
+  // `view.zoom` adds (ox, oy) after scaling; keeping screen point (cx, cy) fixed gives dx = (cx − x) * (1 − next/k).
   const rect = view.container.getBoundingClientRect();
   const cx = rect.width / 2;
   const cy = rect.height / 2;

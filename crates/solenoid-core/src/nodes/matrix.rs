@@ -1,5 +1,5 @@
 //! [[C58]] tableInputRawText, [[C48]] appendLadder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[C50]]
-//! lambdaBindsByName. `nodes/matrix.ts`: the linear-algebra cards; `nodes/tableLambda.ts`: the LAMBDA helpers over a
+//! lambdaBindsByName. The linear-algebra cards and the LAMBDA helpers over a
 //! table.
 
 use super::kit::{core_call, num};
@@ -76,7 +76,7 @@ fn width(m: &V) -> usize {
     }
 }
 
-/// `asNumericMatrix`: every cell a finite number, or the error naming the first that isn't.
+/// Every cell a finite number, or the error naming the first that isn't.
 fn numeric(m: &V) -> Result<V, V> {
     for row in rows_of(m) {
         for cell in rows_of(&row) {
@@ -95,7 +95,7 @@ fn numeric(m: &V) -> Result<V, V> {
     Ok(m.clone())
 }
 
-/// `cellCap`: `#OVERFLOW!` past the element limit.
+/// `#OVERFLOW!` past the element limit.
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     let js_max1 = |x: f64| if x.is_nan() { f64::NAN } else { x.max(1.0) };
     (js_max1(rows) * js_max1(cols) > MAX_GENERATED).then(|| {
@@ -288,7 +288,7 @@ fn mat_eigen(c: &mut Call) -> Answer {
     done(c, values, vectors)
 }
 
-// ─── tableLambda.ts: MAP, BYROW / BYCOL, REDUCE, MAKEARRAY ───────────────────────────────────────────────────────
+// ─── MAP, BYROW / BYCOL, REDUCE, MAKEARRAY ───────────────────────────────────────────────────────────────────────
 
 /// `toAnyMatrix`: a list is one row, a lone value one cell, and a later item that isn't a row a one-cell row.
 pub(crate) fn any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
@@ -681,7 +681,7 @@ fn result(c: &mut Call, r: V, unit: Option<Json>) -> Answer {
     Ok(vec![("result".into(), r)])
 }
 
-/// `tableRawCells`: the typed rows, each cell trimmed, every row as wide as the widest, a trailing blank column dropped.
+/// The typed rows, each cell trimmed, every row as wide as the widest, a trailing blank column dropped.
 fn table_raw_cells(text: &str) -> Vec<Vec<String>> {
     let raw = super::list::csv_rows(text);
     let mut cols = raw.iter().map(Vec::len).max().unwrap_or(0);
@@ -873,7 +873,7 @@ fn required_picks(c: &Call, key: &str) -> V {
     }
 }
 
-/// `chooseAxis`, its positions read as JS reads them.
+/// Positions read as JS reads them.
 fn choose_axis(m: &[Vec<V>], indices: &[V], by_row: bool) -> V {
     let size = if by_row { m.len() } else { m.first().map_or(0, Vec::len) } as f64;
     let (label, kind) = if by_row { ("CHOOSEROWS", "row") } else { ("CHOOSECOLS", "column") };
@@ -950,7 +950,7 @@ fn expand(c: &mut Call) -> Answer {
     result(c, r, unit)
 }
 
-/// `setCells`: each value written over the table at its 1-based row and column, a list or a table as a block.
+/// Each value written over the table at its 1-based row and column, a list or a table as a block.
 fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
     let rows = m.len();
     let cols = m.first().map_or(0, Vec::len);

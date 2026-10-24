@@ -1,8 +1,8 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl, [[D48]] classifyNonFinite, [[C44]] dateSerials, [[D70]] nullNotEnoughData
-//! Port of `src/graph/nodes/financeOps.ts`: coupon schedules and day counts, bond prices and yields, odd coupons,
+//! Coupon schedules and day counts, bond prices and yields, odd coupons,
 //! VDB, the accrual and discount securities, the IRR / XIRR root finder, and the scalar return-series ops. A JS
 //! `Date` is its time value, NaN for an Invalid Date, so its getters and comparisons read as JS reads them.
-// The checks keep the TS's form: a NaN fails `x >= 0 && x <= 4` and passes `!(a < b)`, as there.
+// The checks keep a NaN-sensitive form: a NaN fails `x >= 0 && x <= 4` and passes `!(a < b)`.
 #![allow(clippy::manual_range_contains, clippy::neg_cmp_op_on_partial_ord)]
 
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
@@ -550,7 +550,7 @@ pub fn security_disc(op: SecurityDiscOp, settle_serial: f64, maturity_serial: f6
     }
 }
 
-/// `priceDisc`: PRICEDISC with `pricedisc`, YIELDDISC otherwise.
+/// PRICEDISC with `pricedisc`, YIELDDISC otherwise.
 pub fn price_disc(
     pricedisc: bool,
     settle_serial: f64,
@@ -583,7 +583,7 @@ pub fn price_disc(
     })
 }
 
-/// `priceMat`: PRICEMAT with `pricemat`, YIELDMAT otherwise.
+/// PRICEMAT with `pricemat`, YIELDMAT otherwise.
 pub fn price_mat(
     pricemat: bool,
     settle_serial: f64,
@@ -629,7 +629,7 @@ pub fn price_mat(
     })
 }
 
-/// `durationValue`: DURATION, or MDURATION with `modified`.
+/// DURATION, or MDURATION with `modified`.
 pub fn duration_value(
     modified: bool,
     settle_serial: f64,
@@ -684,7 +684,7 @@ fn price_args_error(op: &str, is_price: bool, rate: f64, yld_or_price: f64, rede
     None
 }
 
-/// `bondPriceYield`: PRICE with `price`, YIELD otherwise.
+/// PRICE with `price`, YIELD otherwise.
 pub fn bond_price_yield(
     price: bool,
     settle_serial: f64,
@@ -810,7 +810,7 @@ pub fn fv_schedule(pv: f64, rates: &[f64]) -> f64 {
     rates.iter().fold(pv, |fv, r| fv * (1.0 + r))
 }
 
-/// `cashPrep`: the first error, or each cell as a number (anything else as 0).
+/// The first error, or each cell as a number (anything else as 0).
 pub fn cash_prep(raw: &[Cell]) -> Result<Vec<f64>, SolError> {
     if let Some(Cell::Err(e)) = raw.iter().find(|v| matches!(v, Cell::Err(_))) {
         return Err(e.clone());

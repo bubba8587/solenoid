@@ -1,8 +1,7 @@
 //! [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C15]] matricesInFormulas,
 //! [[C44]] dateSerials, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics. The small packs'
-//! card bodies: `nodes/electrical.ts`, `chemistry.ts`, `physicsConstants.ts`, `astro.ts`, `thermo.ts`, `fluids.ts`,
-//! `health.ts`, `emSpectrum.ts`, `convert.ts`, `tornado.ts` and `triangle.ts`, with the kernels of their `*Ops.ts`
-//! beside them.
+//! card bodies (Electrical, Chemistry, Physics Constants, Astro, Thermo, Fluids, Health, EM Spectrum, Convert,
+//! Tornado and Triangle), with their kernels beside them.
 
 use super::units::{broadcast_unit, from_unit};
 use super::values::{Column, Frame};
@@ -87,7 +86,7 @@ fn null_or(v: Option<f64>) -> V {
 
 // ─── Electrical ────────────────────────────────────────────────────────────────
 
-/// `parallelCombine`: the first error, else the reciprocal of the reciprocals' sum over the numbers.
+/// The first error, else the reciprocal of the reciprocals' sum over the numbers.
 pub(crate) fn parallel_combine_of(cells: &[V]) -> V {
     if let Some(e) = cells.iter().find(|v| v.is_sol_error()) {
         return e.clone();
@@ -134,7 +133,7 @@ pub(crate) fn e_series_table(op: &str) -> Option<Vec<f64>> {
     })
 }
 
-/// `nearestESeries`: the series value nearest on a log scale, in the value's decade or either neighbour.
+/// The series value nearest on a log scale, in the value's decade or either neighbour.
 pub(crate) fn nearest_e_series(value: f64, table: &[f64]) -> f64 {
     let decade = log10(value).floor();
     let (mut best, mut best_dist) = (f64::NAN, f64::INFINITY);
@@ -218,7 +217,7 @@ fn awg(c: &mut Call) -> Answer {
 
 // ─── Resistor code, elements, molar mass, physical constants ───────────────────
 
-/// `decodeResistor`: the digit bands, the multiplier and the tolerance, each band by its colour.
+/// The digit bands, the multiplier and the tolerance, each band by its colour.
 fn resistor_code(c: &mut Call) -> Answer {
     let band = |k: &str| match c.string_literal(k) {
         V::Str(s) => Some(s.to_string()),
@@ -233,7 +232,7 @@ fn resistor_code(c: &mut Call) -> Answer {
     shown(c, &[("ohms", "cachedOhms", ohms), ("tolerance", "cachedTol", tol)])
 }
 
-/// `decodeResistor`: the ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
+/// The ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
 /// colour; a band left out reads as `undefined`.
 pub(crate) fn decode_resistor(
     digits: &[Option<String>],
@@ -433,7 +432,7 @@ fn unit_text(u: Option<&u16>) -> String {
     u.map_or_else(|| "undefined".into(), |u| String::from_utf16_lossy(&[*u]))
 }
 
-/// `parseGroup`: a run of elements and bracketed groups, each with its count, to `close`.
+/// A run of elements and bracketed groups, each with its count, to `close`.
 fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usize), V> {
     let upper = |u: u16| (u16::from(b'A')..=u16::from(b'Z')).contains(&u);
     let lower = |u: u16| (u16::from(b'a')..=u16::from(b'z')).contains(&u);
@@ -481,7 +480,7 @@ fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usiz
     Ok((mass, i))
 }
 
-/// `hydrateSegments`: split at `·`, `•`, `*`, and at a `.` that starts a hydrate (CuSO4.5H2O), not one inside a
+/// Split at `·`, `•`, `*`, and at a `.` that starts a hydrate (CuSO4.5H2O), not one inside a
 /// segment's leading multiplier.
 fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
     let digit = |u: u16| (u16::from(b'0')..=u16::from(b'9')).contains(&u);
@@ -508,7 +507,7 @@ fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
     out
 }
 
-/// `molarMass`: each hydrate segment's leading multiplier times its formula's mass.
+/// Each hydrate segment's leading multiplier times its formula's mass.
 pub(crate) fn molar_mass(input: &str) -> V {
     let s: Vec<u16> =
         input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
@@ -587,7 +586,7 @@ pub(crate) fn physics_constant_value(op: &str) -> Option<f64> {
 const RAD: f64 = PI / 180.0;
 const DEG: f64 = 180.0 / PI;
 
-/// `solarBasis`: the sun's declination (degrees) and the equation of time (minutes) on a Julian day, NOAA's series.
+/// The sun's declination (degrees) and the equation of time (minutes) on a Julian day, NOAA's series.
 fn solar_basis(jd: f64) -> (f64, f64) {
     let jc = (jd - 2451545.0) / 36525.0;
     let mean_long = (((280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360.0) + 360.0) % 360.0;
@@ -615,7 +614,7 @@ fn julian_day(serial: f64) -> f64 {
     serial + 2415018.5
 }
 
-/// `solarPosition`: elevation, azimuth and declination for a UTC serial at a latitude and longitude.
+/// Elevation, azimuth and declination for a UTC serial at a latitude and longitude.
 pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
     let (declination, eq_of_time) = solar_basis(julian_day(serial));
     let minutes_utc = ((serial % 1.0) + 1.0) % 1.0 * 1440.0;
@@ -646,7 +645,7 @@ pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
     [elevation, azimuth, declination]
 }
 
-/// `sunTimes`: sunrise and sunset serials (None in polar day or night) and the hours of daylight.
+/// Sunrise and sunset serials (None in polar day or night) and the hours of daylight.
 pub(crate) fn sun_times(serial: f64, lat: f64, lon: f64) -> (Option<f64>, Option<f64>, f64) {
     let day = serial.floor();
     let (declination, eq_of_time) = solar_basis(julian_day(day + 0.5));
@@ -738,7 +737,7 @@ fn moon_phase_node(c: &mut Call) -> Answer {
     )
 }
 
-/// `moonPhase`: the phase (0 new, 0.5 full), the age in days and the lit fraction at a serial.
+/// The phase (0 new, 0.5 full), the age in days and the lit fraction at a serial.
 pub(crate) fn moon_phase_of(serial: f64) -> [f64; 3] {
     let days = serial - NEW_MOON_EPOCH_SERIAL;
     let phase = ((days / SYNODIC_MONTH) % 1.0 + 1.0) % 1.0;
@@ -791,7 +790,7 @@ fn isa_bases() -> Vec<IsaBase> {
     out
 }
 
-/// `standardAtmosphere`: temperature, pressure, density and the speed of sound at a geometric altitude.
+/// Temperature, pressure, density and the speed of sound at a geometric altitude.
 pub(crate) fn standard_atmosphere(z: f64) -> Result<[f64; 4], V> {
     let h = (EARTH_R * z) / (EARTH_R + z);
     if h < -5000.0 || h > ISA_TOP {
@@ -868,7 +867,7 @@ fn antoine(c: &mut Call) -> Answer {
 
 // ─── Fluids ────────────────────────────────────────────────────────────────────
 
-/// `colebrookF`: fixed-point iteration on x = 1/√f from the Swamee–Jain seed.
+/// Fixed-point iteration on x = 1/√f from the Swamee–Jain seed.
 pub(crate) fn colebrook_f(re: f64, rr: f64) -> f64 {
     let mut x = 1.0 / (0.25 / pow(log10(rr / 3.7 + 5.74 / pow(re, 0.9)), 2.0)).sqrt();
     for _ in 0..100 {
@@ -934,7 +933,7 @@ pub(crate) const ZONES: [(&str, f64, f64); 5] = [
     ("Z5 Maximum", 0.9, 1.0),
 ];
 
-/// `hrZonesFrame`: a row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
+/// A row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
 fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> V {
     let at = |pct: f64| {
         V::Num(math_round(match resting {
@@ -984,7 +983,7 @@ fn hr_zones(c: &mut Call) -> Answer {
 
 pub(crate) const LIGHT_SPEED: f64 = 299792458.0;
 
-/// `emBand`: the band a wavelength in meters falls in, on the textbook boundaries.
+/// The band a wavelength in meters falls in, on the textbook boundaries.
 pub(crate) fn em_band(wavelength: f64) -> &'static str {
     let nm = wavelength * 1e9;
     if wavelength >= 1.0 {
@@ -1137,7 +1136,7 @@ fn tornado(c: &mut Call) -> Answer {
     shown(c, &[("out", "cachedResult", v)])
 }
 
-// ─── triangle.ts, triangleOps.ts: the Triangle Solver ───────────────────────────────────────────────────────────────
+// ─── The Triangle Solver ────────────────────────────────────────────────────────────────────────────────────────────
 
 const PART_KEYS: [&str; 6] = ["a", "b", "c", "A", "B", "C"];
 const TRI_EPS: f64 = 1e-9;
@@ -1185,7 +1184,7 @@ fn fill_by_sines(t: &mut Parts, known_side: usize, known_angle: usize) {
     }
 }
 
-/// `solveTriangle`: three parts, at least one a side, to all six with the area and perimeter.
+/// Three parts, at least one a side, to all six with the area and perimeter.
 fn solve_triangle(g: &Parts) -> Result<Solved, V> {
     let sides: Vec<usize> = (0..3).filter(|&k| g[k].is_some()).collect();
     let angles: Vec<usize> = (3..6).filter(|&k| g[k].is_some()).collect();
@@ -1257,7 +1256,7 @@ fn solve_triangle(g: &Parts) -> Result<Solved, V> {
     Ok(Solved { parts, area, perimeter: parts[0] + parts[1] + parts[2] })
 }
 
-/// `solveGivenParts`' answer: each part, the area, the perimeter, whether the parts agree, and the parts it solved.
+/// The solved triangle: each part, the area, the perimeter, whether the parts agree, and the parts it solved.
 pub(crate) struct TriangleResult {
     pub(crate) values: [V; 6],
     area: V,
@@ -1409,7 +1408,7 @@ fn side_unit(read: &[V]) -> Result<Option<SideUnit>, V> {
     Ok(found)
 }
 
-/// `readPart`: a dimensioned angle in degrees, a side in the sides' unit, any other cell as it is.
+/// A dimensioned angle in degrees, a side in the sides' unit, any other cell as it is.
 fn read_part(k: &str, cell: &V, su: Option<&SideUnit>) -> V {
     let V::Unit(u) = cell else { return cell.clone() };
     if is_dimensionless(&u.dim) {

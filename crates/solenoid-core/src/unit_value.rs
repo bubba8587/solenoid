@@ -1,5 +1,5 @@
 // [[C130]] rustCore
-//! Port of `src/graph/unitValue.ts` (the parts the frame verbs use).
+//! Values with a unit: the parts the frame verbs use.
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
 

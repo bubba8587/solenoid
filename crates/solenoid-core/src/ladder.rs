@@ -1,6 +1,5 @@
 // [[C122]] choiceLadder, [[D99]] rustIsSpec
-//! Port of `ladderOps.ts` (the ladder's branch and bound) and `frameVerbs.ts`' `choiceLadder` (the card's reading of
-//! its tables). The search order, tie-breaks and budget are the TS's, so a search that runs out runs out here too.
+//! The Choice Ladder's branch and bound and the card's reading of its tables.
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -105,7 +104,7 @@ fn with(xs: &[usize], x: usize) -> Vec<usize> {
     v
 }
 
-/// `bestPlan`: null (None) when no plan meets the floors.
+/// Null (None) when no plan meets the floors.
 fn best_plan(
     opts: &[Opt],
     open: &[usize],
@@ -423,7 +422,6 @@ fn same_set(opts: &[Opt], open: &[usize], s: &State, a: usize, b: usize, exact: 
     Ok(sa == sb)
 }
 
-/// `buildLadder`.
 fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> Res<Ladder> {
     if opts.len() > MAX_OPTIONS {
         return Err(sol_error(ErrorCode::Value, format!("Choice Ladder takes at most {MAX_OPTIONS} options")));
@@ -680,7 +678,7 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
     Ok(Ladder { states, edges, main })
 }
 
-// ─── The card's reading (`choiceLadder` in frameVerbs.ts) ───────────────────────
+// ─── The card's reading ─────────────────────────────────────────────────────────
 
 struct LimitRow {
     name: String,
@@ -700,7 +698,6 @@ fn finite(v: &FrameCell) -> Option<f64> {
     }
 }
 
-/// `ladderResources`.
 fn ladder_resources(f: &FrameValue, limits: Option<&FrameValue>) -> Res<Vec<LimitRow>> {
     let Some(limits) = limits else { return Ok(Vec::new()) };
     let name_col = limits.columns.iter().find(|c| c.ty == FrameColType::String);

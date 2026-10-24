@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The frame computations a node runs that no formula shares (`frameVerbs.ts`' helpers beside `applyVerb`, and
-//! `frame.ts`' builders): each takes frames and plain arguments, and answers a frame, a value or both.
+//! The frame computations a node runs that no formula shares: each takes frames and plain arguments, and answers
+//! a frame, a value or both.
 //! `engine_frame_fn` reaches them.
 
 use crate::excel_formula::cell_to_v;
@@ -21,7 +21,7 @@ pub enum FrameOut {
     Value(V),
     /// A frame and a value beside it (Reconcile's summary, Add Column's placement).
     FrameAnd(FrameValue, V),
-    /// What the TS throws: the caller throws it too.
+    /// An error the caller throws too.
     Error(SolError),
 }
 
@@ -217,7 +217,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
 
 // ─── Headers ────────────────────────────────────────────────────────────────────
 
-/// `promoteHeaders`: the first row becomes the names, made unique, as text the way the cell reads.
+/// The first row becomes the names, made unique, as text the way the cell reads.
 fn promote_headers(f: &FrameValue) -> FrameValue {
     if frame_row_count(f) == 0 {
         return f.clone();
@@ -241,7 +241,7 @@ fn promote_headers(f: &FrameValue) -> FrameValue {
     }
 }
 
-/// `demoteHeaders`: the names become the first row, and every cell text, but blanks and errors.
+/// The names become the first row, and every cell text, but blanks and errors.
 fn demote_headers(f: &FrameValue) -> FrameValue {
     FrameValue {
         columns: f
@@ -357,7 +357,7 @@ fn column_profiles(f: &FrameValue) -> V {
     V::List(Rc::new(cols.collect()))
 }
 
-/// `describeFrame`: one row per column.
+/// One row per column.
 fn describe_frame(f: &FrameValue) -> FrameValue {
     let n = f.columns.len();
     let mut names = Vec::with_capacity(n);
@@ -388,7 +388,7 @@ fn describe_frame(f: &FrameValue) -> FrameValue {
     FrameValue { columns }
 }
 
-/// `correlationMatrix`: every pair of number columns, over the rows where both are present.
+/// Every pair of number columns, over the rows where both are present.
 fn correlation_matrix(f: &FrameValue, method: &str) -> FrameValue {
     use crate::excel_functions::{average_ranks, covariance, kendall_tau, pearson, spearman};
     let cols: Vec<&FrameColumn> = f.columns.iter().filter(|c| c.ty == FrameColType::Number).collect();
@@ -458,7 +458,7 @@ fn correlation_matrix(f: &FrameValue, method: &str) -> FrameValue {
 
 // ─── Reconcile ──────────────────────────────────────────────────────────────────
 
-/// `keyIndex` with a Map's insertion order kept: the matchable keys in first-seen order, each with its rows.
+/// The matchable keys in first-seen order, each with its rows.
 fn ordered_key_index(col: &FrameColumn, n: usize) -> (Vec<CellKey<'_>>, FxHashMap<CellKey<'_>, Vec<usize>>) {
     let mut order = Vec::new();
     let mut idx: FxHashMap<CellKey, Vec<usize>> = FxHashMap::default();
@@ -478,7 +478,7 @@ fn ordered_key_index(col: &FrameColumn, n: usize) -> (Vec<CellKey<'_>>, FxHashMa
     (order, idx)
 }
 
-/// `cellsEqual`: blanks match, errors never, the rest by `===`.
+/// Blanks match, errors never, the rest by `===`.
 fn cells_equal(a: &FrameCell, b: &FrameCell) -> bool {
     match (a, b) {
         (FrameCell::Null, FrameCell::Null) => true,
@@ -489,7 +489,7 @@ fn cells_equal(a: &FrameCell, b: &FrameCell) -> bool {
     }
 }
 
-/// `reconcileFrames`: the frame, and its summary as a list: added, removed, changed, unchanged, skipped, the added and
+/// The frame, and its summary as a list: added, removed, changed, unchanged, skipped, the added and
 /// removed column names, and the price-volume-mix breakdown (total before, total after, delta, price, volume, mix,
 /// excluded) or blank.
 fn reconcile_frames(left: &FrameValue, right: &FrameValue, args: &[V]) -> Res<FrameOut> {
@@ -680,7 +680,7 @@ fn reconcile_frames(left: &FrameValue, right: &FrameValue, args: &[V]) -> Res<Fr
 
 // ─── Nest ───────────────────────────────────────────────────────────────────────
 
-/// `nestGroups`: the output names (the keys', then the nested column's) and each key tuple's rows, in first-seen order.
+/// The output names (the keys', then the nested column's) and each key tuple's rows, in first-seen order.
 fn nest_groups(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let keys: Vec<String> = list_arg(args, 0)?
         .iter()
@@ -723,7 +723,7 @@ fn plain_decimal(t: &str) -> bool {
         && frac.is_none_or(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()))
 }
 
-/// `lookupNeedle`: the lookup text read as the key column's type.
+/// The lookup text read as the key column's type.
 fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
     Ok(match ty {
         FrameColType::Logical => match crate::value_kinds::logical_or_type_error(&FrameCell::str(lookup), "Lookup") {
@@ -749,7 +749,7 @@ fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
     })
 }
 
-/// `lookupRowIndex` over a frame (the cube its node reads, made from it): args are the In column, the lookup text,
+/// Row indices over a frame (the cube its node reads, made from it): args are the In column, the lookup text,
 /// the match mode and the search mode. None where nothing matched.
 fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
     use crate::excel_functions::MatchMode;
@@ -776,7 +776,7 @@ fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
     Ok(crate::excel_functions::xmatch_index(&needle, &keys, mm, last).unwrap_or(None))
 }
 
-/// `lookupCell`: the Return column's cell on the matched row, or `undefined` where nothing matched.
+/// The Return column's cell on the matched row, or `undefined` where nothing matched.
 fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
     let ret_name = str_arg(args, 1)?;
     let mut idx_args = vec![args[0].clone()];
@@ -786,7 +786,7 @@ fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
     Ok(idx.map_or(V::Undef, |i| cell_to_v(ret.cell_at(i))))
 }
 
-/// `frameRowAt`: the row at a 0-based index as a one-row frame (blank past the end).
+/// The row at a 0-based index as a one-row frame (blank past the end).
 fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
     if !(i >= 0.0 && i.fract() == 0.0) {
         return Err(bad());
@@ -820,7 +820,7 @@ fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     Ok(FrameOut::FrameAnd(FrameValue { columns }, V::Num(at as f64)))
 }
 
-/// `splitFrame`: the matrix (blank where a column is text) and the headers.
+/// The matrix (blank where a column is text) and the headers.
 fn split_frame(f: &FrameValue) -> V {
     let headers = str_list(f.columns.iter().map(|c| c.name.clone()));
     if f.columns.iter().any(|c| c.ty == FrameColType::String) {
@@ -853,7 +853,7 @@ fn cell_to_number(c: &FrameCell) -> Option<f64> {
     }
 }
 
-/// `typedColumn`: the cells as the known type, or the one every present cell shares (text otherwise).
+/// The cells as the known type, or the one every present cell shares (text otherwise).
 pub(crate) fn typed_column(
     name: String,
     cells: &[FrameCell],
@@ -943,7 +943,7 @@ fn build_frame(args: &[V], typed: bool) -> Res<FrameOut> {
     Ok(FrameOut::Frame(FrameValue { columns }))
 }
 
-/// `frameFromLists`: named lists as typed columns, as long as the longest; args are the names, the lists (a bare
+/// Named lists as typed columns, as long as the longest; args are the names, the lists (a bare
 /// value is a one-item list) and each list's known type or blank.
 fn frame_from_lists(args: &[V]) -> Res<FrameOut> {
     let names = names_arg(args, 0)?;

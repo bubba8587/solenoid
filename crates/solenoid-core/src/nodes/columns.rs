@@ -1,9 +1,8 @@
-//! The computed columns: Computed Column (`nodes/frame.ts`, [[B17]] typedValueModel, [[C48]]) and Cube Input's
-//! formula columns (`nodes/cube.ts`, [[C10]] socketLattice, [[C28]] literalsIffEditable), with what they share with
-//! Frame Input: the unit plan (`computedColumnUnits.ts`, [[D100]] computedColumnInfersUnit, [[C25]] firstClassUnits),
-//! a Cube as a row formula reads it (`cubeRows.ts`, [[C22]] rowFormulaRefs) and a column's type. A frame ref's column
-//! is computed and assembled in the engine by the card's TS around the body, and a Cube Input's records are read
-//! there too: the text's key order is JS's.
+//! The computed columns: Computed Column ([[B17]] typedValueModel, [[C48]]) and Cube Input's formula columns
+//! ([[C10]] socketLattice, [[C28]] literalsIffEditable), with what they share with Frame Input: the unit plan
+//! ([[D100]] computedColumnInfersUnit, [[C25]] firstClassUnits), a Cube as a row formula reads it ([[C22]]
+//! rowFormulaRefs) and a column's type. A frame ref's column is computed and assembled in the engine by the card's
+//! TS around the body, and a Cube Input's records are read there too: the text's key order is JS's.
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{
@@ -74,7 +73,7 @@ fn cube_cell(col: &CubeColumn, i: usize) -> V {
     }
 }
 
-/// `cellsUnit`: the one unit a Cube column's cells share, list items included, and whether they read in base SI
+/// The one unit a Cube column's cells share, list items included, and whether they read in base SI
 /// (one dimension in two display units); two dimensions are `#UNIT!`.
 fn cells_unit(col: &CubeColumn) -> Result<Option<(Json, bool)>, V> {
     fn visit(c: &V, first: &mut Option<(Dim, Option<String>)>, mixed: &mut bool, clash: &mut Option<(Dim, Dim)>) {
@@ -137,7 +136,7 @@ fn text_values(cells: &[V]) -> Vec<V> {
         .collect()
 }
 
-/// `scalarRead`: a column of values as a typed column, by its declared type when it has one.
+/// A column of values as a typed column, by its declared type when it has one.
 fn scalar_read(col: &CubeColumn, rows: usize, u: &Result<Option<(Json, bool)>, V>) -> TableColumn {
     let cells: Vec<V> = (0..rows).map(|i| cube_cell(col, i)).collect();
     let read = super::list::infer_column(&col.name, &cells);
@@ -179,7 +178,7 @@ fn item_magnitude(v: &V, base: bool) -> V {
     }
 }
 
-/// `atRef`: how a formula names this row's cell of the column.
+/// How a formula names this row's cell of the column.
 fn at_ref(name: &str) -> String {
     let mut chars = name.chars();
     let ident = chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
@@ -191,7 +190,7 @@ fn at_ref(name: &str) -> String {
     }
 }
 
-/// `stackedRows`: a column of lists read whole is its rows stacked, one list per row, padded with blanks.
+/// A column of lists read whole is its rows stacked, one list per row, padded with blanks.
 fn stacked_rows(name: &str, values: &[V]) -> V {
     if values.iter().any(|v| matches!(v, V::List(l) if l.iter().any(|x| matches!(x, V::List(_))))) {
         return err(
@@ -221,7 +220,7 @@ fn stacked_rows(name: &str, values: &[V]) -> V {
     )
 }
 
-/// `cubeRowTable`: scalar columns as typed columns, a column of lists by each row's list and whole as its stacked
+/// Scalar columns as typed columns, a column of lists by each row's list and whole as its stacked
 /// rows, and a row holding a table `#SHAPE!` on that row alone.
 pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
     let rows = super::frames::cube_row_count(cube);
@@ -264,7 +263,7 @@ pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
         .collect()
 }
 
-/// `cubeCellsType`: a Cube computed column holding a list in some row takes its items' type.
+/// A Cube computed column holding a list in some row takes its items' type.
 fn cube_cells_type(cells: &[V]) -> Option<FrameColType> {
     if !cells.iter().any(|c| matches!(c, V::List(_))) {
         return None;
@@ -286,7 +285,7 @@ fn tag_cell(v: V) -> V {
     super::frames::card_cell(&crate::excel_formula::tag_computed_cell(v))
 }
 
-/// `tagCubeComputedCell`: a Cube row's answer may be a list or a grid, its items tagged as one value is.
+/// A Cube row's answer may be a list or a grid, its items tagged as one value is.
 fn tag_cube_cell(v: V) -> V {
     match v {
         V::List(items) => list(
@@ -313,7 +312,7 @@ fn tag_cube_cell(v: V) -> V {
 
 // ─── The column's type ─────────────────────────────────────────────────────────
 
-/// `calledNames`: the functions a formula calls by name.
+/// The functions a formula calls by name.
 pub(crate) fn called_names(ast: &Ast, out: &mut Vec<String>) {
     match ast {
         Ast::Call { name, args } => {
@@ -354,7 +353,7 @@ const DATE_FUNCTIONS: &[&str] = &[
     "SUNSET",
 ];
 
-/// `exprYieldsDate`: a date column or a date function, shifted by days, is a date.
+/// A date column or a date function, shifted by days, is a date.
 fn yields_date(ast: &Ast, is_date_name: &dyn Fn(&str) -> bool) -> bool {
     use crate::excel_formula::{BinOp, UnaryOp};
     match ast {
@@ -381,7 +380,7 @@ fn aliased<'a>(alias: &'a [(String, String)], name: &'a str) -> &'a str {
     alias.iter().find(|(k, _)| k == name).map_or(name, |(_, t)| t.as_str())
 }
 
-/// `computedColumnType`: the type the cells read as, a number column a date where the formula shifts a date.
+/// The type the cells read as, a number column a date where the formula shifts a date.
 pub(crate) fn computed_column_type(
     name: &str,
     cells: &[V],
@@ -450,7 +449,7 @@ fn map_numbers(v: &V, f: &dyn Fn(f64) -> f64) -> V {
     }
 }
 
-/// `shownOf` and `baseOf`: a side value in display magnitudes, or in base units.
+/// A side value in display magnitudes, or in base units.
 fn shown_of(v: &V) -> V {
     match v {
         V::Unit(u) => V::Num(crate::unit_expression::display_magnitude_of(u)),
@@ -480,7 +479,7 @@ pub(crate) fn named_lambda(v: &V) -> Option<(Vec<String>, Ast)> {
     }
 }
 
-/// `lambdaDefinition`: a bare λ column reads its parameters' columns row by row.
+/// A bare λ column reads its parameters' columns row by row.
 fn lambda_definition(lam: &Rc<LambdaV>) -> Option<Definition> {
     named_lambda(&V::Lambda(lam.clone())).map(|fl| Definition {
         ast: Ast::Call { name: "λ".into(), args: lam.params.iter().map(|p| Ast::AtCol(p.clone())).collect() },
@@ -488,7 +487,7 @@ fn lambda_definition(lam: &Rc<LambdaV>) -> Option<Definition> {
     })
 }
 
-/// `referencedNames`: the names the formula and its LAMBDAs read that no LAMBDA answers.
+/// The names the formula and its LAMBDAs read that no LAMBDA answers.
 fn referenced_names(def: &Definition) -> Vec<String> {
     fn walk(n: &Ast, fns: &crate::unit_dims::NamedLambdas, out: &mut Vec<String>) {
         match n {
@@ -524,7 +523,7 @@ struct United {
     list: bool,
 }
 
-/// `sideUnit`: a side value's one dimension and shared display, or the `#UNIT!` for a list mixing two.
+/// A side value's one dimension and shared display, or the `#UNIT!` for a list mixing two.
 fn side_unit(name: &str, v: &V) -> Result<Option<United>, V> {
     use crate::unit_lists::format_dim;
     fn flat(v: &V, depth: usize, out: &mut Vec<V>) {
@@ -568,7 +567,7 @@ fn side_unit(name: &str, v: &V) -> Result<Option<United>, V> {
     }))
 }
 
-/// `exactFcUnitId`: the FC id whose scale and offset are exactly the unit's.
+/// The FC id whose scale and offset are exactly the unit's.
 fn exact_fc_unit_id(dim: &Dim, scale: f64) -> Option<&'static str> {
     crate::card_helpers::UNIT_ANNOTATIONS.iter().map(|(id, ..)| *id).find(|id| {
         crate::unit_catalog::fc_unit_to_unit(id).is_some_and(|c| {
@@ -642,7 +641,7 @@ impl UnitPlan {
     }
 }
 
-/// `planColumnUnits` ([[D100]] computedColumnInfersUnit): the formula's dimension from its columns' and side values'
+/// [[D100]] computedColumnInfersUnit: the formula's dimension from its columns' and side values'
 /// units. Where every united input shows a linear unit the formula runs on the shown numbers and the answer keeps
 /// their composed display; else it runs in base SI. An authored unit wins, and a clash with it is `#UNIT!`.
 pub(crate) fn plan_column_units(
@@ -923,7 +922,7 @@ fn placed<T>(
     Ok((cols, anchor + 1))
 }
 
-/// `cubeWithColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items included, and a
+/// A Cube carries its unit on its cells, so `unit` tags each number, list items included, and a
 /// replaced column keeps its place and format.
 fn cube_with_column(
     cube: &Cube,

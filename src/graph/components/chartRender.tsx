@@ -457,7 +457,7 @@ export function MultiSeriesView({
     );
   }
 
-  // rete's drag takes pointer capture on mousedown and would steal the legend's click.
+  // The canvas's node drag starts on mousedown and would steal the legend's click.
   const legendPress = (e: SyntheticEvent) => {
     if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };
@@ -545,7 +545,7 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
     </ComposedChart>
   );
 
-  // rete's drag takes pointer capture on mousedown and would steal the legend's click.
+  // The canvas's node drag starts on mousedown and would steal the legend's click.
   const legendPress = (e: SyntheticEvent) => {
     if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };

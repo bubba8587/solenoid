@@ -1,6 +1,5 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! The list, set, series and signal bodies (`listOps.ts`, `signalOps.ts`, `forecastOps.ts`, `fitOps.ts`, the
-//! returns in `financeOps.ts`, SPARKLINE's picture in `visualOps.ts`), each named as there. A list cell arrives as
+//! The list, set, series and signal bodies, the returns, and SPARKLINE's picture. A list cell arrives as
 //! the TS hands it over, raw, so the bodies keep JavaScript's coercions: `-` and `<` read a cell as `Number`
 //! reads it, `===` and a `Set` compare a nested list by reference.
 
@@ -85,7 +84,7 @@ fn blank(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
-/// `toList`: a list as it is, a blank as none, anything else as one item.
+/// A list as it is, a blank as none, anything else as one item.
 fn to_list(v: &V) -> Vec<V> {
     match v {
         V::List(items) => items.as_ref().clone(),
@@ -142,7 +141,7 @@ fn value(msg: &str) -> V {
     V::err(sol_error(ErrorCode::Value, msg))
 }
 
-/// `isTrue`: true or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -156,7 +155,7 @@ fn lower_key(v: &V) -> String {
     js_lower(js_trim(&js_string_of(v))).into_owned()
 }
 
-/// `numsOf`: numbers and logicals, one level of lists spread; text is skipped ([[C131]] noTextGuessing).
+/// Numbers and logicals, one level of lists spread; text is skipped ([[C131]] noTextGuessing).
 fn nums_of(v: &V) -> Vec<f64> {
     let items = match v {
         V::List(items) => items.as_ref().clone(),
@@ -262,7 +261,7 @@ fn median_of_sorted(sorted: &[f64]) -> f64 {
     }
 }
 
-/// `runningPlain`: a window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
+/// A window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
 /// what the sliding path would with the whole list as its window.
 pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
     if let Some(w) = window.map(math_round).filter(|&w| w >= 1.0) {
@@ -851,7 +850,7 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
     list(out)
 }
 
-/// `binIndex` over sorted edges, right-inclusive, then NTILE's 1-based bucket.
+/// Each value's bin over sorted edges, right-inclusive, then NTILE's 1-based bucket.
 fn ntile(arr: &[V], n: f64) -> V {
     let k = math_round(n);
     if !(k >= 1.0) {
@@ -1338,7 +1337,7 @@ pub(crate) fn mat_solve(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
     Some((0..n).map(|i| m[i][n] / m[i][i]).collect())
 }
 
-/// `polyFitW`; Err where `new Array(p)` throws on a length that isn't one.
+/// Err where `new Array(p)` throws on a length that isn't one.
 fn poly_fit_w(xs: &[f64], ys: &[f64], ws: &[f64], degree: f64) -> Result<Option<Vec<f64>>, ()> {
     let p = degree + 1.0;
     if (xs.len() as f64) < p {
@@ -1650,7 +1649,7 @@ fn spectrum(x: &[V], rate: f64) -> V {
     )
 }
 
-/// NORM's `numMat` and `asNumericMatrix`, then the Frobenius norm; a row that isn't a list throws as JS iterates it.
+/// NORM, the Frobenius norm: a row that isn't a list throws as JS iterates it.
 fn norm(m: &V) -> V {
     let rows: Vec<V> = match m {
         V::List(items) if matches!(items.first(), Some(V::List(_))) => items.as_ref().clone(),
@@ -1799,7 +1798,7 @@ fn sparkline(range: &V, ty: &V) -> V {
     ))
 }
 
-// ─── Forecasting ([[C17]] shareImpl: forecastOps.ts) ─────────────────────────────
+// ─── Forecasting ([[C17]] shareImpl) ─────────────────────────────────────────────
 
 fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
     let comp = if blank(component) { String::new() } else { lower_key(component) };
@@ -2136,7 +2135,7 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
     Ok(fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None }).map(|fit| (fit, h)))
 }
 
-// ─── Distribution fits (fitOps.ts) ──────────────────────────────────────────────
+// ─── Distribution fits ──────────────────────────────────────────────────────────
 
 pub(crate) const FIT_FAMILIES: [&str; 8] =
     ["normal", "lognorm", "expon", "gamma", "weibull", "uniform", "beta", "poisson"];
@@ -2224,7 +2223,7 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
     (a > 0.0).then_some((a, m / a))
 }
 
-/// `fitDistribution`: the fitted parameters and the log-likelihood (the KS statistic decides no answer here).
+/// The fitted parameters and the log-likelihood (the KS statistic decides no answer here).
 pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, f64)> {
     let x: Vec<f64> = data.iter().copied().filter(|v| v.is_finite()).collect();
     let n = x.len();
@@ -2348,7 +2347,7 @@ fn fitdist(sample: &V, family: &V) -> V {
     }
 }
 
-// ─── INTERPOLATE ([[C17]] shareImpl: mathUtils.ts) ──────────────────────────────
+// ─── INTERPOLATE ([[C17]] shareImpl) ────────────────────────────────────────────
 
 fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
     if let V::List(rows) = ys {
@@ -2485,7 +2484,7 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
     list(out.into_iter().map(|r| list(r.into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())).collect())
 }
 
-/// `fillGrid`: each gap bilinear between the nearest known corners no other known point sits between, then the
+/// Each gap bilinear between the nearest known corners no other known point sits between, then the
 /// rest from `fitSurface` when `forecast`. The axes are finite here.
 fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: bool) -> Vec<Vec<Option<f64>>> {
     let (r_n, c_n) = (z.len(), col_xs.len());

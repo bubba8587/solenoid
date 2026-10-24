@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[C44]] dateSerials
-//! Port of `src/graph/nodes/dateOps.ts`'s date arithmetic: DATEDIF, DAYS360, YEARFRAC, DATETRUNC, the epoch
+//! The date arithmetic: DATEDIF, DAYS360, YEARFRAC, DATETRUNC, the epoch
 //! conversions and the working-day counts. A JS `Date` is its time value, None for an Invalid Date, whose getters
 //! read NaN.
 
@@ -58,7 +58,6 @@ pub enum DiffOp {
     Yd,
 }
 
-/// `dateDiffOpForUnit`.
 pub fn date_diff_op_for_unit(unit: &str) -> Option<DiffOp> {
     Some(match crate::jsnum::js_trim(unit).to_uppercase().as_str() {
         "D" => DiffOp::Days,
@@ -97,7 +96,7 @@ enum Rule {
     Euro,
 }
 
-/// `dateDiff`: None where the TS answers null (a reversed span).
+/// None for a reversed span.
 pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, SolError> {
     let (mut s, mut e) = (s, e);
     if op == DiffOp::YearFrac {
@@ -210,7 +209,6 @@ pub enum TruncUnit {
     Year,
 }
 
-/// `dateTruncUnitFor`.
 pub fn date_trunc_unit_for(text: &str) -> Option<TruncUnit> {
     Some(match crate::jsnum::js_lower(crate::jsnum::js_trim(text)).as_ref() {
         "d" | "day" | "days" => TruncUnit::Day,
@@ -271,7 +269,7 @@ impl Weekend {
     }
 }
 
-/// `weekendDays`: Excel's weekend code.
+/// Excel's weekend code.
 pub fn weekend_days(code: f64) -> Option<Weekend> {
     let days: &[u8] = match math_round(code) {
         1.0 => &[6, 0],
@@ -305,7 +303,7 @@ fn weekday(serial: f64) -> f64 {
     parts(serial_to_ms(serial)).dow
 }
 
-/// `addWorkdays`. `holidays` is a set: each day once.
+/// `holidays` is a set: each day once.
 pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Result<f64, SolError> {
     let outside = || sol_error(ErrorCode::Domain, "WORKDAY lands outside the years 1 to 9999");
     let (first, last) = (first_day(), last_day());
@@ -339,7 +337,6 @@ pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Re
     }
 }
 
-/// `networkDays`.
 pub fn network_days(start: f64, end: f64, off: Weekend, holidays: &[f64]) -> Result<f64, SolError> {
     let (a, b) = (js_min(start, end).floor(), js_max(start, end).floor());
     if a < first_day() || b > last_day() {

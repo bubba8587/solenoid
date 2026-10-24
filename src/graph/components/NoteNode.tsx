@@ -219,7 +219,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     startEdit();
   }
 
-  // A bare setColor re-renders only rete's root, leaving the canvas renderer on the old color.
+  // A bare setColor re-renders only this component, leaving the canvas renderer on the old color.
   function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -318,7 +318,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               autoFocus
               onChange={(e) => setBody(e.target.value)}
               onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitBody(); }}
-              // Not stopDragStart: while editing a tap must place the cursor, and rete's drag would close the keyboard.
+              // Not stopDragStart: while editing a tap must place the cursor, and the canvas's node drag would close the keyboard.
               onPointerDown={stop}
               onMouseDown={stop}
             />

@@ -1,5 +1,5 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge. `nodes/text.ts`'s card bodies: each shares its kernel with the formula
-//! of its name ([[C17]] shareImpl), broadcast item by item over a list ([[C24]] arraySemantics); and `nodes/cast.ts`'s
+//! [[D102]] graphOnCore, [[B11]] maximalMerge. The text cards' bodies: each shares its kernel with the formula
+//! of its name ([[C17]] shareImpl), broadcast item by item over a list ([[C24]] arraySemantics); and
 //! Cast, which reads a value as each of the five targets.
 
 use super::kit::{broadcast_err, core_call};
@@ -55,7 +55,7 @@ pub(crate) fn required(c: &Call, key: &str) -> V {
     need(&role_value(c, key), &c.label(key))
 }
 
-/// `leftOutAs`: a setting left out takes the card's default, whole or item by item.
+/// A setting left out takes the card's default, whole or item by item.
 pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
     match v {
         V::Undef => V::Num(dflt),
@@ -417,7 +417,7 @@ fn roman_arabic(c: &mut Call) -> Answer {
     done(c, "cachedResult", r)
 }
 
-/// `fuzzyBest`: the candidate scoring highest at or above the threshold, the first on a tie.
+/// The candidate scoring highest at or above the threshold, the first on a tie.
 fn fuzzy_best(needle: &V, cands: &[V], method: &V, threshold: f64) -> Result<Option<(V, f64)>, V> {
     let mut best: Option<(V, f64)> = None;
     for cand in cands {
@@ -515,7 +515,7 @@ fn js_falsy(v: &V) -> bool {
     }
 }
 
-/// `regexOccurrence`: blank is 0 (every match), a fraction truncates, a negative counts from the end; None when
+/// Blank is 0 (every match), a fraction truncates, a negative counts from the end; None when
 /// non-finite.
 fn regex_occurrence(raw: &V) -> Option<f64> {
     if matches!(raw, V::Null | V::Undef) || matches!(raw, V::Str(s) if s.is_empty()) {
@@ -551,7 +551,7 @@ fn text_of(t: &[u16]) -> V {
     V::str(&String::from_utf16_lossy(t))
 }
 
-/// `regexApply` on one text: `match` with g answers every match, so the groups of a global pattern are the matches
+/// A regex op on one text: `match` with g answers every match, so the groups of a global pattern are the matches
 /// after the first, as in JS.
 fn regex_apply(op: &str, p: &Pattern, text: &[u16], replacement: &[u16]) -> V {
     match op {
@@ -637,9 +637,9 @@ fn regex(c: &mut Call) -> Answer {
     done(c, "cachedResult", result)
 }
 
-// ─── Cast (cast.ts) ─────────────────────────────────────────────────────────────
+// ─── Cast ───────────────────────────────────────────────────────────────────────
 
-/// `formatNumberPattern`: TEXT's few formats a cast takes, `0.00` and `0.0%`; anything else the number as JS writes it.
+/// TEXT's few formats a cast takes, `0.00` and `0.0%`; anything else the number as JS writes it.
 fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     let s = match format {
         V::Str(s) => s.to_string(),
@@ -675,7 +675,7 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     Ok(crate::jsnum::number_to_string(v))
 }
 
-/// `unitCellText`: a value in an FC unit reads with the FC's label, `$5` or `5 km`; any other unit by its dimension.
+/// A value in an FC unit reads with the FC's label, `$5` or `5 km`; any other unit by its dimension.
 fn unit_cell_text(
     cell: &crate::unit_dims::UnitCell,
     labels: &[(String, String, bool, Option<crate::unit_dims::Dim>)],
@@ -725,7 +725,7 @@ fn separator(v: &V) -> String {
     }
 }
 
-/// `parseValueText`: VALUE's reading with the separators a caller names (blank: the US form, with no group when the
+/// VALUE's reading with the separators a caller names (blank: the US form, with no group when the
 /// decimal is `,`), `$`, `(5)` for negatives and trailing `%`.
 fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     let d = if decimal.is_empty() { "." } else { decimal };
@@ -781,7 +781,7 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     }
 }
 
-/// `parseCx` (cast.ts): `a`, `bi`, `a+bi`, `a-bi`, `i` and `-i`, with j for i, spaces anywhere; else NaN parts.
+/// `a`, `bi`, `a+bi`, `a-bi`, `i` and `-i`, with j for i, spaces anywhere; else NaN parts.
 fn parse_cx(s: &str) -> (f64, f64) {
     let t: String = js_trim(s).chars().filter(|&c| !crate::jsnum::is_js_space(c)).collect();
     let nan = (f64::NAN, f64::NAN);
@@ -908,7 +908,7 @@ fn cast_failed(v: &V) -> bool {
     }
 }
 
-/// `displayScalar`: what the card shows, a complex value as its text.
+/// What the card shows, a complex value as its text.
 fn cast_display(v: &V, target: &str) -> V {
     match (v, target) {
         (V::Cx(re, im), "complex") => V::str(&crate::eval::format_cx(*re, *im)),

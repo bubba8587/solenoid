@@ -1,5 +1,5 @@
 //! [[C50]] lambdaBindsByName, [[C22]] rowFormulaRefs, [[C25]] firstClassUnits, [[D77]] constantsAlwaysWin.
-//! `nodes/lambda.ts`: the LAMBDA card, a body over its parameters that captures every other name it reads, wired or
+//! The LAMBDA card, a body over its parameters that captures every other name it reads, wired or
 //! typed. Its value crosses back as its text and its captures (`values::serialize_lambda`), which the card's TS
 //! compiles into a callable LAMBDA.
 
@@ -25,7 +25,7 @@ fn is_ident(s: &str) -> bool {
         && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
-/// `atColNames`: the names written `@name`, in order, once each.
+/// The names written `@name`, in order, once each.
 fn at_col_names(ast: &Ast, out: &mut Vec<String>) {
     match ast {
         Ast::AtCol(name) if is_ident(name) && !out.contains(name) => out.push(name.clone()),

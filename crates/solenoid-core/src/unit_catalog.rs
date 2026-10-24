@@ -120,7 +120,7 @@ fn unit_pow(a: &Unit, n: f64) -> Option<Unit> {
     linear(a).then(|| Unit { dim: dim_pow(&a.dim, n), scale: crate::excel_functions::js_pow(a.scale, n), offset: None })
 }
 
-/// `parseFactor`: a symbol, with a power as `^n` or trailing digits.
+/// A symbol, with a power as `^n` or trailing digits.
 fn parse_factor(tok: &str) -> Option<Unit> {
     let t = crate::jsnum::js_trim(tok);
     if t.is_empty() {
@@ -172,7 +172,6 @@ fn parse_product(s: &str) -> Option<Unit> {
     Some(acc)
 }
 
-/// `parseUnit`.
 pub fn parse_unit(expr: &str) -> Option<Unit> {
     let s = crate::jsnum::js_trim(expr);
     if s.is_empty() {
@@ -212,7 +211,7 @@ fn convert_dim(spec: &str) -> Dim {
         .collect()
 }
 
-/// `fcUnitToUnit`: the direct table, then the parser (some ids through `PARSE_AS`), then the registered units.
+/// The direct table, then the parser (some ids through `PARSE_AS`), then the registered units.
 pub fn fc_unit_to_unit(id: &str) -> Option<Unit> {
     if id.is_empty() || id == "none" || id == "custom" {
         return None;

@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[C44]] dateSerials
 //! The time zones a JS `Date` reads: the local zone and IANA zones. The wasm reads both from the JavaScript engine it
-//! runs in, as the TS reads them. Natively (desktop, `cargo test`) the local zone is UTC and an IANA zone is read from
+//! runs in. Natively (desktop, `cargo test`) the local zone is UTC and an IANA zone is read from
 //! jiff's bundled tzdb (`jiff-tzdb`), with the names ICU takes beside it; the tzdb release may be newer than the
 //! browser's, so a recent rule change can read differently in the two builds.
 //!
@@ -221,7 +221,7 @@ pub fn local_fields(t: f64) -> Option<Local> {
     Some(Local { year: y as f64, month: f64::from(m - 1), date: f64::from(d), in_day: l - days * MS_PER_DAY })
 }
 
-/// `getFullYear`, `getMonth`, `getDate`: NaN for an Invalid Date.
+/// `getMonth`, `getDate`: NaN for an Invalid Date.
 pub fn get_full_year(t: f64) -> f64 {
     local_fields(t).map_or(f64::NAN, |l| l.year)
 }
@@ -264,16 +264,15 @@ pub fn start_of_day(t: f64) -> f64 {
     }
 }
 
-// ─── IANA zones (`timeZone.ts`) ─────────────────────────────────────────────────
+// ─── IANA zones ─────────────────────────────────────────────────────────────────
 
-/// Why a zone read failed: `Intl` refused the zone, or the instant is an Invalid Date (a RangeError in the TS).
+/// Why a zone read failed: `Intl` refused the zone, or the instant is an Invalid Date.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ZoneError {
     UnknownZone,
     InvalidTime,
 }
 
-/// `isValidZone`.
 #[cfg(target_arch = "wasm32")]
 pub fn is_valid_zone(zone: &str) -> bool {
     host::with_format(zone, |f| f.is_some())
@@ -284,7 +283,7 @@ pub fn is_valid_zone(zone: &str) -> bool {
     tzdb::find(zone).is_some()
 }
 
-/// `zoneOffsetMs`: the zone's wall clock at the instant, read through `formatToParts`, less the instant.
+/// The zone's wall clock at the instant, read through `formatToParts`, less the instant.
 #[cfg(target_arch = "wasm32")]
 pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
     host::with_format(zone, |f| {

@@ -126,12 +126,11 @@ pub fn unit_label(id: &str) -> (&'static str, bool) {
     PACK_UNITS.iter().find(|(u, _)| *u == id).map_or(("", false), |(_, label)| (label, false))
 }
 
-/// `isFcUnit`.
 pub fn is_fc_unit(id: &str) -> bool {
     UNIT_ANNOTATIONS.iter().any(|(u, ..)| *u == id) || PACK_UNITS.iter().any(|(u, _)| *u == id)
 }
 
-/// `fcUnitIdForUnit`: the built-in id whose scale and offset are `scale` and none, else the first of the dimension.
+/// The built-in id whose scale and offset are `scale` and none, else the first of the dimension.
 pub fn fc_unit_id_for_unit(dim: &Dim, scale: f64) -> Option<&'static str> {
     let mut same_dim = None;
     for (id, ..) in UNIT_ANNOTATIONS {
@@ -186,7 +185,7 @@ pub fn sci_from_setting(sci_above: Option<&str>) -> f64 {
     }
 }
 
-/// `formatScalar`: an integer as it is, anything else to the decimal places with trailing zeros dropped, extremes in
+/// An integer as it is, anything else to the decimal places with trailing zeros dropped, extremes in
 /// scientific.
 pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
     if n.is_nan() {
@@ -396,7 +395,7 @@ pub fn is_date_style(style: &str) -> bool {
     style.starts_with("date_") || style.starts_with("time_") || style == "datetime"
 }
 
-/// `dateAnnotationPattern`, its default where the style is no date style.
+/// Its default where the style is no date style.
 pub fn date_annotation_pattern(ann: &Annotation) -> &str {
     match ann.format.as_str() {
         "date_custom" => ann.custom_pattern.as_deref().filter(|p| !p.is_empty()).unwrap_or(DEFAULT_DATE_FORMAT),
@@ -432,7 +431,7 @@ fn format_precise(n: f64, digits: f64, sigfigs: bool, grouping: bool) -> String 
     locale_fixed(n, if d.is_nan() { 0 } else { d as usize }, grouping)
 }
 
-/// `cfConvergent`: the best fraction of `x` with a denominator up to `max_den`.
+/// The best fraction of `x` with a denominator up to `max_den`.
 fn cf_convergent(x: f64, max_den: f64) -> (f64, f64) {
     let (mut h0, mut h1, mut k0, mut k1) = (0.0, 1.0, 1.0, 0.0);
     let mut b = x;
@@ -589,7 +588,6 @@ fn dms(n: f64) -> String {
     format!("{sign}{}°{}′{}″", number_to_string(d), number_to_string(m), number_to_string(s))
 }
 
-/// `applyFormatStyle`.
 fn apply_format_style(n: f64, ann: &Annotation, grouping: bool, d: NumberDisplay) -> String {
     if !n.is_finite() {
         return number_to_string(n);
@@ -614,7 +612,6 @@ fn apply_format_style(n: f64, ann: &Annotation, grouping: bool, d: NumberDisplay
     }
 }
 
-/// `formatNumberWithAnnotation`.
 pub fn format_number_with_annotation(n: f64, ann: &Annotation, d: NumberDisplay) -> String {
     if !n.is_finite() {
         return number_to_string(n);
@@ -767,7 +764,7 @@ fn is_data_image(t: &str) -> bool {
     strip_ci(t, "data:image/").is_some()
 }
 
-/// `linkHref`: an http(s) URL as it is, an email address as `mailto:`.
+/// An http(s) URL as it is, an email address as `mailto:`.
 pub fn link_href(text: &str) -> Option<String> {
     let t = js_trim(text);
     if is_url(t) {
@@ -779,7 +776,7 @@ pub fn link_href(text: &str) -> Option<String> {
     }
 }
 
-/// `recordImageSrc`: a `data:image` URL, or an http(s) URL with an image extension.
+/// A `data:image` URL, or an http(s) URL with an image extension.
 pub fn record_image_src(text: &str) -> Option<String> {
     let t = js_trim(text);
     if is_data_image(t) {
@@ -889,7 +886,7 @@ fn profile(col: &CardColumn) -> (Profile, bool) {
     (p, text && codes)
 }
 
-/// `nameWords`: the lowercase words of a column name, split at spaces, punctuation and camelCase humps; `#` stays a
+/// The lowercase words of a column name, split at spaces, punctuation and camelCase humps; `#` stays a
 /// word.
 pub fn name_words(name: &str) -> Vec<String> {
     let chars: Vec<char> = name.chars().collect();
@@ -1116,7 +1113,7 @@ fn last_name(w: &[String]) -> bool {
     has_word(w, "last") || has_word(w, "family") || has_word(w, "surname")
 }
 
-/// `planCards`: which part of a card each column fills, every tie to the column further left.
+/// Which part of a card each column fills, every tie to the column further left.
 pub fn plan_cards(cols: &[CardColumn]) -> Json {
     let (profiles, codes): (Vec<Profile>, Vec<bool>) = cols.iter().map(profile).unzip();
     let words: Vec<Vec<String>> = cols.iter().map(|c| name_words(&c.name)).collect();
@@ -1343,7 +1340,7 @@ fn overlaps(a: (usize, usize, usize, usize), placed: &[(usize, usize, usize, usi
     placed.iter().any(|p| a.0 <= p.2 && p.0 <= a.2 && a.1 <= p.3 && p.1 <= a.3)
 }
 
-/// `parseRecordLayout`: a line per row, names split by `|`, a repeat merging, `*n` spanning, `#` titling, `: hint`.
+/// A line per row, names split by `|`, a repeat merging, `*n` spanning, `#` titling, `: hint`.
 pub fn parse_record_layout(text: &str) -> Vec<Placement> {
     struct Cell {
         name: String,

@@ -1,7 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! Port of the planner and model cards' computations: the Payoff Planner (`payoffFrame` over `payoffOps.ts`), Group
-//! Cost Settle's totals and ledger (`settleFrame`, `settleLedgerCube` over `settleOps.ts`), the amortization schedule (`financeOps.ts`), and K-Means,
-//! PCA and logistic regression (`mlOps.ts`) with the frames their cards make.
+//! The planner and model cards' computations: the Payoff Planner, Group Cost Settle's totals and ledger, the
+//! amortization schedule, and K-Means, PCA and logistic regression with the frames their cards make.
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::decision::sort_by_num;
@@ -59,7 +58,7 @@ struct Plan {
     per_debt: Vec<(f64, f64)>,
 }
 
-/// `payoffPlan`: Err with the message the card prefixes when the payments never clear a debt.
+/// Err with the message the card prefixes when the payments never clear a debt.
 fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> {
     let n = debts.len();
     let rates: Vec<f64> = debts.iter().map(|d| monthly_rate(d.apr)).collect();
@@ -146,7 +145,7 @@ fn add_months_serial(start: f64, months: f64) -> f64 {
     date_utc(y, mo, math_min(p.day as f64, last)).map_or(f64::NAN, |ms| (ms / MS_PER_DAY + 25569.0).floor())
 }
 
-/// `payoffFrame`: the summary or the month-by-month schedule. The caller carries Balance's unit and format over.
+/// The summary or the month-by-month schedule. The caller carries Balance's unit and format over.
 pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: Option<f64>) -> Res<FrameValue> {
     let name_col = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let nums = number_columns(f);
@@ -215,7 +214,7 @@ struct Transfer {
     amount: f64,
 }
 
-/// `minTransfers`: the fewest transfers that settle every balance, largest first.
+/// The fewest transfers that settle every balance, largest first.
 fn min_transfers(balances_in: &[(String, f64)]) -> Vec<Transfer> {
     let mut balances: Vec<(String, f64)> = Vec::new();
     for (name, net) in balances_in {
@@ -250,7 +249,7 @@ fn min_transfers(balances_in: &[(String, f64)]) -> Vec<Transfer> {
     out
 }
 
-/// `settleFrame`: the transfers (From, To, Amount) and then the net table (person, Paid, Owes, Owed, Net), side by side.
+/// The transfers (From, To, Amount) and then the net table (person, Paid, Owes, Owed, Net), side by side.
 /// The caller splits them and carries Paid's unit and format over.
 pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
     let name_col = f.columns.iter().position(|c| c.ty == FrameColType::String);
@@ -536,7 +535,7 @@ pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Op
 
 // ─── K-Means, PCA, logistic regression ──────────────────────────────────────────
 
-/// `numericRows`: the number columns' names, the rows whose every feature is a finite number, and which rows those are.
+/// The number columns' names, the rows whose every feature is a finite number, and which rows those are.
 fn numeric_rows(f: &FrameValue, cols: &[usize]) -> (Vec<Vec<f64>>, Vec<usize>, usize) {
     let total = frame_row_count(f);
     let (mut rows, mut kept) = (Vec::new(), Vec::new());
@@ -550,7 +549,6 @@ fn numeric_rows(f: &FrameValue, cols: &[usize]) -> (Vec<Vec<f64>>, Vec<usize>, u
     (rows, kept, total)
 }
 
-/// `monteCarlo.ts`' `mulberry32`.
 pub(crate) fn mulberry32(seed: u32) -> impl FnMut() -> f64 {
     let mut a = seed;
     move || {
@@ -571,7 +569,7 @@ fn sq_dist(a: &[f64], b: &[f64]) -> f64 {
 
 struct KMeans {
     labels: Vec<usize>,
-    /// None where a cluster ended with no member: the TS leaves a hole there.
+    /// None where a cluster ended with no member.
     centers: Vec<Option<Vec<f64>>>,
 }
 

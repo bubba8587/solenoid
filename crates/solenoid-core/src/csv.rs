@@ -217,7 +217,7 @@ pub fn rows_columnar(text: &str, opts: CsvOptions) -> (Columnar, usize) {
 
 // ─── Typing ─────────────────────────────────────────────────────────────────────
 
-/// `ISO_DATE` (frame.ts): `\d{4}-\d{2}-\d{2}`, then optionally a time, fraction and zone.
+/// `\d{4}-\d{2}-\d{2}`, then optionally a time, fraction and zone.
 pub(crate) fn iso_date_text(t: &str) -> bool {
     let b = t.as_bytes();
     let digits = |r: std::ops::Range<usize>| b.len() >= r.end && b[r].iter().all(u8::is_ascii_digit);
