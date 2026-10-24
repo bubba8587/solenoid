@@ -6,7 +6,10 @@ import { type FrameOp } from "../../src/graph/frameOps";
 import { applyVerb, groupByFrame, pivotFrame, windowFrame } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
-import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
+import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
+
+const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
+const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
 import { cubeFromColumns, frameToCube, frameSourceToText, type CubeValue, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode, ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";

@@ -1,16 +1,19 @@
 // [[D43]]
 import { describe, it, expect } from "vitest";
 import {
-  isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
-  forAggregateUnits, sameColumnUnit,
+  isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit,
+  sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   adoptMagnitude, type UnitCell,
 } from "../../src/graph/unitValue";
-import { parseUnit, isDimensionless, type Unit } from "../../src/graph/dimension";
+import { parseUnit, formatDim, type Unit } from "../../src/graph/dimension";
 import { arithmeticCell } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";
+import { AggregateNode } from "../../src/graph/nodes/list";
 
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
+const sum = (list: unknown[]) => new AggregateNode({ op: "sum" }).data({ list: [list] }).result;
 const compare = (op: ComparisonOp, a: unknown, b: unknown) => new ComparisonNode({ op }).data({ a: [a], b: [b] }).result;
 
 const U = (s: string): Unit => {
@@ -100,50 +103,36 @@ describe("currency: no exchange rate → different codes are incommensurable", (
     const bare: UnitCell = { __unitCell: true, value: 5, dim: { currency: 1 } };
     expect(compare("eq", money(5, "usd"), bare)).toBe(true);
   });
-  it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
-    const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);
-    expect(r.error && r.error.code).toBe("#UNIT!");
-    const same = forAggregateUnits([money(5, "usd"), money(2, "usd")]);
-    expect(same.error).toBeUndefined();
+  it("Aggregate: mixed currency codes → #UNIT!", () => {
+    expect((sum([money(5, "usd"), money(5, "eur")]) as { code?: string }).code).toBe("#UNIT!");
+    expect((sum([money(5, "usd"), money(2, "usd")]) as UnitCell).value).toBe(7);
   });
 });
 
-describe("aggregator prep (step 6)", () => {
+describe("Aggregate over tagged cells", () => {
   it("sums a same-dimension list, auto-converting km+m to base m", () => {
-    const r = forAggregateUnits([cell(1, "km"), cell(500, "m"), cell(500, "m")]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(r.dim).toEqual({ length: 1 });
-      expect(r.nums.reduce((a, b) => a + b, 0)).toBe(2000); // 1000+500+500
-    }
+    const r = sum([cell(1, "km"), cell(500, "m"), cell(500, "m")]) as UnitCell;
+    expect(r.dim).toEqual({ length: 1 });
+    expect(r.value).toBe(2000); // 1000+500+500
   });
   it("skips missing (null) cells", () => {
-    const r = forAggregateUnits([cell(1, "m"), null, cell(2, "m")]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) expect(r.nums).toEqual([1, 2]);
+    expect((sum([cell(1, "m"), null, cell(2, "m")]) as UnitCell).value).toBe(3);
   });
   it("propagates a SolError anywhere in the list", () => {
     const err = solError("#DIV/0!", "x");
-    const r = forAggregateUnits([cell(1, "m"), err, cell(2, "m")]);
-    expect(r.error).toBe(err);
+    expect(sum([cell(1, "m"), err, cell(2, "m")])).toEqual(err);
   });
   it("two different REAL dimensions → #UNIT!", () => {
-    const r = forAggregateUnits([cell(1, "m"), cell(1, "s")]);
-    expect(r.error && r.error.code).toBe("#UNIT!");
+    expect((sum([cell(1, "m"), cell(1, "s")]) as { code?: string }).code).toBe("#UNIT!");
   });
   it("a bare number ADOPTS the list's unit (SUM(5 m, 2 m, 3) keeps length)", () => {
     // author decision 2026-07-13: a dimensionless number adopts the op's unit.
     // (display-carry through the real FC path is covered in unitCoercion.test.ts)
-    const r = forAggregateUnits([cell(5, "m"), cell(2, "m"), 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
-      expect(r.nums).toEqual([5, 2, 3]);
-    }
+    const r = sum([cell(5, "m"), cell(2, "m"), 3]) as UnitCell;
+    expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
+    expect(r.value).toBe(10);
     // symmetric: a leading bare number still adopts a later real dimension
-    const r2 = forAggregateUnits([3, cell(1, "m")]);
-    expect(r2.error).toBeUndefined();
-    if (!r2.error) expect(r2.dim).toEqual({ length: 1 });
+    expect((sum([3, cell(1, "m")]) as UnitCell).dim).toEqual({ length: 1 });
   });
 
   it("adoption reads the bare number in the list's DISPLAY unit (author 2026-07-16: SUM(5 km, 3) = 8 km)", () => {
@@ -151,26 +140,16 @@ describe("aggregator prep (step 6)", () => {
     // adopts the km discovered later (the two-pass scan).
     // An FC-authored cell carries its display id — that's what the bare 3 reads in.
     const km = (v: number) => fromUnit(v, U("km"), "km");
-    const r = forAggregateUnits([km(5), 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) expect(r.nums).toEqual([5000, 3000]);
-    const lead = forAggregateUnits([3, km(5)]);
-    expect(lead.error).toBeUndefined();
-    if (!lead.error) expect(lead.nums).toEqual([3000, 5000]);
+    expect((sum([km(5), 3]) as UnitCell).value).toBe(8000);
+    expect((sum([3, km(5)]) as UnitCell).value).toBe(8000);
     // A display-LESS cell (no id to read the bare number in) keeps the face value.
-    const bare = forAggregateUnits([cell(5, "km"), 3]);
-    if (!bare.error) expect(bare.nums).toEqual([5000, 3]);
+    expect((sum([cell(5, "km"), 3]) as UnitCell).value).toBe(5003);
     expect(adoptMagnitude(3, "km")).toBe(3000);
     expect(adoptMagnitude(3, undefined)).toBe(3); // no display — face value
     expect(adoptMagnitude(3, "definitely-not-a-unit")).toBe(3); // unresolvable — face value
   });
-  it("all-bare list stays dimensionless (behavior no-op for today's lists)", () => {
-    const r = forAggregateUnits([1, 2, 3]);
-    expect(r.error).toBeUndefined();
-    if (!r.error) {
-      expect(isDimensionless(r.dim)).toBe(true);
-      expect(r.nums).toEqual([1, 2, 3]);
-    }
+  it("an all-bare list stays a bare number", () => {
+    expect(sum([1, 2, 3])).toBe(6);
   });
 });
 

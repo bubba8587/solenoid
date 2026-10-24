@@ -4,8 +4,7 @@ import {
   type Dim, type Unit, DIMENSIONLESS,
   dimEqual, isDimensionless, formatDim, parseUnit,
 } from "./dimension";
-import { solError, isSolError, type SolError } from "./errorValue";
-import { isMissing } from "./valueKinds";
+import { solError, type SolError } from "./errorValue";
 
 export interface UnitCell {
   readonly __unitCell: true;
@@ -44,17 +43,6 @@ export function adoptMagnitude(face: number, display: string | undefined): numbe
   return s == null || s === 1 ? face : face * s;
 }
 
-/** A bare face value read as a READING in `display`: the offset too, so 30 beside a °C
- *  reading is 30 °C. Linear units read as `adoptMagnitude`. */
-export function adoptReading(face: number, display: string | undefined): number {
-  const base = adoptMagnitude(face, display);
-  return display ? base + (_displayOffset(display) ?? 0) : base;
-}
-
-export function tagRatio(value: number): UnitCell {
-  return { __unitCell: true, value, dim: {}, ratio: true };
-}
-
 export function isRatio(v: unknown): v is UnitCell {
   return isUnitCell(v) && v.ratio === true;
 }
@@ -87,20 +75,11 @@ export function fromUnit(value: number, unit: Unit, display?: string): UnitCell 
   return tagDim(base, unit.dim, display);
 }
 
-export function unitLabelOf(v: unknown): string {
-  return formatDim(dimOf(v));
-}
-
 export function formatUnitCell(v: number | UnitCell, fmtNum: (n: number) => string): string {
   const mag = fmtNum(magnitudeOf(v));
   if (isRatio(v)) return `${mag}:1`;
   const sym = formatDim(dimOf(v));
   return sym ? `${mag} ${sym}` : mag;
-}
-
-const CURRENCY_DIM: Dim = { currency: 1 };
-function isPureCurrency(v: unknown): boolean {
-  return dimEqual(dimOf(v), CURRENCY_DIM);
 }
 
 export function unitError(detail = ""): SolError {
@@ -111,50 +90,7 @@ export function unitError(detail = ""): SolError {
   );
 }
 
-/** Two temperature readings (°C, °F) have no sum, in any surface ([[C25]] firstClassUnits). */
-export const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
-/** A reading on an offset scale is not a magnitude, so it can't scale or divide. */
-export const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
-
 export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
-
-export type UnitAggregatePrep =
-  | { error: SolError }
-  | { error?: undefined; dim: Dim; display?: string; nums: number[] };
-
-/** `bareIsReading`: a bare number beside readings on an offset scale (°C) is a reading
- *  (MIN, AVERAGE), not a delta (SUM). */
-export function forAggregateUnits(values: ReadonlyArray<unknown>, bareIsReading = false): UnitAggregatePrep {
-  for (const v of values) if (isSolError(v)) return { error: v };
-  const present = values.filter((v) => !isMissing(v));
-  let dim: Dim | null = null;
-  let display: string | undefined;
-  let currencyCode: string | undefined;
-  for (const v of present) {
-    const d = dimOf(v);
-    if (!isDimensionless(d)) {
-      if (dim === null) { dim = d; display = isUnitCell(v) ? v.display : undefined; }
-      else if (!dimEqual(dim, d)) {
-        return {
-          error: unitError(
-            `Can't aggregate mixed units: ${formatDim(dim)} and ${formatDim(d)}.`,
-          ),
-        };
-      }
-      if (isPureCurrency(v) && isUnitCell(v) && v.display != null) {
-        if (currencyCode === undefined) currencyCode = v.display;
-        else if (currencyCode !== v.display) {
-          return { error: unitError(`Can't aggregate different currencies: ${currencyCode} and ${v.display}.`) };
-        }
-      }
-    }
-  }
-  const adopt = bareIsReading ? adoptReading : adoptMagnitude;
-  const nums = present.map((v) =>
-    isDimensionless(dimOf(v)) ? adopt(magnitudeOf(v), display) : magnitudeOf(v),
-  );
-  return { dim: dim ?? DIMENSIONLESS, display, nums };
-}
 
 export interface ColumnUnit {
   dim: Dim;

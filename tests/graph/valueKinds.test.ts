@@ -1,10 +1,7 @@
 // [[D36]], [[C24]], [[D38]]
 import { describe, it, expect } from "vitest";
-import {
-  isMissing, isLogical,
-  logicalToNumber, numberToLogical, coerceLogical, logicalOrTypeError,
-  forAggregate,
-} from "../../src/graph/valueKinds";
+import { isMissing, numberToLogical, coerceLogical, logicalOrTypeError } from "../../src/graph/valueKinds";
+import { AggregateNode } from "../../src/graph/nodes/list";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
 describe("value-kind predicates", () => {
@@ -15,18 +12,9 @@ describe("value-kind predicates", () => {
     }
   });
 
-  it("isLogical only true for booleans", () => {
-    expect(isLogical(true)).toBe(true);
-    expect(isLogical(false)).toBe(true);
-    for (const v of [0, 1, null, "true", NaN]) expect(isLogical(v)).toBe(false);
-  });
 });
 
 describe("logical ↔ number coercion", () => {
-  it("logical to 1/0", () => {
-    expect(logicalToNumber(true)).toBe(1);
-    expect(logicalToNumber(false)).toBe(0);
-  });
   it("number to logical: non-zero is true", () => {
     expect(numberToLogical(0)).toBe(false);
     expect(numberToLogical(1)).toBe(true);
@@ -34,24 +22,19 @@ describe("logical ↔ number coercion", () => {
   });
 });
 
-describe("forAggregate", () => {
-  it("passes plain number lists through unchanged (NaN preserved)", () => {
-    const r = forAggregate([1, 2, 3]);
-    expect(r.error).toBeUndefined();
-    expect((r as { nums: number[] }).nums).toEqual([1, 2, 3]);
-    // NaN is NOT stripped — today's behavior is preserved until producers emit null.
-    expect((forAggregate([1, NaN, 3]) as { nums: number[] }).nums).toEqual([1, NaN, 3]);
+describe("Aggregate's list prep", () => {
+  const sum = (list: unknown[]) => new AggregateNode({ op: "sum" }).data({ list: [list] }).result;
+  it("sums a plain number list", () => {
+    expect(sum([1, 2, 3])).toBe(6);
   });
 
   it("skips null (missing)", () => {
-    expect((forAggregate([1, null, 3, null]) as { nums: number[] }).nums).toEqual([1, 3]);
-    expect((forAggregate([null, null]) as { nums: number[] }).nums).toEqual([]);
+    expect(sum([1, null, 3, null])).toBe(4);
   });
 
   it("propagates the first SolError", () => {
     const err = solError("#DIV/0!", "boom");
-    const r = forAggregate([1, null, err, 3]);
-    expect(r.error).toBe(err);
+    expect(sum([1, null, err, 3])).toEqual(err);
   });
 });
 

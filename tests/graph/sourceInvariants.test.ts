@@ -166,7 +166,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   // unit-blind strip (stripUnitCells returns the same reference when no CELL is
   // tagged) — a unit-blind node carrying it through a reshape is correct, not a
   // violation (stats.ts's grid interpolation is the live example).
-  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|forAggregateUnits)\s*\(/;
+  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell)\s*\(/;
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
