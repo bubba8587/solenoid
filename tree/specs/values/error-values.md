@@ -146,7 +146,7 @@ Expression, LAMBDA, MAP, BYROW, BYCOL, MAKEARRAY, REDUCE and Filter set a rich i
 
 ## `#CIRC!` is engine-level, not a producer
 
-The pull-based DataflowEngine resolves a node's inputs recursively before calling its `data()`, so a dependency loop makes `engine.fetch` deadlock forever instead of throwing. `processGraph` finds the loops' real members up front with Tarjan SCC (`graphCompute.ts` `loopMembers`: nodes in a strongly connected component of two or more, or a self-loop) and pre-seeds the engine's result cache (`engine.cache.add(id, …)`, a documented public field) with a `#CIRC!` for each.
+The pull-based DataflowEngine resolves a node's inputs recursively before calling its `data()`, so a dependency loop makes `engine.fetch` deadlock forever instead of throwing. The pass finds the loops' real members up front with Tarjan SCC (`loopMembers` in the graph core: nodes in a strongly connected component of two or more, or a self-loop) and seeds each one's result with a `#CIRC!` on every output (`seedLoops`, [[graph-core#The graph walks and the pass (`pass.rs`, `wasm.rs`)]]).
 
 A downstream node then resolves a member straight from the cache instead of recursing in, so it computes normally and shows the propagated `#CIRC!`; only the actual members dead-end. Seed only the SCC members, never their descendants, which would blank their own computation. The connection guard already blocks self-loops on creation; multi-node loops are caught here.
 

@@ -12,7 +12,7 @@ A collapsed group draws as a small card. Expanding it back to full size would co
 
 ## The world the push works on
 
-The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
+The push runs over plain boxes, with no editor or DOM, so the core (`computeExpandPush` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
 - **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
 - A loose node's box reaches over its docked FCs (FC width plus 8), rightward for an FC docked to an output and leftward for one docked to an input, because a docked FC has no box of its own.

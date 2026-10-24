@@ -447,7 +447,7 @@ the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` ab
 The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
 footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
-one live rete hero) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
+one live hero graph) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
 `ExamplesPage.tsx` (the seed library from `SEED_GROUPS`; each tile deep-links `/?seed=<id>`,
 which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
 packs from `BUILTIN_PACKS` and `PACK_GROUP_ORDER`). Scenes live in `LandingScenes.tsx` (+

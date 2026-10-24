@@ -159,7 +159,6 @@ export type SurfaceStack = FlowModel & {
   handlers: SurfaceHandlers;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
   isRebuilding?: () => boolean;
-  absorbPipeInstalled?: boolean;
 } & CableSettleStack;
 
 export type SurfaceHooks = {
@@ -308,11 +307,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     return () => { offRebuildEnd(); Object.assign(s.handlers, idleHandlers()); };
   }, [s, setViewport, syncTopology]);
 
-  // editor.addPipe cannot be removed, so this pipe installs once per stack.
   useEffect(() => {
-    if (s.absorbPipeInstalled) return;
-    s.absorbPipeInstalled = true;
-    s.editor.addPipe((ctx) => {
+    const pipe = s.editor.addPipe((ctx) => {
       if ((ctx as { type?: string }).type === "nodecreated" && !isGraphRebuilding() && !s.isRebuilding?.()) {
         const newId = (ctx as unknown as { data: { id: string } }).data.id;
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -325,6 +321,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       }
       return ctx;
     });
+    return () => s.editor.removePipe(pipe);
   }, [s]);
 
   useEffect(() => installCableSettlePipe(s), [s]);

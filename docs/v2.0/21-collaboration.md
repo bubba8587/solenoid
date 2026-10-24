@@ -170,7 +170,7 @@ alternative) shaped like the text form's semantics, not its bytes:
 - `visual`: positions / sizes / collapsed / page per node (LWW registers; positions are the
   hot path and merge trivially), plus the sidecar's other fields.
 - Composite internals: a nested sub-document per composite instance.
-**The client.** The rete editor + RF surface become a VIEW of the CRDT document: every local
+**The client.** The graph editor + RF surface become a VIEW of the CRDT document: every local
 edit goes through the existing choke points (`flowModel.ts` edit verbs, `useDraftCommit`
 commits, `moveNode`) which write the CRDT; remote CRDT changes apply through the same verbs
 (the topology pipe already coalesces adds/removes into one commit; `syncTopology` preserves

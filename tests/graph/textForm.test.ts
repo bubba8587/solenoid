@@ -339,7 +339,7 @@ describe("text form: unit cases", () => {
     const reloaded = readTextForm(text);
     const pres = reloaded.nodes.find((n) => n.name === "Presentation_1")!;
     // Step node-ids are now names (which ARE the reconstructed ids) — so rebuildGraph's
-    // idMap can remap them to fresh live ids, unlike the raw rete ids they'd otherwise be.
+    // idMap can remap them to fresh live ids, unlike the random live ids they'd otherwise be.
     expect(pres.init.steps).toEqual([
       { title: "Intro", nodeIds: ["Number_1"] },
       { title: "End", nodeIds: ["Number_1", "Number_2"] },
