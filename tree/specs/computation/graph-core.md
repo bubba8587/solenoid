@@ -96,6 +96,48 @@ The engine answers the walks over its editor's graph; `graphCompute.ts` reaches 
 | `invalidate(id, keepCaches)` | With a node: clears its cone's caches and returns the cone. Without one: `reset()` unless `keepCaches`, and `null`. |
 | `fetchAll(onNode?, stopOnCancel)` | Fetches every node in the editor's order, skipping one removed mid-pass; a cancelled fetch records `null`, or with `stopOnCancel` ends the pass with `null`; any other rejection rejects the pass. |
 
+## Phase B: the boundary, the pass and the ids in the core (design, 2026-10-24)
+
+What moves from TypeScript into `crates/solenoid-graph`, and what TypeScript keeps. The rule is D102's: the
+TypeScript copy goes once the core covers it.
+
+- **The per-node wrappers become the engine's own call** (`boundary.rs`). The core no longer calls a `data()` that
+  TypeScript wrapped at `nodecreated`: it calls the class's own `data()` through the input boundary ([[compute-pass]]
+  § The per-node wrappers): the error guard's short-circuit, the lazy collect, the unit boundary, the rung's coercion
+  (read from the port's socket type, which the core already holds), the typed list literals, then the call, the frame
+  format stamp and the guard's origin tagging, error-out and conversion of a throw or rejection. Every engine runs
+  it; `new DataflowEngine({ raw: true })` is the bare rete-engine shape the engine's own tests use.
+  `installInputCoercion`, `wrapNodeData` and `installErrorGuards` go, and so does every call to them. A node outside
+  an engine is computed through its engine (`engine.compute(id, inputs)`: a composite's simulation steps, the tests).
+  The values stay the app's JavaScript objects, read and built through `js_sys`: the core walks them, it does not copy
+  them, so a frame or a list that needs no change keeps its identity.
+- **What the boundary asks TypeScript for** (`setBoundaryHost`, `nodeBoundary.ts`, installed at load and again after
+  a trap): what only the app's stores and the frame code know. Collecting a lazy frame (`readFrame`), building a
+  frame or cube from rows (`frameFromRows`, `toCube`), a unit cell's display magnitude, a matrix's unit tag, reading a
+  typed list literal (`parseListLiteral`), a passthrough node's kept-unit inputs, the frame format picks
+  (`frameFormatStore`), a node's display name (the catalog), the error sinks (the Problems store) and the perf probe.
+  Each is one call per value or node that needs it, never per cell.
+- **The pass body moves** (`pass.rs`, `GraphCore.pass`): retargeting into composites (the core knows which node owns
+  which inner editor, `nest`), invalidation, the cached loop set, `#CIRC!` seeding, the fetch in the editor's order,
+  the change test and the render set. TypeScript passes what changed, gets back the nodes to render (or `null` for a
+  cancelled pass), and keeps what touches the view and the stores: the cable value store (`onNode` answers whether a
+  node's outputs changed), the render, the perf line, the composite store, the graph-changed hook.
+- **The pass's state moves** (`session.rs`): the calc mode, the dirty flag, the force-exact depth, the recalc
+  generation, the rebuild depth and its topology flag, the single-flight flags and the coalesced rerun. The entry
+  order's decisions are the core's (`passEnter`, `passExit`); `calcModeStore` and `process.ts` call them and cache the
+  answer, which is what React reads and what a trap's recovery hands back to the fresh instance. TypeScript keeps the
+  mode's persistence (`localStorage`) and the overlay, the timers (midnight, the minute tick) and the triggers, which
+  are UI events.
+- **Ids are the core's**: `getUID()` is Ruggine's `get_uid` (`uid()` in the graph module), so a node or cable built
+  before the module loads throws.
+- **Port edits are batched**: a node's socket changes queue in the editor and reach the core as one `setPorts` call
+  per node, flushed before the next call into the core.
+- **TypeScript keeps** (for phase C): each node's JavaScript object, its `data()` and its controls; the values as
+  JavaScript objects; `resolveTrigModes` and `clearCollectMemo` (called at the pass's start through the host); the
+  frame layer's lazy refs.
+- **The plugin** (`obsidian-plugin/`) computes nothing and builds no graph; it reaches none of this. Its entry points
+  (the chips, popups and value readers) are unchanged; [[obsidian-plugin]] says what it calls.
+
 ## Traps
 
 A panic in the core runs the module's panic hook (`setPanicHandler`) before the trap; a trap with no panic (a stack
