@@ -99,5 +99,17 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
     expect(code(ev("FORECAST.LINEAR(5, L, N)", { L, N }))).toBe("#VALUE!");
     expect(ev("TRIMMEAN(N, 0.2)", { N })).toBe(2.5);
   });
+
+  it("number slots the second sweep found refuse text with #VALUE!", () => {
+    const r = [0.1, -0.05, 0.2], c = [-100, 60, 60], d = [45292, 45658, 46023];
+    for (const [src, vars] of [
+      ['CAGR(r, "1")', { r }], ['SHARPE(r, "0.01")', { r }], ['T.TEST(r, r, "2", 1)', { r }], ['HYPOTENUSE("3", 4)', {}],
+      ['LOG2("8")', {}], ['PPMT(0.1, "1", 3, 100)', {}], ['FUZZYMATCH("abc", t, "0.9")', { t: ["abc"] }],
+      ["WAVG(v, w)", { v: [1, "2"], w: [1, 1] }], ['IRR(c, "0.1")', { c }], ["XIRR(c, x)", { c, x: [45292, "45658", 46023] }],
+      ['XNPV("0.1", c, d)', { c, d }], ['GCD("12", 18)', {}], ['MULTINOMIAL("2", 3)', {}], ['TEXTSPLIT("a,b", ",", , , "1")', {}],
+    ] as [string, Record<string, unknown>][])
+      expect(code(ev(src, vars)), src).toBe("#VALUE!");
+    expect(ev("GCD(12, 18)")).toBe(6);
+  });
 });
 
