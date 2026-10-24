@@ -8,7 +8,7 @@ import { frameFromRows, toCube, isFrameValue, type FrameValue } from "./frame";
 import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { displayMagnitudeOf } from "./unitBridge";
 import { carryMatrixUnit, type UnitCell } from "./unitValue";
-import { parseListLiteral } from "./coerceInputs";
+import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { carryFrameSidecars } from "./frameSidecar";
 import { displayNameOf } from "./nodeNamer";

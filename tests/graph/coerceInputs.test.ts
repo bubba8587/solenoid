@@ -1,6 +1,6 @@
 // [[C28]]
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseListLiteral, TYPEABLE_LIST } from "../../src/graph/coerceInputs";
+import { parseListLiteral, TYPEABLE_LIST } from "../../src/graph/listLiterals";
 import { throughBoundary } from "./boundaryKit";
 import { isSolError } from "../../src/graph/errorValue";
 

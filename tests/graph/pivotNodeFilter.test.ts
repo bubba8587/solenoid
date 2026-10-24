@@ -1,6 +1,6 @@
 // [[B17]], [[C48]], [[C24]] arraySemantics
 import { csvList } from "../../src/graph/nodes/frameShapeHook";
-import { listLiteralText } from "../../src/graph/coerceInputs";
+import { listLiteralText } from "../../src/graph/listLiterals";
 import { describe, it, expect } from "vitest";
 import { PivotNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";

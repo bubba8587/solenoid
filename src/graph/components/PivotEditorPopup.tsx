@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { pivotEditor } from "../pivotEditorStore";
 import { notifyGraphChanged, processGraph } from "../process";
 import { csvList } from "../nodes/frameShapeHook";
-import { listLiteralText } from "../coerceInputs";
+import { listLiteralText } from "../listLiterals";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameOps";
 import { AGG_OP_META, type PivotNode } from "../nodeClasses";

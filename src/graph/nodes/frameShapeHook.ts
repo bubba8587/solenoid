@@ -1,4 +1,4 @@
-import { parseListLiteral } from "../coerceInputs";
+import { parseListLiteral } from "../listLiterals";
 import type { Shape } from "../frameShape";
 
 // Duck-typed on purpose: this module imports no node classes.
