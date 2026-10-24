@@ -129,11 +129,35 @@ fn same_value_zero(a: &V, b: &V) -> bool {
     }
 }
 
+/// `same_value_zero`'s classes as a hash key; `None` for a value that equals nothing, itself included.
+#[derive(PartialEq, Eq, Hash)]
+enum SameValueKey<'a> {
+    Num(u64),
+    Str(&'a str),
+    Bool(bool),
+    Undef,
+}
+
+fn same_value_key(v: &V) -> Option<SameValueKey<'_>> {
+    Some(match v {
+        V::Num(x) if x.is_nan() => SameValueKey::Num(f64::NAN.to_bits()),
+        V::Num(x) => SameValueKey::Num((x + 0.0).to_bits()),
+        V::Str(s) => SameValueKey::Str(s),
+        V::Bool(b) => SameValueKey::Bool(*b),
+        V::Undef => SameValueKey::Undef,
+        _ => return None,
+    })
+}
+
 /// A column's distinct filled values, numbers by value and anything else by its text.
 fn slicer_uniques(values: &[V]) -> Vec<V> {
+    let mut seen = HashSet::new();
     let mut out: Vec<V> = Vec::new();
     for v in values {
-        if matches!(v, V::Null) || matches!(v, V::Str(s) if s.is_empty()) || out.iter().any(|u| same_value_zero(u, v)) {
+        if matches!(v, V::Null) || matches!(v, V::Str(s) if s.is_empty()) {
+            continue;
+        }
+        if same_value_key(v).is_some_and(|k| !seen.insert(k)) {
             continue;
         }
         out.push(v.clone());
