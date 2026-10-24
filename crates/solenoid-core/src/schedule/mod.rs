@@ -1,5 +1,5 @@
 //! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D66]]
-//! daysMinutesModes. The scheduling engine of `packages/schedule-engine`: critical-path passes over a name-keyed task
+//! daysMinutesModes. The scheduling engine: critical-path passes over a name-keyed task
 //! graph with working calendars, typed links, floors, ceilings, deadlines and diagnostics, in serial-day arithmetic
 //! (`packages/schedule-engine/README.md` is the contract). The file readers (MSPDI, GanttProject, XER) stay at the
 //! import border in the TS.

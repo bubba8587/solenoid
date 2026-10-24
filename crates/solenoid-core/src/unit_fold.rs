@@ -63,7 +63,6 @@ fn read_in(base: f64, u: Option<&DisplayUnit>) -> f64 {
     u.map_or(base, |u| (base - u.offset) / u.scale)
 }
 
-/// A step's answer as `compileTsEvaluator` hands it back.
 fn normalize(v: V) -> V {
     match v {
         V::Lambda(_) => V::err(sol_error(
@@ -128,7 +127,7 @@ pub fn fold_units_over(
     let V::List(rows) = m else { return None };
     let mut mat: Vec<Vec<V>> = Vec::with_capacity(rows.len());
     for r in rows.iter() {
-        // A lone item among rows is a one-cell row (`toAnyMatrix`).
+        // A lone item among rows is a one-cell row.
         mat.push(match r {
             V::List(cells) => cells.to_vec(),
             other => vec![other.clone()],
@@ -140,7 +139,7 @@ pub fn fold_units_over(
     };
     // Over a plain list only the accumulator carries the initial's unit: `value` is a plain number (a rate, a count).
     let united: &[&str] = if elem.is_some() { &["acc", "value"] } else { &["acc"] };
-    // REDUCE's initial value is the first accumulator, so its unit joins the list's (`initialUnit`).
+    // REDUCE's initial value is the first accumulator, so its unit joins the list's.
     let folds = matches!(kind, FoldKind::Reduce | FoldKind::Scan);
     let elem = match (folds, initial, elem) {
         (true, V::Unit(_), None) => match elem_unit(&[vec![initial.clone()]]) {

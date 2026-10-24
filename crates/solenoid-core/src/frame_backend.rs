@@ -239,8 +239,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!({ "parses": true, "vars": vars, "rows": rows }))
         }
-        // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula (its text, or its tree as `ast`), each exponent as
-        // its `String(x)`.
+        // [[C25]] firstClassUnits: a formula's dimension (its text, or its tree as `ast`), each exponent as its
+        // `String(x)`.
         "engine_dim_eval" => {
             let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?
                 .unwrap_or_default();
@@ -261,7 +261,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 Err(e) => json!({ "err": e.code, "msg": e.message }),
             })
         }
-        // `affineWeight`: a formula over readings (°C, °F) is a reading (1), a difference (0) or #UNIT!.
+        // `affine_weight`: a formula over readings (°C, °F) is a reading (1), a difference (0) or #UNIT!.
         "engine_affine_weight" => {
             let names = |key: &str| parse::<Option<Vec<String>>>(args, key).map(Option::unwrap_or_default);
             let (points, lists, bare) = (names("points")?, names("lists")?, names("bare")?);
@@ -277,7 +277,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 },
             )
         }
-        // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
+        // A computed column: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
             let values = |key: &str| -> Result<rustc_hash::FxHashMap<String, crate::excel_functions::V>, SolError> {
@@ -424,7 +424,7 @@ fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> crat
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
         return V::err(sol_error(ErrorCode::Unit, format!("{name} reads plain values, and one of these has a unit")));
     }
-    // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
+    // `scan`: a node's call reads an error argument as the formula's call does; without it, the bare body.
     let early = if scan { crate::eval::argument_error(&upper, argv) } else { None };
     early.unwrap_or_else(|| call_function(name, argv))
 }
@@ -494,7 +494,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             (arg_of(args.get("m").unwrap_or(&Json::Null)), arg_of(args.get("initial").unwrap_or(&Json::Null)));
         crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(failed)
     } else {
-        // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
+        // A formula over named values ([[D99]] rustIsSpec).
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = map_arg(args, "env")?
             .ok_or_else(|| bad_arg("env", "an object"))?

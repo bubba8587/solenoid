@@ -52,7 +52,7 @@ fn utc_month(d: Date) -> f64 {
     ymd(d).1
 }
 
-/// `serialToJsDate(serial).getTime()`.
+/// A serial as epoch milliseconds, NaN past a JS Date's range.
 fn serial_to_js_date(serial: f64) -> Date {
     crate::date_serial::time_clip(math_round((serial - 25569.0) * MS_PER_DAY)).unwrap_or(f64::NAN)
 }

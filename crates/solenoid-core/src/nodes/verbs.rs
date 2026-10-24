@@ -68,7 +68,7 @@ pub(crate) fn uploaded(c: &Call, key: &str) -> bool {
     c.wired("uploaded").is_some_and(|u| u.iter().any(|v| matches!(v, V::Str(s) if &**s == key)))
 }
 
-/// `passFrame`: a frame the shell uploaded passes as the ref it was given, which the shell hands back as the frame;
+/// A frame the shell uploaded passes as the ref it was given, which the shell hands back as the frame;
 /// a ref passes as a new ref planning nothing more, so the card never drops the handle its input holds.
 fn pass(c: &Call, f: &V) -> V {
     if uploaded(c, "frame") {
@@ -82,7 +82,7 @@ fn texts(names: &[String]) -> Json {
     Json::Array(names.iter().map(|s| Json::String(s.clone())).collect())
 }
 
-/// `readColumnList`: the text items of a wired list, none where the list is blank.
+/// The text items of a wired list, none where the list is blank.
 pub(crate) fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V> {
     match c.read_input(key, V::List(Rc::new(Vec::new()))) {
         V::Null => Ok(None),
@@ -98,7 +98,7 @@ fn trimmed_names(names: Vec<String>) -> Vec<String> {
     names.iter().map(|s| js_trim(s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
-/// `readFilterValue`: a wired value as text, an error as its code; a blank wire is none.
+/// A wired value as text, an error as its code; a blank wire is none.
 fn filter_value(c: &Call, key: &str) -> Option<String> {
     let raw = match c.wired(key) {
         None | Some([]) => match c.string_literal(key) {
@@ -515,7 +515,7 @@ fn window(c: &mut Call) -> Answer {
 
 // ─── Get Column ─────────────────────────────────────────────────────────────────
 
-/// `getColumn`: by name, else by a 1-based position.
+/// By name, else by a 1-based position.
 pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a Column> {
     let key = js_trim(name);
     if let Some(c) = columns.iter().find(|c| c.name == key) {
@@ -631,8 +631,8 @@ fn get_column(c: &mut Call) -> Answer {
 
 // ─── SUMIFS ─────────────────────────────────────────────────────────────────────
 
-/// The columns SUMIFS reads, and how a name finds one: as `getColumn` does, or a ref's, read by the name it was asked
-/// by.
+/// The columns SUMIFS reads, and how a name finds one: as `column_named` does, or a ref's, read by the name it was
+/// asked by.
 struct Source {
     columns: Vec<Column>,
     by_position: bool,
@@ -815,7 +815,7 @@ fn scalar_column(cube: &Cube, name: &str) -> Result<(FrameColumn, Option<Json>),
     Ok(flat_column(cube, col))
 }
 
-/// `flatCubeToFrame`'s column: cells in one unit read in it, cells that disagree as base SI with no unit.
+/// A Cube column as a frame's: cells in one unit read in it, cells that disagree as base SI with no unit.
 pub(crate) fn flat_column(cube: &Cube, col: &CubeColumn) -> (FrameColumn, Option<Json>) {
     let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) {
         matrix_cells_from_list(&col.cells)

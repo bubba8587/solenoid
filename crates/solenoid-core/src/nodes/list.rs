@@ -619,12 +619,12 @@ fn smooth(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), out)])
 }
 
-/// `listLiteralItems`: a typed row's items, trimmed, the empty ones dropped.
+/// A typed row's items, trimmed, the empty ones dropped.
 pub(crate) fn literal_items(csv: &str) -> Vec<String> {
     csv_line(csv).into_iter().map(|s| js_trim(&s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
-/// `parseCsvLine`: the first row Papa Parse reads from the text (comma-delimited, blank rows skipped), or one empty
+/// The first CSV row of the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
     crate::csv::parse_rows(text, crate::csv::CsvOptions::default())
@@ -633,12 +633,12 @@ fn csv_line(text: &str) -> Vec<String> {
         .unwrap_or_else(|| vec![String::new()])
 }
 
-/// `parseCsvRows(text, { keepBlankLines: true })`.
+/// Every CSV row of the text, blank lines kept.
 pub(crate) fn csv_rows(text: &str) -> Vec<Vec<String>> {
     crate::csv::parse_rows(text, crate::csv::CsvOptions { detect_delimiter: false, keep_blank_lines: true })
 }
 
-/// `coerceLogical` as a cell: a boolean, blank, or NaN.
+/// A logical reading as a cell: a boolean, blank, or NaN.
 fn logical_cell(v: &FrameCell) -> V {
     match crate::value_kinds::coerce_logical(v) {
         Logical::Bool(b) => V::Bool(b),
@@ -647,7 +647,7 @@ fn logical_cell(v: &FrameCell) -> V {
     }
 }
 
-/// `coerceFrameCell`: typed text read as a cell of the list's type ([[D93]] oneTextReading).
+/// Typed text read as a cell of the list's type ([[D93]] oneTextReading).
 pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
@@ -673,7 +673,7 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     V::Num(f64::NAN)
 }
 
-/// `coerceListItem`: a wired item read as the list's type; converts, never filters.
+/// A wired item read as the list's type; converts, never filters.
 fn list_item_of(ty: &str, v: &V) -> V {
     if let V::Str(s) = v {
         if ty != "string" {
@@ -764,7 +764,7 @@ fn as_cell(v: &V) -> FrameCell {
     }
 }
 
-/// `readConditionValue`: a wired value as text (an error as its code), a blank as no condition.
+/// A wired value as text (an error as its code), a blank as no condition.
 fn condition_value(c: &Call, key: &str) -> String {
     let raw = match c.wired(key) {
         None | Some([]) => match c.string_literal(key) {
@@ -893,7 +893,7 @@ fn filter(c: &mut Call) -> Answer {
     done(c, list(kept), list(dropped))
 }
 
-/// `setKey`: a unit cell by its base magnitude and dimension, anything else as itself.
+/// A unit cell keys by its base magnitude and dimension, anything else as itself.
 #[derive(Hash, PartialEq, Eq)]
 enum MemberKey {
     Plain(crate::fns_matrix::Key),
@@ -930,7 +930,7 @@ fn is_in(c: &mut Call) -> Answer {
     shown(c, "cachedList", "result", r)
 }
 
-/// `aggregateResultDim`: the dimension an op's answer has over values of `dim`.
+/// The dimension an op's answer has over values of `dim`.
 fn aggregate_dim(op: &str, dim: &Dim, n: usize) -> Dim {
     if is_dimensionless(dim) {
         return Dim::new();
@@ -1060,7 +1060,7 @@ fn xmatch(c: &mut Call) -> Answer {
     shown(c, "cachedResult", "result", r)
 }
 
-/// `isBlank`: null, undefined or whitespace text.
+/// Null, undefined or whitespace text.
 fn blank(v: &V) -> bool {
     match v {
         V::Null | V::Undef => true,
@@ -1069,7 +1069,7 @@ fn blank(v: &V) -> bool {
     }
 }
 
-/// `cellToNumber`: a number the cell reads as, or none.
+/// A number the cell reads as, or none.
 fn cell_number(v: &V) -> Option<f64> {
     match v {
         V::Num(n) => n.is_finite().then_some(*n),
@@ -1080,7 +1080,7 @@ fn cell_number(v: &V) -> Option<f64> {
     }
 }
 
-/// `dateCellSerial`: ISO date text as its serial.
+/// ISO date text as its serial.
 fn date_serial(v: &V) -> Option<f64> {
     let V::Str(s) = v else { return None };
     crate::csv::date_text_serial(s)
@@ -1383,7 +1383,7 @@ fn list_index(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), result)])
 }
 
-/// `applyRole` of a `picks` role ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the
+/// A `picks` input ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the
 /// positions left out; a blank inside a table of positions `#SYNTAX!`.
 fn picks(label: &str, v: V) -> V {
     let blank =

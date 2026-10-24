@@ -79,7 +79,7 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
     }
 }
 
-/// The symbol as SVG with its four-module quiet zone, as a `data:` URL (`svgDataUrl`).
+/// The symbol as SVG with its four-module quiet zone, as a `data:` URL.
 fn svg_src(size: usize, dark: &dyn Fn(usize, usize) -> bool) -> String {
     let margin = 4;
     let dim = size + margin * 2;

@@ -755,7 +755,7 @@ fn list_v(xs: Vec<V>) -> V {
     V::List(Rc::new(xs))
 }
 
-/// The Choice Ladder: the plan along its main line, and the ladder as `ladderWire` lays it out.
+/// The Choice Ladder: the plan along its main line, and the ladder laid out.
 pub fn choice_ladder(
     f: &FrameValue,
     wf: Option<&FrameValue>,

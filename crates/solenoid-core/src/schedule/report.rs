@@ -1,5 +1,5 @@
-//! What a schedule reports: `diagnostics.ts` (the DCMA-style checks, [[B14]] oneDesignSystem), `mermaid.ts` (a
-//! `gantt` block, [[B1]] obsidianBet), `formats.ts`'s MSPDI writer and `predecessors.ts`'s link text.
+//! What a schedule reports: the DCMA-style checks ([[B14]] oneDesignSystem), a Mermaid `gantt` block ([[B1]]
+//! obsidianBet), the MSPDI file and the predecessors' link text.
 
 use super::{Dependency, Diagnostic, LinkType, ScheduleLink, ScheduleOutput, ScheduledTask};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string};

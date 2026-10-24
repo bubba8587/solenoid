@@ -154,7 +154,7 @@ fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
     }
 }
 
-/// As `toMatrix`, but a blank is one blank cell.
+/// As `to_matrix`, but a blank is one blank cell.
 fn num_mat_rows(v: &V) -> Result<Mat, V> {
     match v {
         V::List(_) => Ok(to_matrix(v)?.unwrap_or_default()),
@@ -480,7 +480,7 @@ fn mat_rank(m: &NumMat, tol: f64) -> f64 {
     rank as f64
 }
 
-/// `matSolve` and listOps' `solveLinear`: Gauss-Jordan with partial pivoting.
+/// Gauss-Jordan with partial pivoting.
 fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
     let n = b.len();
     let mut m: NumMat = a
@@ -654,7 +654,7 @@ pub(crate) enum Key {
     Ref(usize),
 }
 
-/// `setKey` under SameValueZero: 0 and -0 are one key, an array is keyed by its identity.
+/// A set key under SameValueZero: 0 and -0 are one key, an array is keyed by its identity.
 pub(crate) fn set_key(v: &V) -> Key {
     match v {
         V::Num(n) => Key::Num((n + 0.0).to_bits()),
@@ -1129,7 +1129,7 @@ fn histogram2d(xs: &[V], ys: &[V], kx: f64, ky: f64) -> V {
 
 // ─── Dispatch ───────────────────────────────────────────────────────────────────
 
-/// The `#NAME?` a superseded or cell-position name answers (`blockedNameMessage`).
+/// The `#NAME?` a superseded or cell-position name answers.
 fn blocked(name: &str) -> Option<&'static str> {
     Some(match name {
         "VLOOKUP" | "HLOOKUP" | "LOOKUP" | "DGET" => "Use XLOOKUP",

@@ -69,7 +69,7 @@ fn transpose(m: &Grid) -> Grid {
     (0..width).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
 }
 
-/// `sortsLast` of `vals[i] ?? null`: a blank (undefined too), an error or NaN.
+/// What sorts last: a blank (undefined too), an error or NaN.
 fn sorts_last(v: &V) -> bool {
     matches!(v, V::Null | V::Undef | V::Err(_)) || matches!(v, V::Num(n) if n.is_nan())
 }

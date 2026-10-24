@@ -370,7 +370,7 @@ fn js_numbers(j: Json) -> Json {
     }
 }
 
-/// `flatCubeToFrame(cube, "scalar")`: the cube's flat columns, cells in one unit read in it.
+/// The cube's flat columns, cells in one unit read in it.
 fn flat_cube(k: &Cube) -> Frame {
     let nested = |cells: &[V]| cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_)));
     let columns = k

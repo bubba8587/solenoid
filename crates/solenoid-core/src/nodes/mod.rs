@@ -142,7 +142,7 @@ impl Call {
         self.inputs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_slice())
     }
 
-    /// `readInput(inputs[key], literal)`: unwired, the typed literal; wired, the first cable's value, a blank as null.
+    /// Unwired, the typed literal; wired, the first cable's value, a blank as null.
     pub fn read_input(&self, key: &str, literal: V) -> V {
         match self.wired(key) {
             None | Some([]) => literal,
@@ -153,17 +153,16 @@ impl Call {
         }
     }
 
-    /// `this.literals[key]`, `undefined` where it isn't set.
+    /// The typed literal, `undefined` where it isn't set.
     pub fn literal(&self, key: &str) -> V {
         self.literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
-    /// `this.stringLiterals[key]`.
     pub fn string_literal(&self, key: &str) -> V {
         self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
-    /// `readInput(inputs[key], this.literals[key] ?? dflt)`.
+    /// Unwired, the typed literal, else `dflt`; wired, the first cable's value.
     pub fn read_num(&self, key: &str, dflt: f64) -> V {
         let lit = match self.literal(key) {
             V::Undef | V::Null => V::Num(dflt),
@@ -185,7 +184,7 @@ impl Call {
         self.sockets.iter().find(|s| s.key == key).map_or_else(|| key.to_string(), |s| s.label.clone())
     }
 
-    /// `node.inputs[key].socket.dataType`: the adopted type, else the declared one.
+    /// The adopted type, else the declared one.
     pub fn input_type(&self, key: &str) -> Option<&str> {
         self.adopted_in
             .iter()
@@ -194,7 +193,6 @@ impl Call {
             .or_else(|| self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()))
     }
 
-    /// `node.outputs[key].socket.dataType`.
     pub fn output_type(&self, key: &str) -> Option<&str> {
         self.adopted_out
             .iter()
@@ -203,12 +201,10 @@ impl Call {
             .or_else(|| self.outputs.iter().find(|o| o.key == key).and_then(|o| o.ty.as_deref()))
     }
 
-    /// `matrixUnitOf(inputs[key][0])`.
     pub fn matrix_unit(&self, key: &str) -> Option<&Json> {
         self.matrix_units_in.iter().find(|(k, _)| k == key).map(|(_, u)| u)
     }
 
-    /// `withMatrixUnit(out[key], unit)`.
     pub fn set_matrix_unit(&mut self, key: &str, unit: Json) {
         self.matrix_units_out.push((key.to_string(), unit));
     }

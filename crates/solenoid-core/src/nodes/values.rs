@@ -84,7 +84,7 @@ pub fn decode(j: &Json) -> V {
 fn column(c: &Json) -> Column {
     Column {
         name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
-        // The wire carries frame.ts's tags; a column without one is a number column, as `frameCol` makes it.
+        // A column the wire sends without a type tag is a number column.
         ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()).unwrap_or(FrameColType::Number),
         values: c.get("values").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
         unit: c.get("unit").cloned(),

@@ -39,7 +39,7 @@ pub fn civil_from_days(z: i64) -> (i64, u32, u32) {
 
 pub const MS_PER_DAY: f64 = 86_400_000.0;
 
-/// `serialToJsDate(serial).getTime()`.
+/// A serial as epoch milliseconds, `None` past a JS Date's range.
 pub fn serial_to_ms(serial: f64) -> Option<f64> {
     time_clip(crate::jsnum::math_round((serial - 25569.0) * MS_PER_DAY))
 }
@@ -100,7 +100,7 @@ fn pad(n: i64, width: usize) -> String {
     }
 }
 
-/// `serialToJsDate`'s UTC fields: `new Date(Math.round((serial - 25569) * 86400000))`, `None` for an Invalid Date.
+/// A serial's UTC fields: `new Date(Math.round((serial - 25569) * 86400000))`, `None` for an Invalid Date.
 pub struct UtcParts {
     pub year: i64,
     pub month: u32,

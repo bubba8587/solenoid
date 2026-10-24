@@ -285,7 +285,7 @@ fn read_duration(v: Option<&V>, hours_per_day: f64, name: &str) -> Rd<f64> {
     Ok(d)
 }
 
-/// `parseDate` on a cell's text: a serial, NaN, or the error it reads as.
+/// A cell's text read as a date: a serial, NaN, or the error it reads as.
 fn parse_date_text(s: &str) -> Rd<f64> {
     use crate::excel_criteria::{parse_date, DateReading};
     match parse_date(s) {
@@ -873,7 +873,7 @@ fn iso(serial: f64) -> String {
     format_date_serial(serial, "YYYY-MM-DD")
 }
 
-/// The calc's day (`todaySerial`): the local day of the clock the call carries.
+/// The calc's day: the local day of the clock the call carries.
 fn today() -> V {
     super::kit::core_call("TODAY", &[])
 }
@@ -895,7 +895,7 @@ fn js_arith(v: &V) -> f64 {
     }
 }
 
-/// `readInput(inputs[key], this.literals[key] ?? dflt) ?? dflt`.
+/// As `read_num`, a blank as `dflt` too.
 fn read_or(c: &Call, key: &str, dflt: f64) -> V {
     match c.read_num(key, dflt) {
         V::Null | V::Undef => V::Num(dflt),
@@ -1169,7 +1169,7 @@ fn to_bool(v: &str) -> Option<bool> {
     }
 }
 
-/// `parseGanttViewOptions` (`@solenoid/gantt-layout`'s `payload.ts`), dates read as `parseDate` reads them.
+/// The Gantt view options text, its dates read as `parse_date_text` reads them.
 fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
     let mut v = Map::new();
     let Some(input) = input.filter(|s| !s.is_empty()) else { return Ok(v) };
@@ -1448,7 +1448,7 @@ fn gantt_card(c: &mut Call) -> Answer {
 
 // ─── Earned Value ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// `byName`: the first column, in the table's order, carrying one of the names.
+/// The first column, in the table's order, carrying one of the names.
 fn ev_col<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
     let set: Vec<String> = names.iter().map(|n| norm(n)).collect();
     c.columns.iter().find(|col| set.contains(&norm(&col.name)))

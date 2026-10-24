@@ -226,7 +226,7 @@ export function engine_source_bin(schema, tags, nums, strs, lens) {
 
 /**
  * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
- * `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
+ * `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
  * @param {string} handle
  * @param {string | null} [column]
  * @param {number | null} [limit]

@@ -26,7 +26,7 @@ spelled! {
 }
 
 spelled! {
-    /// A Formula.js `Error` by its message, which flows as a value until `normalizeFxResult` reads it as a SolError.
+    /// A Formula.js `Error` by its message, which flows as a value until it is read as a SolError.
     pub enum FxError {
         Value = "#VALUE!",
         Ref = "#REF!",
