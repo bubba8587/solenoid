@@ -47,7 +47,7 @@ The value-side model is small and strict. Every tagged value stores its magnitud
 - `fromUnit(value, unit)` converts a named-unit magnitude to base SI and consumes any affine (temperature) offset there, so a stored value stays linear and `+` and `−` stay plain adds. Reading it back in the display unit (`displayMagnitudeOf`) rounds at the 15th significant digit of the conversion's larger term (`roundAtLargerTerm`), so 20 °F reads 20, not 19.999999999999954, and `a = 20` and INT answer as typed. `withDisplay` is the FC and Convert re-display path, a no-op on anything that isn't a cell.
 - `dimOf` answers dimensionless for `null`, a `SolError` or anything non-numeric; `magnitudeOf` answers `NaN` for anything non-numeric, which is safe because the caller's `cellShortCircuit` runs first.
 
-### Combining two operands (`arithmeticCell`, `compareUnits`)
+### Combining two operands (`arithmetic_cell`, `compareUnits`)
 
 The dimensional half of an element-wise op sees only present operands, since the per-cell contract ([[error-values]]) runs first. In order:
 
@@ -89,12 +89,12 @@ The frame and cube verbs follow the same rule over a °C or °F column, in the c
 
 ## Currency: the display code is the identity
 
-There are no exchange rates (`unitValue.ts` `currencyMismatch`). Every currency sits on the single `currency` base axis at scale 1 (unitBridge's DIRECT), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
+There are no exchange rates (`currency_mismatch`, the core's `nodes/units.rs`). Every currency sits on the single `currency` base axis at scale 1 (unitBridge's DIRECT), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
 
 - `compareUnits` (behind `ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
-- `arithmeticCell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
+- `arithmetic_cell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
 - A currency cell with no code, such as a computed `currency` result, adopts the other side's code.
-- The guard lives once, up front in `arithmeticCell` (`unitValue.ts`), for all seven ops ([[D47]] noMixCurrencies, [[engineering#One declaration per fact]]). A new unit combinator registers in the policy sweep in `unitCurrencyPolicy.test.ts`.
+- The guard lives once, up front in `arithmetic_cell` (`nodes/units.rs`), for all seven ops ([[D47]] noMixCurrencies, [[engineering#One declaration per fact]]). A new unit combinator registers in the policy sweep in `unitCurrencyPolicy.test.ts`.
 
 Every other dimension works on plain magnitudes, since km and m already differ in scale. `ComparisonNode` being `unitAware` is also what makes `5 km = 5000 m` compare in base SI. A dimensionless operand adopts the other side's unit in a compare (`$5 > 1000` compares 5 with 1000), matching the additive rule. Machine-checked by `unitValue.test.ts` (the currency block) and `logic.test.ts` ("ComparisonNode is unit-aware").
 
@@ -161,7 +161,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 | IF, IFS, SWITCH, IFERROR, IFNA, CHOOSE | | the answer is one of the branches (IF's then and else, IFS's values, SWITCH's results and default, IFERROR's value and fallback, CHOOSE's options): their shared dimension, a dimensionless branch adopting it as under `+` (`IF(c, a, 0)` keeps km), or indeterminate when two real dimensions disagree or a branch is indeterminate, not a conflict |
 | a LAMBDA host or application | MAP, BYROW, BYCOL, REDUCE, SCAN, MAKEARRAY, `LAMBDA(…)(…)` | the body's dimension, each parameter taking its argument's: an element's, a whole row's, or a plain index. A bare function name is the lambda that calls it (`REDUCE(0, a, MAX)`). A fold's accumulator adopts the element's dimension when it starts dimensionless, and a step that changes the accumulator's dimension is indeterminate (`REDUCE(1, a, LAMBDA(p, v, p * v))`) |
 | a name bound to a LAMBDA | | indeterminate, since the body is not visible |
-| finance ([[D101]] financeCarriesMoney; `FINANCE_MONEY` in `financeUnits.ts`) | PV, FV, PMT, IPMT, PPMT, CUMIPMT, CUMPRINC, ISPMT, NPV, XNPV, FVSCHEDULE, SLN, SYD, DB, DDB, VDB, ACCRINT, ACCRINTM, RECEIVED answer money; NPER, RATE, IRR, XIRR, MIRR, RRI, PDURATION, INTRATE answer a plain number | the money arguments (present and future value, payment, cash flows, cost, salvage, par, investment) share one currency, a plain one adopting it, and a money answer carries it with its code; every other argument is a plain number. A unit on a rate or a period count, money that isn't a currency, or two currencies is `#UNIT!`. The finance cards read their inputs through the same table (`readMoneyInputs`), so card and formula answer alike |
+| finance ([[D101]] financeCarriesMoney; `finance_money` in `finance_units.rs`) | PV, FV, PMT, IPMT, PPMT, CUMIPMT, CUMPRINC, ISPMT, NPV, XNPV, FVSCHEDULE, SLN, SYD, DB, DDB, VDB, ACCRINT, ACCRINTM, RECEIVED answer money; NPER, RATE, IRR, XIRR, MIRR, RRI, PDURATION, INTRATE answer a plain number | the money arguments (present and future value, payment, cash flows, cost, salvage, par, investment) share one currency, a plain one adopting it, and a money answer carries it with its code; every other argument is a plain number. A unit on a rate or a period count, money that isn't a currency, or two currencies is `#UNIT!`. The finance cards' bodies on the core read their inputs through the same table, so card and formula answer alike |
 | any other function | | a gap, not a rule ([[C25]] firstClassUnits): each function here is owed a class. Until it has one it reads plain numbers: a dimensioned argument is `#UNIT!` rather than a silently dropped unit; all-dimensionless arguments give a dimensionless answer (`a + RAND() * 0` keeps °C) |
 
 `dimEvalWithCode` returns the dimension with its code, for a caller whose top level is itself a combination, so no operator inside either side ever sees both codes. `formulaResultDim` folds a conflict into `null`; use `dimEval` when the conflict must surface as an error.

@@ -32,8 +32,7 @@ The per-name reasons Solenoid answers otherwise than Formula.js did are [[formul
 | `src/graph/nodeExcel.ts` | `NODE_EXCEL` (catalog node type to its Excel equivalents, with `parity` and a note) and `EXCEL_GAP` (Excel functions with no node, flagged out of scope or superseded). The Function Reference and catalog read them; the evaluator does not. |
 | `src/graph/nodes/expression.ts` | The Expression node. |
 | `src/graph/nodes/lambda.ts` | The LAMBDA node, which emits a `LambdaValue`. |
-| `src/graph/nodes/tableLambda.ts` | The MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY nodes and `resolveFn`, their wired-LAMBDA binding. |
-| `src/graph/excelCriteria.ts` | The criteria grammar for the SUMIFS family (see *Criteria*). |
+| `src/graph/nodes/tableLambda.ts` | The MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY nodes; their bodies, wired-LAMBDA binding included, are the core's. |
 | `src/graph/cxValue.ts` | The tagged complex value, its text forms and its arithmetic kernels. |
 | `src/graph/excelToCatalog.ts` | `EXCEL_TO_CATALOG` and `CATALOG_TO_EXCEL`, derived from `NODE_EXCEL`, never hand-edited. |
 | `src/graph/formulaNodeParity.ts` | The node-and-formula parity measurement (see *Parity measurement*). |
@@ -103,7 +102,7 @@ Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()`
 
 ### Syntax hints
 
-`formulaSyntaxHint(expr)` explains a failed parse, or answers null when nothing recognizable is wrong. String literals are blanked first so their contents cannot trigger a hint. Checks run in this order and the first hit wins:
+The core's `syntax_hint` (`nodes/matrix.rs`) explains a failed parse, or answers null when nothing recognizable is wrong. String literals are blanked first so their contents cannot trigger a hint. Checks run in this order and the first hit wins:
 
 1. braces anywhere: array literals aren't supported, wire a List or Table instead;
 2. a leading `=`: drop it;
@@ -310,11 +309,11 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 | Operator | Result |
 |---|---|
-| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. `^` runs `powerOf`, the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[C10]] socketLattice). |
+| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. `^` runs the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[C10]] socketLattice). |
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guardFinite`. |
 | `&` | Both sides as text: numbers through `numberToText`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
-| `<` `>` `<=` `>=` | Two numbers numerically; two strings by UTF-16 code unit (`compareStrings`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
+| `<` `>` `<=` `>=` | Two numbers numerically; two strings by UTF-16 code unit (`compare_utf16`, `jsnum.rs`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
 
 **Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filter's text ops. EXACT and the "Match case" option compare case-sensitively. Every identity operation respects case instead: Join keys, GROUPBY keys and Distinct ([[frame-verbs]]), since merging "Apple" and "apple" into one group or one match would destroy a distinction the data held, with nothing on screen to show it. Ordering goes by character code and so respects case too ([[C59]] byteStringOrder). A per-verb option to ignore case in keys would be an addition inside this rule.
 
@@ -322,7 +321,7 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 `numberToText(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e21 or more, or nonzero below 1e-4, are written Excel's way: `1E+21`, `1E-07` (uppercase E, signed, at least two exponent digits).
 
-Complex operands (`applyCxOp`): `&` formats the complex value with `formatCx`; `=` and `<>` are true only for two complex values with equal real and imaginary parts; ordering answers `#TYPE!` "Complex numbers have no order…"; arithmetic answers `#TYPE!` naming `IMSUM`, `IMSUB`, `IMPRODUCT` and `IMDIV`.
+Complex operands (`applyCxOp`): `&` formats the complex value with `format_cx` (`eval.rs`); `=` and `<>` are true only for two complex values with equal real and imaginary parts; ordering answers `#TYPE!` "Complex numbers have no order…"; arithmetic answers `#TYPE!` naming `IMSUM`, `IMSUB`, `IMPRODUCT` and `IMDIV`.
 
 Unary `-` and `+` and postfix `%` run per cell through `mapCells` on a list or matrix, and directly on a scalar: an error passes, `null` stays `null`, a complex value answers `#TYPE!` (naming `IMSUB(0, z)` or `IMDIV(z, COMPLEX(100, 0))`), text answers the binary operators' `#VALUE!` ([[C131]] noTextGuessing), and otherwise the result is `-x`, `+x` or `x/100`, a logical reading as 1 or 0. These do not call `guardFinite`.
 
@@ -362,7 +361,7 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[va
 - IMPOWER's exponent is real on both surfaces; a complex exponent is `#TYPE!`.
 - COMPLEX(re, im, [suffix]) takes real parts and answers a tagged value. The suffix is checked (`"i"` or `"j"`, else `#VALUE!`) and then dropped, since a tagged value stores no spelling.
 - QUADRATICROOTS(a, b, c) answers both roots as a two-element list `[x₁, x₂]`, the Quadratic Roots node's two outputs side by side: `(−b − √D)/2a` then `(−b + √D)/2a`, as real values when the discriminant D is at least 0 and as a conjugate pair otherwise. `a = 0` is `#DOMAIN!` (a line, not a quadratic). A −0 part becomes 0 so it never displays as "-0". POLYROOTS(coefficients) answers every root as complex values through `polyRoots`.
-- **Text forms.** `assembleCx` is the one place that knows how a complex is spelled: `a + bi`, `a - bi`, `bi`, `-bi`, `i`, `a`, `0`, and `NaN` when either part is NaN. `formatCx` is the Excel and coercion form, which drops a zero part (`23`, `4i`); the `&` operator and cast to text use it, and it round-trips with `parseCx`. `formatCxDisplay` always shows both parts (`0 + 4i`, `23 + 0i`). `hasBothParts` reports the two-term form, which a unit wrapper must parenthesize. In `formatCx` the parts print as integers or to 4 decimals with trailing zeros removed, since it makes data; `formatCxDisplay` prints each part as any unformatted number shows ([[D94]] oneNumberDisplay). `parseCx` accepts Excel's forms and the spaced output (`3 + 4i`, `-2.5-1e3j`, `i`, `-j`, a bare real), and answers null otherwise so the caller picks the error.
+- **Text forms.** `assembleCx` is the one place that knows how a complex is spelled: `a + bi`, `a - bi`, `bi`, `-bi`, `i`, `a`, `0`, and `NaN` when either part is NaN. The core's `format_cx` is the Excel and coercion form, which drops a zero part (`23`, `4i`); the `&` operator and cast to text use it, and it round-trips with `parseCx`. `formatCxDisplay` always shows both parts (`0 + 4i`, `23 + 0i`). `hasBothParts` reports the two-term form, which a unit wrapper must parenthesize. In `format_cx` the parts print as integers or to 4 decimals with trailing zeros removed, since it makes data; `formatCxDisplay` prints each part as any unformatted number shows ([[D94]] oneNumberDisplay). `parseCx` accepts Excel's forms and the spaced output (`3 + 4i`, `-2.5-1e3j`, `i`, `-j`, a bare real), and answers null otherwise so the caller picks the error.
 - The arithmetic kernels (`cxAdd` through `cxCsch`) do no error classification; they carry their own non-finite forms (dividing by zero is `cx(NaN, NaN)`) rather than minting tagged errors. `cxPow(0, n)` is 0.
 
 ## Error-handling functions
@@ -459,9 +458,8 @@ Other surfaces read a formula without evaluating it. All return empty on a synta
 | Function | Answers |
 |---|---|
 | `extractVariables(expr)` | the variables, as above |
-| `rowRefNames(expr)` | every `@` and bracket reference name, excluding a name that is a parameter of an enclosing LAMBDA literal (a computed column's dependency feed) |
+| the core's `engine_formula_names` (its `rows`) | every `@` and bracket reference name, excluding a name that is a parameter of an enclosing LAMBDA literal (a computed column's dependency feed) |
 | `atColNames(expr)` | identifier-shaped `@name` references only (the LAMBDA node's capture sockets) |
-| `formulaSyntaxHint(expr)` | as in *Syntax hints* |
 | `formulaFunctionNames()` | every dispatchable name |
 
 ## Rendering
@@ -604,11 +602,11 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **UNIQUE**, **MODE.MULT** and **FREQUENCY(data, bins)** answer blank for a blank argument.
 - **RANDARRAY([rows], [cols], [min], [max], [integer])** defaults to one row, one column, 0 and 1. Its counts read as SEQUENCE's do (`arrayCount`, shared with the RANDARRAY card): they truncate, a negative one is `#VALUE!`, and zero answers an empty list. A Min above Max is `#VALUE!`, as in Excel. The whole-number option draws each whole number in [Min, Max] equally often, and a range holding none is `#VALUE!`; the card and the formula share `randArrayRange` and `randArrayDraw` (`listOps.ts`). It is volatile, fresh values each evaluation, while the node holds its rolls for a recalculation.
 
-### Criteria (`excelCriteria.ts`)
+### Criteria (`excel_criteria.rs`)
 
 The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVERAGEIF) runs one Excel criteria grammar. The card's condition rows carry an op and value pair and reach the same cell test, `criterionMatches`. The plural forms take `(values, range1, criterion1, range2, criterion2, …)`, COUNTIFS without the values range; an empty or odd range-and-criterion list is `#VALUE!` "Criteria come in range, criterion pairs". The singular forms take `(range, criterion, [values])`, with the values range defaulting to the range. A lone scalar range reads as a one-cell range.
 
-**Parsing a criterion** (`parseCriterion(raw, numericRange)`):
+**Parsing a criterion** (`parse_criterion(raw, numeric_range)`):
 
 1. A blank criterion is "equals blank". A number or logical is "equals" that value. An error is the answer.
 2. Text may start with a comparison prefix, tried in the order `<>`, `>=`, `<=`, `=`, `>`, `<`. Nothing after the prefix means blank, so `"<>"` is "not blank".
@@ -616,7 +614,7 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 4. When the range is numeric (it holds a number and no non-empty text), the rest reads as a number, then date-shaped text as its serial through `parseDate`. An ambiguous day-month text is `#AMBIGUOUS!`, never a guess. Over any other range it stays text, so `COUNTIF(ids, "10")` matches the text "10" ([[B17]] typedValueModel). An ordering prefix (`>`, `>=`, `<`, `<=`) whose rest reads as a number, over a range holding text, is `#TYPE!` rather than an alphabetical comparison ("9" would pass `>15`).
 5. Otherwise the criterion is text. With `=` or `<>` (or no prefix), `*` and `?` are wildcards, and `~` escapes the next character.
 
-**Matching a cell** (`criterionMatches`): an error cell never matches. A blank criterion matches a blank cell (null or empty text), and "not blank" matches the rest. A blank cell otherwise matches only a `<>` criterion. A logical criterion matches only logical cells. A number criterion compares only with number cells: text never reads as a number ([[B17]] typedValueModel), so other text matches only `<>`, and logical cells never match it. Text compares case-insensitively: a wildcard pattern matches the whole cell, and the ordering prefixes compare lowercased text by UTF-16 code unit (`compareStrings`, [[C45]] excelComparisons).
+**Matching a cell** (`criterion_matches`): an error cell never matches. A blank criterion matches a blank cell (null or empty text), and "not blank" matches the rest. A blank cell otherwise matches only a `<>` criterion. A logical criterion matches only logical cells. A number criterion compares only with number cells: text never reads as a number ([[B17]] typedValueModel), so other text matches only `<>`, and logical cells never match it. Text compares case-insensitively: a wildcard pattern matches the whole cell, and the ordering prefixes compare lowercased text by UTF-16 code unit (`compareStrings`, [[C45]] excelComparisons).
 
 **Aggregating** (`criteriaAggregate(kind, values, pairs)`): the ranges and the values range zip to the shortest length, and a row counts when it matches every criterion. An error in a matched value cell is the answer, as in Excel. A value cell contributes only when it is a finite number; text is ignored, numeric text included, as in Excel. COUNT counts matched rows; SUM of nothing is 0; AVERAGE of nothing is `#DIV/0!`; MIN and MAX of nothing are 0, as in Excel.
 

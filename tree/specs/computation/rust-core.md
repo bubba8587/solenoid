@@ -60,7 +60,9 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
   src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
   src/graph/computedColumnCore.ts src/graph/formulaExtensions.ts src/graph/packs src/graph/nodes/statsOps.ts \
   src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
-  src/graph/nodes/textOps.ts src/graph/csv.ts fixtures/frame-verbs
+  src/graph/nodes/textOps.ts src/graph/csv.ts src/graph/financeUnits.ts src/graph/nodes/settleOps.ts \
+  src/graph/nodes/payoffOps.ts src/graph/nodes/financeOps.ts src/graph/nodes/listOps.ts src/graph/nodes/fitOps.ts \
+  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts fixtures/frame-verbs
 ```
 
 A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
