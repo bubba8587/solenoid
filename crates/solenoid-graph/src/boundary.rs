@@ -1156,7 +1156,7 @@ impl Call {
         self.ports_moved();
         if out.is_null() || out.is_undefined() {
             return Err(Thrown::Js(
-                js_sys::TypeError::new("Cannot convert undefined or null to object").into(),
+                js_sys::Error::new("it returned no answer").into(),
             ));
         }
         let mut outputs = Outputs::new();
