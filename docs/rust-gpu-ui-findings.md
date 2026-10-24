@@ -149,6 +149,17 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
 - **GPUI route.** Rebuild the chrome and every card in GPUI with `gpui-component`; native window on
   Windows and Linux with no webview; the web build through `gpui_web`. Risks: the web build is unpublished
   and single-canvas; the plugin and the pixel re-approval above; GPUI's API moves with Zed's needs.
+- **A renderer swap instead of a rewrite** (seen 2026-10-24: gpuix-svelte,
+  https://gpuix-svelte.stanislav.garden, one author, days old). Svelte components stay JavaScript and
+  GPUI draws them through Svelte's unreleased custom-renderer API, natively and on the web. It shows
+  GPUI's web build working (WebGPU, WebGL2 fallback, a 19.9 MB wasm, COOP/COEP headers) and that the
+  components need not move to Rust to leave the DOM; React's `react-reconciler` would allow the same
+  for Solenoid, though nothing does it yet. It doesn't fit as is: it is Svelte, the desktop binary
+  carries Bun (about 80 MB), and there is no CSS engine, only a per-property subset with no
+  descendant selectors, `transform`, `transition`, `z-index`, `box-shadow`, `@media`, pseudo-elements
+  or `em`. Solenoid's CSS has about 1,380 rules with descendant or child selectors, 160 transforms,
+  151 box shadows and 119 z-indexes, so the cards would be restyled from scratch, the GPUI route's
+  pixel cost without its Rust.
 
 ## The spike (what would turn this into a decision)
 
