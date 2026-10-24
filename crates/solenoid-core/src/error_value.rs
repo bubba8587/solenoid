@@ -87,7 +87,11 @@ impl Origin {
 
     pub fn from_json(j: &serde_json::Value) -> Option<Origin> {
         let text = |k: &str| j.get(k).and_then(serde_json::Value::as_str).map(String::from);
-        Some(Origin { node_id: text("nodeId")?, node_name: text("nodeName").unwrap_or_default(), input_slot: text("inputSlot") })
+        Some(Origin {
+            node_id: text("nodeId")?,
+            node_name: text("nodeName").unwrap_or_default(),
+            input_slot: text("inputSlot"),
+        })
     }
 }
 

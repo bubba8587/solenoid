@@ -3,7 +3,8 @@ import { isSolError } from "./errorValue";
 import { frameRowCount, type FrameCell, type FrameColType } from "./frame";
 import type { AggOp } from "./frameOps";
 import { frameSidecar } from "./frameSidecar";
-import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
+import type { FormatAnnotation } from "./formatAnnotationStore";
+import { defaultCellText } from "./cellText";
 
 export type PivotItemKind = "leaf" | "sub" | "grand";
 
@@ -348,15 +349,7 @@ export function livePivotFolds(layout: PivotLayout, collapsed: readonly string[]
 
 /** A Details cell as the Grid shows it by default, in its source column's format pick. */
 export function detailCellText(col: PivotDetailColumn, cell: FrameCell): string {
-  if (cell == null) return "";
-  if (isSolError(cell)) return cell.code;
-  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
-  if (typeof cell === "number" && (col.type === "number" || col.type === "date")) {
-    const ann: FormatAnnotation = col.format ?? { format: "auto", unit: "none" };
-    const format = col.type === "date" ? (isDateStyle(ann.format) ? ann.format : "date_dmy") : isDateStyle(ann.format) ? "auto" : ann.format;
-    return formatNumberWithAnnotation(cell, { ...ann, format, unit: "none" });
-  }
-  return String(cell);
+  return defaultCellText(col.type, cell, col.format);
 }
 
 /** The leaf groups still open after a field change: keys whose tuple no longer exists open nothing. */

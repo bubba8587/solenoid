@@ -1035,9 +1035,9 @@ describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactl
       .map(rel);
     expect(importers).toEqual(["components/chartRender.tsx"]);
   });
-  it("mermaid and elkjs are never imported statically", () => {
+  it("pele and elkjs are never imported statically", () => {
     const importers = walk(SRC)
-      .filter((f) => /from\s+["'](mermaid|elkjs)/.test(fs.readFileSync(f, "utf8")))
+      .filter((f) => /^import (?!type )[^;]*from\s+["'](pele|elkjs)/m.test(fs.readFileSync(f, "utf8")))
       .map(rel);
     expect(importers).toEqual([]);
   });

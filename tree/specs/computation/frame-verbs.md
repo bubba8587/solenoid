@@ -425,6 +425,10 @@ The Window card always sends `orderDir: "asc"`, derives `as` from the function l
 
 The card's Find and Replace take a wired value of any type, stringified by `readFilterValue`.
 
+### formats
+
+`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. `lowerForEngine` keeps it out of the ops Polars receives and applies it to the schema shadow, which is where the Polars path's formats come back from.
+
 ### join
 
 `joinFrames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`. The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither. Keys of two types could never match, since element families never cross on their own ([[C10]] socketLattice), so the join refuses instead of returning a silent empty result.

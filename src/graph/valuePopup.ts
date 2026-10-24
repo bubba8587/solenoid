@@ -7,6 +7,7 @@ import { matrixUnitOf, isUnitCell } from "./unitValue";
 import { isSolError } from "./errorValue";
 import { isCx } from "./cxValue";
 import { pivotLayoutOf } from "./pivotLayout";
+import { describeTilesOf } from "./describeProfile";
 
 export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
@@ -110,7 +111,7 @@ export async function openFramePopup(
 }
 
 /** What a frame popup shows of a whole frame: its cells, names, types, units, formats, typed text and pivot layout. */
-export function framePopupData(f: FrameValue): Pick<TablePopupState, "data" | "headers" | "columnTypes" | "sourceCells" | "columnUnits" | "columnFormats" | "pivot"> {
+export function framePopupData(f: FrameValue): Pick<TablePopupState, "data" | "headers" | "columnTypes" | "sourceCells" | "columnUnits" | "columnFormats" | "pivot" | "describe"> {
   return {
     data: frameToGrid(f),
     headers: f.columns.map((c) => c.name),
@@ -121,6 +122,7 @@ export function framePopupData(f: FrameValue): Pick<TablePopupState, "data" | "h
     columnUnits: f.columns.map((c) => c.unit),
     columnFormats: f.columns.map((c) => c.format),
     pivot: pivotLayoutOf(f) ?? undefined,
+    describe: describeTilesOf(f) ?? undefined,
   };
 }
 

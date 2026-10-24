@@ -73,12 +73,11 @@ specific item.
   `wrapNodeData`, `installInputCoercion` and `seedLoopErrors` are gone; tests drive one node through
   `boundaryKit.ts`. Per-cell crossings had made a 100k list 25 ms; `cellKinds` (one call per array) brought it to
   1.3 ms, under the TS's 4.9. What blocks phase C is [[graph-core]] § What blocks phase C.
-- **Develop mirrored to `3a6a667`** in the files the core ports: the finance functions carry their money's currency
-  ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's
-  dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the
-  computed-column port and the core didn't; both now do, refrozen with finance calls in the generator. Develop's UI
-  work since the snapshot (charts, the Describe Dashboard, Pele) is not on this branch. Pivot details ([[C128]]) came
-  over with their UI and run on the core: its layout gives each leaf row its source rows.
+- **Develop merged at `c7da52b`** (2026-10-24, [[rust-core]] § Tracking develop): every formula, card and verb fix
+  it carried was mirrored already. Pele draws Mermaid in place of mermaid.js (about 4 MB of lazy chunks gone), and
+  Describe's Dashboard ([[C129]] describeDashboard) runs its tiles in Describe's body on the core, `DescribeNode`
+  refrozen with them. Earlier mirrors: the finance functions' currency ([[D101]] financeCarriesMoney,
+  `finance_units.rs`) and Pivot details ([[C128]]), whose layout gives each leaf row its source rows on the core.
 - **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
   unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
   frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.
@@ -124,6 +123,8 @@ specific item.
 - **A Pivot's output opens on a Pivot view** ([[C127]] pivotView, unratified; mechanics [[table-popup#The Pivot view]]): Compact, Outline and Tabular forms, Repeat Labels, Blank Rows and Headers (checkboxes), Bands, folding by subtotal, empty-cell text, one Number format per value field (the paintbrush), a label filter, a 1,000-row render cap, and Subtotals, Grand Totals and Fields, which change the node as Configure Fields does. The frame stays a plain Frame: PIVOTBY's layout lives beside it in a table keyed by the frame (`pivotLayout.ts`), carried through format stamps, so a Display wired to the Pivot opens the view too. Options save on the node (`pivotView`).
 - **Popup chrome, one way for every view** ([[table-popup]] § The view switch, § The popup shell): one pill family (segments for a choice, pill dropdowns with the app chevron sized to their choice, checkboxes for on-off, separate buttons for actions); a choice shows segments while its row has room, else a dropdown (`PopupChoice`, `useFreeWidth`); a view's body is the scroll region or a `sol-popup__view`, so resizing needs no per-view rule; on a phone the Table and Cube popups fit the screen (`fitNarrow`) and the Pivot ribbon moves to a footer sheet; narrow layouts follow the popup's width (a `table-popup` container query); the footer's actions stay pinned right while its tools wrap; the header title wraps then ellipsizes, and Go to Source, Pin and Copy SVG live in the ⋯ menu.
 - **Saves:** an edit made in manual calculation now autosaves and records history at once (the gate in `processGraph` signals the change; a reordered Rows set was lost on reload). Pivot field lists are list literals (`listLiteralText` beside the reader in `coerceInputs.ts`), so names with commas survive.
+- **Pivot Details** ([[C128]] pivotDetails, unratified; [[table-popup#The Pivot view]]): a fifth zone in Configure Fields; each leaf row gets a chevron that lists its source rows (the Details columns, at most 100) under it. View only: the output is unchanged, the layout records each leaf's source rows, open groups are never saved.
+- **Describe opens on a Dashboard** ([[C129]] describeDashboard, unratified; [[table-popup#The Dashboard view]]): a tile per source column with its fill, a histogram and row-order line (numbers), a histogram (dates) or top five values (text, logical, and numbers with six or fewer values), drawn by `ChartView` with the chart popup's expand. Views' side info now shares one keyed table (`frameSidecar.ts`), carried through format stamps.
 - **Dawn and Dusk** grounds are a step more neutral (chroma 0.03).
 - Checked on desktop, resized popups and 320 to 390-pixel phones, dark and light, with 160 to 3,000-row sales frames.
 

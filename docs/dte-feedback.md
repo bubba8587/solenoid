@@ -232,3 +232,47 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 30. **`excluded_from_coverage` ignores `covers:` citations.** A spec whose front matter carries a `covers:` glob
     governs the files it matches, but the coverage numbers still count those files as uncited. Only the numbers are
     off; `coverage --check` passes. Count a file a `covers:` glob matches as cited.
+31. **Nothing makes an agent ask or narrow its ring.** `dte-rules/CLAUDE.md` § Your ring has a top-level agent
+    nobody told assume B, the highest ring an agent holds, so every session silently runs as the orchestrator,
+    scheduled runs included. Subagents are meant to get `dte brief C` and `DTE_RING=C`, but nothing checks it:
+    one session here spawned eleven reviewer and builder subagents with neither, and no step noticed. Solenoid
+    now has the agent ask the author its ring before the first leaf-governed task and work at C until answered
+    (`docs/dte.md` § Solenoid's rings). Suggest upstream: the protocol asks rather than assumes, an unanswered
+    or unattended agent defaults to the shallowest ring that can still build (C here), and `validate` warns
+    when tree changes were made with no ring declared (no `--as` and no `DTE_RING`).
+32. **`next_id` avoids other branches' ids only for refs it can see.** `branch_ids` reads the local `refs/heads`
+    and `refs/remotes`. A cloud session clones only the branch it was started on (one here had no
+    `origin/develop` until it was fetched by hand), so a leaf minted there can take an id another branch already
+    holds; two branches here each minted D-ring leaves the same day. Suggest: `new` fetches the remote's branch
+    refs before allocating, or warns when the remote has branches the clone lacks.
+33. **`cite` adds a second header when the file already cites the node by name.** On a new file whose first line
+    was `// [[D101]] financeCarriesMoney, [[D47]] noMixCurrencies`, `cite <file> D101` inserted `// [[D101]]`
+    above it. It should find `[[ID]]` anywhere in the existing header comment, with or without the name and beside
+    other ids, and do nothing.
+34. **An agent's safety layer can refuse the protocol's own tree edits.** In a Claude Code session the
+    permission classifier refused `dte set <ID> title ...` on A6, B17 and C25 as "instruction poisoning" (an
+    agent rewriting rules that govern agents), though the owner had asked for that rewording; it went through
+    once the owner wrote in chat that the agent was authorized to edit leaves. DTE has agents edit governance on
+    the owner's word (B25), and a harness sees that word only when it is in the conversation. Suggest: the
+    protocol says that when the environment refuses a tree edit, the agent stops and asks the owner for an
+    explicit in-chat authorization naming the nodes, never retries or routes around it; and `authorize` could
+    record that authorization where a harness hook can check it.
+35. **Unratified top rings don't stand out.** `validate` prints "Unratified AI/joint decisions: 113". The owner
+    learned only by asking that A6 (ring A, the root of the whole value-model family) was unratified, with every
+    B and C leaf under it. An unratified A or B node leaves everything below it inheriting an unsettled rule, so
+    it deserves its own line. Solenoid's session-start nudge (one random unratified leaf per session, since
+    removed by the owner) picked at random; ordering by ring, then by descendant count, would make each
+    ratification settle the most. Suggest: `dte unratified` sorts that way by default, and `validate` names the
+    unratified A and B nodes.
+36. **A top-ring intent can hold in prose and fail in the code for a long time.** A6 called units a flagship
+    and C25 forbade dropping a unit, yet the code's defaults were to refuse (any formula function with no
+    declared unit rule) and to strip (any card not declared unit-aware, 294 of 317), so the stated value-add was
+    mostly absent and nothing flagged it. Item 27 asks that a MUST be enforced or labeled; this is the same gap
+    one level up: a Decision stating a default ("every calculation carries units") with nothing measuring how
+    much of the code honors it. Suggest: a node can carry a coverage claim (a count or a check) that `coverage`
+    reports, so a goal stated at ring A or B shows its reach.
+37. **B28 oneContest doesn't say what an owner-directed rewrite does.** The owner had C25 reworded (authorized),
+    then the agent added a child under it. B28 says an unratified node owes one contest before the first new work
+    under it, and is silent on whether the owner's own rewording settles it; the agent contested the new text
+    anyway (keep won). Suggest: say that an owner-directed rewrite counts as the contest, or that the contest
+    still runs, against the new text.
