@@ -91,5 +91,13 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
       expect(code(ev(src, { f: flows, d: [45292, 45658, 46023] }))).toBe("#VALUE!");
     expect(code(ev("IRR(f)", { f: [-100, null, 120] }))).not.toBe("#VALUE!");
   });
+
+  it("TRIMMEAN and FORECAST.LINEAR refuse text with #VALUE!, not #DOMAIN!", () => {
+    const L = [1, "2", 3, 2], N = [1, 2, 3, 4];
+    expect(code(ev("TRIMMEAN(L, 0.2)", { L: [1, "2", 3, 4, 5] }))).toBe("#VALUE!");
+    expect(code(ev('TRIMMEAN("12345", 0.2)'))).toBe("#VALUE!");
+    expect(code(ev("FORECAST.LINEAR(5, L, N)", { L, N }))).toBe("#VALUE!");
+    expect(ev("TRIMMEAN(N, 0.2)", { N })).toBe(2.5);
+  });
 });
 

@@ -3397,6 +3397,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         F::TRIMMEAN => {
+            if holds_text(arg(a, 0)) {
+                return value_err("TRIMMEAN");
+            }
             let (n, items) = match arg(a, 0) {
                 V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
                 V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
@@ -4676,7 +4679,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::FORECAST_LINEAR => {
             let n = to_num(arg(a, 0));
-            if n.is_nan() {
+            if n.is_nan() || holds_text(arg(a, 1)) || holds_text(arg(a, 2)) {
                 return value_err("FORECAST.LINEAR");
             }
             // A scalar's length is `undefined`, so the fit finds no spread.
