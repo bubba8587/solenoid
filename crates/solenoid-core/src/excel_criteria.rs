@@ -217,7 +217,12 @@ fn chrono_reading(t: &str) -> DateReading {
     if !whole.is_empty() && ascii_digits(whole) && frac.is_none_or(|f| !f.is_empty() && ascii_digits(f)) {
         return DateReading::NotADate;
     }
-    if let Some(r) = iso_date_time(t).or_else(|| month_name_little_endian(t)).or_else(|| slash_date_time(t)) {
+    if let Some(r) = iso_date_time(t)
+        .or_else(|| month_name_little_endian(t))
+        .or_else(|| month_name_middle_endian(t))
+        .or_else(|| year_month_day(t))
+        .or_else(|| slash_date_time(t))
+    {
         return r;
     }
     // An ISO day then " and …": chrono reads the day alone, so text is left over.
@@ -358,54 +363,254 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
     Some(DateReading::Serial(ms / 86_400_000.0 + 25569.0))
 }
 
-/// chrono-node's `ENMonthNameLittleEndianParser` on `15-Mar-2024`: a day of one or two digits, a month name from its
-/// dictionary, a year from 1000, each pair parted by one `-`, `/` or space, then only `[\s.,]*`. A day the month
-/// lacks is no date. None for anything else.
-fn month_name_little_endian(t: &str) -> Option<DateReading> {
-    const MONTHS: [(&str, u32); 24] = [
-        ("january", 1),
-        ("february", 2),
-        ("march", 3),
-        ("april", 4),
-        ("may", 5),
-        ("june", 6),
-        ("july", 7),
-        ("august", 8),
-        ("september", 9),
-        ("october", 10),
-        ("november", 11),
-        ("december", 12),
-        ("jan", 1),
-        ("feb", 2),
-        ("mar", 3),
-        ("apr", 4),
-        ("jun", 6),
-        ("jul", 7),
-        ("aug", 8),
-        ("sep", 9),
-        ("sept", 9),
-        ("oct", 10),
-        ("nov", 11),
-        ("dec", 12),
-    ];
-    let b = t.as_bytes();
-    let sep = |c: &u8| matches!(c, b'-' | b'/' | b' ');
-    let (day, rest) = split_num(b, 1, 2)?;
-    let (_, rest) = rest.split_first().filter(|(c, _)| sep(c))?;
-    let n = rest.iter().take_while(|c| c.is_ascii_alphabetic()).count();
-    let word = std::str::from_utf8(&rest[..n]).ok()?.to_ascii_lowercase();
+const MONTHS: [(&str, u32); 24] = [
+    ("january", 1),
+    ("february", 2),
+    ("march", 3),
+    ("april", 4),
+    ("may", 5),
+    ("june", 6),
+    ("july", 7),
+    ("august", 8),
+    ("september", 9),
+    ("october", 10),
+    ("november", 11),
+    ("december", 12),
+    ("jan", 1),
+    ("feb", 2),
+    ("mar", 3),
+    ("apr", 4),
+    ("jun", 6),
+    ("jul", 7),
+    ("aug", 8),
+    ("sep", 9),
+    ("sept", 9),
+    ("oct", 10),
+    ("nov", 11),
+    ("dec", 12),
+];
+
+const WEEKDAYS: [&str; 18] = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sun",
+    "mon",
+    "tue",
+    "tues",
+    "wed",
+    "thu",
+    "thur",
+    "thurs",
+    "fri",
+    "sat",
+    "weds",
+];
+
+/// A month name from chrono's dictionary at the start of `b` (any case, an abbreviation may take a `.`), and the rest.
+fn month_word(b: &[u8]) -> Option<(u32, &[u8])> {
+    let n = b.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    let word = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
     let month = MONTHS.iter().find(|(w, _)| *w == word)?.1;
-    let (_, rest) = rest[n..].split_first().filter(|(c, _)| sep(c))?;
-    let (year, tail) = split_num(rest, 4, 4)?;
-    if year < 1000 || !tail.iter().all(|&c| matches!(c, b'.' | b',') || c.is_ascii_whitespace()) {
+    let rest = &b[n..];
+    Some((month, if n <= 4 { rest.strip_prefix(b".").unwrap_or(rest) } else { rest }))
+}
+
+/// A day's ordinal suffix (`st`, `nd`, `rd`, `th`, any case), skipped.
+fn skip_ordinal(b: &[u8]) -> &[u8] {
+    match b {
+        [a, c, rest @ ..]
+            if matches!(
+                (a.to_ascii_lowercase(), c.to_ascii_lowercase()),
+                (b's', b't') | (b'n', b'd') | (b'r', b'd') | (b't', b'h')
+            ) && !rest.first().is_some_and(u8::is_ascii_alphanumeric) =>
+        {
+            rest
+        }
+        _ => b,
+    }
+}
+
+fn skip_spaces(b: &[u8]) -> &[u8] {
+    let n = b.iter().take_while(|c| c.is_ascii_whitespace()).count();
+    &b[n..]
+}
+
+/// The day number of a calendar date, or `None` when the month lacks the day or a part is out of range.
+fn civil_days(year: i64, month: u32, day: u32) -> Option<i64> {
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
         return None;
     }
-    if day == 0 {
-        return Some(DateReading::NotADate);
+    let days = crate::date_serial::days_from_civil(year, month, day);
+    (crate::date_serial::civil_from_days(days).1 == month).then_some(days)
+}
+
+/// A date's day number then what follows it, as ENMergeDateTimeRefiner joins them: nothing but `[\s.,]*`, or spaces,
+/// one comma or `at`, then chrono's time expression, an optional zone (`Z`, `GMT`/`UTC`, `±HH[:]MM`), then only
+/// `[\s.,]*`. A wall clock with no zone is read as `parseDate` reads it (`Date.UTC` of the local fields).
+fn with_time(days: i64, after: &[u8]) -> Option<DateReading> {
+    let tail = |b: &[u8]| b.iter().all(|&c| c == b'.' || c == b',' || c.is_ascii_whitespace());
+    if tail(after) {
+        return Some(DateReading::Serial(days as f64 + 25569.0));
     }
-    let days = crate::date_serial::days_from_civil(i64::from(year), month, day);
-    let (_, m2, _) = crate::date_serial::civil_from_days(days);
-    Some(if m2 != month { DateReading::NotADate } else { DateReading::Serial(days as f64 + 25569.0) })
+    let gap = skip_spaces(after);
+    let gap = match gap {
+        [b',', rest @ ..] => skip_spaces(rest),
+        [a, t, w, rest @ ..]
+            if a.eq_ignore_ascii_case(&b'a') && t.eq_ignore_ascii_case(&b't') && w.is_ascii_whitespace() =>
+        {
+            skip_spaces(rest)
+        }
+        _ => gap,
+    };
+    if gap.len() == after.len() {
+        return None;
+    }
+    let (ms, rest) = time_expression(std::str::from_utf8(gap).ok()?)?;
+    if ms >= 86_400_000.0 {
+        return None;
+    }
+    let mut rest = rest.as_bytes();
+    let mut offset = None;
+    let zoned = skip_spaces(rest);
+    let named = zoned.get(..3).filter(|w| w.eq_ignore_ascii_case(b"gmt") || w.eq_ignore_ascii_case(b"utc"));
+    let z = if named.is_some() { &zoned[3..] } else { zoned };
+    if let [sign @ (b'+' | b'-'), h1, h2, more @ ..] = z {
+        if h1.is_ascii_digit() && h2.is_ascii_digit() {
+            let more = more.strip_prefix(b":").unwrap_or(more);
+            let (mins, more) = match more {
+                [m1, m2, r @ ..] if m1.is_ascii_digit() && m2.is_ascii_digit() => {
+                    (f64::from((m1 - b'0') * 10 + (m2 - b'0')), r)
+                }
+                _ => (0.0, more),
+            };
+            let total = f64::from((h1 - b'0') * 10 + (h2 - b'0')) * 60.0 + mins;
+            offset = Some(if *sign == b'-' { -total } else { total });
+            rest = more;
+        }
+    } else if named.is_some()
+        || matches!(zoned.first(), Some(b'Z' | b'z')) && !zoned.get(1).is_some_and(u8::is_ascii_alphanumeric)
+    {
+        offset = Some(0.0);
+        rest = if named.is_some() { z } else { &zoned[1..] };
+    }
+    if !tail(rest) {
+        return None;
+    }
+    let instant = days as f64 * 86_400_000.0 + ms - offset.unwrap_or(0.0) * 60_000.0;
+    Some(DateReading::Serial(instant / 86_400_000.0 + 25569.0))
+}
+
+/// chrono-node's `ENMonthNameLittleEndianParser`: a day of one or two digits with an optional ordinal and `of`, a
+/// month name, a year from 1000, each pair parted by `-`, `/` or spaces, then [`with_time`]. A day the month lacks is
+/// no date. None for anything else.
+fn month_name_little_endian(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let sep = |b: &[u8]| -> Option<usize> {
+        match b.first()? {
+            b'-' | b'/' => Some(1),
+            c if c.is_ascii_whitespace() => Some(b.len() - skip_spaces(b).len()),
+            _ => None,
+        }
+    };
+    let (day, rest) = split_num(b, 1, 2)?;
+    let ordinal = skip_ordinal(rest);
+    let rest = if ordinal.len() != rest.len() {
+        let after = skip_spaces(ordinal);
+        match after {
+            [o, f, w, r @ ..]
+                if o.eq_ignore_ascii_case(&b'o') && f.eq_ignore_ascii_case(&b'f') && w.is_ascii_whitespace() =>
+            {
+                &after[2..]
+            }
+            _ => ordinal,
+        }
+    } else {
+        rest
+    };
+    let rest = &rest[sep(rest)?..];
+    let (month, rest) = month_word(rest)?;
+    let rest = &rest[sep(rest)?..];
+    let (year, after) = split_num(rest, 4, 4)?;
+    if year < 1000 || after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
+}
+
+/// chrono-node's `ENMonthNameMiddleEndianParser`: an optional weekday (and comma), a month name, a day with an
+/// optional ordinal and comma, a four-digit year from 1000, then [`with_time`]. The weekday is not checked against
+/// the date, as chrono doesn't. None for anything else.
+fn month_name_middle_endian(t: &str) -> Option<DateReading> {
+    let mut b = t.as_bytes();
+    let n = b.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    let lead = std::str::from_utf8(&b[..n]).ok()?.to_ascii_lowercase();
+    if WEEKDAYS.contains(&lead.as_str()) {
+        let rest = &b[n..];
+        let rest = rest.strip_prefix(b".").unwrap_or(rest);
+        let rest = rest.strip_prefix(b",").unwrap_or(rest);
+        let spaced = skip_spaces(rest);
+        if spaced.len() == rest.len() {
+            return None;
+        }
+        b = spaced;
+    }
+    let (month, rest) = month_word(b)?;
+    let spaced = skip_spaces(rest);
+    if spaced.len() == rest.len() {
+        return None;
+    }
+    let (day, rest) = split_num(spaced, 1, 2)?;
+    let rest = skip_ordinal(rest);
+    let rest = rest.strip_prefix(b",").unwrap_or(rest);
+    let spaced = skip_spaces(rest);
+    if spaced.len() == rest.len() {
+        return None;
+    }
+    let (year, after) = split_num(spaced, 4, 4)?;
+    if year < 1000 || after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
+}
+
+/// chrono-node's `ENYearMonthDayParser` past ISO's own dash form: a four-digit year, then a month (number or name)
+/// and a day, parted by `/`, `.` or spaces, a month above 12 swapping with a day that fits; then [`with_time`].
+fn year_month_day(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let (year, rest) = split_num(b, 4, 4)?;
+    let sep = |b: &[u8]| -> Option<usize> {
+        match b.first()? {
+            b'/' | b'.' => Some(1),
+            c if c.is_ascii_whitespace() => Some(b.len() - skip_spaces(b).len()),
+            _ => None,
+        }
+    };
+    let rest = &rest[sep(rest)?..];
+    let (month, rest) = match month_word(rest) {
+        Some(m) => m,
+        None => split_num(rest, 1, 2)?,
+    };
+    let rest = &rest[sep(rest)?..];
+    let (day, after) = split_num(rest, 1, 2)?;
+    if after.first().is_some_and(u8::is_ascii_alphanumeric) {
+        return None;
+    }
+    let (month, day) = if month > 12 && (1..=12).contains(&day) { (day, month) } else { (month, day) };
+    match civil_days(i64::from(year), month, day) {
+        Some(days) => with_time(days, after),
+        None => with_time(0, after).map(|_| DateReading::NotADate),
+    }
 }
 
 /// chrono's SlashDateFormatParser (month first) with a four-digit year, then optionally its time expression after
@@ -448,16 +653,18 @@ fn slash_date_time(t: &str) -> Option<DateReading> {
         return None;
     }
     let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_js_space(c));
-    if tail(after) {
-        return Some(DateReading::Serial(days as f64 + 25569.0));
-    }
-    let gap = after.trim_start_matches(is_js_space);
-    let gap = gap.strip_prefix(',').unwrap_or(gap).trim_start_matches(is_js_space);
-    if gap.len() == after.len() || year_month_day_overtakes(&t[y0 + 1..], year_end) {
+    if !tail(after) && year_month_day_overtakes(&t[y0 + 1..], year_end) {
         return None;
     }
-    let (ms, rest) = time_expression(gap)?;
-    tail(rest).then(|| DateReading::Serial((days as f64 * 86_400_000.0 + ms) / 86_400_000.0 + 25569.0))
+    let read = with_time(days, after.as_bytes())?;
+    // A date that reads either way stays a question with a time after it, as it is without one.
+    if first <= 12 && second <= 12 && first != second {
+        return Some(DateReading::Ambiguous(sol_error(
+            ErrorCode::Ambiguous,
+            format!("\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"),
+        )));
+    }
+    Some(read)
 }
 
 /// Whether ENYearMonthDayParser reads the year and the time after it (`2024 12.29`) as a day longer than the slash

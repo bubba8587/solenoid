@@ -190,6 +190,13 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let frame = std::hint::black_box([0u8; 65_536]);
             panic!("engine_trap {}", frame[0])
         }
+        // Text read as a typed date input reads it ([[D93]] oneTextReading): a serial, null when it isn't a date, or
+        // `{ambiguous: message}` for `#AMBIGUOUS!`. Relative phrases stay with the TS (`parseDate` in dateSerial.ts).
+        "engine_parse_date" => Ok(match crate::excel_criteria::parse_date(&parse::<String>(args, "text")?) {
+            crate::excel_criteria::DateReading::Serial(d) => Json::from(d),
+            crate::excel_criteria::DateReading::NotADate => Json::Null,
+            crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
+        }),
         "engine_formula_parse" => {
             Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json()))
         }

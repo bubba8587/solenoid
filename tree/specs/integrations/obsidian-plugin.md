@@ -260,8 +260,9 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
    whose node and cable ids come from the graph module, so it carries that module's glue and never instantiates it:
    a chip or a popup builds no node and computes nothing. Code built on the plugin's modules that does build a node or
    a cable, run an engine or a pass, or change the calc mode loads the module first (`loadWasmEngine()`,
-   `engineWasm.ts`), as the app's `main.tsx` does. The
-   chips, the popups and the YAML readers need neither.
+   `engineWasm.ts`), as the app's `main.tsx` does. Typed text is read by the core too ([[D93]] oneTextReading: a date
+   property, a frame cell), so the plugin's `onload` loads it before anything renders; the module is already inlined
+   in `main.js`.
 3. **Every chip and the one popup layer render in Shadow DOM** (`shadow.ts`), because Obsidian
    and its themes style bare `button`, `input`, `select` and checkboxes. The build moves
    `@font-face` rules into `styles.css` (a font registers only from the document) and hands the

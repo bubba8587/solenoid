@@ -1,6 +1,7 @@
 // [[C17]], [[D54]]
-// Must not import a module that reaches the graph model; chrono-node and errorValue are headless.
+// Must not import a module that reaches the graph model; chrono-node, errorValue and the core's loader are headless.
 import * as chrono from "chrono-node";
+import { wasmInvokeSync } from "../engineWasm";
 import { solError, isSolError, type SolError } from "../errorValue";
 
 // Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
@@ -22,7 +23,6 @@ export function wallClockSerial(now: Date = new Date(), dateOnly = false): numbe
   return ms / 86400000 + 25569;
 }
 
-const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
 const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
 
 export function isRelativeDateText(s: string): boolean {
@@ -46,34 +46,8 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
     if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
     return wallClockSerial(r.start.date(), true);
   }
-  if (!/\d{4}/.test(t)) return NaN;
-  // ISO date-only goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono pivots "0026").
-  const isoParts = /^[+-]?\d{4,6}-(\d{2})(?:-(\d{2}))?$/.exec(t);
-  if (isoParts) {
-    const iso = new Date(t);
-    // `new Date` rolls 2024-02-30 over to March 1; a day the month does not have is not a date.
-    const rolled = isoParts[2] !== undefined && iso.getUTCDate() !== +isoParts[2];
-    return Number.isNaN(iso.getTime()) || rolled || iso.getUTCMonth() + 1 !== +isoParts[1] ? NaN : iso.getTime() / 86400000 + 25569;
-  }
-  const num = NUMERIC_DMY.exec(t);
-  if (num) {
-    const a = +num[1], b = +num[2];
-    if (a <= 12 && b <= 12 && a !== b) {
-      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
-    }
-  }
-  const r = chrono.parse(t, undefined, { forwardDate: false })[0];
-  if (!r || r.index !== 0) return NaN;
-  if (!/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-  const c = r.start;
-  if (!c.isCertain("day") || !c.isCertain("month") || !c.isCertain("year")) return NaN;
-  const d = c.date();
-  const ms = c.isCertain("timezoneOffset")
-    ? d.getTime()
-    : c.isCertain("hour")
-      ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds())
-      : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-  return ms / 86400000 + 25569;
+  const r = wasmInvokeSync<number | null | { ambiguous: string }>("engine_parse_date", { text: t });
+  return r === null ? NaN : typeof r === "number" ? r : solError("#AMBIGUOUS!", r.ambiguous);
 }
 
 /** NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate`. */

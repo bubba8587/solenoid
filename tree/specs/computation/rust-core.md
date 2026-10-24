@@ -99,8 +99,8 @@ branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as
 
 ## Nothing falls back
 
-The core is the only evaluator. A reading it doesn't make is an answer, never a hand-off: free text that only
-chrono-node read as a date is not a date (DATEVALUE answers an error, a criterion compares it as text); a loop past
+The core is the only evaluator. A reading it doesn't make is an answer, never a hand-off: text outside the date
+reader's closed list of shapes is not a date (DATEVALUE answers an error, a criterion compares it as text); a loop past
 a cap, a value nested past a table and a regex past the core's limits answer an error that says so; a name the core
 doesn't know is #NAME?. Text crosses well formed: a lone surrogate reads as U+FFFD at the boundary (`toWellFormed`,
 `coreValues.ts`). A formula over a value with a unit it doesn't take is #VALUE! (the cards run their unit wrappers on

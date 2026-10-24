@@ -22,6 +22,7 @@ import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
 import { KnapNotes } from "./knapBody";
 import { setObsidianApp } from "./obsidianApp";
+import { loadWasmEngine } from "../../src/graph/engineWasm";
 
 interface WidgetContext {
   app: App;
@@ -81,6 +82,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   async onload(): Promise<void> {
     setObsidianApp(this.app);
+    // Typed text (a date property, a frame cell) is read by the core ([[D93]] oneTextReading).
+    await loadWasmEngine();
     const stored = ((await this.loadData()) ?? {}) as PluginData;
     this.data = {
       palette: stored.palette,

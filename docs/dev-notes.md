@@ -17,13 +17,14 @@ specific item.
 - **Crates in place of hand code**: `csv` (CSV read and write), `qrcodegen` (QR Code), `md-5`/`sha1`/`sha2`/`crc32fast` (HASH), `jiff` (time zones, bundled tzdb). The audit's remaining choices: `docs/audits/crate-audit-2026-10.md`, backlog § Rust core.
 - **Dead TS deleted in two rounds**, then two comment sweeps cut the core's TS-twin provenance from its comments.
 - **The isolate endpoint terminals mount again** (lost with the graph move).
+- **Typed text is read by the core** ([[D93]] oneTextReading): `parseDate` hands every absolute date to `engine_parse_date`, a closed list of shapes pinned by `coreParseDate.test.ts`; chrono-node reads only relative phrases ([[D54]]). A day/month-ambiguous date stays `#AMBIGUOUS!` with a time after it. The plugin loads the core on `onload`.
+- **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.
 - **The Vercel build passes on Node 24** (`@types/node` declared); CI's `vercel-build` job builds as Vercel does.
 - **Module size**: 4.9 MB raw, 1.8 MB gzipped.
 - **Open for the author:**
   - the criteria strings' redesign (backlog § Formula library);
   - deleting the TS schedule engine ([[C69]] ganttPackages);
-  - the typed-input date reader's move to the core (backlog § Rust core);
   - the app's size;
   - which ring a top-level session works at (`docs/dte.md` § Solenoid's rings);
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);
