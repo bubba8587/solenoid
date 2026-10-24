@@ -274,8 +274,8 @@ export default defineConfig(async () => ({
         license({
           thirdParty: {
             includePrivate: false,
-            // Key by name@version, not name: ten packages resolve at TWO versions
-            // (mermaid nests its own marked/katex/d3-*), and the default keeps only
+            // Key by name@version, not name: a package can resolve at TWO versions
+            // (a dependency can nest its own copy of another), and the default keeps only
             // whichever it saw first — the file named versions we don't ship.
             multipleVersions: true,
             output: {

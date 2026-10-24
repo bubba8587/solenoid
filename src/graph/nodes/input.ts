@@ -146,14 +146,8 @@ export class SliderInputNode extends GraphNode {
     this.addOutput("value", new GraphOutput(numberSocket));
   }
 
-  /** The clamped value is saved, so it is written here; `body` clamps. */
-  data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
-    const out = this.body(inputs);
-    this.value = out.value;
-    return out;
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
+  /** The body keeps the clamped value it answers, which is saved. */
+  data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { value: number };
   }
 }

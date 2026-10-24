@@ -1,48 +1,12 @@
 // [[D102]] graphOnCore
 // The editor: a handle over the graph core's Ruggine editor, which holds the nodes, their ports and the cables
 // (`crates/solenoid-graph`, tree/specs/computation/graph-core.md § The model). The handle keeps each node's and cable's
-// JavaScript object by id, as the core's signals report them. `npm run build:wasm` regenerates `graphWasm/`.
-import init, { initSync, GraphCore, setPanicHandler, __wbg_reset } from "./graphWasm/solenoid_graph.js";
+// JavaScript object by id, as the core's signals report them.
+import { GraphCore } from "./engineWasm/solenoid_graph.js";
+import { guarded, onCore, onWasmEngineReset, wasmEngineLoaded } from "./engineWasm";
 import type { DataflowEngine } from "./dataflowEngine";
 import type { GraphNode, GraphSchemes, PortListener } from "./graphModel";
 import type { Schemes } from "./schemes";
-
-/** The compiled module's location: a URL Vite bundles, and a `file:` URL under Node. */
-export const graphWasmUrl = new URL("./graphWasm/solenoid_graph_bg.wasm", import.meta.url);
-
-let _ready: Promise<void> | null = null;
-let _loaded = false;
-
-/** Fetches and instantiates the module once. Nothing computes without it, so the app's first render waits. */
-export function loadGraphEngine(): Promise<void> {
-  _ready ??= init({ module_or_path: graphWasmUrl }).then(onLoaded);
-  return _ready;
-}
-
-/** For hosts that hold the module's bytes (tests, Node scripts). */
-export function loadGraphEngineSync(bytes: BufferSource): void {
-  initSync({ module: bytes });
-  onLoaded();
-  _ready = Promise.resolve();
-}
-
-export function graphEngineLoaded(): boolean {
-  return _loaded;
-}
-
-const _onLoad: (() => void)[] = [];
-
-/** `fn` runs once the module is loaded (now, when it is), and again in each fresh instance after a trap. */
-export function whenGraphEngineLoads(fn: () => void): void {
-  _onLoad.push(fn);
-  if (_loaded) fn();
-}
-
-function onLoaded(): void {
-  _loaded = true;
-  setPanicHandler(onPanic);
-  for (const fn of _onLoad) fn();
-}
 
 /** What a fetch rejects with when a reset clears its node mid-run. */
 export class Cancelled extends Error {
@@ -51,9 +15,6 @@ export class Cancelled extends Error {
   }
 }
 
-/** What a call into the graph core rejects or throws with when the core trapped during it. */
-export class GraphTrap extends Error {}
-
 const _live = new Set<WeakRef<GraphEditor<GraphSchemes>>>();
 const _portsMoved = new Set<GraphEditor<GraphSchemes>>();
 
@@ -61,63 +22,15 @@ const _portsMoved = new Set<GraphEditor<GraphSchemes>>();
 export function flushPortEdits(): void {
   for (const editor of [..._portsMoved]) editor.flushPorts();
 }
-const _pending = new Set<(e: unknown) => void>();
-let _dead = false;
 
-/** A panic starts: whatever awaits the core rejects, and once the stack has left the module, a fresh instance
- *  takes over and every live editor rebuilds its graph in it. The engine's caches start empty. */
-function onPanic(message: string): void {
-  trapped(new GraphTrap(message));
-}
-
-function trapped(error: GraphTrap): void {
-  if (_dead) return;
-  _dead = true;
-  for (const reject of _pending) reject(error);
-  _pending.clear();
-  queueMicrotask(recover);
-}
-
-function recover(): void {
-  const module = __wbg_reset();
-  initSync({ module });
-  setPanicHandler(onPanic);
-  for (const fn of _onLoad) fn();
-  _dead = false;
+// After a trap every live editor builds its graph again in the fresh instance, on its next call.
+onWasmEngineReset(() => {
   for (const ref of _live) {
     const editor = ref.deref();
     if (editor) editor.rebuild();
     else _live.delete(ref);
   }
-}
-
-/** `call()`; a trap during it throws `GraphTrap`. */
-export function guarded<T>(call: () => T): T {
-  if (_dead) throw new GraphTrap("the graph core is reloading");
-  try {
-    return call();
-  } catch (e) {
-    if (_dead || e instanceof WebAssembly.RuntimeError) {
-      const trap = new GraphTrap(e instanceof Error ? e.message : String(e));
-      trapped(trap);
-      throw trap;
-    }
-    throw e;
-  }
-}
-
-/** The core's promise, rejecting with `GraphTrap` if the core traps before it settles. */
-export function tracked<T>(start: () => Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const settle = (e: unknown) => { _pending.delete(settle); reject(e); };
-    _pending.add(settle);
-    try {
-      guarded(start).then((v) => { _pending.delete(settle); resolve(v); }, settle);
-    } catch (e) {
-      settle(e);
-    }
-  });
-}
+});
 
 /** What an editor's pipes hear, in rete's shape. */
 export type GraphSignal<S extends GraphSchemes> =
@@ -162,8 +75,8 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       return this._core;
     }
     this.movedPorts.clear();
-    if (!_loaded) throw new Error("the graph engine isn't loaded (loadGraphEngine)");
-    const core = new GraphCore(Cancelled);
+    if (!wasmEngineLoaded()) throw new Error("the wasm engine isn't loaded (loadWasmEngine)");
+    const core = new GraphCore(Cancelled, (node: S["Node"], field: string) => this.adopt(node, field));
     this._core = core;
     this.replaying = true;
     try {
@@ -183,6 +96,21 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   /** After a trap: the next call builds a core in the fresh instance. */
   rebuild(): void {
     this._core = null;
+  }
+
+  /** A field the core holds for a direct card (graph-core.md § Direct calls): the object reads it from the core,
+   *  converted when read, and writing it stores it there; once the core holds none for it, it is a plain field again. */
+  private adopt(node: S["Node"], field: string): void {
+    const editor = this;
+    const plain = (value: unknown) => Object.defineProperty(node, field, { value, writable: true, enumerable: true, configurable: true });
+    Object.defineProperty(node, field, {
+      configurable: true,
+      enumerable: true,
+      get: () => onCore(() => guarded(() => editor.core().shown(node.id, field)), undefined),
+      set: (value: unknown) => {
+        if (!onCore(() => guarded(() => editor.core().setShown(node.id, field, value)), false)) plain(value);
+      },
+    });
   }
 
   private install(core: GraphCore, p: Piped): void {
@@ -331,7 +259,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
   /** Sends each changed node's ports, as they stand, in one call per node. */
   flushPorts(core: GraphCore | null = this._core): void {
     _portsMoved.delete(this as unknown as GraphEditor<GraphSchemes>);
-    if (!core || _dead || this.movedPorts.size === 0) return;
+    if (!core || !wasmEngineLoaded() || this.movedPorts.size === 0) return;
     const moved = [...this.movedPorts];
     this.movedPorts.clear();
     guarded(() => {

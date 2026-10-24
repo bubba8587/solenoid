@@ -26,6 +26,8 @@ function handleError(f, args) {
     }
 }
 
+let WASM_VECTOR_LEN = 0;
+
 let cachedUint8ArrayMemory0 = null;
 
 function getUint8ArrayMemory0() {
@@ -33,6 +35,69 @@ function getUint8ArrayMemory0() {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
+}
+
+const cachedTextEncoder = (typeof TextEncoder !== 'undefined' ? new TextEncoder('utf-8') : { encode: () => { throw Error('TextEncoder not available') } } );
+
+const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
+    ? function (arg, view) {
+    return cachedTextEncoder.encodeInto(arg, view);
+}
+    : function (arg, view) {
+    const buf = cachedTextEncoder.encode(arg);
+    view.set(buf);
+    return {
+        read: arg.length,
+        written: buf.length
+    };
+});
+
+function passStringToWasm0(arg, malloc, realloc) {
+
+    if (realloc === undefined) {
+        const buf = cachedTextEncoder.encode(arg);
+        const ptr = malloc(buf.length, 1) >>> 0;
+        getUint8ArrayMemory0().subarray(ptr, ptr + buf.length).set(buf);
+        WASM_VECTOR_LEN = buf.length;
+        return ptr;
+    }
+
+    let len = arg.length;
+    let ptr = malloc(len, 1) >>> 0;
+
+    const mem = getUint8ArrayMemory0();
+
+    let offset = 0;
+
+    for (; offset < len; offset++) {
+        const code = arg.charCodeAt(offset);
+        if (code > 0x7F) break;
+        mem[ptr + offset] = code;
+    }
+
+    if (offset !== len) {
+        if (offset !== 0) {
+            arg = arg.slice(offset);
+        }
+        ptr = realloc(ptr, len, len = offset + arg.length * 3, 1) >>> 0;
+        const view = getUint8ArrayMemory0().subarray(ptr + offset, ptr + len);
+        const ret = encodeString(arg, view);
+
+        offset += ret.written;
+        ptr = realloc(ptr, len, offset, 1) >>> 0;
+    }
+
+    WASM_VECTOR_LEN = offset;
+    return ptr;
+}
+
+let cachedDataViewMemory0 = null;
+
+function getDataViewMemory0() {
+    if (cachedDataViewMemory0 === null || cachedDataViewMemory0.buffer.detached === true || (cachedDataViewMemory0.buffer.detached === undefined && cachedDataViewMemory0.buffer !== wasm.memory.buffer)) {
+        cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
+    }
+    return cachedDataViewMemory0;
 }
 
 function getArrayU8FromWasm0(ptr, len) {
@@ -69,7 +134,7 @@ const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => {
     if (state.epoch !== __wbg_epoch) return;
-    wasm.__wbindgen_export_1.get(state.dtor)(state.a, state.b)
+    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)
 });
 
 function makeMutClosure(arg0, arg1, dtor, f) {
@@ -86,7 +151,7 @@ function makeMutClosure(arg0, arg1, dtor, f) {
             return f(a, state.b, ...args);
         } finally {
             if (--state.cnt === 0) {
-                wasm.__wbindgen_export_1.get(state.dtor)(a, state.b);
+                wasm.__wbindgen_export_3.get(state.dtor)(a, state.b);
                 CLOSURE_DTORS.unregister(state);
             } else {
                 state.a = a;
@@ -162,71 +227,15 @@ function debugString(val) {
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
 }
-
-let WASM_VECTOR_LEN = 0;
-
-const cachedTextEncoder = (typeof TextEncoder !== 'undefined' ? new TextEncoder('utf-8') : { encode: () => { throw Error('TextEncoder not available') } } );
-
-const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
-    ? function (arg, view) {
-    return cachedTextEncoder.encodeInto(arg, view);
-}
-    : function (arg, view) {
-    const buf = cachedTextEncoder.encode(arg);
-    view.set(buf);
-    return {
-        read: arg.length,
-        written: buf.length
-    };
-});
-
-function passStringToWasm0(arg, malloc, realloc) {
-
-    if (realloc === undefined) {
-        const buf = cachedTextEncoder.encode(arg);
-        const ptr = malloc(buf.length, 1) >>> 0;
-        getUint8ArrayMemory0().subarray(ptr, ptr + buf.length).set(buf);
-        WASM_VECTOR_LEN = buf.length;
-        return ptr;
-    }
-
-    let len = arg.length;
-    let ptr = malloc(len, 1) >>> 0;
-
-    const mem = getUint8ArrayMemory0();
-
-    let offset = 0;
-
-    for (; offset < len; offset++) {
-        const code = arg.charCodeAt(offset);
-        if (code > 0x7F) break;
-        mem[ptr + offset] = code;
-    }
-
-    if (offset !== len) {
-        if (offset !== 0) {
-            arg = arg.slice(offset);
-        }
-        ptr = realloc(ptr, len, len = offset + arg.length * 3, 1) >>> 0;
-        const view = getUint8ArrayMemory0().subarray(ptr + offset, ptr + len);
-        const ret = encodeString(arg, view);
-
-        offset += ret.written;
-        ptr = realloc(ptr, len, offset, 1) >>> 0;
-    }
-
-    WASM_VECTOR_LEN = offset;
-    return ptr;
+/**
+ * Off, every card's `data()` runs in JavaScript, its body crossing through `nodeOnCore`: how the node recorder
+ * (`FREEZE_NODES`) sees every call the suite makes.
+ * @param {boolean} on
+ */
+export function setDirectCalls(on) {
+    wasm.setDirectCalls(on);
 }
 
-let cachedDataViewMemory0 = null;
-
-function getDataViewMemory0() {
-    if (cachedDataViewMemory0 === null || cachedDataViewMemory0.buffer.detached === true || (cachedDataViewMemory0.buffer.detached === undefined && cachedDataViewMemory0.buffer !== wasm.memory.buffer)) {
-        cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
-    }
-    return cachedDataViewMemory0;
-}
 /**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
@@ -265,28 +274,13 @@ export function graphTrap() {
 }
 
 /**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
- * @param {object} node
- * @param {any} inputs
- * @param {Function | null} [data]
- * @returns {any}
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ * @param {boolean} begin
+ * @returns {boolean}
  */
-export function computeNode(node, inputs, data) {
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-        if (r2) {
-            throw takeObject(r1);
-        }
-        return takeObject(r0);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-    }
+export function sessionRebuild(begin) {
+    const ret = wasm.sessionRebuild(begin);
+    return ret !== 0;
 }
 
 /**
@@ -315,7 +309,7 @@ export function sessionEnter(changed, force) {
     let deferred2_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len0 = WASM_VECTOR_LEN;
         wasm.sessionEnter(retptr, ptr0, len0, force);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -337,6 +331,31 @@ export function sessionEnter(changed, force) {
 export function sessionExit(finished) {
     const ret = wasm.sessionExit(finished);
     return takeObject(ret);
+}
+
+/**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ * @param {object} node
+ * @param {any} inputs
+ * @param {Function | null} [data]
+ * @returns {any}
+ */
+export function computeNode(node, inputs, data) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
 }
 
 /**
@@ -362,7 +381,7 @@ export function sessionRestore(snapshot) {
  * @returns {boolean}
  */
 export function sessionSetMode(mode) {
-    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.sessionSetMode(ptr0, len0);
     return ret !== 0;
@@ -395,14 +414,49 @@ export function sessionNextGeneration() {
     return ret;
 }
 
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(takeObject(mem.getUint32(i, true)));
+    }
+    return result;
+}
 /**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
- * @param {boolean} begin
- * @returns {boolean}
+ * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
+ * @returns {string[]}
  */
-export function sessionRebuild(begin) {
-    const ret = wasm.sessionRebuild(begin);
-    return ret !== 0;
+export function directBodies() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.directBodies(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+ * @returns {string[]}
+ */
+export function offCoreBodies() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.offCoreBodies(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
 }
 
 /**
@@ -410,7 +464,7 @@ export function sessionRebuild(begin) {
  * @returns {boolean}
  */
 export function isLazyFrameNode(_class) {
-    const ptr0 = passStringToWasm0(_class, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+    const ptr0 = passStringToWasm0(_class, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.isLazyFrameNode(ptr0, len0);
     return ret !== 0;
@@ -421,7 +475,7 @@ export function isLazyFrameNode(_class) {
  * @returns {boolean}
  */
 export function seesErrors(_class) {
-    const ptr0 = passStringToWasm0(_class, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+    const ptr0 = passStringToWasm0(_class, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.seesErrors(ptr0, len0);
     return ret !== 0;
@@ -454,16 +508,6 @@ export function findCellError(v) {
     return takeObject(ret);
 }
 
-function getArrayJsValueFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    const mem = getDataViewMemory0();
-    const result = [];
-    for (let i = ptr; i < ptr + 4 * len; i += 4) {
-        result.push(takeObject(mem.getUint32(i, true)));
-    }
-    return result;
-}
-
 function passArrayJsValueToWasm0(array, malloc) {
     const ptr = malloc(array.length * 4, 4) >>> 0;
     const mem = getDataViewMemory0();
@@ -479,11 +523,269 @@ function _assertClass(instance, klass) {
         throw new Error(`expected instance of ${klass.name}`);
     }
 }
+/**
+ * `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
+ * @param {string} command
+ * @param {string} args
+ * @returns {string}
+ */
+export function engine_invoke(command, args) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(command, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(args, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.engine_invoke(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred3_0, deferred3_1, 1);
+    }
+}
+
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+let cachedFloat64ArrayMemory0 = null;
+
+function getFloat64ArrayMemory0() {
+    if (cachedFloat64ArrayMemory0 === null || cachedFloat64ArrayMemory0.byteLength === 0) {
+        cachedFloat64ArrayMemory0 = new Float64Array(wasm.memory.buffer);
+    }
+    return cachedFloat64ArrayMemory0;
+}
+
+function passArrayF64ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 8, 8) >>> 0;
+    getFloat64ArrayMemory0().set(arg, ptr / 8);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+let cachedUint32ArrayMemory0 = null;
+
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
+}
+
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+/**
+ * @param {string} schema
+ * @param {Uint8Array} tags
+ * @param {Float64Array} nums
+ * @param {string} strs
+ * @param {Uint32Array} lens
+ * @returns {string}
+ */
+export function engine_source_bin(schema, tags, nums, strs, lens) {
+    let deferred6_0;
+    let deferred6_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(schema, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(tags, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayF64ToWasm0(nums, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(strs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passArray32ToWasm0(lens, wasm.__wbindgen_export_1);
+        const len4 = WASM_VECTOR_LEN;
+        wasm.engine_source_bin(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred6_0 = r0;
+        deferred6_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred6_0, deferred6_1, 1);
+    }
+}
+
+/**
+ * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+ * `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
+ * @param {string} handle
+ * @param {string | null} [column]
+ * @param {number | null} [limit]
+ * @returns {string}
+ */
+export function engine_read_bin(handle, column, limit) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(handle, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(column) ? 0 : passStringToWasm0(column, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        var len1 = WASM_VECTOR_LEN;
+        wasm.engine_read_bin(retptr, ptr0, len0, ptr1, len1, isLikeNone(limit) ? 0x100000001 : (limit) >>> 0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+ * @param {string} text
+ * @returns {string}
+ */
+export function engine_csv_frame(text) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.engine_csv_frame(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+ * @param {string} text
+ * @param {boolean} detect
+ * @param {boolean} keep_blank
+ * @returns {string}
+ */
+export function engine_csv_rows(text, detect, keep_blank) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.engine_csv_rows(retptr, ptr0, len0, detect, keep_blank);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @returns {Uint8Array}
+ */
+export function take_tags() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.take_tags(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayU8FromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 1, 1);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+function getArrayF64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+/**
+ * @returns {Float64Array}
+ */
+export function take_nums() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.take_nums(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayF64FromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 8, 8);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * @returns {string}
+ */
+export function take_strs() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.take_strs(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+/**
+ * @returns {Uint32Array}
+ */
+export function take_lens() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.take_lens(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayU32FromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
 function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_131(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_172(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -515,7 +817,7 @@ export class GraphCore {
     invalidate(id, keep_caches) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             var len0 = WASM_VECTOR_LEN;
             wasm.graphcore_invalidate(retptr, this.__wbg_ptr, ptr0, len0, keep_caches);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -538,7 +840,7 @@ export class GraphCore {
     seedLoops(message) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            var ptr0 = isLikeNone(message) ? 0 : passStringToWasm0(message, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            var ptr0 = isLikeNone(message) ? 0 : passStringToWasm0(message, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             var len0 = WASM_VECTOR_LEN;
             wasm.graphcore_seedLoops(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -575,7 +877,7 @@ export class GraphCore {
      * @returns {Promise<any>}
      */
     computeAll(changed) {
-        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_computeAll(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
@@ -589,7 +891,7 @@ export class GraphCore {
     markNested(id) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
             wasm.graphcore_markNested(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -612,7 +914,7 @@ export class GraphCore {
     removeNode(id) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
             wasm.graphcore_removeNode(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -640,7 +942,7 @@ export class GraphCore {
      * @returns {Promise<any>}
      */
     fetchInputs(id) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_fetchInputs(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
@@ -667,7 +969,7 @@ export class GraphCore {
      * @returns {boolean}
      */
     reorderNodes(order) {
-        const ptr0 = passArrayJsValueToWasm0(order, wasm.__wbindgen_export_2);
+        const ptr0 = passArrayJsValueToWasm0(order, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_reorderNodes(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
@@ -685,15 +987,15 @@ export class GraphCore {
     addConnection(object, id, source, source_output, target, target_input) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(source, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr1 = passStringToWasm0(source, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len1 = WASM_VECTOR_LEN;
-            const ptr2 = passStringToWasm0(source_output, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr2 = passStringToWasm0(source_output, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len2 = WASM_VECTOR_LEN;
-            const ptr3 = passStringToWasm0(target, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr3 = passStringToWasm0(target, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len3 = WASM_VECTOR_LEN;
-            const ptr4 = passStringToWasm0(target_input, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr4 = passStringToWasm0(target_input, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len4 = WASM_VECTOR_LEN;
             wasm.graphcore_addConnection(retptr, this.__wbg_ptr, addHeapObject(object), ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -731,7 +1033,7 @@ export class GraphCore {
     removeConnection(id) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
             wasm.graphcore_removeConnection(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -752,7 +1054,7 @@ export class GraphCore {
     downstreamClosure(id) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
             wasm.graphcore_downstreamClosure(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -765,11 +1067,13 @@ export class GraphCore {
         }
     }
     /**
-     * `cancelled` is the class of error a fetch cut short by a reset rejects with.
+     * `cancelled` is the class of error a fetch cut short by a reset rejects with; `adopt(node, field)` makes the
+     * object read a field the core holds for it (`GraphEditor.adopt`).
      * @param {Function} cancelled
+     * @param {Function} adopt
      */
-    constructor(cancelled) {
-        const ret = wasm.graphcore_new(addHeapObject(cancelled));
+    constructor(cancelled, adopt) {
+        const ret = wasm.graphcore_new(addHeapObject(cancelled), addHeapObject(adopt));
         this.__wbg_ptr = ret >>> 0;
         GraphCoreFinalization.register(this, { ptr: this.__wbg_ptr, epoch: __wbg_epoch }, this);
         return this;
@@ -780,7 +1084,7 @@ export class GraphCore {
      * @param {GraphCore} inner
      */
     nest(id, inner) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         _assertClass(inner, GraphCore);
         wasm.graphcore_nest(this.__wbg_ptr, ptr0, len0, inner.__wbg_ptr);
@@ -788,21 +1092,20 @@ export class GraphCore {
     /**
      * The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
      * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
-     * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
-     * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
-     * cancelled the pass.
+     * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order and landed (its
+     * outputs held for the cable readouts, the change test against what it landed before). The nodes to re-render, in
+     * order; `null` when a reset cancelled the pass.
      * @param {string | null | undefined} changed
      * @param {string[] | null | undefined} render_only
      * @param {boolean} topology
-     * @param {Function} on_node
      * @returns {Promise<any>}
      */
-    pass(changed, render_only, topology, on_node) {
-        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+    pass(changed, render_only, topology) {
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len0 = WASM_VECTOR_LEN;
-        var ptr1 = isLikeNone(render_only) ? 0 : passArrayJsValueToWasm0(render_only, wasm.__wbindgen_export_2);
+        var ptr1 = isLikeNone(render_only) ? 0 : passArrayJsValueToWasm0(render_only, wasm.__wbindgen_export_1);
         var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.graphcore_pass(this.__wbg_ptr, ptr0, len0, ptr1, len1, topology, addHeapObject(on_node));
+        const ret = wasm.graphcore_pass(this.__wbg_ptr, ptr0, len0, ptr1, len1, topology);
         return takeObject(ret);
     }
     /**
@@ -811,7 +1114,7 @@ export class GraphCore {
      * @param {any} outputs
      */
     seed(id, outputs) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         wasm.graphcore_seed(this.__wbg_ptr, ptr0, len0, addHeapObject(outputs));
     }
@@ -840,7 +1143,7 @@ export class GraphCore {
      * @returns {Promise<any>}
      */
     fetch(id) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_fetch(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
@@ -853,7 +1156,7 @@ export class GraphCore {
      * @returns {Array<any> | undefined}
      */
     ports(id, output) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_ports(this.__wbg_ptr, ptr0, len0, output);
         return takeObject(ret);
@@ -866,7 +1169,7 @@ export class GraphCore {
     reset(id) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             var len0 = WASM_VECTOR_LEN;
             wasm.graphcore_reset(retptr, this.__wbg_ptr, ptr0, len0);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -879,19 +1182,47 @@ export class GraphCore {
         }
     }
     /**
+     * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
+     * @param {string} id
+     * @param {string} field
+     * @returns {any}
+     */
+    shown(id, field) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(field, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_shown(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return takeObject(ret);
+    }
+    /**
      * Clears the node's cache alone, cancelling a run in flight.
      * @param {string} id
      */
     forget(id) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         wasm.graphcore_forget(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * The output `key` of node `id` as the last pass landed it; `undefined` before one did.
+     * @param {string} id
+     * @param {string} key
+     * @returns {any}
+     */
+    landed(id, key) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(key, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_landed(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return takeObject(ret);
     }
     /**
      * @param {string} id
      */
     unnest(id) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         wasm.graphcore_unnest(this.__wbg_ptr, ptr0, len0);
     }
@@ -902,7 +1233,7 @@ export class GraphCore {
      * @returns {Promise<any>}
      */
     compute(id, inputs) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_compute(this.__wbg_ptr, ptr0, len0, addHeapObject(inputs));
         return takeObject(ret);
@@ -920,15 +1251,15 @@ export class GraphCore {
     addNode(id, object, input_keys, input_types, output_keys, output_types) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_2);
+            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_1);
             const len1 = WASM_VECTOR_LEN;
-            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_2);
+            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_1);
             const len2 = WASM_VECTOR_LEN;
-            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_2);
+            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_1);
             const len3 = WASM_VECTOR_LEN;
-            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_2);
+            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_1);
             const len4 = WASM_VECTOR_LEN;
             wasm.graphcore_addNode(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(object), ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -985,7 +1316,7 @@ export class GraphCore {
      * @returns {boolean}
      */
     isCached(id) {
-        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_isCached(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
@@ -1001,15 +1332,15 @@ export class GraphCore {
     setPorts(id, input_keys, input_types, output_keys, output_types) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
             const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_2);
+            const ptr1 = passArrayJsValueToWasm0(input_keys, wasm.__wbindgen_export_1);
             const len1 = WASM_VECTOR_LEN;
-            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_2);
+            const ptr2 = passArrayJsValueToWasm0(input_types, wasm.__wbindgen_export_1);
             const len2 = WASM_VECTOR_LEN;
-            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_2);
+            const ptr3 = passArrayJsValueToWasm0(output_keys, wasm.__wbindgen_export_1);
             const len3 = WASM_VECTOR_LEN;
-            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_2);
+            const ptr4 = passArrayJsValueToWasm0(output_types, wasm.__wbindgen_export_1);
             const len4 = WASM_VECTOR_LEN;
             wasm.graphcore_setPorts(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
@@ -1020,6 +1351,21 @@ export class GraphCore {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
+    }
+    /**
+     * JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
+     * @param {string} id
+     * @param {string} field
+     * @param {any} value
+     * @returns {boolean}
+     */
+    setShown(id, field, value) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(field, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_setShown(this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(value));
+        return ret !== 0;
     }
 }
 
@@ -1069,6 +1415,10 @@ function __wbg_get_imports() {
         const ret = Object.assign(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_at_080e932fd688cb7b = function(arg0) {
+        const ret = new Date(arg0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_buffer_609cc3eee51ed158 = function(arg0) {
         const ret = getObject(arg0).buffer;
         return addHeapObject(ret);
@@ -1089,13 +1439,60 @@ function __wbg_get_imports() {
         const ret = Reflect.construct(getObject(arg0), getObject(arg1));
         return addHeapObject(ret);
     }, arguments) };
+    imports.wbg.__wbg_defineProperty_5e0378dd0a5920ab = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = Reflect.defineProperty(getObject(arg0), getObject(arg1), getObject(arg2));
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_formatToParts_eaf78fdffce01b9c = function() { return handleError(function (arg0, arg1) {
+        const ret = getObject(arg0).formatToParts(getObject(arg1));
+        return addHeapObject(ret);
+    }, arguments) };
+    imports.wbg.__wbg_format_8d46053cee19298f = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = getObject(arg1).format(getObject(arg2));
+        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+        getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+    }, arguments) };
     imports.wbg.__wbg_from_2a5d3e218e67aa85 = function(arg0) {
         const ret = Array.from(getObject(arg0));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_getDate_80248a8173b8f15d = function(arg0) {
+        const ret = getObject(arg0).getDate();
+        return ret;
+    };
+    imports.wbg.__wbg_getFullYear_e2f381659700975f = function(arg0) {
+        const ret = getObject(arg0).getFullYear();
+        return ret;
+    };
+    imports.wbg.__wbg_getHours_042e08d342222664 = function(arg0) {
+        const ret = getObject(arg0).getHours();
+        return ret;
+    };
+    imports.wbg.__wbg_getMilliseconds_c59d5f69e1c284ed = function(arg0) {
+        const ret = getObject(arg0).getMilliseconds();
+        return ret;
+    };
+    imports.wbg.__wbg_getMinutes_d62a855f70fdaf08 = function(arg0) {
+        const ret = getObject(arg0).getMinutes();
+        return ret;
+    };
+    imports.wbg.__wbg_getMonth_b6fd4ed305fd0ae2 = function(arg0) {
+        const ret = getObject(arg0).getMonth();
+        return ret;
+    };
     imports.wbg.__wbg_getRandomValues_1c61fac11405ffdc = function() { return handleError(function (arg0, arg1) {
         globalThis.crypto.getRandomValues(getArrayU8FromWasm0(arg0, arg1));
     }, arguments) };
+    imports.wbg.__wbg_getSeconds_f3995058e28ecd4a = function(arg0) {
+        const ret = getObject(arg0).getSeconds();
+        return ret;
+    };
+    imports.wbg.__wbg_getTime_f76347a3537b1991 = function(arg0) {
+        const ret = getObject(arg0).getTime();
+        return ret;
+    };
     imports.wbg.__wbg_get_13495dac72693ecc = function(arg0, arg1) {
         const ret = getObject(arg0).get(getObject(arg1));
         return addHeapObject(ret);
@@ -1172,6 +1569,10 @@ function __wbg_get_imports() {
         const ret = getObject(arg0).length;
         return ret;
     };
+    imports.wbg.__wbg_local_48b1a91907f4fce3 = function(arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+        const ret = new Date(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_message_97a2af9b89d693a3 = function(arg0) {
         const ret = getObject(arg0).message;
         return addHeapObject(ret);
@@ -1187,7 +1588,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_131(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_172(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1222,8 +1623,16 @@ function __wbg_get_imports() {
         const ret = new Error(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_new_e6b03743a20a81d7 = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = new Intl.DateTimeFormat(getStringFromWasm0(arg0, arg1), getObject(arg2));
+        return addHeapObject(ret);
+    }, arguments) };
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
         const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_newwithlength_a381634e90c276d4 = function(arg0) {
+        const ret = new Uint8Array(arg0 >>> 0);
         return addHeapObject(ret);
     };
     imports.wbg.__wbg_newwithlength_c4c419ef0bc8a1f8 = function(arg0) {
@@ -1251,6 +1660,14 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbg_queueMicrotask_d3219def82552485 = function(arg0) {
         const ret = getObject(arg0).queueMicrotask;
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_random_3ad904d98382defe = function() {
+        const ret = Math.random();
+        return ret;
+    };
+    imports.wbg.__wbg_reject_b3fcf99063186ff7 = function(arg0) {
+        const ret = Promise.reject(getObject(arg0));
         return addHeapObject(ret);
     };
     imports.wbg.__wbg_resolve_4851785c9c5f573d = function(arg0) {
@@ -1313,13 +1730,13 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper469 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper626 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 126, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {
         const ret = debugString(getObject(arg1));
-        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len1 = WASM_VECTOR_LEN;
         getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
         getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
@@ -1377,7 +1794,7 @@ function __wbg_get_imports() {
     imports.wbg.__wbindgen_string_get = function(arg0, arg1) {
         const obj = getObject(arg1);
         const ret = typeof(obj) === 'string' ? obj : undefined;
-        var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len1 = WASM_VECTOR_LEN;
         getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
         getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
@@ -1401,6 +1818,8 @@ function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     __wbg_init.__wbindgen_wasm_module = module;
     cachedDataViewMemory0 = null;
+    cachedFloat64ArrayMemory0 = null;
+    cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
 
 

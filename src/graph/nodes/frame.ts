@@ -43,6 +43,7 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 
 /** A frame computation's shape: the core answers it over no rows. */
 function shapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = []): Shape | null {
@@ -2216,6 +2217,15 @@ export class DescribeNode extends GraphNode {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
+  }
+
+  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[C129]] describeDashboard). */
+  describeTiles?: DescribeTile[];
+  static coreWatch = "describeTiles";
+  coreWatched(): void {
+    const tiles = this.describeTiles;
+    const out = this.cachedResult;
+    if (tiles && isFrameValue(out)) setDescribeTiles(out, tiles);
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

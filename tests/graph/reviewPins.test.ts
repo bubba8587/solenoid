@@ -393,11 +393,11 @@ describe("review pins: the exported webpage", () => {
     expect(escapeHtml('<img src=x onerror="alert(1)">')).toBe("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
     expect(escapeHtml("Q3 & beyond")).toBe("Q3 &amp; beyond");
   });
-  it("Mermaid renders in strict mode", async () => {
+  it("Mermaid renders with links and images off", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync("src/graph/components/MermaidView.tsx", "utf8");
-    expect(src).toMatch(/securityLevel: "strict"/);
-    expect(src).not.toMatch(/securityLevel: "loose"/);
+    expect(src).toMatch(/links: false/);
+    expect(src).toMatch(/images: false/);
   });
 });
 

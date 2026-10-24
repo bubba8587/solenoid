@@ -161,13 +161,6 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   }
 }
 
-/** Whether the node's outputs differ by identity from what the cable value store holds, which it then holds. */
-function landed(id: string, outputs: Record<string, unknown>): boolean {
-  const moved = Object.keys(outputs).some((k) => cableValueStore.get(id, k) !== outputs[k]);
-  cableValueStore.setNodeOutputs(id, outputs);
-  return moved;
-}
-
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_view) return;
   clearCollectMemo();
@@ -177,7 +170,8 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
-  const toRender = await _engine.pass(changedNodeId, renderOnly, topologyChanged, landed);
+  cableValueStore.readFrom(_engine);
+  const toRender = await _engine.pass(changedNodeId, renderOnly, topologyChanged);
   if (!toRender) return;
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();

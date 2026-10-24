@@ -581,6 +581,7 @@ fn format_controller(c: &mut Call) -> Answer {
     c.show("unitLocked", V::Bool(locked_by_convert || forwarding));
     let custom_unit = c.field_str("customUnit", "").to_string();
     let out = apply_fc_unit(c, "in", "out", val, &unit, &custom_unit);
+    c.show("unit", V::str(&unit));
     Ok(vec![("out".into(), out)])
 }
 

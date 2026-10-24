@@ -1,13 +1,18 @@
 // [[D102]] graphOnCore, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits
 // What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`) asks the app for: only what the
 // app's stores and frame code know (tree/specs/computation/compute-pass.md § The per-node wrappers). Installed each
-// time the module loads, a trap's fresh instance included.
-import { setBoundaryHost } from "./graphWasm/solenoid_graph.js";
-import { whenGraphEngineLoads, flushPortEdits } from "./graphEditor";
+// time the module loads, a trap's fresh instance included. A direct card (graph-core.md § Direct calls) asks only
+// for its call (`coreHeader`), the card wire both ways (`toCore`, `fromCore`) and, once per pass, the clock and flags.
+import { setBoundaryHost } from "./engineWasm/solenoid_graph.js";
+import { flushPortEdits } from "./graphEditor";
+import { whenWasmEngineLoads } from "./engineWasm";
 import { frameFromRows, toCube, isFrameValue, type FrameValue } from "./frame";
 import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { displayMagnitudeOf } from "./unitBridge";
-import { carryMatrixUnit, type UnitCell } from "./unitValue";
+import { carryMatrixUnit, withMatrixUnit, type ColumnUnit, type UnitCell } from "./unitValue";
+import { coreHeader, coreFieldsOf } from "./nodeOnCore";
+import { nodeWire, readNodeReply, jsonDec } from "./nodeWire";
+import { engineClock } from "./coreValues";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { carryFrameSidecars } from "./frameSidecar";
@@ -93,7 +98,7 @@ function cellKinds(a: readonly unknown[]): Uint8Array {
   return k;
 }
 
-whenGraphEngineLoads(() => setBoundaryHost({
+whenWasmEngineLoads(() => setBoundaryHost({
   collect: (ref: FrameRef) => readFrame(ref),
   frameFromRows: (rows: unknown[][]) => frameFromRows(rows),
   toCube: (v: unknown) => toCube(v),
@@ -101,11 +106,28 @@ whenGraphEngineLoads(() => setBoundaryHost({
   carryMatrixUnit: (dst: unknown, src: unknown) => carryMatrixUnit(dst, src),
   listLiteral: (text: string, rung: SocketDataType) => parseListLiteral(text, rung),
   stamp,
+  carrySidecars: (from: FrameValue, to: FrameValue) => carryFrameSidecars(from, to),
   nodeName: (node: object) => displayNameOf(node),
   flags: () => (perfEnabled() ? 1 : 0) | (hasErrorSinks() ? 2 : 0),
-  report: (nodeId: string, err: SolError | null) => reportToErrorSinks(nodeId, err),
+  // `[id, error | null, …]`: every report a pass or a fetch queued, handed over when it ends.
+  report: (reports: unknown[]) => {
+    for (let i = 0; i < reports.length; i += 2) reportToErrorSinks(reports[i] as string, reports[i + 1] as SolError | null);
+  },
   now: () => performance.now(),
   recordNode,
   flushPorts: flushPortEdits,
   cellKinds,
+  header: coreHeader,
+  fields: coreFieldsOf,
+  toCore: (v: unknown) => {
+    const w = nodeWire(v);
+    return w === undefined ? undefined : JSON.stringify(w);
+  },
+  fromCore: (text: string, unit: string | undefined) => {
+    const r = readNodeReply(JSON.parse(text));
+    if (!r) return null;
+    if (unit !== undefined) withMatrixUnit(r.value, jsonDec(JSON.parse(unit)) as ColumnUnit);
+    return [r.value];
+  },
+  clock: () => engineClock().now,
 }));

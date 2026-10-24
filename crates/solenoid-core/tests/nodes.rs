@@ -166,10 +166,12 @@ fn mismatch(case: &Json) -> Option<String> {
     }
     let want = case["display"].as_object().cloned().unwrap_or_default();
     let prior = case["prior"].as_object().cloned().unwrap_or_default();
+    // A saved field the body sets to what it held is in the call's `init`, which the recorder leaves out of `prior`.
+    let saved = case["init"].as_object().cloned().unwrap_or_default();
     let mut set = std::collections::BTreeSet::new();
     for (k, got) in &r.display {
         set.insert(k.clone());
-        let w = want.get(k).or_else(|| prior.get(k));
+        let w = want.get(k).or_else(|| prior.get(k)).or_else(|| saved.get(k));
         let ok = match (got, w) {
             (Shown::Undef, None) => true,
             (Shown::Undef, Some(w)) => w.get("__undef").is_some(),

@@ -39,12 +39,45 @@ export const INIT_EXTRA_FIELD_ORDER = [
   "keyOrder", "pivotView", "detailFields",
 ] as const;
 
+const INIT_INDEX = new Map<string, number>(INIT_FIELD_ORDER.map((k, i) => [k, i]));
+const inherited = new WeakMap<object, number[]>();
+
+/** The positions of the saved names a prototype chain defines (a getter, a method), read once per prototype. */
+function inheritedInitKeys(proto: object | null): number[] {
+  if (!proto) return [];
+  let keys = inherited.get(proto);
+  if (!keys) {
+    const found = new Set<number>();
+    for (let p: object | null = proto; p; p = Object.getPrototypeOf(p)) {
+      for (const k of Object.getOwnPropertyNames(p)) {
+        const i = INIT_INDEX.get(k);
+        if (i !== undefined) found.add(i);
+      }
+    }
+    keys = [...found];
+    inherited.set(proto, keys);
+  }
+  return keys;
+}
+
 export function extractInit(src: GraphNode): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
-  for (const key of INIT_FIELD_ORDER) {
+  // The saved names the card has, own or inherited, in their order ([[C120]] linearWork: a call reads it every pass).
+  const at = [...inheritedInitKeys(Object.getPrototypeOf(n))];
+  for (const k of Object.getOwnPropertyNames(n)) {
+    const i = INIT_INDEX.get(k);
+    if (i !== undefined) at.push(i);
+  }
+  at.sort((a, b) => a - b);
+  let prev = -1;
+  for (const i of at) {
+    if (i === prev) continue;
+    prev = i;
+    const key = INIT_FIELD_ORDER[i];
+    const v = n[key];
     // A method is no field: a split card's `body()` shares its name with a Note's saved `body`.
-    if (key in n && n[key] !== undefined && typeof n[key] !== "function") init[key] = n[key];
+    if (v !== undefined && typeof v !== "function") init[key] = v;
   }
   if (n.funcs && typeof n.funcs === "object") {
     init.funcs = { ...(n.funcs as object) };

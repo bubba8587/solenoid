@@ -1,17 +1,23 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec: a trap in the wasm core answers its call with an error and brings the module
-// back, so the engine outlives it.
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[D102]] graphOnCore: a trap in the wasm module answers its call with an
+// error and brings the module back, so the engine outlives it (tree/specs/computation/graph-core.md § Traps).
 import { it, expect } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { loadWasmEngineSync, wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
+import { wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
 import { computeColumnOnEngine, collectPreview, runFrameUnary, useWasmBackend } from "../../src/graph/frameBackend";
 
-it("a trap answers its own call and leaves later calls on a working core", () => {
-  loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
+/** The fresh instance comes a microtask after the trap, once the stack has left the module. */
+const recovered = () => Promise.resolve();
+
+it("a trap answers its own call and leaves later calls on a working core", async () => {
   expect(onCore(() => wasmInvokeSync("engine_trap"), "trapped")).toBe("trapped");
-  // Hundreds of traps on one instance leave its stack pointer out of memory; each one gets a fresh instance.
-  for (let i = 0; i < 500; i++) expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
+  // Until the swap, every call answers the trap rather than reach the dead instance.
+  expect(() => wasmInvokeSync("engine_clear")).toThrow(CoreTrap);
+  await recovered();
+  // Hundreds of traps, each on its own fresh instance.
+  for (let i = 0; i < 300; i++) {
+    expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
+    await recovered();
+  }
   expect(wasmEngineLoaded()).toBe(true);
   expect(evaluateOnCore("SUM(xs) + LEN(t)", { xs: [1, 2, 3], t: "abc" })).toBe(9);
   expect(callOnCore("SUM", [[1, 2], [3]])).toBe(6);
@@ -22,12 +28,12 @@ it("a trap answers its own call and leaves later calls on a working core", () =>
 // A verb's failure rejects its preview, so the error guard makes it the node's own error and nothing downstream reads a
 // frame that is gone.
 it("a lazy frame left in a dead instance rejects its preview with #REF!", async () => {
-  loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
   useWasmBackend();
   try {
     const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
     const ref = await runFrameUnary(frame, { kind: "sort", by: "a", dir: "asc" });
     expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
+    await recovered();
     await expect(collectPreview(ref)).rejects.toMatchObject({ code: "#REF!" });
   } finally {
     useWasmBackend();

@@ -79,7 +79,7 @@ describe("verb chain backend cost through real node data()", () => {
 // set, or coerceInputs collects its INPUT and the chain re-sources mid-way — the
 // 2026-08-25 finding (BindColumns / FillBlanks / ReplaceValues / Window were missing).
 import { readFileSync } from "node:fs";
-import { isLazyFrameNode } from "../../src/graph/graphWasm/solenoid_graph.js";
+import { isLazyFrameNode } from "../../src/graph/engineWasm/solenoid_graph.js";
 
 describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
   it("frame.ts: a class calling runFrame* is lazy", () => {

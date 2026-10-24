@@ -13,19 +13,21 @@ owns how the model and the engine are hosted.
 
 ## The module
 
-- **Its own WebAssembly module**, `src/graph/graphWasm/`, apart from the formula core's `engineWasm/`. The formula
-  core is dropped and instantiated afresh after a trap ([[rust-core]] § Where it runs), and a node's formula call runs
-  while the graph's own frames are on the stack; one instance would lose the graph to any trapping formula.
-- **Built** by `npm run build:wasm` (`node scripts/build-wasm.mjs graph` for this one) and stamped like the core
-  (`source-stamp.txt`, `wasmStamp.test.ts`).
+- **One WebAssembly module with the core**, `src/graph/engineWasm/`: `crates/solenoid-graph` depends on
+  `crates/solenoid-core` and is the one `cdylib`, so the engine calls a card's body in Rust (§ Direct calls) and the
+  formula core's commands (`engine_invoke` and the rest) come out of the same instance. A trap anywhere takes the
+  graph with it, which the graph survives by rebuilding from its handles (§ Traps); the author traded the separate
+  instance for direct calls (2026-10-24).
+- **Built** by `npm run build:wasm` and stamped over both crates and the vendored ones (`source-stamp.txt`,
+  `wasmStamp.test.ts`).
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
-  app's first render waits for `loadGraphEngine()` with no deadline (`main.tsx`). An editor or engine made before it
-  loads is fine, since the core is built on first use (`GraphEditor.core()`); the first edit then rejects with "the
-  graph engine isn't loaded". Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at
-  `graphWasmUrl` and calls `loadGraphEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like
-  every script that imports the app).
+  app's first render waits for `loadWasmEngine()` (`engineWasm.ts`) with no deadline (`main.tsx`). An editor or
+  engine made before it loads is fine, since the core is built on first use (`GraphEditor.core()`); the first edit then
+  throws "the wasm engine isn't loaded". Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes
+  at `wasmUrl` and calls `loadWasmEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every
+  script that imports the app).
 
 ## The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)
 
@@ -42,9 +44,9 @@ owns how the model and the engine are hosted.
 - **Ids are the core's.** `getUID()` (`graphModel.ts`) is Ruggine's `get_uid` (`uid()` in the graph module): sixteen
   lowercase hex digits from eight secure random bytes, drawn from the platform in batches. A node or cable built
   before the module loads throws.
-- **What TypeScript still holds** (until the node bodies and their state move, D102's later phases): each node's
-  JavaScript object (its class, fields, `data()`) and each cable's, kept in the core beside the Rust node and cable and
-  in the handle's id → object maps. `getNode` and `getConnection` look up the map; `getNodes()` and
+- **What TypeScript still holds**: each node's JavaScript object (its class, its saved fields, the `data()` of a card
+  that isn't direct) and each cable's, kept in the core beside the Rust node and cable and in the handle's id →
+  object maps; a direct card's shown fields live on the Rust node (§ Direct calls). `getNode` and `getConnection` look up the map; `getNodes()` and
   `getConnections()` return a fresh array (rete's `slice()`) of a list rebuilt once per change, in the core's
   insertion order, so a loop over them never crosses into the module.
 - **Node classes are `GraphNode`s** (`graphModel.ts`, with `GraphSocket`, `GraphInput`, `GraphOutput` and
@@ -65,11 +67,6 @@ owns how the model and the engine are hosted.
   change (the edit answers `false`, and a cancelled `clear` signals `clearcancelled`). A pipe that throws stops the
   chain and the edit rejects with what it threw. Pipes are synchronous. The handle's own pipe is the first, so
   `getNode(id)` answers in a `nodecreated` pipe and not in a `nodecreate` one, as rete's did.
-  `cleared`, in rete's order (`clear` removes every cable, then every node, one signal each). A pipe returns the
-  context to go on; returning nothing stops the chain, which on a present-tense signal cancels the change (the edit
-  answers `false`, and a cancelled `clear` signals `clearcancelled`). A pipe that throws stops the chain and the edit
-  rejects with what it threw. Pipes are synchronous. The handle's own pipe is the first, so `getNode(id)` answers in a
-  `nodecreated` pipe and not in a `nodecreate` one, as rete's did.
 - **A composite's own editor is known to the one holding it.** When a node with an `internalEditor` joins an editor,
   that editor's core records the inner one's (`nest`; `unnest` when it leaves), so the pass can retarget an edit made
   inside it (§ The pass).
@@ -83,18 +80,19 @@ owns how the model and the engine are hosted.
 - `DataflowEngine` keeps rete-engine's shape: a handle attached with `editor.use(engine)`, after which its calls run
   on that editor's core. Nodes already in the editor when it is attached are registered then. Before that, a call
   fails with "DataflowEngine isn't attached to NodeEditor".
-- The nodes stay the app's JavaScript objects. The core calls the node's own `data(inputs)` with the node as `this`
-  through the input boundary (§ The input boundary), awaits a returned promise, and takes any other return as the
-  outputs. `new DataflowEngine({ raw: true })` calls `data()` as it is, rete-engine's shape, for the engine's own tests.
+- The nodes stay the app's JavaScript objects. The core calls a direct card's body in Rust (§ Direct calls) and every
+  other node's own `data(inputs)` with the node as `this` through the input boundary (§ The input boundary), awaits a
+  returned promise, and takes any other return as the outputs. `new DataflowEngine({ raw: true })` calls `data()` as it is, rete-engine's shape, for the engine's own tests.
   The input and output keys are the core's (§ The model), so a node that changes its sockets needs nothing
   re-registered.
 - `compute(id, inputs)` runs one node of the editor as a fetch would, boundary included, without reading or filling
   its cache (a composite's simulation steps); `computeNode(node, inputs, data?)`, outside any editor, runs a node
   object through the boundary with its ports read off the object, answering at once when nothing it does waits (the
   tests drive one node this way, `tests/graph/boundaryKit.ts`).
-- **Values cross by reference**: an output value is the same object in every input it reaches and in what `fetch`
-  returns, so the pass's change test by identity holds. The outputs object `fetch` returns is built per fetch, in the
-  node's key order; `fetchAll` hands `onNode` the same object it puts in its map.
+- **Values cross by reference**: an output value is one cell in the core (`value.rs`), so it is the same object in
+  every JavaScript input it reaches and in what `fetch` returns, and the same core value in every direct card's. The
+  outputs object `fetch` returns is built per fetch, in the node's key order, converting what JavaScript hasn't seen;
+  `fetchAll` hands `onNode` the same object it puts in its map.
 - **Errors**: through the boundary, a throw or rejection from `data()` is the guard's error value on every output. On
   a raw engine it rejects the fetch with that same value. A reset clearing a fetch in
   flight rejects it with a new `Cancelled` (`dataflowEngine.ts`), and a `Cancelled` a node passes up from an inner
@@ -119,17 +117,19 @@ The engine answers the walks over its editor's graph and runs the pass; `graphCo
 | `fetchAll(onNode?, stopOnCancel)` | Fetches every node in the editor's order, skipping one removed mid-pass; a cancelled fetch records `null`, or with `stopOnCancel` ends the pass with `null`; any other rejection rejects the pass. |
 | `seedLoops(message?)` | The loop members, each seeded with `#CIRC!` on every output and its card's cached fields ([[compute-pass]] § The model pass). |
 | `computeAll(id?)` | The model pass: `invalidate(id, false)`, `seedLoops()`, `fetchAll()`. |
-| `pass(changed?, renderOnly?, topology, onNode)` | The app's pass body ([[compute-pass]] § The pass body): `changed` retargeted to the outermost composite holding it (each on the way marked edited), `invalidate`, the editor's cached loop set (reused by a value edit's targeted pass), seeding, `fetchAll` with stop on cancel and `onNode(id, outputs)` answering whether the node's outputs changed, then the nodes to re-render in the editor's order (`render_set`); `null` when a reset cancelled it. |
+| `pass(changed?, renderOnly?, topology)` | The app's pass body ([[compute-pass]] § The pass body): `changed` retargeted to the outermost composite holding it (each on the way marked edited), `invalidate`, the editor's cached loop set (reused by a value edit's targeted pass), seeding, `fetchAll` with stop on cancel, each node's outputs landed in the core (`landed(id, key)` reads one) and compared with what it landed before, then the nodes to re-render in the editor's order (`render_set`); `null` when a reset cancelled it. |
 | `markNested(id)` | Marks every composite holding `id` as edited inside and answers the outermost one. |
 
 ## The input boundary (`boundary.rs`, `nodeBoundary.ts`)
 
 The engine's call of every node: the error guard, the lazy frames' collect, the unit boundary, each rung's coercion and
 the typed list literals on the way in; the frame format stamp and the guard's origin tagging on the way out
-([[compute-pass]] § The per-node wrappers, § The error guard, § Arrival coercion, which own the behavior). The values
-are walked in place through `js_sys`; each array's cell kinds come over in one call (`cellKinds`), so a walk touches
-only the cells it changes. What only the app knows comes from `nodeBoundary.ts` through `setBoundaryHost`, which
-`dataflowEngine.ts` imports, so any engine has it.
+([[compute-pass]] § The per-node wrappers, § The error guard, § Arrival coercion, which own the behavior). Two
+implementations give the same answers: `boundary_core.rs` over core values for a direct card (§ Direct calls), and
+`boundary.rs` over the JavaScript values a JavaScript card takes, walked in place through `js_sys`, each array's cell
+kinds read in one call (`cellKinds`) so a walk touches only the cells it changes. `cellKinds` stays while TypeScript
+cards take JavaScript values: walking each cell across the boundary made a 100k list 25 ms. What only the app knows
+comes from `nodeBoundary.ts` through `setBoundaryHost`, which `dataflowEngine.ts` imports, so any engine has it.
 
 ## The session (`session.rs`, `passSession.ts`)
 
@@ -141,23 +141,26 @@ the rest); `passSession.ts` keeps the snapshot each answers, which is what `calc
 
 ## Traps
 
-A panic in the core runs the module's panic hook (`setPanicHandler`) before the trap; a trap with no panic (a stack
-overflow) surfaces as a `WebAssembly.RuntimeError` at the call that crossed in. Either way:
+A trap anywhere in the module (a formula, a card body, the graph's own code) drops the instance. A panic runs the
+module's panic hook (`setPanicHandler`) first; a trap with no panic (a stack overflow) surfaces as a
+`WebAssembly.RuntimeError` at the call that crossed in. Either way (`engineWasm.ts`):
 
-- every fetch and `fetchAll` still waiting rejects with `GraphTrap`, and so does the call that trapped, so a pass ends
-  instead of waiting forever;
+- the call that trapped throws `CoreTrap`: a formula or a card's body answers `#ERROR!` with the restart message, and
+  every fetch and `fetchAll` still waiting rejects with `CoreTrap`, so a pass ends instead of waiting forever;
 - once the stack has left the module (a microtask later), the instance is dropped and the compiled module
-  instantiated afresh (`__wbg_reset`), and every live `GraphEditor` builds a new core from what its handle holds:
-  its pipes and the engine in their order, then its nodes (with their ports as they stand) and cables, with the
-  pipes held silent so nothing reruns a node's install or a canvas sync. The engine's caches start empty, so the
-  next pass recomputes everything; until then a call throws `GraphTrap`;
-- the fresh instance gets the boundary's host again and takes back the session's last snapshot (`whenGraphEngineLoads`);
-  a rerun a pass had coalesced is gone;
+  instantiated afresh (`__wbg_reset`); the load hooks run again (`whenWasmEngineLoads`: the boundary's host, the
+  session's last snapshot, the handle numbering past the dead instance's), and every live `GraphEditor` builds a new
+  core from what its handle holds: its pipes and the engine in their order, then its nodes (with their ports as
+  they stand) and cables, with the pipes held silent so nothing reruns a node's install or a canvas sync. The caches
+  and what the core held for each card (§ Direct calls) start empty, so the next pass recomputes everything; until
+  the swap a call throws `CoreTrap`, and a rerun a pass had coalesced is gone;
+- a frame the verb backend held in the dead instance is gone, so a verb over it answers `#REF!` until the document
+  reloads;
 - what the dead instance left in JS never reaches the new one: `build-wasm.mjs` patches wasm-bindgen's glue so a
   dead instance's closure (a node's promise settling late) does nothing, its finalizers free nothing, and the object
   heap starts empty. The build fails if the glue reads differently.
 
-`graphTrap()` is the tests' trigger (`graphTrap.test.ts`).
+`graphTrap()` and `engine_trap` are the tests' triggers (`graphTrap.test.ts`, `coreTrap.test.ts`).
 
 ## Performance
 
@@ -183,28 +186,65 @@ about 0.05 ms against 0.01. Walking each cell across the boundary had made the s
 removed. Loading personal-finance in the built app (Chromium, median of five loads): the first full pass computed in
 472 ms and the cards settled in 3.3 s, against 507 ms and 3.25 s before.
 
-## What blocks phase C (card bodies called with no JavaScript hop)
+Calling the cards on the core directly (2026-10-24, Node, median of 15 to 30 runs on a shared machine, before and
+after on the same run): a value edit's pass, which reads no card's call again, is where it shows. A chain of 1,000
+Arithmetic cards recomputed from its source took 5.3 ms against 26 (a number) and 5.9 against 39 (a 10-item list);
+20 of them over a 100,000-item list 162 ms against 1,231, no list crossing between them. Personal-finance copied
+eight times (1,232 nodes): one input's cone 2.1 ms against 3.8 through the app's pass. A pass that clears every
+cache reads each direct card's call again, which costs about what the old crossing did: the same graph's full app
+pass 81 ms against 71 by wall clock, 6.1 s against 6.3 s of CPU over 60 passes; `perfScaling.test.ts`, which also
+converts every output for `fetchAll`, 81 against 69. Loading personal-finance in the built app (Chromium, median of
+five loads): the first full pass computed in 501 ms against 549, the cards settled at 1.52 s against 1.53 s, every
+card's text the same.
 
-- **The values are JavaScript objects.** The engine holds `JsValue`s and every card body on the core (`nodeOnCore.ts`)
-  encodes its inputs into the core's wire and decodes its answer, in a second module (`engineWasm/`). Calling a body
-  directly needs the values in Rust between cards, with their identity (the change test, the format and frame memos,
-  the backend's upload cache, which key on the object) carried by something other than object identity.
-- **Two modules.** The graph and the card bodies are separate instances so a formula's trap can't take the graph
-  with it ([[rust-core]] § Where it runs). One call from the graph into a body needs either one module (and a trap
-  story for it) or a host hop between them.
-- **What the boundary still asks TypeScript for**: lazy frames (`readFrame`, the frame backend's plans), building a
-  frame or cube from rows, unit display magnitudes (the FC unit catalog's resolvers), list literal reading
-  (`coerceFrameCell`, date text), format picks (`frameFormatStore`), display names (the catalog), the error sinks
-  (the Problems store) and the perf probe. Each is a TypeScript module the card bodies would need from Rust too.
-- **Per-node state on the JavaScript object**: `cachedResult` and the other fields the guard and loop seeding set,
-  `lastGen` and the volatile draws, `_resolvedAngleMode` (`resolveTrigModes`, which walks the FC annotations in
-  TypeScript), a composite's `markInternalEdit`; `static coreFields` already sends what a body reads.
-- **Cards whose bodies are still TypeScript** (node-bodies.md's table): a direct call covers only the ported ones.
+## Direct calls (phase C)
+
+The engine calls a card's body on the core in Rust, with no JavaScript between two such cards.
+
+- **Which cards** (`nodes::DIRECT`; `directBodies.test.ts` holds the list to the classes' source). A class whose
+  `data()` is its body on the core and nothing else (`return nodeOnCore(this, inputs)`), and the classes in
+  `nodes::OFF_CORE` (Display, Format Controller), whose `data()` also hands on in TypeScript what the core can't hold:
+  when their pass-through input holds a LAMBDA or a value the card wire doesn't carry, their `data()` runs instead. A
+  class may name a field its body sets in `static coreWatch`; when a body changes it, `coreWatched()` runs in
+  TypeScript (Expression's and Series' socket retype), from `nodeOnCore` and the direct call alike. Every other card is
+  called in JavaScript as before: the cards whose body is TypeScript (Note, Report, a composite, a Conduit) and the
+  shells around a body on the core (an upload, a read, a draw, an alert), whose `nodeOnCore` still crosses.
+- **Values live where they were made** (`value.rs`). A value on a cable is one shared cell holding the form its
+  producer made, a core value (`V`, with a table's unit beside it) or a JavaScript object, and the other form once a
+  reader of the other kind first asks for it, kept beside the first so every reader of that kind gets the same one.
+  A direct card's inputs are core values, a JavaScript card's are objects; converting is the card wire
+  (`nodeWire.ts`: `toCore`, `fromCore`), one host call per value converted, never per cell. An output that is one of
+  the card's inputs as it came is that very cell. Errors keep their origin on the wire ([[E9]] errorsKeepOrigin).
+- **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case,
+  `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy
+  frame's collect, a frame ref's format picks.
+- **What the core keeps per card.** Its call (`coreHeader`): class, saved fields, literal maps, sockets, outputs,
+  adopted types, the boundary's keys, its typed list literals read, which cached fields the object has, its frame
+  format picks. It is read from the object when the node joins, when its ports change, when a pass names it as the
+  change, when every cache is cleared, and on `compute`; the text is stamped, so a read that finds what the core
+  already holds sends nothing and parses nothing. A class's `static coreFields` are read on every call. The fields a
+  body sets for its component (`cachedResult` and the rest) live on the Rust node: the object reads each through an
+  accessor installed the first time the body shows it (`GraphEditor.adopt`), converted when read, so a field no
+  component reads never crosses ([[C120]] linearWork). Writing one from JavaScript stores it in the core; a node
+  leaving the editor gets them back as plain properties holding what they showed.
+- **The change test and cable values.** The core keeps each node's last landed outputs and compares there (a
+  primitive by value, anything else by identity, as `!==` did); `cableValueStore` reads an output from the engine
+  that ran the pass when something asks (`landed`), converting it then. The pass makes no JavaScript call per node.
+- **Once per pass, not per node**: the boundary's flags (perf probe, error sinks), the clock a body reads, and the
+  error sinks' reports, queued and handed over in one call when the pass or fetch ends.
+- **The recorder** (`FREEZE_NODES`) turns direct calls off (`setDirectCalls`, `tests/setup/graphEngine.ts`), so it
+  sees every call the suite makes through `data()`.
+- **Still on the JavaScript object**: the volatile draws (`lastGen`; their shells draw and send it in `coreFields`),
+  `_resolvedAngleMode` (`resolveTrigModes` walks the FC annotations in TypeScript before each pass), a composite's
+  `markInternalEdit`.
 
 ## Enforcement
 
 - `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`: the walks, the model and its port sets
-  (`tests/model.rs`), the session's transitions (`tests/session.rs`), natively.
+  (`tests/model.rs`), the session's transitions (`tests/session.rs`), the boundary on core values against the frozen
+  boundary answers (`tests/boundary_core.rs`), natively.
+- `directBodies.test.ts`: the direct classes are the ones whose `data()` is their body, and a direct card computes
+  in an editor without its `data()` running.
 - `coreBoundary.test.ts`: the input boundary's frozen answers (`fixtures/core/boundary-*`).
 - `dataflowEngine.test.ts`: values by reference, errors as themselves, `Cancelled`, seeding, attaching late.
 - `graphEditor.test.ts`: signal order, a cancelling pipe, a throwing pipe, removed pipes, ports and their order in

@@ -15,6 +15,8 @@ use ruggine_engine::{Error, Inputs, Outputs};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
+use crate::value::Val;
+
 /// Classes that receive a lazy frame as its ref, uncollected.
 pub(crate) const LAZY_FRAME_NODES: [&str; 25] = [
     "DistinctNode",
@@ -57,6 +59,24 @@ pub(crate) const SEES_ERRORS: [&str; 10] = [
     "CompositeNode",
     "CompositeOutputNode",
 ];
+
+/// The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
+#[wasm_bindgen(js_name = directBodies)]
+pub fn direct_bodies() -> Vec<String> {
+    solenoid_core::nodes::DIRECT
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+/// The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+#[wasm_bindgen(js_name = offCoreBodies)]
+pub fn off_core_bodies() -> Vec<String> {
+    solenoid_core::nodes::OFF_CORE
+        .iter()
+        .map(|(k, _)| k.to_string())
+        .collect()
+}
 
 #[wasm_bindgen(js_name = isLazyFrameNode)]
 pub fn is_lazy_frame_node(class: &str) -> bool {
@@ -181,21 +201,27 @@ fn keys() -> Rc<Keys> {
 }
 
 /// What only the app's stores and frame code know, asked of TypeScript (`nodeBoundary.ts`).
-struct BoundaryHost {
-    collect: Function,
+pub(crate) struct BoundaryHost {
+    pub(crate) collect: Function,
     frame_from_rows: Function,
     to_cube: Function,
     display_magnitude: Function,
     carry_matrix_unit: Function,
     list_literal: Function,
-    stamp: Function,
-    node_name: Function,
+    pub(crate) stamp: Function,
+    pub(crate) carry_sidecars: Function,
+    pub(crate) node_name: Function,
     flags: Function,
     report: Function,
-    now: Function,
-    record_node: Function,
+    pub(crate) now: Function,
+    pub(crate) record_node: Function,
     flush_ports: Function,
     cell_kinds: Function,
+    pub(crate) header: Function,
+    pub(crate) fields: Function,
+    pub(crate) to_core: Function,
+    pub(crate) from_core: Function,
+    clock: Function,
 }
 
 /// Installs what the boundary asks the app for; every engine call that runs a node needs it.
@@ -216,6 +242,7 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
         carry_matrix_unit: f("carryMatrixUnit")?,
         list_literal: f("listLiteral")?,
         stamp: f("stamp")?,
+        carry_sidecars: f("carrySidecars")?,
         node_name: f("nodeName")?,
         flags: f("flags")?,
         report: f("report")?,
@@ -223,15 +250,89 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
         record_node: f("recordNode")?,
         flush_ports: f("flushPorts")?,
         cell_kinds: f("cellKinds")?,
+        header: f("header")?,
+        fields: f("fields")?,
+        to_core: f("toCore")?,
+        from_core: f("fromCore")?,
+        clock: f("clock")?,
     };
     HOST.with(|h| *h.borrow_mut() = Some(Rc::new(made)));
     Ok(())
 }
 
-fn host() -> Result<Rc<BoundaryHost>, Thrown> {
+pub(crate) fn host() -> Result<Rc<BoundaryHost>, Thrown> {
     HOST.with(|h| h.borrow().clone()).ok_or_else(|| {
         Thrown::Message("the graph core's boundary host isn't set (nodeBoundary.ts)".into())
     })
+}
+
+/// What a pass or a fetch reads from the app once, not once per node: the perf probe's and the error sinks' flags,
+/// and the clock a body reads; and the error sinks' reports, handed over together when it ends.
+#[derive(Default)]
+struct Entry {
+    flags: u32,
+    clock: Option<solenoid_core::excel_functions::Clock>,
+    reports: Vec<(String, Option<Val>)>,
+}
+
+thread_local! {
+    static ENTRY: RefCell<Entry> = RefCell::new(Entry::default());
+}
+
+/// A pass, a fetch or one node's call starts: the flags and the clock as they stand now.
+pub(crate) fn enter() {
+    let Ok(h) = host() else { return };
+    let flags = h
+        .flags
+        .call0(&JsValue::NULL)
+        .ok()
+        .and_then(|b| b.as_f64())
+        .unwrap_or(0.0) as u32;
+    let clock = h
+        .clock
+        .call0(&JsValue::NULL)
+        .ok()
+        .and_then(|n| n.as_f64())
+        .map(|now| solenoid_core::excel_functions::Clock { now });
+    ENTRY.with(|e| {
+        let mut e = e.borrow_mut();
+        e.flags = flags;
+        e.clock = clock;
+    });
+}
+
+pub(crate) fn perf_on() -> bool {
+    ENTRY.with(|e| e.borrow().flags & 1 != 0)
+}
+
+fn sinks_on() -> bool {
+    ENTRY.with(|e| e.borrow().flags & 2 != 0)
+}
+
+pub(crate) fn clock() -> Option<solenoid_core::excel_functions::Clock> {
+    ENTRY.with(|e| e.borrow().clock)
+}
+
+/// The first error on a node's outputs (or `None` when they are clean), for the error sinks.
+pub(crate) fn queue_report(id: &str, err: Option<Val>) {
+    if sinks_on() {
+        ENTRY.with(|e| e.borrow_mut().reports.push((id.to_owned(), err)));
+    }
+}
+
+/// Hands the queued reports to the error sinks in one call: `report([id, error | null, …])`.
+pub(crate) fn flush_reports() {
+    let reports = ENTRY.with(|e| std::mem::take(&mut e.borrow_mut().reports));
+    if reports.is_empty() {
+        return;
+    }
+    let Ok(h) = host() else { return };
+    let flat = Array::new();
+    for (id, err) in reports {
+        flat.push(&JsValue::from_str(&id));
+        flat.push(&err.map_or(JsValue::NULL, |e| e.js()));
+    }
+    let _ = h.report.call1(&JsValue::NULL, &flat);
 }
 
 /// What a node's call threw, before the guard reads it.
@@ -275,7 +376,7 @@ pub(crate) fn is_sol_error(v: &JsValue) -> bool {
     flag(v, &keys().sol_error)
 }
 
-fn is_frame_ref(v: &JsValue) -> bool {
+pub(crate) fn is_frame_ref(v: &JsValue) -> bool {
     v.is_object() && Reflect::has(v, &keys().frame_ref).unwrap_or(false)
 }
 
@@ -812,10 +913,10 @@ fn js_trim_is_empty(s: &str) -> bool {
 /// What a class is, read once when its node joins the editor.
 pub(crate) struct Facts {
     pub class: String,
-    lazy: bool,
-    sees: bool,
-    unit_aware: bool,
-    passthrough: bool,
+    pub lazy: bool,
+    pub sees: bool,
+    pub unit_aware: bool,
+    pub passthrough: bool,
 }
 
 fn passthrough_specs(object: &Object) -> Option<Array> {
@@ -995,7 +1096,6 @@ pub(crate) struct Call {
     pub class: String,
     host: Rc<BoundaryHost>,
     name: RefCell<Option<JsValue>>,
-    sinks: bool,
 }
 
 impl Call {
@@ -1019,13 +1119,8 @@ impl Call {
         o
     }
 
-    fn report(&self, err: &JsValue) {
-        if self.sinks {
-            let _ = self
-                .host
-                .report
-                .call2(&JsValue::NULL, &self.id.as_str().into(), err);
-        }
+    fn report(&self, err: Option<&JsValue>) {
+        queue_report(&self.id, err.map(|e| Val::from_js(e.clone())));
     }
 
     /// Every output the error; the node's cached result fields too.
@@ -1059,7 +1154,7 @@ impl Call {
         if Reflect::has(o, &k.cached_payload).unwrap_or(false) {
             let _ = Reflect::set(o, &k.cached_payload, &JsValue::NULL);
         }
-        self.report(&tagged);
+        self.report(Some(&tagged));
         out
     }
 
@@ -1171,10 +1266,8 @@ impl Call {
             }
             outputs.insert(key.as_string().unwrap_or_default(), self.with_origin(v));
         }
-        if self.sinks {
-            let found = outputs.values().find_map(find_cell_error);
-            self.report(&found.unwrap_or(JsValue::NULL));
-        }
+        let found = outputs.values().find_map(find_cell_error);
+        self.report(found.as_ref());
         Ok(outputs)
     }
 }
@@ -1200,6 +1293,11 @@ fn from_thrown(t: Thrown) -> JsValue {
             sol_error("#ERROR!", &format!("{FAILED}{}", js_string(&e)))
         }
     }
+}
+
+/// What a node threw or rejected with, as the guard's error.
+pub(crate) fn thrown_error(e: JsValue) -> JsValue {
+    from_thrown(Thrown::Js(e))
 }
 
 /// The first error a node is handed, and the input it came on.
@@ -1250,19 +1348,12 @@ pub(crate) fn call<'a>(
         Ok(h) => h,
         Err(t) => return ready(Err(super::wasm::thrown(from_thrown(t)))),
     };
-    let bits = h
-        .flags
-        .call0(&JsValue::NULL)
-        .ok()
-        .and_then(|b| b.as_f64())
-        .unwrap_or(0.0) as u32;
     let call = Call {
         object: object.clone(),
         id: ports.id.clone(),
         class: facts.class.clone(),
         host: h,
         name: RefCell::new(None),
-        sinks: bits & 2 != 0,
     };
     let inputs: Vec<(String, Vec<JsValue>)> = inputs
         .iter()
@@ -1273,7 +1364,7 @@ pub(crate) fn call<'a>(
             return ready(Ok(call.error_out(err, Some(&slot))));
         }
     }
-    let t0 = (bits & 1 != 0).then(|| now(&call));
+    let t0 = perf_on().then(|| now(&call.host));
     let lazy_refs = !facts.lazy && inputs.iter().any(|(_, arr)| arr.iter().any(is_frame_ref));
     if !lazy_refs {
         return match coerce_all(object, facts, ports, &inputs)
@@ -1333,9 +1424,8 @@ pub(crate) fn call<'a>(
     })
 }
 
-fn now(call: &Call) -> f64 {
-    call.host
-        .now
+pub(crate) fn now(host: &BoundaryHost) -> f64 {
+    host.now
         .call0(&JsValue::NULL)
         .ok()
         .and_then(|t| t.as_f64())
@@ -1348,7 +1438,7 @@ fn timed(call: &Call, t0: Option<f64>) {
         let args = Array::of3(
             &call.id.as_str().into(),
             &call.class.as_str().into(),
-            &JsValue::from_f64(now(call) - t0),
+            &JsValue::from_f64(now(&call.host) - t0),
         );
         let _ = Reflect::apply(&call.host.record_node, &JsValue::NULL, &args);
     }

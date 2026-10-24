@@ -20,7 +20,10 @@ then the Rust held to them, then the TypeScript body deleted.
 
 ## The call (`nodeOnCore.ts`, `engine_node`)
 
-A ported class's `data()` is `return nodeOnCore(this, inputs)`. It sends:
+A ported class's `data()` is `return nodeOnCore(this, inputs)`. In an editor the engine doesn't call it: such a card is
+direct, and its body runs in Rust on the values already there, the call below kept in the core
+([[graph-core]] § Direct calls). `nodeOnCore` is what a shell around a body, a test driving `data()` and the recorder
+call. It sends:
 
 | Field | What |
 |---|---|

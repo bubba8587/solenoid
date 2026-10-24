@@ -596,6 +596,9 @@ impl serde::Serialize for Out<'_> {
                 if let Some(r) = e.reference {
                     m.serialize_entry("ref", &r)?;
                 }
+                if let Some(o) = &e.origin {
+                    m.serialize_entry("origin", &o.to_json())?;
+                }
                 m.end()
             }
             V::List(items) => {

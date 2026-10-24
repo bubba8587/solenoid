@@ -10,7 +10,8 @@ import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
 import { GraphConnection, GraphNode } from "../src/graph/graphModel";
 import { DataflowEngine } from "../src/graph/dataflowEngine";
-import { GraphEditor, graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../src/graph/graphEditor";
+import { GraphEditor } from "../src/graph/graphEditor";
+import { loadWasmEngineSync, wasmUrl } from "../src/graph/engineWasm";
 import * as Nodes from "../src/graph/nodeClasses";
 import type { Schemes } from "../src/graph/schemes";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
@@ -156,7 +157,7 @@ async function main() {
     }
     g = graph as unknown as SavedGraph;
   }
-  if (!graphEngineLoaded()) loadGraphEngineSync(readFileSync(graphWasmUrl));
+  loadWasmEngineSync(readFileSync(wasmUrl));
   const out = await runGraph(g, opts);
   console.log(JSON.stringify(out, null, 2));
 }

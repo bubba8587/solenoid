@@ -64,7 +64,7 @@ Two modules look like pure value code but reach the graph model, and are the usu
 
 ### Heavy libraries load lazily
 
-recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `mermaid` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. A source sweep enforces it: exactly one file under `src/` imports from `recharts`, and that file is `components/chartRender.tsx`.
+recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `pele` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. A source sweep enforces it: exactly one file under `src/` imports from `recharts`, and that file is `components/chartRender.tsx`.
 
 recharts is the largest optional dependency, and most documents never draw a chart. On the web ([[B2]] webTryDesktopFull) the first load is the product's first impression, and one static import anywhere in the card tree drags the whole library into the main bundle. Reopen if charts become a core surface that most documents use, or the canvas figure views replace recharts.
 

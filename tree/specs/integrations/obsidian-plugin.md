@@ -259,8 +259,8 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
    **The graph core** ([[graph-core]]) is not shimmed. The bundle reaches `graphModel.ts` (through `sockets.ts`),
    whose node and cable ids come from the graph module, so it carries that module's glue and never instantiates it:
    a chip or a popup builds no node and computes nothing. Code built on the plugin's modules that does build a node or
-   a cable, run an engine or a pass, or change the calc mode loads the graph module first (`loadGraphEngine()`,
-   `graphEditor.ts`; and `loadWasmEngine()`, `engineWasm.ts`, for the card bodies), as the app's `main.tsx` does. The
+   a cable, run an engine or a pass, or change the calc mode loads the module first (`loadWasmEngine()`,
+   `engineWasm.ts`), as the app's `main.tsx` does. The
    chips, the popups and the YAML readers need neither.
 3. **Every chip and the one popup layer render in Shadow DOM** (`shadow.ts`), because Obsidian
    and its themes style bare `button`, `input`, `select` and checkboxes. The build moves

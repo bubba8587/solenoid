@@ -2,8 +2,6 @@
 // The Rust core against its frozen answers (coreFixtures.ts): the fixtures are the spec, and one changes only in the
 // commit that changes the behaviour, by FREEZE_CORE=<suite> answering the frozen cases again through the core.
 import { describe, it, expect, beforeAll, vi } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { isSolError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { parseFormula } from "../../src/graph/excelFormula";
@@ -14,16 +12,14 @@ import { coreValue, readReply } from "../../src/graph/coreValues";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { ReduceLambdaNode, ByAxisNode } from "../../src/graph/nodes/tableLambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
-import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
+import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import { readFrozen, replay, freezes, writeFrozen, enc } from "./coreFixtures";
 
 // TODAY and NOW read the clock: one moment, in UTC, both when the cases were made and when they replay.
 process.env.TZ = "UTC";
 vi.useFakeTimers({ toFake: ["Date"], now: Date.UTC(2026, 5, 15, 13, 45, 30, 250) });
 
-const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
 beforeAll(() => {
-  loadWasmEngineSync(fs.readFileSync(WASM));
   useWasmBackend();
 });
 

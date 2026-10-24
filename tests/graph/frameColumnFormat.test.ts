@@ -7,13 +7,14 @@ import type { Schemes } from "../../src/graph/schemes";
 import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
-  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode,
+  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode, DescribeNode,
 } from "../../src/graph/nodes/frame";
 import {
   frameSourceToText, frameColumnsToInputText, isFrameValue,
   type FrameColumn, type FrameSource, type FrameValue,
 } from "../../src/graph/frame";
 import { readFrame } from "../../src/graph/frameBackend";
+import { describeTilesOf } from "../../src/graph/describeProfile";
 import { useWasmBackend, clearCollectMemo } from "../../src/graph/frameBackend";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/allocator.json";
@@ -70,6 +71,15 @@ describe("a per-column format rides the frame downstream", () => {
     const b = col(out, "B");
     expect(b.format).toEqual(DEC3);
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("9.877");
+  });
+
+  it("Describe's stamped summary keeps its Dashboard tiles ([[C129]] describeDashboard)", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "A", type: "number", cells: ["1", "2", "4"] }]) });
+    const desc = new DescribeNode();
+    frameFormatStore.set(desc.id, "mean", DEC3);
+    const out = (await chain([input, desc])).frame as FrameValue;
+    expect(col(out, "mean").format).toEqual(DEC3);
+    expect(describeTilesOf(out)?.map((t) => t.name)).toEqual(["A"]);
   });
 
   it("a nearer node's own pick overrides the inherited one", async () => {

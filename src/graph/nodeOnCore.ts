@@ -4,9 +4,11 @@
 // The mechanism is tree/specs/computation/node-bodies.md.
 import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
-import { declaredTypeOf, AdoptiveSocket } from "./sockets";
+import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
+import { parseListLiteral } from "./listLiterals";
+import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
@@ -39,9 +41,81 @@ export function coreInit(node: GraphNode): Record<string, unknown> {
   return init;
 }
 
+const CACHED = ["cachedResult", "cachedValue", "cachedList", "cachedChart", "cachedPayload"] as const;
+
+/** The rungs an unwired input takes a typed list literal on (`boundary_core.rs` `takes_literal`). */
+const LITERAL_RUNGS: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist", "numlist"]);
+
+/** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
+ *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
+ *  `static coreFields` come per call (`coreFieldsOf`). `[stamp, JSON text as jsonEnc writes it]`, or `null` when the
+ *  text is the one the core read under `stamp`. */
+export function coreHeader(node: GraphNode, stamp: number): [number, string] | null {
+  const n = node as unknown as {
+    literals?: unknown; stringLiterals?: Record<string, unknown>; rawInputs?: Iterable<string>; noWidenInputs?: Iterable<string>;
+    ownsListLiterals?: boolean; passthrough?: () => { inputs?: string[] }[];
+  } & Record<string, unknown>;
+  const lits = n.stringLiterals;
+  const lists: [string, unknown][] = [];
+  if (!n.ownsListLiterals && lits && typeof lits === "object") {
+    for (const k in node.inputs) {
+      const rung = node.inputs[k]?.socket.name;
+      const text = lits[k];
+      if (!rung || typeof text !== "string" || text.trim() === "") continue;
+      if (!LITERAL_RUNGS.has(rung)) continue;
+      const w = nodeWire(parseListLiteral(text, rung as SocketDataType));
+      if (w !== undefined) lists.push([k, w]);
+    }
+  }
+  const picks = frameFormatStore.forNode(node.id);
+  const sockets: unknown[] = [];
+  for (const k in node.inputs) {
+    const input = node.inputs[k];
+    sockets.push([k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]);
+  }
+  const outputs: unknown[] = [];
+  for (const k in node.outputs) outputs.push([k, declaredTypeOf(node.outputs[k]?.socket) ?? null, ...adopted(node.outputs[k]?.socket)]);
+  const watch = coreWatchOf(node);
+  const text = jsonText({
+    kind: node.constructor.name,
+    label: node.label || node.constructor.name,
+    init: extractInit(node),
+    coreFields: (node.constructor as { coreFields?: readonly string[] }).coreFields ?? [],
+    ...(watch !== undefined ? { watch } : {}),
+    ...(n.literals ? { literals: n.literals } : {}),
+    ...(lits ? { stringLiterals: lits } : {}),
+    sockets,
+    outputs,
+    passthrough: typeof n.passthrough === "function" ? n.passthrough().flatMap((s) => s.inputs ?? []) : [],
+    raw: [...(n.rawInputs ?? [])],
+    noWiden: [...(n.noWidenInputs ?? [])],
+    ownsListLiterals: n.ownsListLiterals === true,
+    lists,
+    has: CACHED.filter((f) => f in n),
+    ...(picks.size ? { picks: Object.fromEntries(picks) } : {}),
+  });
+  // The core already holds this text, under the stamp it passed: nothing crosses.
+  const last = lastHeader.get(node);
+  if (last && last.stamp === stamp && last.text === text) return null;
+  const made = { stamp: ++headerStamp, text };
+  lastHeader.set(node, made);
+  return [made.stamp, text];
+}
+
+const lastHeader = new WeakMap<GraphNode, { stamp: number; text: string }>();
+let headerStamp = 0;
+
+/** The run-time fields a direct card's class names in `static coreFields`, as of this call. JSON text. */
+export function coreFieldsOf(node: GraphNode, names: readonly string[]): string {
+  const n = node as unknown as Record<string, unknown>;
+  return jsonText(Object.fromEntries(names.map((f) => [f, n[f]])));
+}
+
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
 export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown } & Record<string, unknown>;
+  const watch = coreWatchOf(node);
+  const before = watch === undefined ? undefined : n[watch];
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
@@ -86,5 +160,14 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
     if (k.startsWith("display:")) withMatrixUnit(n[k.slice("display:".length)], unit);
     else withMatrixUnit(out[k], unit);
   }
+  if (watch !== undefined && n[watch] !== before) (node as unknown as Watching).coreWatched();
   return out;
+}
+
+/** A class whose `static coreWatch` names a field its body sets: `coreWatched()` runs after a body that changed it. */
+type Watching = { coreWatched(): void };
+
+/** The field a class's `static coreWatch` names, if any. */
+export function coreWatchOf(node: GraphNode): string | undefined {
+  return (node.constructor as { coreWatch?: string }).coreWatch;
 }

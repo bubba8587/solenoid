@@ -10,14 +10,10 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 ## Dependency updates (walking them one at a time)
 
 Current state (2026-10-10): everything is on latest except what's held below.
-Held: `lodash-es` stays overridden to ^4.18.1 (mermaid 12's `chevrotain` 11.1 asks for 4.17.23, which
-carries two high-severity advisories); drop the override once chevrotain moves off 11.1.
 `@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`); bump them together. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
 bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is a new major).
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
-- [ ] **Mermaid bundles KaTeX 0.16** (two low advisories, `npm audit`): clears when mermaid moves
-  to KaTeX 0.18+; an override would hand mermaid a KaTeX major it wasn't built against.
 
 ## Expect
 - [ ] **Convert units the FC doesn't list show no unit label** (yd, psi, stone, knot and others): the display id resolves the number, but `unitById` has no label for it, so the value box shows a bare number. Give every Convert unit an FC entry, or a label the registry knows.
@@ -359,7 +355,8 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   Obsidian); the author held the behavior until a change is shown rigorous, so the video clicks at the top first.
 - [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
-  drill-through (a value cell opens the source rows behind it, which needs the Pivot's filtered source).
+  drill-through from a value cell (Details lists a leaf's rows; a cell's rows also split by its column item), and
+  Details on a subtotal or the grand total.
 - [ ] **Pivot keeps or drops a missing field?** The card drops a field whose column leaves its source (frame-verbs § pivot),
   meant for a source swap; a column briefly absent drops it too. Keeping it, flagged in Configure Fields, is the
   alternative; the author's call.

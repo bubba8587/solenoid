@@ -21,12 +21,17 @@ pub(crate) struct DisplayUnit {
     pub(crate) offset: f64,
 }
 
+/// The cell's display unit: as the wire resolved it beside the cell, else its id's (a cell a body made, which no wire
+/// resolved).
 pub(crate) fn display_unit(c: &UnitCell) -> Option<DisplayUnit> {
+    let display = c.display.as_deref().filter(|d| !d.is_empty())?;
     match (&c.unit_dim, c.scale) {
-        (Some(dim), Some(scale)) if c.display.as_deref().is_some_and(|d| !d.is_empty()) => {
-            Some(DisplayUnit { dim: dim.clone(), scale, offset: c.offset.unwrap_or(0.0) })
-        }
-        _ => None,
+        (Some(dim), Some(scale)) => Some(DisplayUnit { dim: dim.clone(), scale, offset: c.offset.unwrap_or(0.0) }),
+        _ => crate::unit_catalog::fc_unit_to_unit(display).map(|u| DisplayUnit {
+            dim: u.dim,
+            scale: u.scale,
+            offset: u.offset.unwrap_or(0.0),
+        }),
     }
 }
 

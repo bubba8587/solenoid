@@ -2,12 +2,10 @@
 // Timing, not a check: the Rust engine in WebAssembly over one large frame.
 // `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts` prints the table; a plain run skips it.
 import { describe, it, beforeAll } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { FrameOp } from "../../src/graph/frameOps";
 import type { FrameValue } from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, type FrameHandle } from "../../src/graph/frameBackend";
-import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
+import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import { computeColumnOnEngine } from "../../src/graph/frameBackend";
 
 const ROWS = Number(process.env.BENCH_ROWS ?? 200_000);
@@ -76,7 +74,6 @@ async function timeAsync(run: () => Promise<unknown>, reps = 3): Promise<number>
 
 describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
   beforeAll(() => {
-    loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
     useWasmBackend();
   });
 

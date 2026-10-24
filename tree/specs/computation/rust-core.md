@@ -6,7 +6,7 @@ tags: [spec, computation]
 
 # Spec: the Rust core
 
-Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solenoid's headless core (it began as a port of the TypeScript one), built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
+Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solenoid's headless core (it began as a port of the TypeScript one), built for two targets: WebAssembly for the app, linked into the graph engine's module (`npm run build:wasm` writes `src/graph/engineWasm/`, [[graph-core]] § The module), and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
 
 ## The rule: the Rust is the spec ([[D99]] rustIsSpec)
 
@@ -48,21 +48,23 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
 
 ## Tracking develop
 
-Pinned upstream: `develop` @ `31ce0f7`.
+Pinned upstream: `develop` @ `c7da52b`.
 
-`develop` still runs the TypeScript copies this branch deleted. On each rebase, list what moved in them, port each
-change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back: the TS
-copies here are gone.
+`develop` still runs the TypeScript copies this branch deleted. On each merge of `develop`, list what moved in them,
+port each change into the Rust (and the fixtures it moves), run the checks above and move the pin. Nothing ports back:
+the TS copies here are gone, and a file this branch deleted stays deleted. A change to a card's `data()` in
+`src/graph/nodes/` ports into its body on the core ([[node-bodies]]), and a new card or computation lands there too.
 
 ```
-git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
+git diff c7da52b..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/graph/frameBackend.ts \
   src/graph/valueKinds.ts src/graph/stringOrder.ts src/graph/unitValue.ts src/graph/pivotLayout.ts \
   src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
   src/graph/computedColumnCore.ts src/graph/formulaExtensions.ts src/graph/packs src/graph/nodes/statsOps.ts \
   src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
   src/graph/nodes/textOps.ts src/graph/csv.ts src/graph/financeUnits.ts src/graph/nodes/settleOps.ts \
   src/graph/nodes/payoffOps.ts src/graph/nodes/financeOps.ts src/graph/nodes/listOps.ts src/graph/nodes/fitOps.ts \
-  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts src/graph/nodes/mlOps.ts \
+  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts src/graph/describeProfile.ts \
+  src/graph/nodes/visualOps.ts src/graph/nodes/mlOps.ts \
   src/graph/nodes/signalOps.ts src/graph/unitLattice.ts src/graph/nodes/matrixOps.ts src/graph/nodes/allocateOps.ts \
   src/graph/nodes/distributionOps.ts src/graph/nodes/forecastOps.ts src/graph/nodes/triangleOps.ts \
   src/graph/nodes/coerce.ts src/graph/nodes/indexAccess.ts src/graph/nodes/astroOps.ts src/graph/nodes/emSpectrumOps.ts \
@@ -71,10 +73,11 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 
 A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
 
-Moved on develop since the pin (checked at `3a6a667`): nothing in the files above that isn't mirrored. The last were
-the finance functions' currency ([[D101]] financeCarriesMoney, `finance_units.rs`) and PIVOTBY's `details` ([[C128]]
-pivotDetails): the core's layout gives each leaf row its source rows and carries the Details columns, whose formats
-the TS lends from the frame the pivot read (`adoptPivot`).
+The last merge (`c7da52b`, 2026-10-24) found every formula, card and verb fix already mirrored; most began on this
+branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as is), and Describe's Dashboard tiles
+([[C129]] describeDashboard), a TS profile on develop (`describeProfile.ts`) that here is Describe's body on the core
+(`describe_tiles`, `nodes/frames.rs`): shown as `describeTiles` and kept beside the summary frame by the class's
+`coreWatched`.
 
 ## What runs on the core
 
@@ -87,8 +90,8 @@ the TS lends from the frame the pivot read (`adoptPivot`).
 | Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone and IANA zones through `zone.rs` (`Intl` in wasm, jiff's bundled tzdb natively, with the names only ICU takes mapped beside it) and text dates through `date_parse.rs` | the frozen function-body cases |
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
-| The dataflow engine, the compute pass (its walks, seeding, invalidation, fetch and render set) and its state (calc mode, dirty flag, recalc generation, rebuild scopes, single flight), node and cable ids | `crates/solenoid-graph` on Ruggine, its own wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the session's native tests; the whole suite |
-| The input boundary every node's call goes through: the error guard and arrival coercion ([[compute-pass]] § The per-node wrappers) | `boundary.rs` in the graph module, over the app's JavaScript values | the frozen boundary answers (`boundary-*`, `coreBoundary.test.ts`); the whole suite |
+| The dataflow engine, the compute pass (its walks, seeding, invalidation, fetch and render set) and its state (calc mode, dirty flag, recalc generation, rebuild scopes, single flight), node and cable ids | `crates/solenoid-graph` on Ruggine, in the same wasm module ([[D102]] graphOnCore, [[graph-core]]) | Ruggine's oracle against rete-engine; `dataflowEngine.test.ts`; the session's native tests; the whole suite |
+| The input boundary every node's call goes through: the error guard and arrival coercion ([[compute-pass]] § The per-node wrappers) | `boundary_core.rs` over core values for a card whose body is on the core, called in Rust ([[graph-core]] § Direct calls); `boundary.rs` over the app's JavaScript values for every other card | the frozen boundary answers (`boundary-*`, `coreBoundary.test.ts`); the whole suite |
 | Node `data()` | the card bodies ([[node-bodies]]); a body over a list runs its loop on the core | `fixtures/core/nodes/` ([[node-bodies]]); each family's tests |
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, the Choice Ladder (its plan, and its ladder beside it as `ladderWire` lays it out), Group Cost Settle's totals and its ledger, Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `ladder.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
 | A pack's formula functions (ELEMENT, SUNRISE, ESERIESVALUE and kin), always known, advertised only while their pack is on | `fns_packs.rs`, over the cards' kernels (`nodes/packs.rs`); a pack's TS declares each one's name, arity and hint (`packs/*Formulas.ts`) | 3k frozen pack-call formulas (`pack-calls`) |
@@ -121,11 +124,10 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
   the desktop ran it, took 1.17 s, nearly all of it the computed column's round trip out of Polars and back (its
   verbs alone were 60 ms, the core's 90 ms in wasm). Reopen [[C130]] if a table people open is slow in wasm.
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
-  where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
-  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue, guarding it as [[graph-core]] § Traps says), numbering its handles past the dead one's
-  (`engine_handle_base`). The call that trapped answers #ERROR! (`onCore`); a frame the verb backend held in the
-  dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
-  tests' trigger (`coreTrap.test.ts`).
+  where it stopped, so the instance is dropped and the compiled module instantiated afresh, the graph with it, as
+  [[graph-core]] § Traps says; the core numbers its handles past the dead one's (`engine_handle_base`). The call that
+  trapped answers #ERROR! (`onCore`); a frame the verb backend held in the dead instance is gone, so a verb over it
+  answers #REF! until the document reloads. `engine_trap` is the tests' trigger (`coreTrap.test.ts`).
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 

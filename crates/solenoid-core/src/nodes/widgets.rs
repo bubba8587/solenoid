@@ -133,6 +133,7 @@ fn slider(c: &mut Call) -> Answer {
     c.show("effectiveMin", V::Num(lo));
     c.show("effectiveMax", V::Num(hi));
     c.show("effectiveStep", V::Num(step));
+    c.show("value", V::Num(value));
     Ok(vec![("value".into(), V::Num(value))])
 }
 

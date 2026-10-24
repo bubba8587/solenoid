@@ -1,6 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Off, every card's `data()` runs in JavaScript, its body crossing through `nodeOnCore`: how the node recorder
+ * (`FREEZE_NODES`) sees every call the suite makes.
+ */
+export function setDirectCalls(on: boolean): void;
+/**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  */
@@ -14,11 +19,9 @@ export function uid(): string;
  */
 export function graphTrap(): void;
 /**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
  */
-export function computeNode(node: object, inputs: any, data?: Function | null): any;
+export function sessionRebuild(begin: boolean): boolean;
 /**
  * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
  */
@@ -33,6 +36,12 @@ export function sessionEnter(changed: string | null | undefined, force: boolean)
  * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
  */
 export function sessionExit(finished: boolean): any;
+/**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ */
+export function computeNode(node: object, inputs: any, data?: Function | null): any;
 /**
  * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
  */
@@ -58,9 +67,13 @@ export function sessionForceExact(begin: boolean): void;
  */
 export function sessionNextGeneration(): number;
 /**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
-export function sessionRebuild(begin: boolean): boolean;
+export function directBodies(): string[];
+/**
+ * The direct classes that hand on in TypeScript what the core can't hold (`nodes::OFF_CORE`).
+ */
+export function offCoreBodies(): string[];
 export function isLazyFrameNode(_class: string): boolean;
 export function seesErrors(_class: string): boolean;
 /**
@@ -68,6 +81,28 @@ export function seesErrors(_class: string): boolean;
  */
 export function setBoundaryHost(host: object): void;
 export function findCellError(v: any): any;
+/**
+ * `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
+ */
+export function engine_invoke(command: string, args: string): string;
+export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
+/**
+ * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+ * `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
+ */
+export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
+/**
+ * Stages `csvToFrame`'s typed columns for the `take_*` calls and answers their schema (`csv::frame_columnar`).
+ */
+export function engine_csv_frame(text: string): string;
+/**
+ * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
+ */
+export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
+export function take_tags(): Uint8Array;
+export function take_nums(): Float64Array;
+export function take_strs(): string;
+export function take_lens(): Uint32Array;
 /**
  * One editor's graph and its dataflow engine.
  */
@@ -121,9 +156,10 @@ export class GraphCore {
   removeConnection(id: string): boolean;
   downstreamClosure(id: string): string[];
   /**
-   * `cancelled` is the class of error a fetch cut short by a reset rejects with.
+   * `cancelled` is the class of error a fetch cut short by a reset rejects with; `adopt(node, field)` makes the
+   * object read a field the core holds for it (`GraphEditor.adopt`).
    */
-  constructor(cancelled: Function);
+  constructor(cancelled: Function, adopt: Function);
   /**
    * `id` is a composite node here whose own editor's core is `inner`.
    */
@@ -131,11 +167,11 @@ export class GraphCore {
   /**
    * The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
    * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
-   * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
-   * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
-   * cancelled the pass.
+   * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order and landed (its
+   * outputs held for the cable readouts, the change test against what it landed before). The nodes to re-render, in
+   * order; `null` when a reset cancelled the pass.
    */
-  pass(changed: string | null | undefined, render_only: string[] | null | undefined, topology: boolean, on_node: Function): Promise<any>;
+  pass(changed: string | null | undefined, render_only: string[] | null | undefined, topology: boolean): Promise<any>;
   /**
    * Gives the node `outputs` without running it, until something clears its cache.
    */
@@ -159,9 +195,17 @@ export class GraphCore {
    */
   reset(id?: string | null): void;
   /**
+   * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
+   */
+  shown(id: string, field: string): any;
+  /**
    * Clears the node's cache alone, cancelling a run in flight.
    */
   forget(id: string): void;
+  /**
+   * The output `key` of node `id` as the last pass landed it; `undefined` before one did.
+   */
+  landed(id: string, key: string): any;
   unnest(id: string): void;
   /**
    * The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
@@ -188,6 +232,10 @@ export class GraphCore {
    * Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
    */
   setPorts(id: string, input_keys: string[], input_types: string[], output_keys: string[], output_types: string[]): void;
+  /**
+   * JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
+   */
+  setShown(id: string, field: string, value: any): boolean;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -196,6 +244,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_graphcore_free: (a: number, b: number) => void;
   readonly computeNode: (a: number, b: number, c: number, d: number) => void;
+  readonly directBodies: (a: number) => void;
   readonly findCellError: (a: number) => number;
   readonly graphTrap: () => void;
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
@@ -212,12 +261,13 @@ export interface InitOutput {
   readonly graphcore_forget: (a: number, b: number, c: number) => void;
   readonly graphcore_invalidate: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly graphcore_isCached: (a: number, b: number, c: number) => number;
+  readonly graphcore_landed: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly graphcore_loopMembers: (a: number, b: number) => void;
   readonly graphcore_markNested: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_nest: (a: number, b: number, c: number, d: number) => void;
-  readonly graphcore_new: (a: number) => number;
+  readonly graphcore_new: (a: number, b: number) => number;
   readonly graphcore_nodeIds: (a: number, b: number) => void;
-  readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+  readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
   readonly graphcore_ports: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
@@ -227,9 +277,12 @@ export interface InitOutput {
   readonly graphcore_seed: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_seedLoops: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_setPorts: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
+  readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+  readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;
+  readonly offCoreBodies: (a: number) => void;
   readonly seesErrors: (a: number, b: number) => number;
   readonly sessionDirty: (a: number) => number;
   readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;
@@ -243,12 +296,22 @@ export interface InitOutput {
   readonly sessionSetMode: (a: number, b: number) => number;
   readonly sessionSnapshot: () => number;
   readonly setBoundaryHost: (a: number, b: number) => void;
+  readonly setDirectCalls: (a: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly uid: (a: number) => void;
+  readonly engine_csv_frame: (a: number, b: number, c: number) => void;
+  readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly take_lens: (a: number) => void;
+  readonly take_nums: (a: number) => void;
+  readonly take_strs: (a: number) => void;
+  readonly take_tags: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
-  readonly __wbindgen_export_1: WebAssembly.Table;
-  readonly __wbindgen_export_2: (a: number, b: number) => number;
-  readonly __wbindgen_export_3: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_1: (a: number, b: number) => number;
+  readonly __wbindgen_export_2: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_3: WebAssembly.Table;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_export_4: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_5: (a: number, b: number, c: number) => void;
