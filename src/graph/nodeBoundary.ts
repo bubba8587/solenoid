@@ -66,6 +66,33 @@ function stamp(nodeId: string, v: unknown): unknown {
   return v;
 }
 
+/** What each cell of an array is, as the boundary's walks read it in one call per array (`boundary.rs`, the kind
+ *  constants): 0 number, 1 text, 2 logical, 3 null, 4 undefined, 5 array, 6 unit cell, 7 error, 8 complex, 9 lazy
+ *  frame, 10 frame, 11 anything else, 12 NaN. */
+function cellKinds(a: readonly unknown[]): Uint8Array {
+  const k = new Uint8Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    const v = a[i];
+    switch (typeof v) {
+      case "number": k[i] = v === v ? 0 : 12; break;
+      case "string": k[i] = 1; break;
+      case "boolean": k[i] = 2; break;
+      case "undefined": k[i] = 4; break;
+      case "object": {
+        if (v === null) k[i] = 3;
+        else if (Array.isArray(v)) k[i] = 5;
+        else {
+          const o = v as Record<string, unknown>;
+          k[i] = o.__unitCell === true ? 6 : o.__solError === true ? 7 : o.__cx === true ? 8 : "__frameRef" in o ? 9 : o.__frame === true ? 10 : 11;
+        }
+        break;
+      }
+      default: k[i] = 11;
+    }
+  }
+  return k;
+}
+
 whenGraphEngineLoads(() => setBoundaryHost({
   collect: (ref: FrameRef) => readFrame(ref),
   frameFromRows: (rows: unknown[][]) => frameFromRows(rows),
@@ -80,4 +107,5 @@ whenGraphEngineLoads(() => setBoundaryHost({
   now: () => performance.now(),
   recordNode,
   flushPorts: flushPortEdits,
+  cellKinds,
 }));

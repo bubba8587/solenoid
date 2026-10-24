@@ -171,7 +171,7 @@ thread_local! {
         has: "has".into(),
     });
     static HOST: RefCell<Option<Rc<BoundaryHost>>> = const { RefCell::new(None) };
-    static STRING: Function = Reflect::get(&js_sys::global(), &"String".into())
+    static JS_STRING: Function = Reflect::get(&js_sys::global(), &"String".into())
         .expect("String exists")
         .unchecked_into();
 }
@@ -195,6 +195,7 @@ struct BoundaryHost {
     now: Function,
     record_node: Function,
     flush_ports: Function,
+    cell_kinds: Function,
 }
 
 /// Installs what the boundary asks the app for; every engine call that runs a node needs it.
@@ -221,6 +222,7 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
         now: f("now")?,
         record_node: f("recordNode")?,
         flush_ports: f("flushPorts")?,
+        cell_kinds: f("cellKinds")?,
     };
     HOST.with(|h| *h.borrow_mut() = Some(Rc::new(made)));
     Ok(())
@@ -339,7 +341,7 @@ fn count_text(n: f64) -> String {
 }
 
 fn js_string(v: &JsValue) -> String {
-    STRING
+    JS_STRING
         .with(|s| s.call1(&JsValue::NULL, v))
         .ok()
         .and_then(|s| s.as_string())
@@ -361,6 +363,25 @@ fn spread(v: &JsValue) -> Object {
 }
 
 // ─── Arrival coercion ───────────────────────────────────────────────────────────────────────────
+
+// What each cell of an array is, read in one call per array (`cellKinds`) so a walk touches only the cells it
+// changes: crossing into JavaScript once per cell made a 100k list several times slower than the TypeScript was.
+const NUMBER: u8 = 0;
+const STRING: u8 = 1;
+const BOOLEAN: u8 = 2;
+const ARRAY: u8 = 5;
+const UNIT_CELL: u8 = 6;
+const SOL_ERROR: u8 = 7;
+const COMPLEX: u8 = 8;
+/// A number that is NaN: the TypeScript walks compared cells with `!==`, so one made the array a copy.
+const NAN: u8 = 12;
+
+fn kinds(h: &BoundaryHost, a: &Array) -> R<Vec<u8>> {
+    let k = h.cell_kinds.call1(&JsValue::NULL, a)?;
+    Ok(k.dyn_into::<js_sys::Uint8Array>()
+        .map(|k| k.to_vec())
+        .unwrap_or_default())
+}
 
 fn kind_text(c: &JsValue) -> &'static str {
     if c.is_string() {
@@ -431,20 +452,31 @@ fn family_cell(fam: Family, c: &JsValue) -> JsValue {
 }
 
 /// Always a fresh array: a node may reorder what it's given, and the input is shared.
-fn family_cells(fam: Family, v: &JsValue) -> JsValue {
+fn family_cells(h: &BoundaryHost, fam: Family, v: &JsValue) -> R<JsValue> {
     let Some(a) = as_array(v) else {
-        return family_cell(fam, v);
+        return Ok(family_cell(fam, v));
     };
-    let out = Array::new_with_length(a.length());
-    for (i, c) in a.iter().enumerate() {
-        let x = if is_array(&c) {
-            family_cells(fam, &c)
-        } else {
-            family_cell(fam, &c)
+    let out = a.slice(0, a.length());
+    for (i, kind) in kinds(h, a)?.into_iter().enumerate() {
+        let changes = match kind {
+            ARRAY => true,
+            NUMBER | NAN => matches!(fam, Family::Logical | Family::Text),
+            STRING => matches!(fam, Family::Number | Family::Date | Family::Logical),
+            BOOLEAN => matches!(fam, Family::Number | Family::Date | Family::Text),
+            COMPLEX => fam != Family::Complex,
+            _ => false,
         };
-        out.set(i as u32, x);
+        if changes {
+            let c = a.get(i as u32);
+            let x = if kind == ARRAY {
+                family_cells(h, fam, &c)?
+            } else {
+                family_cell(fam, &c)
+            };
+            out.set(i as u32, x);
+        }
     }
-    out.into()
+    Ok(out.into())
 }
 
 fn scalar_or_throw(v: JsValue) -> R<JsValue> {
@@ -455,8 +487,14 @@ fn scalar_or_throw(v: JsValue) -> R<JsValue> {
     }
 }
 
-fn has_unit_cell(v: &JsValue) -> bool {
-    is_unit_cell(v) || as_array(v).is_some_and(|a| a.iter().any(|c| is_unit_cell(&c)))
+fn has_unit_cell(h: &BoundaryHost, v: &JsValue) -> R<bool> {
+    if is_unit_cell(v) {
+        return Ok(true);
+    }
+    Ok(match as_array(v) {
+        Some(a) => kinds(h, a)?.contains(&UNIT_CELL),
+        None => false,
+    })
 }
 
 fn is_2d(a: &Array) -> bool {
@@ -630,32 +668,32 @@ fn coerce_unit_cell_value(rung: &str, v: &JsValue) -> R<JsValue> {
 }
 
 /// A value reaching a port of `rung`, shaped for it ([[compute-pass]] § Full coercion, per rung).
-fn coerce_value(rung: &str, v: &JsValue) -> R<JsValue> {
+fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
     if is_frame_ref(v) || is_sol_error(v) {
         return Ok(v.clone());
     }
-    if has_unit_cell(v) {
+    if has_unit_cell(h, v)? {
         return coerce_unit_cell_value(rung, v);
     }
     let fam = family_of(rung);
     let cells = || match fam {
-        Some(f) => family_cells(f, v),
-        None => v.clone(),
+        Some(f) => family_cells(h, f, v),
+        None => Ok(v.clone()),
     };
     let nullish = v.is_null() || v.is_undefined();
     match rung {
         "table" => {
-            let m = to_matrix(&cells());
+            let m = to_matrix(&cells()?);
             if is_array(&m) {
-                call2(&host()?.carry_matrix_unit, &m, v)
+                call2(&h.carry_matrix_unit, &m, v)
             } else {
                 Ok(m)
             }
         }
-        "list" => to_list(&cells()),
-        "number" => scalar_or_throw(to_scalar(&scalar_or_throw(cells())?)?),
+        "list" => to_list(&cells()?),
+        "number" => scalar_or_throw(to_scalar(&scalar_or_throw(cells()?)?)?),
         "numlist" => {
-            let c = cells();
+            let c = cells()?;
             let flat = match as_array(&c) {
                 Some(a) if is_array(&a.get(0)) => to_list(&c)?,
                 _ => c,
@@ -663,15 +701,15 @@ fn coerce_value(rung: &str, v: &JsValue) -> R<JsValue> {
             scalar_or_throw(collapse(flat))
         }
         "logical" | "logicalcombo" | "string" | "date" | "strcombo" | "datecombo" => {
-            scalar_or_throw(collapse(cells()))
+            scalar_or_throw(collapse(cells()?))
         }
-        "logicaltable" | "strtable" | "datetable" => Ok(cells()),
+        "logicaltable" | "strtable" | "datetable" => cells(),
         "complex" | "complexcombo" | "anydata" | "anycombo" => Ok(collapse(v.clone())),
         "logicallist" | "strlist" | "datelist" | "complexlist" => {
             if nullish {
                 return Ok(v.clone());
             }
-            let c = cells();
+            let c = cells()?;
             Ok(if is_array(&c) {
                 c
             } else {
@@ -702,19 +740,19 @@ fn coerce_value(rung: &str, v: &JsValue) -> R<JsValue> {
             if nullish {
                 return Ok(v.clone());
             }
-            call1(&host()?.to_cube, v)
+            call1(&h.to_cube, v)
         }
         _ => Ok(v.clone()),
     }
 }
 
 /// `noWidenInputs`: the value keeps its rank, its cells their family's coercion.
-fn coerce_value_no_widen(rung: &str, v: &JsValue) -> R<JsValue> {
-    if is_frame_ref(v) || is_sol_error(v) || has_unit_cell(v) {
+fn coerce_value_no_widen(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
+    if is_frame_ref(v) || is_sol_error(v) || has_unit_cell(h, v)? {
         return Ok(v.clone());
     }
     match family_of(rung) {
-        Some(f) => scalar_or_throw(family_cells(f, v)),
+        Some(f) => scalar_or_throw(family_cells(h, f, v)?),
         None => Ok(v.clone()),
     }
 }
@@ -728,13 +766,15 @@ fn strip_unit_cells(h: &BoundaryHost, v: &JsValue) -> R<JsValue> {
         return Ok(v.clone());
     };
     let mut out: Option<Array> = None;
-    for (i, c) in a.iter().enumerate() {
-        let s = strip_unit_cells(h, &c)?;
-        if out.is_none() && s != c {
-            out = Some(a.slice(0, i as u32));
+    for (i, kind) in kinds(h, a)?.into_iter().enumerate() {
+        if kind != UNIT_CELL && kind != ARRAY && kind != NAN {
+            continue;
         }
-        if let Some(o) = &out {
-            o.push(&s);
+        let c = a.get(i as u32);
+        let stripped = strip_unit_cells(h, &c)?;
+        if kind == NAN || stripped != c {
+            out.get_or_insert_with(|| a.slice(0, a.length()))
+                .set(i as u32, stripped);
         }
     }
     Ok(out.map_or_else(|| v.clone(), Into::into))
@@ -828,11 +868,11 @@ fn coerce_all(
         if let Some(rung) = rung.filter(|_| !set_has(&raw_inputs, key)) {
             if set_has(&no_widen, key) {
                 for v in values.iter_mut() {
-                    *v = coerce_value_no_widen(&rung, v)?;
+                    *v = coerce_value_no_widen(&h, &rung, v)?;
                 }
             } else {
                 for v in values.iter_mut() {
-                    *v = coerce_value(&rung, v)?;
+                    *v = coerce_value(&h, &rung, v)?;
                 }
             }
         }
@@ -1051,8 +1091,12 @@ impl Call {
         };
         let tag_cells = |values: &Array| -> Option<Array> {
             let mut out: Option<Array> = None;
-            for (i, cell) in values.iter().enumerate() {
-                if is_sol_error(&cell) && !get(&cell, &k.origin).is_truthy() {
+            for (i, kind) in kinds(&self.host, values).ok()?.into_iter().enumerate() {
+                if kind != SOL_ERROR {
+                    continue;
+                }
+                let cell = values.get(i as u32);
+                if !get(&cell, &k.origin).is_truthy() {
                     let o = out.get_or_insert_with(|| values.slice(0, values.length()));
                     o.set(i as u32, tag(&cell));
                 }
