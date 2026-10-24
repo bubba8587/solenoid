@@ -887,15 +887,24 @@ describe("K-Means / PCA cards (k-means++ seeded restarts; numpy eigh of the cova
     expect(c.columns[2].values[0]).toBeCloseTo(1.025, 9);
     expect(n.data({ frame: [f] })).toEqual(out); // seeded: the same answer every recalculation
   });
-  it("K-Means: k = n puts every point in its own cluster; a bad k answers blank", () => {
-    const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2]]]);
+  it("K-Means: k = n puts every point in its own cluster; a k it can't make is an error naming why", () => {
+    const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, null]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 2]]]);
     const n = new KMeansNode();
     n.literals.k = 7;
-    expect(n.data({ frame: [f] }).labels).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    for (const k of [0, 8]) {
+    expect(n.data({ frame: [f] }).labels).toEqual([1, 2, 3, 4, 5, 6, 7, null]);
+    const msg = (out: { labels: unknown; centers: unknown }) => {
+      expect(out.centers).toEqual(out.labels);
+      return isSolError(out.labels) ? `${out.labels.code} ${out.labels.message}` : out.labels;
+    };
+    n.literals.k = 8;
+    expect(msg(n.data({ frame: [f] }))).toBe("#VALUE! K-Means can't make 8 clusters from 7 rows with every number filled in");
+    for (const k of [0, 0.4, -3]) {
       n.literals.k = k;
-      expect(n.data({ frame: [f] })).toEqual({ labels: null, centers: null });
+      expect(msg(n.data({ frame: [f] }))).toBe("#VALUE! K-Means needs at least 1 cluster");
     }
+    expect(msg(n.data({ frame: [frame([["x", [4, null]]])], k: [2] }))).toBe("#VALUE! K-Means can't make 2 clusters from 1 row with every number filled in");
+    expect(msg(n.data({ frame: [f], k: ["three"] }))).toBe("#VALUE! K-Means: Clusters is not a number");
+    expect(n.data({ frame: [frame([["x", []]])] })).toEqual({ labels: null, centers: null });
   });
   it("PCA: scores per row (blank rows blank), loadings per feature, explained ratios", () => {
     const f = frame([["a", [2.5, 0.5, 2.2, 1.9, 3.1, 2.3, 2, 1, 1.5, 1.1]], ["b", [2.4, 0.7, 2.9, 2.2, 3.0, 2.7, 1.6, 1.1, 1.6, 0.9]]]);

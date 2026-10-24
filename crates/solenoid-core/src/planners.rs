@@ -7,7 +7,7 @@ use crate::decision::sort_by_num;
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, string_to_number};
+use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, number_to_string, string_to_number};
 
 type Res<T> = Result<T, SolError>;
 
@@ -569,14 +569,10 @@ struct KMeans {
     centers: Vec<Option<Vec<f64>>>,
 }
 
-/// `kmeans` with its default seed, 10 starts and 300 iterations: deterministic, as `mulberry32` seeds it.
-fn kmeans(points: &[Vec<f64>], k: f64) -> Option<KMeans> {
+/// `kmeans` with its default seed, 10 starts and 300 iterations: deterministic, as `mulberry32` seeds it. `kk` is
+/// from 1 to the number of points.
+fn kmeans(points: &[Vec<f64>], kk: usize) -> Option<KMeans> {
     let n = points.len();
-    let kk = math_round(k);
-    if n == 0 || kk < 1.0 || kk > n as f64 {
-        return None;
-    }
-    let kk = kk as usize;
     let d = points[0].len();
     let mut rng = mulberry32(0x5eed);
     let pick_point = |r: f64| points[(r * n as f64).floor() as usize].clone();
@@ -669,11 +665,27 @@ fn kmeans(points: &[Vec<f64>], k: f64) -> Option<KMeans> {
 }
 
 /// The K-Means card's outputs side by side: each row's cluster (blank where skipped), then Centers (Cluster, a column
-/// per feature, Count). Null where there's nothing to cluster.
-pub fn kmeans_frame(f: &FrameValue, k: f64) -> Option<FrameValue> {
+/// per feature, Count). Null where the frame has no rows; a `k` (rounded) below 1 or above the rows with every number
+/// filled in is an error's message.
+pub fn kmeans_frame(f: &FrameValue, k: f64) -> Result<Option<FrameValue>, String> {
     let cols = number_columns(f);
     let (rows, kept, total) = numeric_rows(f, &cols);
-    let r = kmeans(&rows, k)?;
+    if total == 0 {
+        return Ok(None);
+    }
+    let kk = math_round(k);
+    if kk < 1.0 {
+        return Err("K-Means needs at least 1 cluster".into());
+    }
+    if kk > rows.len() as f64 {
+        let row = if rows.len() == 1 { "row" } else { "rows" };
+        return Err(format!(
+            "K-Means can't make {} clusters from {} {row} with every number filled in",
+            number_to_string(kk),
+            rows.len()
+        ));
+    }
+    let Some(r) = kmeans(&rows, kk as usize) else { return Ok(None) };
     let mut labels = vec![FrameCell::Null; total];
     for (i, &row) in kept.iter().enumerate() {
         labels[row] = FrameCell::Num(r.labels[i] as f64);
@@ -696,7 +708,7 @@ pub fn kmeans_frame(f: &FrameValue, k: f64) -> Option<FrameValue> {
         FrameColType::Number,
         (0..k).map(|c| cell(c, r.labels.iter().filter(|&&l| l == c + 1).count() as f64)).collect(),
     ));
-    Some(FrameValue { columns: out })
+    Ok(Some(FrameValue { columns: out }))
 }
 
 /// The PCA card's outputs side by side: Scores (PC1…, blank where skipped), Loadings (Feature, PC1…), then Explained.

@@ -129,10 +129,6 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
             });
             Ok(planners::settle_ledger(f, &units.collect::<Res<Vec<_>>>()?).into())
         }
-        ("kmeans", Some(f)) => match num_arg(args, 0)? {
-            k if !k.is_nan() => Ok(frame_or_null(planners::kmeans_frame(f, k))),
-            _ => Err(bad()),
-        },
         ("pca", Some(f)) => match args.first() {
             Some(V::Bool(s)) => Ok(frame_or_null(planners::pca_frame(f, *s))),
             _ => Err(bad()),

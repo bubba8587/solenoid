@@ -520,20 +520,18 @@ fn kmeans(c: &mut Call) -> Answer {
     }
     let core = to_core(&f);
     let kn = super::kit::num(&k);
+    let bad = |c: &mut Call, msg: String| {
+        let e = err(ErrorCode::Value, msg);
+        out(c, e.clone(), e.clone(), (e, V::Null))
+    };
     if kn.is_nan() {
-        let numeric = (0..crate::frame::frame_row_count(&core)).any(|r| {
-            core.columns
-                .iter()
-                .filter(|col| col.ty == FrameColType::Number)
-                .all(|col| matches!(col.cell_at(r), FrameCell::Num(n) if n.is_finite()))
-        });
-        return if numeric {
-            Err(thrown("Invalid array length"))
-        } else {
-            out(c, V::Null, V::Null, (V::Null, V::Null))
-        };
+        return bad(c, format!("K-Means: {} is not a number", c.label("k")));
     }
-    let Some(r) = crate::planners::kmeans_frame(&core, kn) else { return out(c, V::Null, V::Null, (V::Null, V::Null)) };
+    let r = match crate::planners::kmeans_frame(&core, kn) {
+        Ok(Some(r)) => r,
+        Ok(None) => return out(c, V::Null, V::Null, (V::Null, V::Null)),
+        Err(msg) => return bad(c, msg),
+    };
     let mut cols = from_core(&r).columns;
     let labels = list(cols.remove(0).values);
     let centers = frame_v(cols);
