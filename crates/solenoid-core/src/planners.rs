@@ -677,10 +677,14 @@ pub fn kmeans_frame(f: &FrameValue, k: f64) -> Result<Option<FrameValue>, String
     if kk < 1.0 {
         return Err("K-Means needs at least 1 cluster".into());
     }
+    if !kk.is_finite() {
+        return Err("K-Means needs a finite number of clusters".into());
+    }
     if kk > rows.len() as f64 {
+        let cluster = if kk == 1.0 { "cluster" } else { "clusters" };
         let row = if rows.len() == 1 { "row" } else { "rows" };
         return Err(format!(
-            "K-Means can't make {} clusters from {} {row} with every number filled in",
+            "K-Means can't make {} {cluster} from {} {row} with every number filled in",
             number_to_string(kk),
             rows.len()
         ));
