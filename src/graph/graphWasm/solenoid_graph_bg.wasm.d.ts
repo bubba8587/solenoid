@@ -53,6 +53,7 @@ export const sessionSetMode: (a: number, b: number) => number;
 export const sessionSnapshot: () => number;
 export const setBoundaryHost: (a: number, b: number) => void;
 export const setPanicHandler: (a: number) => void;
+export const uid: (a: number) => void;
 export const __wbindgen_export_0: (a: number) => void;
 export const __wbindgen_export_1: WebAssembly.Table;
 export const __wbindgen_export_2: (a: number, b: number) => number;

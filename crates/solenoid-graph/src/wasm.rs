@@ -165,6 +165,12 @@ pub fn set_panic_handler(handler: Function) {
     }));
 }
 
+/// A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+#[wasm_bindgen]
+pub fn uid() -> String {
+    ruggine::get_uid()
+}
+
 /// Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
 #[wasm_bindgen(js_name = graphTrap)]
 pub fn graph_trap() {

@@ -6,6 +6,10 @@
  */
 export function setPanicHandler(handler: Function): void;
 /**
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ */
+export function uid(): string;
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap(): void;
@@ -15,6 +19,10 @@ export function graphTrap(): void;
  * node.
  */
 export function computeNode(node: object, inputs: any, data?: Function | null): any;
+/**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ */
+export function sessionRebuildScope(open: boolean): Array<any>;
 export function sessionMarkTopoDirty(): void;
 /**
  * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
@@ -53,10 +61,6 @@ export function sessionNextGeneration(): number;
  * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
  */
 export function sessionRebuild(begin: boolean): boolean;
-/**
- * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
- */
-export function sessionRebuildScope(open: boolean): Array<any>;
 export function isLazyFrameNode(_class: string): boolean;
 export function seesErrors(_class: string): boolean;
 /**
@@ -241,6 +245,7 @@ export interface InitOutput {
   readonly sessionSnapshot: () => number;
   readonly setBoundaryHost: (a: number, b: number) => void;
   readonly setPanicHandler: (a: number) => void;
+  readonly uid: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
   readonly __wbindgen_export_1: WebAssembly.Table;
   readonly __wbindgen_export_2: (a: number, b: number) => number;

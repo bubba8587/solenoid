@@ -237,6 +237,27 @@ export function setPanicHandler(handler) {
 }
 
 /**
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ * @returns {string}
+ */
+export function uid() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.uid(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap() {
@@ -266,6 +287,16 @@ export function computeNode(node, inputs, data) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
+}
+
+/**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ * @param {boolean} open
+ * @returns {Array<any>}
+ */
+export function sessionRebuildScope(open) {
+    const ret = wasm.sessionRebuildScope(open);
+    return takeObject(ret);
 }
 
 export function sessionMarkTopoDirty() {
@@ -375,16 +406,6 @@ export function sessionRebuild(begin) {
 }
 
 /**
- * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
- * @param {boolean} open
- * @returns {Array<any>}
- */
-export function sessionRebuildScope(open) {
-    const ret = wasm.sessionRebuildScope(open);
-    return takeObject(ret);
-}
-
-/**
  * @param {string} _class
  * @returns {boolean}
  */
@@ -462,7 +483,7 @@ function __wbg_adapter_36(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_128(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_129(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1191,7 +1212,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_128(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_129(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1310,7 +1331,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper466 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper468 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_36);
         return addHeapObject(ret);
     };

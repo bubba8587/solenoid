@@ -2,13 +2,12 @@
 // What a node class is built from: a node with keyed input and output ports, each holding a socket, and the cable
 // between two of them. While a node is in an editor its port changes are made in the graph core too
 // (tree/specs/computation/graph-core.md § The model), so `inputs` and `outputs` change only through these methods.
+import { uid } from "./graphWasm/solenoid_graph.js";
 
-/** Sixteen lowercase hex digits from eight random bytes, rete's id shape. */
+/** A node's or cable's id, made by the graph core (Ruggine's `getUID`: sixteen lowercase hex digits from eight
+ *  random bytes), so nothing can be built before the module loads. */
 export function getUID(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  let id = "";
-  for (const b of bytes) id += b.toString(16).padStart(2, "0");
-  return id;
+  return uid();
 }
 
 /** Where a node's port changes go: the editors holding it. */
