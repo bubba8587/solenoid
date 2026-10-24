@@ -338,12 +338,7 @@ export class WorkdaysNode extends GraphNode {
       if (out) { out.socket = numListOut("Working days").socket; out.label = "Working days"; }
     }
     // Re-insert the shared tail so the second input stays beside Start.
-    const inputs = this.inputs as Record<string, unknown>;
-    for (const k of ["weekend_code", "holidays"]) {
-      const v = inputs[k];
-      delete inputs[k];
-      inputs[k] = v;
-    }
+    for (const k of ["weekend_code", "holidays"]) this.moveInputLast(k);
     this.seedLiterals();
   }
 
