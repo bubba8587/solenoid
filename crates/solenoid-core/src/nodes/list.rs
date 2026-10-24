@@ -9,7 +9,7 @@ use super::{err, list, Answer, Call, Column, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::MAX_GENERATED;
 use crate::excel_criteria::DateReading;
-use crate::excel_functions::{js_string_of, xmatch_index, MatchMode, V};
+use crate::excel_functions::{js_string_of, MatchMode, Matcher, V};
 use crate::frame::{FrameCell, FrameColType};
 use crate::frame_verbs::FilterOp;
 use crate::jsnum::{js_trim, math_round, number_to_string};
@@ -1046,7 +1046,9 @@ fn xmatch(c: &mut Call) -> Answer {
         _ => MatchMode::Exact,
     };
     let last = c.field_str("searchMode", "first") == "last";
-    let pick = |l: &V| match xmatch_index(l, &ks, mm, last) {
+    let lookups = if let V::List(vs) = &val { vs.len() } else { 1 };
+    let m = Matcher::new(&ks[..], mm, last, lookups);
+    let pick = |l: &V| match m.find(l) {
         Err(e) => e,
         Ok(Some(i)) => V::Num((i + 1) as f64),
         Ok(None) if wired => err(ErrorCode::NotAvailable, "No match found in the array"),

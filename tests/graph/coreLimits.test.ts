@@ -1,5 +1,5 @@
 // [[C130]] rustCore, [[C120]] linearWork: inputs a user can type or wire that once trapped the module (a stack overflow,
-// an index past a ragged row, an unbounded allocation) or hung it, each now an answer.
+// an index past a ragged row, an unbounded allocation), hung it, or took quadratic time, each now a prompt answer.
 import { it, expect } from "vitest";
 import { evaluateOnCore, callOnCore } from "../../src/graph/coreValues";
 import { isSolError } from "../../src/graph/errorValue";
@@ -60,4 +60,19 @@ it("FINDPEAKS with a distance walks each peak's neighbours, not every peak", () 
   const { v, ms } = timed(() => evaluateOnCore("FINDPEAKS(xs, , 3)", { xs }));
   expect(ms).toBeLessThan(2000);
   expect(Array.isArray(v) && v.length).toBeGreaterThan(1000);
+});
+
+it("a list of lookups indexes the keys once instead of scanning them per lookup", () => {
+  const keys = Array.from({ length: 50_000 }, (_, i) => `ID-${i}`);
+  const vals = keys.map((_, i) => i);
+  const wanted = keys.map((k) => k.toLowerCase()).reverse();
+  const { v, ms } = timed(() => evaluateOnCore("XLOOKUP(w, k, v)", { w: wanted, k: keys, v: vals }));
+  expect(ms).toBeLessThan(3000);
+  expect((v as number[])[0]).toBe(49_999);
+  // Twenty lookups take the index; a search from the end finds the last match, text without case.
+  const w = ["ID-1", "id-7", "nope", 3, NaN, ...Array(15).fill("ID-19")];
+  for (const [mode, want] of [[-1, [6, 12, "#N/A", 4, "#N/A"]], [1, [1, 2, "#N/A", 4, "#N/A"]]] as const) {
+    const m = evaluateOnCore(`XMATCH(w, k, 0, ${mode})`, { w, k: ["ID-1", "ID-7", "id-1", 3, ...keys.slice(0, 20)] }) as unknown[];
+    expect(m.slice(0, 5).map(code)).toEqual(want);
+  }
 });

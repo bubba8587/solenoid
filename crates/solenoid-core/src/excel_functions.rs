@@ -827,6 +827,68 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
     Ok(best.map(|(i, _)| i))
 }
 
+/// `lookup_eq`'s classes as a hash key: text without case, a number by value (-0 as 0).
+#[derive(PartialEq, Eq, Hash)]
+enum ExactKey {
+    Str(String),
+    Num(u64),
+    Bool(bool),
+    Undef,
+}
+
+/// `Some(None)` for a value that equals nothing (NaN), `None` for one the index doesn't hold (a list, an error).
+fn exact_key(v: &V) -> Option<Option<ExactKey>> {
+    Some(match v {
+        V::Str(s) => Some(ExactKey::Str(crate::jsnum::js_lower(s).into_owned())),
+        V::Num(n) if n.is_nan() => None,
+        V::Num(n) => Some(ExactKey::Num((n + 0.0).to_bits())),
+        V::Bool(b) => Some(ExactKey::Bool(*b)),
+        V::Undef => Some(ExactKey::Undef),
+        _ => return None,
+    })
+}
+
+/// `xmatch_index` over one list of keys for many lookups: an exact match builds an index once, where a scan per
+/// lookup made a list of lookups quadratic ([[C120]] linearWork). Anything the index doesn't hold scans as before.
+pub(crate) struct Matcher<K: AsRef<[V]>> {
+    keys: K,
+    mm: MatchMode,
+    last: bool,
+    index: Option<rustc_hash::FxHashMap<ExactKey, usize>>,
+}
+
+impl<K: AsRef<[V]>> Matcher<K> {
+    pub(crate) fn new(keys: K, mm: MatchMode, last: bool, lookups: usize) -> Self {
+        let index = (mm == MatchMode::Exact && lookups >= 16).then(|| {
+            let ks = keys.as_ref();
+            let n = ks.len();
+            let mut index = rustc_hash::FxHashMap::default();
+            for s in 0..n {
+                let i = if last { n - 1 - s } else { s };
+                if matches!(ks[i], V::Null | V::Err(_)) {
+                    continue;
+                }
+                match exact_key(&ks[i]) {
+                    Some(Some(k)) => {
+                        index.entry(k).or_insert(i);
+                    }
+                    Some(None) => {}
+                    None => return None,
+                }
+            }
+            Some(index)
+        });
+        Matcher { keys, mm, last, index: index.flatten() }
+    }
+
+    pub(crate) fn find(&self, lookup: &V) -> Result<Option<usize>, V> {
+        match (&self.index, exact_key(lookup)) {
+            (Some(index), Some(key)) => Ok(key.and_then(|k| index.get(&k).copied())),
+            _ => xmatch_index(lookup, self.keys.as_ref(), self.mm, self.last),
+        }
+    }
+}
+
 pub(crate) fn mean_of(a: &[f64]) -> f64 {
     sum(a) / a.len() as f64
 }
@@ -3991,6 +4053,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     format!("{name}'s lookup array must be a single row or a single column"),
                 ));
             };
+            let lookups = match arg(a, 0) {
+                V::List(items) => {
+                    items.len().max(items.first().map_or(0, |r| if let V::List(r) = r { r.len() } else { 0 }))
+                }
+                _ => 1,
+            };
             let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
                 let values = arg(a, 2);
                 let Some(vs) = as_one_dim(values) else {
@@ -4006,14 +4074,16 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     ));
                 }
                 let if_not_found = arg(a, 3).clone();
-                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
+                let m = Matcher::new(ks, mm, sm_last, lookups);
+                Box::new(move |l: &V| match m.find(l) {
                     Err(e) => e,
                     Ok(Some(i)) if i < vs.len() => vs[i].clone(),
                     Ok(_) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
                     Ok(_) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
                 })
             } else {
-                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
+                let m = Matcher::new(ks, mm, sm_last, lookups);
+                Box::new(move |l: &V| match m.find(l) {
                     Err(e) => e,
                     Ok(Some(i)) => V::Num(i as f64 + 1.0),
                     Ok(None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
