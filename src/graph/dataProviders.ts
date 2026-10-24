@@ -42,7 +42,7 @@ export function parseFredCsv(text: string): FrameValue {
   return frameFromColumnar({ [dateCol]: date, [valCol]: value });
 }
 
-export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
+const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "UNRATE", label: "Unemployment rate" },
   { id: "CPIAUCSL", label: "CPI (inflation)" },
   { id: "GDPC1", label: "Real GDP" },
@@ -53,7 +53,7 @@ export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SP500", label: "S&P 500" },
 ];
 
-export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
+const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "AAPL", label: "Apple" },
   { id: "MSFT", label: "Microsoft" },
   { id: "GOOGL", label: "Alphabet" },

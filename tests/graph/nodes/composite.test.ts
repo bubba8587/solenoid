@@ -1014,7 +1014,7 @@ describe("CompositeNode Goal Seek run mode", () => {
     (outMarker as unknown as { label: string }).label = "Renamed Out";
     c.syncPortLabels();
     expect(c.inputPorts.find((p) => p.id === inAId)!.label).toBe("Renamed In");
-    expect(c.inputs[inAId]!.label).toBe("Renamed In"); // the rete socket the card renders
+    expect(c.inputs[inAId]!.label).toBe("Renamed In"); // the input the card renders
     expect(c.outputPorts.find((p) => p.id === outId)!.label).toBe("Renamed Out");
     expect(c.outputs[outId]!.label).toBe("Renamed Out");
   });

@@ -12,7 +12,7 @@ Every node has a **name**: a stable identifier the user can edit, used wherever 
 
 ## Names and ids
 
-- A node's name is separate from its rete `id`. The id is random and is minted fresh on every load (`rebuildGraph`'s `idMap` maps saved ids to live ones), so nothing that must survive a reload may assume an id is stable.
+- A node's name is separate from its `id`. The id is random and is minted fresh on every load (`rebuildGraph`'s `idMap` maps saved ids to live ones), so nothing that must survive a reload may assume an id is stable.
 - A name must be an identifier (`^[A-Za-z_][A-Za-z0-9_]*$`) and is unique within a document.
 - A new node gets a default name from a counter scoped to its type: the class name without its trailing `Node`, then `_` and the next free number (`Filter_1`, `Filter_2`). The user can rename it, and the rename is validated for uniqueness.
 

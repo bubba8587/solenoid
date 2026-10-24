@@ -6,7 +6,6 @@ import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs, getEditor } from "../../src/graph/process";
 import {
   setActiveGraph,
-  isSubgraphActive,
   getActiveEditor,
   getOwningEditor,
   getOwningView,
@@ -41,14 +40,12 @@ afterEach(() => setActiveGraph(null));
 
 describe("activeGraph resolver", () => {
   it("defaults to main with no drill-in open", () => {
-    expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);
     expect(getOwningEditor("m1")).toBe(main);
   });
 
   it("routes the ACTION layer to the subgraph while drilled in", () => {
     setActiveGraph({ editor: sub, view: fakeView });
-    expect(isSubgraphActive()).toBe(true);
     expect(getActiveEditor()).toBe(sub);
   });
 
@@ -94,7 +91,6 @@ describe("activeGraph resolver", () => {
   it("clears back to main on close", () => {
     setActiveGraph({ editor: sub, view: fakeView });
     setActiveGraph(null);
-    expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);
     expect(getOwningEditor("s1")).toBe(main); // sub no longer owns anything resolvable
   });

@@ -5,10 +5,13 @@
 // isolated expression implies. Bare graphs stay bare, byte-identical.
 import { describe, it, expect } from "vitest";
 import { EquationNode } from "../../src/graph/nodes/equation";
-import { fromUnit, isUnitCell, unitLabelOf, isRatio, type UnitCell } from "../../src/graph/unitValue";
+import { fromUnit, isUnitCell, dimOf, isRatio, type UnitCell } from "../../src/graph/unitValue";
 import { fcUnitToUnit } from "../../src/graph/unitBridge";
 import { parseUnit } from "../../src/graph/dimension";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
+import { formatDim } from "../../src/graph/dimension";
+
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
 const cell = (v: number, id: string): UnitCell => {
   const u = fcUnitToUnit(id) ?? parseUnit(id);

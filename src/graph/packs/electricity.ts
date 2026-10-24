@@ -5,7 +5,7 @@ import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { ELECTRICITY_PACK_FORMULAS } from "./electricityFormulas";
 
-export const ELECTRICITY_BASE: FormulaPackEntry[] = [
+const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired. Wire all three and Check answers TRUE or FALSE",
     keywords: "ohm ohms law volts amps resistance triangle",
@@ -41,7 +41,7 @@ export const ELECTRICITY_BASE: FormulaPackEntry[] = [
     keywords: "joules stored", units: { i: "A" } },
 ];
 
-export const ELECTRICITY_AC: FormulaPackEntry[] = [
+const ELECTRICITY_AC: FormulaPackEntry[] = [
   { type: "elec-cap-reactance", label: "Capacitive Reactance", expr: "1/(2*PI()*f*c)",
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
     keywords: "impedance ac", units: { f: "Hz" } },
@@ -55,7 +55,7 @@ export const ELECTRICITY_AC: FormulaPackEntry[] = [
     keywords: "tank tuned lc" },
 ];
 
-export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
+const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
   { type: "elec-rc-tau", label: "RC Time Constant", expr: "r*c",
     description: "First-order RC time constant τ = R·C: 63% of a step in one τ, about settled in 5τ.", units: { r: "W/A^2" } },
   { type: "elec-rl-tau", label: "RL Time Constant", expr: "l/r",
@@ -71,7 +71,7 @@ export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
     keywords: "oscillator ne555", units: { r1: "W/A^2", r2: "W/A^2" } },
 ];
 
-export const ELECTRICITY_DB: FormulaPackEntry[] = [
+const ELECTRICITY_DB: FormulaPackEntry[] = [
   { type: "elec-db-power", label: "Decibels (Power Ratio)", expr: "10*LOG10(p2/p1)",
     description: "Power ratio in dB   (10·log₁₀(P₂/P₁))",
     keywords: "gain attenuation", units: { p1: "W", p2: "W" } },

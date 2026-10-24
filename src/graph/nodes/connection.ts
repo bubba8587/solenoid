@@ -43,7 +43,7 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-export function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
+function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
     /\.json(\?|$)/i.test(url) ||
@@ -141,7 +141,7 @@ async function fetchParsed<T>(
   }
 }
 
-export function htmlTableToFrame(html: string, index1: number): FrameValue {
+function htmlTableToFrame(html: string, index1: number): FrameValue {
   if (typeof DOMParser === "undefined") throw new Error("HTML parsing needs a browser environment.");
   const doc = new DOMParser().parseFromString(html, "text/html");
   const tables = doc.querySelectorAll("table");
@@ -156,7 +156,7 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   return frameFromCells(headers, body);
 }
 
-export function xpathToList(html: string, query: string): string[] {
+function xpathToList(html: string, query: string): string[] {
   if (typeof DOMParser === "undefined") throw new Error("XML parsing needs a browser environment.");
   const q = query.trim();
   if (q === "") return [];
@@ -309,9 +309,9 @@ export class LocalFileNode extends GraphNode {
     const superseded = { frame: null, plan: null };
     this.cachedPlan = null;
     this.planNotes = [];
-    const fail = (message: string, status: "idle" | "error" = "error") => {
+    const fail = (message: string, status: "idle" | "error" = "error", err?: SolError) => {
       if (stale()) return superseded;
-      const out = status === "error" && parquet ? solError("#REF!", message) : null;
+      const out = status === "error" && parquet ? (err ?? solError("#REF!", message)) : null;
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
@@ -326,7 +326,7 @@ export class LocalFileNode extends GraphNode {
     try {
       if (parquet) {
         const frame = await readParquetFrame(folder, name);
-        if (isSolError(frame)) throw new Error(frame.message);
+        if (isSolError(frame)) return fail(frame.message, "error", frame);
         if (stale()) return superseded;
         this.lastKey = key;
         this.cachedResult = frame;

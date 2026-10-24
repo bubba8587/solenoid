@@ -21,7 +21,7 @@ const CAST_TARGET_OPTIONS = (Object.keys(CAST_TARGET_META) as CastTarget[]).map(
   title: `${CAST_TARGET_META[value].label}: ${CAST_TARGET_META[value].title}`,
 }));
 
-export async function applyCastTarget(node: CastNodeType, target: CastTarget): Promise<void> {
+async function applyCastTarget(node: CastNodeType, target: CastTarget): Promise<void> {
   if (node.target === target) return;
   const departing = node.keysDroppedBySwitch(target);
   if (departing.length > 0) await dropInputCables(node.id, departing);

@@ -1,5 +1,5 @@
 // [[C25]], [[D43]]
-import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
+import { type Unit, parseUnit, dimEqual, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
 import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, setDisplayScaleResolver, setDisplayOffsetResolver, setDisplayDimResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { isSolError } from "./errorValue";
@@ -39,15 +39,6 @@ export function fcUnitToUnit(id: string): Unit | null {
   let u: Unit | null = DIRECT[id] ?? parseUnit(PARSE_AS[id] ?? id) ?? EXTRA[id] ?? null;
   _cache.set(id, u);
   return u;
-}
-
-export function fcUnitDim(id: string): Dim {
-  return fcUnitToUnit(id)?.dim ?? DIMENSIONLESS;
-}
-
-export function isDimensionalFcUnit(id: string): boolean {
-  const u = fcUnitToUnit(id);
-  return u !== null && !dimEqual(u.dim, DIMENSIONLESS);
 }
 
 export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: string): unknown {

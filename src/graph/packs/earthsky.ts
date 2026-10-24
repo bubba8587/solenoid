@@ -7,7 +7,7 @@ import { EARTHSKY_PACK_FORMULAS } from "./earthskyFormulas";
 
 const G = "6.6743*10^-11"; // CODATA gravitational constant
 
-export const EARTH_FORMULAS: FormulaPackEntry[] = [
+const EARTH_FORMULAS: FormulaPackEntry[] = [
   { type: "es-haversine", label: "Great-Circle Distance", expr:
       "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
     description: "Shortest distance in km between two lat/lon points in degrees. The haversine formula on the mean-radius sphere",
@@ -25,7 +25,7 @@ export const EARTH_FORMULAS: FormulaPackEntry[] = [
     keywords: "visibility sea level lookout", units: { h: "m" } },
 ];
 
-export const ORBIT_FORMULAS: FormulaPackEntry[] = [
+const ORBIT_FORMULAS: FormulaPackEntry[] = [
   { type: "es-escape-velocity", label: "Escape Velocity", expr: `SQRT(2*${G}*m/r)`,
     description: "Speed to escape a body of mass m (kg) from radius r (m)   (v = √(2GM/r); Earth surface ≈ 11.2 km/s)",
     keywords: "rocket delta v", units: { m: "kg", r: "m" } },

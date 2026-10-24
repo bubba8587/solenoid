@@ -8,7 +8,7 @@ import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import type { DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
-import { FIT_FAMILIES, type FitFamily } from "./fitOps";
+import { FIT_FAMILIES } from "./fitOps";
 import type { FrameValue } from "../frame";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -443,7 +443,7 @@ const TWO_SAMPLE_SPEC: HypothesisTestSpec = {
   outLabel: "p-value (2-tail)",
 };
 
-export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
+const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
   z: {
     inputs: [
       { key: "a", label: "Array" },
@@ -736,12 +736,6 @@ export class EtsForecastNode extends GraphNode {
     return nodeOnCore(this, inputs) as { forecast: FrameValue | SolError | null; detected: number | null };
   }
 }
-
-// ─── FIT DISTRIBUTION (scipy .fit / fitdistrplus / @RISK fit) ─────────────────
-export const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
-  normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",
-  uniform: "Uniform", beta: "Beta", poisson: "Poisson",
-};
 
 export class FitDistributionNode extends GraphNode {
   static socketDocs: Record<string, string> = {

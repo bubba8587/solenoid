@@ -15,7 +15,7 @@ export interface CubeEditBinding {
 }
 
 /** The root level shows the derived cube; a nested level its records, read by the types declared for that one table. */
-export function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeRecord[]): CubeValue {
+function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeRecord[]): CubeValue {
   if (path.length === 0) {
     const c = edit.cube();
     if (c && !isSolError(c)) return c;

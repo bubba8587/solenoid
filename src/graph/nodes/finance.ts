@@ -124,12 +124,7 @@ export class DepreciationNode extends GraphNode {
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
     for (const i of after) if (!this.inputs[i.key]) this.addInput(i.key, numIn(i.label));
     // Re-insert every key in table order, because Factor sits at a different row in each op.
-    const inputs = this.inputs as Record<string, unknown>;
-    for (const i of after) {
-      const v = inputs[i.key];
-      delete inputs[i.key];
-      inputs[i.key] = v;
-    }
+    for (const i of after) this.moveInputLast(i.key);
     this.seedLiterals();
     this.height = this.heightFor();
   }
@@ -141,7 +136,7 @@ export class DepreciationNode extends GraphNode {
 
 // ─── TVM (Time Value of Money) ────────────────────────────────────────────────
 
-export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
+const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };

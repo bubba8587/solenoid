@@ -11,7 +11,7 @@ import {
 import { getEditor, getView, processGraph } from "./process";
 import { documentStore } from "./documentStore";
 
-export const IMAGES_DIR = "images";
+const IMAGES_DIR = "images";
 
 type ImageAssetNode = {
   id: string;

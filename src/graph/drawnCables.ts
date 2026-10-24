@@ -21,9 +21,9 @@ export type SavedDrawnCable = Omit<DrawnCable, "id">;
 
 export const DRAWN_DEFAULT_SHAPE: CableShape = "spline";
 export const DRAWN_DEFAULT_COLOR = "gray";
-export const DRAWN_DEFAULT_ARROWS: DrawnArrows = "end";
+const DRAWN_DEFAULT_ARROWS: DrawnArrows = "end";
 export const DRAWN_DEFAULT_WIDTH = 2.4;
-export const DRAWN_DEFAULT_HEAD_SCALE = 1;
+const DRAWN_DEFAULT_HEAD_SCALE = 1;
 
 export const DRAWN_WIDTHS: { value: number; label: string }[] = [
   { value: 1.2, label: "Hairline" },

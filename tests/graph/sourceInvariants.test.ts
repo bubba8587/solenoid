@@ -166,7 +166,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   // unit-blind strip (stripUnitCells returns the same reference when no CELL is
   // tagged) — a unit-blind node carrying it through a reshape is correct, not a
   // violation (stats.ts's grid interpolation is the live example).
-  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|forAggregateUnits)\s*\(/;
+  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell)\s*\(/;
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
@@ -727,10 +727,10 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
 });
 
 describe("[[A1]] visualGraphCalculator — every node-keyed store registers with nodeStoreRegistry", () => {
-  // Per-node state lives in module-level stores (rete's separate React root —
-  // no shared context), and the registry is the ONE answer to "what happens on
+  // Per-node state lives in module-level stores (node classes and verbs outside
+  // React write it), and the registry is the ONE answer to "what happens on
   // node delete / graph rebuild". A store that skips it leaks dead-id entries
-  // (bounded — rete ids never collide across loads — but real: the sweep that
+  // (bounded — node ids never collide across loads — but real: the sweep that
   // built this found formatAnnotationStore, dockedNodeStore, compositeStaleStore
   // and standoffs unregistered, and isolateStore's miss was a VISIBLE bug: a
   // document switch while isolated dimmed the entire new graph). Every

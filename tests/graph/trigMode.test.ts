@@ -4,7 +4,7 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { resolveTrigModes } from "../../src/graph/trigMode";
 import { MathFXNode } from "../../src/graph/nodes/scalar";
-import { tagDim, tagRatio, magnitudeOf } from "../../src/graph/unitValue";
+import { tagDim, magnitudeOf } from "../../src/graph/unitValue";
 
 // A dimensioned angle cell: base-SI RADIANS carrying a display unit (deg or rad).
 const angle = (rad: number, display: "deg" | "rad") => tagDim(rad, { angle: 1 }, display);
@@ -115,7 +115,7 @@ describe("MathFn inverse trig and units", () => {
   });
   it("in deg mode a dimensionless tagged cell answers in degrees beside a plain number", () => {
     const n = new MathFXNode({ op: "asin", angleMode: "deg" });
-    const r = n.data({ in: [[0.5, tagRatio(0.5)] as never] }).result;
+    const r = n.data({ in: [[0.5, { __unitCell: true, value: 0.5, dim: {}, ratio: true }] as never] }).result;
     expect(mags(r)[0]).toBeCloseTo(30, 9);
     expect(mags(r)[1]).toBeCloseTo(30, 9);
   });

@@ -159,8 +159,8 @@ impl Default for NumberDisplay {
 }
 
 impl NumberDisplay {
-    pub fn from_settings(number_decimals: Option<&str>, sci_above: Option<&str>) -> NumberDisplay {
-        let d = number_decimals.map_or(f64::NAN, string_to_number);
+    pub fn from_settings(number_decimals: Option<f64>, sci_above: Option<&str>) -> NumberDisplay {
+        let d = number_decimals.unwrap_or(f64::NAN);
         let decimals = if d.fract() == 0.0 && d >= 0.0 { d } else { 4.0 };
         NumberDisplay { decimals, sci_from: sci_from_setting(sci_above) }
     }

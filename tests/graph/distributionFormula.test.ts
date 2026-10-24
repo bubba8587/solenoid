@@ -1,13 +1,9 @@
 // [[B11]], [[A1]]
-// The distributions Formula.js LACKS (the T family, right-tail variants, GAMMA.DIST/INV)
-// are registered with OUR impls (excelFunctions.ts). This locks formula == the visual
-// dist NODE. As of 2026-08-23 both surfaces call the SAME shared kernels (mathUtils
-// tCDF/tPDF/chiSqCDF/fCDF/gammaCDF/gammaPDF) rather than separate hand-rolled copies, so
-// the agreement is structural — this test guards that nobody re-forks one surface.
+// The formula and the Distributions card answer alike: both run the core's kernels, and this guards that nobody
+// re-forks one surface.
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { DistributionsNode } from "../../src/graph/nodes/distribution";
-import { sampleQuantile } from "../../src/graph/nodes/distributionOps";
 import { requestRecalc } from "../../src/graph/process";
 const dist = (op: string, form: string) =>
   new DistributionsNode({ op: op as never, form: form as never });
@@ -115,14 +111,6 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
 describe("the `sample` form — N draws by inverse CDF, seeded per recalculation", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length;
-  it("sampleQuantile inverts every family (closed inverse, bisection, or a discrete walk)", () => {
-    expect(sampleQuantile("normal", 0.5, [10, 2])).toBeCloseTo(10, 9);
-    expect(sampleQuantile("expon", 1 - Math.exp(-1), [1])).toBeCloseTo(1, 6);     // F(1) = 1 − e⁻¹ → 1
-    expect(sampleQuantile("weibull", 1 - Math.exp(-1), [2, 3])).toBeCloseTo(3, 6); // scale 3 at F = 1 − e⁻¹
-    expect(sampleQuantile("poisson", 0.5, [3])).toBe(3);                          // median of Poisson(3)
-    expect(sampleQuantile("binom", 0.5, [10, 0.5])).toBe(5);
-    expect(sampleQuantile("normal", 0.5, [10, -1])).toBeNull();                   // invalid sd
-  });
   it("the node draws N values whose marginal matches; the same pass is stable, a recalc re-rolls", async () => {
     const n = dist("normal", "sample");
     expect(n.inputs.count).toBeDefined(); expect(n.inputs.x).toBeUndefined();

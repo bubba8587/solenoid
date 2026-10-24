@@ -2,10 +2,13 @@
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { arithmeticCell } from "./coreVerbs";
-import { fromUnit, isUnitCell, isRatio, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
+import { fromUnit, isUnitCell, isRatio, magnitudeOf, dimOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { fcUnitToUnit, applyFcUnit } from "../../src/graph/unitBridge";
 import { isSolError } from "../../src/graph/errorValue";
 import { UNITS } from "../../src/graph/dimension";
+import { formatDim } from "../../src/graph/dimension";
+
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
 // Units enter a value through the Format Controller (the FC is value-mutating) or
 // Convert — NOT the Number node, which is a plain literal source. These tests drive

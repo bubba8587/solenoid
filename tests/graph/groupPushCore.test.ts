@@ -1,6 +1,6 @@
 // [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { computeExpandPush, separateOverlaps, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
+import { computeExpandPush, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 
 // A group at (0,0) collapsing to a 100×40 card, expanding to 400×300.
 const spec: ExpandSpec = { x: 0, y: 0, preW: 100, preH: 40, postW: 400, postH: 300 };
@@ -222,7 +222,7 @@ describe("degenerate specs", () => {
   });
 });
 
-describe("separateOverlaps (hard de-overlap backstop)", () => {
+describe("separateAll on plain boxes (hard de-overlap backstop)", () => {
   const anyOverlap = (boxes: PushBox[], disp: Map<string, { dx: number; dy: number }>) => {
     const at = (b: PushBox) => { const d = disp.get(b.id); return d ? { ...b, x: b.x + d.dx, y: b.y + d.dy } : b; };
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
@@ -235,7 +235,7 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
 
   it("separates two fully-coincident boxes", () => {
     const boxes = [box("A", 0, 0, 500, 300), box("B", 0, 0, 500, 300)];
-    expect(anyOverlap(boxes, separateOverlaps(boxes))).toBe(false);
+    expect(anyOverlap(boxes, separateAll(boxes))).toBe(false);
   });
 
   it("clears a packed grid of oversized boxes", () => {
@@ -243,12 +243,12 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
       box("A", 0, 0, 520, 320), box("B", 300, 0, 520, 320),
       box("C", 0, 130, 520, 320), box("D", 300, 130, 520, 320),
     ];
-    expect(anyOverlap(boxes, separateOverlaps(boxes))).toBe(false);
+    expect(anyOverlap(boxes, separateAll(boxes))).toBe(false);
   });
 
   it("only moves boxes down/right (never up/left)", () => {
     const boxes = [box("A", 0, 0, 400, 250), box("B", 12, 8, 400, 250)];
-    for (const [, d] of separateOverlaps(boxes)) {
+    for (const [, d] of separateAll(boxes)) {
       expect(d.dx).toBeGreaterThanOrEqual(0);
       expect(d.dy).toBeGreaterThanOrEqual(0);
     }
@@ -256,7 +256,7 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
 
   it("no overlaps → no movement", () => {
     const boxes = [box("A", 0, 0, 100, 100), box("B", 200, 0, 100, 100)];
-    expect(separateOverlaps(boxes).size).toBe(0);
+    expect(separateAll(boxes).size).toBe(0);
   });
 
   it("a pinned obstacle never moves; its partner yields instead", () => {
@@ -264,7 +264,7 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
     // fixed locked group and F a tidied node dropped onto it — F must be the mover.
     const L = box("L", 0, 0, 200, 150);
     const F = box("F", 40, 30, 200, 150);
-    const disp = separateOverlaps([L, F], PUSH_GAP, new Set(["L"]));
+    const disp = separateAll([L, F], { fixed: new Set(["L"]) });
     expect(disp.get("L")).toBeUndefined();          // pinned: unmoved
     expect(disp.has("F")).toBe(true);               // partner yielded
     expect(anyOverlap([L, F], disp)).toBe(false);
@@ -273,14 +273,14 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
   it("pushes a free node off a pinned box even when the free node is top-left", () => {
     const F = box("F", 0, 0, 200, 150);   // top-left, but free
     const L = box("L", 40, 30, 200, 150); // pinned obstacle
-    const disp = separateOverlaps([F, L], PUSH_GAP, new Set(["L"]));
+    const disp = separateAll([F, L], { fixed: new Set(["L"]) });
     expect(disp.get("L")).toBeUndefined();
     expect(anyOverlap([F, L], disp)).toBe(false);
   });
 
   it("leaves two pinned obstacles overlapping (neither can move)", () => {
     const boxes = [box("A", 0, 0, 200, 200), box("B", 50, 50, 200, 200)];
-    expect(separateOverlaps(boxes, PUSH_GAP, new Set(["A", "B"])).size).toBe(0);
+    expect(separateAll(boxes, { fixed: new Set(["A", "B"]) }).size).toBe(0);
   });
 });
 

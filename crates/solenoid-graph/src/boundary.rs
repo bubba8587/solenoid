@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use js_sys::{Array, Function, Object, Promise, Reflect};
+use js_sys::{Array, Function, Map, Object, Promise, Reflect};
 use ruggine::classic;
 use ruggine::future::{ready, LocalBoxFuture};
 use ruggine::fxhash::FxHashSet;
@@ -1179,10 +1179,15 @@ impl Call {
             return t.into();
         }
         let origin: RefCell<Option<Object>> = RefCell::new(None);
-        let tagged: RefCell<Vec<(JsValue, JsValue)>> = RefCell::new(Vec::new());
+        let tagged: RefCell<Option<Map>> = RefCell::new(None);
         let tag = |cell: &JsValue| -> JsValue {
-            if let Some((_, t)) = tagged.borrow().iter().find(|(e, _)| e == cell) {
-                return t.clone();
+            if let Some(t) = tagged
+                .borrow()
+                .as_ref()
+                .map(|m| m.get(cell))
+                .filter(|t| !t.is_undefined())
+            {
+                return t;
             }
             let t = spread(cell);
             let o = origin
@@ -1191,7 +1196,10 @@ impl Call {
                 .clone();
             let _ = Reflect::set(&t, &k.origin, &o);
             let t: JsValue = t.into();
-            tagged.borrow_mut().push((cell.clone(), t.clone()));
+            tagged
+                .borrow_mut()
+                .get_or_insert_with(Map::new)
+                .set(cell, &t);
             t
         };
         let tag_cells = |values: &Array| -> Option<Array> {
@@ -1240,7 +1248,9 @@ impl Call {
     fn finish(&self, out: &JsValue) -> R<Outputs<JsValue>> {
         self.ports_moved();
         if out.is_null() || out.is_undefined() {
-            return Err(Thrown::Js(sol_error("#ERROR!", NO_OUTPUTS)));
+            return Err(Thrown::Js(
+                js_sys::Error::new("it returned no answer").into(),
+            ));
         }
         let mut outputs = Outputs::new();
         if !out.is_object() && !out.is_function() {
@@ -1259,9 +1269,6 @@ impl Call {
         Ok(outputs)
     }
 }
-
-/// What a node that answers nothing (`undefined` or `null`) shows on every output.
-pub(crate) const NO_OUTPUTS: &str = "This node gave no outputs";
 
 /// A throw or a rejection as the guard's error: an error value is itself, a `ShapeError` is `#SHAPE!`, anything else
 /// `#ERROR!`.

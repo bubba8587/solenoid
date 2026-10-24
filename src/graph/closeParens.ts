@@ -21,7 +21,7 @@ export function closeParens(text: string): string {
 }
 
 /** Where a `[Name]` or `[@[Name]]` reference opened at `i` closes, as the tokenizer reads it; -1 when it doesn't. */
-export function referenceEnd(text: string, i: number): number {
+function referenceEnd(text: string, i: number): number {
   const nested = text[i + 1] === "@" && text[i + 2] === "[";
   const e = text.indexOf("]", nested ? i + 3 : i + 1);
   if (e < 0) return -1;

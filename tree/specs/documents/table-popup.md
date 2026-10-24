@@ -14,7 +14,7 @@ Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupSt
 
 ## The store and the openers
 
-`tablePopup` is a module value store (`createValueStore`): `open(state)` replaces the state, `close()` clears it. It has to be a module store because a node card opens it from inside rete's separate React root, while the one `TablePopup` instance is mounted in App. The popup renders nothing while the state is null.
+`tablePopup` is a module value store (`createValueStore`): `open(state)` replaces the state, `close()` clears it. It is a module store so a node card deep in the canvas, or code outside React (`valuePopup.ts`), opens it with no context threaded down from App, where the one `TablePopup` instance is mounted. The popup renders nothing while the state is null.
 
 `valuePopup.ts` is the one home for opening a value's data popup, shared by the collapsed chips (`ArrayChip`, `FrameChip`, `CubeChip`) and the Display's corner expand button (`ValueExpandButton`).
 

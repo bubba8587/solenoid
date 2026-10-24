@@ -63,9 +63,3 @@ export function spliceBlock(text: string, name: string, content: string): Splice
   const body = lines.join(nl).replace(/\s+$/, "");
   return { text: (body ? body + nl + nl : "") + block.join(nl) + nl };
 }
-
-export function readBlock(text: string, name: string): string | null {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const found = findBlock(lines, name);
-  return found ? lines.slice(found[0] + 1, found[1]).join("\n") : null;
-}

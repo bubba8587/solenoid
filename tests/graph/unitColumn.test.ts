@@ -5,7 +5,10 @@ import { parseColumnUnitFromHeader, columnUnitLabel, tagFrameCellUnit } from "..
 import { displayMagnitudeOf } from "../../src/graph/unitBridge";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
 import { AggregateNode } from "../../src/graph/nodes/list";
-import { isUnitCell, magnitudeOf, unitLabelOf, type UnitCell } from "../../src/graph/unitValue";
+import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../../src/graph/unitValue";
+import { formatDim } from "../../src/graph/dimension";
+
+const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
 describe("tagFrameCellUnit — the as-typed frame cell → base-SI UnitCell carrying the display id", () => {
   it("currency carries the display id (the $-blank bug): $5 stays $5, not a blank unit", () => {

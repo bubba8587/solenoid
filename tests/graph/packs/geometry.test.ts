@@ -2,8 +2,7 @@ import { describe, it, expect } from "vitest";
 import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "../../../src/graph/packs/geometry";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { TriangleSolverNode } from "../../../src/graph/nodes/triangle";
-import { solveTriangle, type TriangleSolved } from "../../../src/graph/nodes/triangleOps";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import { tagDim, type UnitCell } from "../../../src/graph/unitValue";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
@@ -59,11 +58,20 @@ describe("Geometry second-wave formulas", () => {
   });
 });
 
+type Given = Partial<Record<"a" | "b" | "c" | "A" | "B" | "C", number>>;
+type Solved = Record<"a" | "b" | "c" | "A" | "B" | "C" | "area" | "perimeter", number>;
+
+/** The card on one triangle: its answer, or the error every output carries. */
+function solveTriangle(g: Given): Solved | SolError {
+  const out = new TriangleSolverNode().data(Object.fromEntries(Object.entries(g).map(([k, v]) => [k, [v]]))) as Record<string, unknown>;
+  return isSolError(out.area) ? out.area : (out as Solved);
+}
+
 describe("Triangle Solver", () => {
-  const solved = (g: Parameters<typeof solveTriangle>[0]): TriangleSolved => {
+  const solved = (g: Given): Solved => {
     const r = solveTriangle(g);
     expect(isSolError(r), JSON.stringify(r)).toBe(false);
-    return r as TriangleSolved;
+    return r as Solved;
   };
 
   it("SSS: the 3-4-5 right triangle", () => {
@@ -111,7 +119,7 @@ describe("Triangle Solver", () => {
   it("degenerate givens error honestly", () => {
     expect(isSolError(solveTriangle({ A: 60, B: 60, C: 60 }))).toBe(true);        // no scale
     expect(isSolError(solveTriangle({ a: 1, b: 1, c: 5 }))).toBe(true);           // inequality
-    expect(isSolError(solveTriangle({ a: 1, b: 1 }))).toBe(true);                 // two parts
+    expect(new TriangleSolverNode().data({ a: [1], b: [1] }).area).toBeNull();   // two parts: not enough to solve yet
     expect(isSolError(solveTriangle({ a: 1, A: 100, B: 100 }))).toBe(true);       // angles ≥ 180
   });
 

@@ -832,7 +832,6 @@ export class ReverseTextNode extends GraphNode {
 }
 
 // ─── Spell Number (Timesavers pack) ───────────────────────────────────────────
-export { spellNumber } from "./textOps";
 import type { SimilarityMethod } from "./textOps";
 export type { SimilarityMethod } from "./textOps";
 

@@ -7,7 +7,7 @@ import { registerDisplayUnits } from "../unitBridge";
 import { type SolError } from "../errorValue";
 import { CONVERT_UNIT_DEFS } from "./convertUnits";
 import { nodeOnCore } from "../nodeOnCore";
-export { CONVERT_UNIT_DEFS, convertValue, convertUnitKey, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
+export { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { type UnitCell } from "../unitValue";
 
 

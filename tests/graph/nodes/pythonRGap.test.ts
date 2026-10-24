@@ -12,18 +12,14 @@ import { describeFrame, summarizeColumn, correlationMatrix, windowFrame } from "
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
-import { matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
-import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
-import { levenshtein, damerauLevenshtein, jaroWinkler } from "../../../src/graph/nodes/textOps";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
 import { templatePlaceholders } from "../../../src/graph/nodes/textOps";
 import { requestRecalc } from "../../../src/graph/process";
-import { unaccent, slugify } from "../../../src/graph/nodes/textOps";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
-import { EtsForecastNode, FitDistributionNode, DecomposeNode, FIT_FAMILY_LABEL } from "../../../src/graph/nodes/stats";
+import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
 import type { FitFamily } from "../../../src/graph/nodes/fitOps";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
 import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
@@ -33,6 +29,10 @@ import { isFrameValue } from "../../../src/graph/frame";
 
 // python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
+const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
+  normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",
+  uniform: "Uniform", beta: "Beta", poisson: "Poisson",
+};
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const d = (s: string) => parseDateToSerial(s);
 const core = (name: string) => coreFunction(name)!;
@@ -52,6 +52,12 @@ const matTrace = core("TRACE");
 const matRank = core("MATRIXRANK");
 const matNorm = core("NORM");
 const textSimilarity = core("SIMILARITY");
+const levenshtein = core("LEVENSHTEIN");
+const jaroWinkler = (a: string, b: string) => textSimilarity(a, b, "jaro_winkler");
+/** The edit distance behind SIMILARITY's damerau ratio, 1 − d / the longer length. */
+const damerauLevenshtein = (a: string, b: string) => Math.round((1 - (textSimilarity(a, b, "damerau") as number)) * Math.max(a.length, b.length));
+const unaccent = core("UNACCENT");
+const slugify = core("SLUGIFY");
 const padText = (...a: unknown[]) => core("PADTEXT")(...a);
 const truncateText = (...a: unknown[]) => core("TRUNCATETEXT")(...a);
 const argsortList = (...a: unknown[]) => core("ARGSORT")(...a);
@@ -361,15 +367,13 @@ describe("linear algebra set (numpy.linalg reference values)", () => {
     expect(new MatDetNode({ op: "rank" }).data({ matrix: [[[1, 2], [2, 4]]] }).result).toBe(1);
   });
   it("SOLVE: numpy.linalg.solve; singular is #DIV/0!", () => {
-    const x = matSolve(A, [7, 5, 9])!;
+    const x = ev("SOLVE(m, b)", { m: A, b: [7, 5, 9] }) as number[];
     [0.6046511627906977, 1.4651162790697674, 1.5581395348837208].forEach((v, i) => expect(x[i]).toBeCloseTo(v, 12));
-    expect(matSolve([[1, 2], [2, 4]], [1, 2])).toBeNull();
-    const viaFormula = ev("SOLVE(m, b)", { m: A, b: [7, 5, 9] }) as number[];
-    viaFormula.forEach((v, i) => expect(v).toBeCloseTo(x[i], 12));
+    expect(isSolError(ev("SOLVE(m, b)", { m: [[1, 2], [2, 4]], b: [1, 2] }))).toBe(true);
     expect(isSolError(new MatSolveNode().data({ matrix: [[[1, 2], [2, 4]]], b: [[1, 2]] }).result)).toBe(true);
   });
   it("EIGEN (symmetric): numpy.linalg.eigh values descending, unit eigenvectors as columns, A·v = λ·v", () => {
-    const e = matEigh(A)!;
+    const e = new MatEigenNode().data({ matrix: [A] }) as { values: number[]; vectors: number[][] };
     [6.669079088282288, 3.476023602918134, 1.854897308799577].forEach((v, i) => expect(e.values[i]).toBeCloseTo(v, 10));
     for (let c = 0; c < 3; c++) {
       const v = e.vectors.map((r) => r[c]);
@@ -377,32 +381,30 @@ describe("linear algebra set (numpy.linalg reference values)", () => {
       Av.forEach((val, k) => expect(val).toBeCloseTo(e.values[c] * v[k], 9));
       expect(Math.hypot(...v)).toBeCloseTo(1, 12);
     }
-    expect(matEigh([[1, 2], [3, 4]])).toBeNull(); // not symmetric
-    const node = new MatEigenNode().data({ matrix: [A] });
-    expect(node.values).toEqual(e.values);
+    expect(isSolError(new MatEigenNode().data({ matrix: [[[1, 2], [3, 4]]] }).values)).toBe(true); // not symmetric
     expect(ev("EIGENVALUES(m)", { m: A })).toEqual(e.values);
   });
 });
 
 describe("Spectrum (FFT) — numpy.fft reference", () => {
-  it("fftReal matches numpy.fft.fft on a non-power-of-two length (Bluestein)", () => {
-    const { re, im } = fftReal([1, 2, 3, 4, 5, 6, 7]);
-    const wantRe = [28, -3.5, -3.5, -3.5, -3.5, -3.5, -3.5];
-    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251, -0.7988521603655251, -2.7911568610884143, -7.267824888003178];
-    re.forEach((v, i) => expect(v).toBeCloseTo(wantRe[i], 10));
-    im.forEach((v, i) => expect(v).toBeCloseTo(wantIm[i], 10));
+  it("matches numpy.fft.fft on a non-power-of-two length (Bluestein): one-sided amplitude and phase", () => {
+    const wantRe = [28, -3.5, -3.5, -3.5];
+    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251];
+    const rows = ev("SPECTRUM(s, 1)", { s: [1, 2, 3, 4, 5, 6, 7] }) as number[][];
+    expect(rows).toHaveLength(4);
+    rows.forEach(([, magnitude, phase], k) => {
+      expect(magnitude).toBeCloseTo(((k === 0 ? 1 : 2) * Math.hypot(wantRe[k], wantIm[k])) / 7, 10);
+      if (k > 0) expect(phase).toBeCloseTo(Math.atan2(wantIm[k], wantRe[k]), 10);
+    });
   });
   it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
     const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
-    const rows = spectrum(sig, 64) as SpectrumRow[];
-    expect(rows).toHaveLength(33);
-    expect(rows[5].frequency).toBe(5);
-    expect(rows[5].magnitude).toBeCloseTo(3, 10);
-    expect(rows[0].magnitude).toBeCloseTo(1, 10);
-    expect(rows[7].magnitude).toBeCloseTo(0, 10);
     const node = new SpectrumNode(); node.literals.rate = 64;
     const out = node.data({ list: [sig] }).result as number[][];
+    expect(out).toHaveLength(33);
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
+    expect(out[0][1]).toBeCloseTo(1, 10);
+    expect(out[7][1]).toBeCloseTo(0, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);
   });
@@ -767,7 +769,7 @@ describe("Template — str_glue / f-string placeholders", () => {
   });
 });
 
-describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.test.ts)", () => {
+describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalFormulas.test.ts)", () => {
   const X = [1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11];
   const Y = [0, 1, 0, 2, 0, 3, 2, 3, 0, 5, 4, 0, 1, 1, 1, 0];
   it("Smooth swaps its parameter sockets with the op; the formulas agree", () => {
@@ -869,7 +871,7 @@ describe("Polynomial Roots — numpy.roots references", () => {
   });
 });
 
-describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
+describe("K-Means / PCA cards (k-means++ seeded restarts; numpy eigh of the covariance, sklearn / prcomp signs)", () => {
   const frame = (cols: [string, (number | null)[]][]): FrameValue => ({ __frame: true, columns: cols.map(([name, values]) => ({ name, type: "number", values })) });
   it("K-Means: a cluster per row (blank rows skipped), a centers frame with counts", () => {
     const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, null]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 2]]]);
@@ -881,6 +883,19 @@ describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
     expect(c.columns.map((col) => col.name)).toEqual(["Cluster", "x", "y", "Count"]);
     expect(c.columns[3].values).toEqual([4, 3]);
     expect(c.columns[1].values[1]).toBe(5);
+    expect(c.columns[1].values[0]).toBeCloseTo(1.025, 9);
+    expect(c.columns[2].values[0]).toBeCloseTo(1.025, 9);
+    expect(n.data({ frame: [f] })).toEqual(out); // seeded: the same answer every recalculation
+  });
+  it("K-Means: k = n puts every point in its own cluster; a bad k answers blank", () => {
+    const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2]]]);
+    const n = new KMeansNode();
+    n.literals.k = 7;
+    expect(n.data({ frame: [f] }).labels).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    for (const k of [0, 8]) {
+      n.literals.k = k;
+      expect(n.data({ frame: [f] })).toEqual({ labels: null, centers: null });
+    }
   });
   it("PCA: scores per row (blank rows blank), loadings per feature, explained ratios", () => {
     const f = frame([["a", [2.5, 0.5, 2.2, 1.9, 3.1, 2.3, 2, 1, 1.5, 1.1]], ["b", [2.4, 0.7, 2.9, 2.2, 3.0, 2.7, 1.6, 1.1, 1.6, 0.9]]]);
@@ -889,16 +904,21 @@ describe("K-Means / PCA cards (kernels pinned in mlOps.test.ts)", () => {
     const sc = out.scores as FrameValue;
     expect(sc.columns.map((c) => c.name)).toEqual(["PC1", "PC2"]);
     expect(sc.columns[0].values[0]).toBeCloseTo(0.82797, 5);
-    expect(out.explained![0]).toBeCloseTo(0.963181, 5);
+    expect(sc.columns[1].values[0]).toBeCloseTo(0.175115, 5);
+    expect(sc.columns[0].values[1]).toBeCloseTo(-1.77758, 5);
+    expect(sc.columns[1].values[2]).toBeCloseTo(-0.384375, 5);
+    expect(out.explained![0]).toBeCloseTo(0.9631813143486462, 9);
     const ld = out.loadings as FrameValue;
     expect(ld.columns[0].values).toEqual(["a", "b"]);
-    expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5);
+    expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5); expect(ld.columns[1].values[1]).toBeCloseTo(0.735179, 5);
+    expect(ld.columns[2].values[0]).toBeCloseTo(0.735179, 5); expect(ld.columns[2].values[1]).toBeCloseTo(-0.677873, 5);
     n.standardize = true;
-    expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.962965, 5);
+    expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.9629646363461228, 9);
+    expect(n.data({ frame: [frame([["a", [1]], ["b", [2]]])] }).explained).toBeNull();
   });
 });
 
-describe("Logistic Regression card (IRLS kernel pinned in mlOps.test.ts)", () => {
+describe("Logistic Regression card (IRLS; references from a numpy IRLS transcription + scipy norm)", () => {
   it("coefficient frame + per-row probabilities; a logical target works; blank rows skipped", () => {
     const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
     const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
@@ -911,13 +931,34 @@ describe("Logistic Regression card (IRLS kernel pinned in mlOps.test.ts)", () =>
     const out = n.data({ frame: [f] });
     const c = out.coefficients as FrameValue;
     expect(c.columns[0].values).toEqual(["(Intercept)", "hours"]);
-    expect(c.columns[1].values[0]).toBeCloseTo(-4.0777, 3);
-    expect(c.columns[1].values[1]).toBeCloseTo(1.5046, 3);
-    expect(c.columns[4].values[1]).toBeCloseTo(0.0167, 3);
+    expect(c.columns.map((col) => col.name)).toEqual(["Term", "Coefficient", "Std Error", "z", "p"]);
+    expect(c.columns[1].values[0]).toBeCloseTo(-4.077713431087625, 6);
+    expect(c.columns[1].values[1]).toBeCloseTo(1.5046454283733315, 6);
+    expect(c.columns[2].values[0]).toBeCloseTo(1.7609943141564697, 6);
+    expect(c.columns[2].values[1]).toBeCloseTo(0.6287208459453852, 6);
+    expect(c.columns[3].values[1]).toBeCloseTo(2.393185207833931, 6);
+    expect(c.columns[4].values[0]).toBeCloseTo(0.02058151551245868, 8);
+    expect(c.columns[4].values[1]).toBeCloseTo(0.016702807340367887, 8);
     expect(out.probabilities!.length).toBe(21);
-    expect(out.probabilities![0]).toBeCloseTo(0.03471, 4);
+    expect(out.probabilities![0]).toBeCloseTo(0.034710335976879586, 8);
     expect(out.probabilities![20]).toBeNull();
     n.stringLiterals.target = "nope";
     expect((n.data({ frame: [f] }).coefficients as { code?: string }).code).toBe("#REF!");
+  });
+  it("two features; degenerate designs are errors", () => {
+    const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
+    const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
+    const x2 = [1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1];
+    const fit = (cols: [string, number[]][]) => {
+      const n = new LogisticNode();
+      n.stringLiterals.target = "y";
+      return n.data({ frame: [{ __frame: true, columns: cols.map(([name, values]) => ({ name, type: "number", values })) } as FrameValue] }).coefficients;
+    };
+    const c = fit([["hours", hours], ["x2", x2], ["y", pass]]) as FrameValue;
+    expect(c.columns[1].values[0]).toBeCloseTo(-4.434292614310739, 6);
+    expect(c.columns[1].values[1]).toBeCloseTo(1.5277346065203303, 6);
+    expect(c.columns[1].values[2]).toBeCloseTo(0.5691081986876356, 6);
+    expect(isSolError(fit([["hours", hours], ["y", pass.map(() => 1)]]))).toBe(true);
+    expect(isSolError(fit([["hours", [1, 2]], ["y", [0, 1]]]))).toBe(true);
   });
 });

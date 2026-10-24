@@ -1,8 +1,6 @@
 // [[C100]] chartIsAValue
 export const UNTITLED_FIGURES: ReadonlySet<string> = new Set(["kpi", "scale", "proportion", "sankey", "waterfall", "candle", "boxplot", "calheat", "heatmap", "contour", "surface", "quiver", "gantt", "ladder"]);
 
-export const SELF_TITLED_FIGURES: ReadonlySet<string> = new Set(["column", "bar", "line", "area", "scatter", "xyline", "pie", "radar", "radialbar", "funnel", "bubble", "overlay", "record"]);
-
 export const titleHeight = (fs: number) => Math.ceil(16 * fs);
 
 export function ChartTitle({ text, fs }: { text: string; fs: number }) {

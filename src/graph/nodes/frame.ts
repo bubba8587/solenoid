@@ -79,7 +79,7 @@ export function beginPass(node: FrameVerbNode): number {
   return node._gen;
 }
 
-export async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
+async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
   return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
 }
 
@@ -1843,7 +1843,7 @@ export class SplitFrameNode extends GraphNode {
 
 export type GetColumnReadAs = "number" | "text" | "date" | "logical";
 
-export function getColumnOutput(readAs: GetColumnReadAs) {
+function getColumnOutput(readAs: GetColumnReadAs) {
   return readAs === "text" ? strListOut("Values")
     : readAs === "date" ? dateListOut("Values")
     : readAs === "logical" ? logicalListOut("Values")
@@ -1910,11 +1910,11 @@ export class GetColumnNode extends GraphNode {
 
 export type AddColumnAddAs = "number" | "text" | "date" | "logical";
 
-export function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
+function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
   return addAs === "text" ? "string" : addAs;
 }
 
-export function addColumnInput(addAs: AddColumnAddAs) {
+function addColumnInput(addAs: AddColumnAddAs) {
   return addAs === "text" ? strListIn("Values")
     : addAs === "date" ? dateListIn("Values")
     : addAs === "logical" ? logicalListIn("Values")

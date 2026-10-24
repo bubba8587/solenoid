@@ -7,19 +7,6 @@ import { solError, type SolError } from "../errorValue";
 import type { Tri } from "../valueKinds";
 import { nodeOnCore } from "../nodeOnCore";
 
-type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
-
-function typedLiteral(node: LiteralHost, key: string): number | string | undefined {
-  const text = node.stringLiterals[key];
-  return text !== undefined ? text : node.literals[key];
-}
-
-/** The one reader for every `autoLiterals` wildcard slot: a connected cable wins even carrying null. */
-export function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
-  if (inputs[key]?.length) return inputs[key][0];
-  return typedLiteral(node, key) ?? null;
-}
-
 // Load and paste must rebuild the exact pair ids, or literals and cables misalign.
 export function pairIdsFromKeys(valueKeys: string[] | undefined, prefixA: string): number[] {
   if (!valueKeys) return [];

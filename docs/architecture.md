@@ -122,7 +122,7 @@ src/
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `nodeBoundary.ts` | What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`: the error guard and arrival coercion every `data()` call runs through) asks the app for: lazy frame collects, frame and cube construction, unit display magnitudes, list literals, format stamps, names, the error sinks, the perf probe, each array's cell kinds. Mechanics: `../tree/specs/computation/compute-pass.md` § The per-node wrappers |
 | `listLiterals.ts` | The typed list literals: `TYPEABLE_LIST`, how a list input's text splits (`listLiteralItems`, `listLiteralText`) and reads (`parseListLiteral`) |
-| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
+| `planImport.ts` | A Project XML / grammar CSV → the plan cube (Local File's `plan` socket), through `@solenoid/schedule-engine`'s readers. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the core's port of the engine (`crates/solenoid-core/src/schedule/`); the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
@@ -137,7 +137,7 @@ src/
 | `nodeNameStore.ts`, `nodeNaming.ts`, `nodeNames.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from the regenerated-on-load `id`); `nodeNames.ts` derives live display names + endpoints for the connection dialog |
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
 | `seeds.ts` + `seedGraphs/*.json` (+`seedTune.ts`) | Example graphs in Export format, globbed into a registry; `seedTune.ts` is the console-only live group-fit tuner `scripts/tune-seeds.mjs` drives |
-| `flow/flowModel.ts` (+`.test.ts`, `flowModelEdit.test.ts`) | The headless graph model builder (real GraphEditor + DataflowEngine + coercion + guards, no view), its edit verbs (`connect`/`disconnect`/`addNode`/`removeNodes`/`moveNode` under the lattice) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable): a group member projects as an RF child (`parentId`, position relative to the group, parents first), `toFlowPosition`/`fromFlowPosition` convert at the boundary, `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
+| `flow/flowModel.ts` (+`.test.ts`, `flowModelEdit.test.ts`) | The headless graph model builder (real GraphEditor + DataflowEngine + coercion + guards, no view), its edit verbs (`connect`/`moveNode` under the lattice; `buildModel` loads a saved graph for the tests) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable): a group member projects as an RF child (`parentId`, position relative to the group, parents first), `toFlowPosition`/`fromFlowPosition` convert at the boundary, `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
 | `flow/FlowSurface.tsx` | THE surface, shared by the main canvas and the drill-in: the RF element + identity-preserving `syncTopology`, handler binding, gesture installers, lasso, the socket/cable/node context menus, canvas keyboard, add menu (quick-wire), FC docking on drop, standoff tow (RF tows group members itself), RF-driven Delete (`onBeforeDelete`), selection mirror (`useOnSelectionChange`), right-click routing (`onNode/Edge/PaneContextMenu`), snapToGrid, isolate, touch select, RF `<MiniMap>`, `StandoffLayer` (hosts opting in), `HtmlCanvasLayer`, `CableInspector`. Takes a `SurfaceStack` + `SurfaceHooks` |
 | `flow/CanvasBacking.tsx`, `flow/panLayer.ts` (+test) | The canvas color and dot grid as an opaque backing in graph coordinates, and the pan layer that moves the viewport as one composited bitmap during a press pan (`tree/specs/canvas/react-flow-surface-contract.md` § The dot grid, § Drag performance) |
 | `flow/FlowCanvas.tsx` | The main host: app-lifetime stack (editor + engine + flowView + rebuild-aware topology pipe), the canvasCommands slot registrations, cable-change pipe, document restore, autosave + snapshot history hooks, and the app chrome rendered BESIDE the surface (palette, toasts, dialogs, legend, load/compute overlays) so it stays visible under a drill-in |
@@ -188,7 +188,6 @@ src/
 | `nodes/kind.ts` | node → `NodeKind` CLASSIFIER (`nodeKindOf`) + per-kind weights/resizable/wide flags; the kind → accent map (`NODE_KIND_ACCENTS`) lives in `nodes/shared.ts` |
 | `dimension.ts` | Dimensional algebra — the pure, graph-free units foundation (dimension vectors, multiply/divide/power, commensurability) |
 | `unitValue.ts` | The unit-on-the-VALUE layer (FC A4): `UnitCell` (base-SI magnitude + display id), mirrors `valueKinds.ts`'s shape; `applyFcUnit` lives at this seam via `unitBridge` |
-| `unitLattice.ts` | The unit compatibility lattice; a formula's unit algebra is the core's (`unit_dims.rs`) |
 | `unitBridge.ts` | The unit-blind boundary (`stripUnitCells` for the app's own reads; at arrival the input boundary strips per input; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`'s three branches |
 | `unitColumn.ts` | Per-column frame units: `ColumnUnit`, `columnUnitFromSpec`, `parseColumnUnitFromHeader` — the unitGranularity frame granularity, incl. computed columns |
 | `unitFlow.ts` | Format-annotation resolver: `makeAnnotationResolver` (+ the cached `sharedAnnotationResolver` most callers use, and `resolveValueOrigin` for the popup Go-to-source walk) walks the graph: an FC locks, Convert imposes its `toUnit`, a passthrough/selector carries (data-aware), a transform breaks. BIDIRECTIONAL — `inAnnotation` (upstream FC) + `downstreamAnnotation` (an FC ahead through pure passthroughs, for boxes in front of a trailing FC) |
@@ -279,7 +278,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `groupPush.ts` + `groupPushCore.ts` (+`.test.ts`) | Expand-push displacement (rails/clear/cascade) + snap-back records; pure core is unit-tested |
 | `standoffs.ts`, `standoffSolver.ts` (+`.test.ts`), `components/StandoffLayer.tsx` | User-declared axis-band constraints; iterative-projection solver runs after every layout pass |
 | `drawnCables.ts`, `drawnCablePath.ts` (+`.test.ts`), `components/DrawnCableLayer.tsx` + `DrawnCableCapture.tsx` + `DrawnCableInspector.tsx` | Free-drawn annotation curves: the store + draw-mode store, the pure span-chaining geometry over `getCablePath`, the world-space layer ABOVE the graph, the armed tool's capture sheet, and the selected cable's shape / ends / width / head / color panel |
-| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps` and `separateAll`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
+| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateAll`, on plain boxes and with clusters, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
 | `sectionFoldStore.ts`, `cableEndMotion.ts` | A card section's saved hand fold (per node and label, the save's `sections`); the transient cable ends a fold's liquid carries |
 | `selectionOps.ts` + `components/SelectionActionsBar.tsx`/`selectionActions.css` | Align/distribute deltas (pure) + the bottom-center overlay pill (≥2 nodes selected) that surfaces them outside the Command Palette |
@@ -376,7 +375,7 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
 `dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
 `tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`, `convertUnits`,
-the pack kernels (`astroOps`, `chemistryOps`, `electricalOps`, `emSpectrumOps`, `fluidsOps`,
+the pack kernels (`chemistryOps`, `electricalOps`, `fluidsOps`,
 `healthOps`, `physicsConstantsOps`, `thermoOps`, `triangleOps`),
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
@@ -441,14 +440,15 @@ second consumer ([[C69]] ganttPackages): `schedule-engine` (calendar in unit ind
 WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
 `gantt-layout` (payload → render frame at a width; the headless SVG serializer),
 `gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
-the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` above.
+the app calls `schedule-engine` only for `planImport.ts`'s readers and its types;
+scheduling runs on the core's port (above).
 
 ### Landing & showcase (`src/graph/landing/`)
 
 The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
 footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
-one live rete hero) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
+one live hero graph) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
 `ExamplesPage.tsx` (the seed library from `SEED_GROUPS`; each tile deep-links `/?seed=<id>`,
 which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
 packs from `BUILTIN_PACKS` and `PACK_GROUP_ORDER`). Scenes live in `LandingScenes.tsx` (+

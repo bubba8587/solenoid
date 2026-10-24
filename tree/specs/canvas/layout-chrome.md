@@ -193,7 +193,7 @@ Chrome only; nodes are 0, and cables and overlay planes are negative.
 4    composite drill-in backdrop
 5    nav pill / navigator / web-demo banner / docked report and inspector panels (under the header on purpose: the docks tuck beneath the bars)
 6    header / status bar / apptools palette
-7    align pill / isolate endpoints
+7    align pill
 20   menu-bar dropdown (local to the header) / Tidy options pop-over (local to the top bar, top: 100% + 6px under the layout group; it overflows onto the canvas)
 60   docked Conduit toolbar / node-budget modal
 100  minimap / socket legend / mobile bottom bar

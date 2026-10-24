@@ -1,17 +1,18 @@
 // [[C23]] calcModes
 import { describe, it, expect, vi } from "vitest";
 
-const held: { name: string; release: (columns: unknown[]) => void }[] = [];
+const held: { name: string; release: (columns: unknown[]) => void; refuse: (e: unknown) => void }[] = [];
 
 vi.mock("../../src/graph/fileBridge", async (orig) => ({ ...(await orig<object>()), isDesktop: () => true }));
 vi.mock("../../src/graph/ipcBridge", async (orig) => ({
   ...(await orig<object>()),
   ipcInvoke: (_cmd: string, args: { name: string }) =>
-    new Promise<unknown[]>((resolve) => held.push({ name: args.name, release: resolve })),
+    new Promise<unknown[]>((resolve, reject) => held.push({ name: args.name, release: resolve, refuse: reject })),
 }));
 vi.mock("../../src/graph/demoVault", async (orig) => ({ ...(await orig<object>()), getCsvFolder: () => "/data" }));
 
 const { LocalFileNode } = await import("../../src/graph/nodes/connection");
+const { solError } = await import("../../src/graph/errorValue");
 const settle = () => new Promise((r) => setTimeout(r, 0));
 const file = (tag: string) => [{ name: "from", type: "string", values: [tag] }];
 
@@ -28,5 +29,13 @@ describe("Local File answers for its current file only", () => {
     await settle();
     const out = await n.data();
     expect((out.frame as { columns: { values: string[] }[] }).columns[0].values).toEqual(["b"]);
+  });
+
+  it("a Parquet column the reader refuses answers the reader's own error, not #REF!", async () => {
+    held.length = 0;
+    const n = new LocalFileNode({ fileName: "c.parquet" });
+    const out = n.data();
+    held[0].refuse(solError("#VALUE!", 'Column "tags" holds values Solenoid can\'t read as a table column'));
+    expect((await out).frame).toMatchObject({ code: "#VALUE!" });
   });
 });

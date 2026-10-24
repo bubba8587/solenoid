@@ -23,7 +23,7 @@ export interface ProjectContext {
   wired: (inputKey: string) => boolean;
 }
 
-export const BLIND_PROJECT_CONTEXT: ProjectContext = { shapeOf: () => null, wired: () => false };
+const BLIND_PROJECT_CONTEXT: ProjectContext = { shapeOf: () => null, wired: () => false };
 
 interface HasPassthrough { passthrough(): PassthroughSpec[]; }
 

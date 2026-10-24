@@ -19,7 +19,7 @@ const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).m
 }));
 
 /** LIST and GRID carry different socket sets, so every cable goes first: removing a socket a cable still references is unsafe. */
-export async function applyInterpolateMode(node: InterpolateNodeType, mode: InterpolateMode): Promise<void> {
+async function applyInterpolateMode(node: InterpolateNodeType, mode: InterpolateMode): Promise<void> {
   if (node.mode === mode) return;
   node.mode = mode;
 

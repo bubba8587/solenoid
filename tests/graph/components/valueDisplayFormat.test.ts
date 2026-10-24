@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput } from "../../../src/graph/graphModel";
-import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily, formatRowValue } from "../../../src/graph/components/valueDisplayFormat";
+import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputElemFamily, formatRowValue } from "../../../src/graph/components/valueDisplayFormat";
 import { ListInputNode, type ListElemType } from "../../../src/graph/nodes/list";
 import { IfNode, NaNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
@@ -124,7 +124,7 @@ describe("formatListCell", () => {
 // Layer 1 — the type-default display: a date reads as a date wherever it flows,
 // resolved through pass-throughs (Display) and Conduit lanes, not just at the
 // node that produced it.
-describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", () => {
+describe("nodeOutputElemFamily — type resolves through pass-throughs / conduits", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
   async function wire() {
@@ -145,9 +145,9 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
 
   it("a date reads as a date at the producer, through a Conduit, and at a direct Display", async () => {
     const { dateSrc, dispThroughConduit, dispDirect } = await wire();
-    expect(nodeOutputIsDate(dateSrc.id)).toBe(true);          // the producer
-    expect(nodeOutputIsDate(dispDirect.id)).toBe(true);        // a pass-through Display fed directly
-    expect(nodeOutputIsDate(dispThroughConduit.id)).toBe(true); // a Display fed through a Conduit lane
+    expect(nodeOutputElemFamily(dateSrc.id)).toBe("date");          // the producer
+    expect(nodeOutputElemFamily(dispDirect.id)).toBe("date");        // a pass-through Display fed directly
+    expect(nodeOutputElemFamily(dispThroughConduit.id)).toBe("date"); // a Display fed through a Conduit lane
   });
 
   it("a plain number does NOT read as a date", async () => {
@@ -158,7 +158,7 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
     const disp = new DisplayNode() as unknown as Schemes["Node"];
     for (const n of [numSrc, disp]) await editor.addNode(n);
     await editor.addConnection(new GraphConnection(numSrc, "result", disp, "in") as Schemes["Connection"]);
-    expect(nodeOutputIsDate(disp.id)).toBe(false);
+    expect(nodeOutputElemFamily(disp.id)).not.toBe("date");
   });
 });
 
@@ -166,8 +166,8 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
 // A List Input's SegToggle forces the list's type; the value box must agree no
 // matter what the entries are. Scanning cells can't deliver that: every entry
 // unparseable leaves a list of nulls with nothing to vote, so a Bool list tinted
-// and opened as NUMERIC. `nodeOutputElemFamily` reads the declared socket instead
-// (the same walk `nodeOutputIsDate` uses — that is now just this === "date").
+// and opened as NUMERIC. `nodeOutputElemFamily` reads the declared socket instead.
+
 describe("nodeOutputElemFamily — the declared family, whatever the cells say", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
@@ -197,9 +197,9 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
     expect(nodeOutputElemFamily(n.id)).toBe("logical");
   });
 
-  it("nodeOutputIsDate stays consistent with it", async () => {
-    expect(nodeOutputIsDate((await listInputOf("date")).id)).toBe(true);
-    expect(nodeOutputIsDate((await listInputOf("logical")).id)).toBe(false);
+  it("a date list reads as the date family, a logical one does not", async () => {
+    expect(nodeOutputElemFamily((await listInputOf("date")).id)).toBe("date");
+    expect(nodeOutputElemFamily((await listInputOf("logical")).id)).not.toBe("date");
   });
 
   it("is undefined for an unknown node, so the chip's cell scan stays the fallback", () => {
@@ -243,14 +243,14 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     // the old first-connection walk answered "date" and dateFormatDisplay turned the
     // else-branch's 46000 into "20-Mar-2026".
     const { iff, disp } = await ifOver(dateSocket, numberSocket);
-    expect(nodeOutputIsDate(iff.id)).toBe(false);
-    expect(nodeOutputIsDate(disp.id)).toBe(false); // and it doesn't leak downstream
+    expect(nodeOutputElemFamily(iff.id)).not.toBe("date");
+    expect(nodeOutputElemFamily(disp.id)).not.toBe("date"); // and it doesn't leak downstream
   });
 
   it("AGREEING branches still resolve, through the selector and past it", async () => {
     const { iff, disp } = await ifOver(dateSocket, dateSocket);
-    expect(nodeOutputIsDate(iff.id)).toBe(true);
-    expect(nodeOutputIsDate(disp.id)).toBe(true);
+    expect(nodeOutputElemFamily(iff.id)).toBe("date");
+    expect(nodeOutputElemFamily(disp.id)).toBe("date");
   });
 
   it("an UNWIRED branch doesn't vote against the wired one", async () => {
@@ -262,7 +262,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     for (const n of [a, iff]) await editor.addNode(n);
     await editor.addConnection(new GraphConnection(a, "v", iff, "then") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(iff.id)).toBe(true);
+    expect(nodeOutputElemFamily(iff.id)).toBe("date");
   });
 
   it("a SIDE input can't supply the display type (only the spec's value branches)", async () => {
@@ -276,7 +276,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     for (const n of [dsrc, exp]) await editor.addNode(n);
     await editor.addConnection(new GraphConnection(dsrc, "v", exp, "min") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(exp.id)).toBe(false); // `in` is unwired — nothing to display
+    expect(nodeOutputElemFamily(exp.id)).not.toBe("date"); // `in` is unwired — nothing to display
   });
 });
 
@@ -300,7 +300,7 @@ describe("NA() is type-neutral, so it doesn't out-vote a typed branch", () => {
     await editor.addConnection(new GraphConnection(dsrc, "v", ife, "value") as Schemes["Connection"]);
     await editor.addConnection(new GraphConnection(na, "result", ife, "fallback") as Schemes["Connection"]);
     settleWildcardTypes(editor);
-    expect(nodeOutputIsDate(ife.id)).toBe(true);
+    expect(nodeOutputElemFamily(ife.id)).toBe("date");
   });
 
   it("and #N/A connects anywhere, because an error is legal in any cell", () => {

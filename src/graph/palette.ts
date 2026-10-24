@@ -990,7 +990,7 @@ export const NEUTRAL_HEX: Record<string, string> = Object.assign(Object.create(n
   [NEUTRAL_WHITE]: "#f3f4f6",
   [NEUTRAL_DARK]: "#3a3d42",
 });
-export const NEUTRAL_CYCLE = [NEUTRAL_WHITE, "gray", NEUTRAL_DARK] as const;
+const NEUTRAL_CYCLE = [NEUTRAL_WHITE, "gray", NEUTRAL_DARK] as const;
 
 // Each neutral is drawn from the chrome color of about its lightness, so a tinted palette's neutrals share its background's tint.
 const NEUTRAL_CHROME_KEY: Record<string, ChromeKey> = { [NEUTRAL_WHITE]: "text", gray: "textMuted", [NEUTRAL_DARK]: "borderStrong" };

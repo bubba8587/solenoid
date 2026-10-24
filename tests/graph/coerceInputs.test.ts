@@ -1,6 +1,6 @@
 // [[C28]]
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseListLiteral, TYPEABLE_LIST } from "../../src/graph/listLiterals";
+import { parseListLiteral } from "../../src/graph/listLiterals";
 import { throughBoundary } from "./boundaryKit";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -24,6 +24,8 @@ import { NotNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
+
+const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
 const APR_2027 = parseDateToSerial("2027-04-21");

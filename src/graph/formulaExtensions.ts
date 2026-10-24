@@ -36,7 +36,7 @@ export function packFormulaSignature(name: string): string | null {
   return PACK_FORMULA_META.get(name.toUpperCase())?.signature ?? null;
 }
 
-export function packFormulaMeta(name: string): PackFormula | undefined {
+function packFormulaMeta(name: string): PackFormula | undefined {
   return PACK_FORMULA_META.get(name.toUpperCase());
 }
 setPackLookup(packFormulaMeta);

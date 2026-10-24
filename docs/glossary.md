@@ -49,10 +49,10 @@ area. When you coin a new load-bearing term, add it here.
   error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
 - **Missing / null**: a first-class "hole" in a list/frame: rendered `null`, *skipped* by
   aggregators, propagated by element-wise math, dropped by Filter. Distinct from an error.
-  (`valueKinds.ts` `isMissing`)
-- **`forAggregate`**: the canonical prep an aggregator must run: propagate the first
+  (`Missing` in `valueKinds.ts`)
+- **`for_aggregate`**: the canonical prep an aggregator runs: propagate the first
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
-  (`valueKinds.ts`)
+  (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
   (`valueKinds.ts` `kleeneAnd/Or/Not`)
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
@@ -115,7 +115,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Plan (tasks cube)**: the Schedule node's input shape: one row per task, Predecessors a
   list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
   Start / Finish / Deadline / Manual / Complete columns; a Local File's Project XML or
-  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `../tree/specs/computation/schedule-and-gantt.md`)
+  grammar CSV arrives in this shape. (`crates/solenoid-core/src/nodes/sched.rs`, `planImport.ts`; `../tree/specs/computation/schedule-and-gantt.md`)
 - **Gantt figure**: the read-only `chart`-socket figure of a scheduled plan: bars, milestone
   diamonds, summary brackets, dependency arrows, the critical path, today / status lines,
   shaded non-working days. Data-only payload (`packages/gantt-layout/src/payload.ts`), laid

@@ -38,7 +38,7 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
+function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
   return (
     <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
       {fields.map((f, i) => (

@@ -7,15 +7,7 @@ import { isPurePassthroughNode } from "./passthrough";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { nodeOnCore } from "../nodeOnCore";
 import { staysOffCore } from "./display";
-import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
-
-class MutableSocket extends SolenoidSocket {
-  constructor(type: SocketDataType) { super(type); }
-  setType(type: SocketDataType) {
-    // Readonly in the type only; this instance belongs to one port.
-    (this as unknown as { dataType: SocketDataType }).dataType = type;
-  }
-}
+import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
 type FcEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 

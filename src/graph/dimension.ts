@@ -1,13 +1,13 @@
 // [[C25]] firstClassUnits
 // Must stay free of the editor, React and every node.
 
-export const BASE_DIMS = [
+const BASE_DIMS = [
   "length", "mass", "time", "current", "temperature",
   "amount", "luminous", "angle", "currency", "information",
 ] as const;
 export type BaseDim = (typeof BASE_DIMS)[number];
 
-export const CUSTOM_DIM_PREFIX = "custom:";
+const CUSTOM_DIM_PREFIX = "custom:";
 export const customDim = (name: string): Dim => ({ [CUSTOM_DIM_PREFIX + name.trim().toLowerCase()]: 1 });
 
 export type Dim = Record<string, number>;
@@ -66,18 +66,6 @@ export function dimEqual(a: Dim, b: Dim): boolean {
   return true;
 }
 
-/** `k` with `dim` = `base`^k, or null when `dim` is no power of `base`. */
-export function dimPowerOf(dim: Dim, base: Dim): number | null {
-  let k: number | null = null;
-  for (const key of dimAxes(dim, base)) {
-    const d = dim[key] ?? 0, b = base[key] ?? 0;
-    if (b === 0) { if (d !== 0) return null; continue; }
-    if (k === null) k = d / b;
-    else if (Math.abs(d / b - k) > 1e-12) return null;
-  }
-  return k;
-}
-
 export function isDimensionless(a: Dim): boolean {
   for (const k in a) if ((a[k] ?? 0) !== 0) return false;
   return true;
@@ -102,22 +90,11 @@ export function unitPow(a: Unit, n: number): Unit | null {
   return { dim: dimPow(a.dim, n), scale: a.scale ** n };
 }
 
-export function commensurable(a: Unit, b: Unit): boolean {
-  return dimEqual(a.dim, b.dim);
-}
-
-export function convert(value: number, a: Unit, b: Unit): number | null {
-  if (!commensurable(a, b)) return null;
-  const base = value * a.scale + (a.offset ?? 0);
-  const out = (base - (b.offset ?? 0)) / b.scale;
-  return Number.isFinite(out) ? out : null;
-}
-
 const L = (n: number): Dim => ({ length: n });
 const d = (dim: Dim, scale: number, offset?: number): Unit =>
   offset === undefined ? { dim, scale } : { dim, scale, offset };
 
-export const SI_PREFIXES: Record<string, number> = {
+const SI_PREFIXES: Record<string, number> = {
   Y: 1e24, Z: 1e21, E: 1e18, P: 1e15, T: 1e12, G: 1e9, M: 1e6, k: 1e3, h: 1e2, da: 1e1,
   d: 1e-1, c: 1e-2, m: 1e-3, u: 1e-6, "µ": 1e-6, n: 1e-9, p: 1e-12, f: 1e-15, a: 1e-18, z: 1e-21, y: 1e-24,
 };

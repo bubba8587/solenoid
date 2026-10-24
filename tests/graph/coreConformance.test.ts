@@ -11,7 +11,6 @@ import { isUnitCell } from "../../src/graph/unitValue";
 import { coreValue, readReply } from "../../src/graph/coreValues";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { ReduceLambdaNode, ByAxisNode } from "../../src/graph/nodes/tableLambda";
-import { toAnyMatrix } from "../../src/graph/nodes/coerce";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import { readFrozen, replay, freezes, writeFrozen, enc } from "./coreFixtures";
@@ -353,6 +352,8 @@ type FoldCase = { kind: "reduce" | "row" | "col"; src: string; m: unknown; initi
 
 describe("REDUCE, BYROW and BYCOL over values with a unit answer as frozen", () => {
   const foldUnits = readFrozen<FoldCase>("fold-units");
+  /** A table socket's reading: a list is one row, a scalar one cell. */
+  const toAnyMatrix = (v: unknown) => (v == null ? null : !Array.isArray(v) ? [[v]] : v.length && !Array.isArray(v[0]) ? [v] : v);
   it(`${foldUnits.length} folds through the nodes' data()`, () => {
     expect(replay("fold-units", foldUnits, (c) => {
       const node = c.kind === "reduce" ? new ReduceLambdaNode({ expr: c.src }) : new ByAxisNode({ expr: c.src, op: c.kind });

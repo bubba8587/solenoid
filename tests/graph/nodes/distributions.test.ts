@@ -1,7 +1,6 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
 import { DistributionsNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
-import { DIST_SPECS } from "../../../src/graph/nodes/distributionOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const dist = (op: string, form: string) =>
@@ -128,19 +127,17 @@ describe("PHI / GAUSS — standard-normal forms that moved from Math", () => {
 
   it("PHI is the standard-normal density φ(x)", () => {
     const peak = 1 / Math.sqrt(2 * Math.PI);
-    expect(DIST_SPECS.phi.compute("pdf", 0, [])).toBeCloseTo(peak, 12);
     expect(dist("phi", "pdf").data({ x: [0] }).result).toBeCloseTo(peak, 12);
   });
 
   it("GAUSS is Φ − ½, the area from 0 to x", () => {
-    expect(DIST_SPECS.gauss.compute("half", 0, [])).toBeCloseTo(0, 12);
-    expect(DIST_SPECS.gauss.compute("half", 1.96, [])).toBeCloseTo(0.475, 4);
+    expect(dist("gauss", "half").data({ x: [0] }).result).toBeCloseTo(0, 12);
     expect(dist("gauss", "half").data({ x: [1.96] }).result).toBeCloseTo(0.475, 4);
   });
 
   it("the node and the formula agree", () => {
-    expect(ev("GAUSS(1.96)")).toBeCloseTo(DIST_SPECS.gauss.compute("half", 1.96, [])!, 12);
-    expect(ev("PHI(0)")).toBeCloseTo(DIST_SPECS.phi.compute("pdf", 0, [])!, 12);
+    expect(ev("GAUSS(1.96)")).toBeCloseTo(dist("gauss", "half").data({ x: [1.96] }).result as number, 12);
+    expect(ev("PHI(0)")).toBeCloseTo(dist("phi", "pdf").data({ x: [0] }).result as number, 12);
   });
 });
 

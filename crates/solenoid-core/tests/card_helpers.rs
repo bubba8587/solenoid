@@ -40,7 +40,7 @@ fn numbers_show_as_frozen() {
         let ann = Annotation::from_json(&c["ann"]);
         let s = &c["settings"];
         let d = NumberDisplay::from_settings(
-            s.get("numberDecimals").and_then(Json::as_str).or(Some("4")),
+            s.get("numberDecimals").and_then(Json::as_f64).or(Some(4.0)),
             s.get("sciAbove").and_then(Json::as_str).or(Some("9")),
         );
         let got = format_number_with_annotation(n, &ann, d);

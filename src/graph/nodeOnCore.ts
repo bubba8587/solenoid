@@ -5,7 +5,7 @@
 import type { GraphNode } from "./graphModel";
 import { extractInit } from "./nodeInit";
 import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
-import { TYPEABLE_LIST, parseListLiteral } from "./listLiterals";
+import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
 import { nodeWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
@@ -43,6 +43,9 @@ export function coreInit(node: GraphNode): Record<string, unknown> {
 
 const CACHED = ["cachedResult", "cachedValue", "cachedList", "cachedChart", "cachedPayload"] as const;
 
+/** The rungs an unwired input takes a typed list literal on (`boundary_core.rs` `takes_literal`). */
+const LITERAL_RUNGS: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist", "numlist"]);
+
 /** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
  *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
  *  `static coreFields` come per call (`coreFieldsOf`). JSON text, as `jsonEnc` writes it. */
@@ -58,7 +61,7 @@ export function coreHeader(node: GraphNode): string {
       const rung = node.inputs[k]?.socket.name;
       const text = lits[k];
       if (!rung || typeof text !== "string" || text.trim() === "") continue;
-      if (!TYPEABLE_LIST.has(rung) && rung !== "numlist") continue;
+      if (!LITERAL_RUNGS.has(rung)) continue;
       const w = nodeWire(parseListLiteral(text, rung as SocketDataType));
       if (w !== undefined) lists.push([k, w]);
     }

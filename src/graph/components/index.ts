@@ -251,8 +251,6 @@ export { SocketContextMenu } from "./SocketContextMenu";
 export type { SocketContextTarget } from "./SocketContextMenu";
 export { CableContextMenu } from "./CableContextMenu";
 export type { CableContextTarget } from "./CableContextMenu";
-export { StandoffLinkMenu } from "./StandoffLinkMenu";
-export type { StandoffLinkTarget } from "./StandoffLinkMenu";
 export { NodeContextMenu } from "./NodeContextMenu";
 export type { NodeContextTarget } from "./NodeContextMenu";
 export { StandoffLayer } from "./StandoffLayer";

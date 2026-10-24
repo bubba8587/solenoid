@@ -8,7 +8,7 @@ tags: [spec, floors]
 
 What every `*Store.ts` under `src/graph/` is built to. The stores are the app-wide state that [[A1]] visualGraphCalculator keeps outside React (`storeKit.ts` `createNotifier`); this spec is their floor, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file.
 
-A **store** is a plain module that holds one piece of shared state, such as which cards are collapsed, the pinned values, the toast queue, or whether a dialog is open. Components read it and re-render when it changes. A module store rather than component state lets a surface in one React tree drive a popup mounted in another (a card on the canvas opens the Script editor mounted in App), and lets Canvas's keydown handler read the state directly, with no stale closure.
+A **store** is a plain module that holds one piece of shared state, such as which cards are collapsed, the pinned values, the toast queue, or whether a dialog is open. Components read it and re-render when it changes. A module store rather than component state lets a card deep in the canvas drive a popup mounted in App with no context threaded between them (a card opens the Script editor), lets code outside React open and read it, and lets Canvas's keydown handler read the state directly, with no stale closure.
 
 There are four common kinds:
 

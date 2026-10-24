@@ -1,36 +1,22 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
-import { weightedShuffleKey } from "../../src/graph/nodes/listOps";
-
-/** The list in ascending key order, as Shuffle draws it. */
-const shuffleList = <T,>(list: T[], keys: number[]): T[] => list.map((v, i) => [keys[i], v] as const).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
 import { ShuffleNode } from "../../src/graph/nodes/list";
 import type { SolError } from "../../src/graph/errorValue";
 
-describe("weightedShuffleKey", () => {
-  it("sinks a non-positive or non-finite weight to the end", () => {
-    expect(weightedShuffleKey(0.5, 0)).toBe(Infinity);
-    expect(weightedShuffleKey(0.5, -3)).toBe(Infinity);
-    expect(weightedShuffleKey(0.5, NaN)).toBe(Infinity);
-    expect(weightedShuffleKey(0.5, Infinity)).toBe(Infinity);
-  });
+const first = (list: unknown[], weights: number[]) => (new ShuffleNode().data({ list: [list], weights: [weights] }).result as unknown[])[0];
 
-  it("equal uniforms sort by descending weight (via shuffleList's ascending keys)", () => {
-    const keys = [4, 2, 1].map((w) => weightedShuffleKey(0.5, w));
-    expect(shuffleList(["A", "B", "C"], keys)).toEqual(["A", "B", "C"]);
+describe("weighted draw", () => {
+  it("sinks a non-positive or non-finite weight to the end", () => {
+    for (const w of [0, -3, NaN, Infinity]) expect(first(["A", "B"], [w, 1])).toBe("B");
   });
 
   it("P(element first) is proportional to its weight (np.random.choice p=)", () => {
-    const weights = [10, 1, 1];
-    const N = 20000;
-    const first = [0, 0, 0];
-    for (let t = 0; t < N; t++) {
-      const keys = weights.map((w) => weightedShuffleKey(Math.random(), w));
-      first[shuffleList([0, 1, 2], keys)[0]]++;
-    }
+    const N = 5000;
+    let hits = 0;
+    for (let t = 0; t < N; t++) if (first([0, 1, 2], [10, 1, 1]) === 0) hits++;
     // Expected P(0 first) = 10/12 ≈ 0.833.
-    expect(first[0] / N).toBeGreaterThan(0.80);
-    expect(first[0] / N).toBeLessThan(0.87);
+    expect(hits / N).toBeGreaterThan(0.80);
+    expect(hits / N).toBeLessThan(0.87);
   });
 });
 

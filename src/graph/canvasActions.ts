@@ -208,13 +208,13 @@ export type DeleteScope = EditScope & {
   keeps?: (n: SolenoidNode) => boolean;
 };
 
-export const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
+const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
 
 const dockedFc = (n: SolenoidNode): n is FormatControllerNode & SolenoidNode =>
   n instanceof FormatControllerNode && !!n.hostNodeId;
 
 /** The selection plus every FC docked to a doomed node, at any depth: a docked FC is part of its host's entity. */
-export function deleteSet(editor: GraphEditor<Schemes>): Set<string> {
+function deleteSet(editor: GraphEditor<Schemes>): Set<string> {
   const ids = new Set(editor.getNodes().filter((n) => n.selected).map((n) => n.id));
   for (const id of ids) for (const d of dockedNodeStore.getDockedTo(id)) if (editor.getNode(d.id)) ids.add(d.id);
   return ids;

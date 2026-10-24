@@ -10,8 +10,6 @@ export interface LadderOption { score: number; value: number[]; costs: number[];
  *  cost with no total (political capital); with either it is countable. */
 export interface LadderResource { limit: number | null; floor?: number | null }
 
-export const isRough = (r: LadderResource): boolean => r.limit == null && r.floor == null;
-
 export interface LadderResult { states: LadderState[]; edges: LadderEdge[]; main: number[] }
 
 /** What a viewer can do to a Choice Ladder's choices: take an option at a fork (`instead` of the one taken there), undo
@@ -27,21 +25,8 @@ export function nextChoices(choices: readonly string[], a: LadderAction): string
   return [...choices.filter((c) => key(c) !== key(a.add) && (a.instead == null || key(c) !== key(a.instead))), a.add];
 }
 
-export const LADDER_MAX_OPTIONS = 40;
 const SEARCH_BUDGET = 2_000_000;
 const EPS = 1e-9;
-
-/** Where an option sits in the ladder's order: value for its share of the rough costs, or plain value when there are none.
- *  An option that costs nothing rough, or earns some back, comes first, by value. */
-export function priorities(opts: LadderOption[], res: LadderResource[]): { tier: number; p: number }[] {
-  const rough = res.map((r, k) => (isRough(r) ? k : -1)).filter((k) => k >= 0);
-  const scale = rough.map((k) => Math.max(EPS, ...opts.map((o) => Math.abs(o.costs[k]))));
-  return opts.map((o) => {
-    if (!rough.length) return { tier: 1, p: o.score };
-    const share = rough.reduce((s, k, i) => s + o.costs[k] / scale[i], 0);
-    return share <= EPS ? { tier: 0, p: o.score } : { tier: 1, p: o.score / share };
-  });
-}
 
 /** Two options are close when they sit in the same tier and their places differ by no more than `gap` of the larger. */
 export function isClose(a: { tier: number; p: number }, b: { tier: number; p: number }, gap: number): boolean {

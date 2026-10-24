@@ -71,8 +71,3 @@ export function isolateSelection(): boolean {
   const editor = getActiveEditor();
   return editor ? isolateNodes(selectedIds(editor)) : false;
 }
-
-export function isolateChain(): boolean {
-  const editor = getActiveEditor();
-  return editor ? isolateChainOf(selectedIds(editor)) : false;
-}

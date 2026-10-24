@@ -5,7 +5,6 @@ import { useStore, type ReactFlowState } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import {
   standoffStore,
-  standoffLayoutTick,
   settleStandoffs,
   anchorPoint,
   anchorFromVector,
@@ -74,7 +73,6 @@ function endsKey(st: ReactFlowState, s: Standoff): string {
 
 const StandoffBar = memo(function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
   useStore((st) => endsKey(st, s));
-  useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   // Hidden endpoints (collapsed-group members) make the standoff dormant.
   if (groupCollapseStore.isNodeHidden(s.a.nodeId) || groupCollapseStore.isNodeHidden(s.b.nodeId)) {
@@ -181,7 +179,6 @@ function StandoffToolbar({ s }: { s: Standoff }) {
 
 export const StandoffLayer = memo(function StandoffLayer() {
   useSyncExternalStore(standoffStore.subscribe, standoffStore.version);
-  useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
 
   const all = standoffStore.all();

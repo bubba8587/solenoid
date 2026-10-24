@@ -140,9 +140,8 @@ describe("review pins: formula surface parity", () => {
 });
 
 describe("review pins: INDEX, RUNNING, VDB", () => {
-  it("INDEX truncates a fractional row like Excel", async () => {
-    const { resolveAxes } = await import("../../src/graph/nodes/indexAccess");
-    expect((resolveAxes(1.9, undefined) as { r?: number }).r).toBe(0);
+  it("INDEX truncates a fractional row like Excel", () => {
+    expect(coreFunction("INDEX")!([10, 20, 30], 1.9)).toBe(10);
   });
   it("RUNNING with a negative window is #DOMAIN! on the formula, like the card", () => {
     expect(isSolError(coreFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);

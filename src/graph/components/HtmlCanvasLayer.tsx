@@ -40,18 +40,16 @@ export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: {
 
   useEffect(() => {
     if (mode !== "html") return;
-    let live = true;
     const recount = () => setDomWeight(graphDomWeight(editor));
     recount();
-    // editor.addPipe can't be removed, so `live` neutralizes it on cleanup.
-    editor.addPipe((ctx) => {
-      if (live && ctx && typeof ctx === "object" && "type" in ctx) {
+    const pipe = editor.addPipe((ctx) => {
+      if (ctx && typeof ctx === "object" && "type" in ctx) {
         const t = (ctx as { type: string }).type;
         if (t === "nodecreated" || t === "noderemoved") recount();
       }
       return ctx;
     });
-    return () => { live = false; };
+    return () => editor.removePipe(pipe);
   }, [mode, editor]);
 
   useEffect(() => {

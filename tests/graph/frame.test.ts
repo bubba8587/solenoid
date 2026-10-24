@@ -17,7 +17,6 @@ import {
   typedColumn,
   colTypeForSocket,
   addColumn,
-  frameHasTextColumns,
   columnTypesAfterCsvEdit,
   type FrameValue,
 } from "../../src/graph/frame";
@@ -288,25 +287,6 @@ describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
   });
 });
 
-// ─── frameHasTextColumns ─────────────────────────────────────────────────────
-
-describe("frameHasTextColumns", () => {
-  it("false when all columns are numeric", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-
-  it("true when at least one column is string", () => {
-    const f = frameFromCells(["Num", "Label"], [[42, "foo"]]);
-    expect(frameHasTextColumns(f)).toBe(true);
-  });
-
-  it("false for date columns (date serials don't block the matrix)", () => {
-    const f = frameFromCells(["D"], [["2026-01-03"]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-});
-
 describe("frameFromInputText — a blank CSV cell is null, not 0 (round-trips)", () => {
   it("CSV: a blank numeric cell imports as null", () => {
     const f = frameFromInputText("vals, tag\n1, a\n, b\n3, c\n4, d");
@@ -350,13 +330,6 @@ describe("logical columns", () => {
     const node = new GetColumnNode({ readAs: "text" });
     node.stringLiterals.name = "Flag";
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
-  });
-
-  it("a logical column splits to a 1/0 numeric matrix", async () => {
-    const { splitFrame } = await import("../../src/graph/frame");
-    const f = frameFromCells(["a", "b"], [["TRUE", "1"], ["FALSE", "2"]]);
-    // 'a' is logical, 'b' numeric → no text column → clean numeric matrix
-    expect(splitFrame(f).matrix).toEqual([[1, 1], [0, 2]]);
   });
 
   it("Split Frame filters columns by type (the colType toggle)", async () => {

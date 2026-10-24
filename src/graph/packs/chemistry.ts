@@ -8,7 +8,7 @@ import { CHEMISTRY_PACK_FORMULAS } from "./chemistryFormulas";
 const R_GAS = "8.314462618";
 const FARADAY = "96485.33212";
 
-export const CHEM_AMOUNTS: FormulaPackEntry[] = [
+const CHEM_AMOUNTS: FormulaPackEntry[] = [
   { type: "ch-moles-mass", label: "Moles ↔ Mass", expr: "n = m / mm", equation: true,
     description: "n = m/mm with any one unknown: moles from mass, mass from moles, or even the molar mass from both; wire a Molar Mass node into mm",
     keywords: "amount substance stoichiometry grams moles molar" },
@@ -22,7 +22,7 @@ export const CHEM_AMOUNTS: FormulaPackEntry[] = [
     description: "Reaction yield: actual ÷ theoretical amount × 100" },
 ];
 
-export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
+const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
   { type: "ch-ph", label: "pH ↔ [H⁺]", expr: "ph = -LOG10(h)", equation: true,
     description: "pH = −log₁₀[H⁺], either way around: wire h (mol/L) to get the pH, or ph to get the concentration",
     keywords: "acid base hydrogen concentration" },

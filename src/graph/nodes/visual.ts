@@ -5,7 +5,6 @@ import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, 
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
-export { histogram2d, type Histogram2d } from "./visualOps";
 import type {
   ChartValue, KpiPayload, ScalePayload, SankeyPayload, RecordPayload, XYPayload, ChartRef,
 } from "../chartValue";
@@ -271,7 +270,7 @@ export class MermaidNode extends GraphNode {
 
 // ─── Gauge ─────────────────────────────────────────────────────────────────────
 export type GaugeStyle = "dial" | "bar";
-export const GAUGE_STYLE_META = {
+const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
 } satisfies Record<GaugeStyle, { label: string }>;

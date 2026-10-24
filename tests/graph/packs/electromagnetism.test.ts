@@ -3,7 +3,6 @@ import { EM_FORMULAS } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
 import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
-import { emBand } from "../../../src/graph/nodes/emSpectrumOps";
 import { PhysicsConstantNode } from "../../../src/graph/nodeClasses";
 import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
 
@@ -107,6 +106,7 @@ describe("Physics Constant node", () => {
 
 describe("EM Spectrum Band", () => {
   it("names the conventional bands by wavelength", () => {
+    const emBand = (wavelength: number) => new EmSpectrumNode().data({ freq: [null], wavelength: [wavelength] }).band;
     expect(emBand(10)).toBe("Radio");                 // 30 MHz-ish
     expect(emBand(0.125)).toBe("Microwave");          // 2.4 GHz Wi-Fi
     expect(emBand(10e-6)).toBe("Infrared");           // 10 µm thermal

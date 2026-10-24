@@ -3,7 +3,7 @@
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "./frame";
 import { parseDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 
-export const TASKNOTES_DEFAULT_URL = "http://localhost:8080";
+const TASKNOTES_DEFAULT_URL = "http://localhost:8080";
 export const TASKNOTES_KEY_ID = "tasknotes";
 export const TASKS_PAGE = 200;
 
@@ -282,7 +282,7 @@ export function statsToFrame(s: TaskStats): FrameValue {
 }
 
 
-export const WRITABLE_TASK_KEYS = [
+const WRITABLE_TASK_KEYS = [
   "title", "details", "status", "priority", "due", "scheduled", "tags", "contexts", "projects",
   "recurrence", "recurrence_anchor", "timeEstimate", "blockedBy",
 ] as const;
@@ -355,12 +355,4 @@ export function taskUrl(url: string, path: string): string {
 
 export function createTaskUrl(url: string): string {
   return `${base(url)}/api/tasks`;
-}
-
-export function parseWrittenTaskPath(text: string): string | null {
-  try {
-    const d = unwrap(text) as { path?: unknown; task?: { path?: unknown } } | null;
-    const p = d?.path ?? d?.task?.path;
-    return typeof p === "string" ? p : null;
-  } catch { return null; }
 }

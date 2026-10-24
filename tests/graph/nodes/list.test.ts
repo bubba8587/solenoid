@@ -368,7 +368,6 @@ describe("Running — last N (window slides)", () => {
     expect(windowed("product").data({ list: [[1, 2, 3, 4]], window: [2] }).result).toEqual([1, 2, 6, 12]);
   });
 
-  // v1.0 audit finding 14: each window runs through forAggregate.
   it("a per-cell error lands in exactly the windows that contain it", () => {
     const err = solError("#DIV/0!", "boom");
     const r = windowed("sum").data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];

@@ -7,7 +7,7 @@ import type { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 
 // Regression: dragging a group whose members are ALSO selected moved the members
-// twice (once by rete's selector, once by moveGroupMembers) — they "outran" the
+// twice (once by the selection drag, once by moveGroupMembers) — they "outran" the
 // group. The drag/drop callers pass skipSelected=true so a selected member, already
 // carried by the selector, isn't moved again; a programmatic push leaves it off.
 

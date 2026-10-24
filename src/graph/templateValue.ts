@@ -41,7 +41,7 @@ function cubeCell(cell: CubeCell, type?: FrameColType): unknown {
   return cellValue(cell, type);
 }
 
-export function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
+function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
   const n = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
   const rows: Record<string, unknown>[] = [];
   for (let i = 0; i < n; i++) {

@@ -248,8 +248,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     lastRelative: "relative Date Input shift-alert edge-detect state: phrase and day (session)",
     lastSampleGen: "Distribution sample form's per-recalc re-roll marker (session)",
     sampleSeed: "Distribution sample form's per-recalc seed (derived from id + gen)",
-    stale: "recomputed staleness", internalEditor: "the live internal rete stack",
-    internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
+    stale: "recomputed staleness", internalEditor: "the live internal editor and engine",
+    internalEngine: "the live internal editor and engine", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",
     runSeq: "data() invocation counter the open drill-in re-renders off (session)",
     // ── live socket instances / class declarations ──

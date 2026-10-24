@@ -13,7 +13,7 @@ const C    = "299792458";            // speed of light (m/s)
 const H    = "6.62607015*10^-34";    // Planck constant (J·s)
 const QE   = "1.602176634*10^-19";   // elementary charge (C)
 
-export const EM_ELECTROSTATICS: FormulaPackEntry[] = [
+const EM_ELECTROSTATICS: FormulaPackEntry[] = [
   { type: "em-coulomb-force", label: "Coulomb Force", expr: `${KE}*q1*q2/r^2`,
     description: "Force F = kₑq₁q₂/r² between two point charges q1, q2 (C) at distance r in meters.",
     keywords: "electrostatic charge", units: { r: "m" } },
@@ -29,7 +29,7 @@ export const EM_ELECTROSTATICS: FormulaPackEntry[] = [
     description: "Energy density u = ½ε₀E² in J/m³ in an electric field ef in V/m." },
 ];
 
-export const EM_MAGNETISM: FormulaPackEntry[] = [
+const EM_MAGNETISM: FormulaPackEntry[] = [
   { type: "em-solenoid-inductance", label: "Solenoid Inductance", expr: `${MU0}*n^2*a/len`,
     description: "Inductance L = µ₀N²A/ℓ of an air-core solenoid: n total turns, cross-section a (m²), length len in meters.",
     keywords: "coil henries", units: { a: "m2", len: "m" } },
@@ -53,7 +53,7 @@ export const EM_MAGNETISM: FormulaPackEntry[] = [
     description: "Hall voltage across a conductor: current i, field b, carrier density n (1/m³), thickness t (m)   (V = IB/(nqt))", units: { i: "A", t: "m" } },
 ];
 
-export const EM_WAVES: FormulaPackEntry[] = [
+const EM_WAVES: FormulaPackEntry[] = [
   { type: "em-wavelength-frequency", label: "Wavelength ↔ Frequency", expr: `lambda = ${C} / f`, equation: true,
     description: "Free-space λ = c/f, either way around: wire f to get the wavelength, or lambda to get the frequency",
     keywords: "radio antenna wavelength frequency band",
@@ -67,7 +67,7 @@ export const EM_WAVES: FormulaPackEntry[] = [
     keywords: "eddy high frequency conductor", units: { f: "Hz" } },
 ];
 
-export const EM_INDUCTION: FormulaPackEntry[] = [
+const EM_INDUCTION: FormulaPackEntry[] = [
   { type: "em-faraday-emf", label: "Induced EMF (Faraday)", expr: "-n*dphi/dt",
     description: "EMF ε = −N·ΔΦ/Δt induced in n turns by flux change dphi (Wb) over dt in seconds.",
     keywords: "induction flux", units: { dt: "s" } },

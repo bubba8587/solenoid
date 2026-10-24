@@ -46,11 +46,6 @@ export function tagFrameCellUnit(v: unknown, cu: ColumnUnit): unknown {
   return u ? fromUnit(v, u, cu.display) : tagDim(v, cu.dim);
 }
 
-/** A Cube cell carries its unit itself, so a row's list tags item by item. */
-export function tagCubeCellUnit(v: unknown, cu: ColumnUnit): unknown {
-  return Array.isArray(v) ? v.map((x) => tagCubeCellUnit(x, cu)) : tagFrameCellUnit(v, cu);
-}
-
 export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[]; unit: ColumnUnit | undefined } {
   const mags = cells.map((c) => (isUnitCell(c) ? displayMagnitudeOf(c) : c));
   let unit: ColumnUnit | undefined;

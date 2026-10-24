@@ -159,7 +159,7 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
   );
 }
 
-export function CollapsibleFigure({ title, children, defaultOpen = true }: {
+function CollapsibleFigure({ title, children, defaultOpen = true }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
@@ -254,7 +254,7 @@ function figureFor(
   return null;
 }
 
-export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
+function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
