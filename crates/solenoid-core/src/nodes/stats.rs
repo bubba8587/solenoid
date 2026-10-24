@@ -524,7 +524,7 @@ fn groups_of(m: &V) -> Option<Vec<V>> {
         return None;
     }
     let rows = items(m);
-    let cols = len(&rows[0]);
+    let cols = len(rows.first()?);
     Some(
         (0..cols)
             .map(|j| {

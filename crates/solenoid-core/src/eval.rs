@@ -1731,7 +1731,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             })
         }
         Json::Object(o) if o.contains_key("__def") => {
-            let v = decode_value(&o["v"]);
+            let v = decode_value(o.get("v").unwrap_or(&Json::Null));
             if let Some(id) = o["__def"].as_u64() {
                 HELD.with(|h| h.borrow_mut().insert(id, v.clone()));
             }
