@@ -36,3 +36,4 @@ specific item.
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);
   - TEXT answers an ISO date whatever its code (Formula.js's behavior, kept);
   - the desktop hardening, IM*'s text reading, the AND/OR/XOR family's text rule and COALESCE's text fallback (backlog).
+  - a Rust GPU UI in place of React Flow: the scene on the GPU first, then Dioxus or GPUI for the cards (`rust-gpu-ui-findings.md`; would amend [[D102]] graphOnCore's "the UI stays TypeScript").

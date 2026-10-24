@@ -87,6 +87,9 @@ is parked there.
 - **`canvas-frame-cost-findings.md`** — the 2026-10 canvas frame-cost report: what a pan/zoom
   frame costs, the source-verified Chromium mechanisms, what shipped (desktop pan layer, socket
   handle), what was reverted or rejected, and the open candidates (cables, minimap).
+- **`rust-gpu-ui-findings.md`** — the 2026-10 survey of Rust GPU UI libraries against React Flow and
+  the DOM cards: what a GPU scene would fix, the framework landscape, the decision-tree collisions, and
+  the spike that would decide it (proposal; the author's call).
 - **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
   parked bugs and features), with the notes needed to reopen each. Planned items live
   in `2.0-plan.md`, never here too.
