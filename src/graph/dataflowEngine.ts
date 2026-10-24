@@ -94,6 +94,35 @@ export class DataflowEngine<S extends GraphSchemes = Schemes> {
     return new Set(guarded(() => this.core().invalidate(nodeId, false)) ?? []);
   }
 
+  /** Seeds `#CIRC!` (with `message`, or the default) on every node on a cable cycle, so no fetch recurses into one; the
+   *  members. */
+  seedLoops(message?: string): Set<string> {
+    return new Set(guarded(() => this.core().seedLoops(message)));
+  }
+
+  /** Marks every composite holding `nodeId` as edited inside; the outermost one's id. */
+  markNested(nodeId: string): string | undefined {
+    return guarded(() => this.core().markNested(nodeId));
+  }
+
+  /** The model pass: `nodeId`'s reach cleared (every cache without it), the loops seeded, every node fetched. */
+  computeAll(nodeId?: string): Promise<Map<string, NodeOutputs | null> | null> {
+    return tracked(() => this.core().computeAll(nodeId));
+  }
+
+  /** The app's pass body (compute-pass.md § The pass body): `changed` retargeted into the composite holding it, its
+   *  reach cleared (everything when none; nothing for an additive pass, `renderOnly`), the loops seeded (a value
+   *  edit reuses the last set unless `topology`), every node fetched with `onNode` answering whether its outputs
+   *  changed. The nodes to re-render, or `null` when a reset cancelled the pass. */
+  pass(
+    changed: string | undefined,
+    renderOnly: ReadonlySet<string> | undefined,
+    topology: boolean,
+    onNode: (id: string, outputs: NodeOutputs) => boolean,
+  ): Promise<string[] | null> {
+    return tracked(() => this.core().pass(changed, renderOnly ? [...renderOnly] : undefined, topology, onNode));
+  }
+
   /** Every node's outputs in the editor's order (`null` for one a reset cancelled), calling `onNode` as each lands;
    *  `null` for the whole pass when `stopOnCancel` and a reset cancelled it. */
   fetchAll(

@@ -177,3 +177,37 @@ where
     }
     Ok(Some(out))
 }
+
+/// Which nodes a pass re-renders, in the editor's order (compute-pass.md § The pass body, step 9): an additive pass
+/// the ones it was given; a targeted pass, within its cone, a node whose own outputs changed and a sink fed directly
+/// by one; a full pass every node.
+pub fn render_set<S: Schemes>(
+    editor: &NodeEditor<S>,
+    render_only: Option<&FxHashSet<String>>,
+    cone: Option<&FxHashSet<String>>,
+    changed: &FxHashSet<String>,
+    sinks: &FxHashSet<String>,
+) -> Vec<String> {
+    let ids = editor
+        .get_nodes()
+        .iter()
+        .map(|n| n.id().to_owned())
+        .collect::<Vec<_>>();
+    if let Some(only) = render_only {
+        return ids.into_iter().filter(|id| only.contains(id)).collect();
+    }
+    let Some(cone) = cone else {
+        return ids;
+    };
+    let mut fed: FxHashSet<String> = FxHashSet::default();
+    for c in editor.get_connections() {
+        if changed.contains(c.source()) {
+            fed.insert(c.target().to_owned());
+        }
+    }
+    ids.into_iter()
+        .filter(|id| {
+            cone.contains(id) && (changed.contains(id) || (sinks.contains(id) && fed.contains(id)))
+        })
+        .collect()
+}

@@ -8,5 +8,6 @@
 mod boundary;
 pub mod model;
 pub mod pass;
+pub mod session;
 #[cfg(target_arch = "wasm32")]
 mod wasm;

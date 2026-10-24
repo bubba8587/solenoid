@@ -17,7 +17,6 @@ import {
 } from "../monteCarlo";
 import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
-import { seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
@@ -545,10 +544,7 @@ export class CompositeNode extends GraphNode {
   // ─── Compute ─────────────────────────────────────────────────────────────
 
   private seedInternalLoopErrors(): void {
-    seedLoopErrors(
-      this.internalEditor,
-      this.internalEngine,
-      this.internalEngine.loopMembers(),
+    this.internalEngine.seedLoops(
       "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop.",
     );
   }

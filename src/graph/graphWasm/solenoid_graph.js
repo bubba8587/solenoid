@@ -268,6 +268,122 @@ export function computeNode(node, inputs, data) {
     }
 }
 
+export function sessionMarkTopoDirty() {
+    wasm.sessionMarkTopoDirty();
+}
+
+/**
+ * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
+ * `"run"`.
+ * @param {string | null | undefined} changed
+ * @param {boolean} force
+ * @returns {string}
+ */
+export function sessionEnter(changed, force) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.sessionEnter(retptr, ptr0, len0, force);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
+ * @param {boolean} finished
+ * @returns {any}
+ */
+export function sessionExit(finished) {
+    const ret = wasm.sessionExit(finished);
+    return takeObject(ret);
+}
+
+/**
+ * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
+ * @returns {object}
+ */
+export function sessionSnapshot() {
+    const ret = wasm.sessionSnapshot();
+    return takeObject(ret);
+}
+
+/**
+ * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
+ * @param {object} snapshot
+ */
+export function sessionRestore(snapshot) {
+    wasm.sessionRestore(addHeapObject(snapshot));
+}
+
+/**
+ * `false` when `mode` is the mode already.
+ * @param {string} mode
+ * @returns {boolean}
+ */
+export function sessionSetMode(mode) {
+    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.sessionSetMode(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * Sets (`true`) or clears the dirty flag; `true` on a transition.
+ * @param {boolean} dirty
+ * @returns {boolean}
+ */
+export function sessionDirty(dirty) {
+    const ret = wasm.sessionDirty(dirty);
+    return ret !== 0;
+}
+
+/**
+ * Opens (`true`) or closes a force-exact bracket.
+ * @param {boolean} begin
+ */
+export function sessionForceExact(begin) {
+    wasm.sessionForceExact(begin);
+}
+
+/**
+ * A new recalc generation, which every volatile node rolls on.
+ * @returns {number}
+ */
+export function sessionNextGeneration() {
+    const ret = wasm.sessionNextGeneration();
+    return ret;
+}
+
+/**
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ * @param {boolean} begin
+ * @returns {boolean}
+ */
+export function sessionRebuild(begin) {
+    const ret = wasm.sessionRebuild(begin);
+    return ret !== 0;
+}
+
+/**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ * @param {boolean} open
+ * @returns {Array<any>}
+ */
+export function sessionRebuildScope(open) {
+    const ret = wasm.sessionRebuildScope(open);
+    return takeObject(ret);
+}
+
 /**
  * @param {string} _class
  * @returns {boolean}
@@ -336,11 +452,17 @@ function passArrayJsValueToWasm0(array, malloc) {
     WASM_VECTOR_LEN = array.length;
     return ptr;
 }
+
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+}
 function __wbg_adapter_36(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_111(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_128(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -388,6 +510,26 @@ export class GraphCore {
         }
     }
     /**
+     * Seeds `#CIRC!` on every loop member (with `message`, or the default one) and returns them.
+     * @param {string | null} [message]
+     * @returns {string[]}
+     */
+    seedLoops(message) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            var ptr0 = isLikeNone(message) ? 0 : passStringToWasm0(message, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            var len0 = WASM_VECTOR_LEN;
+            wasm.graphcore_seedLoops(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v2 = getArrayJsValueFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * Attaches the engine here in the chain, registering the nodes already in the editor. A `raw` engine calls each
      * node's `data()` as it is; any other runs it through the input boundary.
      * @param {boolean} raw
@@ -401,6 +543,42 @@ export class GraphCore {
             if (r1) {
                 throw takeObject(r0);
             }
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * The model pass (`computeAll`): what `changed` reaches cleared (every cache without it), the loops seeded,
+     * every node fetched. A `Map` of each node's outputs, `null` for one a reset cancelled.
+     * @param {string | null} [changed]
+     * @returns {Promise<any>}
+     */
+    computeAll(changed) {
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var len0 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_computeAll(this.__wbg_ptr, ptr0, len0);
+        return takeObject(ret);
+    }
+    /**
+     * Marks every composite holding `id` (at any depth) as edited inside; the outermost one's id, or `undefined`
+     * when no composite here holds it.
+     * @param {string} id
+     * @returns {string | undefined}
+     */
+    markNested(id) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.graphcore_markNested(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v2;
+            if (r0 !== 0) {
+                v2 = getStringFromWasm0(r0, r1).slice();
+                wasm.__wbindgen_export_4(r0, r1 * 1, 1);
+            }
+            return v2;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
@@ -629,6 +807,37 @@ export class GraphCore {
         return this;
     }
     /**
+     * `id` is a composite node here whose own editor's core is `inner`.
+     * @param {string} id
+     * @param {GraphCore} inner
+     */
+    nest(id, inner) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const len0 = WASM_VECTOR_LEN;
+        _assertClass(inner, GraphCore);
+        wasm.graphcore_nest(this.__wbg_ptr, ptr0, len0, inner.__wbg_ptr);
+    }
+    /**
+     * The app's pass body ([[compute-pass]] § The pass body): `changed` retargeted to the composite holding it,
+     * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
+     * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
+     * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
+     * cancelled the pass.
+     * @param {string | null | undefined} changed
+     * @param {string[] | null | undefined} render_only
+     * @param {boolean} topology
+     * @param {Function} on_node
+     * @returns {Promise<any>}
+     */
+    pass(changed, render_only, topology, on_node) {
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        var len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(render_only) ? 0 : passArrayJsValueToWasm0(render_only, wasm.__wbindgen_export_2);
+        var len1 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_pass(this.__wbg_ptr, ptr0, len0, ptr1, len1, topology, addHeapObject(on_node));
+        return takeObject(ret);
+    }
+    /**
      * Gives the node `outputs` without running it, until something clears its cache.
      * @param {string} id
      * @param {any} outputs
@@ -709,6 +918,14 @@ export class GraphCore {
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
         const len0 = WASM_VECTOR_LEN;
         wasm.graphcore_forget(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {string} id
+     */
+    unnest(id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_2, wasm.__wbindgen_export_3);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.graphcore_unnest(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
@@ -974,7 +1191,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_111(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_128(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1093,8 +1310,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper418 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 108, __wbg_adapter_36);
+    imports.wbg.__wbindgen_closure_wrapper466 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 112, __wbg_adapter_36);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

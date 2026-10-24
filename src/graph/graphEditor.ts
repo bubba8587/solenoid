@@ -158,6 +158,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
       for (const node of this.nodes.values()) {
         const [ik, it] = portsOf(node.inputs), [ok, ot] = portsOf(node.outputs);
         core.addNode(node.id, node, ik, it, ok, ot);
+        this.nest(core, node, true);
       }
       for (const c of this.connections.values()) this.sendConnection(core, c);
     } finally {
@@ -185,11 +186,13 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.nodes.set(signal.data.id, signal.data);
         this.nodeList = null;
         signal.data.listen(this, true);
+        this.nest(this._core!, signal.data, true);
         break;
       case "noderemoved":
         this.nodes.delete(signal.data.id);
         this.nodeList = null;
         signal.data.listen(this, false);
+        this.nest(this._core!, signal.data, false);
         break;
       case "connectioncreated":
         this.connections.set(signal.data.id, signal.data);
@@ -200,6 +203,14 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
         this.connectionList = null;
         break;
     }
+  }
+
+  /** A composite's own editor, made known to this core so a pass can retarget an edit inside it. */
+  private nest(core: GraphCore, node: S["Node"], on: boolean): void {
+    const inner = (node as unknown as { internalEditor?: unknown }).internalEditor;
+    if (!(inner instanceof GraphEditor)) return;
+    if (on) core.nest(node.id, inner.core());
+    else core.unnest(node.id);
   }
 
   private sendConnection(core: GraphCore, c: S["Connection"]): boolean {

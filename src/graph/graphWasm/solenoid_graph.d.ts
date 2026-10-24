@@ -15,6 +15,48 @@ export function graphTrap(): void;
  * node.
  */
 export function computeNode(node: object, inputs: any, data?: Function | null): any;
+export function sessionMarkTopoDirty(): void;
+/**
+ * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
+ * `"run"`.
+ */
+export function sessionEnter(changed: string | null | undefined, force: boolean): string;
+/**
+ * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
+ */
+export function sessionExit(finished: boolean): any;
+/**
+ * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
+ */
+export function sessionSnapshot(): object;
+/**
+ * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
+ */
+export function sessionRestore(snapshot: object): void;
+/**
+ * `false` when `mode` is the mode already.
+ */
+export function sessionSetMode(mode: string): boolean;
+/**
+ * Sets (`true`) or clears the dirty flag; `true` on a transition.
+ */
+export function sessionDirty(dirty: boolean): boolean;
+/**
+ * Opens (`true`) or closes a force-exact bracket.
+ */
+export function sessionForceExact(begin: boolean): void;
+/**
+ * A new recalc generation, which every volatile node rolls on.
+ */
+export function sessionNextGeneration(): number;
+/**
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ */
+export function sessionRebuild(begin: boolean): boolean;
+/**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ */
+export function sessionRebuildScope(open: boolean): Array<any>;
 export function isLazyFrameNode(_class: string): boolean;
 export function seesErrors(_class: string): boolean;
 /**
@@ -32,10 +74,24 @@ export class GraphCore {
    */
   invalidate(id: string | null | undefined, keep_caches: boolean): string[] | undefined;
   /**
+   * Seeds `#CIRC!` on every loop member (with `message`, or the default one) and returns them.
+   */
+  seedLoops(message?: string | null): string[];
+  /**
    * Attaches the engine here in the chain, registering the nodes already in the editor. A `raw` engine calls each
    * node's `data()` as it is; any other runs it through the input boundary.
    */
   useEngine(raw: boolean): void;
+  /**
+   * The model pass (`computeAll`): what `changed` reaches cleared (every cache without it), the loops seeded,
+   * every node fetched. A `Map` of each node's outputs, `null` for one a reset cancelled.
+   */
+  computeAll(changed?: string | null): Promise<any>;
+  /**
+   * Marks every composite holding `id` (at any depth) as edited inside; the outermost one's id, or `undefined`
+   * when no composite here holds it.
+   */
+  markNested(id: string): string | undefined;
   /**
    * `false` when a `noderemove` pipe cancelled it.
    */
@@ -67,6 +123,18 @@ export class GraphCore {
    */
   constructor(cancelled: Function);
   /**
+   * `id` is a composite node here whose own editor's core is `inner`.
+   */
+  nest(id: string, inner: GraphCore): void;
+  /**
+   * The app's pass body ([[compute-pass]] § The pass body): `changed` retargeted to the composite holding it,
+   * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
+   * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
+   * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset
+   * cancelled the pass.
+   */
+  pass(changed: string | null | undefined, render_only: string[] | null | undefined, topology: boolean, on_node: Function): Promise<any>;
+  /**
    * Gives the node `outputs` without running it, until something clears its cache.
    */
   seed(id: string, outputs: any): void;
@@ -92,6 +160,7 @@ export class GraphCore {
    * Clears the node's cache alone, cancelling a run in flight.
    */
   forget(id: string): void;
+  unnest(id: string): void;
   /**
    * The node computed on `inputs` (one list per input key) as the engine computes it, without its cache.
    */
@@ -130,6 +199,7 @@ export interface InitOutput {
   readonly graphcore_addPort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_clear: (a: number, b: number) => void;
   readonly graphcore_compute: (a: number, b: number, c: number, d: number) => number;
+  readonly graphcore_computeAll: (a: number, b: number, c: number) => number;
   readonly graphcore_connectionIds: (a: number, b: number) => void;
   readonly graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_fetch: (a: number, b: number, c: number) => number;
@@ -139,8 +209,11 @@ export interface InitOutput {
   readonly graphcore_invalidate: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly graphcore_isCached: (a: number, b: number, c: number) => number;
   readonly graphcore_loopMembers: (a: number, b: number) => void;
+  readonly graphcore_markNested: (a: number, b: number, c: number, d: number) => void;
+  readonly graphcore_nest: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_new: (a: number) => number;
   readonly graphcore_nodeIds: (a: number, b: number) => void;
+  readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
   readonly graphcore_ports: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
@@ -150,9 +223,22 @@ export interface InitOutput {
   readonly graphcore_reset: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_retypePort: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
   readonly graphcore_seed: (a: number, b: number, c: number, d: number) => void;
+  readonly graphcore_seedLoops: (a: number, b: number, c: number, d: number) => void;
+  readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;
   readonly seesErrors: (a: number, b: number) => number;
+  readonly sessionDirty: (a: number) => number;
+  readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;
+  readonly sessionExit: (a: number) => number;
+  readonly sessionForceExact: (a: number) => void;
+  readonly sessionMarkTopoDirty: () => void;
+  readonly sessionNextGeneration: () => number;
+  readonly sessionRebuild: (a: number) => number;
+  readonly sessionRebuildScope: (a: number) => number;
+  readonly sessionRestore: (a: number) => void;
+  readonly sessionSetMode: (a: number, b: number) => number;
+  readonly sessionSnapshot: () => number;
   readonly setBoundaryHost: (a: number, b: number) => void;
   readonly setPanicHandler: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
