@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use js_sys::{Array, Function, Object, Promise, Reflect};
+use js_sys::{Array, Function, Map, Object, Promise, Reflect};
 use ruggine::classic;
 use ruggine::future::{ready, LocalBoxFuture};
 use ruggine::fxhash::FxHashSet;
@@ -1086,10 +1086,15 @@ impl Call {
             return t.into();
         }
         let origin: RefCell<Option<Object>> = RefCell::new(None);
-        let tagged: RefCell<Vec<(JsValue, JsValue)>> = RefCell::new(Vec::new());
+        let tagged: RefCell<Option<Map>> = RefCell::new(None);
         let tag = |cell: &JsValue| -> JsValue {
-            if let Some((_, t)) = tagged.borrow().iter().find(|(e, _)| e == cell) {
-                return t.clone();
+            if let Some(t) = tagged
+                .borrow()
+                .as_ref()
+                .map(|m| m.get(cell))
+                .filter(|t| !t.is_undefined())
+            {
+                return t;
             }
             let t = spread(cell);
             let o = origin
@@ -1098,7 +1103,10 @@ impl Call {
                 .clone();
             let _ = Reflect::set(&t, &k.origin, &o);
             let t: JsValue = t.into();
-            tagged.borrow_mut().push((cell.clone(), t.clone()));
+            tagged
+                .borrow_mut()
+                .get_or_insert_with(Map::new)
+                .set(cell, &t);
             t
         };
         let tag_cells = |values: &Array| -> Option<Array> {
