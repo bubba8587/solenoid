@@ -38,4 +38,14 @@ describe("Local File answers for its current file only", () => {
     held[0].refuse(solError("#VALUE!", 'Column "tags" holds values Solenoid can\'t read as a table column'));
     expect((await out).frame).toMatchObject({ code: "#VALUE!" });
   });
+
+  it("a file name that leaves the data folder is refused before anything is read", async () => {
+    held.length = 0;
+    for (const fileName of ["../../.ssh/id_rsa.parquet", "/etc/passwd.csv", "C:\\x.parquet", "\\\\host\\s\\a.parquet", "a/../../b.csv"]) {
+      const out = await new LocalFileNode({ fileName }).data();
+      expect(held).toEqual([]);
+      if (fileName.endsWith(".parquet")) expect(out.frame).toMatchObject({ code: "#REF!" });
+    }
+  });
 });
+
