@@ -173,7 +173,12 @@ mod tests {
                 FrameCell::Num(-0.0),
                 FrameCell::Num(f64::NEG_INFINITY),
                 FrameCell::Bool(true),
-                FrameCell::err(SolError { code: ErrorCode::NotAvailable, message: "m".into(), reference: Some(7), origin: None }),
+                FrameCell::err(SolError {
+                    code: ErrorCode::NotAvailable,
+                    message: "m".into(),
+                    reference: Some(7),
+                    origin: None,
+                }),
                 FrameCell::str(""),
             ],
         );

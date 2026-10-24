@@ -850,7 +850,11 @@ fn describe(c: &mut Call) -> Answer {
         Some(Ok(r)) => {
             let summary = from_core(&r);
             // No columns, no tiles: an empty array reads back as a list.
-            let tiles = if f.columns.is_empty() { V::List(Rc::new(Vec::new())) } else { V::Json(Rc::new(describe_tiles(&f, &summary))) };
+            let tiles = if f.columns.is_empty() {
+                V::List(Rc::new(Vec::new()))
+            } else {
+                V::Json(Rc::new(describe_tiles(&f, &summary)))
+            };
             c.show("describeTiles", tiles);
             V::Frame(Rc::new(summary))
         }
@@ -909,7 +913,8 @@ fn describe_tiles(src: &Frame, summary: &Frame) -> Json {
                 })
                 .collect();
             if !nums.is_empty() {
-                let (min, max) = nums.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+                let (min, max) =
+                    nums.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &x| (lo.min(x), hi.max(x)));
                 let counts = if min == max {
                     vec![nums.len()]
                 } else {
