@@ -325,9 +325,36 @@ fn shuffle(v: &V) -> V {
     list(order.into_iter().map(|i| items[i].clone()).collect())
 }
 
-/// 16 random bytes, the version and variant bits set.
+/// `crypto.getRandomValues` over `bytes`, as the UUID card draws; `false` when the host has no `crypto`.
+#[cfg(target_arch = "wasm32")]
+fn secure_fill(bytes: &mut [u8]) -> bool {
+    use js_sys::{Function, Reflect, Uint8Array};
+    use wasm_bindgen::JsCast;
+    let Ok(crypto) = Reflect::get(&js_sys::global(), &"crypto".into()) else { return false };
+    let Some(fill) = Reflect::get(&crypto, &"getRandomValues".into()).ok().and_then(|f| f.dyn_into::<Function>().ok())
+    else {
+        return false;
+    };
+    let out = Uint8Array::new_with_length(bytes.len() as u32);
+    if fill.call1(&crypto, &out).is_err() {
+        return false;
+    }
+    out.copy_to(bytes);
+    true
+}
+
+/// Natively there is no host `crypto`; the tests draw from `random()`.
+#[cfg(not(target_arch = "wasm32"))]
+fn secure_fill(_: &mut [u8]) -> bool {
+    false
+}
+
+/// 16 secure random bytes (`random()`'s only without a `crypto`), the version and variant bits set.
 fn uuid_v4() -> String {
-    let mut b: [u8; 16] = std::array::from_fn(|_| (random() * 256.0) as u8);
+    let mut b = [0u8; 16];
+    if !secure_fill(&mut b) {
+        b = std::array::from_fn(|_| (random() * 256.0) as u8);
+    }
     b[6] = (b[6] & 0x0f) | 0x40;
     b[8] = (b[8] & 0x3f) | 0x80;
     let h: String = b.iter().map(|x| format!("{x:02x}")).collect();

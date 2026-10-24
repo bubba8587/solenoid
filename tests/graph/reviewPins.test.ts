@@ -1,5 +1,5 @@
 // [[B2]] webTryDesktopFull, [[C100]] chartIsAValue
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
@@ -17,6 +17,17 @@ describe("review pins", () => {
   it("a chart label cap counts code points, never splitting a surrogate pair", () => {
     const s = sanitizeChartLabel("😀".repeat(10), 8);
     expect(s).toBe("😀😀😀😀😀😀😀…");
+  });
+
+  it("UUID() draws its bytes from crypto.getRandomValues, as the UUID card does", () => {
+    const spy = vi.spyOn(globalThis.crypto, "getRandomValues");
+    try {
+      const id = coreFunction("UUID")!() as string;
+      expect(spy).toHaveBeenCalled();
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("XLOOKUP refuses a return list shorter than the lookup list, like a grid", () => {
