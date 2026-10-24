@@ -24,7 +24,6 @@ impl From<solenoid_core::error_value::SolError> for IpcError {
 /// Local File's Parquet read: the file's columns in wire form (`crates/solenoid-parquet`).
 #[tauri::command]
 pub fn read_parquet(folder: String, name: String) -> Result<Vec<Json>, IpcError> {
-    Ok(solenoid_parquet::read_wire(
-        &std::path::Path::new(&folder).join(&name),
-    )?)
+    let path = solenoid_parquet::inside(std::path::Path::new(&folder), &name)?;
+    Ok(solenoid_parquet::read_wire(&path)?)
 }

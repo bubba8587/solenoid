@@ -3,7 +3,7 @@
 //! `arrow` crates. Desktop only; the web has no files to read.
 
 use std::fs::File;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
@@ -70,6 +70,29 @@ pub fn read(path: &Path) -> Result<FrameValue, SolError> {
 /// The frame as the app reads it off IPC: wire columns (`wire.rs`).
 pub fn read_wire(path: &Path) -> Result<Vec<Json>, SolError> {
     Ok(read(path)?.columns.iter().map(column_to_wire).collect())
+}
+
+/// `name` in `folder`, refused (`#REF!`) unless every part of it is a plain name and the file, symlinks resolved,
+/// stays inside the folder: a document names the file, so it must not reach `..`, an absolute path or a network
+/// share.
+pub fn inside(folder: &Path, name: &str) -> Result<PathBuf, SolError> {
+    let outside = || {
+        sol_error(
+            ErrorCode::Ref,
+            format!("\"{name}\" isn't inside the data folder"),
+        )
+    };
+    let parts = Path::new(name).components();
+    if name.is_empty() || parts.clone().any(|c| !matches!(c, Component::Normal(_))) {
+        return Err(outside());
+    }
+    let path = folder.join(name);
+    if let (Ok(real), Ok(root)) = (path.canonicalize(), folder.canonicalize()) {
+        if !real.starts_with(root) {
+            return Err(outside());
+        }
+    }
+    Ok(path)
 }
 
 fn append_cells(
