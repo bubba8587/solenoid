@@ -786,7 +786,7 @@ export class GraphCore {
         wasm.graphcore_nest(this.__wbg_ptr, ptr0, len0, inner.__wbg_ptr);
     }
     /**
-     * The app's pass body ([[compute-pass]] § The pass body): `changed` retargeted to the composite holding it,
+     * The app's pass body (compute-pass.md § The pass body): `changed` retargeted to the composite holding it,
      * what it reaches cleared (a full pass clears everything; an additive one, `render_only`, nothing), the loop set
      * (reused by a value edit's targeted pass) seeded, every node fetched in the editor's order with `on_node(id,
      * outputs)` answering whether its outputs changed. The nodes to re-render, in order; `null` when a reset

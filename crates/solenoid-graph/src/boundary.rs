@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D35]] errorInErrorOut, [[C10]] socketLattice, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
+// [[D102]] graphOnCore, [[D35]] errorInErrorOut, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
 //! The input boundary every node's `data()` call goes through (`tree/specs/computation/compute-pass.md` § The per-node
 //! wrappers): the error guard's short-circuit, the lazy frames' collect, the unit boundary, the rung's coercion and
 //! the typed list literals on the way in; the frame format stamp and the guard's origin tagging on the way out; a
@@ -395,8 +395,8 @@ fn kind_text(c: &JsValue) -> &'static str {
     }
 }
 
-/// A value of another family on a typed port is a per-cell `#TYPE!` ([[B17]] typedValueModel); the one bridge is
-/// logical and number ([[C10]] socketLattice), and a date is a number at run time.
+/// A value of another family on a typed port is a per-cell `#TYPE!` (B17 typedValueModel); the one bridge is
+/// logical and number (C10 socketLattice), and a date is a number at run time.
 fn family_cell(fam: Family, c: &JsValue) -> JsValue {
     let num = c.as_f64();
     let boolean = c.as_bool();
@@ -667,7 +667,7 @@ fn coerce_unit_cell_value(rung: &str, v: &JsValue) -> R<JsValue> {
     }
 }
 
-/// A value reaching a port of `rung`, shaped for it ([[compute-pass]] § Full coercion, per rung).
+/// A value reaching a port of `rung`, shaped for it (compute-pass.md § Full coercion, per rung).
 fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
     if is_frame_ref(v) || is_sol_error(v) {
         return Ok(v.clone());
@@ -917,7 +917,7 @@ fn coerce_all(
 const CELL_SCAN_HEAD: u32 = 64;
 const CELL_SCAN_STRIDE_SAMPLES: u32 = 32;
 
-/// The head of a container and a stride sample of the rest ([[error-values]], "Per-cell errors surface through a
+/// The head of a container and a stride sample of the rest (error-values.md, "Per-cell errors surface through a
 /// bounded scan").
 fn sampled_cell_indices(len: u32) -> impl Iterator<Item = u32> {
     let head = len.min(CELL_SCAN_HEAD);
