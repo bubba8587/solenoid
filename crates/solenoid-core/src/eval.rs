@@ -634,6 +634,9 @@ pub struct Eval<'a> {
     /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
     /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
     readied: RefCell<Vec<Rc<Readied>>>,
+    /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
+    hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
+    hoists: Cell<bool>,
 }
 
 /// A list as a range call with `prep` reads it: flattened from a one-wide table, its first error, its blanks gone.
@@ -730,6 +733,30 @@ impl Eval<'_> {
     }
 
     pub fn eval(&self, n: &Ast, env: &Rc<Env>) -> V {
+        if self.hoists.get() {
+            let key: *const Ast = n;
+            let held = self.hoisted.borrow().get(&key).cloned();
+            match held {
+                Some(Some(v)) => return v,
+                Some(None) => {
+                    // A value whose calc raised stays per row: the raise is that row's answer.
+                    let raised = crate::excel_functions::thrown_pending();
+                    let v = self.eval_node(n, env);
+                    let mut hoisted = self.hoisted.borrow_mut();
+                    if raised || !crate::excel_functions::thrown_pending() {
+                        hoisted.insert(key, Some(v.clone()));
+                    } else {
+                        hoisted.remove(&key);
+                    }
+                    return v;
+                }
+                None => {}
+            }
+        }
+        self.eval_node(n, env)
+    }
+
+    fn eval_node(&self, n: &Ast, env: &Rc<Env>) -> V {
         match n {
             Ast::Num(_, v) => V::Num(*v),
             Ast::Str(s) => V::Str(s.clone()),
@@ -1933,10 +1960,97 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
 }
 
 /// As `column`, each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a list.
+/// Whether `n` reads no row: no `@` cell, no ROW(), no random draw, no parameter of a LAMBDA around it (`bound`,
+/// lowered) and no LAMBDA it can't see into. Such a subtree answers the same on every row, so a computed column
+/// computes it once ([[C120]] linearWork). The largest such subtrees under a row-reading one go in `free`.
+fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>) -> bool {
+    let unseen = |name: &str| bound.contains(&name.to_lowercase()) || matches!(env.get(name), Some(V::Lambda(_)));
+    let varies = |name: &str| {
+        let up = name.to_uppercase();
+        up == "ROW" || crate::fns_random::NAMES.contains(&up.as_str())
+    };
+    // Each child's verdict; when this node reads a row, its row-free children are kept.
+    let mut kids: Vec<(&'a Ast, bool)> = Vec::new();
+    let mut visit = |c: &'a Ast, bound: &[String], kids: &mut Vec<(&'a Ast, bool)>| {
+        let f = row_free(c, bound, env, free);
+        kids.push((c, f));
+        f
+    };
+    let own = match n {
+        Ast::Num(..) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank | Ast::WholeCol(_) => true,
+        Ast::AtCol(_) => false,
+        Ast::Name(name) => !unseen(name) && !varies(name),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => visit(arg, bound, &mut kids),
+        Ast::Bin { l, r, .. } => visit(l, bound, &mut kids) & visit(r, bound, &mut kids),
+        Ast::Apply { func, args } => {
+            visit(func, bound, &mut kids);
+            for a in args {
+                visit(a, bound, &mut kids);
+            }
+            false
+        }
+        Ast::Call { name, args } => match name.to_uppercase().as_str() {
+            "LAMBDA" if !args.is_empty() => {
+                let mut inner = bound.to_vec();
+                for p in &args[..args.len() - 1] {
+                    let Ast::Name(v) = p else { return false };
+                    inner.push(v.to_lowercase());
+                }
+                visit(&args[args.len() - 1], &inner, &mut kids);
+                reads_none(&args[args.len() - 1], &inner, bound.len(), env)
+            }
+            _ => {
+                let mut ok = !unseen(name) && !varies(name);
+                for a in args {
+                    ok &= visit(a, bound, &mut kids);
+                }
+                ok
+            }
+        },
+    };
+    if !own {
+        free.extend(kids.into_iter().filter(|&(c, f)| f && hoistable(c)).map(|(c, _)| c));
+    }
+    own
+}
+
+/// Whether `n` reads no row and no name bound past the first `outer` of `bound`: a LAMBDA body's verdict for the
+/// LAMBDA.
+fn reads_none(n: &Ast, bound: &[String], outer: usize, env: &Env) -> bool {
+    let mut scratch = Vec::new();
+    let own: Vec<String> = bound[outer..].to_vec();
+    // Its own names read as row-free here, since the binding node answers for them.
+    let outer_bound: Vec<String> = bound[..outer].to_vec();
+    let mut env = env.clone();
+    for name in own {
+        env.remove(&name);
+    }
+    row_free(n, &outer_bound, &env, &mut scratch)
+}
+
+/// A node worth keeping: a call or an operator. A LAMBDA's value holds the scope it was made in, so it isn't kept.
+fn hoistable(n: &Ast) -> bool {
+    match n {
+        Ast::Call { name, .. } => !name.eq_ignore_ascii_case("LAMBDA"),
+        Ast::Bin { .. } | Ast::Unary { .. } | Ast::Percent(_) => true,
+        _ => false,
+    }
+}
+
 pub fn column_with<C>(
     spec: ColumnSpec,
     inp: ColumnInputs,
     tag: fn(V) -> C,
+) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
+    column_hoisting(spec, inp, tag, true)
+}
+
+/// `column_with`, keeping row-free subtrees or not: the tests check that keeping them changes no answer.
+fn column_hoisting<C>(
+    spec: ColumnSpec,
+    inp: ColumnInputs,
+    tag: fn(V) -> C,
+    hoist: bool,
 ) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
     let cols: FxHashMap<&str, Col> = match &inp.table {
         Table::Frame(f) => f.columns.iter().map(|c| (c.name.as_str(), Col::Frame(c))).collect(),
@@ -2046,6 +2160,14 @@ pub fn column_with<C>(
                 })
                 .collect();
             let env = Rc::new(env);
+            if hoist && inp.rows > 1 {
+                let mut free = Vec::new();
+                if row_free(ast, &[], &env, &mut free) && hoistable(ast) {
+                    free.push(ast);
+                }
+                ev.hoisted.borrow_mut().extend(free.into_iter().map(|n| (n as *const Ast, None)));
+                ev.hoists.set(!ev.hoisted.borrow().is_empty());
+            }
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
                 rows.at(i);
@@ -2079,4 +2201,86 @@ pub fn column_with<C>(
         }
     }
     Ok(ColumnOutcome { cells, side_vars })
+}
+
+#[cfg(test)]
+mod hoist_tests {
+    use super::*;
+    use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
+
+    fn formula(next: &mut dyn FnMut(usize) -> usize, depth: usize) -> String {
+        const LEAVES: [&str; 12] = ["@a", "@b", "@t", "a", "b", "t", "2", "0.5", "\"x\"", "ROW()", "TRUE", "-1"];
+        if depth == 0 || next(4) == 0 {
+            return LEAVES[next(LEAVES.len())].to_string();
+        }
+        let mut e = || formula(next, depth - 1);
+        let (x, y, z) = (e(), e(), e());
+        match next(24) {
+            0 => format!("-({x})"),
+            1..=6 => format!("({x} {} {y})", ["+", "-", "*", "/", "&", "=", "<"][next(7)]),
+            7 => format!("SUM({x})"),
+            8 => format!("AVERAGE({x})"),
+            9 => format!("MAX({x}, {y})"),
+            10 => format!("IF({x}, {y}, {z})"),
+            11 => format!("IFERROR({x}, {y})"),
+            12 => format!("LEN({x})"),
+            13 => format!("COUNTIF(a, {x})"),
+            14 => format!("SUMIFS(b, a, {x})"),
+            15 => format!("XLOOKUP({x}, a, b, \"none\")"),
+            16 => format!("INDEX(a, {x})"),
+            17 => format!("LARGE(b, {x})"),
+            18 => format!("RANK({x}, b)"),
+            19 => format!("SUM(MAP(a, LAMBDA(v, v + {x})))"),
+            20 => format!("TEXTJOIN(\",\", TRUE, {x})"),
+            21 => format!("PERCENTRANK(b, {x})"),
+            22 => format!("ROUND({x}, 1)"),
+            _ => format!("COUNT({x})"),
+        }
+    }
+
+    #[test]
+    fn keeping_row_free_subtrees_changes_no_answer() {
+        let n = 9;
+        let num =
+            |i: usize, m: usize| if i % 4 == 3 { FrameCell::Null } else { FrameCell::Num((i * m % 7) as f64 - 2.0) };
+        let f = FrameValue {
+            columns: vec![
+                FrameColumn::new("a", FrameColType::Number, (0..n).map(|i| num(i, 3)).collect()),
+                FrameColumn::new("b", FrameColType::Number, (0..n).map(|i| num(i, 5)).collect()),
+                FrameColumn::new(
+                    "t",
+                    FrameColType::String,
+                    (0..n).map(|i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))).collect(),
+                ),
+            ],
+        };
+        let mut seed = 5u64;
+        let mut next = |m: usize| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) as usize % m
+        };
+        let mut hoisted = 0;
+        for _ in 0..3000 {
+            let src = formula(&mut next, 4);
+            let Some(ast) = crate::excel_formula::parse_formula(&src) else { continue };
+            let run = |hoist: bool| {
+                let inp = ColumnInputs {
+                    table: Table::Frame(&f),
+                    sides: Default::default(),
+                    row_sides: Default::default(),
+                    reserved: vec![],
+                    alias: Default::default(),
+                    rows: n,
+                };
+                match column_hoisting(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp, |v| v, hoist) {
+                    Ok(o) => format!("{:?}", o.cells),
+                    Err(e) => format!("{e:?}"),
+                }
+            };
+            assert_eq!(run(true), run(false), "{src}");
+            let mut free = Vec::new();
+            hoisted += usize::from(row_free(&ast, &[], &Env::default(), &mut free) || !free.is_empty());
+        }
+        assert!(hoisted > 500, "{hoisted}");
+    }
 }
