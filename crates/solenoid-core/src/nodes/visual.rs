@@ -42,7 +42,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// A number as `jsonEnc` writes it and a JSON reader takes it back: an integer as an integer, what JSON can't hold
 /// tagged.
-fn jn(n: f64) -> Json {
+pub(crate) fn jn(n: f64) -> Json {
     if n.is_nan() {
         return json!({ "__nf": "nan" });
     }
@@ -63,7 +63,7 @@ fn jn(n: f64) -> Json {
     Json::from(n)
 }
 
-fn jopt(n: Option<f64>) -> Json {
+pub(crate) fn jopt(n: Option<f64>) -> Json {
     n.map_or(Json::Null, jn)
 }
 
@@ -1442,7 +1442,7 @@ fn bin_count(k: &V) -> Result<f64, V> {
 }
 
 /// The lower edges over `[min, max]` (min < max), and each value's bin by them, the last closed.
-fn equal_width_bins(min: f64, max: f64, bins: usize) -> (Vec<f64>, impl Fn(f64) -> usize) {
+pub(crate) fn equal_width_bins(min: f64, max: f64, bins: usize) -> (Vec<f64>, impl Fn(f64) -> usize) {
     let w = (max - min) / bins as f64;
     let edges: Vec<f64> = (0..bins).map(|i| min + i as f64 * w).collect();
     let e = edges.clone();

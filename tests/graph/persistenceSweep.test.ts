@@ -209,6 +209,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     chartOptions: "parsed per data() from the persisted options input/literal",
     sourceColumns: "detected from the input frame per compute",
     pivotWire: "the layout of the pivot the body just ran, handed to the shell to keep beside the frame, cleared once kept",
+    describeTiles: "the Dashboard tiles Describe's body shows per compute, kept beside its summary frame",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
     noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",

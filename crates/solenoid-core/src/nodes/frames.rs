@@ -842,13 +842,151 @@ fn split_frame(c: &mut Call) -> Answer {
 }
 
 fn describe(c: &mut Call) -> Answer {
-    let Some(f) = frame_in(c, "frame") else { return shown_frame(c, "frame", V::Null) };
+    let Some(f) = frame_in(c, "frame") else {
+        c.show("describeTiles", V::Undef);
+        return shown_frame(c, "frame", V::Null);
+    };
     let out = match frame_fn_frame("describeFrame", &f, &[]) {
-        Some(Ok(r)) => V::Frame(Rc::new(from_core(&r))),
-        Some(Err(e)) => e,
+        Some(Ok(r)) => {
+            let summary = from_core(&r);
+            // No columns, no tiles: an empty array reads back as a list.
+            let tiles = if f.columns.is_empty() { V::List(Rc::new(Vec::new())) } else { V::Json(Rc::new(describe_tiles(&f, &summary))) };
+            c.show("describeTiles", tiles);
+            V::Frame(Rc::new(summary))
+        }
+        Some(Err(e)) => {
+            c.show("describeTiles", V::Undef);
+            e
+        }
         None => V::Null,
     };
     shown_frame(c, "frame", out)
+}
+
+/// How many most common values a tile lists ([[C129]] describeDashboard).
+const TOP_VALUES: usize = 5;
+/// A number column with this few distinct values lists them, as a text column does: a histogram of two years is two
+/// bars and a gap.
+const FEW_VALUES: f64 = 6.0;
+/// The most points a tile's row-order line draws; past it the numbers are averaged into this many buckets.
+const TREND_POINTS: usize = 40;
+
+/// Describe's Dashboard tiles, one per source column, read beside the summary rows, which already hold the counts: a
+/// histogram (and a row-order line for numbers) where a number or date column has more than a few values, else its
+/// most common values.
+fn describe_tiles(src: &Frame, summary: &Frame) -> Json {
+    use super::visual::{equal_width_bins, jn, jopt};
+    let col = |name: &str| summary.columns.iter().find(|c| c.name == name).map_or(&[][..], |c| &c.values[..]);
+    let (count, blank, distinct, mean, median) = (col("count"), col("blank"), col("distinct"), col("mean"), col("50%"));
+    let at = |cells: &[V], j: usize| match cells.get(j) {
+        Some(V::Num(n)) => *n,
+        Some(V::Null | V::Undef) | None => 0.0,
+        Some(_) => f64::NAN,
+    };
+    let num = |cells: &[V], j: usize| match cells.get(j) {
+        Some(V::Num(n)) if n.is_finite() => Some(*n),
+        _ => None,
+    };
+    let tiles = src.columns.iter().enumerate().map(|(j, c)| {
+        let mut tile = serde_json::Map::new();
+        tile.insert("name".into(), Json::String(c.name.clone()));
+        tile.insert("type".into(), Json::String(c.ty.as_str().into()));
+        if let Some(format) = &c.format {
+            tile.insert("format".into(), format.clone());
+        }
+        let n_distinct = at(distinct, j);
+        tile.insert("count".into(), jn(at(count, j)));
+        tile.insert("blank".into(), jn(at(blank, j)));
+        tile.insert("distinct".into(), jn(n_distinct));
+        let is_number = c.ty == FrameColType::Number;
+        if (is_number || c.ty == FrameColType::Date) && n_distinct > FEW_VALUES {
+            let nums: Vec<f64> = c
+                .values
+                .iter()
+                .filter_map(|v| match v {
+                    V::Num(n) if n.is_finite() => Some(*n),
+                    _ => None,
+                })
+                .collect();
+            if !nums.is_empty() {
+                let (min, max) = nums.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+                let counts = if min == max {
+                    vec![nums.len()]
+                } else {
+                    let k = tile_bins(nums.len());
+                    let mut counts = vec![0usize; k];
+                    let (_, idx) = equal_width_bins(min, max, k);
+                    for &x in &nums {
+                        counts[idx(x)] += 1;
+                    }
+                    counts
+                };
+                tile.insert("hist".into(), json!({ "counts": counts, "min": jn(min), "max": jn(max) }));
+            }
+            if is_number {
+                tile.insert("mean".into(), jopt(num(mean, j)));
+                tile.insert("median".into(), jopt(num(median, j)));
+                if nums.len() > 1 {
+                    tile.insert("trend".into(), Json::Array(trend_series(&nums).into_iter().map(jn).collect()));
+                }
+            }
+        } else {
+            tile.insert("top".into(), top_values(&c.values));
+            if is_number {
+                tile.insert("mean".into(), jopt(num(mean, j)));
+                tile.insert("median".into(), jopt(num(median, j)));
+            }
+        }
+        Json::Object(tile)
+    });
+    Json::Array(tiles.collect())
+}
+
+/// Sturges' bin count, kept between 5 and 20 so a tile's bars stay readable.
+fn tile_bins(n: usize) -> usize {
+    (crate::fdlibm::log2(n.max(1) as f64) + 1.0).ceil().clamp(5.0, 20.0) as usize
+}
+
+/// The numbers in row order, averaged into `TREND_POINTS` buckets past that many.
+fn trend_series(nums: &[f64]) -> Vec<f64> {
+    let n = nums.len();
+    if n <= TREND_POINTS {
+        return nums.to_vec();
+    }
+    (0..TREND_POINTS)
+        .map(|b| {
+            let (lo, hi) = (b * n / TREND_POINTS, (b + 1) * n / TREND_POINTS);
+            nums[lo..hi].iter().sum::<f64>() / (hi - lo) as f64
+        })
+        .collect()
+}
+
+/// A column's most common values, most first and ties in text order, and how many filled rows hold any other.
+fn top_values(cells: &[V]) -> Json {
+    let mut counts: Vec<(String, usize)> = Vec::new();
+    let mut slot: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut filled = 0;
+    for v in cells {
+        let key = match v {
+            V::Null | V::Undef => continue,
+            V::Err(e) => e.code.as_str().to_string(),
+            V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
+            v => crate::excel_functions::js_string_of(v),
+        };
+        filled += 1;
+        match slot.get(&key) {
+            Some(&i) => counts[i].1 += 1,
+            None => {
+                slot.insert(key.clone(), counts.len());
+                counts.push((key, 1));
+            }
+        }
+    }
+    counts.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| crate::jsnum::compare_utf16(&a.0, &b.0)));
+    counts.truncate(TOP_VALUES);
+    let shown: usize = counts.iter().map(|(_, n)| n).sum();
+    let values: Vec<Json> = counts.into_iter().map(|(text, count)| json!({ "text": text, "count": count })).collect();
+    json!({ "values": values, "other": filled - shown })
 }
 
 fn corr_matrix(c: &mut Call) -> Answer {
