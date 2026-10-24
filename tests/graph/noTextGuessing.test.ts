@@ -84,5 +84,12 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
       expect(code(ev(src))).toBe("#VALUE!");
     expect(code(ev('ANTOINE("water", 100)'))).not.toBe("#VALUE!");
   });
+
+  it("a cash flow or a signal refuses a text cell, as NPV does, where it read 0", () => {
+    const flows = [-100, "60", 60];
+    for (const src of ["IRR(f)", "MIRR(f, 0.1, 0.1)", "XNPV(0.1, f, d)", "XIRR(f, d)", "CONVOLVE(f, f)", "SPECTRUM(f)", "NPV(0.1, f)"])
+      expect(code(ev(src, { f: flows, d: [45292, 45658, 46023] }))).toBe("#VALUE!");
+    expect(code(ev("IRR(f)", { f: [-100, null, 120] }))).not.toBe("#VALUE!");
+  });
 });
 

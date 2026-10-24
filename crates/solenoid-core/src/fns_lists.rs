@@ -533,6 +533,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             if let Some(e) = first_error(&x).or_else(|| first_error(&y)) {
                 return e;
             }
+            if x.iter().chain(y.iter()).any(crate::excel_functions::holds_text) {
+                return crate::excel_functions::value_err("CONVOLVE");
+            }
             let fx: Vec<f64> = x.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
             let fy: Vec<f64> = y.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
             if fx.is_empty() || fy.is_empty() {
@@ -1628,6 +1631,9 @@ fn hypot(x: f64, y: f64) -> f64 {
 fn spectrum(x: &[V], rate: f64) -> V {
     if let Some(e) = first_error(x) {
         return e;
+    }
+    if x.iter().any(crate::excel_functions::holds_text) {
+        return crate::excel_functions::value_err("SPECTRUM");
     }
     let sig: Vec<f64> = x.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
     let n = sig.len();

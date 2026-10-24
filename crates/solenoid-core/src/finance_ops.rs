@@ -25,7 +25,9 @@ pub enum Fin {
 pub enum Cell {
     Num(f64),
     Err(SolError),
-    /// Anything else: null, text, a logical.
+    /// Text, which a cash flow never reads as a number ([[C131]] noTextGuessing).
+    Text,
+    /// Anything else: null, a logical.
     Other,
 }
 
@@ -810,10 +812,13 @@ pub fn fv_schedule(pv: f64, rates: &[f64]) -> f64 {
     rates.iter().fold(pv, |fv, r| fv * (1.0 + r))
 }
 
-/// The first error, or each cell as a number (anything else as 0).
+/// The first error, then `#VALUE!` for text, else each cell as a number (a blank or a logical as 0).
 pub fn cash_prep(raw: &[Cell]) -> Result<Vec<f64>, SolError> {
     if let Some(Cell::Err(e)) = raw.iter().find(|v| matches!(v, Cell::Err(_))) {
         return Err(e.clone());
+    }
+    if raw.iter().any(|v| matches!(v, Cell::Text)) {
+        return Err(sol_error(ErrorCode::Value, "Cash flows must be numbers, not text"));
     }
     Ok(raw.iter().map(|v| if let Cell::Num(n) = v { *n } else { 0.0 }).collect())
 }

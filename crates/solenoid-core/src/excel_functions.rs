@@ -5741,6 +5741,7 @@ fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
         .map(|x| match x {
             V::Num(n) => Cell::Num(*n),
             V::Err(e) => Cell::Err(e.as_ref().clone()),
+            V::Str(_) => Cell::Text,
             _ => Cell::Other,
         })
         .collect()
