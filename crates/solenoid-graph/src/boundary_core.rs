@@ -715,14 +715,15 @@ pub fn tagged(e: &Rc<SolError>, origin: impl FnOnce() -> Origin) -> Rc<SolError>
 /// cells, in a copy, one tagged error per distinct error. An origin already there is kept. `None` when nothing
 /// needed it.
 pub fn with_origin(v: &V, origin: &dyn Fn() -> Origin) -> Option<V> {
-    let mut made: Vec<(Rc<SolError>, Rc<SolError>)> = Vec::new();
+    // Keyed by the error's address, which `v` holds alive for the call.
+    let mut made: std::collections::HashMap<*const SolError, Rc<SolError>> =
+        std::collections::HashMap::new();
     let mut tag = |e: &Rc<SolError>| -> V {
-        if let Some((_, t)) = made.iter().find(|(o, _)| Rc::ptr_eq(o, e)) {
-            return V::Err(t.clone());
-        }
-        let t = tagged(e, origin);
-        made.push((e.clone(), t.clone()));
-        V::Err(t)
+        V::Err(
+            made.entry(Rc::as_ptr(e))
+                .or_insert_with(|| tagged(e, origin))
+                .clone(),
+        )
     };
     let mut tag_cells = |values: &[V]| -> Option<Vec<V>> {
         let mut out: Option<Vec<V>> = None;
