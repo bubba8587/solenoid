@@ -980,7 +980,7 @@ impl Eval<'_> {
                 column = col;
             }
         }
-        if t.kind == Kind::Range && matches!(t.prep, Prep::Default | Prep::Zero) {
+        if t.kind == Kind::Range && t.prep != Prep::Paired && (t.prep != Prep::Positional || t.matrix_args) {
             return match self.ready_range(name, t, argv) {
                 Ok(args) => self.range_dispatch(name, t, args),
                 Err(e) => e,
@@ -1541,8 +1541,11 @@ fn first_error(a: &V) -> Option<V> {
     })
 }
 
-/// One list as `Prep::Default` or `Prep::Zero` reads it: the same list when it holds no blank.
+/// One list as `prep` reads it, `Prep::Paired` aside: the same list when it holds no blank.
 fn ready_list(prep: Prep, a: V) -> Result<V, V> {
+    if matches!(prep, Prep::Raw | Prep::Positional) {
+        return Ok(a);
+    }
     if let Some(e) = first_error(&a) {
         return Err(e);
     }

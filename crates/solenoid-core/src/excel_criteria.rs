@@ -720,8 +720,9 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         return V::err(sol_error(ErrorCode::Value, "At least one criteria range and criterion is needed"));
     }
     let mut crits = Vec::with_capacity(pairs.len());
-    for (range, raw) in pairs {
-        let numeric = range.iter().any(|v| matches!(v, V::Num(_))) && !range.iter().any(is_text);
+    let facts: Vec<Rc<Facts>> = pairs.iter().map(|(range, _)| facts_of(range)).collect();
+    for ((_, raw), f) in pairs.iter().zip(&facts) {
+        let numeric = f.has_num && !f.has_text;
         let c = match parse_criterion(raw, numeric) {
             Parsed::Crit(c) => c,
             Parsed::Err(e) => return e,
@@ -729,7 +730,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         if !numeric
             && !matches!(c.op, Op::Eq | Op::Neq)
             && matches!(&c.value, Value::Str(s) if decimal_from_text(s).is_finite())
-            && range.iter().any(is_text)
+            && f.has_text
         {
             return V::err(sol_error(
                 ErrorCode::Type,
@@ -740,6 +741,11 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
             ));
         }
         crits.push(c);
+    }
+    if let (Kind::Count, [(range, _)], [c], [f]) = (kind, pairs, &crits[..], &facts[..]) {
+        if let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len())) {
+            return V::Num(n as f64);
+        }
     }
     let mut n = pairs.iter().map(|(r, _)| r.len()).min().unwrap_or(0);
     if let Some(v) = values {
@@ -768,6 +774,99 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         Kind::Min => V::Num(kept.iter().copied().reduce(js_min).unwrap_or(0.0)),
         Kind::Max => V::Num(kept.iter().copied().reduce(js_max).unwrap_or(0.0)),
     }
+}
+
+/// What every criterion on a range reads of it, kept by the range: a computed column counts each row in the same column
+/// ([[C120]] linearWork). The tally comes on the range's second call, so a single call doesn't sort what it reads once.
+struct Facts {
+    from: Rc<Vec<V>>,
+    has_num: bool,
+    has_text: bool,
+    tally: Option<Tally>,
+}
+
+/// A range's cells by what `criterion_matches` asks of them.
+struct Tally {
+    /// The numbers that aren't NaN, sorted.
+    nums: Vec<f64>,
+    /// Text cells by their lowered text.
+    text: rustc_hash::FxHashMap<String, usize>,
+    /// Cells no criterion matches: errors and logicals.
+    errs: usize,
+    bools: usize,
+}
+
+impl Tally {
+    fn of(range: &[V]) -> Tally {
+        let mut t = Tally { nums: Vec::new(), text: Default::default(), errs: 0, bools: 0 };
+        for v in range {
+            match v {
+                V::Num(n) if !n.is_nan() => t.nums.push(*n),
+                V::Str(s) if !s.is_empty() => *t.text.entry(js_lower(s).into_owned()).or_default() += 1,
+                V::Err(_) => t.errs += 1,
+                V::Bool(_) => t.bools += 1,
+                _ => {}
+            }
+        }
+        t.nums.sort_by(f64::total_cmp);
+        t
+    }
+
+    /// `criterion_matches` over the whole range, for a number or a plain text criterion. A number other than NaN
+    /// compares with every number as `c - n` would; a blank, NaN or any other cell matches only `<>`.
+    fn count(&self, c: &Criterion, total: usize) -> Option<usize> {
+        let below = |x: f64| self.nums.partition_point(|&v| v < x);
+        let upto = |x: f64| self.nums.partition_point(|&v| v <= x);
+        let unlike = |equal: usize| total - self.errs - equal;
+        match &c.value {
+            Value::Num(n) if n.is_finite() => Some(match c.op {
+                Op::Eq => upto(*n) - below(*n),
+                Op::Neq => unlike(upto(*n) - below(*n)) - self.bools,
+                Op::Gt => self.nums.len() - upto(*n),
+                Op::Gte => self.nums.len() - below(*n),
+                Op::Lt => below(*n),
+                Op::Lte => upto(*n),
+            }),
+            Value::Str(_) if c.wild.is_none() && matches!(c.op, Op::Eq | Op::Neq) => {
+                let equal = self.text.get(&c.lowered).copied().unwrap_or(0);
+                Some(if c.op == Op::Eq { equal } else { unlike(equal) })
+            }
+            _ => None,
+        }
+    }
+}
+
+fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
+    let read = |tally: bool| Facts {
+        from: range.clone(),
+        has_num: range.iter().any(|v| matches!(v, V::Num(_))),
+        has_text: range.iter().any(is_text),
+        tally: tally.then(|| Tally::of(range)),
+    };
+    if range.len() < 64 {
+        return Rc::new(read(false));
+    }
+    thread_local! {
+        static FACTS: std::cell::RefCell<Vec<Rc<Facts>>> = const { std::cell::RefCell::new(Vec::new()) };
+    }
+    FACTS.with(|c| {
+        let mut c = c.borrow_mut();
+        match c.iter().position(|f| Rc::ptr_eq(&f.from, range)) {
+            Some(k) if c[k].tally.is_some() => c[k].clone(),
+            Some(k) => {
+                c[k] = Rc::new(read(true));
+                c[k].clone()
+            }
+            None => {
+                if c.len() >= 4 {
+                    c.remove(0);
+                }
+                let f = Rc::new(read(false));
+                c.push(f.clone());
+                f
+            }
+        }
+    })
 }
 
 /// The arguments after the values as range, criterion pairs.

@@ -889,6 +889,111 @@ impl<K: AsRef<[V]>> Matcher<K> {
     }
 }
 
+/// XLOOKUP's and XMATCH's lookup array as one list, matched through `Matcher`, and XLOOKUP's return array beside it.
+struct LookupPlan {
+    m: Matcher<Vec<V>>,
+    vs: Option<Vec<V>>,
+}
+
+impl LookupPlan {
+    fn new(name: &str, keys: &V, values: Option<&V>, mm: MatchMode, last: bool, lookups: usize) -> Result<Self, V> {
+        let Some(ks) = as_one_dim(keys) else {
+            return Err(V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name}'s lookup array must be a single row or a single column"),
+            )));
+        };
+        let vs = match values {
+            None => None,
+            Some(values) => {
+                let Some(vs) = as_one_dim(values) else {
+                    return Err(V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must be a single row or a single column",
+                    )));
+                };
+                if matches!(values, V::List(_)) && vs.len() != ks.len() {
+                    return Err(V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must match the lookup array's length",
+                    )));
+                }
+                Some(vs)
+            }
+        };
+        Ok(LookupPlan { m: Matcher::new(ks, mm, last, lookups), vs })
+    }
+}
+
+enum Seen {
+    Once,
+    Plan(Rc<LookupPlan>),
+}
+
+struct LookupEntry {
+    keys: Rc<Vec<V>>,
+    values: Option<Rc<Vec<V>>>,
+    mm: MatchMode,
+    last: bool,
+    seen: Seen,
+}
+
+/// One lookup into a long list, as a computed column makes row after row against the same column: the second call
+/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[C120]] linearWork). An
+/// entry holds its lists, so their addresses can't name others.
+fn lookup_plan(
+    name: &str,
+    keys: &V,
+    values: Option<&V>,
+    mm: MatchMode,
+    last: bool,
+    lookups: usize,
+) -> Result<Rc<LookupPlan>, V> {
+    let fresh = || LookupPlan::new(name, keys, values, mm, last, lookups).map(Rc::new);
+    let V::List(kl) = keys else { return fresh() };
+    let vl = match values {
+        None => None,
+        Some(V::List(l)) => Some(l),
+        Some(_) => return fresh(),
+    };
+    if lookups != 1 || kl.len() < 64 {
+        return fresh();
+    }
+    thread_local! {
+        static LOOKUPS: std::cell::RefCell<Vec<LookupEntry>> = const { std::cell::RefCell::new(Vec::new()) };
+    }
+    LOOKUPS.with(|c| {
+        let mut c = c.borrow_mut();
+        let at = c.iter().position(|e| {
+            Rc::ptr_eq(&e.keys, kl)
+                && e.mm == mm
+                && e.last == last
+                && match (&e.values, vl) {
+                    (None, None) => true,
+                    (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+                    _ => false,
+                }
+        });
+        match at {
+            Some(k) => match &c[k].seen {
+                Seen::Plan(p) => Ok(p.clone()),
+                Seen::Once => {
+                    let p = Rc::new(LookupPlan::new(name, keys, values, mm, last, usize::MAX)?);
+                    c[k].seen = Seen::Plan(p.clone());
+                    Ok(p)
+                }
+            },
+            None => {
+                if c.len() >= 4 {
+                    c.remove(0);
+                }
+                c.push(LookupEntry { keys: kl.clone(), values: vl.cloned(), mm, last, seen: Seen::Once });
+                fresh()
+            }
+        }
+    })
+}
+
 pub(crate) fn mean_of(a: &[f64]) -> f64 {
     sum(a) / a.len() as f64
 }
@@ -1082,22 +1187,19 @@ fn as_number_cmp(v: &V) -> f64 {
     }
 }
 
-fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
+/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[C120]] linearWork).
+fn excel_rank(value: f64, refs: &V, avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
     }
-    let above = refs
-        .iter()
-        .filter(|x| {
-            let n = as_number_cmp(x);
-            if ascending {
-                n < value
-            } else {
-                n > value
-            }
-        })
-        .count() as f64;
-    let equal = refs.iter().filter(|x| matches!(x, V::Num(n) if *n == value)).count() as f64;
+    let (place, ties) = (sorted_of(refs, Reading::RankPlace), sorted_of(refs, Reading::RankTies));
+    let (place, ties) = (place.as_deref().unwrap_or_default(), ties.as_deref().unwrap_or_default());
+    let above = if ascending {
+        place.partition_point(|&n| n < value)
+    } else {
+        place.len() - place.partition_point(|&n| n <= value)
+    } as f64;
+    let equal = (ties.partition_point(|&n| n <= value) - ties.partition_point(|&n| n < value)) as f64;
     if equal == 0.0 {
         return V::err(sol_error(ErrorCode::NotAvailable, "Value not found in the list"));
     }
@@ -2421,6 +2523,10 @@ enum Reading {
     Nums,
     /// PERCENTRANK's: finite numbers through nested rows, the first error the answer.
     PercentRank,
+    /// RANK's place: each item as `as_number_cmp` reads it, those that compare.
+    RankPlace,
+    /// RANK's ties: the numbers.
+    RankTies,
 }
 
 type Sorted = Rc<Result<Vec<f64>, V>>;
@@ -2459,6 +2565,18 @@ fn sorted_of(list: &V, reading: Reading) -> Sorted {
                         V::Num(n) if n.is_finite() => Some(*n),
                         _ => None,
                     })
+                    .collect()
+            }
+            Reading::RankPlace | Reading::RankTies => {
+                let items = if let V::List(items) = list { items.as_slice() } else { &[] };
+                items
+                    .iter()
+                    .map(|v| match (reading, v) {
+                        (Reading::RankTies, V::Num(n)) => *n,
+                        (Reading::RankTies, _) => f64::NAN,
+                        _ => as_number_cmp(v),
+                    })
+                    .filter(|n| !n.is_nan())
                     .collect()
             }
         }))
@@ -3536,8 +3654,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let value = to_num(arg(a, 0));
             match arg(a, 1) {
-                V::List(refs) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
-                V::Null | V::Undef => excel_rank(value, &[], arm == F::RANK_AVG, o != 0.0),
+                refs @ (V::List(_) | V::Null | V::Undef) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
                 _ if value.is_nan() => value_err("RANK"),
                 // `ref.filter` on anything but a list is a TypeError.
                 _ => throw(sol_error(ErrorCode::Value, "ref.filter is not a function")),
@@ -4105,47 +4222,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Ok(m) => m,
                 Err(e) => return e,
             };
-            let Some(ks) = as_one_dim(arg(a, 1)) else {
-                return V::err(sol_error(
-                    ErrorCode::Value,
-                    format!("{name}'s lookup array must be a single row or a single column"),
-                ));
-            };
             let lookups = match arg(a, 0) {
                 V::List(items) => {
                     items.len().max(items.first().map_or(0, |r| if let V::List(r) = r { r.len() } else { 0 }))
                 }
                 _ => 1,
             };
-            let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
-                let values = arg(a, 2);
-                let Some(vs) = as_one_dim(values) else {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        "XLOOKUP's return array must be a single row or a single column",
-                    ));
-                };
-                if matches!(values, V::List(_)) && vs.len() != ks.len() {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        "XLOOKUP's return array must match the lookup array's length",
-                    ));
-                }
-                let if_not_found = arg(a, 3).clone();
-                let m = Matcher::new(ks, mm, sm_last, lookups);
-                Box::new(move |l: &V| match m.find(l) {
-                    Err(e) => e,
-                    Ok(Some(i)) if i < vs.len() => vs[i].clone(),
-                    Ok(_) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
-                    Ok(_) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
-                })
-            } else {
-                let m = Matcher::new(ks, mm, sm_last, lookups);
-                Box::new(move |l: &V| match m.find(l) {
-                    Err(e) => e,
-                    Ok(Some(i)) => V::Num(i as f64 + 1.0),
-                    Ok(None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
-                })
+            let values = (arm == F::XLOOKUP).then(|| arg(a, 2));
+            let plan = match lookup_plan(name, arg(a, 1), values, mm, sm_last, lookups) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
+            let if_not_found = arg(a, 3);
+            let pick = |l: &V| match (plan.m.find(l), &plan.vs) {
+                (Err(e), _) => e,
+                (Ok(Some(i)), Some(vs)) if i < vs.len() => vs[i].clone(),
+                (Ok(_), Some(_)) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
+                (Ok(_), Some(_)) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
+                (Ok(Some(i)), None) => V::Num(i as f64 + 1.0),
+                (Ok(None), None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
             };
             // A list of lookups answers one each; a table only as one row or column.
             match arg(a, 0) {

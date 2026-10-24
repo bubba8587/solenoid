@@ -88,7 +88,7 @@ it("the Lookup card over a Cube reads its key column once for a list of lookups"
   expect((v as number[])[0]).toBe(19_999);
 });
 
-it("PERCENTILE, PERCENTRANK and LARGE per row of a computed column sort the column once", async () => {
+it("range functions per row of a computed column read the column once", async () => {
   const { computeColumnOnEngine } = await import("../../src/graph/frameBackend");
   const n = 20_000;
   const score = Array.from({ length: n }, (_, i) => (i * 7919) % n);
@@ -97,6 +97,11 @@ it("PERCENTILE, PERCENTRANK and LARGE per row of a computed column sort the colu
     { name: "p", type: "number" as const, values: score.map((s) => s / n) },
   ] };
   for (const src of ["PERCENTRANK(score, @score)", "PERCENTILE(score, @p)", "LARGE(score, 1 + MOD(@score, 10))"]) {
+    const { v, ms } = timed(() => computeColumnOnEngine(frame, src, n));
+    expect(ms, src).toBeLessThan(3000);
+    expect((v as { cells: unknown[] }).cells.length, src).toBe(n);
+  }
+  for (const src of ["RANK(@score, score)", "XLOOKUP(@score, score, p)", "XMATCH(@score, score)", "COUNTIF(score, @score)"]) {
     const { v, ms } = timed(() => computeColumnOnEngine(frame, src, n));
     expect(ms, src).toBeLessThan(3000);
     expect((v as { cells: unknown[] }).cells.length, src).toBe(n);
