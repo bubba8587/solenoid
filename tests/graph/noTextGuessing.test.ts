@@ -68,4 +68,13 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
     expect(ev('TIMEVALUE("12:00")')).toBe(0.5);
     expect(ev('BIN2DEC("101")')).toBe(5);
   });
+
+  it("a paired-list function drops a text pair as it drops a blank one, keeping the lists in step", () => {
+    const L = [1, "2", 3, 2], N = [1, 2, 3, 4];
+    const blank = { L: [1, null, 3, 2], N };
+    for (const fn of ["SLOPE", "INTERCEPT", "CORREL", "RSQ", "COVARIANCE.S", "SPEARMAN"])
+      expect(ev(`${fn}(L, N)`, { L, N })).toBeCloseTo(ev(`${fn}(L, N)`, blank) as number, 12);
+    expect(ev("SLOPE(L, N)", { L, N })).toBeCloseTo(3 / 7, 12);
+  });
 });
+
