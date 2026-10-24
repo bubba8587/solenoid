@@ -30,7 +30,7 @@ The foundation under every unit. It imports nothing from the editor, React or an
 - **A dimension** (`Dim`) is a map of exponents over the base axes, with an absent key meaning 0. The base axes (`BASE_DIMS`) are SI's seven (length, mass, time, current, temperature, amount, luminous) plus three first-class app axes: angle, currency and information.
 - **A custom unit** (a free-text FC unit) gets its own axis, `custom:<name>` (`customDim`), so it stays first-class in the algebra and is never a plain number: widgets per second never reads as Hz ([[C25]] firstClassUnits). The axis name is trimmed and lowercased, so two FCs that differ only in case add instead of raising `#UNIT!`; the typed casing survives on the annotation's display id. Every dimension operation folds over every axis present in either operand, so a custom axis is never dropped.
 - **A unit** (`Unit`) is a dimension plus its relation to base SI: a linear `scale` and, for temperatures only, an affine `offset`. An offset unit converts but can't be multiplied, divided or raised to a power: `unitMul`, `unitDiv` and `unitPow` answer `null`, which callers surface as `#UNIT!`.
-- **Commensurable** means the same dimension, so a conversion factor exists. `convert(value, a, b)` goes through base SI with both offsets and answers `null` when the units are incommensurable or the result is not finite; the caller turns that into `#UNIT!`.
+- **Commensurable** means the same dimension, so a conversion factor exists. A conversion goes through base SI with both offsets and answers `null` when the units are incommensurable or the result is not finite (the core's `convert_value`, `convert_units.rs`); the caller turns that into `#UNIT!`.
 - **`UNITS`** is the one table of unit magnitudes, keyed by canonical symbol, with every `scale` relative to base SI; the Convert node's category table takes its factors from here. It holds the dimensionless `1` and `%` (0.01), length (m, in, ft, yd, mi), mass (g, kg, t, lb, oz, stone), time (s, min, h, day, wk, yr), A, mol, cd, angle (rad, deg, grad), temperature (K, and the affine degC, degF), information (bit, byte), currency (`¤`), and the derived Hz, N, Pa, J, W and the litre (`L_vol`). Derived units carry their full dimension so the algebra and the formatter recognize them.
 - **`parseUnit(expr)`** reads a unit expression ("m/s", "kg*m/s^2", "km/h", "m2"). A bare recognized symbol short-circuits, which keeps affine units that a product would reject. Otherwise the grammar is factors joined by `*` or `·`, with at most one `/` denominator; a factor is a symbol with an optional `^n` or trailing-digit power, resolved against `UNITS`, the litre (`L` or `l`), or one SI prefix (`SI_PREFIXES`, yotta to yocto, `u` and `µ` both micro, `da` tried first) on a linear base symbol. Anything unrecognized gives `null`.
 - **`formatDim(dim)`** is the display symbol: a named derived unit where one matches exactly (N, Pa, J, W, Hz, V, Ω, most specific first), otherwise a product of base symbols (m, kg, s, A, K, mol, cd, rad, ¤, bit), base axes first and then custom axes by name so the label is stable, with `^n` powers and one `/` for the negative exponents. A dimensionless value gives `""` and shows bare.
@@ -52,7 +52,7 @@ The value-side model is small and strict. Every tagged value stores its magnitud
 The dimensional half of an element-wise op sees only present operands, since the per-cell contract ([[error-values]]) runs first. In order:
 
 1. **Different currency codes** give `#UNIT!` in every op, checked up front so no op below can forget it ([[D47]] noMixCurrencies).
-2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adoptMagnitude` multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adoptReading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
+2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adopt_magnitude` (`nodes/units.rs`) multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adopt_reading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
 3. **Add, subtract and mod** need equal dimensions, or one dimensionless side; otherwise `#UNIT!`. The result keeps `display` from the first operand that has one.
 4. **Two absolute temperatures** (an affine display such as °C or °F on both cells) subtract to a delta: `25 °C − 20 °C` is 5 K, never −268 °C, so the affine display drops and the base unit renders. Two readings have no sum, so `add` is `#UNIT!`, as `a + b` is in a formula. One absolute reading plus a bare delta keeps the reading (`20 °C + 5 = 25 °C`).
 5. **Multiply, divide, quotient, mod and power** are refused on an affine display ("Convert the temperature to kelvin first"), because an offset reading is not a magnitude. `×` and `÷` keep a display unit only when the result stays in an operand's dimension; `5 m × 3 s` fits neither and shows the derived symbol. A division that cancels the dimension between cells mints a pure ratio. Division or quotient by zero is `#DIV/0!`. An exponent must be dimensionless, or the result is `#UNIT!`.
@@ -60,13 +60,13 @@ The dimensional half of an element-wise op sees only present operands, since the
 
 The display-id resolvers (`setDisplayScaleResolver`, `setDisplayOffsetResolver`) start on `parseUnit` and are upgraded by `unitBridge.ts` at module load, so every display id the bridge knows resolves.
 
-### Reducing a list (`forAggregateUnits`)
+### Reducing a list (`for_aggregate_units`, `unit_lists.rs`)
 
-The unit-aware twin of `forAggregate`, run first by a list reducer:
+The unit-aware twin of `for_aggregate`, run first by a list reducer:
 
 1. A `SolError` anywhere returns that error; missing values are dropped.
 2. A first pass finds the list's one real dimension and its display; a second real dimension is `#UNIT!` ("Can't aggregate mixed units"), and two different explicit currency codes are `#UNIT!` too.
-3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list. A bare number adopts as a delta (`adoptMagnitude`), or as a reading (`adoptReading`) when the caller passes `bareIsReading`.
+3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list. A bare number adopts as a delta (`adopt_magnitude`), or as a reading (`adopt_reading`) when the caller asks for readings.
 
 The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#UNIT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
 
@@ -92,7 +92,7 @@ The frame and cube verbs follow the same rule over a °C or °F column, in the c
 There are no exchange rates (`currency_mismatch`, the core's `nodes/units.rs`). Every currency sits on the single `currency` base axis at scale 1 (unitBridge's DIRECT), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
 
 - `compareUnits` (behind `ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
-- `arithmetic_cell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
+- `arithmetic_cell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `for_aggregate_units` returns `#UNIT!` too.
 - A currency cell with no code, such as a computed `currency` result, adopts the other side's code.
 - The guard lives once, up front in `arithmetic_cell` (`nodes/units.rs`), for all seven ops ([[D47]] noMixCurrencies, [[engineering#One declaration per fact]]). A new unit combinator registers in the policy sweep in `unitCurrencyPolicy.test.ts`.
 
@@ -122,7 +122,7 @@ A unit attaches where values are guaranteed to match ([[D43]] unitByGranularity)
 - **strip**: MMULT, MDETERM, MINVERSE.
 - **na**, and **author** (Table Input).
 
-A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carried across `toMatrix` in `coerceValue`'s `table` case. `matrixUnitPolicy.test.ts` tests each policy and fails the build when a `matrix.ts` node takes a matrix without a declared policy. A `MatrixValue` wrapper was rejected ([[D43]]): the fragility is confined to rebuild sites, so a declared policy plus the guard beats churning the universal `toMatrix` and `toScalar` coercers.
+A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carried across arrival coercion's `table` case (`boundary.rs`). `matrixUnitPolicy.test.ts` tests each policy and fails the build when a `matrix.ts` node takes a matrix without a declared policy. A `MatrixValue` wrapper was rejected ([[D43]]): the fragility is confined to rebuild sites, so a declared policy plus the guard beats churning the universal arrival coercers.
 
 ## Formula dimensions (`unit_dims.rs`)
 
@@ -196,7 +196,7 @@ The bridge maps the FC's unit ids (`UNIT_ANNOTATIONS`, [[format-model]]) and eve
 
 - **`fcUnitToUnit(id)`** resolves an id, memoized: `none`, `custom` and `""` are `null`; otherwise the first hit among `DIRECT`, `parseUnit` (through `PARSE_AS`) and the registered extras. `DIRECT` holds what `parseUnit` can't spell: the currencies (usd, eur, gbp, jpy, all on the single `currency` axis at scale 1, since there are no exchange rates), ha, ac and the US liquid gallon. `PARSE_AS` renames ids whose parse string differs (hr → h, ms1 → m/s, kmh → km/h, mph → mi/h, b → byte, kb / mb / gb / tb → kbyte / Mbyte / Gbyte / Tbyte, L and mL through the parser's litre case); any other id is its own parse string.
 - **`registerDisplayUnits(units)`** is the seam for display ids authored elsewhere (Convert's units, for one), so a `UnitCell.display` can hold any id a node sets while the bridge never imports `nodes/*`. It clears the memo, since an id may already be cached as unresolvable.
-- `fcUnitDim` is an id's dimension (dimensionless when unknown); `isDimensionalFcUnit` is true only for an id with a real dimension. The core's `fc_unit_id_for_unit` (`card_helpers.rs`) finds the FC id for a `Unit`: an exact scale and offset match first, else the first id of the same dimension, else none (the value shows its derived symbol).
+- The core's `fc_unit_id_for_unit` (`card_helpers.rs`) finds the FC id for a `Unit`: an exact scale and offset match first, else the first id of the same dimension, else none (the value shows its derived symbol).
 - **`displayMagnitudeOf(cell)`** is a cell's magnitude in its own display unit (5 km gives 5, not 5000), or its base magnitude with no usable display. **`stripUnitCells(v)`** replaces every `UnitCell`, at the top level or nested in arrays, with that magnitude, and returns the same reference when nothing is dimensioned. It is the unit-blind boundary ([[compute-pass]], "Arrival coercion").
 - At module load the bridge upgrades `unitValue`'s scale and offset resolvers to `fcUnitToUnit`, so adoption knows the full FC table and not only the `dimension.ts` spellings. The bridge is on every compute path, so the upgrade always happens.
 

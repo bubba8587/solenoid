@@ -36,7 +36,7 @@ wired blank. `docs/settings-audit.md` was the author's review sheet; verify code
 
 ## 2. "A list is one row" orientation change
 Commits: a7b52c41, ddfe18d5, 7484b745, f18ea5ea, b240c970, cd4013e6, 6745ee20, 0a95b655 (lists read per row)
-Where: `nodes/matrix.ts`, `matrixOps.ts`, `indexAccess.ts`, `listOps.ts`, `tableLambda.ts`,
+Where: `nodes/matrix.ts`, `matrixOps.ts`, `listOps.ts`, `tableLambda.ts`,
 `excelFunctions.ts`, `src/graph/help/data-model.md`
 Why risky: a global axis convention flipped (list = 1×N row, not N×1 column) but three
 functions were exempted (TOCOL, BYROW, MAKEARRAY "keep their column"). Exemption lists rot.
@@ -490,7 +490,7 @@ Leaves: [[D77]] constantsAlwaysWin, [[C50]] lambdaBindsByName.
 
 ## 26. Layout: no overlaps ever
 Commits: 3f83b611, 244cb2f5, 83806909, 35fbead5, 524514f5
-Where: `separateOverlaps`, `separateAll`, `groupPush.ts` (9 commits), `tidyArrange.ts`
+Where: `separateAll`, `groupPush.ts` (9 commits), `tidyArrange.ts`
 Leaves: [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast.
 - [x] Checked 2026-09-28: 12 random scenes × three expand/collapse patterns × 50 cycles: the box grows only while starting overlaps separate (the first few cycles), then stays fixed with no overlaps, since collapse restores every card. Was: Greedy top-left placement "moves only right or down": a canvas that grows without
       bound after repeated expand/collapse cycles (drift). Run 50 cycles, measure bbox.

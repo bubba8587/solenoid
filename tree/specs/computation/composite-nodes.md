@@ -223,11 +223,10 @@ Config: `monteCarlo: { samples, seed, correlations? }` or null; the defaults are
 
 #### The uncertain number
 
-An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`uncertainCenter`, `coerceNumber`).
+An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`coerceNumber`).
 
 - `samples` holds the raw Monte Carlo draws behind a summary and powers the histogram. It is not part of the value's identity, so a hand-built `value ± error` omits it.
 - `dropped` counts the draws the summary could not use (an errored or blank pass), so the readout can say "200 of 500 draws" instead of a confident mean over a fraction.
-- The propagation ops (`addUncertain`, `subUncertain`, `mulUncertain`, `divUncertain`, each normalizing plain numbers through `asUncertain` with error 0) use first-order Gaussian propagation for independent variables, with no covariance term. A sum or difference adds the errors in quadrature. A product's error is `√((b·σa)² + (a·σb)²)` and a quotient's is `√((σa/b)² + (a·σb/b²)²)`, the forms that stay finite when a or b is 0; a zero denominator still gives ±Inf or NaN.
 
 ### Simulation
 

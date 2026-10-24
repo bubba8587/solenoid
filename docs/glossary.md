@@ -49,10 +49,10 @@ area. When you coin a new load-bearing term, add it here.
   error; `ISERROR` ⟺ `IFERROR`. (`errorValue.ts`)
 - **Missing / null**: a first-class "hole" in a list/frame: rendered `null`, *skipped* by
   aggregators, propagated by element-wise math, dropped by Filter. Distinct from an error.
-  (`valueKinds.ts` `isMissing`)
-- **`forAggregate`**: the canonical prep an aggregator must run: propagate the first
+  (`Missing` in `valueKinds.ts`)
+- **`for_aggregate`**: the canonical prep an aggregator runs: propagate the first
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
-  (`valueKinds.ts`)
+  (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
   (`valueKinds.ts` `kleeneAnd/Or/Not`)
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE

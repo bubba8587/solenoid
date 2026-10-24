@@ -68,7 +68,7 @@ Lists, matrices and Frames carry three distinct kinds besides values ([[C24]] ar
 - per-cell `SolError`s, which propagate;
 - a first-class logical: the purple socket family, TRUE/FALSE, converting to and from 1/0.
 
-`valueKinds.ts` is the core: `isMissing`, `forAggregate` (skip null, propagate errors), and the Kleene `kleeneAnd` / `kleeneOr` / `kleeneNot`. `FrameColumn` has a `logical` column type and per-cell errors, and the table popup edits number, text, date and logical columns. `IS.TEST` (ISNULL and the type checks) tests per cell to any depth, Frames included. Saving needs no new format: computed values regenerate, and a Frame Input's logical and null cells round-trip through `frameText`. In the popup grid an error cell shows its code as text, not a badge.
+The core carries it: `for_aggregate` (`value_kinds.rs`: skip null, propagate errors) and the Kleene AND and OR (`kleene_and`, `kleene_or`). `FrameColumn` has a `logical` column type and per-cell errors, and the table popup edits number, text, date and logical columns. `IS.TEST` (ISNULL and the type checks) tests per cell to any depth, Frames included. Saving needs no new format: computed values regenerate, and a Frame Input's logical and null cells round-trip through `frameText`. In the popup grid an error cell shows its code as text, not a badge.
 
 ### Element-wise math tags per-cell errors the same as scalars
 
@@ -122,7 +122,7 @@ Detection and recovery form a 2 × 2 over missing (`null`) and error (`SolError`
 
 | | missing | error |
 |---|---|---|
-| **detect** | ISNULL (per cell, deep, `isMissing`) | ISERROR (`isSolError`), ISNA (`isNaError`) |
+| **detect** | ISNULL (per cell, deep) | ISERROR (`isSolError`), ISNA (`isNaError`) |
 | **recover** | Fill (`FillNode`: constant, ffill, bfill, mean, median, mode, interpolate, drop, coalesce) | IFERROR, IFNA (per cell) |
 
 There is one kind of error, never two. With two notions, ISERROR and IFERROR would disagree about the same cell, and a not-a-number counted as an error in one place and as a number in another is a wrong answer nobody sees. These must hold across all of them:
