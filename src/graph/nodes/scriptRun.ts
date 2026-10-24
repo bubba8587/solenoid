@@ -55,6 +55,18 @@ const SolenoidGlobal = Object.freeze({
 type Fn = (...args: unknown[]) => unknown;
 const compiled = new Map<string, Fn>();
 
+/** The source's syntax, parsed and never run: the main thread's check, since only the sandbox worker runs a script. */
+export function checkScript(src: string): { error: string } | null {
+  const head = scriptParams(src);
+  if ("error" in head) return head;
+  try {
+    new Function("Solenoid", `"use strict"; return (\n${src}\n);`);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  return null;
+}
+
 export function compileScript(src: string): { fn: Fn } | { error: string } {
   const hit = compiled.get(src);
   if (hit) return { fn: hit };

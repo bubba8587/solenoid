@@ -2,7 +2,7 @@
 import { GraphNode } from "../graphModel";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { scriptParams, compileScript } from "./scriptRun";
+import { scriptParams, checkScript } from "./scriptRun";
 import { coerceScriptResult, scriptArgToJs } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
 import { reconcileResultRank, type ProducedFamily } from "./expression";
@@ -64,10 +64,7 @@ export class ScriptNode extends GraphNode {
     for (const v of prev) if (!nextSet.has(v)) removed.push(v);
     this.varNames = next;
     if ("error" in head) this.syntaxError = head.error;
-    else {
-      const c = compileScript(this.expr);
-      this.syntaxError = "error" in c ? c.error : null;
-    }
+    else this.syntaxError = checkScript(this.expr)?.error ?? null;
     return { added, removed };
   }
 

@@ -88,6 +88,18 @@ describe("ScriptNode.data — values in", () => {
   });
 });
 
+describe("a Script card's source runs only in the sandbox", () => {
+  it("building the card, as loading a document does, parses the source and never runs it", () => {
+    const g = globalThis as { __scriptRan?: number };
+    delete g.__scriptRan;
+    const n = new ScriptNode({ expr: "x => x, (globalThis.__scriptRan = 1), x => x" });
+    expect(g.__scriptRan).toBeUndefined();
+    expect(n.varNames).toEqual(["x"]);
+    new ScriptNode({ expr: "(x) => x)(globalThis.__scriptRan = 2" });
+    expect(g.__scriptRan).toBeUndefined();
+  });
+});
+
 describe("ScriptNode.data — the result is folded onto the value model", () => {
   it("empty source is blank; a broken source is #SYNTAX!; a throw is #VALUE! with its message", async () => {
     expect((await run("")).result).toBeNull();
