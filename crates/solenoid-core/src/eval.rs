@@ -1836,6 +1836,15 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
+/// The readied lists the kept formulas' evaluators hold, let go with the other kept lists.
+pub(crate) fn forget_readied() {
+    FORMULAS.with(|f| {
+        for (_, c) in f.borrow().iter() {
+            c.eval.readied.borrow_mut().clear();
+        }
+    });
+}
+
 pub fn forget_held(ids: &[u64]) {
     HELD.with(|h| {
         let mut h = h.borrow_mut();

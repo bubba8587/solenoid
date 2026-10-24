@@ -254,7 +254,7 @@ impl Drop for Calc {
 }
 
 /// The lists kept for the calls that follow (`sorted_of`, `lookup_plan`, `width_of`, `forecast_fit`, the criteria
-/// facts, Z.TEST's spread) let go, so no table outlives the calls that read it in memory.
+/// facts, Z.TEST's spread, the kept formulas' readied lists) let go, so no table outlives the calls that read it in memory.
 pub(crate) fn forget_kept_lists() {
     SORTED.with(|c| c.borrow_mut().clear());
     LOOKUPS.with(|c| c.borrow_mut().clear());
@@ -262,6 +262,7 @@ pub(crate) fn forget_kept_lists() {
     FORECAST_FIT.with(|c| c.borrow_mut().take());
     crate::excel_criteria::forget_facts();
     crate::formulajs::forget_spread();
+    crate::eval::forget_readied();
 }
 
 /// The computed column's current row, from 1, that ROW() reads.
