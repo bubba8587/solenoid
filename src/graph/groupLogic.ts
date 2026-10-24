@@ -255,11 +255,3 @@ export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: st
   }
   return false;
 }
-
-export function dropFromGroups(editor: Editor, removedId: string): void {
-  for (const g of editor.getNodes()) {
-    if (g instanceof GroupNode && g.members.includes(removedId)) {
-      g.members = g.members.filter((m) => m !== removedId);
-    }
-  }
-}

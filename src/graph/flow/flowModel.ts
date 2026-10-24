@@ -9,7 +9,6 @@ import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
 import { isolateStore } from "../isolateStore";
 import { SolenoidSocket } from "../sockets";
-import { FLAT_CATALOG } from "../catalogUtils";
 
 export type SavedNodeLite = {
   id: string;
@@ -116,36 +115,6 @@ export async function connect(
     new GraphConnection(sourceNode, sourceOutput, targetNode, targetInput) as Schemes["Connection"],
   );
   return true;
-}
-
-export async function disconnect(m: FlowModel, connectionId: string): Promise<void> {
-  if (m.editor.getConnection(connectionId)) await m.editor.removeConnection(connectionId);
-}
-
-export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
-  const doomed = new Set(ids);
-  for (const c of m.editor.getConnections()) {
-    if (doomed.has(c.source) || doomed.has(c.target)) await m.editor.removeConnection(c.id);
-  }
-  for (const id of ids) {
-    if (!m.editor.getNode(id)) continue;
-    await m.editor.removeNode(id);
-    nodeNameStore.forget(id);
-  }
-}
-
-export async function addNode(
-  m: FlowModel,
-  catalogType: string,
-  position: { x: number; y: number },
-): Promise<SolenoidNode | null> {
-  const entry = FLAT_CATALOG.get(catalogType);
-  if (!entry) return null;
-  const node = entry.create() as SolenoidNode;
-  node.position = { x: Math.round(position.x), y: Math.round(position.y) };
-  await m.editor.addNode(node);
-  nodeNameStore.ensure(node.id, node.constructor.name);
-  return node;
 }
 
 export function moveNode(m: FlowModel, id: string, position: { x: number; y: number }): void {

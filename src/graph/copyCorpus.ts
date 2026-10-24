@@ -35,7 +35,7 @@ export type CopyRecord = {
 
 export type Unit = { src: string; text: string; opener: boolean };
 
-export function sentences(src: string, text: string): Unit[] {
+function sentences(src: string, text: string): Unit[] {
   return text
     .split(/(?<=[.!?;])\s+/)
     .map((s) => s.trim())

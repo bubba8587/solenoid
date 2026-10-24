@@ -208,11 +208,6 @@ export function arrMean(arr: readonly number[]): number {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-export function arrSampleVar(arr: readonly number[]): number {
-  const m = arrMean(arr);
-  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
-}
-
 // ─── Continuous-distribution kernels ([[C17]] shareImpl) ──────────────────────────────
 
 export function tCDF(x: number, df: number): number {

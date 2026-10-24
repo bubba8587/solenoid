@@ -6,8 +6,6 @@ import { coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
 import { csvField } from "./csvSafety";
 
-export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
-
 /** A list literal's items as typed: split like CSV, trimmed, blanks dropped. */
 export function listLiteralItems(csv: string): string[] {
   return parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");

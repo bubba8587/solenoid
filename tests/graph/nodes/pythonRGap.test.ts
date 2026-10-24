@@ -12,17 +12,14 @@ import { describeFrame, summarizeColumn, correlationMatrix, windowFrame } from "
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
-import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
-import { levenshtein, damerauLevenshtein, jaroWinkler } from "../../../src/graph/nodes/textOps";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
 import { templatePlaceholders } from "../../../src/graph/nodes/textOps";
 import { requestRecalc } from "../../../src/graph/process";
-import { unaccent, slugify } from "../../../src/graph/nodes/textOps";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
-import { EtsForecastNode, FitDistributionNode, DecomposeNode, FIT_FAMILY_LABEL } from "../../../src/graph/nodes/stats";
+import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
 import type { FitFamily } from "../../../src/graph/nodes/fitOps";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
 import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
@@ -32,6 +29,10 @@ import { isFrameValue } from "../../../src/graph/frame";
 
 // python-r-gap.md Tier 1: quantile bins, outliers, epoch, date truncation. Each formula
 // runs its node's kernel; values pinned against pandas / R / scipy conventions.
+const FIT_FAMILY_LABEL: Record<FitFamily, string> = {
+  normal: "Normal", lognorm: "Lognormal", expon: "Exponential", gamma: "Gamma", weibull: "Weibull",
+  uniform: "Uniform", beta: "Beta", poisson: "Poisson",
+};
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const d = (s: string) => parseDateToSerial(s);
 const core = (name: string) => coreFunction(name)!;
@@ -51,6 +52,12 @@ const matTrace = core("TRACE");
 const matRank = core("MATRIXRANK");
 const matNorm = core("NORM");
 const textSimilarity = core("SIMILARITY");
+const levenshtein = core("LEVENSHTEIN");
+const jaroWinkler = (a: string, b: string) => textSimilarity(a, b, "jaro_winkler");
+/** The edit distance behind SIMILARITY's damerau ratio, 1 − d / the longer length. */
+const damerauLevenshtein = (a: string, b: string) => Math.round((1 - (textSimilarity(a, b, "damerau") as number)) * Math.max(a.length, b.length));
+const unaccent = core("UNACCENT");
+const slugify = core("SLUGIFY");
 const padText = (...a: unknown[]) => core("PADTEXT")(...a);
 const truncateText = (...a: unknown[]) => core("TRUNCATETEXT")(...a);
 const argsortList = (...a: unknown[]) => core("ARGSORT")(...a);
@@ -380,24 +387,24 @@ describe("linear algebra set (numpy.linalg reference values)", () => {
 });
 
 describe("Spectrum (FFT) — numpy.fft reference", () => {
-  it("fftReal matches numpy.fft.fft on a non-power-of-two length (Bluestein)", () => {
-    const { re, im } = fftReal([1, 2, 3, 4, 5, 6, 7]);
-    const wantRe = [28, -3.5, -3.5, -3.5, -3.5, -3.5, -3.5];
-    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251, -0.7988521603655251, -2.7911568610884143, -7.267824888003178];
-    re.forEach((v, i) => expect(v).toBeCloseTo(wantRe[i], 10));
-    im.forEach((v, i) => expect(v).toBeCloseTo(wantIm[i], 10));
+  it("matches numpy.fft.fft on a non-power-of-two length (Bluestein): one-sided amplitude and phase", () => {
+    const wantRe = [28, -3.5, -3.5, -3.5];
+    const wantIm = [0, 7.267824888003178, 2.7911568610884143, 0.7988521603655251];
+    const rows = ev("SPECTRUM(s, 1)", { s: [1, 2, 3, 4, 5, 6, 7] }) as number[][];
+    expect(rows).toHaveLength(4);
+    rows.forEach(([, magnitude, phase], k) => {
+      expect(magnitude).toBeCloseTo(((k === 0 ? 1 : 2) * Math.hypot(wantRe[k], wantIm[k])) / 7, 10);
+      if (k > 0) expect(phase).toBeCloseTo(Math.atan2(wantIm[k], wantRe[k]), 10);
+    });
   });
   it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
     const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
-    const rows = spectrum(sig, 64) as SpectrumRow[];
-    expect(rows).toHaveLength(33);
-    expect(rows[5].frequency).toBe(5);
-    expect(rows[5].magnitude).toBeCloseTo(3, 10);
-    expect(rows[0].magnitude).toBeCloseTo(1, 10);
-    expect(rows[7].magnitude).toBeCloseTo(0, 10);
     const node = new SpectrumNode(); node.literals.rate = 64;
     const out = node.data({ list: [sig] }).result as number[][];
+    expect(out).toHaveLength(33);
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
+    expect(out[0][1]).toBeCloseTo(1, 10);
+    expect(out[7][1]).toBeCloseTo(0, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);
   });

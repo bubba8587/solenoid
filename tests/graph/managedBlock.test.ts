@@ -1,6 +1,6 @@
 // [[B1]] obsidianBet
 import { describe, it, expect } from "vitest";
-import { spliceBlock, readBlock, beginMarker, END_MARKER, fencedLines } from "../../src/graph/managedBlock";
+import { spliceBlock, beginMarker, END_MARKER, fencedLines } from "../../src/graph/managedBlock";
 import { toggleTaskMarker } from "../../src/graph/noteMarkdown";
 
 // Bundle item C, `mode: block`: the writer owns the span between its markers.
@@ -24,14 +24,11 @@ describe("spliceBlock", () => {
     const before = `${B}\na\n${END_MARKER}\n\n${B2}\nb\n${END_MARKER}\n`;
     const r = spliceBlock(before, "Monthly", "B!");
     expect(r.text).toBe(`${B}\na\n${END_MARKER}\n\n${B2}\nB!\n${END_MARKER}\n`);
-    expect(readBlock(r.text, "Weekly")).toBe("a");
-    expect(readBlock(r.text, "Monthly")).toBe("B!");
   });
   it("markers inside a code fence are text: a fenced pair is not the block", () => {
     const fenced = "```\n" + B + "\nnot mine\n" + END_MARKER + "\n```\n";
     const r = spliceBlock(fenced, "Weekly", "real");
     expect(r.text).toBe(fenced + "\n" + `${B}\nreal\n${END_MARKER}\n`);
-    expect(readBlock(fenced, "Weekly")).toBeNull();
   });
   it("a begin with no end → a fresh pair is appended; the orphan is left alone", () => {
     const before = `${B}\norphan\n`;
@@ -42,15 +39,13 @@ describe("spliceBlock", () => {
     const once = spliceBlock(`${B}\nmy notes\n`, "Weekly", "x").text;
     const twice = spliceBlock(once, "Weekly", "y").text;
     expect(twice).toBe(`${B}\nmy notes\n\n${B}\ny\n${END_MARKER}\n`);
-    expect(readBlock(once, "Weekly")).toBe("x");
   });
   it("an orphan begin never pairs with another writer's end", () => {
     const B2 = beginMarker("Monthly");
     const before = `${B}\nprose\n${B2}\nb\n${END_MARKER}\n`;
     const r = spliceBlock(before, "Weekly", "w");
     expect(r.text).toBe(`${before}\n${B}\nw\n${END_MARKER}\n`);
-    expect(readBlock(before, "Weekly")).toBeNull();
-    expect(readBlock(before, "Monthly")).toBe("b");
+    expect(spliceBlock(before, "Monthly", "c").text).toBe(`${B}\nprose\n${B2}\nc\n${END_MARKER}\n`);
   });
   it("content carrying %% outside a fence is refused with the line; inside a fence it is fine", () => {
     const r = spliceBlock("body\n", "Weekly", "ok\n%% hidden %%");
@@ -79,6 +74,6 @@ describe("fencedLines (CommonMark fences, shared with the task toggle)", () => {
 
   it("a managed block's markers inside such a fence are not the block", () => {
     const text = `\`\`\`\`\n\`\`\`\n${B}\nold\n${END_MARKER}\n\`\`\`\`\n`;
-    expect(readBlock(text, "Weekly")).toBeNull();
+    expect(spliceBlock(text, "Weekly", "x").text).toBe(`${text}\n${B}\nx\n${END_MARKER}\n`);
   });
 });

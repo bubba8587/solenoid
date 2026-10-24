@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
-import { isaAtGeopotential, isaAtGeometric, ANTOINE, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
+import { ANTOINE, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 import { formulaNode } from "../../../src/graph/packs/packShared";
@@ -71,6 +71,12 @@ describe("Thermodynamics & Air formulas", () => {
 });
 
 describe("ISA standard atmosphere", () => {
+  const EARTH_R = 6356766; // m, geometric ↔ geopotential
+  const isaAtGeometric = (z: number) => {
+    const r = new IsaAtmosphereNode().data({ alt: [z] }) as Record<string, number>;
+    return { T: r.temp, p: r.pressure, rho: r.density, a: r.sound };
+  };
+  const isaAtGeopotential = (h: number) => isaAtGeometric((EARTH_R * h) / (EARTH_R - h));
   it("matches the published layer-base pressures", () => {
     expect(isaAtGeopotential(0)).toMatchObject({ T: 288.15, p: 101325 });
     expect(isaAtGeopotential(0).rho).toBeCloseTo(1.225, 3);

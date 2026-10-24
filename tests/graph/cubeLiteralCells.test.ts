@@ -1,7 +1,6 @@
 // [[C10]] socketLattice, [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import { BuildCubeNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
-import { cubeColumnFromValue } from "../../src/graph/frame";
 
 // An unwired wildcard row on the cube builders takes a typed cell that is a number OR
 // text (autoLiterals); before, the row fell back to the number-only field. A numeric
@@ -34,8 +33,7 @@ describe("Cube Columns literal cells", () => {
     expect(n.autoLiterals).toBe(true);
     const key = n.valueInputKeys()[0];
     n.stringLiterals[key] = "label";
-    const expected = cubeColumnFromValue("label");
     const out = n.data({ names: ["Tag"] } as never) as { cube: { columns: { cells: unknown[] }[] } | null };
-    expect(out.cube?.columns[0].cells).toEqual(expected);
+    expect(out.cube?.columns[0].cells).toEqual(["label"]);
   });
 });

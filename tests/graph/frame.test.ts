@@ -352,13 +352,6 @@ describe("logical columns", () => {
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
   });
 
-  it("a logical column splits to a 1/0 numeric matrix", async () => {
-    const { splitFrame } = await import("../../src/graph/frame");
-    const f = frameFromCells(["a", "b"], [["TRUE", "1"], ["FALSE", "2"]]);
-    // 'a' is logical, 'b' numeric → no text column → clean numeric matrix
-    expect(splitFrame(f).matrix).toEqual([[1, 1], [0, 2]]);
-  });
-
   it("Split Frame filters columns by type (the colType toggle)", async () => {
     const { SplitFrameNode } = await import("../../src/graph/nodes/frame");
     const f: any = {

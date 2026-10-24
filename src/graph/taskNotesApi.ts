@@ -356,11 +356,3 @@ export function taskUrl(url: string, path: string): string {
 export function createTaskUrl(url: string): string {
   return `${base(url)}/api/tasks`;
 }
-
-export function parseWrittenTaskPath(text: string): string | null {
-  try {
-    const d = unwrap(text) as { path?: unknown; task?: { path?: unknown } } | null;
-    const p = d?.path ?? d?.task?.path;
-    return typeof p === "string" ? p : null;
-  } catch { return null; }
-}

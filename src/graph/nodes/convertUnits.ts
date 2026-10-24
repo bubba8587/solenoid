@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[C25]] firstClassUnits
-import { convert as dimConvert, type Dim, type Unit } from "../dimension";
+import type { Dim, Unit } from "../dimension";
 
 export type ConvertCategory =
   | "angle" | "length" | "mass" | "temperature"
@@ -9,8 +9,6 @@ export interface ConvertUnitDef {
   label: string;
   excelCode: string;
   category: ConvertCategory;
-  toBase: (x: number) => number;
-  fromBase: (x: number) => number;
   /** The SI-scaled source of truth the Convert math actually runs through. */
   dim: Unit;
 }
@@ -32,8 +30,6 @@ function mkUnit(label: string, excelCode: string, category: Exclude<ConvertCateg
   const c = CATEGORY_DIM[category];
   return {
     label, excelCode, category,
-    toBase: (x) => x * factor,
-    fromBase: (x) => x / factor,
     dim: { dim: c.dim, scale: factor * c.baseScale },
   };
 }
@@ -76,10 +72,10 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
-  // Temperature is affine: toBase and fromBase work in Celsius, while `dim` works in kelvin for dimConvert.
-  degC: { label: "Celsius", excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
-  degF: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
-  K:    { label: "Kelvin", excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
+  // Temperature is affine: `dim` works in kelvin, with each scale's offset.
+  degC: { label: "Celsius", excelCode: "C", category: "temperature", dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
+  degF: { label: "Fahrenheit", excelCode: "F", category: "temperature", dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
+  K:    { label: "Kelvin", excelCode: "K", category: "temperature", dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
 
   // Time (base: second)
   s:   mkUnit("Seconds", "sec", "time", 1),
@@ -135,20 +131,3 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   psi:  mkUnit("PSI",           "psi",  "pressure", 6894.757293168),
   mmHg: mkUnit("mmHg",          "mmHg", "pressure", 133.322387415),
 };
-
-// Own keys only: "toString" or "__proto__" would otherwise read Object.prototype's members as units.
-const own = (k: string) => (Object.prototype.hasOwnProperty.call(CONVERT_UNIT_DEFS, k) ? CONVERT_UNIT_DEFS[k] : undefined);
-
-const BY_EXCEL_CODE = new Map(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [d.excelCode, id]));
-
-/** The CONVERT formula's unit argument: an Excel code ("C", "lbm", "oz" the fluid ounce), or else one of Convert's ids. */
-export function convertUnitKey(code: string): string | null {
-  return BY_EXCEL_CODE.get(code) ?? (own(code) ? code : null);
-}
-
-export function convertValue(x: number, fromKey: string, toKey: string): number | null {
-  const from = own(fromKey);
-  const to   = own(toKey);
-  if (!from || !to) return null;
-  return dimConvert(x, from.dim, to.dim);
-}

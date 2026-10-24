@@ -2,9 +2,9 @@
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogram2d,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  HistogramNode, type Histogram2d,
+  HistogramNode,
   RecordNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
@@ -18,7 +18,7 @@ import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
 import type { ChartValue } from "../../../src/graph/chartValue";
 const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import { isMermaidValue } from "../../../src/graph/mermaidValue";
 
 describe("visual nodes", () => {
@@ -260,6 +260,16 @@ describe("Histogram bins", () => {
     expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
   });
 });
+
+type Histogram2d = { counts: number[][]; xEdges: number[]; yEdges: number[] };
+/** The 2-D Histogram card's grid and bin edges, null with no finite pair, or its error. */
+function histogram2d(xs: unknown[], ys: unknown[], kx: number, ky: number): Histogram2d | SolError | null {
+  const n = new HistogramNode({ mode: "2d" });
+  const chart = n.data({ values: [xs], y: [ys], bins: [kx], ybins: [ky] }).chart;
+  if (isSolError(chart)) return chart;
+  const p = (chart as ChartValue).payload as { z: number[][]; rows: string[]; cols: string[] };
+  return p.z.length ? { counts: p.z, xEdges: p.cols.map(Number), yEdges: p.rows.map(Number) } : null;
+}
 
 describe("histogram2d (numpy histogram2d)", () => {
   it("tallies paired samples into a y-bin × x-bin grid; last edge inclusive", () => {

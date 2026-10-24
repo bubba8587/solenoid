@@ -310,7 +310,6 @@ export const strTableSocket  = new SolenoidSocket("strtable");
 export const dateTableSocket = new SolenoidSocket("datetable");
 export const anyTableSocket  = new SolenoidSocket("anytable");
 export const anyComboSocket  = new SolenoidSocket("anycombo");
-export const anyDataSocket   = new SolenoidSocket("anydata");
 export const stringSocket  = new SolenoidSocket("string");
 export const strListSocket = new SolenoidSocket("strlist");
 export const dateSocket    = new SolenoidSocket("date");

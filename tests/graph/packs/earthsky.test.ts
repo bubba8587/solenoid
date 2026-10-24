@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
-import { solarBasis, serialToJulianDay } from "../../../src/graph/nodes/astroOps";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -65,15 +64,20 @@ describe("Earth & Sky formulas", () => {
 });
 
 describe("NOAA solar formulation", () => {
-  it("declination hits the solstice/equinox anchors", () => {
-    expect(solarBasis(serialToJulianDay(serial(2026, 6, 21, 12))).declination).toBeCloseTo(23.43, 1);
-    expect(solarBasis(serialToJulianDay(serial(2026, 12, 21, 12))).declination).toBeCloseTo(-23.43, 1);
-    expect(Math.abs(solarBasis(serialToJulianDay(serial(2026, 3, 20, 12))).declination)).toBeLessThan(0.5);
+  it("declination hits the solstice/equinox anchors (noon elevation on the equator is 90° − |δ|)", () => {
+    expect(solarPosition(serial(2026, 6, 21, 12, 2), 0, 0).elevation).toBeCloseTo(90 - 23.43, 1);
+    expect(solarPosition(serial(2026, 12, 21, 11, 58), 0, 0).elevation).toBeCloseTo(90 - 23.43, 1);
+    expect(solarPosition(serial(2026, 3, 20, 12, 8), 0, 0).elevation).toBeGreaterThan(89.5);
   });
 
-  it("equation of time hits the February/November extremes", () => {
-    expect(solarBasis(serialToJulianDay(serial(2026, 2, 11, 12))).eqOfTime).toBeCloseTo(-14.2, 0);
-    expect(solarBasis(serialToJulianDay(serial(2026, 11, 3, 12))).eqOfTime).toBeCloseTo(16.4, 0);
+  it("equation of time hits the February/November extremes (solar noon is 12:00 − EoT)", () => {
+    const eqOfTimeMin = (w: number) => {
+      const t = sunTimes(w, 0, 0);
+      const noonHours = (((t.sunrise! + t.sunset!) / 2) % 1) * 24;
+      return (12 - noonHours) * 60;
+    };
+    expect(eqOfTimeMin(serial(2026, 2, 11))).toBeCloseTo(-14.2, 0);
+    expect(eqOfTimeMin(serial(2026, 11, 3))).toBeCloseTo(16.4, 0);
   });
 
   it("sun overhead at the equator at equinox solar noon", () => {

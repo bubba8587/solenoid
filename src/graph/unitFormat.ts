@@ -4,13 +4,6 @@ import { formatScalar } from "./components/format";
 
 export type UnitSuffix = "none" | "deg" | "rad" | "percent";
 
-export const UNIT_SUFFIX_LABELS: Record<UnitSuffix, string> = {
-  none:    "—",
-  deg:     "°",
-  rad:     "rad",
-  percent: "%",
-};
-
 export function formatWithUnit(n: number, suffix: UnitSuffix): string {
   const num = formatScalar(n);
   switch (suffix) {

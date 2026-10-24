@@ -175,10 +175,6 @@ function displayedType(nodeId: string, outKey?: string): SocketDataType | undefi
   return sock instanceof SolenoidSocket ? sock.dataType : undefined;
 }
 
-export function nodeOutputIsDate(nodeId: string | null): boolean {
-  return nodeOutputElemFamily(nodeId) === "date";
-}
-
 /** `undefined` (a wildcard or no family) is the only case where a caller may scan cells. */
 export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): ElemFamily | undefined {
   if (!nodeId) return undefined;

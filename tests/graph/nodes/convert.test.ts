@@ -1,11 +1,20 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { convertValue, convertUnitKey, CONVERT_UNIT_DEFS, ConvertNode } from "../../../src/graph/nodes/convert";
+import { CONVERT_UNIT_DEFS, ConvertNode } from "../../../src/graph/nodes/convert";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
 import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../../../src/graph/unitValue";
 import { UNIT_ANNOTATIONS } from "../../../src/graph/formatAnnotationStore";
 import { fcUnitToUnit } from "../../../src/graph/unitBridge";
 import { dimEqual, type Unit } from "../../../src/graph/dimension";
+
+/** `x` in `fromKey` read in `toKey` through the card, or null where it refuses. */
+function convertValue(x: number, fromKey: string, toKey: string): number | null {
+  const out = new ConvertNode({ fromUnit: fromKey, toUnit: toKey }).data({ in: [x] }).out;
+  if (isSolError(out) || out == null) return null;
+  const to = CONVERT_UNIT_DEFS[toKey].dim;
+  return (magnitudeOf(out) - (to.offset ?? 0)) / to.scale;
+}
 
 describe("convertValue — linear units", () => {
   it("length", () => {
@@ -80,20 +89,6 @@ describe("convertValue — speed", () => {
   });
 });
 
-describe("CONVERT_UNIT_DEFS catalog", () => {
-  it("linear units: fromBase(toBase(x)) round-trips within float precision", () => {
-    const linearKeys = Object.keys(CONVERT_UNIT_DEFS).filter(k => k !== "degC" && k !== "degF" && k !== "K");
-    for (const key of linearKeys) {
-      const def = CONVERT_UNIT_DEFS[key];
-      expect(def.fromBase(def.toBase(42))).toBeCloseTo(42, 8);
-    }
-  });
-  it("temperature: C→F→C round-trips", () => {
-    const fahr = CONVERT_UNIT_DEFS.degF.fromBase(CONVERT_UNIT_DEFS.degC.toBase(37));
-    expect(CONVERT_UNIT_DEFS.degC.fromBase(CONVERT_UNIT_DEFS.degF.toBase(fahr))).toBeCloseTo(37, 8);
-  });
-});
-
 describe("convertValue — guards", () => {
   it("returns null across incompatible categories", () => {
     expect(convertValue(1, "km", "kg")).toBeNull();
@@ -161,11 +156,12 @@ describe("Convert and the FC share one unit id space ([[C25]] firstClassUnits)",
     expect(r.display).toBe("kmh");
     expect(n.unit).toBe("kmh");
   });
-  it("the CONVERT formula reads Excel's codes", () => {
-    expect(convertUnitKey("C")).toBe("degC");
-    expect(convertUnitKey("lbm")).toBe("lb");
-    expect(convertUnitKey("oz")).toBe("floz");
-    expect(convertUnitKey("kmh")).toBe("kmh");
-    expect(convertUnitKey("toString")).toBeNull();
+  it("the CONVERT formula reads Excel's codes, or else Convert's ids", () => {
+    const ev = (e: string) => compileEvaluator(e)!({});
+    expect(ev('CONVERT(100, "C", "F")')).toBeCloseTo(212, 9);
+    expect(ev('CONVERT(1, "lbm", "kg")')).toBeCloseTo(0.45359237, 9);
+    expect(ev('CONVERT(1, "oz", "ml")')).toBeCloseTo(29.5735295625, 6); // the fluid ounce
+    expect(ev('CONVERT(36, "kmh", "ms1")')).toBeCloseTo(10, 9);
+    expect(isSolError(ev('CONVERT(1, "toString", "m")'))).toBe(true);
   });
 });

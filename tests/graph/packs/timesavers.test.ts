@@ -2,9 +2,12 @@
 import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "../../../src/graph/packs/timesavers";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ReverseTextNode, SpellNumberNode, spellNumber } from "../../../src/graph/nodes/text";
+import { ReverseTextNode, SpellNumberNode } from "../../../src/graph/nodes/text";
+import { coreFunction } from "../coreFunction";
 import { jsDateToSerial, serialToJsDate } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
+
+const spellNumber = (n: number) => coreFunction("SPELLNUMBER")!(n);
 
 const run = (type: string, inputs: Record<string, number | string>) =>
   evalFormula(entryByType(TIMESAVER_FORMULAS, type), inputs);

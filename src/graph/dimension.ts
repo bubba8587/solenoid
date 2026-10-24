@@ -66,18 +66,6 @@ export function dimEqual(a: Dim, b: Dim): boolean {
   return true;
 }
 
-/** `k` with `dim` = `base`^k, or null when `dim` is no power of `base`. */
-export function dimPowerOf(dim: Dim, base: Dim): number | null {
-  let k: number | null = null;
-  for (const key of dimAxes(dim, base)) {
-    const d = dim[key] ?? 0, b = base[key] ?? 0;
-    if (b === 0) { if (d !== 0) return null; continue; }
-    if (k === null) k = d / b;
-    else if (Math.abs(d / b - k) > 1e-12) return null;
-  }
-  return k;
-}
-
 export function isDimensionless(a: Dim): boolean {
   for (const k in a) if ((a[k] ?? 0) !== 0) return false;
   return true;

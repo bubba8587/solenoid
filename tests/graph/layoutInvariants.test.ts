@@ -1,6 +1,6 @@
 // [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { separateOverlaps, separateAll, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
+import { separateAll, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
 import { distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
 import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnchor, type Box } from "../../src/graph/standoffs";
@@ -11,7 +11,7 @@ import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnch
 // suite makes every failure reproducible: re-run and the same fixtures regenerate.
 //
 // What each op actually guarantees (do NOT over-assert):
-//   • separateOverlaps / separateAll — the HARD no-overlap backstop: after it no pair
+//   • separateAll — the HARD no-overlap backstop: after it no pair
 //     overlaps bar two pinned (fixed) ones. Every layout op ends with separateAll;
 //     computeExpandPush alone is heuristic and CAN leave overlaps by design.
 //   • distributeDeltas  — ≥ DISTRIBUTE_GAP between neighbors ALONG the distributed
@@ -62,12 +62,12 @@ function randBoxes(rng: () => number, n: number, spread = 600): PushBox[] {
   return boxes;
 }
 
-describe("separateOverlaps — the hard no-overlap backstop (randomized)", () => {
+describe("separateAll on plain boxes — the hard no-overlap backstop (randomized)", () => {
   it("clears every overlap across 300 seeded fixtures", () => {
     const rng = mulberry32(0x0A11);
     for (let iter = 0; iter < 300; iter++) {
       const boxes = randBoxes(rng, ri(rng, 3, 10));
-      const disp = separateOverlaps(boxes);
+      const disp = separateAll(boxes);
       const moved = boxes.map((b) => applyDisp(b, disp));
       expect(firstOverlap(moved)).toBeNull();
       // Monotonic: it only ever shifts down/right (preserves the anchor corner).

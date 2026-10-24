@@ -45,7 +45,3 @@ function decodeEntities(text: string): string {
     return code <= 0x10ffff ? String.fromCodePoint(code) : m;
   });
 }
-
-export function resolveLayerName(target: SvgLike, root: SvgLike): string | null {
-  return resolveLayer(target, root)?.name ?? null;
-}

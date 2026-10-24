@@ -1,6 +1,6 @@
 // [[C118]] formatTravelsWithValue, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
@@ -17,9 +17,6 @@ import { stopDragStart } from "../coarse";
 export type FcDir = "back" | "fwd" | null;
 export interface FcFlowState { left: FcDir; right: FcDir }
 
-export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
-export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
-
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (
     <span
@@ -34,26 +31,6 @@ export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string })
           ? (<><path d="M2.5 7h8.2" /><path d="M7 3.3 10.7 7 7 10.7" /></>)
           : (<><path d="M11.5 7H3.3" /><path d="M7 3.3 3.3 7 7 10.7" /></>)}
       </svg>
-    </span>
-  );
-}
-
-/** A spacer stands in for a missing side, so a stack of these stays column-aligned. */
-export function FcFlow({ flow, backTitle, fwdTitle, children }: {
-  flow?: FcFlowState;
-  backTitle?: string;
-  fwdTitle?: string;
-  children: ReactNode;
-}) {
-  const arrow = (dir: FcDir, side: "left" | "right") =>
-    dir ? <FcArrow key={side} dir={dir} title={dir === "back" ? backTitle : fwdTitle} />
-        : <span aria-hidden="true" key={side} style={{ flex: "0 0 auto", width: 9 }} />;
-  // Layout lives in the consumer's `.sol-fcflow` CSS so it can differ by context.
-  return (
-    <span className="sol-fcflow">
-      {arrow(flow?.left ?? null, "left")}
-      {children}
-      {arrow(flow?.right ?? null, "right")}
     </span>
   );
 }

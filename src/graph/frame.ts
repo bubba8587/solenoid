@@ -109,21 +109,6 @@ export function colTypeForSocket(dataType: string | undefined): FrameColType | n
   }
 }
 
-export function splitFrame(f: FrameValue): { matrix: number[][] | null; headers: string[] } {
-  const headers = f.columns.map((c) => c.name);
-  if (frameHasTextColumns(f)) return { matrix: null, headers };
-  const rows = frameRowCount(f);
-  const matrix: number[][] = Array.from({ length: rows }, (_, i) =>
-    f.columns.map((c) => {
-      const v = c.values[i];
-      if (typeof v === "number") return v;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      return NaN;
-    }),
-  );
-  return { matrix, headers };
-}
-
 export function frameHasTextColumns(f: FrameValue): boolean {
   return f.columns.some((c) => c.type === "string");
 }
@@ -571,14 +556,6 @@ export function toCube(v: unknown): CubeValue {
       : cubeFromRows([v as CubeCell[]]);
   }
   return cubeFromRows([[v as CubeCell]]);
-}
-
-export function cubeColumnFromValue(value: unknown): CubeCell[] {
-  if (value == null) return [];
-  if (isCubeValue(value)) return [...(value.columns[0]?.cells ?? [])];
-  if (isFrameValue(value)) return [value];
-  if (Array.isArray(value)) return value as CubeCell[];
-  return [value as CubeCell];
 }
 
 export function frameFromColumnar(obj: Record<string, unknown>): FrameValue {
