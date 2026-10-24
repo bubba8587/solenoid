@@ -9,6 +9,7 @@ use super::scalar::{read_role, Role};
 use super::units::{from_unit, tag};
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode, SolError};
+use crate::eval::MAX_GENERATED;
 use crate::eval::{variables, Env, Eval, LambdaV};
 use crate::excel_formula::{parse_formula, Ast};
 use crate::excel_functions::js_string_of;
@@ -22,8 +23,6 @@ use crate::unit_fold::{fold_units_over, FoldKind};
 use crate::value_kinds::guard_finite as guard_cells;
 use serde_json::Value as Json;
 use std::rc::Rc;
-
-const MAX_GENERATED: f64 = 1_000_000.0;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {

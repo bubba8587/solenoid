@@ -35,7 +35,8 @@ pub struct LambdaV {
     pub descriptions: Option<Rc<serde_json::Value>>,
 }
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+/// The most values any generator makes, card or formula alike: past it, `#OVERFLOW!` ([[C17]] shareImpl).
+pub(crate) const MAX_GENERATED: f64 = 1_000_000.0;
 
 /// A function's dispatch facts, frozen into data/call_traits.json. Its per-position lists
 /// hold only their head; past it they repeat with period two.

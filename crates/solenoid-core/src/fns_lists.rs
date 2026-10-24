@@ -8,6 +8,7 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
+use crate::eval::MAX_GENERATED;
 use crate::excel_functions::{js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
@@ -73,8 +74,6 @@ pub const NAMES: &[&str] = &[
     "WHICH",
     "ZSCORE",
 ];
-
-const MAX_GENERATED: f64 = 1_000_000.0;
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)

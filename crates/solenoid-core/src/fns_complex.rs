@@ -3,6 +3,7 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
+use crate::eval::MAX_GENERATED;
 use crate::excel_functions::{js_pow, js_string_of, math_hypot, throw, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, expm1, log, sin};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
@@ -484,8 +485,6 @@ fn text_similarity(a: &str, b: &str, m: Sim) -> f64 {
 }
 
 // ─── Lists ──────────────────────────────────────────────────────────────────────
-
-const MAX_GENERATED: f64 = 1_000_000.0;
 
 /// `capped`: a count that isn't finite, or one past the generated-list limit, answers an error.
 fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {

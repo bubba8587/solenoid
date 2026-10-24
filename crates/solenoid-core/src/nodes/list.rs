@@ -7,6 +7,7 @@ use super::text::role_value;
 use super::units::tag;
 use super::{err, list, Answer, Call, Column, Frame};
 use crate::error_value::ErrorCode;
+use crate::eval::MAX_GENERATED;
 use crate::excel_criteria::DateReading;
 use crate::excel_functions::{js_string_of, xmatch_index, MatchMode, V};
 use crate::frame::{FrameCell, FrameColType};
@@ -15,8 +16,6 @@ use crate::jsnum::{js_trim, math_round, number_to_string};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
 use crate::value_kinds::{guard_finite as guard_cells, Logical};
-
-const MAX_GENERATED: f64 = 1_000_000.0;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {

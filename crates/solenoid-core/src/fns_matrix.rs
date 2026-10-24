@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
+use crate::eval::MAX_GENERATED;
 use crate::excel_functions::{
     js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, throw, to_num, V,
 };
@@ -68,8 +69,6 @@ pub const NAMES: &[&str] = &[
     "DVARP",
     "HISTOGRAM2D",
 ];
-
-const MAX_GENERATED: f64 = 1_000_000.0;
 
 type Mat = Vec<Vec<V>>;
 type NumMat = Vec<Vec<f64>>;
