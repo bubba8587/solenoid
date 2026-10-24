@@ -44,21 +44,22 @@ pub enum Shown {
 }
 
 /// One body call: the card as a save holds it, its sockets, and the inputs it was handed.
+/// What a save holds and the sockets are shared, so the graph's calls of a card share one copy (`Call::again`).
 pub struct Call {
-    pub init: Map<String, Json>,
-    pub literals: Map<String, Json>,
-    pub string_literals: Map<String, Json>,
+    pub init: Rc<Map<String, Json>>,
+    pub literals: Rc<Map<String, Json>>,
+    pub string_literals: Rc<Map<String, Json>>,
     /// The inputs, in the card's order.
-    pub sockets: Vec<Socket>,
+    pub sockets: Rc<[Socket]>,
     /// The outputs, in the card's order.
-    pub outputs: Vec<Output>,
+    pub outputs: Rc<[Output]>,
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
     /// The type an adoptive socket took up (`socket.dataType`), where it differs from the declared one: inputs, then
     /// outputs, by key. A run-time fact no save keeps.
-    pub adopted_in: Vec<(String, String)>,
-    pub adopted_out: Vec<(String, String)>,
+    pub adopted_in: Rc<[(String, String)]>,
+    pub adopted_out: Rc<[(String, String)]>,
     /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
@@ -123,15 +124,32 @@ impl Call {
             })
             .collect();
         Call {
-            init: obj("init"),
-            literals: obj("literals"),
-            string_literals: obj("stringLiterals"),
+            init: Rc::new(obj("init")),
+            literals: Rc::new(obj("literals")),
+            string_literals: Rc::new(obj("stringLiterals")),
             sockets,
             outputs,
             inputs,
             display: Vec::new(),
-            adopted_in,
-            adopted_out,
+            adopted_in: adopted_in.into(),
+            adopted_out: adopted_out.into(),
+            matrix_units_in,
+            matrix_units_out: Vec::new(),
+        }
+    }
+
+    /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
+    pub fn again(&self, inputs: Vec<(String, Vec<V>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
+        Call {
+            init: self.init.clone(),
+            literals: self.literals.clone(),
+            string_literals: self.string_literals.clone(),
+            sockets: self.sockets.clone(),
+            outputs: self.outputs.clone(),
+            inputs,
+            display: Vec::new(),
+            adopted_in: self.adopted_in.clone(),
+            adopted_out: self.adopted_out.clone(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
         }

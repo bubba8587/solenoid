@@ -38,8 +38,8 @@ pub(crate) const CACHED: [&str; 5] = [
 pub(crate) struct Header {
     kind: String,
     label: String,
-    /// `init`, `literals`, `stringLiterals`, `sockets` and `outputs`, as `engine_node` takes them.
-    call: Json,
+    /// The body's call with no inputs: what a save holds and the sockets, shared by every call (`Call::again`).
+    call: nodes::Call,
     core_fields: Vec<String>,
     /// The field a class's `static coreWatch` names: its `coreWatched()` runs after a body that changed it.
     watch: Option<String>,
@@ -48,8 +48,8 @@ pub(crate) struct Header {
     /// The card's own format picks by column, where it has any.
     picks: Option<Map<String, Json>>,
     name: RefCell<Option<String>>,
-    /// The JSON it was read from, so a read that finds the same text keeps it.
-    text: String,
+    /// What `coreHeader` stamped the text it was read from, so a read that finds the same text keeps it.
+    stamp: f64,
 }
 
 /// A frame as a card's format picks stamped it: the call that held the picks, the frame that arrived, the stamped one.
@@ -102,17 +102,24 @@ impl Direct {
         if let Some(hd) = self.header.borrow().as_ref() {
             return Ok(hd.clone());
         }
-        let raw = h
-            .header
-            .call1(&JsValue::NULL, object)
-            .map_err(|e| js_message(&e))?
-            .as_string()
-            .unwrap_or_default();
         let last = self.last.borrow().clone();
-        if let Some(last) = last.filter(|l| l.text == raw) {
-            *self.header.borrow_mut() = Some(last.clone());
-            return Ok(last);
+        let stamp = last.as_ref().map_or(0.0, |l| l.stamp);
+        let read = h
+            .header
+            .call2(&JsValue::NULL, object, &JsValue::from_f64(stamp))
+            .map_err(|e| js_message(&e))?;
+        // `null`: the call reads as it did when it was stamped `stamp`.
+        if read.is_null() {
+            if let Some(last) = last {
+                *self.header.borrow_mut() = Some(last.clone());
+                return Ok(last);
+            }
         }
+        let read: Array = read
+            .dyn_into()
+            .map_err(|_| "the card's call can't be read".to_string())?;
+        let stamp = read.get(0).as_f64().unwrap_or(0.0);
+        let raw = read.get(1).as_string().unwrap_or_default();
         let j: Json = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
         let lists = j
             .get("lists")
@@ -159,8 +166,8 @@ impl Direct {
             has: text(&j, "has"),
             picks: j.get("picks").and_then(Json::as_object).cloned(),
             name: RefCell::new(None),
-            call: j,
-            text: raw,
+            call: nodes::Call::from_json(&j),
+            stamp,
         });
         *self.header.borrow_mut() = Some(made.clone());
         *self.last.borrow_mut() = Some(made.clone());
@@ -338,15 +345,15 @@ impl Run<'_> {
             Ok(c) => c,
             Err(t) => return self.thrown_out(t),
         };
-        let mut c = nodes::Call::from_json(&header.call);
-        c.matrix_units_in = coerced
+        let units_in = coerced
             .iter()
             .filter_map(|(k, a)| Some((k.clone(), a.first()?.munit.as_deref()?.clone())))
             .collect();
-        c.inputs = coerced
+        let inputs = coerced
             .into_iter()
             .map(|(k, a)| (k, a.into_iter().map(|x| x.v).collect()))
             .collect();
+        let mut c = header.call.again(inputs, units_in);
         if !header.core_fields.is_empty() {
             let names: Array = header
                 .core_fields
@@ -361,7 +368,7 @@ impl Run<'_> {
                 .and_then(|t| t.as_string())
                 .and_then(|t| serde_json::from_str::<Map<String, Json>>(&t).ok())
                 .unwrap_or_default();
-            c.init.extend(fields);
+            Rc::make_mut(&mut c.init).extend(fields);
         }
         let watched = header.watch.as_deref().map(|f| self.field(f));
         let answer = {

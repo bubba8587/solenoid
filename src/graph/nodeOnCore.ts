@@ -48,8 +48,9 @@ const LITERAL_RUNGS: ReadonlySet<string> = new Set(["strlist", "datelist", "logi
 
 /** A direct card's call as the core keeps it (graph-core.md § Direct calls): what a save holds, its sockets, the
  *  boundary's keys and flags, its typed list literals read, the cached fields it has and its frame format picks. Its
- *  `static coreFields` come per call (`coreFieldsOf`). JSON text, as `jsonEnc` writes it. */
-export function coreHeader(node: GraphNode): string {
+ *  `static coreFields` come per call (`coreFieldsOf`). `[stamp, JSON text as jsonEnc writes it]`, or `null` when the
+ *  text is the one the core read under `stamp`. */
+export function coreHeader(node: GraphNode, stamp: number): [number, string] | null {
   const n = node as unknown as {
     literals?: unknown; stringLiterals?: Record<string, unknown>; rawInputs?: Iterable<string>; noWidenInputs?: Iterable<string>;
     ownsListLiterals?: boolean; passthrough?: () => { inputs?: string[] }[];
@@ -75,7 +76,7 @@ export function coreHeader(node: GraphNode): string {
   const outputs: unknown[] = [];
   for (const k in node.outputs) outputs.push([k, declaredTypeOf(node.outputs[k]?.socket) ?? null, ...adopted(node.outputs[k]?.socket)]);
   const watch = coreWatchOf(node);
-  return jsonText({
+  const text = jsonText({
     kind: node.constructor.name,
     label: node.label || node.constructor.name,
     init: extractInit(node),
@@ -93,7 +94,16 @@ export function coreHeader(node: GraphNode): string {
     has: CACHED.filter((f) => f in n),
     ...(picks.size ? { picks: Object.fromEntries(picks) } : {}),
   });
+  // The core already holds this text, under the stamp it passed: nothing crosses.
+  const last = lastHeader.get(node);
+  if (last && last.stamp === stamp && last.text === text) return null;
+  const made = { stamp: ++headerStamp, text };
+  lastHeader.set(node, made);
+  return [made.stamp, text];
 }
+
+const lastHeader = new WeakMap<GraphNode, { stamp: number; text: string }>();
+let headerStamp = 0;
 
 /** The run-time fields a direct card's class names in `static coreFields`, as of this call. JSON text. */
 export function coreFieldsOf(node: GraphNode, names: readonly string[]): string {
