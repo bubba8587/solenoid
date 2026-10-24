@@ -2,8 +2,9 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
-  relateFramesToCube, relateCubeToFrame, cubeFromColumns, type CubeValue, type FrameValue,
+  cubeFromColumns, type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
+import { relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { isSolError } from "../../src/graph/errorValue";
@@ -319,7 +320,7 @@ describe("relateCubeToFrame — deepen a nest-join cube one level (Customer→Or
 
   it("a cube with no nested sub-table column is returned unchanged", () => {
     const noNest = { __cube: true, depth: 1, columns: [{ name: "id", cells: [1, 2] }] } as unknown as CubeValue;
-    expect(relateCubeToFrame(noNest, buildFrame([[1, 1]], ["id", "v"]), "id", "n")).toBe(noNest);
+    expect(relateCubeToFrame(noNest, buildFrame([[1, 1]], ["id", "v"]), "id", "n")).toEqual(noNest);
   });
 });
 

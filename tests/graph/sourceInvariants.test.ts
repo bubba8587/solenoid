@@ -169,7 +169,6 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|forAggregateUnits)\s*\(/;
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
-    "nodes/listOps.ts": "a graph-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));

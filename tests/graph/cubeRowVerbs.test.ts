@@ -1,7 +1,7 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[C45]]
 import { describe, it, expect } from "vitest";
 import {
-  cubeFromColumns, frameFromRows, frameToCube, isCubeValue, selectCubeRows,
+  cubeFromColumns, frameFromRows, frameToCube, isCubeValue,
   type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import { type FilterCond, type FilterOp } from "../../src/graph/frameOps";
@@ -63,25 +63,6 @@ function sampleCube(): CubeValue {
     { name: "sub", cells: [sub0, sub1, sub0] },
   ]);
 }
-
-describe("selectCubeRows", () => {
-  it("reorders rows and keeps nested cells identical BY REFERENCE", () => {
-    const c = sampleCube();
-    const r = selectCubeRows(c, [1, 0]);
-    expect(isCubeValue(r)).toBe(true);
-    expect(colCells(r, "name")).toEqual(["a", "b"]);
-    expect(colCells(r, "priority")).toEqual([1, 2]);
-    // The list + sub-table cells are the SAME objects, not copies.
-    expect(colCells(r, "tags")[0]).toBe(colCells(c, "tags")[1]);
-    expect(colCells(r, "sub")[0]).toBe(sub1);
-    expect(colCells(r, "sub")[1]).toBe(sub0);
-  });
-  it("carries the __cube brand out and blanks an out-of-range index", () => {
-    const r = selectCubeRows(sampleCube(), [2, 5]);
-    expect(colCells(r, "name")).toEqual(["c", null]);
-    expect(colCells(r, "tags")[1]).toBeNull();
-  });
-});
 
 describe("sortCube", () => {
   it("sorts by a scalar column, order identical to the frame path", async () => {

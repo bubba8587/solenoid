@@ -1,6 +1,7 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
-import { ArithmeticNode, arithmeticCell } from "../../src/graph/nodes/scalar";
+import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import { arithmeticCell } from "./coreVerbs";
 import { fromUnit, isUnitCell, isRatio, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { fcUnitToUnit, applyFcUnit } from "../../src/graph/unitBridge";
 import { isSolError } from "../../src/graph/errorValue";

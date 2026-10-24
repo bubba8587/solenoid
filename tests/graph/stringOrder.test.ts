@@ -1,33 +1,26 @@
 // [[C59]], [[C45]], [[C130]]
 import { describe, it, expect } from "vitest";
-import { compareStrings } from "../../src/graph/stringOrder";
+import { compileEvaluator } from "../../src/graph/excelFormula";
 import { sortByColumn } from "./coreVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
-// Task 4 (Stream D): string ordering is BYTE order (JS `<`/`>`), not locale.
-// This PINS that choice — the point is that it must NOT behave like
-// `localeCompare`, so it stays deterministic across machines. See stringOrder.ts for the rationale.
+// String ordering is BYTE order (UTF-16 code units), not locale. This PINS that choice: it must NOT behave like
+// `localeCompare`, so it stays deterministic across machines.
+const sorted = (...x: string[]) => compileEvaluator("SORT(x, 1, 1, TRUE)")!({ x }); // a list is one row: sort across it
 
-describe("compareStrings — byte order, not locale", () => {
-  it("is a sign-returning comparator", () => {
-    expect(compareStrings("a", "b")).toBe(-1);
-    expect(compareStrings("b", "a")).toBe(1);
-    expect(compareStrings("a", "a")).toBe(0);
-  });
-
-  it("is CASE-SENSITIVE with uppercase before lowercase (byte order)", () => {
-    // "Z" (0x5A) < "a" (0x61) — the defining difference from a case-folding
-    // locale sort, which would put "a" before "Z".
-    expect(compareStrings("Z", "a")).toBe(-1);
+describe("SORT orders text by byte order, not locale", () => {
+  it("is CASE-SENSITIVE with uppercase before lowercase", () => {
+    // "Z" (0x5A) < "a" (0x61): the defining difference from a case-folding locale sort.
+    expect(sorted("b", "a", "Z")).toEqual(["Z", "a", "b"]);
   });
 
   it("orders digits before letters and by code point", () => {
-    expect(compareStrings("1", "a")).toBe(-1);
-    expect(compareStrings("apple10", "apple9")).toBe(-1); // '1' < '9' — NOT numeric/natural sort
+    expect(sorted("a", "1")).toEqual(["1", "a"]);
+    expect(sorted("apple9", "apple10")).toEqual(["apple10", "apple9"]); // '1' < '9': NOT a natural sort
   });
 
-  it("is accent-sensitive (a plain byte compare, no locale collation)", () => {
-    expect(compareStrings("e", "é")).toBe(-1); // "é" is a higher code point
+  it("is accent-sensitive (a plain code-unit compare, no locale collation)", () => {
+    expect(sorted("é", "e", "f")).toEqual(["e", "f", "é"]);
   });
 });
 

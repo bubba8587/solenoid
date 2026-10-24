@@ -3,8 +3,8 @@
 // engine answers differently is either a fix or a recorded reason (`ruling`) why the math is right to differ.
 import { describe, it, expect } from "vitest";
 import { type DecisionNormalize } from "../../src/graph/frameOps";
-import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria } from "./coreVerbs";
-import { relateFramesToCube, relateCubeToFrame, type FrameValue, type CubeValue } from "../../src/graph/frame";
+import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria, relateFramesToCube, relateCubeToFrame } from "./coreVerbs";
+import type { FrameValue, CubeValue } from "../../src/graph/frame";
 import { ChoiceLadderNode } from "../../src/graph/nodes/frame";
 import { isSolError } from "../../src/graph/errorValue";
 import scenarios from "../fixtures/decision-scenarios.json";

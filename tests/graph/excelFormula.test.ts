@@ -6,8 +6,8 @@ import {
   compileEvaluator,
   formulaToLatex,
   evaluateSteps,
-  formulaSyntaxHint,
 } from "../../src/graph/excelFormula";
+import { syntaxHint } from "./coreVerbs";
 import { closeParens } from "../../src/graph/closeParens";
 import { isRange } from "./callTraits";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -791,8 +791,8 @@ describe("closeParens ([[C115]] closeParensOnCommit)", () => {
     expect(closeParens("SUM([Cost")).toBe("SUM([Cost");
   });
   it("names a ) that comes before its (", () => {
-    expect(formulaSyntaxHint(")a(")).toMatch(/comes before/);
-    expect(formulaSyntaxHint("SUM([Cost (draft])")).toBeNull();
+    expect(syntaxHint(")a(")).toMatch(/comes before/);
+    expect(syntaxHint("SUM([Cost (draft])")).toBeNull();
   });
   it("leaves balanced and over-closed formulas alone", () => {
     expect(closeParens("SUM(a)")).toBe("SUM(a)");

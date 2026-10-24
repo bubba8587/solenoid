@@ -11,7 +11,6 @@ import { isSolError, solError } from "../../../src/graph/errorValue";
 import { describeFrame, summarizeColumn, correlationMatrix, windowFrame } from "../coreVerbs";
 import { WindowNode } from "../../../src/graph/nodes/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
-import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
 import { matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
 import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
@@ -24,12 +23,11 @@ import { requestRecalc } from "../../../src/graph/process";
 import { unaccent, slugify } from "../../../src/graph/nodes/textOps";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
-import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
+import { EtsForecastNode, FitDistributionNode, DecomposeNode, FIT_FAMILY_LABEL } from "../../../src/graph/nodes/stats";
+import type { FitFamily } from "../../../src/graph/nodes/fitOps";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
-import { fitDistribution, fitAll } from "../../../src/graph/nodes/fitOps";
 import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
 import { AmortizationNode, ReturnsNode } from "../../../src/graph/nodes/finance";
-import { periodReturns, cumulativeReturns, drawdowns, maxDrawdown, cagr, volatility, sharpeRatio, sortinoRatio } from "../../../src/graph/nodes/financeOps";
 import type { FrameValue } from "../../../src/graph/frame";
 import { isFrameValue } from "../../../src/graph/frame";
 
@@ -252,6 +250,16 @@ describe("Correlation Matrix (df.corr / cor)", () => {
 });
 
 describe("Amortization schedule", () => {
+  /** The card's schedule as rows; none where it answers no frame. */
+  const amortizationSchedule = (rate: number, nper: number, pv: number, fv = 0, timing: "end" | "beg" = "end") => {
+    const node = new AmortizationNode({ paymentTiming: timing }); node.literals = { rate, nper, pv, fv };
+    const f = node.data({}).frame as FrameValue | null;
+    if (!f) return [];
+    const col = (name: string) => f.columns.find((c) => c.name === name)!.values as number[];
+    return col("Period").map((period, i) => ({
+      period, payment: col("Payment")[i], interest: col("Interest")[i], principal: col("Principal")[i], balance: col("Balance")[i],
+    }));
+  };
   it("balance amortizes to 0; interest + principal = payment each period; totals match CUMIPMT", () => {
     const rows = amortizationSchedule(0.005, 12, 10000);
     expect(rows).toHaveLength(12);
@@ -265,7 +273,7 @@ describe("Amortization schedule", () => {
     expect(amortizationSchedule(0.01, 0, 1000)).toEqual([]);
   });
   it("payment at the start of the period bears no first-period interest", () => {
-    const rows = amortizationSchedule(0.005, 12, 10000, 0, 1);
+    const rows = amortizationSchedule(0.005, 12, 10000, 0, "beg");
     expect(rows[0].interest).toBe(0);
     expect(rows[11].balance).toBeCloseTo(0, 6);
     const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
@@ -515,6 +523,13 @@ describe("Fit Distribution (scipy.stats.<dist>.fit with loc fixed at 0; referenc
   const normal = [50.01, 52.39, 47.807, 42.875, 46.363, 42.067, 50.481, 60.722, 46.062, 45.036, 53.919, 52.855, 50.843, 42.556, 49.766, 55.562, 39.246, 46.339, 34.79, 39.684, 35.266, 48.119, 39.86, 52.17, 51.254, 48.505, 29.866, 45.69, 49.612, 50.906, 37.759, 46.178, 42.172, 43.529, 58.487, 43.54, 49.74, 57.075, 45.331, 49.106, 50.884, 50.51, 40.2, 50.609, 60.871, 37.623, 56.875, 50.955, 44.868, 66.003, 56.098, 40.406, 50.596, 54.614, 48.49, 55.463, 49.468, 55.338, 61.508, 44.595];
   const gamma = [7.4389, 7.0784, 4.2628, 11.3314, 2.2322, 9.7956, 4.6617, 13.7808, 5.1595, 5.4566, 4.7872, 8.1846, 5.6672, 6.4493, 13.129, 6.394, 5.1117, 6.4762, 2.3036, 5.246, 7.2517, 3.4755, 7.4499, 5.7517, 10.1216, 2.9205, 6.6571, 7.7163, 11.8068, 6.9024, 5.9902, 2.6746, 0.9033, 3.4356, 7.0956, 13.7236, 6.2137, 5.8193, 12.6582, 6.2766, 4.1088, 13.7812, 11.7664, 3.8905, 4.3267, 15.2916, 5.2635, 3.5484, 3.9636, 8.1063, 1.9613, 4.0894, 10.3154, 6.8206, 8.7222, 5.8892, 2.473, 4.508, 6.3519, 4.505];
   const weibull = [1.7331, 1.3532, 1.971, 6.3685, 2.1115, 12.7547, 1.4775, 6.7843, 4.2176, 9.082, 1.3785, 7.1777, 18.0275, 10.6528, 5.7628, 12.9813, 8.2315, 3.754, 13.5897, 2.3645, 13.0238, 14.6899, 9.9682, 5.5984, 14.6648, 3.0534, 6.4013, 11.9235, 9.891, 9.058, 24.6557, 8.6749, 4.4808, 7.7891, 12.5102, 3.5004, 12.5551, 17.767, 9.1013, 2.5291, 4.9693, 6.296, 8.3783, 6.9626, 14.2832, 9.7913, 4.7693, 1.4389, 4.8358, 4.8651, 12.4886, 5.8338, 16.4789, 9.6223, 10.9156, 13.0275, 1.1126, 9.6578, 3.3529, 9.447];
+  /** The card's ranking: each supported family with its parameters and KS distance, best AIC first. */
+  const ranking = (x: number[]) => {
+    const f = new FitDistributionNode().data({ list: [x] }).ranking as FrameValue;
+    const col = (name: string) => f.columns.find((c) => c.name === name)!.values;
+    return col("family").map((family, i) => ({ family, params: [col("value 1")[i], col("value 2")[i]] as number[], ks: col("KS")[i] as number }));
+  };
+  const fitDistribution = (x: number[], family: FitFamily) => ranking(x).find((r) => r.family === FIT_FAMILY_LABEL[family]) ?? null;
   it("normal MLE == scipy norm.fit; KS matches kstest", () => {
     const f = fitDistribution(normal, "normal")!;
     expect(f.params[0]).toBeCloseTo(48.3252, 10);
@@ -532,8 +547,8 @@ describe("Fit Distribution (scipy.stats.<dist>.fit with loc fixed at 0; referenc
     expect(f.params[1]).toBeCloseTo(9.18942, 4);
   });
   it("the ranking picks the generating family by AIC; unsupported families are skipped, not errors", () => {
-    expect(fitAll(normal)[0].family).toBe("normal");
-    expect(fitAll(gamma)[0].family).toBe("gamma");
+    expect(ranking(normal)[0].family).toBe("Normal");
+    expect(ranking(gamma)[0].family).toBe("Gamma");
     expect(fitDistribution([-1, 2, 3, 4], "lognorm")).toBeNull();
     expect(fitDistribution([1.5, 2, 3], "poisson")).toBeNull();
     const node = new FitDistributionNode().data({ list: [normal] });
@@ -638,25 +653,28 @@ describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (re
     a.forEach((v, i) => (ys[i] === null ? expect(v).toBeNull() : expect(v).toBeCloseTo(ys[i] as number, 8)));
   };
   it("log / simple returns lead with a blank; a blank price blanks both neighbours", () => {
-    close(periodReturns(P, true), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
-    close(periodReturns(P, false), [null, ...R]);
-    close(periodReturns([100, null, 110, 121], false), [null, null, null, 0.1]);
+    const returns = (op: "log" | "simple", list: unknown[]) => new ReturnsNode({ op }).data({ list: [list] }).result;
+    close(returns("log", P), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
+    close(returns("simple", P), [null, ...R]);
+    close(returns("simple", [100, null, 110, 121]), [null, null, null, 0.1]);
   });
   it("cumulative return compounds; drawdown is ≤ 0 from the running peak; max drawdown is its minimum", () => {
-    close(cumulativeReturns(R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
-    close(drawdowns(P), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
-    expect(maxDrawdown(P)).toBeCloseTo(-0.0272727273, 8);
-    expect(maxDrawdown([])).toBeNull();
+    const ev = (e: string, x: unknown[]) => compileEvaluator(e)!({ x });
+    close(ev("CUMRETURNS(x)", R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
+    close(ev("DRAWDOWN(x)", P), [0, 0, -0.0098039216, 0, -0.019047619, 0, 0, -0.0272727273]);
+    expect(ev("MAXDRAWDOWN(x)", P)).toBeCloseTo(-0.0272727273, 8);
+    expect(ev("MAXDRAWDOWN(x)", [])).toBeNull();
   });
   it("CAGR / volatility / Sharpe / Sortino annualise by periods per year; rf is per period", () => {
-    expect(cagr(P, 252)).toBeCloseTo(10.423942188538536, 6);
-    expect(cagr(P, 1)).toBeCloseTo(Math.pow(1.07, 1 / 7) - 1, 10);
-    expect(volatility(R, 252)).toBeCloseTo(0.46552064666834575, 8);
-    expect(sharpeRatio(R, 0, 252)).toBeCloseTo(5.455200388274644, 6);
-    expect(sharpeRatio(R, 0.001, 252)).toBeCloseTo(4.913871014801045, 6);
-    expect(sortinoRatio(R, 0.001, 252)).toBeCloseTo(10.501642446871466, 6);
-    expect((sharpeRatio([0.01, 0.01, 0.01]) as { code?: string }).code).toBe("#DIV/0!");
-    expect((cagr([0, 5]) as { code?: string }).code).toBe("#DOMAIN!");
+    const ev = (e: string, x: unknown[]) => compileEvaluator(e)!({ x });
+    expect(ev("CAGR(x, 252)", P)).toBeCloseTo(10.423942188538536, 6);
+    expect(ev("CAGR(x, 1)", P)).toBeCloseTo(Math.pow(1.07, 1 / 7) - 1, 10);
+    expect(ev("VOLATILITY(x, 252)", R)).toBeCloseTo(0.46552064666834575, 8);
+    expect(ev("SHARPE(x, 0, 252)", R)).toBeCloseTo(5.455200388274644, 6);
+    expect(ev("SHARPE(x, 0.001, 252)", R)).toBeCloseTo(4.913871014801045, 6);
+    expect(ev("SORTINO(x, 0.001, 252)", R)).toBeCloseTo(10.501642446871466, 6);
+    expect((ev("SHARPE(x)", [0.01, 0.01, 0.01]) as { code?: string }).code).toBe("#DIV/0!");
+    expect((ev("CAGR(x)", [0, 5]) as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("the card swaps its rf / periods sockets and output rank with the op; formulas agree", () => {
     const n = new ReturnsNode({ op: "log" });

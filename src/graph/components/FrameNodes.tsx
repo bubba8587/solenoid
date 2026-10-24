@@ -105,7 +105,7 @@ import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 import { ALLOCATE_MODE_META } from "../nodeClasses";
 import type { AllocateMode } from "../nodes/allocateOps";
-import type { PayoffOrder } from "../nodes/payoffOps";
+import type { PayoffOrder } from "../nodes/frame";
 import { PAYOFF_ORDER_META } from "../nodes/frame";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =

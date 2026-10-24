@@ -14,7 +14,6 @@ import {
   isFrameValue,
   makeHeaders,
   buildFrame,
-  buildFrameTyped,
   typedColumn,
   colTypeForSocket,
   addColumn,
@@ -613,23 +612,6 @@ describe("typedColumn", () => {
   });
 });
 
-describe("buildFrameTyped — a matrix of any element family", () => {
-  it("a string matrix → all string columns", () => {
-    const f = buildFrameTyped([["a", "b"], ["c", "d"]], ["p", "q"], "string");
-    expect(f.columns.map((c) => c.type)).toEqual(["string", "string"]);
-    expect(f.columns[0].values).toEqual(["a", "c"]);
-  });
-  it("colType null → per-column value inference", () => {
-    const f = buildFrameTyped([[1, "x"], [2, "y"]], ["n", "s"], null);
-    expect(f.columns.map((c) => c.type)).toEqual(["number", "string"]);
-  });
-  it("carries a (unit) header onto a numeric column", () => {
-    const f = buildFrameTyped([[5], [6]], ["Revenue ($0.00)"], "number");
-    expect(f.columns[0].name).toBe("Revenue");
-    expect(f.columns[0].unit).toBeTruthy();
-  });
-});
-
 describe("BuildFrameNode — types columns by the adopted matrix socket", () => {
   const adopt = (n: BuildFrameNode, t: string) => (n.inputs.matrix!.socket as MutableSocket).setType(t as never);
 
@@ -651,6 +633,11 @@ describe("BuildFrameNode — types columns by the adopted matrix socket", () => 
     adopt(n, "strtable");
     const out = n.data({ matrix: [[["x"], ["y"]]], headers: [["name"]] }).frame!;
     expect(out.columns[0].type).toBe("string");
+  });
+  it("carries a (unit) header onto a numeric column", () => {
+    const out = new BuildFrameNode().data({ matrix: [[[5], [6]]], headers: [["Revenue ($0.00)"]] }).frame!;
+    expect(out.columns[0].name).toBe("Revenue");
+    expect(out.columns[0].unit).toBeTruthy();
   });
   it("an unadopted anytable falls back to value inference", () => {
     const n = new BuildFrameNode(); // socket base is anytable (never wired/settled)

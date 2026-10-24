@@ -11,7 +11,7 @@ import { cubeFromColumns, frameToCube, frameSourceToText, type CubeValue, type F
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode, ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";
 import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
-import { compileLambda } from "../../src/graph/nodes/tableLambda";
+import { compilePositional } from "../../src/graph/excelFormula";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -255,7 +255,7 @@ describe("a computed column over readings classifies as Expression does", () => 
     const withLam = (expr: string) => {
       const n = new ComputedColumnNode({});
       n.stringLiterals.name = "out";
-      const fn = compileLambda(expr, ["lo", "hi"])!;
+      const fn = compilePositional(expr, ["lo", "hi"])!;
       const lam = { __lambda: true as const, params: ["lo", "hi"], fn, expr };
       return col(n.data({ frame: [two], fn: [lam] } as never).frame as FrameValue, "out").values;
     };
@@ -278,8 +278,8 @@ describe("a computed column over readings classifies as Expression does", () => 
   });
 
   it("a Frame Input column calling a wired λ is read through the λ's body", () => {
-    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
-    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
+    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compilePositional("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
+    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compilePositional("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
     const n = new FrameInputNode({
       lambdaKeys: ["fn1", "fn2"],
       frameText: frameSourceToText([

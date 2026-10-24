@@ -1,11 +1,5 @@
-// [[C17]], [[B11]] (MAX_GENERATED), [[C110]] rangeIncludesStop
+// [[C17]] shareImpl
 import { isSolError, type SolError } from "../errorValue";
-import { isCx } from "../cxValue";
-import { isUnitCell, type UnitCell, forAggregateUnits, isAffineDisplay, tagDim, unitError, READINGS_ADD } from "../unitValue";
-import { dimEqual, dimPow, isDimensionless } from "../dimension";
-import { forAggregate, isMissing } from "../valueKinds";
-import { compareStrings } from "../stringOrder";
-import { iterMin, iterMax } from "./mathUtils";
 
 export type Cell = number | null | SolError;
 
@@ -16,106 +10,9 @@ export function firstError(arr: readonly unknown[]): SolError | null {
 
 // ─── Shape: list in, list out ─────────────────────────────────────────────────
 
-export function interleave<T>(a: readonly T[], b: readonly T[]): (T | null)[] {
-  const n = Math.max(a.length, b.length);
-  const out: (T | null)[] = [];
-  for (let i = 0; i < n; i++) out.push(i < a.length ? a[i] : null, i < b.length ? b[i] : null);
-  return out;
-}
-
 export type PadDir = "right" | "left";
 
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
-
-/** A list of one unit runs on its magnitudes and keeps the unit, as Reduce does: a product's power grows with its count,
- *  and over °C a spread is a delta and two readings have no sum. */
-export function running(op: RunningOp, arr: readonly (Cell | UnitCell)[], window: number | null): (Cell | UnitCell)[] | SolError {
-  if (!arr.some(isUnitCell)) return runningPlain(op, arr as readonly Cell[], window);
-  // An error cell stays in place and runs as it does without units.
-  const prep = forAggregateUnits(arr.filter((v) => !isSolError(v)), op !== "sum");
-  if (prep.error) return prep.error;
-  const affine = isAffineDisplay(prep.display);
-  if (affine && op === "sum" && arr.filter((c) => isUnitCell(c) && isAffineDisplay(c.display)).length > 1) return unitError(READINGS_ADD);
-  let k = 0;
-  const mags: Cell[] = arr.map((v) => (isSolError(v) ? v : isMissing(v) ? null : prep.nums[k++]));
-  const out = runningPlain(op, mags, window);
-  const w = window !== null && Math.round(window) >= 1 ? Math.round(window) : Infinity;
-  const counted = mags.map((v) => (typeof v === "number" && Number.isFinite(v) ? 1 : 0));
-  const display = affine && op === "stdev" ? undefined : prep.display;
-  return out.map((v, i) => {
-    if (typeof v !== "number" || isDimensionless(prep.dim)) return v;
-    const n = counted.slice(Math.max(0, i - w + 1), i + 1).reduce((a: number, b) => a + b, 0);
-    const dim = op === "product" ? dimPow(prep.dim, n) : prep.dim;
-    return tagDim(v, dim, dimEqual(dim, prep.dim) ? display : undefined);
-  });
-}
-
-function runningPlain(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
-  if (window !== null && Math.round(window) >= 1) {
-    const w = Math.max(1, Math.round(window));
-    return arr.map((_, i) => {
-      const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
-      if (prep.error) return prep.error;
-      const nums = prep.nums.filter((n) => Number.isFinite(n));
-      if (nums.length === 0) return op === "sum" ? 0 : null;
-      switch (op) {
-        case "sum": return nums.reduce((a, b) => a + b, 0);
-        case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
-        case "min": return iterMin(nums);
-        case "max": return iterMax(nums);
-        case "product": return nums.reduce((a, b) => a * b, 1);
-        case "stdev": {
-          if (nums.length < 2) return null;
-          const m = nums.reduce((a, b) => a + b, 0) / nums.length;
-          return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
-        }
-        case "median": {
-          const sorted = [...nums].sort((a, b) => a - b);
-          const mid = Math.floor(sorted.length / 2);
-          return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-        }
-      }
-    });
-  }
-  // The cumulative path streams in one pass and must answer exactly what the sliding path would with window = arr.length.
-  let err: SolError | null = null;
-  let count = 0, sum = 0, product = 1, mn = Infinity, mx = -Infinity;
-  let mean = 0, m2 = 0;
-  const sorted: number[] = [];
-  return arr.map((v) => {
-    if (!err && isSolError(v)) err = v;
-    if (err) return err;
-    if (typeof v === "number" && Number.isFinite(v)) {
-      count++; sum += v; product *= v;
-      if (v < mn) mn = v;
-      if (v > mx) mx = v;
-      const d = v - mean;
-      mean += d / count;
-      m2 += d * (v - mean);
-      if (op === "median") {
-        let lo = 0, hi = sorted.length;
-        while (lo < hi) {
-          const mid = (lo + hi) >> 1;
-          if (sorted[mid] < v) lo = mid + 1; else hi = mid;
-        }
-        sorted.splice(lo, 0, v);
-      }
-    }
-    if (count === 0) return op === "sum" ? 0 : null;
-    switch (op) {
-      case "sum": return sum;
-      case "avg": return sum / count;
-      case "min": return mn;
-      case "max": return mx;
-      case "product": return product;
-      case "stdev": return count < 2 ? null : Math.sqrt(m2 / (count - 1));
-      case "median": {
-        const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-      }
-    }
-  });
-}
 
 // ─── Find: list in, scalar out ────────────────────────────────────────────────
 
@@ -125,76 +22,11 @@ export const ARG_LIST_OPS: ReadonlySet<ArgMinMaxOp> = new Set(["argsort", "argso
 export type XMatchMatchMode = "exact" | "next_larger" | "next_smaller";
 export type XMatchSearchMode = "first" | "last";
 
-export function lookupEq(a: unknown, b: unknown): boolean {
-  return typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
-}
-
 // ─── Weighted statistics ──────────────────────────────────────────────────────
 
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
-export function weighted(op: WeightedOp, values: readonly Cell[], weights: readonly Cell[]): number | SolError | null {
-  const err = firstError(values) ?? firstError(weights);
-  if (err) return err;
-  if (values.length === 0 || weights.length < values.length) return null;
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i], w = weights[i];
-    if (!isMissing(v) && !isMissing(w)) pairs.push([v as number, w as number]);
-  }
-  const wSum = pairs.reduce((a, [, w]) => a + w, 0);
-  if (pairs.length === 0 || wSum === 0) return null;
-  const wavg = pairs.reduce((s, [v, w]) => s + v * w, 0) / wSum;
-  let result: number | null = wavg;
-  if (op !== "wavg") {
-    const wSum2 = pairs.reduce((a, [, w]) => a + w * w, 0);
-    const denom = wSum - wSum2 / wSum;
-    result = null;
-    if (denom > 0) {
-      const wvar = pairs.reduce((s, [v, w]) => s + w * (v - wavg) ** 2, 0) / denom;
-      result = op === "wvar" ? wvar : Math.sqrt(wvar);
-    }
-  }
-  return result !== null && Number.isFinite(result) ? result : null;
-}
-
-// ─── Build: scalars in, list out ──────────────────────────────────────────────
-
-export const MAX_GENERATED = 1_000_000;
-
-export function linspace(start: number, end: number, count: number): number[] {
-  const n = Math.round(count);
-  if (n <= 0) return [];
-  if (n === 1) return [start];
-  return Array.from({ length: n }, (_, i) => start + i * (end - start) / (n - 1));
-}
-
-export function geometric(start: number, ratio: number, count: number): number[] {
-  const n = Math.max(0, Math.round(count));
-  const out: number[] = [];
-  let v = start;
-  for (let i = 0; i < n; i++) { out.push(v); v *= ratio; }
-  return out;
-}
-
-export function fibonacci(count: number): number[] {
-  const n = Math.min(78, Math.max(0, Math.round(count)));
-  if (n === 0) return [];
-  const out = [1];
-  if (n > 1) out.push(1);
-  for (let i = 2; i < n; i++) out.push(out[i - 1] + out[i - 2]);
-  return out;
-}
-
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// JavaScript Sets key objects by reference, so a complex value canonicalizes to a string; primitives key as themselves.
-/** Equal values share a key: complex by parts, a unit cell by base-SI magnitude (15 significant digits) and dimension, so 5 km and 5000 m, or 1.1 h and 3960 s, are one member ([[C25]] firstClassUnits). */
-export function setKey(v: unknown): unknown {
-  if (isCx(v)) return `\x00cx:${v.re},${v.im}`;
-  // A zero exponent is no dimension, as `dimEqual` reads it.
-  if (isUnitCell(v)) return `\x00u:${+v.value.toPrecision(15)}:${Object.keys(v.dim).filter((k) => v.dim[k]).sort().map((k) => `${k}${v.dim[k]}`).join(",")}`;
-  return v;
-}
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
@@ -206,56 +38,6 @@ export type FillOp =
   | "constant" | "ffill" | "bfill" | "mean" | "median" | "mode"
   | "interpolate" | "drop" | "coalesce";
 
-export function presentNumbers(arr: readonly Cell[]): number[] {
-  return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-}
-
-export function imputeStat(arr: readonly Cell[], op: "mean" | "median" | "mode"): number | null {
-  const nums = presentNumbers(arr);
-  if (nums.length === 0) return null;
-  if (op === "mean") return nums.reduce((a, b) => a + b, 0) / nums.length;
-  if (op === "median") {
-    const s = [...nums].sort((a, b) => a - b);
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
-  }
-  const counts = new Map<number, number>();
-  let best = nums[0], bestCount = 0;
-  for (const v of nums) {
-    const c = (counts.get(v) ?? 0) + 1;
-    counts.set(v, c);
-    if (c > bestCount) { bestCount = c; best = v; }
-  }
-  return best;
-}
-
-export function interpolateList(arr: readonly Cell[]): Cell[] {
-  const out: Cell[] = arr.slice();
-  let i = 0;
-  while (i < out.length) {
-    if (!isMissing(out[i])) { i++; continue; }
-    const start = i;
-    while (i < out.length && isMissing(out[i])) i++;
-    const end = i, left = start - 1, right = end;
-    const lv = left >= 0 ? out[left] : undefined;
-    const rv = right < out.length ? out[right] : undefined;
-    if (typeof lv === "number" && Number.isFinite(lv) && typeof rv === "number" && Number.isFinite(rv)) {
-      const span = right - left;
-      for (let k = start; k < end; k++) out[k] = lv + (rv - lv) * ((k - left) / span);
-    }
-  }
-  return out;
-}
-
-// ─── Range ────────────────────────────────────────────────────────────────────
-
-export function rangeCount(start: number, stop: number | undefined, step: number): number {
-  if (stop === undefined) return 0;
-  if (step === 0) return start === stop ? 1 : Infinity;
-  const n = Math.floor((stop - start) / step + 1e-9) + 1;
-  return n > 0 ? n : 0;
-}
-
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 
 export function weightedShuffleKey(u: number, weight: number): number {
@@ -263,60 +45,6 @@ export function weightedShuffleKey(u: number, weight: number): number {
   const uu = u <= 0 ? Number.EPSILON : u >= 1 ? 1 - Number.EPSILON : u;
   return -Math.log(uu) / weight;
 }
-
-// ─── Array-returning core ([[C15]] matricesInFormulas) ──────────────────────────
-
-export function uniqueList(arr: readonly unknown[]): unknown[] {
-  const seen = new Set<unknown>();
-  const out: unknown[] = [];
-  for (const v of arr) {
-    if (isSolError(v)) { out.push(v); continue; }
-    const k = setKey(v);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(v);
-  }
-  return out;
-}
-
-const sortKind = (v: unknown): number => (typeof v === "number" ? 0 : typeof v === "string" ? 1 : typeof v === "boolean" ? 2 : 3);
-const sortsLast = (v: unknown): boolean => isMissing(v) || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
-
-/** One order for every list sort: numbers by value, then text by character code ([[C59]] byteStringOrder), then FALSE and TRUE, Excel's order across kinds. Blanks, errors and NaN go last in either direction. */
-export function compareListCells(a: unknown, b: unknown): number {
-  const ka = sortKind(a), kb = sortKind(b);
-  if (ka !== kb) return ka - kb;
-  if (ka === 0) return (a as number) - (b as number);
-  if (ka === 1) return compareStrings(a as string, b as string);
-  if (ka === 2) return Number(a) - Number(b);
-  return 0;
-}
-
-function sortedIndex(keys: readonly unknown[], n: number, desc: boolean): number[] {
-  const idx = Array.from({ length: n }, (_, i) => i);
-  idx.sort((i, j) => {
-    const ki = i < keys.length ? keys[i] : null, kj = j < keys.length ? keys[j] : null;
-    const ti = sortsLast(ki), tj = sortsLast(kj);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
-    const c = compareListCells(ki, kj);
-    return c !== 0 ? (desc ? -c : c) : i - j;
-  });
-  return idx;
-}
-
-export function sortList(arr: readonly Cell[], desc = false): Cell[] {
-  return sortedIndex(arr, arr.length, desc).map((i) => arr[i]);
-}
-
-export function sortByKeys<T>(arr: readonly T[], by: readonly unknown[], desc = false): (T | null)[] {
-  return sortedIndex(by, Math.max(arr.length, by.length), desc).map((i) => (i < arr.length ? arr[i] : null));
-}
-
-// ─── Table sorts, filters and uniques ([[D85]] columnsStayColumns: a list is one row) ──────────
-// Excel's SORT, SORTBY, FILTER and UNIQUE on a table. The caller turns a list into its one row and back.
-
-export const transposeGrid = <T>(m: readonly (readonly T[])[]): T[][] =>
-  (m[0] ?? []).map((_, j) => m.map((r) => r[j]));
 
 export type OutlierMethod = "z" | "iqr" | "mad";
 

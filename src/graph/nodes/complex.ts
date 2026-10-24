@@ -4,7 +4,7 @@ import type { SolError } from "../errorValue";
 import type { Cx } from "../cxValue";
 import { nodeOnCore } from "../nodeOnCore";
 
-export { cx, isCx, formatCx, type Cx } from "../cxValue";
+export { cx, isCx, type Cx } from "../cxValue";
 
 export class ComplexFromNode extends GraphNode {
   label: string;

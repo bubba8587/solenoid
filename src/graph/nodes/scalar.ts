@@ -7,10 +7,9 @@ import { type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, type ArithmeticOp } from "../unitValue";
+export type { ArithmeticOp } from "../unitValue";
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
-
-export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
   add:      { label: "Add",        carry: true,  description: "`A + B`" },
@@ -158,11 +157,6 @@ export class MathFXNode extends GraphNode {
 }
 
 // ─── Base Convert ─────────────────────────────────────────────────────────────
-
-export const BASE_CONVERT_META = {
-  label: "Base Convert",
-  description: "Bases 2–36, digits 0–9 only: a digit outside the source base or a result needing letters is `null`. Excel: `DEC2BIN`, `BIN2DEC`, `BASE`, `DECIMAL`.",
-};
 
 export class BaseConvertNode extends GraphNode {
   static inputRoles = { from: required, to: required };

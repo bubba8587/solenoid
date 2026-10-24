@@ -1,6 +1,7 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
-import { frameFromCells, relateFramesToCube, type FrameValue } from "../../../src/graph/frame";
+import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
+import { relateFramesToCube } from "../coreVerbs";
 import { isSolError } from "../../../src/graph/errorValue";
 import { CubeRollupNode } from "../../../src/graph/nodes/cube";
 

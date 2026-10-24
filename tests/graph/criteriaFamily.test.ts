@@ -1,7 +1,6 @@
 // [[C45]] excelComparisons, [[C24]], [[B11]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { parseCriterion } from "../../src/graph/excelCriteria";
 import { isSolError } from "../../src/graph/errorValue";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { buildFrame } from "../../src/graph/frame";
@@ -39,7 +38,7 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
     expect(ev("SUMIFS(s, r, 5)", { s: [1, 2, 3], r: [5, "5", 5] })).toBe(4); // text "5" is text, never the number 5 ([[B17]] typedValueModel)
     expect(ev("SUMIFS(s, r, 5)", { s: [1, 2, 3], r: [5, "five", true] })).toBe(1);
     expect(ev("COUNTIFS(r, 1)", { r: [{ __solError: true, code: "#N/A", message: "" }, 1] })).toBe(1);
-    const amb = parseCriterion(">1/2/2026", true);
+    const amb = ev("COUNTIFS(r, \">1/2/2026\")", { r: [MON] });
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });
   it("the card and the formula agree on one probe", () => {

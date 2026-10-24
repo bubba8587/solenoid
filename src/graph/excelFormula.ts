@@ -33,25 +33,6 @@ export function parseFormula(expr: string): Ast | null {
   return parseExpr(expr);
 }
 
-export function formulaSyntaxHint(expr: string): string | null {
-  const s = expr.replace(/"[^"]*"?/g, '""').trim();
-  if (/[{}]/.test(s)) return "Braces { } aren't formula syntax. Remove them: array literals aren't supported, so wire a List or Table input instead";
-  if (s.startsWith("=")) return "Drop the leading =, and type just the formula body";
-  if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
-  const openB = (s.match(/\[/g) ?? []).length;
-  const closeB = (s.match(/\]/g) ?? []).length;
-  if (openB !== closeB) return "Unclosed [. A whole column is [Name], and this row's cell is @[Name]";
-  const bare = s.replace(/\[@\[[^\]]*\]\]|\[[^\]]*\]/g, "[]");
-  const open = (bare.match(/\(/g) ?? []).length;
-  const close = (bare.match(/\)/g) ?? []).length;
-  if (open > close) return `Missing ${open - close} closing parenthesis${open - close === 1 ? "" : "es"}`;
-  if (close > open) return `${close - open} extra closing parenthesis${close - open === 1 ? "" : "es"}`;
-  let depth = 0;
-  for (const ch of bare) if ((depth += ch === "(" ? 1 : ch === ")" ? -1 : 0) < 0) return "A ) comes before the ( it would close";
-  if (/[+\-*/^&,<>=]$/.test(s)) return "The formula ends mid-expression (trailing operator)";
-  return null;
-}
-
 export const FORMULA_CONSTANTS: Record<string, number> = {
   pi:  Math.PI,
   tau: 2 * Math.PI,
@@ -61,7 +42,6 @@ export const FORMULA_CONSTANTS: Record<string, number> = {
 function constantValue(name: string): number | undefined {
   return FORMULA_CONSTANTS[name.toLowerCase()];
 }
-export const isFormulaConstant = (name: string): boolean => constantValue(name) !== undefined;
 
 // ─── Variable extraction ──────────────────────────────────────────────────────
 /** The LAMBDA hosts, whose bare function-name argument is that function as a LAMBDA, not a variable. */
@@ -100,34 +80,6 @@ export function extractVariables(expr: string): string[] {
   const out: string[] = [];
   collectNames(ast, out, new Set());
   return out;
-}
-
-function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
-  switch (n.t) {
-    case "atcol": if (!bound.has(n.name)) out.add(n.name); break;
-    case "wholecol": if (!bound.has(n.name)) out.add(n.name); break;
-    case "call": {
-      if (n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
-        const inner = new Set(bound);
-        for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
-        collectRowRefs(n.args[n.args.length - 1], out, inner);
-        break;
-      }
-      n.args.forEach((a) => collectRowRefs(a, out, bound));
-      break;
-    }
-    case "apply": collectRowRefs(n.fn, out, bound); n.args.forEach((a) => collectRowRefs(a, out, bound)); break;
-    case "unary": case "percent": collectRowRefs(n.arg, out, bound); break;
-    case "bin": collectRowRefs(n.l, out, bound); collectRowRefs(n.r, out, bound); break;
-  }
-}
-
-export function rowRefNames(expr: string): string[] {
-  const ast = parseExpr(expr);
-  if (!ast) return [];
-  const out = new Set<string>();
-  collectRowRefs(ast, out);
-  return [...out];
 }
 
 export function atColNames(expr: string): string[] {

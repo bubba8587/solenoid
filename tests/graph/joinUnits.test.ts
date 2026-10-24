@@ -1,9 +1,9 @@
 // [[C25]] firstClassUnits: a join reads the right key in the left key's unit.
 import { describe, it, expect } from "vitest";
-import { joinFrames, bindColumns } from "./coreVerbs";
+import { joinFrames, bindColumns, relateFramesToCube } from "./coreVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
-import { relateFramesToCube, frameRowCount, type FrameColumn, type FrameValue } from "../../src/graph/frame";
+import { frameRowCount, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });

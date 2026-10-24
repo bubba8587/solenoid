@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { type Dim } from "../../src/graph/dimension";
 import { dimensionsAdd, isUniversalDim } from "../../src/graph/unitLattice";
-import { arithmeticCell } from "../../src/graph/nodes/scalar";
+import { arithmeticCell } from "./coreVerbs";
 import { forAggregateUnits, tagDim, isUnitCell } from "../../src/graph/unitValue";
 import { isSolError } from "../../src/graph/errorValue";
 

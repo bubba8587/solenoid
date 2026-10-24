@@ -1,35 +1,9 @@
 // [[C17]], [[C48]] appendLadder
-import { solError, type SolError } from "../errorValue";
-import { MAX_GENERATED } from "./listOps";
-
-/** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
-/** An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork). */
-function cellCap(fn: string, rows: number, cols: number): SolError | null {
-  return Math.max(rows, 1) * Math.max(cols, 1) > MAX_GENERATED
-    ? solError("#OVERFLOW!", `${fn} would build ${rows}×${cols} cells, past the ${MAX_GENERATED} element limit`)
-    : null;
-}
 
 export type NumMat = number[][];
 
 export function matRows(m: readonly unknown[][]): number { return m.length; }
 export function matCols(m: readonly unknown[][]): number { return m[0]?.length ?? 0; }
-
-export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] | SolError {
-  const k = Math.round(n);
-  if (k < 1) return [];
-  const cap = cellCap("MUNIT", k, k); if (cap) return cap;
-  return Array.from({ length: k }, (_, i) =>
-    Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
-}
-
-/** WRAPROWS and WRAPCOLS read their count as Excel does: truncated, and below 1 is Excel's `#NUM!`. */
-export function wrapCount(w: number, fn: "WRAPROWS" | "WRAPCOLS"): number | SolError {
-  const n = Math.trunc(w);
-  if (!(n >= 1)) return solError("#DOMAIN!", `${fn} needs a wrap count of 1 or more`);
-  // Every row pads out to the count, so a huge count would build that many cells ([[C120]] linearWork).
-  return n > MAX_GENERATED ? solError("#OVERFLOW!", `${fn} count ${n} exceeds the ${MAX_GENERATED} element limit`) : n;
-}
 
 export type MatNormKind = "fro" | "1" | "inf" | "max";
 

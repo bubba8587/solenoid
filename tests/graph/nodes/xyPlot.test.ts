@@ -1,7 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { ChartNode, MergePlotsNode, ChartBuilderNode } from "../../../src/graph/nodes/visual";
-import { parseChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { chartOptionsOf } from "../coreVerbs";
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
@@ -170,10 +170,10 @@ describe("Merge Plots, XY", () => {
 
 describe("XY option keys", () => {
   it("parse to their fields", () => {
-    expect(parseChartOptions("x=t;y=a, b;s=m;c=k;annotate=n;by=g;ls=-.;xlim=0,;aspect=equal")).toEqual({
+    expect(chartOptionsOf("x=t;y=a, b;s=m;c=k;annotate=n;by=g;ls=-.;xlim=0,;aspect=equal")).toEqual({
       x: "t", y: ["a", "b"], s: "m", c: "k", annotate: "n", by: "g", linestyle: "dashdot", xmin: 0, aspect: "equal",
     });
-    expect(parseChartOptions("linestyle=wavy;aspect=tall")).toEqual({});
+    expect(chartOptionsOf("linestyle=wavy;aspect=tall")).toEqual({});
   });
 
   it("serialize from the builder, xlim as one pair", () => {

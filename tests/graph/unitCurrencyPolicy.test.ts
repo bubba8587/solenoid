@@ -1,7 +1,8 @@
 // [[D47]]
 import { describe, it, expect } from "vitest";
 import * as UV from "../../src/graph/unitValue";
-import { arithmeticCell, forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { arithmeticCell } from "./coreVerbs";
 import { ComparisonNode } from "../../src/graph/nodes/logic";
 import { isSolError } from "../../src/graph/errorValue";
 
@@ -67,12 +68,11 @@ describe("the non-arithmetic combinators carry the same policy", () => {
 describe("completeness — a new combinator must join this sweep", () => {
   it("the swept set IS unitValue's combinator surface", () => {
     // Every exported function that COMBINES two-or-more dimensioned operands is
-    // listed here with its sweep above. A new `*Units` export (or arithmetic
-    // entry point) fails this until it registers — the matrixUnitPolicy pattern.
-    const SWEPT = ["arithmeticCell", "forAggregateUnits"];
-    const combinators = Object.keys(UV).filter(
-      (k) => /Units$/.test(k) || k === "arithmeticCell",
-    ).filter((k) => typeof (UV as Record<string, unknown>)[k] === "function");
+    // listed here with its sweep above. A new `*Units` export fails this until it
+    // registers — the matrixUnitPolicy pattern. Arithmetic is swept through its card.
+    const SWEPT = ["forAggregateUnits"];
+    const combinators = Object.keys(UV).filter((k) => /Units$/.test(k))
+      .filter((k) => typeof (UV as Record<string, unknown>)[k] === "function");
     expect(combinators.sort()).toEqual([...SWEPT].sort());
   });
 });

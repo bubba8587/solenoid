@@ -3,7 +3,6 @@ import { isSolError, solError, type SolError } from "./errorValue";
 
 // Call sites use this predicate, not `=== null`, so a representation change has one place to move.
 export type Missing = null;
-export const MISSING: Missing = null;
 export function isMissing(v: unknown): v is Missing {
   return v === null;
 }
@@ -125,11 +124,6 @@ export function guardFinite(result: number, inputs: ReadonlyArray<unknown>): num
   if (Number.isNaN(result)) return solError("#DOMAIN!", DOMAIN_MESSAGE);
   const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
   return fromInfiniteInput ? result : solError("#OVERFLOW!", OVERFLOW_MESSAGE);
-}
-
-/** `^`, POWER and the Arithmetic card's power op: zero to a negative power is Excel's `#DIV/0!`. */
-export function powerOf(x: number, y: number): number | SolError {
-  return x === 0 && y < 0 ? solError("#DIV/0!", "Zero to a negative power divides by zero") : Math.pow(x, y);
 }
 
 export type Tri = boolean | Missing;

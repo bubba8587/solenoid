@@ -4,6 +4,12 @@ import type { FrameCell, FrameColType, FrameValue, CubeValue } from "../../src/g
 import type { ChartValue, LadderPayload } from "../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { NestNode, UnnestNode, DecisionMatrixNode, DecisionSensitivityNode, ChoiceLadderNode } from "../../src/graph/nodes/frame";
+import { NestJoinNode } from "../../src/graph/nodes/cube";
+import { ChartNode } from "../../src/graph/nodes/visual";
+import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";
+import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import type { ArithmeticOp, UnitCell } from "../../src/graph/unitValue";
+import type { ChartOptions } from "../../src/graph/nodes/chartOptions";
 import type {
   AggOp, AggSpec, DecisionNormalize, FilterCombine, FilterCond, FilterOp, FrameOp, JoinOpts, LookupMatchMode, LookupSearchMode, PivotSpec, WindowSpec,
 } from "../../src/graph/frameOps";
@@ -134,6 +140,34 @@ export const nestFrame = (f: FrameValue, keys: string[], nestedName = "items"): 
   orThrow(new NestNode().data({ frame: [f], keys: [keys], nestedName: [nestedName] }).cube) as CubeValue;
 export const unnestCube = (c: CubeValue, column: string): FrameValue | CubeValue =>
   orThrow(new UnnestNode().data({ cube: [c], column: [column] }).frame) as FrameValue | CubeValue;
+/** Nest Join: each parent row gains a cell of its matching child rows; null where the parent has no `key` column. */
+export const relateFramesToCube = (parent: FrameValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue | null =>
+  orThrow(new NestJoinNode().data({ parent: [parent], child: [child], key: [key], name: [nestedName] }).cube);
+/** Nest Join on a cube parent: the child deepens its first nested column's tables, a level down. */
+export const relateCubeToFrame = (parent: CubeValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue =>
+  orThrow(new NestJoinNode().data({ parent: [parent], child: [child], key: [key], name: [nestedName] }).cube) as CubeValue;
+
+// ─── Arithmetic, through its card ───
+/** The Arithmetic card on two cells: the dimension algebra as the card answers it. */
+export const arithmeticCell = (op: ArithmeticOp, a: unknown, b: unknown) =>
+  new ArithmeticNode({ op }).data({ a: [a], b: [b] }).result as number | UnitCell | SolError;
+
+// ─── Formula reading and chart options, as the core reads them ───
+/** The row references a formula reads (`@name`, `[name]`), as the column topo sees them. */
+export const rowRefNames = (src: string): string[] =>
+  wasmInvokeSync<{ rows?: string[] }>("engine_formula_names", { src, bodies: [] }).rows ?? [];
+/** Why a formula fails to parse, as a lambda card says it; null where it parses. */
+export function syntaxHint(src: string): string | null {
+  const n = new MakeArrayNode({ expr: src, literals: { rows: 1, cols: 1 } });
+  const r = n.data({}).result;
+  return isSolError(r) && r.code === "#SYNTAX!" ? r.message : null;
+}
+/** An options string as a Chart card reads it. */
+export function chartOptionsOf(options: string | null): ChartOptions {
+  const n = new ChartNode();
+  n.data({ values: [[1, 2]], options: [options] });
+  return n.chartOptions;
+}
 
 // ─── Decisions, through their cards ───
 /** The criteria a Decision Matrix scores: every number and logical column but the first text one, its labels. */

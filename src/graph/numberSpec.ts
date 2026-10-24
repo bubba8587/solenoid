@@ -3,11 +3,6 @@
 
 const SPEC = /^(\+)?(,)?(?:\.(\d{1,2}))?([fFeEgGd%])?$/;
 
-export function isNumberSpec(spec: string): boolean {
-  const s = spec.trim();
-  return s !== "" && SPEC.test(s);
-}
-
 function group(intPart: string): string {
   return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
