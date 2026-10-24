@@ -173,8 +173,8 @@ level (1232 nodes: 95 and 102 ms before, 100 and 100 after). On large values the
 TypeScript wrappers were (median of 20, one node through the boundary, Node): a 100k list on a `list` port 1.3 ms
 (4.9), a 300 × 300 table on `table` 1.5 ms (2.5), a 100k × 5 frame answered and tagged 3.0 ms (3.9); a scalar costs
 about 0.05 ms against 0.01. Walking each cell across the boundary had made the same list 25 ms, which `cellKinds`
-removed. Loading personal-finance in the built app (Chromium, three loads): cards settled in 3.1 s and the first full
-pass computed in 481 ms, against 3.3 s and 507 ms before.
+removed. Loading personal-finance in the built app (Chromium, median of five loads): the first full pass computed in
+472 ms and the cards settled in 3.3 s, against 507 ms and 3.25 s before.
 
 ## What blocks phase C (card bodies called with no JavaScript hop)
 
