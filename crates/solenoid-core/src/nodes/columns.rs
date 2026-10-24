@@ -6,7 +6,7 @@
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{
-    cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed, widen_to_frame,
+    cube_from_columns, first, parse_column_unit_from_header, str_input, trimmed, widen_to_frame, UnitTag,
 };
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
@@ -934,7 +934,10 @@ fn cube_with_column(
 ) -> Result<V, V> {
     let (clean, _) = parse_column_unit_from_header(name);
     let cells = match unit {
-        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
+        Some(u) if ty == FrameColType::Number => {
+            let tag = UnitTag::new(u);
+            cells.iter().map(|v| tag.tag_items(v)).collect()
+        }
         _ => cells,
     };
     let col = CubeColumn { name: clean.clone(), cells, ty: Some(ty), format: None };
@@ -1262,7 +1265,10 @@ fn cube_input(c: &mut Call) -> Answer {
             let ty = cube_cells_type(&cells)
                 .unwrap_or_else(|| computed_column_type(&cols[i].name, &cells, &table, Some(ast), &[]));
             let cells = match unit.as_ref().filter(|_| ty == FrameColType::Number) {
-                Some(u) => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
+                Some(u) => {
+                    let tag = UnitTag::new(u);
+                    cells.iter().map(|v| tag.tag_items(v)).collect()
+                }
                 None => cells,
             };
             cols[i] = CubeColumn { name: cols[i].name.clone(), cells, ty: Some(ty), format: None };

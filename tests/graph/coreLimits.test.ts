@@ -76,3 +76,14 @@ it("a list of lookups indexes the keys once instead of scanning them per lookup"
     expect(m.slice(0, 5).map(code)).toEqual(want);
   }
 });
+
+it("the Lookup card over a Cube reads its key column once for a list of lookups", async () => {
+  const { XLookupNode } = await import("../../src/graph/nodes/frame");
+  const ids = Array.from({ length: 20_000 }, (_, i) => `K${i}`);
+  const cube = { __cube: true, depth: 1, columns: [{ name: "id", cells: ids }, { name: "v", cells: ids.map((_, i) => i) }] };
+  const n = new XLookupNode();
+  n.stringLiterals = { lookup: "", inColumn: "id", returnColumn: "v", ifNotFound: "" };
+  const { v, ms } = timed(() => (n.data({ frame: [cube], lookup: [[...ids].reverse()] }) as { value: unknown }).value);
+  expect(ms).toBeLessThan(3000);
+  expect((v as number[])[0]).toBe(19_999);
+});

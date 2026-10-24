@@ -39,6 +39,8 @@ struct Criterion {
     op: Op,
     value: Value,
     wild: Option<Vec<Wild>>,
+    /// A text value lowered once, for the comparison every cell makes.
+    lowered: String,
 }
 
 const PREFIX: [(&str, Op); 6] =
@@ -598,7 +600,7 @@ enum Parsed {
 }
 
 fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
-    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None });
+    let plain = |op, value| Parsed::Crit(Criterion { op, value, wild: None, lowered: String::new() });
     match raw {
         V::Null | V::Undef => return plain(Op::Eq, Value::Null),
         V::Num(n) => return plain(Op::Eq, Value::Num(*n)),
@@ -633,7 +635,9 @@ fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
     }
     let wild =
         if matches!(op, Op::Eq | Op::Neq) { wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>()) } else { None };
-    Parsed::Crit(Criterion { op, value: Value::Str(unescape(rest)), wild })
+    let text = unescape(rest);
+    let lowered = js_lower(&text).into_owned();
+    Parsed::Crit(Criterion { op, value: Value::Str(text), wild, lowered })
 }
 
 fn cmp(op: Op, c: f64) -> bool {
@@ -675,18 +679,18 @@ fn criterion_matches(cell: &V, crit: &Criterion) -> bool {
         }
         Value::Str(_) => {}
     }
-    let (V::Str(s), Value::Str(want)) = (cell, &crit.value) else {
+    let (V::Str(s), Value::Str(_)) = (cell, &crit.value) else {
         return crit.op == Op::Neq;
     };
     if let Some(w) = &crit.wild {
         let hit = wild_matches(w, &s.encode_utf16().collect::<Vec<_>>());
         return if crit.op == Op::Eq { hit } else { !hit };
     }
-    let (a, b) = (js_lower(s), js_lower(want));
+    let (a, b) = (js_lower(s), crit.lowered.as_str());
     match crit.op {
         Op::Eq => a == b,
         Op::Neq => a != b,
-        op => cmp(op, ord(compare_strings(&a, &b))),
+        op => cmp(op, ord(compare_strings(&a, b))),
     }
 }
 

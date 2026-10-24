@@ -7,7 +7,7 @@
 
 use super::frames::{
     affine_display, card_cell, core_cell, cube_from_columns, cube_row_count, first, matrix_cells_from_list,
-    select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame,
+    select_cube_rows, str_input, tag_cell_unit, thrown, to_json, trimmed, widen_to_frame, UnitTag,
 };
 use super::list::{frame_cell_of, infer_column, truthy};
 use super::scalar::{read_role, Role};
@@ -566,8 +566,8 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
                 .collect()
         }
         _ => {
-            let unit = col.unit.as_ref().filter(|_| read_as == "number");
-            let tag = |v: V| if let Some(u) = unit { tag_cell_unit(&v, u) } else { v };
+            let unit = col.unit.as_ref().filter(|_| read_as == "number").map(UnitTag::new);
+            let tag = |v: V| if let Some(u) = &unit { u.tag(&v) } else { v };
             col.values
                 .iter()
                 .map(|v| match v {
@@ -949,32 +949,52 @@ fn select_cube_columns(cube: &Cube, names: &[String], drop: bool) -> Result<V, S
     Ok(cube_from_columns(cols))
 }
 
-/// A cell's items, or the cell as one, against a list condition.
-fn passes_list_filter(cell: &V, op: &str, value: &str, match_case: bool) -> bool {
-    let items: Vec<&V> = match cell {
-        V::List(l) => l.iter().collect(),
-        V::Null | V::Undef => Vec::new(),
-        v => vec![v],
-    };
-    if op == "listEmpty" {
-        return items.is_empty();
+/// A list condition read once for every row: its op and its needles, folded when it ignores case.
+struct ListCond<'a> {
+    op: &'a str,
+    needles: Vec<String>,
+    match_case: bool,
+}
+
+impl<'a> ListCond<'a> {
+    fn new(op: &'a str, value: &str, match_case: bool) -> Self {
+        let fold = |s: &str| if match_case { s.to_string() } else { js_lower(s).into_owned() };
+        let needles = if op == "listContains" {
+            vec![fold(js_trim(value))]
+        } else {
+            value.split(',').map(js_trim).filter(|s| !s.is_empty()).map(fold).collect()
+        };
+        ListCond { op, needles, match_case }
     }
-    let fold = |s: &str| if match_case { s.to_string() } else { js_lower(s).into_owned() };
-    let has = |needle: &str| {
-        let needle = fold(needle);
-        items.iter().any(|it| {
-            !matches!(it, V::List(_) | V::Frame(_) | V::Cube(_) | V::Null | V::Undef)
-                && fold(&js_string_of(it)) == needle
-        })
-    };
-    if op == "listContains" {
-        return has(js_trim(value));
-    }
-    let needles: Vec<&str> = value.split(',').map(js_trim).filter(|s| !s.is_empty()).collect();
-    match op {
-        "listContainsAny" => needles.iter().any(|n| has(n)),
-        "listContainsAll" => needles.iter().all(|n| has(n)),
-        _ => false,
+
+    /// A cell's items, or the cell as one, against the condition.
+    fn passes(&self, cell: &V) -> bool {
+        let items: Vec<&V> = match cell {
+            V::List(l) => l.iter().collect(),
+            V::Null | V::Undef => Vec::new(),
+            v => vec![v],
+        };
+        if self.op == "listEmpty" {
+            return items.is_empty();
+        }
+        let texts: Vec<String> = items
+            .iter()
+            .filter(|it| !matches!(it, V::List(_) | V::Frame(_) | V::Cube(_) | V::Null | V::Undef))
+            .map(|it| {
+                let t = js_string_of(it);
+                if self.match_case {
+                    t
+                } else {
+                    js_lower(&t).into_owned()
+                }
+            })
+            .collect();
+        let has = |needle: &String| texts.iter().any(|t| t == needle);
+        match self.op {
+            "listContains" | "listContainsAny" => self.needles.iter().any(has),
+            "listContainsAll" => self.needles.iter().all(has),
+            _ => false,
+        }
     }
 }
 
@@ -1009,7 +1029,7 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
         return Ok(select_cube_rows(cube, &rows));
     }
     enum Test<'a> {
-        List(&'a [V]),
+        List(&'a [V], ListCond<'a>),
         Scalar(FrameColumn, Pred<'a>),
     }
     let values: Vec<FrameCell> = conds.iter().map(|d| FrameCell::str(&d.value)).collect();
@@ -1019,7 +1039,7 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
             let Some(raw) = cube.columns.iter().find(|c| c.name == d.column) else {
                 return Err(sol_error(ErrorCode::Ref, format!("column \"{}\" not found", d.column)));
             };
-            tests.push(Test::List(&raw.cells));
+            tests.push(Test::List(&raw.cells, ListCond::new(&d.op, &d.value, d.match_case)));
         } else {
             let (col, _) = scalar_column(cube, &d.column)?;
             let op = parse(&d.op)?;
@@ -1033,11 +1053,9 @@ fn filter_cube(cube: &Cube, combine: &str, conds: &[Cond], complement: bool) -> 
     for i in 0..cube_row_count(cube) {
         // `every` and `some`: the first verdict that settles the row ends its tests.
         let mut kept = all;
-        for (d, t) in conds.iter().zip(tests.iter_mut()) {
+        for t in tests.iter_mut() {
             let pass = match t {
-                Test::List(cells) => {
-                    passes_list_filter(cells.get(i).unwrap_or(&V::Null), &d.op, &d.value, d.match_case)
-                }
+                Test::List(cells, cond) => cond.passes(cells.get(i).unwrap_or(&V::Null)),
                 Test::Scalar(col, pass) => pass(col.cell_at(i))?,
             };
             if pass != all {
@@ -1089,13 +1107,9 @@ fn window_cube(
     let out = on_core(cube_row_count(cube), cols, op)?;
     let Some(last) = out.columns.last() else { return Ok(V::Cube(Rc::new(cube.clone()))) };
     let mut kept: Vec<CubeColumn> = cube.columns.iter().filter(|c| c.name != last.name).cloned().collect();
-    let unit = last.unit.as_ref().map(|u| u.to_json());
-    let cells = last
-        .values
-        .iter()
-        .map(card_cell)
-        .map(|v| unit.as_ref().map_or_else(|| v.clone(), |u| tag_cell_unit(&v, u)))
-        .collect();
+    let unit = last.unit.as_ref().map(|u| UnitTag::new(&u.to_json()));
+    let cells =
+        last.values.iter().map(card_cell).map(|v| unit.as_ref().map_or_else(|| v.clone(), |u| u.tag(&v))).collect();
     kept.push(CubeColumn { name: last.name.clone(), cells, ty: Some(last.ty), format: None });
     Ok(cube_from_columns(kept))
 }

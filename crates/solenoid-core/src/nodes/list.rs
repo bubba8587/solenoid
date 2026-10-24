@@ -1506,7 +1506,10 @@ fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) ->
     if row_all {
         let col = &frame.columns[ci as usize];
         return list(match &col.unit {
-            Some(u) => col.values.iter().map(|x| tag_cell_unit(x, u)).collect(),
+            Some(u) => {
+                let tag = super::frames::UnitTag::new(u);
+                col.values.iter().map(|x| tag.tag(x)).collect()
+            }
             None => col.values.clone(),
         });
     }
