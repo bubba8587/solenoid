@@ -13,6 +13,14 @@ describe("docMetaStore (F-2)", () => {
     expect(docMetaStore.docMeta()).toEqual({ author: "Ada", tags: ["x", "y"] }); // trimmed for save
   });
 
+  it("a rewrite keeps the document's trust: it can't drop foreign or grant the network ([[C103]] untrustedContentSeams)", () => {
+    docMetaStore.setDocMeta({ author: "Ada", foreign: true });
+    expect(docMetaStore.keepTrust({ author: "Bob", tags: ["t"], networkAllowed: true })).toEqual({ author: "Bob", tags: ["t"], foreign: true });
+    expect(docMetaStore.keepTrust(undefined)).toEqual({ foreign: true });
+    docMetaStore.setDocMeta({ networkAllowed: false });
+    expect(docMetaStore.keepTrust({ foreign: true, networkAllowed: true })).toEqual({ networkAllowed: false });
+  });
+
   it("is undefined when nothing meaningful is set", () => {
     docMetaStore.setDocMeta(null);
     expect(docMetaStore.docMeta()).toBeUndefined();
