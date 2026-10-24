@@ -1843,6 +1843,7 @@ pub fn forget_held(ids: &[u64]) {
             h.remove(id);
         }
     });
+    crate::excel_functions::forget_kept_lists();
 }
 
 /// Whether a `__ref` named a list the core doesn't hold since the last call; the call then goes to the TS.

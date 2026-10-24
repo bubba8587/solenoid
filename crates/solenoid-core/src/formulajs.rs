@@ -1002,6 +1002,16 @@ pub fn call(name: &str, a: &[V]) -> V {
     }
 }
 
+type ZSpread = Option<(std::rc::Rc<Vec<V>>, Option<(f64, f64, f64)>)>;
+
+thread_local! {
+    static Z_SPREAD: std::cell::RefCell<ZSpread> = const { std::cell::RefCell::new(None) };
+}
+
+pub(crate) fn forget_spread() {
+    Z_SPREAD.with(|c| c.borrow_mut().take());
+}
+
 /// Z.TEST's count, mean and sample spread of its list, `None` when it doesn't read as numbers, kept for the last long
 /// list: a computed column tests each row against the same column ([[C120]] linearWork).
 fn z_test_spread(list: &V) -> Option<(f64, f64, f64)> {
@@ -1014,11 +1024,7 @@ fn z_test_spread(list: &V) -> Option<(f64, f64, f64)> {
     if l.len() < 64 {
         return read();
     }
-    type Last = Option<(std::rc::Rc<Vec<V>>, Option<(f64, f64, f64)>)>;
-    thread_local! {
-        static LAST: std::cell::RefCell<Last> = const { std::cell::RefCell::new(None) };
-    }
-    LAST.with(|last| {
+    Z_SPREAD.with(|last| {
         let mut last = last.borrow_mut();
         match &*last {
             Some((k, s)) if std::rc::Rc::ptr_eq(k, l) => *s,

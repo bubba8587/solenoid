@@ -219,16 +219,26 @@ pub fn take_raised() -> Raised {
     take_thrown().map_or(Raised::Nothing, Raised::Thrown)
 }
 
-/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row and
-/// anything raised, so no return path leaves them to the next call.
+/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row,
+/// anything raised and what was kept of long lists, so no return path leaves them to the next call.
 #[must_use]
-pub struct Calc(());
+pub struct Calc {
+    keep_lists: bool,
+}
 
 impl Calc {
     pub fn begin(clock: Option<Clock>) -> Calc {
         set_clock(clock);
         take_raised();
-        Calc(())
+        Calc { keep_lists: false }
+    }
+
+    /// `begin` for a formula over named values: the core holds its long lists across calls (`eval::HELD`), one call
+    /// per item, so what was kept of them stays for the next item until they're let go (`eval::forget_held`).
+    pub fn keeping_lists(clock: Option<Clock>) -> Calc {
+        let mut calc = Calc::begin(clock);
+        calc.keep_lists = true;
+        calc
     }
 }
 
@@ -237,7 +247,21 @@ impl Drop for Calc {
         set_clock(None);
         set_row_number(None);
         take_raised();
+        if !self.keep_lists {
+            forget_kept_lists();
+        }
     }
+}
+
+/// The lists kept for the calls that follow (`sorted_of`, `lookup_plan`, `width_of`, `forecast_fit`, the criteria
+/// facts, Z.TEST's spread) let go, so no table outlives the calls that read it in memory.
+pub(crate) fn forget_kept_lists() {
+    SORTED.with(|c| c.borrow_mut().clear());
+    LOOKUPS.with(|c| c.borrow_mut().clear());
+    WIDTH.with(|c| c.borrow_mut().take());
+    FORECAST_FIT.with(|c| c.borrow_mut().take());
+    crate::excel_criteria::forget_facts();
+    crate::formulajs::forget_spread();
 }
 
 /// The computed column's current row, from 1, that ROW() reads.
@@ -913,6 +937,12 @@ impl<K: AsRef<[V]>> Matcher<K> {
     }
 }
 
+type ForecastFit = Option<(Rc<Vec<V>>, Rc<Vec<V>>, Option<Option<(f64, f64)>>)>;
+
+thread_local! {
+    static FORECAST_FIT: std::cell::RefCell<ForecastFit> = const { std::cell::RefCell::new(None) };
+}
+
 /// FORECAST.LINEAR's line through its known lists, `None` when they hold text, kept for the last long pair: a
 /// computed column forecasts each row from the same columns ([[C120]] linearWork).
 fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
@@ -925,11 +955,7 @@ fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
     if yl.len().max(xl.len()) < 64 {
         return fit();
     }
-    type Last = Option<(Rc<Vec<V>>, Rc<Vec<V>>, Option<Option<(f64, f64)>>)>;
-    thread_local! {
-        static LAST: std::cell::RefCell<Last> = const { std::cell::RefCell::new(None) };
-    }
-    LAST.with(|last| {
+    FORECAST_FIT.with(|last| {
         let mut last = last.borrow_mut();
         match &*last {
             Some((y, x, f)) if Rc::ptr_eq(y, yl) && Rc::ptr_eq(x, xl) => *f,
@@ -991,6 +1017,10 @@ struct LookupEntry {
     seen: Seen,
 }
 
+thread_local! {
+    static LOOKUPS: std::cell::RefCell<Vec<LookupEntry>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
 /// One lookup into a long list, as a computed column makes row after row against the same column: the second call
 /// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[C120]] linearWork). An
 /// entry holds its lists, so their addresses can't name others.
@@ -1011,9 +1041,6 @@ fn lookup_plan(
     };
     if lookups != 1 || kl.len() < 64 {
         return fresh();
-    }
-    thread_local! {
-        static LOOKUPS: std::cell::RefCell<Vec<LookupEntry>> = const { std::cell::RefCell::new(Vec::new()) };
     }
     LOOKUPS.with(|c| {
         let mut c = c.borrow_mut();
@@ -2082,6 +2109,10 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
     }
 }
 
+thread_local! {
+    static WIDTH: std::cell::RefCell<Option<(Rc<Vec<V>>, usize)>> = const { std::cell::RefCell::new(None) };
+}
+
 /// A table's widest row, kept for the last long table: INDEX(column, @i) asks it of the same column row after row
 /// ([[C120]] linearWork). The entry holds its table, so the address can't name another.
 fn width_of(grid: &Rc<Vec<V>>) -> usize {
@@ -2089,10 +2120,7 @@ fn width_of(grid: &Rc<Vec<V>>) -> usize {
     if grid.len() < 64 {
         return measure();
     }
-    thread_local! {
-        static LAST: std::cell::RefCell<Option<(Rc<Vec<V>>, usize)>> = const { std::cell::RefCell::new(None) };
-    }
-    LAST.with(|last| {
+    WIDTH.with(|last| {
         let mut last = last.borrow_mut();
         match &*last {
             Some((g, w)) if Rc::ptr_eq(g, grid) => *w,
@@ -2610,13 +2638,14 @@ type Sorted = Rc<Result<Vec<f64>, V>>;
 /// The lists `sorted_of` keeps, each with how it was read and its sorted numbers.
 type SortedCache = std::cell::RefCell<Vec<(Rc<Vec<V>>, Reading, Sorted)>>;
 
+thread_local! {
+    static SORTED: SortedCache = const { std::cell::RefCell::new(Vec::new()) };
+}
+
 /// A list's numbers sorted, kept for the list they came from (the cache holds the list, so its address can't come
 /// back as another): PERCENTILE(col, @p) and kin, called once per row with a scalar that changes each row, miss the
 /// range memo, and re-sorting the column every row was n² log n ([[C120]] linearWork).
 fn sorted_of(list: &V, reading: Reading) -> Sorted {
-    thread_local! {
-        static SORTED: SortedCache = const { std::cell::RefCell::new(Vec::new()) };
-    }
     let read = || -> Result<Vec<f64>, V> {
         Ok(sorted_nums(&match reading {
             Reading::Nums => nums_of(std::slice::from_ref(list)),

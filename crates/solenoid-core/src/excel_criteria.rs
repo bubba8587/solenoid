@@ -862,6 +862,14 @@ impl Tally {
     }
 }
 
+thread_local! {
+    static FACTS: std::cell::RefCell<Vec<Rc<Facts>>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) fn forget_facts() {
+    FACTS.with(|c| c.borrow_mut().clear());
+}
+
 fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
     let read = |tally: bool| Facts {
         from: range.clone(),
@@ -871,9 +879,6 @@ fn facts_of(range: &Rc<Vec<V>>) -> Rc<Facts> {
     };
     if range.len() < 64 {
         return Rc::new(read(false));
-    }
-    thread_local! {
-        static FACTS: std::cell::RefCell<Vec<Rc<Facts>>> = const { std::cell::RefCell::new(Vec::new()) };
     }
     FACTS.with(|c| {
         let mut c = c.borrow_mut();
