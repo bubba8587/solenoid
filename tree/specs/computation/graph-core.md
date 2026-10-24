@@ -218,7 +218,7 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
 - **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case,
   `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy
   frame's collect, a frame ref's format picks.
-- **What the core keeps per card.** Its call (`coreHeader`): class, saved fields, literal maps, sockets, outputs,
+- **What the core keeps per card.** Its call (`coreHeader`): class, saved fields but the ones only the canvas reads (`VIEW_FIELDS`, `nodeInit.ts`: a resize, fold or recolor leaves the call as it stands, and no body on the core reads one, `namedEdits.test.ts`), literal maps, sockets, outputs,
   adopted types, the boundary's keys, its typed list literals read, which cached fields the object has, its frame
   format picks. It is read from the object on the node's first compute and again only after its node was named, its
   ports changed, it was forgotten (`forget`, a targeted `reset`, `invalidate`, a pass naming it) or it ran through

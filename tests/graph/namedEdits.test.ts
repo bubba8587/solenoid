@@ -11,6 +11,7 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import { ArithmeticNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { processGraph, requestRecalc, setEditorRefs } from "../../src/graph/process";
 import { calcModeStore } from "../../src/graph/calcModeStore";
+import { VIEW_FIELDS } from "../../src/graph/nodeInit";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 
@@ -71,6 +72,14 @@ describe("named edits", () => {
     }
   }));
 
+  it("resizing, folding or recoloring a card leaves its call as the core holds it", async () => {
+    const { engine, b } = await times21();
+    Object.assign(b, { width: 320, height: 140, collapsed: true, color: "teal" });
+    engine.reset();
+    expect((await engine.fetch(b.id)).result).toBe(42);
+    expect(unnamedEdits()).toEqual([]);
+  });
+
   it("the tests' audit catches a card changed in place with its node unnamed", async () => {
     const { engine, b } = await times21();
     b.literals.b = 10;
@@ -104,5 +113,32 @@ describe("every component edit names its node", () => {
       }
     }
     expect(misses).toEqual([]);
+  });
+});
+
+const CORE = path.resolve(__dirname, "../../crates/solenoid-core/src");
+
+/** Where a view field's name appears in the core as something other than a saved field, and what it is there. */
+const VIEW_NAMES_ELSEWHERE: Record<string, { counts: Record<string, number>; why: string }> = {
+  "nodes/text.rs": { counts: { width: 3 }, why: "the padding cards' width input" },
+  "nodes/list.rs": { counts: { height: 1 }, why: "Find Peaks' height input" },
+  "nodes/qr.rs": { counts: { height: 1 }, why: "a key of the image it makes" },
+  "nodes/sched.rs": { counts: { color: 2 }, why: "a key of a task row on its input" },
+  "nodes/visual.rs": { counts: { color: 9 }, why: "a chart option read from its inputs" },
+  "nodes/widgets.rs": { counts: { color: 2, height: 1 }, why: "the color cards' output and a chart payload's key" },
+};
+
+describe("a card's call leaves out the view fields", () => {
+  it("no body on the core reads a view field", () => {
+    const names = new RegExp(`"(${VIEW_FIELDS.join("|")})"`, "g");
+    const found: Record<string, Record<string, number>> = {};
+    for (const f of fs.readdirSync(CORE, { recursive: true }) as string[]) {
+      if (!f.endsWith(".rs")) continue;
+      for (const m of fs.readFileSync(path.join(CORE, f), "utf8").matchAll(names)) {
+        const at = (found[f.split(path.sep).join("/")] ??= {});
+        at[m[1]] = (at[m[1]] ?? 0) + 1;
+      }
+    }
+    expect(found).toEqual(Object.fromEntries(Object.entries(VIEW_NAMES_ELSEWHERE).map(([f, e]) => [f, e.counts])));
   });
 });
