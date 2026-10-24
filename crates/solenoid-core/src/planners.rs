@@ -7,7 +7,9 @@ use crate::decision::sort_by_num;
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, number_to_string, string_to_number};
+use crate::jsnum::{
+    is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, number_to_string, string_to_number,
+};
 
 type Res<T> = Result<T, SolError>;
 
