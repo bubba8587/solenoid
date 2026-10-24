@@ -53,6 +53,11 @@ impl Val {
             .clone()
     }
 
+    /// The JavaScript form where it was made or asked for already.
+    pub(crate) fn js_now(&self) -> Option<&JsValue> {
+        self.0.js.get()
+    }
+
     /// The core form, made once; `None` for a value the card wire can't carry (a closure, an object of no kind it
     /// knows).
     pub(crate) fn core(&self) -> Option<&Arrived> {

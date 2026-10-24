@@ -106,6 +106,7 @@ whenWasmEngineLoads(() => setBoundaryHost({
   carryMatrixUnit: (dst: unknown, src: unknown) => carryMatrixUnit(dst, src),
   listLiteral: (text: string, rung: SocketDataType) => parseListLiteral(text, rung),
   stamp,
+  carrySidecars: (from: FrameValue, to: FrameValue) => carryFrameSidecars(from, to),
   nodeName: (node: object) => displayNameOf(node),
   flags: () => (perfEnabled() ? 1 : 0) | (hasErrorSinks() ? 2 : 0),
   // `[id, error | null, …]`: every report a pass or a fetch queued, handed over when it ends.

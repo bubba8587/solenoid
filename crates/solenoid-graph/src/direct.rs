@@ -516,10 +516,18 @@ impl Run<'_> {
             })
             .collect();
         let out = if changed {
-            Val::bare(V::Frame(Rc::new(nodes::Frame {
+            let out = Val::bare(V::Frame(Rc::new(nodes::Frame {
                 columns,
                 ..f.as_ref().clone()
-            })))
+            })));
+            // What a view keeps beside the frame (Describe's tiles) stays beside the stamped one.
+            if let Some(from) = val.js_now() {
+                let _ = self
+                    .host
+                    .carry_sidecars
+                    .call2(&JsValue::NULL, from, &out.js());
+            }
+            out
         } else {
             val.clone()
         };
