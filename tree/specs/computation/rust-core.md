@@ -62,7 +62,11 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
   src/graph/nodes/mathUtils.ts src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
   src/graph/nodes/textOps.ts src/graph/csv.ts src/graph/financeUnits.ts src/graph/nodes/settleOps.ts \
   src/graph/nodes/payoffOps.ts src/graph/nodes/financeOps.ts src/graph/nodes/listOps.ts src/graph/nodes/fitOps.ts \
-  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts fixtures/frame-verbs
+  src/graph/nodes/hashOps.ts src/graph/nodes/chartOptions.ts src/graph/cxValue.ts src/graph/nodes/mlOps.ts \
+  src/graph/nodes/signalOps.ts src/graph/unitLattice.ts src/graph/nodes/matrixOps.ts src/graph/nodes/allocateOps.ts \
+  src/graph/nodes/distributionOps.ts src/graph/nodes/forecastOps.ts src/graph/nodes/triangleOps.ts \
+  src/graph/nodes/coerce.ts src/graph/nodes/indexAccess.ts src/graph/nodes/astroOps.ts src/graph/nodes/emSpectrumOps.ts \
+  src/graph/nodes/convertUnits.ts src/graph/dimension.ts src/graph/timeZone.ts fixtures/frame-verbs
 ```
 
 A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.

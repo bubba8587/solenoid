@@ -371,12 +371,10 @@ Obsidian vault import/export direction).
 
 ### Node compute layer (`src/graph/nodes/`)
 
-One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
-`stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
-`dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
-`tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`, `convertUnits`,
-the pack kernels (`chemistryOps`, `electricalOps`, `fluidsOps`,
-`healthOps`, `physicsConstantsOps`, `thermoOps`, `triangleOps`),
+One file per family, pure `data()` classes: `scalar`, `list`,
+`stats`, `dist-*`, `finance`, `text`, `date`,
+`dateSerial`, `complex`, `matrix`, `frame`, `cube`,
+`tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`,
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
@@ -392,6 +390,9 @@ CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `frameShapeHook` (the producer sibling: `frameShape(outKey, ctx)` + `frameShapeOf`, node-class-free),
 `placeholder`, plus `shared.ts` (port factories,
 broadcast + `NODE_KIND_ACCENTS`), `mathUtils.ts`, and `kind.ts` (the node → kind classifier).
+The kernels are the core's (`crates/solenoid-core`); a family's `*Ops.ts` (`listOps`, `financeOps`, `textOps`,
+`matrixOps`, `fitOps`, `distributionOps`, `convertUnits`, the packs' `chemistryOps` and siblings) keeps only the op
+types and option tables its card and component read.
 Composite run modes live one level up (`src/graph/monteCarlo.ts` + `tornadoRun.ts` —
 simulation / sensitivity sweeps; only the `tornado` node class is in `nodes/`), as
 does `svgLayer.ts` (SVG Picker's DOM-agnostic layer hit-test). Vitest covers the math families + the

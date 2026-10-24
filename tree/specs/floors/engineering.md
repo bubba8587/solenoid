@@ -54,7 +54,7 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 
 ### The formula path is graph-free
 
-**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts`, `convertUnits.ts` and `listOps.ts` do. `formulaPathIsGraphFree.test.ts` pins it.
+**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts` and `textOps.ts` do. `formulaPathIsGraphFree.test.ts` pins it.
 
 **MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in the graph model arrives as an argument instead of an import. The pattern is the core's `index_into`, shared by INDEX and the INDEX card, which adds its Frame and Cube branch and the unit tagging around it (`nodes/list.rs`).
 
