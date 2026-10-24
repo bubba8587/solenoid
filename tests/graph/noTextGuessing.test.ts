@@ -76,5 +76,13 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
       expect(ev(`${fn}(L, N)`, { L, N })).toBeCloseTo(ev(`${fn}(L, N)`, blank) as number, 12);
     expect(ev("SLOPE(L, N)", { L, N })).toBeCloseTo(3 / 7, 12);
   });
+
+  it("a pack or coupon function refuses numeric text where it read blank or #DOMAIN!", () => {
+    for (const src of ['SUNRISE(45292, "51.5", 0)', 'AWGWIRE("12")', 'COLEBROOK("1e5", 0.001)', 'STANDARDATMOSPHERE("1000")',
+      'TRIANGLESOLVER(2, 2, "2")', 'ANTOINE("water", "100")', 'COUPDAYS(45292, 45658, 2, "1")',
+      'ACCRINT(45292, 45474, 45658, "0.1", 1000, 2, 0)'])
+      expect(code(ev(src))).toBe("#VALUE!");
+    expect(code(ev('ANTOINE("water", 100)'))).not.toBe("#VALUE!");
+  });
 });
 

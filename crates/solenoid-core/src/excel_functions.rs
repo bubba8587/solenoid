@@ -3004,6 +3004,8 @@ const REFUSED: &[(&str, Refused)] = &[
     ("DOLLAR", nums(&[0, 1])),
     ("SLN", nums(&[0, 1, 2])),
     // The finance kernels read a NaN argument as a missing one; every argument but a list of cash flows is a number.
+    ("ACCRINT", every()),
+    ("COUPDAYS", every()),
     ("COUPDAYBS", every()),
     ("COUPDAYSNC", every()),
     ("COUPNCD", every()),
@@ -3042,6 +3044,20 @@ const REFUSED: &[(&str, Refused)] = &[
     ("ISPMT", every()),
     ("NPV", nums(&[0])),
     ("FVSCHEDULE", nums(&[0])),
+    // Pack functions: a number argument read as text was blank (or, for TRIANGLESOLVER, a missing part).
+    ("SUNPOSITION", nums(&[0, 1, 2])),
+    ("SUNRISE", nums(&[0, 1, 2])),
+    ("SUNSET", nums(&[0, 1, 2])),
+    ("DAYLENGTH", nums(&[0, 1, 2])),
+    ("MOONPHASE", nums(&[0])),
+    ("ESERIESVALUE", nums(&[0])),
+    ("AWGWIRE", nums(&[0])),
+    ("EMSPECTRUMBAND", nums(&[0, 1])),
+    ("COLEBROOK", nums(&[0, 1])),
+    ("HEARTRATEZONES", nums(&[0, 1])),
+    ("STANDARDATMOSPHERE", nums(&[0])),
+    ("ANTOINE", nums(&[1])),
+    ("TRIANGLESOLVER", every()),
 ];
 
 /// The `#VALUE!` a call answers for text where `REFUSED` names a number or a logical, before its body runs.
