@@ -715,18 +715,12 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
         }
     });
     let mut counts = vec![0.0; bins.len() + 1];
+    // The first bin at or above x, by binary search ([[C120]] linearWork); -∞ and NaN fall past every bin.
     for x in xs {
-        let mut placed = false;
-        for k in 0..sorted.len() {
-            let lo = if k == 0 { f64::NEG_INFINITY } else { sorted[k - 1].0 };
-            if x > lo && x <= sorted[k].0 {
-                counts[sorted[k].1] += 1.0;
-                placed = true;
-                break;
-            }
-        }
-        if !placed {
-            counts[bins.len()] += 1.0;
+        let k = sorted.partition_point(|&(b, _)| b < x);
+        match sorted.get(k) {
+            Some(&(_, i)) if x > f64::NEG_INFINITY => counts[i] += 1.0,
+            _ => counts[bins.len()] += 1.0,
         }
     }
     nums_v(counts)
