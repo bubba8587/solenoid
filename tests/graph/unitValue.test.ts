@@ -2,12 +2,12 @@
 import { describe, it, expect } from "vitest";
 import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
-  arithmeticCell,
   forAggregateUnits, sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   adoptMagnitude, type UnitCell,
 } from "../../src/graph/unitValue";
 import { parseUnit, isDimensionless, type Unit } from "../../src/graph/dimension";
+import { arithmeticCell } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";
 

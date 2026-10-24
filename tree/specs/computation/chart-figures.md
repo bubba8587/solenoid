@@ -204,7 +204,7 @@ The Gantt node computes no dates ([[C71]] noBarEditing: the figure is display-on
 - Links come from the predecessor column (`predecessors`, `predecessor`, `after`, `depends on`, `blockedby`, `blocked by`): text, a list of names, or a nested table with a task column plus optional `type` (FS, SS, FF, SF, default FS) and `lag`.
 - A baseline is a second scheduled table joined by task name (case-insensitive); one that is not a plan draws no ghost bars.
 - The shading calendar is built from `weekend_code` (Excel `WORKDAY.INTL` codes, default 1) and `holidays`, over the project span padded by 14 days. `today` is the local day; `status` is wire-only (unwired means no status line).
-- The options string is parsed twice: `parseChartOptions` for `title` and `fontsize`, and `parseGanttViewOptions` for the view keys. `view.minutes` is also set automatically when any start or finish carries a clock fraction.
+- The options string is parsed twice: `parse_chart_options` (`nodes/visual.rs`) for `title` and `fontsize`, and `parseGanttViewOptions` for the view keys. `view.minutes` is also set automatically when any start or finish carries a clock fraction.
 
 ### Mermaid
 
@@ -216,7 +216,7 @@ Figures with an `options` input take one string of `key=value` pairs separated b
 
 The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` and the rest), and pandas' scatter names where a key names a table column (`x`, `y`, `s`, `c`). A new option takes its matplotlib name where one exists; only a concept matplotlib lacks gets a name of our own, and the tables below mark it (`annotate`, `by`, `radarscale`, `pielabels`, the Record and Gantt keys). An unknown key is ignored rather than refused, so a string written for a newer build still draws on an older one.
 
-### Grammar (`parseChartOptions`)
+### Grammar (`parse_chart_options`, `nodes/visual.rs`)
 
 - Split on `;`. A part with no `=` is skipped. The key is the text before the first `=`, trimmed and lower-cased; the value is the rest, trimmed (so `title=a=b` is `a=b`). There is no escape: a value cannot contain `;`.
 - Pairs apply left to right, so a later key overrides an earlier one (`ylim=0,10;ymax=5` gives ymax 5).
@@ -225,7 +225,7 @@ The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` 
 - Numbers: `Number(text)` must be finite; blank is ignored.
 - A null or empty string gives `{}`.
 
-### Keys read by `parseChartOptions`
+### Keys read by `parse_chart_options`
 
 | Key | Parsed as | Default when absent | Meaning |
 |---|---|---|---|

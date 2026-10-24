@@ -1,10 +1,14 @@
 // [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { colormapRgb, heatScale, normalizeCmap, COLORMAP_LIST } from "../../src/graph/colormaps";
-import { formatNumberSpec, isNumberSpec } from "../../src/graph/numberSpec";
+import { formatNumberSpec } from "../../src/graph/numberSpec";
+import { chartOptionsOf } from "./coreVerbs";
 import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, calendarHeight, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
 import { jsDateToSerial } from "../../src/graph/nodes/date";
 import { contourAt } from "../../src/graph/components/chartCanvasViews";
+
+/** Whether a heatmap reads `spec` as its `fmt`. */
+const isNumberSpec = (spec: string) => chartOptionsOf(`fmt=${spec}`).fmt !== undefined;
 
 describe("colormaps", () => {
   it("spell names as matplotlib does, any case, with _r reversing", () => {

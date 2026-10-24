@@ -201,7 +201,7 @@ src/
 | `trigMode.ts` | `resolveTrigModes(editor)` — the ONE compute-time unit read: an Auto-mode trig `Math` node computes degrees when its input resolves to the `deg` unit, else radians (Excel parity). Run from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`. Main-editor only |
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
 | `scalarText.ts` | `guessScalarText`: how a note reads one scalar's text (null, Boolean, number, ISO date, complex, else text), shared by the frontmatter parser, a Note's quoted Knap fields and the Obsidian plugin |
-| `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
+| `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), and cached `depth`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor), Nest Join, Cube Columns, Cube Rollup |
 | `nodes/equation.ts` + `equationSolve.ts` | The ACAUSAL Equation node (equationNode): every variable is an input AND an output + a logical Check; one unknown → solved. `equationSolve.ts` = the pure solver (symbolic AST isolation, quadratic multi-root, numeric log-grid + bisection fallback returning the smallest-magnitude root, `#SOLVE!`). `nodes/finance.ts` TvmNode/Compound Growth/Effective Rate + the pack presets subclass/lock it |
 | `cubePopupStore.ts` + `components/CubePopup.tsx` / `CubeChip.tsx` / `CubeDisplay.tsx` / `cubeCell.tsx` | Cube drill-in popup (depth + breadcrumb), result-box chip + preview, per-cell rendering |
@@ -217,7 +217,6 @@ src/
 | `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox ([[C66]] scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
-| `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
 | `frameFormatStore.ts` | Per-column display-format annotations keyed `${nodeId}::${columnName}` — display only, never the column's UNIT |
 | `frameHint.ts` (+`components/FrameHintLayer.tsx`) | Per-frame-input EXAMPLE hints: a node class declares a tiny sample frame; hovering the socket floats it as a mini-table |
 | `locale.ts` | The single shared locale for every `toLocaleString` call |

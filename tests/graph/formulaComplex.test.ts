@@ -1,7 +1,7 @@
 // [[C15]] matricesInFormulas
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { cx, isCx, parseCx, formatCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
+import { cx, isCx, parseCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
   ComplexPowerNode, QuadraticRootsNode,
@@ -28,7 +28,7 @@ const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
 const Z = cx(3, 4);
 const W = cx(1, -2);
 
-describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
+describe("parseCx — Excel's text grammar, round-tripping the & text form", () => {
   it("reads every Excel form", () => {
     expect(parseCx("3+4i")).toEqual(cx(3, 4));
     expect(parseCx("3-4j")).toEqual(cx(3, -4));
@@ -39,9 +39,9 @@ describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
     expect(parseCx("42")).toEqual(cx(42, 0));
     expect(parseCx("1e3+2.5e-1i")).toEqual(cx(1000, 0.25));
   });
-  it("round-trips formatCx's spaced output", () => {
+  it("round-trips the spaced text & makes", () => {
     for (const z of [cx(3, 4), cx(-1.5, -0.25), cx(0, 7), cx(2, 0), cx(0, 0)]) {
-      expect(parseCx(formatCx(z))).toEqual(z);
+      expect(parseCx(ev('z & ""', { z }) as string)).toEqual(z);
     }
   });
   it("refuses non-complex text", () => {
@@ -52,7 +52,7 @@ describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
 });
 
 describe("formatCxDisplay — always both parts (the display form)", () => {
-  it("keeps a zero component visible where formatCx drops it", () => {
+  it("keeps a zero component visible where the & text form drops it", () => {
     // The value box / readouts read a + bi even when a part is 0.
     expect(formatCxDisplay(cx(23, 0))).toBe("23 + 0i");
     expect(formatCxDisplay(cx(0, 4))).toBe("0 + 4i");
@@ -60,8 +60,8 @@ describe("formatCxDisplay — always both parts (the display form)", () => {
     expect(formatCxDisplay(cx(0, 1))).toBe("0 + i");
     expect(formatCxDisplay(cx(3, 2))).toBe("3 + 2i");
     // The Excel/coercion form still drops the zero part.
-    expect(formatCx(cx(23, 0))).toBe("23");
-    expect(formatCx(cx(0, 4))).toBe("4i");
+    expect(ev('z & ""', { z: cx(23, 0) })).toBe("23");
+    expect(ev('z & ""', { z: cx(0, 4) })).toBe("4i");
   });
   it("round-trips through parseCx despite the shown zero part", () => {
     for (const z of [cx(23, 0), cx(0, 4), cx(0, -4), cx(3, 2)]) {
@@ -159,7 +159,7 @@ describe("operators on a Cx — typed, never coercion garbage", () => {
     // Like 5 = "5": FALSE, not an error — even for a mathematically-equal real.
     expect(ev("z = 3", { z: cx(3, 0) })).toBe(false);
   });
-  it("& renders through formatCx, and broadcasts", () => {
+  it("& renders a + bi, and broadcasts", () => {
     expect(ev('z & " V"', { z: Z })).toBe("3 + 4i V");
     expect(ev('"z is " & z', { z: cx(0, -1) })).toBe("z is -i");
     expect(ev('z & ""', { z: [cx(1, 1), cx(2, 0)] })).toEqual(["1 + i", "2"]);

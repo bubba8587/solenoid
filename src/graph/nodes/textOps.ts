@@ -1,105 +1,10 @@
 // [[C17]] shareImpl
 // Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag the graph model into the formula path).
-import { base64Encode, base64Decode } from "./hashOps";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
-
-/** Where `delimiter` occurs, left to right and not overlapping; `caseless` is Excel's match_mode 1. */
-function occurrences(text: string, delimiter: string, caseless: boolean): number[] {
-  const hay = caseless ? text.toLowerCase() : text;
-  const needle = caseless ? delimiter.toLowerCase() : delimiter;
-  const at: number[] = [];
-  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) at.push(i);
-  return at;
-}
-
-export interface SplitOpts { rowDelimiter?: string; ignoreEmpty?: boolean; caseless?: boolean; pad?: unknown }
-
-/**
- * TEXTSPLIT: the text split at `delimiter` into a list (one row). With a row delimiter it splits into rows first and
- * answers a table, short rows padded with `pad` (`#N/A` when left out, as Excel's). An empty delimiter splits into
- * single characters; `ignoreEmpty` drops the empty parts.
- */
-/** A null `delimiter` leaves each row whole: TEXTSPLIT with a row delimiter only answers one column. */
-export function splitText(text: string, delimiter: string | null, opts: SplitOpts = {}): string[] | unknown[][] {
-  const caseless = opts.caseless ?? false;
-  const cut = (t: string, d: string | null): string[] => {
-    if (d === null) return [t];
-    if (d === "") return [...t];
-    const parts: string[] = [];
-    let from = 0;
-    for (const i of occurrences(t, d, caseless)) { parts.push(t.slice(from, i)); from = i + d.length; }
-    parts.push(t.slice(from));
-    return opts.ignoreEmpty ? parts.filter((p) => p !== "") : parts;
-  };
-  if (opts.rowDelimiter == null) return cut(text, delimiter);
-  const rows = cut(text, opts.rowDelimiter).map((r) => cut(r, delimiter));
-  const width = Math.max(0, ...rows.map((r) => r.length));
-  const pad = opts.pad !== undefined ? opts.pad : solError("#N/A", "TEXTSPLIT: this row has fewer parts than the longest");
-  return rows.map((r) => [...r, ...Array<unknown>(width - r.length).fill(pad)]);
-}
-
-export interface AfterBeforeOpts { instance?: number; caseless?: boolean; matchEnd?: boolean }
-
-/**
- * TEXTAFTER / TEXTBEFORE at the `instance`-th delimiter, counted from the end when negative. `matchEnd` counts the end
- * of the text (the start, counting from the end) as one more delimiter. Not found, or an empty delimiter, is blank.
- */
-export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: string, opts: AfterBeforeOpts = {}): string | null | SolError {
-  const n = Math.trunc(opts.instance ?? 1);
-  if (n === 0) return solError("#VALUE!", `TEXT${op.toUpperCase()}: instance_num can't be 0`);
-  if (delimiter === "") return null;
-  const at = occurrences(text, delimiter, opts.caseless ?? false).map((i) => ({ i, len: delimiter.length }));
-  if (opts.matchEnd) { if (n > 0) at.push({ i: text.length, len: 0 }); else at.unshift({ i: 0, len: 0 }); }
-  const hit = n > 0 ? at[n - 1] : at[at.length + n];
-  if (!hit) return null;
-  return op === "after" ? text.slice(hit.i + hit.len) : text.slice(0, hit.i);
-}
-
-export function urlEncode(op: UrlEncodeOp, text: string): string {
-  try {
-    switch (op) {
-      case "encode":   return encodeURIComponent(text);
-      case "decode":   return decodeURIComponent(text);
-      case "base64":   return base64Encode(text);
-      case "unbase64": return base64Decode(text) ?? text;
-    }
-  } catch {
-    return text;
-  }
-}
-
-export function safeRegex(pattern: string, flags: string): RegExp | null {
-  try { return new RegExp(pattern, flags); } catch { return null; }
-}
-
-export function regexApply(
-  op: RegexOp, text: string, pattern: string, replacement = "", flags = "",
-): number | string | string[] | null {
-  if (!pattern) return null;
-  const re = safeRegex(pattern, flags);
-  if (!re) return null;
-  // A fresh global RegExp for matchAll and replace leaves the caller's own `lastIndex` untouched.
-  const global = () => new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-  switch (op) {
-    case "test":           return re.test(text) ? 1 : 0;
-    case "extract":        return text.match(re)?.[0] ?? "";
-    case "extract_all":    return [...text.matchAll(global())].map((m) => m[0]);
-    case "extract_groups": return regexGroups(text, pattern, flags);
-    case "replace":        return text.replace(global(), replacement);
-  }
-}
-
-export function regexGroups(text: string, pattern: string, flags = ""): string[] | null {
-  if (!pattern) return null;
-  const re = safeRegex(pattern, flags);
-  if (!re) return null;
-  const m = text.match(re);
-  return m ? m.slice(1).map((g) => g ?? "") : [];
-}
 
 const SPELL_ONES = [
   "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
@@ -231,17 +136,5 @@ export function templatePlaceholders(template: string): string[] {
     if (name !== undefined && !out.includes(name)) out.push(name);
   }
   return out;
-}
-
-export interface TemplateFormatters {
-  number: (v: number, spec: string | undefined) => string;
-}
-export function templateFormat(value: unknown, spec: string | undefined, f: TemplateFormatters): string {
-  if (value === null || value === undefined) return "";
-  if (isSolError(value)) return value.code;
-  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
-  if (typeof value === "number") return f.number(value, spec);
-  if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f)).join(", ");
-  return String(value);
 }
 

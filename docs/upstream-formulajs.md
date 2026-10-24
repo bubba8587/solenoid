@@ -47,7 +47,7 @@ date text on purpose — don't upstream that half.)
 flows return an Error object instead of #NUM!**
 `FX.IRR([-4943, -2458, 285])` → `1000`; the true IRR is `-0.903`. `FX.IRR([100, 200, 300])`
 → `{}` (an Error instance in the result, not `#NUM!`). Fix shape: Newton, then bracket +
-bisect on NPV sign change, `#NUM!` when no root (ours: `financeOps.solveDiscountRate`).
+bisect on NPV sign change, `#NUM!` when no root (ours: `solve_discount_rate`, `finance_ops.rs`).
 
 **QUARTILE.INC / QUARTILE.EXC reject quart = 0 and 4**
 `FX.QUARTILE.INC([1,2,3,4], 0)` → an Error. Excel: `1` (MIN); quart 4 = MAX. Fix: allow

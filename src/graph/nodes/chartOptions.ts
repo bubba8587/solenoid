@@ -1,7 +1,5 @@
 // [[C96]] chartOptionsAreMatplotlib
 import type { ChartValueOp } from "../chartValue";
-import { normalizeCmap } from "../colormaps";
-import { isNumberSpec } from "../numberSpec";
 
 export interface ChartOptions {
   title?: string;
@@ -46,121 +44,6 @@ export type AspectMode = "auto" | "equal";
 export type AxisScale = "linear" | "log";
 export type PieLabelMode = "off" | "outside" | "inside";
 export type RadarScale = "axis" | "shared";
-
-const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
-const FALSY = new Set(["off", "false", "0", "no", "n"]);
-
-function toBool(v: string): boolean | undefined {
-  const s = v.trim().toLowerCase();
-  if (TRUTHY.has(s)) return true;
-  if (FALSY.has(s)) return false;
-  return undefined;
-}
-
-function toPieLabelMode(v: string): PieLabelMode | undefined {
-  const s = v.trim().toLowerCase();
-  if (s === "inside" || s === "center" || s === "on-chart") return "inside";
-  if (s === "outside" || s === "leader") return "outside";
-  const b = toBool(s);
-  return b === undefined ? undefined : b ? "outside" : "off";
-}
-
-function toRadarScale(v: string): RadarScale | undefined {
-  const s = v.trim().toLowerCase();
-  if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
-  if (s === "shared" || s === "raw" || s === "absolute") return "shared";
-  return undefined;
-}
-
-function toLineStyle(v: string): LineStyle | undefined {
-  const s = v.trim().toLowerCase();
-  if (s === "-" || s === "solid") return "solid";
-  if (s === "--" || s === "dashed") return "dashed";
-  if (s === ":" || s === "dotted") return "dotted";
-  if (s === "-." || s === "dashdot") return "dashdot";
-  if (s === "none") return "none";
-  return undefined;
-}
-
-function toAspect(v: string): AspectMode | undefined {
-  const s = v.trim().toLowerCase();
-  return s === "equal" || s === "auto" ? s : undefined;
-}
-
-function toNum(v: string): number | undefined {
-  const t = v.trim();
-  if (t === "") return undefined;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-export function parseChartOptions(input: string | null | undefined): ChartOptions {
-  const opts: ChartOptions = {};
-  if (!input) return opts;
-  for (const part of input.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq < 0) continue;
-    const key = part.slice(0, eq).trim().toLowerCase();
-    const val = part.slice(eq + 1).trim();
-    switch (key) {
-      case "title":  if (val) opts.title = val; break;
-      case "xlabel": if (val) opts.xlabel = val; break;
-      case "ylabel": if (val) opts.ylabel = val; break;
-      case "color":  if (val) opts.color = val; break;
-      case "grid":   { const b = toBool(val); if (b !== undefined) opts.grid = b; break; }
-      case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
-      case "pielabels": { const m = toPieLabelMode(val); if (m !== undefined) opts.pielabels = m; break; }
-      case "radarscale": { const m = toRadarScale(val); if (m !== undefined) opts.radarscale = m; break; }
-      case "linewidth":
-      case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
-      case "markersize":
-      case "ms":     { const n = toNum(val); if (n !== undefined && n > 0) opts.markersize = n; break; }
-      case "alpha":  { const n = toNum(val); if (n !== undefined) opts.alpha = n; break; }
-      case "fontsize": { const n = toNum(val); if (n !== undefined && n > 0) opts.fontsize = n; break; }
-      case "ylim": {
-        const [lo, hi] = val.split(",");
-        const a = toNum(lo ?? "");
-        const b = toNum(hi ?? "");
-        if (a !== undefined) opts.ymin = a;
-        if (b !== undefined) opts.ymax = b;
-        break;
-      }
-      case "ymin":   { const n = toNum(val); if (n !== undefined) opts.ymin = n; break; }
-      case "ymax":   { const n = toNum(val); if (n !== undefined) opts.ymax = n; break; }
-      case "xlim": {
-        const [lo, hi] = val.split(",");
-        const a = toNum(lo ?? "");
-        const b = toNum(hi ?? "");
-        if (a !== undefined) opts.xmin = a;
-        if (b !== undefined) opts.xmax = b;
-        break;
-      }
-      case "xmin":   { const n = toNum(val); if (n !== undefined) opts.xmin = n; break; }
-      case "xmax":   { const n = toNum(val); if (n !== undefined) opts.xmax = n; break; }
-      case "aspect": { const m = toAspect(val); if (m !== undefined) opts.aspect = m; break; }
-      case "maxgap": { const n = toNum(val); if (n !== undefined && n > 0) opts.maxgap = n; break; }
-      case "yscale": { const s = val.toLowerCase(); if (s === "linear" || s === "log") opts.yscale = s; break; }
-      case "linestyle":
-      case "ls":     { const m = toLineStyle(val); if (m !== undefined) opts.linestyle = m; break; }
-      case "x":      if (val) opts.x = val; break;
-      case "y":      { const names = val.split(",").map((t) => t.trim()).filter(Boolean); if (names.length) opts.y = names; break; }
-      case "s":      if (val) opts.s = val; break;
-      case "c":      if (val) opts.c = val; break;
-      case "annotate": if (val) opts.annotate = val; break;
-      case "by":     if (val) opts.by = val; break;
-      case "cmap":   { const m = normalizeCmap(val); if (m !== undefined) opts.cmap = m; break; }
-      case "vmin":   { const n = toNum(val); if (n !== undefined) opts.vmin = n; break; }
-      case "vmax":   { const n = toNum(val); if (n !== undefined) opts.vmax = n; break; }
-      case "center": { const n = toNum(val); if (n !== undefined) opts.center = n; break; }
-      case "annot":  { const b = toBool(val); if (b !== undefined) opts.annot = b; break; }
-      case "fmt":    if (isNumberSpec(val)) opts.fmt = val; break;
-      case "cbar":   { const b = toBool(val); if (b !== undefined) opts.cbar = b; break; }
-      case "origin": { const s = val.toLowerCase(); if (s === "upper" || s === "lower") opts.origin = s; break; }
-      default: break;
-    }
-  }
-  return opts;
-}
 
 // Update these key lists whenever a renderer learns or drops an option.
 

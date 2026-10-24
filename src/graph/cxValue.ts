@@ -26,13 +26,6 @@ export function assembleCx(z: Cx, fmtNum: (n: number) => string, bothParts = fal
   return { text: im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`, hasBothParts: true };
 }
 
-const cxNumFmt = (digits: number) => (n: number) =>
-  Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "");
-
-export function formatCx(z: Cx, digits = 4): string {
-  return assembleCx(z, cxNumFmt(digits)).text;
-}
-
 /** On screen each part reads as any unformatted number does ([[D94]] oneNumberDisplay). */
 export function formatCxDisplay(z: Cx): string {
   return assembleCx(z, displayNumber, true).text;
@@ -50,5 +43,4 @@ export function parseCx(text: string): Cx | null {
   if (m) return cx(Number(s), 0);
   return null;
 }
-
 

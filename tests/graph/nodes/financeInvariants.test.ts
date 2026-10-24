@@ -4,7 +4,6 @@ import {
   BondPricingNode, DiscountSecurityNode, DurationNode, CouponNode, AccruedInterestNode,
   PaymentBreakdownNode,
 } from "../../../src/graph/nodes/finance";
-import { vdb } from "../../../src/graph/nodes/financeOps";
 import { coreFunction } from "../coreFunction";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 
@@ -45,6 +44,8 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
     expect(acc(1)).toBeCloseTo(30, 9);
     expect(acc(2)).toBeCloseTo(30.66666667, 7);
   });
+  const vdb = (cost: number, salvage: number, life: number, start: number, end: number, factor: number) =>
+    coreFunction("VDB")!(cost, salvage, life, start, end, factor) as number;
   it("VDB matches Excel, fractional periods included", () => {
     expect(vdb(10000, 1000, 5, 0, 2, 2)!).toBeCloseTo(6400, 9);
     expect(vdb(10000, 1000, 5, 2, 5, 2)!).toBeCloseTo(2600, 9);
@@ -167,7 +168,7 @@ describe("ACCRINTM = par·rate·A/D (Excel's documented closed form)", () => {
 
 describe("VDB depreciation is total-conserving and additive", () => {
   it("over the whole life it depreciates exactly cost − salvage", () => {
-    expect(vdb(10000, 1000, 5, 0, 5, 2)).toBeCloseTo(9000, 6);
+    expect(coreFunction("VDB")!(10000, 1000, 5, 0, 5, 2)).toBeCloseTo(9000, 6);
   });
 });
 

@@ -18,18 +18,16 @@ import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, type SolError } from "../errorValue";
 import {
   colTypeForSocket,
-  getColumn, addColumn, frameRowCount, makeHeaders,
+  getColumn, addColumn, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText,
   isCubeValue, isFrameValue,
-  cubeRowCount, frameFromRows,
+  frameFromRows,
   type FrameValue, type FrameColumn, type FrameColType,
 } from "../frame";
 import type { FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameOps";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameOps";
 import type { AllocateMode } from "./allocateOps";
-import { settleGroup, settleLedger, type Expense } from "./settleOps";
-import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameOps";
 export type { WindowFn } from "../frameOps";
 export type { CorrMethod } from "../frameOps";
@@ -43,7 +41,7 @@ import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import { listLiteralText } from "../listLiterals";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
-import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
+import { type UnitCell } from "../unitValue";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 /** A frame computation's shape: the core answers it over no rows. */
@@ -1514,6 +1512,7 @@ export class AllocatorNode extends GraphNode {
 }
 
 // ─── PAYOFF PLANNER ─────────────────────────────────────────────────────────
+export type PayoffOrder = "avalanche" | "snowball";
 export type PayoffView = "summary" | "schedule";
 
 export const PAYOFF_ORDER_META = {
@@ -1569,58 +1568,6 @@ export class PayoffPlannerNode extends GraphNode {
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
   }
-}
-
-/** As EDATE: a day past the target month's end lands on its last day. */
-function addMonthsSerial(start: number, months: number): number {
-  const d = new Date(Math.round((start - 25569) * 86400000));
-  const y = d.getUTCFullYear(), mo = d.getUTCMonth() + months;
-  const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-  return Math.floor(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay)) / 86400000 + 25569);
-}
-
-function payoffColumns(f: FrameValue): { balCol?: FrameColumn; aprCol?: FrameColumn; minCol?: FrameColumn } {
-  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nums = f.columns.filter((c) => c.type === "number");
-  const balCol = byName("balance", "owed", "principal") ?? nums[0];
-  const aprCol = byName("apr", "rate", "interest") ?? nums.filter((c) => c !== balCol)[0];
-  const minCol = byName("min", "minimum", "min payment", "payment") ?? nums.filter((c) => c !== balCol && c !== aprCol)[0];
-  return { balCol, aprCol, minCol };
-}
-
-export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
-  const nameCol = f.columns.find((c) => c.type === "string");
-  const { balCol, aprCol, minCol } = payoffColumns(f);
-  if (!balCol || !aprCol || !minCol) throw solError("#VALUE!", "Payoff Planner needs Balance, APR and Min payment number columns");
-  const rows = frameRowCount(f);
-  const num = (col: FrameColumn, i: number, what: string): number => {
-    const v = col.values[i];
-    if (isSolError(v)) throw v;
-    if (v == null) return 0;
-    if (typeof v !== "number" || !Number.isFinite(v)) throw solError("#VALUE!", `Payoff Planner: every ${what} must be a number`);
-    return v;
-  };
-  const debts = Array.from({ length: rows }, (_, i) => ({
-    name: String(nameCol?.values[i] ?? `Debt ${i + 1}`),
-    balance: num(balCol, i, "balance"), apr: num(aprCol, i, "APR"), min: num(minCol, i, "minimum payment"),
-  }));
-  let plan;
-  try { plan = payoffPlan(debts, extra, order); }
-  catch (e) { throw solError("#VALUE!", `Payoff Planner: ${e instanceof Error ? e.message : String(e)}`); }
-  const money = { ...(balCol.unit ? { unit: balCol.unit } : {}), ...(balCol.format ? { format: balCol.format } : {}) };
-  if (view === "schedule") {
-    const months = plan.schedule.length;
-    return { __frame: true, columns: [
-      { name: "Month", type: "number", values: Array.from({ length: months }, (_, m) => m) },
-      ...debts.map((d, j) => ({ name: d.name, type: "number" as const, values: plan.schedule.map((row) => row[j]), ...money })),
-    ] };
-  }
-  return { __frame: true, columns: [
-    { name: nameCol?.name ?? "Debt", type: "string", values: debts.map((d) => d.name) },
-    { name: "Months", type: "number", values: plan.perDebt.map((d) => d.months) },
-    { name: "Interest", type: "number", values: plan.perDebt.map((d) => d.interest), ...money },
-    { name: "Payoff date", type: "date", values: plan.perDebt.map((d) => (start == null ? null : addMonthsSerial(start, d.months))) },
-  ] };
 }
 
 // ─── GROUP COST SETTLE ──────────────────────────────────────────────────────
@@ -1698,125 +1645,6 @@ export class SettleNode extends GraphNode {
   body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { transfers: FrameValue | SolError | null; net: FrameValue | SolError | null };
   }
-}
-
-const ledgerNorm = (s: string) => s.trim().toLowerCase();
-const ledgerColumn = (cube: CubeValue, ...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(ledgerNorm(c.name))); };
-const ledgerAmountColumn = (cube: CubeValue) => ledgerColumn(cube, "amount", "cost", "total", "price", "spend");
-
-export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
-  const norm = ledgerNorm;
-  const col = (...names: string[]) => ledgerColumn(cube, ...names);
-  const amountCol = ledgerAmountColumn(cube);
-  const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
-  const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
-  if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");
-  if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
-
-  const canon = new Map<string, string>();
-  const person = (raw: string): string => { const k = norm(raw); const seen = canon.get(k); if (seen) return seen; canon.set(k, raw.trim()); return raw.trim(); };
-  const namesOf = (cell: CubeCell | undefined, column: string, row: number): string[] => {
-    if (cell == null) return [];
-    if (Array.isArray(cell)) return cell.flatMap((x) => namesOf(x, column, row));
-    if (isSolError(cell)) throw cell;
-    if (typeof cell === "boolean") throw solError("#VALUE!", `Group Cost Settle (Transactions): ${column} in row ${row + 1} holds ${cell ? "TRUE" : "FALSE"}. A person's name is text`);
-    if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
-    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean).map(person);
-  };
-  const amountOf = (cell: CubeCell | undefined): number => {
-    if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
-    if (typeof cell === "number") return Number.isFinite(cell) ? cell : 0;
-    if (typeof cell === "string") { const n = Number(cell.replace(/[,$£€\s]/g, "")); return Number.isFinite(n) ? n : 0; }
-    return 0;
-  };
-
-  const rows = cubeRowCount(cube);
-  const expenses: Expense[] = [];
-  for (let i = 0; i < rows; i++) {
-    const amount = amountOf(amountCol.cells[i]);
-    const payers = namesOf(payerCol.cells[i], payerCol.name, i);
-    if (payers.length === 0) continue;
-    const named = forCol ? namesOf(forCol.cells[i], forCol.name, i) : [];
-    expenses.push({ amount, payers, beneficiaries: named.length ? named : null });
-  }
-  const r = settleLedger(expenses);
-  const unit = ledgerMoney(amountCol.cells);
-  const money = unit ? { unit } : {};
-  return {
-    transfers: { __frame: true, columns: [
-      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
-      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
-      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
-    ] },
-    net: settleNetFrame(r.people, r.paid, r.shares, money),
-  };
-}
-
-const r2 = (x: number) => Math.round(x * 100) / 100;
-
-function settleNetFrame(
-  names: string[], paidRaw: readonly number[], sharesRaw: readonly number[],
-  money: Partial<Pick<FrameColumn, "unit" | "format">>, personLabel = "Person",
-): FrameValue {
-  const paid = paidRaw.map(r2);
-  const net = sharesRaw.map(r2);
-  const owes: number[] = [];
-  const owed: number[] = [];
-  net.forEach((n, i) => {
-    const diff = r2(n - paid[i]);
-    owes.push(diff > 0 ? diff : 0);
-    owed.push(diff < 0 ? diff : 0);
-  });
-  return { __frame: true, columns: [
-    { name: personLabel, type: "string", values: names },
-    { name: "Paid", type: "number", values: paid, ...money },
-    { name: "Owes", type: "number", values: owes, ...money },
-    { name: "Owed", type: "number", values: owed, ...money },
-    { name: "Net", type: "number", values: net, ...money },
-  ] };
-}
-
-function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
-  for (const c of cells) if (isUnitCell(c)) return c.display ? { dim: c.dim, display: c.display } : { dim: c.dim };
-  return undefined;
-}
-
-function settleColumns(f: FrameValue): { shareCol?: FrameColumn; paidCol?: FrameColumn } {
-  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nums = f.columns.filter((c) => c.type === "number");
-  const shareCol = byName("share", "weight", "shares");
-  return { shareCol, paidCol: byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol) };
-}
-
-export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
-  const nameCol = f.columns.find((c) => c.type === "string");
-  const { shareCol, paidCol } = settleColumns(f);
-  if (!paidCol) throw solError("#VALUE!", "Group Cost Settle needs a Paid number column");
-  const rows = frameRowCount(f);
-  const people: { name: string; paid: number; share: number | null }[] = [];
-  const at = new Map<string, number>();
-  for (let i = 0; i < rows; i++) {
-    const paid = paidCol.values[i];
-    if (isSolError(paid)) throw paid;
-    const share = shareCol ? shareCol.values[i] : null;
-    const raw = String(nameCol?.values[i] ?? `Person ${i + 1}`).trim() || `Person ${i + 1}`;
-    const p = typeof paid === "number" && Number.isFinite(paid) ? paid : 0;
-    const s = typeof share === "number" && Number.isFinite(share) ? share : null;
-    const key = raw.toLowerCase();
-    const j = at.get(key);
-    if (j === undefined) { at.set(key, people.length); people.push({ name: raw, paid: p, share: s }); }
-    else { people[j].paid += p; if (s !== null) people[j].share = (people[j].share ?? 0) + s; }
-  }
-  const r = settleGroup(people, { weighted: split === "weighted" && !!shareCol });
-  const money = { ...(paidCol.unit ? { unit: paidCol.unit } : {}), ...(paidCol.format ? { format: paidCol.format } : {}) };
-  return {
-    transfers: { __frame: true, columns: [
-      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
-      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
-      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
-    ] },
-    net: settleNetFrame(people.map((p) => p.name), people.map((p) => p.paid), r.shares, money, nameCol?.name ?? "Person"),
-  };
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
@@ -2431,33 +2259,6 @@ export class CorrMatrixNode extends GraphNode {
 }
 
 // ─── K-MEANS / PCA / LOGISTIC ─────────────────────────────────────────────────
-import { kmeans, pca, logisticFit } from "./mlOps";
-
-export function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
-  const cols = f.columns.filter((c) => c.type === "number");
-  const total = frameRowCount(f);
-  const rows: number[][] = [], kept: number[] = [];
-  for (let r = 0; r < total; r++) {
-    const row = cols.map((c) => c.values[r]);
-    if (row.every((v) => typeof v === "number" && Number.isFinite(v))) { rows.push(row as number[]); kept.push(r); }
-  }
-  return { names: cols.map((c) => c.name), rows, kept, total };
-}
-
-type KMeansOutputs = { labels: (number | null)[]; centers: FrameValue };
-
-export function kmeansOutputs({ names, rows, kept, total }: ReturnType<typeof numericRows>, k: number): KMeansOutputs | null {
-  const r = kmeans(rows, k);
-  if (!r) return null;
-  const labels: (number | null)[] = new Array(total).fill(null);
-  kept.forEach((row, i) => { labels[row] = r.labels[i]; });
-  const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
-  return { labels, centers: { __frame: true, columns: [
-    { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
-    ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
-    { name: "Count", type: "number", values: counts },
-  ] } };
-}
 
 export class KMeansNode extends GraphNode {
   static inputRoles = { k: required };
@@ -2487,26 +2288,6 @@ export class KMeansNode extends GraphNode {
   }
 }
 
-type PcaOutputs = { scores: FrameValue; loadings: FrameValue; explained: number[] };
-
-export function pcaOutputs({ names, rows, kept, total }: ReturnType<typeof numericRows>, standardize: boolean): PcaOutputs | null {
-  const r = pca(rows, { standardize });
-  if (!r) return null;
-  const pcNames = names.map((_, c) => `PC${c + 1}`);
-  return {
-    scores: { __frame: true, columns: pcNames.map((nm, c) => {
-      const values: (number | null)[] = new Array(total).fill(null);
-      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
-      return { name: nm, type: "number" as const, values };
-    }) },
-    loadings: { __frame: true, columns: [
-      { name: "Feature", type: "string", values: names },
-      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
-    ] },
-    explained: r.ratio,
-  };
-}
-
 export class PcaNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
@@ -2534,31 +2315,6 @@ export class PcaNode extends GraphNode {
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { scores: FrameValue | SolError | null; loadings: FrameValue | null; explained: number[] | null };
   }
-}
-
-type LogisticOutputs = { coefficients: FrameValue; probabilities: (number | null)[] };
-
-export function logisticOutputs(f: FrameValue, tcol: FrameColumn, features: FrameColumn[]): LogisticOutputs | null {
-  const total = frameRowCount(f);
-  const X: number[][] = [], y: number[] = [], kept: number[] = [];
-  for (let r = 0; r < total; r++) {
-    const tv = tcol.values[r];
-    const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
-    const row = features.map((c) => c.values[r]);
-    if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
-    X.push(row as number[]); y.push(yv); kept.push(r);
-  }
-  const fit = logisticFit(X, y);
-  if (!fit) return null;
-  const probabilities: (number | null)[] = new Array(total).fill(null);
-  kept.forEach((row, i) => { probabilities[row] = fit.probabilities[i]; });
-  return { coefficients: { __frame: true, columns: [
-    { name: "Term", type: "string", values: ["(Intercept)", ...features.map((c) => c.name)] },
-    { name: "Coefficient", type: "number", values: fit.coefficients },
-    { name: "Std Error", type: "number", values: fit.stdErrors },
-    { name: "z", type: "number", values: fit.z },
-    { name: "p", type: "number", values: fit.pValues },
-  ] }, probabilities };
 }
 
 export class LogisticNode extends GraphNode {

@@ -64,8 +64,7 @@ Column lookup is exact and case-sensitive everywhere a verb needs a column (`req
 | Builder | Input | Rule |
 |---|---|---|
 | `buildFrame(matrix, names?)` | A numeric row-major matrix | Every column is number; a missing cell is `null`; `Name (unit)` headers lock units. The column count comes from the matrix alone. |
-| `frameFromInput(headers, matrix)` | The same, from a card with a header list | The column count is the larger of the header count and the widest row, so named but empty columns survive a short or empty body. |
-| `buildFrameTyped(matrix, names?, colType?)` | A matrix of any cells | Each column through `typedColumn`; `colType` (the matrix's element family) applies to every column, and null means infer per column. |
+| The Build Frame card (its body the core's) | A matrix of any cells | Each column typed as `typedColumn` types it; the adopted matrix socket's element family applies to every column, and an unadopted socket means infer per column. |
 | `frameFromCells(headers, rows)` | Rows of cells (an HTML table, a test) | Each column through `inferColumn`; the width is the larger of the header and the widest row. |
 | `csvToFrame(text)` (`frameBackend.ts`) | A CSV file's text | On the core ([[#Reading CSV text]]): the first row is the header, each column typed as `inferColumn` types text, the width as `frameFromCells`. |
 | `frameFromRecords(records)` | JSON array of objects | Columns are the union of keys in first-seen order. |
@@ -127,7 +126,7 @@ Frame Input is the editable literal table. Its stored text is never rewritten; t
 
 ### Units and formats
 
-A number column is locked to a unit by a `Name (unit)` header at build time (`buildFrame`, `buildFrameTyped`, `addColumn`: the parenthetical is stripped from the name before de-duplication) or by a Frame Input column's `unit` field. Crossing into a Cube, a locked column's cells become per-cell base-SI `UnitCell`s (`cubeCellsFromColumn`, the one bridge); reading a cube column back through `inferColumn` recovers a uniform unit.
+A number column is locked to a unit by a `Name (unit)` header at build time (`buildFrame`, the Build Frame card, `addColumn`: the parenthetical is stripped from the name before de-duplication) or by a Frame Input column's `unit` field. Crossing into a Cube, a locked column's cells become per-cell base-SI `UnitCell`s (`cubeCellsFromColumn`, the one bridge); reading a cube column back through `inferColumn` recovers a uniform unit.
 
 The `format` annotation is stamped on a node's FrameValue outputs by the input-coercion wrapper from `frameFormatStore`, per node and column; a nearer pick overrides a farther one. Picks are keyed `<nodeId>::<columnName>`, so a pick survives a column reorder but stays with the name, and the annotation's own `unit` field is ignored, since a column's unit belongs to its value. The store's `load` replaces the whole set, and its caller has already rewritten node ids after an id remap. The table popup's column-format row and its inherit hint are [[format-model]]. Unit and format behavior per verb is listed under each verb; unit rules themselves belong to [[unit-flow]].
 
@@ -144,7 +143,7 @@ A `CubeColumn` is `{ name, cells, type?, format? }`. `type` is the column's elem
 - **Depth.** `depth` is cached at construction, bottom-up, so it never needs a re-walk: a Cube's depth is 1 plus the deepest Cube found in any of its cells. A Cube cell contributes its own cached depth, a list cell contributes the deepest of its items, and everything else, a nested Frame included, contributes nothing. So a flat Cube is depth 1 and a Cube of Cubes is depth 2. `makeCube` is the only constructor, so every Cube carries its depth.
 - **Rows.** The row count is the longest column (`cubeRowCount`).
 - **Constructors.** `cubeFromColumns(cols)` names the columns through `makeHeaders` and keeps each `type` and `format`. `cubeFromRows(rows, headers?)` builds from a row-major grid, padding short rows with `null`. `toCube(v)` widens any value, mirroring the Frame widening in `coerceInputs`: a Cube passes, a Frame goes through `frameToCube`, a 2-D array is a grid, a 1-D list is one row, and a scalar is 1×1. `cubeColumnFromValue(v)` reads one wired value as a Build Cube column: a list gives its elements, a single-column Cube gives that column's cells (so a cell-wise Build Cube pipes straight in), a Frame, matrix or scalar is one cell holding it, and `null` is no cells.
-- **Row subsets.** `selectCubeRows(cube, indices)` keeps whole rows by index, with nested cells carried by reference, so the Cube row verbs reorder rows without a verb ever reading a nested cell. An index past the end gives a blank row.
+- **Row subsets.** The core's `select_cube_rows` (`nodes/frames.rs`) keeps whole rows by index, with nested cells carried by reference, so the Cube row verbs reorder rows without a verb ever reading a nested cell. An index past the end gives a blank row.
 
 **Records to a Cube.** `recordsToCube(records, picks?, nested?, base?)` is the rows-of-objects reader that frontmatter and the vault readers share. Columns are the keys in first-appearance order, named through `makeHeaders`. A list value becomes a list cell (never joined into text), a list of lists a 2-D cell; a list whose present items are all objects becomes a nested Cube, a `null` beside the objects counting as an empty record; a single object becomes a one-row nested Cube. `picks` types the top level's columns ([[D90]] cubeTypesAtDepth) through `typedCubeCell`: a scalar crosses the type's own value boundary, `coerceFrameCell`, as a Frame Input cell would, so what the type cannot read becomes `NaN`, never a silent blank ([[D72]]); the items of a list or 2-D cell cross `coerceListItem`, which reads text as `coerceFrameCell` does, so what the type cannot read is NaN there too (Date over `[10-Sep-2026, apple]` is a date and a NaN; [[D93]] oneTextReading); a nested Cube or Frame passes untouched. Each nested table is read by its own declarations: `nested` (`cubeTypes.ts`) maps a table's records path from the top (`tableKey`, row and key down, a list index where a list holds it; `base` is the path of the records being read) to `{ frame?, types? }`, so two rows of one column declare their tables independently. A table with `frame: true` becomes a Frame cell (`frameCellFromRecords`: a picked column through `coerceFrameCell` with its text as `raw`, the rest through `inferColumn`, a nested value blank); any other becomes a nested Cube read the same way one level down. The records are never rewritten. An unpicked column of scalars keeps its cells as they came and takes `inferColumn`'s type as its hint; an unpicked column of lists or tables carries no type.
 
@@ -152,13 +151,13 @@ A `CubeColumn` is `{ name, cells, type?, format? }`. `type` is the column's elem
 
 ### Nest Join
 
-`relateFramesToCube(parent, child, key, nestedName)` relates two tables on a shared key column into a Cube: every parent column, then one nested column (default name `items`, names through `makeHeaders`) whose cell on each parent row holds the child rows with a matching key. It returns `null` when either side lacks the key column. The parent's columns cross through `cubeCellsFromColumn`, so their units are tagged.
+The card's body, `relate_frames(parent, child, key, nested_name)` (`nodes/frames.rs`), relates two tables on a shared key column into a Cube: every parent column, then one nested column (default name `items`, names through `makeHeaders`) whose cell on each parent row holds the child rows with a matching key. It returns `null` when either side lacks the key column. The parent's columns cross through `cubeCellsFromColumn`, so their units are tagged.
 
-- A Frame child's matching rows form a sub-frame that keeps each column's type, unit, format and `raw`; a Cube child's matching rows form a sub-cube (`selectCubeRows`), keeping its own nesting.
+- A Frame child's matching rows form a sub-frame that keeps each column's type, unit, format and `raw`; a Cube child's matching rows form a sub-cube (`select_cube_rows`), keeping its own nesting.
 - Keys compare as quantities: a logical keys as 1 or 0, a `UnitCell` keys by its dimension and base-SI magnitude (so `5 km` matches `5000 m` but not `5 kg` or a bare `5`), a currency keys by its display code as well (no exchange rates, so $5 ≠ 5€), and a dimensionless ratio keys as its bare magnitude. A number in a unit-locked column is converted to its base-SI quantity first, so it matches a `UnitCell` of the same quantity. The base-SI magnitude rounds at the 15th significant digit of the larger of its two terms (`roundAtLargerTerm`, the rounding Join's converted key uses), so `1 in` matches `2.54 cm` and `−459.67 °F` matches `−273.15 °C`.
 - A blank or error key never matches, as in Join, and a nested Frame, Cube or list cell is never a key.
 
-`relateCubeToFrame(parent, child, key, nestedName)` deepens a chain by one level per call. It finds the first parent column holding a Frame or Cube cell (the first, so a hand-built Cube with several is deterministic) and relates inside each cell, recursing through nested Cubes; with no such column it returns the parent unchanged.
+On a Cube parent, `relate_cube(parent, child, key, nested_name)` deepens a chain by one level per call. It finds the first parent column holding a Frame or Cube cell (the first, so a hand-built Cube with several is deterministic) and relates inside each cell, recursing through nested Cubes; with no such column it returns the parent unchanged.
 
 ## Lazy frames
 
@@ -249,7 +248,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 - **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorderRows`), so a column's type, unit and format ride along.
 - **Identity keys.** Distinct, GROUPBY, Window partitions and Join keys encode each cell with `encodeCell`, a type-tagged tuple serialized as JSON: `["n"]` for null, `["b", v]`, `["#", v]` for a finite number, `["#", "nan" | "inf" | "-inf"]` for a non-finite, `["s", text]`, `["e", code]` for an error. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, the three non-finites are three keys, and an error keys by its code. The non-finites need their named tokens because `JSON.stringify` writes all three as `null`; the tokens sit under the `#` tag, so a string cell spelling `inf` cannot collide. Keys compare case-sensitively ([[C45]] excelComparisons). The engine's `key_json` produces the identical string (integral numbers within the safe range print without a decimal point, as JavaScript prints them, so `-0` keys as `0`; other numbers use the shortest round-trip form).
 - **Comparisons fold case; keys do not.** String `eq`/`neq` and the text predicates in Filter lowercase both sides with the plain Unicode lowercase (`toLowerCase` / Rust `to_lowercase`) unless `matchCase` is set. String ordering (`lt`, `gt`, sort) never folds.
-- **String order.** Every data sort and ordered comparison compares strings by UTF-16 code units (`compareStrings`, JavaScript `<`) ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
+- **String order.** Every data sort and ordered comparison compares strings by UTF-16 code units (`compare_utf16`, JavaScript `<`) ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
 - **New names go through `makeHeaders`.** Any verb that combines or invents column names de-duplicates them left to right.
 
 ## Verb contracts
@@ -597,7 +596,7 @@ The kernels (`allocate(mode, mins, maxs, weights, amount)`) are three closed-for
 
 ### Group Cost Settle
 
-The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are `nodes/settleOps.ts`, and both modes feed one greedy core, `minTransfers(balances)`:
+The Group Cost Settle card answers who pays whom in the fewest transfers, with no solver. Its kernels are the core's `planners.rs`, and both modes feed one greedy core, `minTransfers(balances)`:
 
 1. Balances for the same name net first, so nobody ever pays themselves.
 2. Creditors (net above half a cent) and debtors are each sorted largest first with a stable sort, so ties keep input order and the result is deterministic.
@@ -609,7 +608,7 @@ The Group Cost Settle card answers who pays whom in the fewest transfers, with n
 
 ### Payoff Planner
 
-The kernels are `nodes/payoffOps.ts`, a month-by-month amortization with no solver. Each debt has a name, a balance, an APR and a minimum monthly payment. An APR is a fraction (0.18), and a value of 1 or more reads as a percent (18); the monthly rate is APR / 12, and a negative or non-finite APR is 0.
+The kernels are the core's `planners.rs`, a month-by-month amortization with no solver. Each debt has a name, a balance, an APR and a minimum monthly payment. An APR is a fraction (0.18), and a value of 1 or more reads as a percent (18); the monthly rate is APR / 12, and a negative or non-finite APR is 0.
 
 `payoffOrder` ranks the debts head first: avalanche by the monthly rate the plan charges, highest first (so 18 and 0.24 compare correctly), and snowball by balance, smallest first. Ties keep input order.
 

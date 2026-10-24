@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
-import { compileEvaluator, rowRefNames } from "../../../src/graph/excelFormula";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
+import { rowRefNames } from "../coreVerbs";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";

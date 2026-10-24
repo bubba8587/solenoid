@@ -18,7 +18,6 @@ import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, PadSide } from "./textOps";
 export type { PadSide } from "./textOps";
-export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
 // ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
@@ -386,8 +385,6 @@ export class TextReplaceNode extends GraphNode {
   }
 }
 
-// ─── Number formatting pattern (shared by Cast-to-text) ───────────────────────
-
 // ─── REPT ─────────────────────────────────────────────────────────────────────
 
 export class ReptNode extends GraphNode {
@@ -568,8 +565,6 @@ export class ExactNode extends GraphNode {
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 
-export const URL_ENCODE_LABEL: Record<UrlEncodeOp, string> = { encode: "ENCODEURL", decode: "DECODEURL", base64: "ENCODEBASE64", unbase64: "DECODEBASE64" };
-
 export class UrlEncodeNode extends GraphNode {
   label: string;
   op: UrlEncodeOp;
@@ -591,7 +586,6 @@ export class UrlEncodeNode extends GraphNode {
 }
 
 // ─── TEMPLATE ────────────────────────────────────────────────────────────────
-
 
 export class TemplateNode extends GraphNode {
   static socketDocs: Record<string, string> = {
@@ -754,7 +748,6 @@ export class FixedNode extends GraphNode {
   }
 }
 
-
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
@@ -764,7 +757,6 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
   extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: `REGEXEXTRACT` with `return_mode=2`." },
   replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement: all, or only the nth when Occurrence is set. A list broadcasts element-wise. Excel: `REGEXREPLACE`." },
 };
-
 
 export class RegexNode extends GraphNode {
   static inputRoles = { occurrence: setting(0) };
@@ -819,7 +811,6 @@ export class FormatDollarNode extends GraphNode {
   }
 }
 
-
 // ─── Reverse Text (Timesavers pack) ───────────────────────────────────────────
 
 export class ReverseTextNode extends GraphNode {
@@ -844,7 +835,6 @@ export class ReverseTextNode extends GraphNode {
 export { spellNumber } from "./textOps";
 import type { SimilarityMethod } from "./textOps";
 export type { SimilarityMethod } from "./textOps";
-
 
 export class SpellNumberNode extends GraphNode {
   label: string;

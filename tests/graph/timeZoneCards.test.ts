@@ -16,7 +16,7 @@ const toSerial = (ms: number) => ms / DAY + 25569;
 const serial = (y: number, mo: number, d: number, h = 0, mi = 0) => toSerial(Date.UTC(y, mo - 1, d, h, mi, 0));
 
 const formats = new Map<string, Intl.DateTimeFormat>();
-/** `zoneOffsetMs`'s read with its formatter kept, for the scans. */
+/** A zone's offset from UTC at an instant, through Intl, its formatter kept for the scans. */
 function offsetOf(zone: string, ms: number): number {
   let f = formats.get(zone);
   if (!f) {
