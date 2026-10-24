@@ -74,7 +74,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## Drawing and selection
 
-`StandoffLayer` draws the bars in an SVG inside React Flow's `<ViewportPortal>`, so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes, on layout ticks (`standoffLayoutTick`, which the canvas bumps whenever positions or sizes may have changed, so the layer re-measures) and on collapse changes.
+`StandoffLayer` draws the bars in an SVG inside React Flow's `<ViewportPortal>`, so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes and on collapse changes, and each bar redraws when React Flow reports a move or a new measure of one of its two cards (`endsKey`, a selector on RF's node lookup).
 
 - Each bar is a 9px line between the two anchor points of the items' live boxes, with a small cap circle at each end. A wider invisible line (18px) is the hit target.
 - **Stacking.** [[react-flow-surface-contract#Stacking]] places the bars at −3 in the stacking ladder, below groups (−2), Conduits (−1) and ordinary nodes (0). `nodeZIndex` in `flowModel.ts` stamps the nodes (groups −2, Conduits −1, the rest 0); the standoff SVG sets its own `z-index: -3` in `StandoffLayer.css`. Both sit in the viewport's stacking context, so a card dragged over a bar covers it even though the viewport portal comes after the node layer in the DOM.

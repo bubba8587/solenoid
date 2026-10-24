@@ -58,7 +58,8 @@ import { packsStore } from "../packs";
 import { CompositeNode, GroupNode, FormatControllerNode } from "../nodeClasses";
 import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
-import { isolateStore } from "../isolateStore";
+import { isolateStore, isoEndpointSelect } from "../isolateStore";
+import { IsolateEndpoints } from "../components/IsolateEndpoints";
 import {
   SocketContextMenu,
   CableContextMenu,
@@ -503,7 +504,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const ids = new Set(sel.map((n) => n.id));
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
       cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
-      if (ids.size > 0 || selEdges.length > 0) drawnCableStore.select(null);
+      if (ids.size > 0 || selEdges.length > 0) {
+        drawnCableStore.select(null);
+        standoffStore.select(null);
+        isoEndpointSelect.set(null);
+      }
     },
     [s],
   );
@@ -550,6 +555,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onPaneClick = useCallback(() => {
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
+    isoEndpointSelect.set(null);
   }, []);
   const panLayer = useMemo(
     () => createPanLayer(() => wrapperRef.current?.querySelector<HTMLElement>(".react-flow__viewport")),
@@ -903,6 +909,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         )}
         <ViewportLayer>
           <PendingCableLayer />
+        </ViewportLayer>
+        <ViewportLayer>
+          <div className="solenoid-iso-ep-layer">
+            <IsolateEndpoints editor={s.editor} view={s.view} />
+          </div>
         </ViewportLayer>
         {/* Not mounted on a phone, where CSS hides it: mounted, it re-renders a rect per card every pan frame. */}
         {!mobile && <MiniMap<SolFlowNode>
