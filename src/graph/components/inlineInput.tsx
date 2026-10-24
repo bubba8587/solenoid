@@ -96,7 +96,7 @@ export function useDraftCommit<T>(
 const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
 /** Spread `inputProps` onto the editing <input> and `displayProps` onto the display; Group drives `begin()` itself. */
-export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
+export function useEditableLabel(node: { label: string; edited?: () => void }, onCommit?: () => void) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.label);
   const canceled = useRef(false);
@@ -106,7 +106,7 @@ export function useEditableLabel(node: { label: string }, onCommit?: () => void)
   const commit = () => {
     setEditing(false);
     if (canceled.current) { canceled.current = false; return; }
-    if (draft !== node.label) { node.label = draft; scheduleAutosave(); onCommit?.(); }
+    if (draft !== node.label) { node.label = draft; node.edited?.(); scheduleAutosave(); onCommit?.(); }
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }

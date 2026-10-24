@@ -108,7 +108,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
       }
     }
-    void processGraph();
+    node.edited(); void processGraph();
   }
 
   function onFormatChange(f: FormatStyleId | "") {

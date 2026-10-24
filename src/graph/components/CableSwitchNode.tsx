@@ -76,6 +76,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       if (v.trim()) data.titles[keyName] = v;
       else delete data.titles[keyName];
       // A title relabels the multi-select Cube's `name` column, so Many mode recomputes; One mode only re-renders.
+      data.edited();
       if (data.multiSelect) void processGraph();
       else void getOwningView(data.id)?.rerenderNode(data.id);
     },
@@ -147,7 +148,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     const ed = getOwningEditor(data.id);
     const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function step(delta: number) {
     const next = Math.min(keys.length - 1, Math.max(0, data.activeIndex + delta));
@@ -166,19 +167,19 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       await reconcilePendingOnRetype(ed, view, data.id, "out", before);
     }
     void view?.rerenderNode(data.id);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   function toggleMulti(key: string) {
     const set = new Set(data.selectedKeys);
     if (set.has(key)) set.delete(key); else set.add(key);
     data.selectedKeys = [...set];
     setSelKeys(data.selectedKeys);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
@@ -187,7 +188,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     setSelected(data.activeIndex);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   if (collapsed) {

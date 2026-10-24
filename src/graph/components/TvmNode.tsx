@@ -23,7 +23,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
           onChange={(t) => {
             data.setPaymentTiming(t);
             setTiming(t);
-            void processGraph();
+            data.edited(); void processGraph();
           }}
           options={TIMING_OPTS}
         />

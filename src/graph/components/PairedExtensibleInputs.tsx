@@ -25,6 +25,7 @@ import { dropInputCables } from "./cablePrune";
 /** N sockets per tuple sharing one remove button: a pair is the two-element case (Filter, SUMIFS, IFS), and Set Cell uses triplets. */
 export interface PairedExtensibleNode {
   id: string;
+  edited(): void;
   inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;
   literals?: Record<string, number>;
   valuePairKeys: () => string[][];
@@ -57,13 +58,13 @@ export function PairedExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function setStrLiteral(key: string, v: string) {
     if (v === "") delete strLiterals[key];
     else strLiterals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function setAutoLiteral(key: string, v: AutoLiteral) {
@@ -72,13 +73,13 @@ export function PairedExtensibleInputs({
     delete strLiterals[key];
     if (typeof v === "number") literals[key] = v;
     else if (typeof v === "string") strLiterals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function addPair() {
     node.addValuePair();
     await getOwningView(node.id)?.rerenderNode(node.id);
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function removePair(keys: string[]) {
@@ -87,7 +88,7 @@ export function PairedExtensibleInputs({
     node.removeValuePair(keys[0]);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   if (collapsed) {

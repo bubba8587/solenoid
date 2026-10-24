@@ -28,7 +28,7 @@ export function PaymentBreakdownComponent({ data, emit }: NodeProps<PaymentBreak
     data.setOp(next);
     setOpState(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

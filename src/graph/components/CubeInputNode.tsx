@@ -16,7 +16,7 @@ export function CubeInputComponent({ data, emit }: NodeProps<CubeInputNodeType>)
       data.cubeText = cubeSourceToText(next);
       scheduleAutosave();
       // The popup shows the card's answer, which the pass recomputes.
-      void processGraph().then(() => cubePopup.refresh());
+      data.edited(); void processGraph().then(() => cubePopup.refresh());
     },
     cube: () => data.cachedResult,
   };

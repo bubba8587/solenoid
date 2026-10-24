@@ -59,7 +59,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
     setFormat(next);
     const view = getOwningView(d.id);
     if (view) await view.rerenderNode(d.id);
-    await processGraph();
+    d.edited(); await processGraph();
   }
 
   function commitPath() {
@@ -209,17 +209,17 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   }, [files, search]);
 
   function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
-  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); void processGraph(); }
+  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); d.edited(); void processGraph(); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); notifyGraphChanged(); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
   function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); notifyGraphChanged(); }
-  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); void processGraph(); }
+  function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); d.edited(); void processGraph(); }
   function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
   function commitKeys() {
     const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
     setKeys(next);
-    if (next !== (d.stringLiterals.keys ?? "")) { d.stringLiterals.keys = next; void processGraph(); }
+    if (next !== (d.stringLiterals.keys ?? "")) { d.stringLiterals.keys = next; d.edited(); void processGraph(); }
   }
 
   // Picking a note fills the folder select + the `path` literal (its bare name), so the
@@ -233,14 +233,14 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     (d.stringLiterals ??= {}).path = base;
     setPickerOpen(false);
     void getOwningView(d.id)?.rerenderNode(d.id);
-    void processGraph();
+    d.edited(); void processGraph();
   }
 
   async function preview() {
     setStatus("previewing");
     await d.preview();
     setStatus(d.status); setMessage(d.statusMessage);
-    void processGraph();
+    d.edited(); void processGraph();
   }
   async function run() {
     setStatus("writing");
@@ -416,14 +416,14 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
   function commitKeys() {
     const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
     setKeys(next);
-    if (next !== (data.stringLiterals.keys ?? "")) { data.stringLiterals.keys = next; void processGraph(); }
+    if (next !== (data.stringLiterals.keys ?? "")) { data.stringLiterals.keys = next; data.edited(); void processGraph(); }
   }
   function toggleArmed() { data.enabled = !data.enabled; setArmed(data.enabled); }
   async function preview() {
     setStatus("previewing");
     await data.preview();
     setStatus(data.status); setMessage(data.statusMessage);
-    void processGraph();
+    data.edited(); void processGraph();
   }
   async function run() {
     setStatus("writing");

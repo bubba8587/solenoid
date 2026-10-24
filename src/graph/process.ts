@@ -130,6 +130,8 @@ export function graphSettled(): Promise<void> {
 }
 
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
+  // Before the gate and single flight: a pass manual mode drops or a rerun coalesces still knows the node changed.
+  if (changedNodeId) _editor?.named(changedNodeId);
   const entry = calcModeStore.track(() => enterPass(changedNodeId, opts?.force === true));
   // The edit that asked for this pass still changed the document, so it saves now rather than at the next F9.
   if (entry === "gated") { _graphChanged(); return; }

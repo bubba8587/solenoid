@@ -274,7 +274,7 @@ export class SolenoidSocket extends GraphSocket {
 
 /** A socket retyped in place; its declared rung follows, so the core's port type does too. */
 export class MutableSocket extends SolenoidSocket {
-  protected get renames(): boolean { return true; }
+  protected get changes(): boolean { return true; }
   setType(type: SocketDataType): void {
     (this as unknown as { dataType: SocketDataType }).dataType = type;
     this.rename(type);
@@ -286,9 +286,11 @@ export class AdoptiveSocket extends MutableSocket {
   constructor(public readonly base: SocketDataType = "trueany") {
     super(base);
   }
-  protected get renames(): boolean { return false; }
   setType(type: SocketDataType): void {
+    if (type === this.dataType) return;
     (this as unknown as { dataType: SocketDataType }).dataType = type;
+    // The type it took up is part of the card's call (graph-core.md § Direct calls), not of the port.
+    this.heldEdited();
   }
 }
 

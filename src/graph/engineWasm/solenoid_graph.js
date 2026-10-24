@@ -237,6 +237,41 @@ export function setDirectCalls(on) {
 }
 
 /**
+ * On, every full clear checks that no direct card's call changed with its node unnamed (`unnamedEdits`).
+ * @param {boolean} on
+ */
+export function auditNamedEdits(on) {
+    wasm.auditNamedEdits(on);
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(takeObject(mem.getUint32(i, true)));
+    }
+    return result;
+}
+/**
+ * The cards whose call changed with their node unnamed, as "Class label", since the last ask.
+ * @returns {string[]}
+ */
+export function unnamedEdits() {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.unnamedEdits(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v1 = getArrayJsValueFromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_4(r0, r1 * 4, 4);
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
  * it and instantiate the module afresh.
  * @param {Function} handler
@@ -246,31 +281,20 @@ export function setPanicHandler(handler) {
 }
 
 /**
- * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
- * @returns {string}
+ * Opens (`true`) or closes a force-exact bracket.
+ * @param {boolean} begin
  */
-export function uid() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.uid(retptr);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred1_0 = r0;
-        deferred1_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
-    }
+export function sessionForceExact(begin) {
+    wasm.sessionForceExact(begin);
 }
 
 /**
- * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ * A new recalc generation, which every volatile node rolls on.
+ * @returns {number}
  */
-export function graphTrap() {
-    wasm.graphTrap();
+export function sessionNextGeneration() {
+    const ret = wasm.sessionNextGeneration();
+    return ret;
 }
 
 /**
@@ -331,6 +355,34 @@ export function sessionEnter(changed, force) {
 export function sessionExit(finished) {
     const ret = wasm.sessionExit(finished);
     return takeObject(ret);
+}
+
+/**
+ * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
+ * @returns {string}
+ */
+export function uid() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.uid(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap() {
+    wasm.graphTrap();
 }
 
 /**
@@ -397,32 +449,6 @@ export function sessionDirty(dirty) {
     return ret !== 0;
 }
 
-/**
- * Opens (`true`) or closes a force-exact bracket.
- * @param {boolean} begin
- */
-export function sessionForceExact(begin) {
-    wasm.sessionForceExact(begin);
-}
-
-/**
- * A new recalc generation, which every volatile node rolls on.
- * @returns {number}
- */
-export function sessionNextGeneration() {
-    const ret = wasm.sessionNextGeneration();
-    return ret;
-}
-
-function getArrayJsValueFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    const mem = getDataViewMemory0();
-    const result = [];
-    for (let i = ptr; i < ptr + 4 * len; i += 4) {
-        result.push(takeObject(mem.getUint32(i, true)));
-    }
-    return result;
-}
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  * @returns {string[]}
@@ -785,7 +811,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_172(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_175(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1147,6 +1173,18 @@ export class GraphCore {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.graphcore_fetch(this.__wbg_ptr, ptr0, len0);
         return takeObject(ret);
+    }
+    /**
+     * The node changed in place (a field, a literal, a label), here or inside a composite here: its call is read
+     * afresh on its next compute. `false` when no editor here holds it.
+     * @param {string} id
+     * @returns {boolean}
+     */
+    named(id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.graphcore_named(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
     }
     /**
      * The node's ports on one side as `[key, type]` pairs, in order; `undefined` for a node not
@@ -1588,7 +1626,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_172(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_175(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1730,7 +1768,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper628 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper632 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 127, __wbg_adapter_38);
         return addHeapObject(ret);
     };

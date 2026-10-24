@@ -218,11 +218,22 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
 - **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case,
   `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy
   frame's collect, a frame ref's format picks.
-- **What the core keeps per card.** Its call (`coreHeader`): class, saved fields, literal maps, sockets, outputs,
+- **What the core keeps per card.** Its call (`coreHeader`): class, saved fields but the ones only the canvas reads (`VIEW_FIELDS`, `nodeInit.ts`: a resize, fold or recolor leaves the call as it stands, and no body on the core reads one, `namedEdits.test.ts`), literal maps, sockets, outputs,
   adopted types, the boundary's keys, its typed list literals read, which cached fields the object has, its frame
-  format picks. It is read from the object when the node joins, when its ports change, when a pass names it as the
-  change, when every cache is cleared, and on `compute`; the text is stamped, so a read that finds what the core
-  already holds sends nothing and parses nothing. A class's `static coreFields` are read on every call. The fields a
+  format picks. It is read from the object on the node's first compute and again only after its node was named, its
+  ports changed, it was forgotten (`forget`, a targeted `reset`, `invalidate`, a pass naming it) or it ran through
+  `compute`. Clearing every cache reads nothing: the stamp stands. The text is stamped, so a read that finds what the
+  core already holds sends nothing and parses nothing.
+- **Every edit names its node.** An edit that changes a card in place (a field, a literal, its label) names the node
+  before it asks for a pass: `processGraph(id)` names `id` before the calc-mode gate and single flight, so an edit
+  manual mode holds back or a rerun coalesces is still read on F9's full pass; an edit that asks for a full pass
+  calls `node.edited()` first, which tells every editor holding the node (`GraphEditor.named`, found in a
+  composite's editor at any depth). What a call reads from outside the node names it where it changes: an adoptive
+  socket's taken type (`AdoptiveSocket.setType`) and the frame format picks (`frameFormatStore`, through
+  `nodeEdited(id)`). Enforced by `namedEdits.test.ts`: the mechanism, a sweep over all of `src/` that every full pass
+  asked for follows an `edited()` (or its module names why none is needed), and the tests' audit (`auditNamedEdits`,
+  `tests/setup/graphEngine.ts`): every full clear re-reads each unnamed card's call too, and a test fails whose card
+  read differently. A class's `static coreFields` are read on every call. The fields a
   body sets for its component (`cachedResult` and the rest) live on the Rust node: the object reads each through an
   accessor installed the first time the body shows it (`GraphEditor.adopt`), converted when read, so a field no
   component reads never crosses ([[C120]] linearWork). Writing one from JavaScript stores it in the core; a node
@@ -243,6 +254,8 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
 - `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`: the walks, the model and its port sets
   (`tests/model.rs`), the session's transitions (`tests/session.rs`), the boundary on core values against the frozen
   boundary answers (`tests/boundary_core.rs`), natively.
+- `namedEdits.test.ts`: a full clear keeps a card's call, naming the node reads it, an edit manual mode held back
+  reaches F9, the audit catches an unnamed edit, and every full pass a component asks for names its node first.
 - `directBodies.test.ts`: the direct classes are the ones whose `data()` is their body, and a direct card computes
   in an editor without its `data()` running.
 - `coreBoundary.test.ts`: the input boundary's frozen answers (`fixtures/core/boundary-*`).

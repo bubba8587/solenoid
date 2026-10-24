@@ -24,7 +24,7 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
   node.setOp(next);
   const view = getOwningView(node.id);
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 function Chevron({ back }: { back?: boolean }) {

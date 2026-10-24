@@ -3,7 +3,7 @@
 //! it (its call, read from the JavaScript object when it may have changed, and the fields its body shows), and the
 //! call itself, through the boundary on core values (`boundary_core.rs`) into its body (`solenoid_core::nodes`).
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use js_sys::{Array, Function, Object, Promise, Reflect};
@@ -61,6 +61,8 @@ pub(crate) struct Direct {
     header: RefCell<Option<Rc<Header>>>,
     /// The call as last read, kept past a touch.
     last: RefCell<Option<Rc<Header>>>,
+    /// Cleared with every cache while the audit is on, unnamed: the next read checks the call still reads the same.
+    audited: Cell<bool>,
     shown: RefCell<FxHashMap<String, Val>>,
     adopted: RefCell<FxHashSet<String>>,
     /// Each output's frame as its format picks stamped it, kept while the frame and the picks stand.
@@ -87,10 +89,34 @@ fn text(j: &Json, k: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+thread_local! {
+    static AUDIT: Cell<bool> = const { Cell::new(false) };
+    static UNNAMED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+/// On, a full clear re-reads every direct card's call as well and records each one whose call changed with its node
+/// unnamed (`unnamed_edits`): the tests' check that every edit names its node.
+pub(crate) fn set_audit(on: bool) {
+    AUDIT.with(|a| a.set(on));
+}
+
+/// The cards the audit caught, as "Class label", since the last ask.
+pub(crate) fn unnamed_edits() -> Vec<String> {
+    UNNAMED.with(|u| std::mem::take(&mut *u.borrow_mut()))
+}
+
 impl Direct {
-    /// Its call is read afresh on the next compute.
+    /// Its node was named: its call is read afresh on the next compute.
     pub(crate) fn touch(&self) {
+        self.audited.set(false);
         *self.header.borrow_mut() = None;
+    }
+
+    /// Every cache was cleared: the call stands, since every edit names its node (§ Direct calls).
+    pub(crate) fn cleared(&self) {
+        if AUDIT.with(Cell::get) && self.header.borrow_mut().take().is_some() {
+            self.audited.set(true);
+        }
     }
 
     fn header(
@@ -108,6 +134,7 @@ impl Direct {
             .header
             .call2(&JsValue::NULL, object, &JsValue::from_f64(stamp))
             .map_err(|e| js_message(&e))?;
+        let audited = self.audited.replace(false);
         // `null`: the call reads as it did when it was stamped `stamp`.
         if read.is_null() {
             if let Some(last) = last {
@@ -121,6 +148,13 @@ impl Direct {
         let stamp = read.get(0).as_f64().unwrap_or(0.0);
         let raw = read.get(1).as_string().unwrap_or_default();
         let j: Json = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+        if audited {
+            let name = |k: &str| j.get(k).and_then(Json::as_str).unwrap_or("").to_string();
+            UNNAMED.with(|u| {
+                u.borrow_mut()
+                    .push(format!("{} {}", name("kind"), name("label")))
+            });
+        }
         let lists = j
             .get("lists")
             .and_then(Json::as_array)

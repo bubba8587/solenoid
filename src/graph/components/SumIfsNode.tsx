@@ -34,17 +34,17 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    void processGraph();
+    data.edited(); void processGraph();
   };
 
   async function addPair() {
     data.addValuePair();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
@@ -52,7 +52,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     data.removeValuePair(colKey);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

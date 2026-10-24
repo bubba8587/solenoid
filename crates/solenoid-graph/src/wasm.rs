@@ -211,6 +211,18 @@ pub fn set_direct_calls(on: bool) {
     DIRECT_CALLS.with(|d| d.set(on));
 }
 
+/// On, every full clear checks that no direct card's call changed with its node unnamed (`unnamedEdits`).
+#[wasm_bindgen(js_name = auditNamedEdits)]
+pub fn audit_named_edits(on: bool) {
+    direct::set_audit(on);
+}
+
+/// The cards whose call changed with their node unnamed, as "Class label", since the last ask.
+#[wasm_bindgen(js_name = unnamedEdits)]
+pub fn unnamed_edits() -> Vec<String> {
+    direct::unnamed_edits()
+}
+
 /// `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
 /// it and instantiate the module afresh.
 #[wasm_bindgen(js_name = setPanicHandler)]
@@ -392,7 +404,8 @@ impl Shared {
         chain.last().map(|n| n.id().to_owned())
     }
 
-    /// A direct card's call is read afresh on its next compute: `id`'s, or every card's.
+    /// A direct card's call is read afresh on its next compute: `id`'s. Without a node every cache is being
+    /// cleared, and each card's call stands (§ Direct calls).
     fn touch(&self, id: Option<&str>) {
         match id {
             Some(id) => {
@@ -408,11 +421,26 @@ impl Shared {
             None => {
                 for node in self.graph.editor().get_nodes() {
                     if let Some(d) = &node.object.direct {
-                        d.touch();
+                        d.cleared();
                     }
                 }
             }
         }
+    }
+
+    /// `id` changed in place, here or in a composite's editor at any depth: a direct card's call is read afresh.
+    fn name(&self, id: &str) -> bool {
+        if self.graph.get_node(id).is_some() {
+            self.touch(Some(id));
+            return true;
+        }
+        let inner: Vec<Rc<Shared>> = self
+            .nests
+            .borrow()
+            .values()
+            .filter_map(Weak::upgrade)
+            .collect();
+        inner.iter().any(|s| s.name(id))
     }
 
     /// Whether the outputs differ from what the node last landed (`!==` per key), which they then are.
@@ -766,6 +794,12 @@ impl GraphCore {
     #[wasm_bindgen(js_name = connectionIds)]
     pub fn connection_ids(&self) -> Vec<String> {
         self.shared.graph.connection_ids()
+    }
+
+    /// The node changed in place (a field, a literal, a label), here or inside a composite here: its call is read
+    /// afresh on its next compute. `false` when no editor here holds it.
+    pub fn named(&self, id: &str) -> bool {
+        self.shared.name(id)
     }
 
     /// The node's outputs, from the cache when present.

@@ -32,7 +32,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
   function applyTemplate(src: string) {
     data.stringLiterals.source = src;
     setDraft(src);
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   // Enter must insert a newline in a diagram, so this can't use the Enter-commits helper.
@@ -41,7 +41,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
   function commit() {
     if (draft === (data.stringLiterals.source ?? "")) return;
     data.stringLiterals.source = draft;
-    void processGraph();
+    data.edited(); void processGraph();
   }
 
   const feedRef = useRef<HTMLDivElement>(null);

@@ -105,7 +105,7 @@ function ProportionControls({ data }: { data: ProportionNode }) {
     data.setOp(next); // sockets are identical for both layouts — no cable prune
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   return <OpToggle value={op} options={PROPORTION_LAYOUT_OPTIONS} onChange={(s) => void pick(s)} />;
 }

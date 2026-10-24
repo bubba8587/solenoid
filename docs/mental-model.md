@@ -39,14 +39,17 @@ The compute path, in order (the full mechanics, including every coercion rung, a
 1. **Commit.** Text edits commit on Enter or blur (`useDraftCommit`), never per keystroke;
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
    node's `literals` / `stringLiterals` map (values edited on the card) or its init fields,
-   then calls `processGraph()`.
+   and the edit names its node as it asks for a pass (`processGraph(id)`, or `node.edited()`
+   before a full one), so the core reads that card's call afresh
+   (`../tree/specs/computation/graph-core.md` § Direct calls).
 2. **processGraph** (`process.ts`) asks the graph core's session whether to run (manual calc
    mode stops here unless F9 forces a pass), then the engine's `pass` resets or targets the
    cache and pulls outputs ([[D102]] graphOnCore). Cycles are found up front
    (Tarjan SCC) and pre-seeded as `#CIRC!`, so the engine never deadlocks. A topology change
    recomputes only the target's downstream closure.
-3. **Per node, the input boundary runs first.** The engine calls every `data()` through it
-   (`crates/solenoid-graph/src/boundary.rs`): coercion inside, the error guard outside.
+3. **Per node, the input boundary runs first.** The engine calls every card through it
+   (`crates/solenoid-graph/src/boundary.rs`, `boundary_core.rs` on core values): coercion
+   inside, the error guard outside.
    - The guard short-circuits: an error on any input becomes the output and `data()` never
      runs. Nodes that must see errors (IFERROR, Display, figure sinks) are named for raw
      delivery (`SEES_ERRORS`).
@@ -58,11 +61,16 @@ The compute path, in order (the full mechanics, including every coercion rung, a
      `stringLiterals` key, coercion injects the parsed `stringLiterals` text on an unwired
      input. The general "unwired falls back to the literal" read is `readInput`, inside
      `data()`.
-4. **`data()` computes, pure.** It reads inputs through `readInput`: a wired null propagates,
-   and only an unwired slot falls back to the literal. Mixing those two up is the most common
+4. **The card's body computes, pure.** Nearly every body is Rust on the core
+   (`crates/solenoid-core/src/nodes/`, `../tree/specs/computation/node-bodies.md`): a direct
+   card's is called in Rust with no JavaScript between two such cards, a shell's (an upload, a
+   read, an alert) through its `data()` and `nodeOnCore`; Note and Report keep TypeScript
+   bodies. A body reads an input as `readInput` does (`read_input` in Rust): a wired null
+   propagates, and only an unwired slot falls back to the literal. Mixing those two up is the most common
    historical bug. Results carry the value model: first-class `null` (missing), per-cell
    `SolError`s, three-valued logic, and units as data on the value.
-5. **Render.** The node stashes its result (`cachedResult` and similar), the adapter bumps
+5. **Render.** The body stashes its result for the card (`cachedResult` and similar; a direct
+   card's live on the Rust node, read through accessors), the adapter bumps
    the card's version, and React Flow re-renders that card. Value boxes format through the
    display pipeline below. Components never call `data()` themselves (`../tree/specs/floors/components.md` § The rules); display logic that needs computation gets a pure extracted helper.
 
@@ -86,7 +94,9 @@ never saved; they're worked out again on load. A node that retypes a socket in p
 
 (The Frame value, laziness, the backend seam and every verb's contract are `../tree/specs/computation/frame-verbs.md`.)
 
-Scalars, lists and matrices are plain JS values on cables. A Frame on a cable is usually a
+A value on a cable is one shared cell in the core, holding the form its producer made (a core
+value or a JavaScript object) and the other form once a reader of that kind asks
+(`../tree/specs/computation/graph-core.md` § Direct calls). A Frame on a cable is usually a
 lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`
 seam: the Rust core in wasm, on the web and desktop alike. Data materializes only
 at the boundary: `preview` (cards show the first N rows), `column` (the bridge to scalars and
@@ -163,7 +173,7 @@ The curated selling list is `release-notes-features.md`; the file map is `archit
 - Anything visual: `DESIGN.md` first. Any gesture: `tree/specs/canvas/touch-gestures.md` is the inventory.
   Any bar or overlay: `tree/specs/canvas/layout-chrome.md`. Anything on the canvas surface:
   `../tree/specs/canvas/react-flow-surface-contract.md`.
-- Socket and type questions: the per-variant tables in `socket-reference.md`. A new node's
-  `data()`: `tree/specs/values/value-semantics.md` "Reading an input", deciding each input's role.
+- Socket and type questions: the per-variant tables in `socket-reference.md`. A new card's
+  body: `tree/specs/values/value-semantics.md` "Reading an input", deciding each input's role.
 - Trust tests over prose: `python3 tools/dte.py show <ID>` derives "enforced by" from the
   tests that cite a rule leaf, so a doc claim without a test is a claim to verify.

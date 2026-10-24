@@ -39,6 +39,14 @@ export const INIT_EXTRA_FIELD_ORDER = [
   "keyOrder", "pivotView", "detailFields",
 ] as const;
 
+/** The saved fields only the canvas reads (a card's size, fold, colour, place, text styling): a card's call leaves them
+ *  out, so resizing or recoloring a card leaves its call as the core holds it (graph-core.md § Direct calls). No body
+ *  on the core reads one (`namedEdits.test.ts`). */
+export const VIEW_FIELDS = [
+  "width", "height", "collapsed", "color", "lockedPosition", "layoutHidden", "advancedOpen", "chartFontScale",
+  "textScale", "textAlign", "bold", "italic", "textMono", "textMarkdown",
+] as const;
+
 const INIT_INDEX = new Map<string, number>(INIT_FIELD_ORDER.map((k, i) => [k, i]));
 const inherited = new WeakMap<object, number[]>();
 
@@ -174,5 +182,12 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
     init.valueKeys = Object.keys(n.inputs as object);
   }
+  return init;
+}
+
+/** What a card's call holds of its save: `extractInit` without the `VIEW_FIELDS`. */
+export function callInit(src: GraphNode): Record<string, unknown> {
+  const init = extractInit(src);
+  for (const k of VIEW_FIELDS) delete init[k];
   return init;
 }

@@ -123,7 +123,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     scheduleAutosave();
-    void processGraph();
+    data.edited(); void processGraph();
   }, [data]);
   const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
@@ -145,6 +145,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   function commitLayout(next: string) {
     if (next.trim()) data.stringLiterals.layout = next;
     else delete data.stringLiterals.layout;
+    data.edited();
     scheduleAutosave();
   }
   const [showLayout, setShowLayout] = useState(false);
@@ -152,6 +153,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   function setHidden(next: boolean) {
     data.layoutHidden = next;
     setLayoutHidden(next);
+    data.edited();
     scheduleAutosave();
   }
   const hasLayout = !!data.stringLiterals.layout;
@@ -338,17 +340,17 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    void processGraph();
+    data.edited(); void processGraph();
   };
 
   async function addPair() {
     data.addValuePair();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
@@ -356,7 +358,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
     data.removeValuePair(aKey);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (
@@ -876,7 +878,7 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
     const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   const transfersOut = data.outputs.transfers;

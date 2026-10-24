@@ -3,7 +3,7 @@
 // its sockets and its inputs, and takes back the outputs and the fields the body sets for the card's component.
 // The mechanism is tree/specs/computation/node-bodies.md.
 import type { GraphNode } from "./graphModel";
-import { extractInit } from "./nodeInit";
+import { callInit } from "./nodeInit";
 import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
@@ -33,9 +33,9 @@ export function adopted(socket: unknown): string[] {
   return socket instanceof AdoptiveSocket && now !== undefined && now !== socket.base ? [now] : [];
 }
 
-/** What a save holds, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
+/** What a save holds but its view fields, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
 export function coreInit(node: GraphNode): Record<string, unknown> {
-  const init = extractInit(node);
+  const init = callInit(node);
   const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
   for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
   return init;
@@ -79,7 +79,7 @@ export function coreHeader(node: GraphNode, stamp: number): [number, string] | n
   const text = jsonText({
     kind: node.constructor.name,
     label: node.label || node.constructor.name,
-    init: extractInit(node),
+    init: callInit(node),
     coreFields: (node.constructor as { coreFields?: readonly string[] }).coreFields ?? [],
     ...(watch !== undefined ? { watch } : {}),
     ...(n.literals ? { literals: n.literals } : {}),

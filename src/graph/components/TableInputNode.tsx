@@ -29,7 +29,7 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "table");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {

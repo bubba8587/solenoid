@@ -42,14 +42,14 @@ async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<
   card?.style.removeProperty("width");
   if (editor && view) await retypeOutputCables(editor, view, node.id, "value");
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 /** A display pick changes no value, so it re-resolves every FC (one inheriting from this card) and redraws the whole graph, as the FC's own picks do. */
 function applyDisplayPick(node: ValueInputNodeType): void {
   const editor = getOwningEditor(node.id);
   if (editor) for (const n of editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-  void processGraph();
+  node.edited(); void processGraph();
 }
 
 export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType>) {

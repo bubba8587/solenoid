@@ -24,6 +24,7 @@ import { dropInputCables } from "./cablePrune";
 
 export interface ExtensibleNode {
   id: string;
+  edited(): void;
   inputs: Record<string, { socket: GraphSocket; label?: string } | undefined>;
   // Number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
@@ -57,12 +58,12 @@ export function ExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function setAuto(key: string, v: AutoLiteral) {
@@ -71,13 +72,13 @@ export function ExtensibleInputs({
     delete strLiterals[key];
     if (typeof v === "number") literals[key] = v;
     else if (typeof v === "string") strLiterals[key] = v;
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function addRow() {
     node.addValueInput();
     await getOwningView(node.id)?.rerenderNode(node.id);
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   async function removeRow(key: string) {
@@ -85,7 +86,7 @@ export function ExtensibleInputs({
     node.removeValueInput(key);
     await getOwningView(node.id)?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
-    await processGraph();
+    node.edited(); await processGraph();
   }
 
   if (collapsed) {

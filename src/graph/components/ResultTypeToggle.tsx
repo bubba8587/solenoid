@@ -10,6 +10,7 @@ import { TypeIcon } from "./TypeIcon";
 
 type Producer = {
   id: string;
+  edited(): void;
   resultAs: ResultType;
   outputs: { result?: { socket: GraphSocket } };
 };
@@ -31,7 +32,7 @@ async function applyResultAs(node: Producer, dim: ResultDim, resultAs: ResultTyp
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
 
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function ResultTypeToggle({ node, dim }: { node: Producer; dim: ResultDim }) {

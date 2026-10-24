@@ -100,7 +100,7 @@ export function ConduitComponent({ data }: Props) {
       if (!Number.isFinite(n) || n < 1) return INVALID_DRAFT;
       return conduitSeqTaken(getOwningEditor(node.id)?.getNodes() ?? [], node, n) ? INVALID_DRAFT : n;
     },
-    (v) => { node.setSeq(v); void processGraph(); },
+    (v) => { node.setSeq(v); node.edited(); void processGraph(); },
   );
 
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);

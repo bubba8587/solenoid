@@ -22,7 +22,8 @@ This file is the map.
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read
 ├── crates/                   # solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the
 │                             #     app, native in tests; ../tree/specs/computation/rust-core.md),
-│                             #     solenoid-graph (the dataflow engine on Ruggine) and solenoid-parquet (the
+│                             #     solenoid-graph (the model, the engine and the pass on Ruggine; it links
+│                             #     solenoid-core into the one wasm module) and solenoid-parquet (the
 │                             #     desktop's Parquet reader, on the parquet and arrow crates)
 ├── public/                   # Static assets served by Vite
 ├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
@@ -76,8 +77,8 @@ This file is the map.
 
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
-- **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on Ruggine in its
-  own wasm module, [[D102]] graphOnCore): a Ruggine editor holding the nodes, their ports
+- **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on Ruggine, linked
+  with the formula core into one wasm module, [[D102]] graphOnCore): a Ruggine editor holding the nodes, their ports
   and the cables, behind `GraphEditor` (`graphEditor.ts`), and the DataflowEngine
   (pull-based recompute, `dataflowEngine.ts`) on that same editor. `elkjs` is called
   directly for Tidy.
@@ -120,12 +121,15 @@ src/
 | `schemes.ts` | The node and cable types an editor holds (`SolenoidNode`, `SolenoidConnection`) |
 | `nodeClasses.ts` | The barrel re-exporting every node class |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
+| `engineWasm.ts` (+`engineWasm/`) | The one wasm module (the graph core and the formula core it links): its load, `wasmInvokeSync`, and a trap's fresh instance (`../tree/specs/computation/graph-core.md` § Traps) |
+| `nodeOnCore.ts`, `nodeWire.ts`, `coreValues.ts` | A card's body on the core: its call (`coreHeader`, `coreInit`) and `nodeOnCore`; the card wire (`toCore`, `fromCore`); values across to the formula core and back (`../tree/specs/computation/node-bodies.md`) |
 | `nodeBoundary.ts` | What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`: the error guard and arrival coercion every `data()` call runs through) asks the app for: lazy frame collects, frame and cube construction, unit display magnitudes, list literals, format stamps, names, the error sinks, the perf probe, each array's cell kinds. Mechanics: `../tree/specs/computation/compute-pass.md` § The per-node wrappers |
 | `listLiterals.ts` | The typed list literals: `TYPEABLE_LIST`, how a list input's text splits (`listLiteralItems`, `listLiteralText`) and reads (`parseListLiteral`) |
 | `planImport.ts` | A Project XML / grammar CSV → the plan cube (Local File's `plan` socket), through `@solenoid/schedule-engine`'s readers. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the core's port of the engine (`crates/solenoid-core/src/schedule/`); the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
-| `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
+| `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); `clipboard.ts` is the execCommand-fallback text copy |
+| `nodeInit.ts`, `savedNodeBody.ts` | What a save holds of a card: `extractInit` over `INIT_FIELD_ORDER`, and `callInit`, the same less the `VIEW_FIELDS` only the canvas reads (a card's call, `../tree/specs/computation/graph-core.md` § Direct calls); `savedNodeBody.ts` is one node's saved body |
 | `nodeCtorRegistry.ts` | The ctor lookup, DERIVED from the catalog (calls every `FLAT_CATALOG` factory, keys by `ctor.name`) — what persistence resolves types through |
 | `documentStore.ts` (+`documentStoreCore.ts`) | Multi-document library: current doc + open tabs; per-doc autosave as ONE two-slot pair per doc id (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot index, object-identity change-detection so an unchanged doc costs zero serialization (`documentStorePersist.test.ts`); `documentStoreCore` holds the pure validate/transform helpers |
 | `textForm.ts` | The addressable model's text projection: pure `SavedGraph ↔ text` (one node per line, topological + alphabetical-tie order, name-addressed connections); `serializeGraph`'s JSON is generated by round-tripping through it, not hand-maintained; robustness fuzzed in `textFormFuzz.test.ts` (clean rejection or round-trip closure, never a hang) |

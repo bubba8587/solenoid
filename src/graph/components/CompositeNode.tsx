@@ -637,7 +637,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
       const n = Number(t);
       return Number.isFinite(n) ? n : INVALID_DRAFT;
     },
-    (v) => { data.defaultValue = v; void processGraph(); },
+    (v) => { data.defaultValue = v; data.edited(); void processGraph(); },
   );
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">

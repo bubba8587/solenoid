@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_graphcore_free: (a: number, b: number) => void;
+export const auditNamedEdits: (a: number) => void;
 export const computeNode: (a: number, b: number, c: number, d: number) => void;
 export const directBodies: (a: number) => void;
 export const findCellError: (a: number) => number;
@@ -23,6 +24,7 @@ export const graphcore_isCached: (a: number, b: number, c: number) => number;
 export const graphcore_landed: (a: number, b: number, c: number, d: number, e: number) => number;
 export const graphcore_loopMembers: (a: number, b: number) => void;
 export const graphcore_markNested: (a: number, b: number, c: number, d: number) => void;
+export const graphcore_named: (a: number, b: number, c: number) => number;
 export const graphcore_nest: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_new: (a: number, b: number) => number;
 export const graphcore_nodeIds: (a: number, b: number) => void;
@@ -58,6 +60,7 @@ export const setBoundaryHost: (a: number, b: number) => void;
 export const setDirectCalls: (a: number) => void;
 export const setPanicHandler: (a: number) => void;
 export const uid: (a: number) => void;
+export const unnamedEdits: (a: number) => void;
 export const engine_csv_frame: (a: number, b: number, c: number) => void;
 export const engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
 export const engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;

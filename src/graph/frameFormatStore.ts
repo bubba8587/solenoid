@@ -8,6 +8,7 @@ import { FORMAT_STYLE_LABELS, LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, type Forma
 import { precisionApplies } from "./formatModel";
 import type { FrameColType } from "./frame";
 import { DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+import { nodeEdited } from "./graphEditor";
 
 /** The annotation's `unit` field is ignored — a column's unit is its value's. */
 export interface FrameColumnFormat {
@@ -24,7 +25,13 @@ function key(nodeId: string, column: string): string {
 }
 
 const _store = new Map<string, FrameColumnFormat>();
-const { notify, subscribe, version } = createNotifier();
+const { notify: notifyAll, subscribe, version } = createNotifier();
+
+/** A card's picks are part of its call (graph-core.md § Direct calls), so each change names the cards it moved. */
+function notify(...nodeIds: string[]): void {
+  for (const id of new Set(nodeIds)) nodeEdited(id);
+  notifyAll();
+}
 
 // A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
 let _display = displaySettingsKey();
@@ -44,10 +51,10 @@ export const frameFormatStore = {
   },
   set(nodeId: string, column: string, ann: FormatAnnotation): void {
     _store.set(key(nodeId, column), { nodeId, column, ann });
-    notify();
+    notify(nodeId);
   },
   delete(nodeId: string, column: string): void {
-    if (_store.delete(key(nodeId, column))) notify();
+    if (_store.delete(key(nodeId, column))) notify(nodeId);
   },
   /** Moves each column's format from its name at position i in `from` to the name at i in `to`, and drops the formats of names that left. */
   rekey(nodeId: string, from: ReadonlyArray<string | undefined>, to: ReadonlyArray<string>): void {
@@ -65,15 +72,18 @@ export const frameFormatStore = {
       if (ann) { _store.set(key(nodeId, next), { nodeId, column: next, ann }); changed = true; }
       else if (_store.delete(key(nodeId, next))) changed = true;
     });
-    if (changed) notify();
+    if (changed) notify(nodeId);
   },
   removeForNode(nodeId: string): void {
     let changed = false;
     for (const [k, v] of _store) if (v.nodeId === nodeId) { _store.delete(k); changed = true; }
-    if (changed) notify();
+    if (changed) notify(nodeId);
   },
   clear(): void {
-    if (_store.size > 0) { _store.clear(); notify(); }
+    if (_store.size === 0) return;
+    const ids = [..._store.values()].map((v) => v.nodeId);
+    _store.clear();
+    notify(...ids);
   },
 
   serialize(): FrameColumnFormat[] {
@@ -83,7 +93,7 @@ export const frameFormatStore = {
   merge(list: FrameColumnFormat[]): void {
     if (list.length === 0) return;
     for (const v of list) _store.set(key(v.nodeId, v.column), { ...v, ann: { ...v.ann } });
-    notify();
+    notify(...list.map((v) => v.nodeId));
   },
 
   subscribe,

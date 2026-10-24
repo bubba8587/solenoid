@@ -35,7 +35,7 @@ async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise
     await retypeOutputCables(editor, view, node.id, "list");
   }
   if (view) await view.rerenderNode(node.id);
-  await processGraph();
+  node.edited(); await processGraph();
 }
 
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {

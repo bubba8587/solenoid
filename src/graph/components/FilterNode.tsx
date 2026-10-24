@@ -31,17 +31,17 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     const next = { ...rowCfg(id), ...patch };
     setCfg((c) => ({ ...c, [id]: next }));
     data.condConfig[id] = next;
-    void processGraph();
+    data.edited(); void processGraph();
   };
   const setStr = (key: string, v: string) => {
     strLiterals[key] = v;
-    void processGraph();
+    data.edited(); void processGraph();
   };
 
   async function addRow() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   async function removeRow(key: string) {
@@ -49,7 +49,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     data.removeValueInput(key);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

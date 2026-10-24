@@ -92,7 +92,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
     scheduleAutosave();
   }
 

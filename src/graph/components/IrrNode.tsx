@@ -17,7 +17,7 @@ export function IrrComponent({ data, emit }: NodeProps<IRRNodeType>) {
     data.setOp(next);
     setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (

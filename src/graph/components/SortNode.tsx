@@ -32,24 +32,24 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
     data.setByCol(next === "cols");
     setAxisState(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   const setKeyDir = (id: string, dir: SortDir) => {
     data.keyOrder[id] = dir;
     setKeyOrder((o) => ({ ...o, [id]: dir }));
-    void processGraph();
+    data.edited(); void processGraph();
   };
   async function addKey() {
     data.addValueInput();
     await getOwningView(data.id)?.rerenderNode(data.id);
-    await processGraph();
+    data.edited(); await processGraph();
   }
   async function removeKey(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
     await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
-    await processGraph();
+    data.edited(); await processGraph();
   }
 
   return (
