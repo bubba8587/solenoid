@@ -913,6 +913,35 @@ impl<K: AsRef<[V]>> Matcher<K> {
     }
 }
 
+/// FORECAST.LINEAR's line through its known lists, `None` when they hold text, kept for the last long pair: a
+/// computed column forecasts each row from the same columns ([[C120]] linearWork).
+fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
+    // A scalar's length is `undefined`, so the fit finds no spread.
+    let fit = || {
+        (!holds_text(ys) && !holds_text(xs))
+            .then(|| js_indexed(xs).zip(js_indexed(ys)).and_then(|(x, y)| js_linear_fit(&x, &y)))
+    };
+    let (V::List(yl), V::List(xl)) = (ys, xs) else { return fit() };
+    if yl.len().max(xl.len()) < 64 {
+        return fit();
+    }
+    type Last = Option<(Rc<Vec<V>>, Rc<Vec<V>>, Option<Option<(f64, f64)>>)>;
+    thread_local! {
+        static LAST: std::cell::RefCell<Last> = const { std::cell::RefCell::new(None) };
+    }
+    LAST.with(|last| {
+        let mut last = last.borrow_mut();
+        match &*last {
+            Some((y, x, f)) if Rc::ptr_eq(y, yl) && Rc::ptr_eq(x, xl) => *f,
+            _ => {
+                let f = fit();
+                *last = Some((yl.clone(), xl.clone(), f));
+                f
+            }
+        }
+    })
+}
+
 /// XLOOKUP's and XMATCH's lookup array as one list, matched through `Matcher`, and XLOOKUP's return array beside it.
 struct LookupPlan {
     m: Matcher<Vec<V>>,
@@ -4973,13 +5002,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::FORECAST_LINEAR => {
             let n = to_num(arg(a, 0));
-            if n.is_nan() || holds_text(arg(a, 1)) || holds_text(arg(a, 2)) {
+            if n.is_nan() {
                 return value_err("FORECAST.LINEAR");
             }
-            // A scalar's length is `undefined`, so the fit finds no spread.
-            match js_indexed(arg(a, 2)).zip(js_indexed(arg(a, 1))).and_then(|(xs, ys)| js_linear_fit(&xs, &ys)) {
-                Some((slope, intercept)) => V::Num(intercept + slope * n),
-                None => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
+            match forecast_fit(arg(a, 1), arg(a, 2)) {
+                None => value_err("FORECAST.LINEAR"),
+                Some(Some((slope, intercept))) => V::Num(intercept + slope * n),
+                Some(None) => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
             }
         }
         F::F_TEST => {

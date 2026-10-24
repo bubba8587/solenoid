@@ -647,6 +647,8 @@ struct Readied {
     list: V,
     has_cx: bool,
     err: Option<V>,
+    /// Whether the readied list still holds a blank: `Prep::Paired` drops it with its pairs after.
+    blank: bool,
 }
 
 impl Readied {
@@ -658,7 +660,8 @@ impl Readied {
             Ok(list) => (list, None),
             Err(e) => (V::Undef, Some(e)),
         };
-        Readied { from: from.clone(), prep, flatten, list, has_cx, err }
+        let blank = matches!(&list, V::List(l) if l.iter().any(is_missing));
+        Readied { from: from.clone(), prep, flatten, list, has_cx, err, blank }
     }
 }
 
@@ -1011,7 +1014,7 @@ impl Eval<'_> {
                 column = col;
             }
         }
-        if t.kind == Kind::Range && t.prep != Prep::Paired && (t.prep != Prep::Positional || t.matrix_args) {
+        if t.kind == Kind::Range && (t.prep != Prep::Positional || t.matrix_args) {
             return match self.ready_range(name, t, argv) {
                 Ok(args) => self.range_dispatch(name, t, args),
                 Err(e) => e,
@@ -1062,7 +1065,7 @@ impl Eval<'_> {
     /// first list's error, as the steps for the other preps in `route_call` do.
     fn ready_range(&self, name: &str, t: &Traits, argv: Vec<V>) -> Result<Vec<V>, V> {
         let flatten = !t.matrix_args;
-        let (mut cx, mut err) = (false, None);
+        let (mut cx, mut err, mut blank) = (false, None, false);
         let mut out = Vec::with_capacity(argv.len());
         for a in argv {
             let V::List(l) = &a else {
@@ -1087,6 +1090,7 @@ impl Eval<'_> {
                 }
             };
             cx |= r.has_cx;
+            blank |= r.blank;
             if err.is_none() {
                 err.clone_from(&r.err);
             }
@@ -1095,7 +1099,11 @@ impl Eval<'_> {
         if t.checks_cx && cx {
             return Err(cx_refusal(name));
         }
-        err.map_or(Ok(out), Err)
+        match err {
+            Some(e) => Err(e),
+            None if blank && t.prep == Prep::Paired => Ok(pair_blanks(out)),
+            None => Ok(out),
+        }
     }
 
     fn range_dispatch(&self, name: &str, t: &Traits, args: Vec<V>) -> V {
@@ -1540,27 +1548,28 @@ fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
     match prep {
         Prep::Raw | Prep::Positional => Ok(argv),
         Prep::Default | Prep::Zero => argv.into_iter().map(|a| ready_list(prep, a)).collect(),
-        Prep::Paired => {
-            if let Some(e) = argv.iter().find_map(first_error) {
-                return Err(e);
-            }
-            let lens: Vec<usize> =
-                argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
-            let Some(&n) = lens.iter().min() else { return Ok(argv) };
-            let keep: Vec<usize> =
-                (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
-            if keep.len() == n {
-                return Ok(argv);
-            }
-            Ok(argv
-                .into_iter()
-                .map(|a| match a {
-                    V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
-                    other => other,
-                })
-                .collect())
-        }
+        Prep::Paired => match argv.iter().find_map(first_error) {
+            Some(e) => Err(e),
+            None => Ok(pair_blanks(argv)),
+        },
     }
+}
+
+/// A position blank in any list drops from every list.
+fn pair_blanks(argv: Vec<V>) -> Vec<V> {
+    let lens: Vec<usize> = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
+    let Some(&n) = lens.iter().min() else { return argv };
+    let keep: Vec<usize> =
+        (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
+    if keep.len() == n {
+        return argv;
+    }
+    argv.into_iter()
+        .map(|a| match a {
+            V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
+            other => other,
+        })
+        .collect()
 }
 
 fn first_error(a: &V) -> Option<V> {
@@ -1572,13 +1581,16 @@ fn first_error(a: &V) -> Option<V> {
     })
 }
 
-/// One list as `prep` reads it, `Prep::Paired` aside: the same list when it holds no blank.
+/// One list as `prep` reads it, its pairs aside for `Prep::Paired`: the same list when it holds no blank.
 fn ready_list(prep: Prep, a: V) -> Result<V, V> {
     if matches!(prep, Prep::Raw | Prep::Positional) {
         return Ok(a);
     }
     if let Some(e) = first_error(&a) {
         return Err(e);
+    }
+    if prep == Prep::Paired {
+        return Ok(a);
     }
     Ok(match a {
         V::List(l) if l.iter().any(is_missing) => list(

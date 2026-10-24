@@ -940,19 +940,16 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::Num(jstat_gammafn(n))
         }
         "Z.TEST" => {
-            let array = parse_number_array(&flatten(arg(a, 0)));
             let x = parse_number(arg(a, 1));
-            let (Ok(array), Some(x)) = (array, num_of(&x)) else { return VALUE };
+            let (Some((n, mean, sd)), Some(x)) = (z_test_spread(arg(a, 0)), num_of(&x)) else { return VALUE };
             let sigma = if truthy(arg(a, 2)) {
                 match num_of(&parse_number(arg(a, 2))) {
                     Some(s) => s,
                     None => return VALUE,
                 }
             } else {
-                fx_var_s(&array).sqrt()
+                sd
             };
-            let n = array.len() as f64;
-            let mean = fx_average(&array).unwrap_or(f64::NAN);
             match fx_norm_s_cdf((mean - x) / (sigma / n.sqrt())) {
                 Ok(p) => V::Num(1.0 - p),
                 Err(_) => V::Num(f64::NAN),
@@ -1003,4 +1000,33 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         _ => V::Undef,
     }
+}
+
+/// Z.TEST's count, mean and sample spread of its list, `None` when it doesn't read as numbers, kept for the last long
+/// list: a computed column tests each row against the same column ([[C120]] linearWork).
+fn z_test_spread(list: &V) -> Option<(f64, f64, f64)> {
+    let read = || {
+        parse_number_array(&flatten(list))
+            .ok()
+            .map(|array| (array.len() as f64, fx_average(&array).unwrap_or(f64::NAN), fx_var_s(&array).sqrt()))
+    };
+    let V::List(l) = list else { return read() };
+    if l.len() < 64 {
+        return read();
+    }
+    type Last = Option<(std::rc::Rc<Vec<V>>, Option<(f64, f64, f64)>)>;
+    thread_local! {
+        static LAST: std::cell::RefCell<Last> = const { std::cell::RefCell::new(None) };
+    }
+    LAST.with(|last| {
+        let mut last = last.borrow_mut();
+        match &*last {
+            Some((k, s)) if std::rc::Rc::ptr_eq(k, l) => *s,
+            _ => {
+                let s = read();
+                *last = Some((l.clone(), s));
+                s
+            }
+        }
+    })
 }
