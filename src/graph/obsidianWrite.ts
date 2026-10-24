@@ -35,7 +35,7 @@ export function assetLinkTarget(relPath: string, vaultFiles: readonly string[]):
   return shared ? relPath : name;
 }
 
-export function imageMarkdown(alt: string, url: string): string {
+function imageMarkdown(alt: string, url: string): string {
   const a = alt.replace(/[\r\n]+/g, " ").replace(/([\\[\]])/g, "\\$1");
   const u = url.replace(/[ ()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   return `![${a}](${u})`;

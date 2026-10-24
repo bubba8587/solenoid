@@ -6,7 +6,7 @@ import { PALETTE } from "../palette";
 export type SparklineOp = "line" | "column" | "winloss";
 /** The palette slots a sparkline paints in. The picture carries their Default palette hexes; a display repaints them in the active palette. */
 export const SPARK_SLOTS = { line: "gold", pos: "green", neg: "vermilion" } as const;
-export const SPARK_COLOR = { line: PALETTE.gold, pos: PALETTE.green, neg: PALETTE.vermilion } as const;
+const SPARK_COLOR = { line: PALETTE.gold, pos: PALETTE.green, neg: PALETTE.vermilion } as const;
 const SPARK_MARK = "class='sol-spark'";
 const SPARK_HEX_RE = new RegExp(`%23(${Object.values(SPARK_COLOR).map((h) => h.slice(1)).join("|")})`, "gi");
 

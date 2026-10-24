@@ -33,7 +33,7 @@ export function freeSpotRightOf(from: Box, taken: readonly Box[]): { x: number; 
 }
 
 /** The host's output carrying the frame the popup shows: `frame` when several do, else the first; null when none does. */
-export function frameOutputOf(hostId: string): string | null {
+function frameOutputOf(hostId: string): string | null {
   const node = getOwningEditor(hostId)?.getNode(hostId);
   if (!node) return null;
   const keys = Object.keys(node.outputs).filter((k) => {
@@ -44,7 +44,7 @@ export function frameOutputOf(hostId: string): string | null {
 }
 
 /** Places a Record node in the Cards view right of the host, wired to its frame output, and flies to it. */
-export async function addRecordCards(hostId: string): Promise<string | null> {
+async function addRecordCards(hostId: string): Promise<string | null> {
   const editor = getOwningEditor(hostId);
   const view = getOwningView(hostId);
   const host = editor?.getNode(hostId);

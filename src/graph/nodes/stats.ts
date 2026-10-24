@@ -443,7 +443,7 @@ const TWO_SAMPLE_SPEC: HypothesisTestSpec = {
   outLabel: "p-value (2-tail)",
 };
 
-export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
+const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec> = {
   z: {
     inputs: [
       { key: "a", label: "Array" },

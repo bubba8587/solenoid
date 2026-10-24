@@ -216,7 +216,7 @@ export type ChartPayload =
   | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
   | XYPayload | GanttPayload | LadderPayload;
 
-export const CHART_SPECIAL_OPS = [
+const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
   "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder",
 ] as const;

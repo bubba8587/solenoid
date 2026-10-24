@@ -20,7 +20,7 @@ const RESULT_TYPE_OPTIONS = (Object.keys(RESULT_TYPE_META) as ResultType[]).map(
   title: RESULT_TYPE_META[value].title,
 }));
 
-export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: ResultType): Promise<void> {
+async function applyResultAs(node: Producer, dim: ResultDim, resultAs: ResultType): Promise<void> {
   if (node.resultAs === resultAs) return;
   node.resultAs = resultAs;
 

@@ -337,7 +337,7 @@ function NumberEntry({ text, onCommit }: { text: string; onCommit: (text: string
 }
 
 /** A logical Value Input's TRUE/FALSE checkbox. */
-export function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+function LogicalCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
   return (
     <label
       style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}

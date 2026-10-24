@@ -1,11 +1,7 @@
 // [[C24]], [[D51]], [[D48]] classifyNonFinite (guardFinite), [[D36]] nullSkippedNotZero
 import { solError, type SolError } from "./errorValue";
 
-// Call sites use this predicate, not `=== null`, so a representation change has one place to move.
 export type Missing = null;
-export function isMissing(v: unknown): v is Missing {
-  return v === null;
-}
 
 export function numberToLogical(n: number): boolean {
   return n !== 0;
@@ -77,8 +73,8 @@ export function uncertain(value: number, error: number, samples?: readonly numbe
   return samples ? { kind: "uncertain", value, error: e, samples } : { kind: "uncertain", value, error: e };
 }
 
-export const DOMAIN_MESSAGE = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
-export const OVERFLOW_MESSAGE = "The result is too large to represent. The true value exceeds the numeric range.";
+const DOMAIN_MESSAGE = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
+const OVERFLOW_MESSAGE = "The result is too large to represent. The true value exceeds the numeric range.";
 
 export function guardFinite(result: number, inputs: ReadonlyArray<unknown>): number | SolError {
   if (Number.isFinite(result)) return result;

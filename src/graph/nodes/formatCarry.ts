@@ -11,7 +11,7 @@ export interface FormatCarrySpec {
 
 interface HasFormatCarry { formatCarry(): FormatCarrySpec[]; }
 
-export function getFormatCarry(n: unknown): FormatCarrySpec[] {
+function getFormatCarry(n: unknown): FormatCarrySpec[] {
   const f = (n as Partial<HasFormatCarry> | null)?.formatCarry;
   return typeof f === "function" ? f.call(n) : [];
 }

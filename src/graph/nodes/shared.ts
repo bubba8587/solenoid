@@ -112,7 +112,7 @@ export function readRole<T = unknown>(node: GraphNode, key: string, wired: reado
 }
 
 /** `readRole` with the role given, for a card whose roles change with its op (Series). */
-export function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+function readAsRole<T = unknown>(node: GraphNode, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
   const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
   const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];

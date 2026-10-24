@@ -22,7 +22,7 @@ type CellMat = Cell[][];
 
 export type TableElemType = "number" | "string" | "date" | "logical";
 
-export const TABLE_ELEM_SOCKET = {
+const TABLE_ELEM_SOCKET = {
   number: tableSocket,
   string: strTableSocket,
   date: dateTableSocket,

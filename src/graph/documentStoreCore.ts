@@ -3,7 +3,7 @@
 import type { SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";
 
-export const CURRENT_LIBRARY_VERSION = 1;
+const CURRENT_LIBRARY_VERSION = 1;
 
 export interface SolDoc {
   id: string;

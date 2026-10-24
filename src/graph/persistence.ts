@@ -316,8 +316,8 @@ const AUTOSAVE_DELAY = 700;
 let _suspend = 0;
 let _timer: ReturnType<typeof setTimeout> | null = null;
 
-export function suspendAutosave() { _suspend++; }
-export function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
+function suspendAutosave() { _suspend++; }
+function resumeAutosave() { _suspend = Math.max(0, _suspend - 1); }
 
 export function scheduleAutosave(): void {
   if (_suspend > 0) return;

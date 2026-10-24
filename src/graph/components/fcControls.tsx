@@ -100,7 +100,7 @@ export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]> = 
   );
 }
 
-export function unitOptions(opts: FcFormatOptions) {
+function unitOptions(opts: FcFormatOptions) {
   return (
     <>
       {opts.unitGroupOrder.map((group) => {

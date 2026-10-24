@@ -4,7 +4,7 @@ import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit,
   sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
-  adoptMagnitude, type UnitCell,
+  type UnitCell,
 } from "../../src/graph/unitValue";
 import { parseUnit, formatDim, type Unit } from "../../src/graph/dimension";
 import { arithmeticCell } from "./coreVerbs";
@@ -144,9 +144,6 @@ describe("Aggregate over tagged cells", () => {
     expect((sum([3, km(5)]) as UnitCell).value).toBe(8000);
     // A display-LESS cell (no id to read the bare number in) keeps the face value.
     expect((sum([cell(5, "km"), 3]) as UnitCell).value).toBe(5003);
-    expect(adoptMagnitude(3, "km")).toBe(3000);
-    expect(adoptMagnitude(3, undefined)).toBe(3); // no display — face value
-    expect(adoptMagnitude(3, "definitely-not-a-unit")).toBe(3); // unresolvable — face value
   });
   it("an all-bare list stays a bare number", () => {
     expect(sum([1, 2, 3])).toBe(6);

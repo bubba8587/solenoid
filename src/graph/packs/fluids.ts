@@ -7,7 +7,7 @@ import { FLUIDS_PACK_FORMULAS } from "./fluidsFormulas";
 
 const G0 = "9.80665";
 
-export const FLUIDS_BASE: FormulaPackEntry[] = [
+const FLUIDS_BASE: FormulaPackEntry[] = [
   { type: "fl-reynolds", label: "Reynolds Number", expr: "rho*v*d/mu",
     description: "Flow regime indicator: density rho (kg/m³), velocity v (m/s), diameter d (m), dynamic viscosity mu (Pa·s). Laminar below ~2300, turbulent above ~4000.",
     keywords: "laminar turbulent", units: { rho: "kg/m3", v: "m/s", d: "m", mu: "Pa·s" } },
@@ -29,7 +29,7 @@ export const FLUIDS_BASE: FormulaPackEntry[] = [
     description: "Downstream pressure along a streamline (no losses): pressures Pa, velocities m/s, elevations z m   (p₂ = p₁ + ½ρ(v₁²−v₂²) + ρg(z₁−z₂))", units: { p1: "Pa", rho: "kg/m3", v1: "m/s", v2: "m/s", z1: "m", z2: "m" } },
 ];
 
-export const FLUIDS_PIPE: FormulaPackEntry[] = [
+const FLUIDS_PIPE: FormulaPackEntry[] = [
   { type: "fl-laminar-f", label: "Friction Factor (Laminar)", expr: "64/re",
     description: "Darcy friction factor f = 64/Re for laminar pipe flow, Re < 2300." },
   { type: "fl-swamee-jain", label: "Friction Factor (Swamee–Jain)", expr: "0.25/(LOG10(rr/3.7+5.74/re^0.9))^2",
@@ -45,7 +45,7 @@ export const FLUIDS_PIPE: FormulaPackEntry[] = [
     keywords: "capillary laminar tube", units: { dp: "Pa", r: "m", mu: "Pa·s", len: "m" } },
 ];
 
-export const FLUIDS_PUMPS: FormulaPackEntry[] = [
+const FLUIDS_PUMPS: FormulaPackEntry[] = [
   { type: "fl-orifice", label: "Orifice Flow", expr: "cd*a*SQRT(2*dp/rho)",
     description: "Flow through an orifice: discharge coefficient cd (~0.6 sharp-edged), area a (m²), pressure drop dp (Pa)   (Q = C_d·A·√(2Δp/ρ))", units: { a: "m2", dp: "Pa", rho: "kg/m3" } },
   { type: "fl-pump-hydraulic", label: "Pump Hydraulic Power", expr: `rho*${G0}*q*head`,
@@ -54,7 +54,7 @@ export const FLUIDS_PUMPS: FormulaPackEntry[] = [
     description: "Required shaft power: hydraulic power ÷ pump efficiency eta, 0 to 1", units: { rho: "kg/m3", q: "m3/s", head: "m" } },
 ];
 
-export const FLUIDS_AERO: FormulaPackEntry[] = [
+const FLUIDS_AERO: FormulaPackEntry[] = [
   { type: "fl-drag", label: "Drag Force", expr: "rho*v^2*cd*a/2",
     description: "Aerodynamic drag F = ½ρv²C_dA in newtons: density rho, speed v, drag coefficient cd, frontal area a.", units: { rho: "kg/m3", v: "m/s", a: "m2" } },
   { type: "fl-stokes", label: "Stokes Terminal Velocity", expr: `d^2*${G0}*(rhop-rhof)/(18*mu)`,

@@ -61,7 +61,7 @@ const FLASH_MS = 1000;
 const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** A node inside a collapsed group lights up the group box. */
-export function flashNode(nodeId: string): void {
+function flashNode(nodeId: string): void {
   const editor = getOwningEditor(nodeId);
   const view = getOwningView(nodeId);
   if (!editor || !view) return;

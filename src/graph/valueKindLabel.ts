@@ -11,7 +11,7 @@ import { isUncertain, type UncertainNumber } from "./valueKinds";
 import { formatScalar } from "./components/format";
 
 /** Each part through the standard scalar formatter, so the wrapper never stringifies to "[object Object]". */
-export function formatUncertain(v: UncertainNumber): string {
+function formatUncertain(v: UncertainNumber): string {
   return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
 }
 

@@ -109,10 +109,6 @@ export function colTypeForSocket(dataType: string | undefined): FrameColType | n
   }
 }
 
-export function frameHasTextColumns(f: FrameValue): boolean {
-  return f.columns.some((c) => c.type === "string");
-}
-
 export function formatFrameCell(type: FrameColType, v: FrameCell, format?: FormatAnnotation): number | string | null {
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
@@ -496,7 +492,7 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
+function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
   return col.unit
     ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)
     : [...col.values];

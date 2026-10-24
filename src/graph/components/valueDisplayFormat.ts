@@ -40,7 +40,7 @@ export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation
 }
 
 export type RowCell = number | boolean | string | Cx | SolError | null;
-export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
+function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;

@@ -10,8 +10,6 @@ export interface LadderOption { score: number; value: number[]; costs: number[];
  *  cost with no total (political capital); with either it is countable. */
 export interface LadderResource { limit: number | null; floor?: number | null }
 
-export const isRough = (r: LadderResource): boolean => r.limit == null && r.floor == null;
-
 export interface LadderResult { states: LadderState[]; edges: LadderEdge[]; main: number[] }
 
 /** What a viewer can do to a Choice Ladder's choices: take an option at a fork (`instead` of the one taken there), undo

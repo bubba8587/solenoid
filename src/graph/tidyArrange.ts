@@ -34,7 +34,7 @@ export interface TidyDeps {
 
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
-export function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
+function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
   const down = direction === "down";
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {

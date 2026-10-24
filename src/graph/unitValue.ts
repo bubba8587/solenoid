@@ -37,12 +37,6 @@ export const displayScale = (id: string): number | null => _displayScale(id);
 export const displayOffset = (id: string): number | null => _displayOffset(id);
 export const displayDim = (id: string): Dim | null => _displayDim(id);
 
-export function adoptMagnitude(face: number, display: string | undefined): number {
-  if (display === undefined || display === "") return face;
-  const s = _displayScale(display);
-  return s == null || s === 1 ? face : face * s;
-}
-
 export function isRatio(v: unknown): v is UnitCell {
   return isUnitCell(v) && v.ratio === true;
 }

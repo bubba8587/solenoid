@@ -7,7 +7,7 @@ import { parseCsvLine } from "./csv";
 import { csvField } from "./csvSafety";
 
 /** A list literal's items as typed: split like CSV, trimmed, blanks dropped. */
-export function listLiteralItems(csv: string): string[] {
+function listLiteralItems(csv: string): string[] {
   return parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
 }
 

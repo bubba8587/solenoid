@@ -69,7 +69,7 @@ const SVG_STYLE_PROPS = [
 ] as const;
 
 /** Original and clone are walked in lockstep, because getComputedStyle is blank on a detached node. */
-export function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
+function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   const clone = svgEl.cloneNode(true) as SVGSVGElement;
   const origs: Element[] = [svgEl, ...Array.from(svgEl.querySelectorAll("*"))];
   const clones: Element[] = [clone, ...Array.from(clone.querySelectorAll("*"))];
@@ -103,7 +103,7 @@ export interface LegendEntry { color: string; label: string }
 
 const xmlText = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export const LEGEND_ROW_H = 18;
+const LEGEND_ROW_H = 18;
 
 /** A multi-series legend as one centered SVG row of swatches and names, `width` wide. */
 export function legendToSvg(entries: readonly LegendEntry[], width: number, textColor: string, fontSize = 9, fontFamily = "sans-serif"): string {
@@ -148,7 +148,7 @@ export function nodeChartSvgString(nodeId: string): string | null {
     + `${style ? `<g transform="translate(0,${h})">${legendToSvg(entries, w, style.color, 9, style.fontFamily)}</g>` : ""}</svg>`;
 }
 
-export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
+function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   const el = getView()?.nodeElement(nodeId);
   if (!el) return null;
   let best: SVGSVGElement | null = null;

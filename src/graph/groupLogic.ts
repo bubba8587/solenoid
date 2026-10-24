@@ -15,7 +15,7 @@ import { measuredBox } from "./nodeSize";
 import { getOwningEditor } from "./activeGraph";
 import { settleOverlaps } from "./groupPush";
 
-export const GROUP_DEFAULT_COLOR = "gray";
+const GROUP_DEFAULT_COLOR = "gray";
 
 export function majorityColor(nodes: GraphNode[]): string {
   const tally = new Map<string, number>();
@@ -61,7 +61,7 @@ function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: 
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
-export function sendGroupToBack(view: View, groupId: string): void {
+function sendGroupToBack(view: View, groupId: string): void {
   const el = view.nodeElement(groupId);
   if (el) el.style.zIndex = "-2";
 }

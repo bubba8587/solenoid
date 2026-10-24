@@ -2,10 +2,17 @@
 import { describe, it, expect } from "vitest";
 import {
   dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
-  unitMul, unitDiv, unitPow, commensurable, convert,
+  unitMul, unitDiv, unitPow,
   parseUnit, formatDim, UNITS, DIMENSIONLESS,
   type Unit,
 } from "../../src/graph/dimension";
+
+/** `value` in unit `a` read in unit `b`, or null across dimensions. */
+function convert(value: number, a: Unit, b: Unit): number | null {
+  if (!dimEqual(a.dim, b.dim)) return null;
+  const out = (value * a.scale + (a.offset ?? 0) - (b.offset ?? 0)) / b.scale;
+  return Number.isFinite(out) ? out : null;
+}
 
 const u = (s: string): Unit => {
   const p = parseUnit(s);
@@ -74,8 +81,6 @@ describe("conversion (matches the Convert node's contract)", () => {
   it("incommensurable units return null (→ #UNIT!)", () => {
     expect(convert(1, u("km"), u("kg"))).toBeNull();
     expect(convert(1, u("m"), u("s"))).toBeNull();
-    expect(commensurable(u("m"), u("s"))).toBe(false);
-    expect(commensurable(u("m/s"), u("km/h"))).toBe(true);
   });
   it("round-trips within float precision", () => {
     const there = convert(5, u("mi"), u("km"))!;

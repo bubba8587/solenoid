@@ -270,7 +270,7 @@ export class MermaidNode extends GraphNode {
 
 // ─── Gauge ─────────────────────────────────────────────────────────────────────
 export type GaugeStyle = "dial" | "bar";
-export const GAUGE_STYLE_META = {
+const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
 } satisfies Record<GaugeStyle, { label: string }>;

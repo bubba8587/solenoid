@@ -711,7 +711,7 @@ export type { FilterCombine } from "../frameOps";
 import type { FilterCombine } from "../frameOps";
 
 /** Null means a wired blank; any other wired value stringifies (an error to its code) to match a typed literal. */
-export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
+function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
   const raw: unknown = wired === undefined || wired.length === 0 ? (literal ?? "") : (wired[0] ?? null);
   if (raw === null) return null;
   if (isSolError(raw)) return raw.code;
@@ -719,7 +719,7 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
 }
 
 /** A condition's value or column is a setting: a blank one is the condition left out, so it keeps every row ([[D86]] blankRoles). */
-export const readConditionValue = (wired: unknown[] | undefined, literal: string | undefined): string =>
+const readConditionValue = (wired: unknown[] | undefined, literal: string | undefined): string =>
   readFilterValue(wired, literal) ?? "";
 
 export class FilterNode extends GraphNode {
@@ -1022,7 +1022,7 @@ export const SET_RELATION_META: Record<SetRelation, { label: string; description
 
 export type SetOpAll = SetOp | SetRelation;
 
-export const SET_RELATION_OPS: ReadonlySet<SetOpAll> = new Set<SetOpAll>(["equal", "subset", "superset", "disjoint"]);
+const SET_RELATION_OPS: ReadonlySet<SetOpAll> = new Set<SetOpAll>(["equal", "subset", "superset", "disjoint"]);
 export function isSetRelationOp(op: SetOpAll): op is SetRelation { return SET_RELATION_OPS.has(op); }
 
 export const SET_META: Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }> = {
@@ -1471,7 +1471,7 @@ export const REDUCE_OP_META = {
   rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
 } satisfies Record<ReduceOp, { label: string; description: string; fx?: string; keywords?: string }>;
 
-export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
+function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   if (isDimensionless(dim)) return DIMENSIONLESS;
   switch (op) {
     case "sum": case "avg": case "min": case "max": case "median":

@@ -18,7 +18,7 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: ReactNode; title
   { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean list: TRUE or FALSE" },
 ];
 
-export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
+async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a drill-in retypes its own graph's cables.
   const editor = getOwningEditor(node.id);

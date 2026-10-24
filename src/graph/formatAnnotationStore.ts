@@ -277,7 +277,7 @@ export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "custom", label: "",     group: "custom" },
 ];
 
-export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
+const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   none:        "—",
   angle:       "Angle",
   length:      "Length",

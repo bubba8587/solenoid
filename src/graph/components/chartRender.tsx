@@ -1103,7 +1103,7 @@ function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { pay
   );
 }
 
-export const TORNADO_W = 218;
+const TORNADO_W = 218;
 
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {
   const falling = resolveColor("blue");

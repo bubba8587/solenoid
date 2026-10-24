@@ -1,9 +1,6 @@
 // [[B11]], [[A1]]
-// The distributions Formula.js LACKS (the T family, right-tail variants, GAMMA.DIST/INV)
-// are registered with OUR impls (excelFunctions.ts). This locks formula == the visual
-// dist NODE. As of 2026-08-23 both surfaces call the SAME shared kernels (mathUtils
-// tCDF/tPDF/chiSqCDF/fCDF/gammaCDF/gammaPDF) rather than separate hand-rolled copies, so
-// the agreement is structural — this test guards that nobody re-forks one surface.
+// The formula and the Distributions card answer alike: both run the core's kernels, and this guards that nobody
+// re-forks one surface.
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { DistributionsNode } from "../../src/graph/nodes/distribution";

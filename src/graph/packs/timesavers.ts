@@ -4,7 +4,7 @@ import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
-export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
+const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
   { type: "ts-percent-change", label: "Percent Change", expr: "(after-before)/before",
     description: "Relative change from before to after, as a fraction. Format as % with an FC. Excel: (B2-A2)/A2.",
     keywords: "delta growth relative difference" },
@@ -14,7 +14,7 @@ export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
     keywords: "compound annual growth" },
 ];
 
-export const TIMESAVER_TEXT: FormulaPackEntry[] = [
+const TIMESAVER_TEXT: FormulaPackEntry[] = [
   { type: "ts-ordinal", label: "Ordinal Suffix", expr: "ORDINAL(n)", resultAs: "text",
     description: "1 → 1st, 23 → 23rd, handling the 11th/12th/13th case. No single Excel function; the usual formula nests CHOOSE and MOD.",
     keywords: "st nd rd th rank suffix" },
@@ -32,7 +32,7 @@ export const TIMESAVER_TEXT: FormulaPackEntry[] = [
     keywords: "substring count find occurrences" },
 ];
 
-export const TIMESAVER_DATE: FormulaPackEntry[] = [
+const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP((MOD(MONTH(date)-start,12)+1)/3,0)",
     literals: { start: 1 },
     varDescriptions: { start: "First month of the fiscal year: 1 = January (plain calendar quarters). Set 4 for an April fiscal year, 7 for July, and so on." },

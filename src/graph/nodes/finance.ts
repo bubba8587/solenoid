@@ -141,7 +141,7 @@ export class DepreciationNode extends GraphNode {
 
 // ─── TVM (Time Value of Money) ────────────────────────────────────────────────
 
-export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
+const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };

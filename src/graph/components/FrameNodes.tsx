@@ -287,7 +287,7 @@ export const FILTER_OP_OPTIONS_WITH_ERROR: { value: FilterOp; label: string }[] 
   { value: "iserror", label: "has error" },
 ];
 
-export const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] = [
+const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] = [
   ...FILTER_OP_OPTIONS_WITH_ERROR,
   { value: "listContains", label: "list contains" },
   { value: "listContainsAny", label: "list contains any" },

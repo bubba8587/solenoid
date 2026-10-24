@@ -30,7 +30,7 @@ const REF: number = 1;
 const MIP_MIN_PX = 6;
 const DEFAULT_QUALITY = 1.0;
 
-export function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
+function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
   const target = quality * scale * dpr;
   return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
 }

@@ -25,21 +25,21 @@ const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
 };
 
 /** A nested table as a cube, its columns read by the types declared for that one table. */
-export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
+function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
   return { kind: "cube", cube: recordsToCube(rowsAt(records, path), typesAt(nested, path), nested, path), label, path };
 }
 
 /** A nested Frame, its columns read by its own picks. */
-export function frameViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
+function frameViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
   return { kind: "frame", frame: frameCellFromRecords(rowsAt(records, path), typesAt(nested, path)), label, path };
 }
 
-export function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = getAtPath(records, path);
   return { kind: "list", items: Array.isArray(sub) ? (sub as unknown[]) : [], label, path };
 }
 
-export function gridViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+function gridViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = getAtPath(records, path);
   const cells = Array.isArray(sub) ? sub.map((row) => (Array.isArray(row) ? (row as CubeCell[]) : [])) : [];
   return { kind: "grid", cells, label, path };
@@ -101,7 +101,7 @@ function columnTypeIn(edit: CubeEditBinding, tablePath: CubePath, column: string
 }
 
 /** The type declared for a cell: its own column's on a Frame or Cube level; on a list or table level, the column the list or table sits in. */
-export function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
+function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
   if (column !== undefined) return columnTypeIn(edit, path, column);
   let k = path.length - 1;
   while (k >= 0 && typeof path[k] !== "string") k--;

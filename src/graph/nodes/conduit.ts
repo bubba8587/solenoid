@@ -58,7 +58,7 @@ function claimSeq(n?: number): number {
 }
 
 /** On the 45° quantum and in [0, 360), whatever a save or a caller hands in. */
-export function snapConduitAngle(deg: unknown): number {
+function snapConduitAngle(deg: unknown): number {
   const d = typeof deg === "number" && Number.isFinite(deg) ? deg : 0;
   const s = Math.round(d / 45) * 45;
   return ((s % 360) + 360) % 360;

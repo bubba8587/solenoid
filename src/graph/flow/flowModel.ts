@@ -37,7 +37,7 @@ export type FlowModel = {
   engine: DataflowEngine<Schemes>;
 };
 
-export function resolveCtor(type: string): NodeCtor | undefined {
+function resolveCtor(type: string): NodeCtor | undefined {
   const fromBarrel = (Nodes as unknown as Record<string, unknown>)[type];
   if (typeof fromBarrel === "function") return fromBarrel as NodeCtor;
   return ctorRegistry().get(type);
@@ -134,7 +134,7 @@ export type RFNodeLite = {
   data: { node: SolenoidNode; version: number };
 };
 
-export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
+function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
   for (const g of m.editor.getNodes()) {
     if (g instanceof Nodes.GroupNode && g.members.includes(id)) return g;
   }
@@ -165,7 +165,7 @@ export function nodeClassName(node: SolenoidNode): string | undefined {
   return cls.length ? cls.join(" ") : undefined;
 }
 
-export function nodeZIndex(node: SolenoidNode): number {
+function nodeZIndex(node: SolenoidNode): number {
   if (node instanceof Nodes.GroupNode) return -2;
   if (node instanceof Nodes.ConduitNode) return -1;
   return 0;

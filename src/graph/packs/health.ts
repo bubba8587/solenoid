@@ -5,7 +5,7 @@ import { HrZonesNode } from "../nodeClasses";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 import { HEALTH_PACK_FORMULAS } from "./healthFormulas";
 
-export const HEALTH_BODY: FormulaPackEntry[] = [
+const HEALTH_BODY: FormulaPackEntry[] = [
   { type: "hf-bmi", label: "BMI", expr: "w/h^2",
     description: "Body mass index: weight w (kg) ÷ height h (m) squared. 18.5–25 is the WHO normal range.",
     keywords: "body mass index", units: { w: "kg", h: "m" } },
@@ -21,7 +21,7 @@ export const HEALTH_BODY: FormulaPackEntry[] = [
     description: "Devine ideal weight (kg) for women from height hcm (cm): 45.5 kg + 2.3 kg per inch over 5 ft", units: { hcm: "cm" } },
 ];
 
-export const HEALTH_COMPOSITION: FormulaPackEntry[] = [
+const HEALTH_COMPOSITION: FormulaPackEntry[] = [
   { type: "hf-bodyfat-deurenberg-m", label: "Body Fat % (Men, Deurenberg)", expr: "1.2*bmi+0.23*age-16.2",
     description: "Body-fat % for men from BMI and age. Deurenberg 1991: 1.2·BMI + 0.23·age − 10.8·1 − 5.4." },
   { type: "hf-bodyfat-deurenberg-w", label: "Body Fat % (Women, Deurenberg)", expr: "1.2*bmi+0.23*age-5.4",
@@ -34,7 +34,7 @@ export const HEALTH_COMPOSITION: FormulaPackEntry[] = [
     keywords: "tape measure circumference", units: { waist: "cm", hip: "cm", neck: "cm", hcm: "cm" } },
 ];
 
-export const HEALTH_ENERGY: FormulaPackEntry[] = [
+const HEALTH_ENERGY: FormulaPackEntry[] = [
   { type: "hf-bmr-mifflin-m", label: "BMR (Men, Mifflin-St Jeor)", expr: "10*w+6.25*hcm-5*age+5",
     description: "Resting calories/day for men: weight w (kg), height hcm (cm), age in years. The current ADA standard",
     keywords: "basal metabolic rate calories", units: { w: "kg", hcm: "cm" } },
@@ -55,7 +55,7 @@ export const HEALTH_ENERGY: FormulaPackEntry[] = [
     keywords: "exercise energy", units: { w: "kg", hrs: "hr" } },
 ];
 
-export const HEALTH_CARDIO: FormulaPackEntry[] = [
+const HEALTH_CARDIO: FormulaPackEntry[] = [
   { type: "hf-maxhr-classic", label: "Max Heart Rate (220 − age)", expr: "220-age",
     description: "The traditional max-HR estimate: quick but drifts high for older ages. See the Tanaka preset" },
   { type: "hf-maxhr-tanaka", label: "Max Heart Rate (Tanaka)", expr: "208-0.7*age",
@@ -68,7 +68,7 @@ export const HEALTH_CARDIO: FormulaPackEntry[] = [
     keywords: "aerobic fitness running", units: { d: "m" } },
 ];
 
-export const HEALTH_CLINICAL: FormulaPackEntry[] = [
+const HEALTH_CLINICAL: FormulaPackEntry[] = [
   { type: "hf-crcl-cockcroft-m", label: "Creatinine Clearance (Men)", expr: "(140-age)*w/(72*scr)",
     description: "Cockcroft-Gault estimate (ml/min): age, weight w (kg), serum creatinine scr in mg/dL",
     keywords: "kidney renal gfr", units: { w: "kg", scr: "mg/dL" } },

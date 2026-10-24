@@ -239,12 +239,12 @@ export function exposureOf(decl: NodeOpsDecl): OpExposure {
   return decl.expose ?? "collapsed";
 }
 
-export function opSearchLabel(hostLabel: string, opLabel: string): string {
+function opSearchLabel(hostLabel: string, opLabel: string): string {
   return `${hostLabel}: ${opLabel}`;
 }
 
 const _primaryOp = new Map<string, string | null>();
-export function primaryOpOf(host: NodeCatalogEntry): string | null {
+function primaryOpOf(host: NodeCatalogEntry): string | null {
   const hit = _primaryOp.get(host.type);
   if (hit !== undefined) return hit;
   let op: string | null = null;
@@ -267,7 +267,7 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
 }
 
 /** "Excel → Card", or "Excel → Card: Op" when the Excel name is one op's formula name; the arrow tells it from an op row ("Card: Op"). */
-export function excelSearchLabel(name: string, hostLabel: string, opLabel?: string): string {
+function excelSearchLabel(name: string, hostLabel: string, opLabel?: string): string {
   return `${name} → ${opLabel ? opSearchLabel(hostLabel, opLabel) : hostLabel}`;
 }
 

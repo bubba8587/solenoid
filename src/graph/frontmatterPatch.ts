@@ -188,7 +188,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
 }
 
 
-export const BUILTIN_READONLY = new Set([
+const BUILTIN_READONLY = new Set([
   "path", "name", "folder", "ext", "size", "created", "modified", "links", "embeds", "date",
 ]);
 

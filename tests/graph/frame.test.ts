@@ -17,7 +17,6 @@ import {
   typedColumn,
   colTypeForSocket,
   addColumn,
-  frameHasTextColumns,
   columnTypesAfterCsvEdit,
   type FrameValue,
 } from "../../src/graph/frame";
@@ -285,25 +284,6 @@ describe("buildFrame — ragged rows pad to the widest row with blanks", () => {
     expect(f.columns[0].values).toEqual([1, 4]);
     expect(f.columns[1].values).toEqual([2, null]);
     expect(f.columns[2].values).toEqual([3, null]);
-  });
-});
-
-// ─── frameHasTextColumns ─────────────────────────────────────────────────────
-
-describe("frameHasTextColumns", () => {
-  it("false when all columns are numeric", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2]]);
-    expect(frameHasTextColumns(f)).toBe(false);
-  });
-
-  it("true when at least one column is string", () => {
-    const f = frameFromCells(["Num", "Label"], [[42, "foo"]]);
-    expect(frameHasTextColumns(f)).toBe(true);
-  });
-
-  it("false for date columns (date serials don't block the matrix)", () => {
-    const f = frameFromCells(["D"], [["2026-01-03"]]);
-    expect(frameHasTextColumns(f)).toBe(false);
   });
 });
 

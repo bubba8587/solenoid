@@ -103,8 +103,8 @@ export const MATH_FN_OP_META = {
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
 
 // Only these show the angle-mode toggle; hyperbolic ops take and return plain reals.
-export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
-export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
+const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
+const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
 export function isTrigOp(op: MathFnOp): boolean {
   return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
 }
