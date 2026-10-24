@@ -53,7 +53,7 @@ thread_local! {
 }
 
 /// Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
-/// `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
+/// `column` names (`get_column`; `null` when none), each cut to `limit` cells when it's set.
 #[wasm_bindgen]
 pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>) -> String {
     reply(get(handle).map(|f| {

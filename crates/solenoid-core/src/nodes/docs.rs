@@ -59,7 +59,7 @@ fn missing(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
-/// `this.stringLiterals[key] ?? dflt`.
+/// The typed text, else `dflt`.
 fn text_literal(c: &Call, key: &str, dflt: &str) -> V {
     match c.string_literal(key) {
         V::Undef | V::Null => V::str(dflt),
@@ -67,8 +67,8 @@ fn text_literal(c: &Call, key: &str, dflt: &str) -> V {
     }
 }
 
-/// `broadcast`: `f` over the cells, item by item where any is a list, a ragged position null; a cell short-circuits
-/// on an error, then on a blank, and its answer goes through `guardFinite`.
+/// `f` over the cells, item by item where any is a list, a ragged position null; a cell short-circuits on an error,
+/// then on a blank, and its answer goes through `guard_finite`.
 fn broadcast(args: &[V], f: impl Fn(&[&V]) -> f64) -> V {
     each(args, |ops| {
         if let Some(e) = ops.iter().find(|a| a.is_sol_error()) {
@@ -109,7 +109,7 @@ fn display(c: &mut Call) -> Answer {
 
 // ─── Alert ──────────────────────────────────────────────────────────────────────
 
-/// `readInput(inputs[key], this.literals[key] ?? null)`.
+/// Unwired, the typed literal or null; wired, the first cable's value.
 fn scalarish(c: &Call, key: &str) -> V {
     let lit = match c.literal(key) {
         V::Undef => V::Null,
@@ -545,7 +545,7 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
     value
 }
 
-/// `withMatrixUnit`: a table's unit, kept where it has a dimension.
+/// A table's unit, kept where it has a dimension.
 fn put_table_unit(c: &mut Call, key: &str, dim: &Dim, display: Option<&str>) {
     if crate::unit_dims::is_dimensionless(dim) {
         return;
@@ -586,7 +586,7 @@ fn format_controller(c: &mut Call) -> Answer {
 
 // ─── Template ───────────────────────────────────────────────────────────────────
 
-/// `templateFormat` with the card's formatters: a number through TEXT, a date input's number as a date.
+/// A template value with the card's formatters: a number through TEXT, a date input's number as a date.
 fn template_format(v: &V, spec: Option<&str>, is_date: bool) -> String {
     match v {
         V::Null | V::Undef => String::new(),
@@ -713,7 +713,7 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
         .collect()
 }
 
-/// `deriveFrame`: each column's cells read as its type, the text kept as typed.
+/// Each column's cells read as its type, the text kept as typed.
 fn derive_column(s: &SourceColumn) -> Column {
     Column {
         name: s.name.clone(),
@@ -755,7 +755,7 @@ fn record_rows(picked: &V, total: usize) -> Vec<usize> {
         .collect()
 }
 
-/// `applyRole` of a `picks` role: a blank pick in a list dropped, none left (or a blank) every row.
+/// A `picks` input: a blank pick in a list dropped, none left (or a blank) every row.
 fn picks(v: V) -> V {
     match v {
         V::List(items) if !matches!(items.first(), Some(V::List(_))) => {
@@ -787,7 +787,7 @@ fn option_word<'a>(opts: &str, key: &str, values: &[&'a str]) -> Option<&'a str>
     })
 }
 
-/// `formatFrameCell` as a Record shows a cell: an error as its code, a logical as TRUE or FALSE, a date as its text.
+/// A cell as a Record shows it: an error as its code, a logical as TRUE or FALSE, a date as its text.
 fn frame_cell_text(col: &Column, v: &V) -> V {
     match v {
         V::Err(e) => V::str(e.code.as_str()),
@@ -1161,7 +1161,7 @@ fn lambda_socket_name(key: &str) -> String {
     format!("λ{}", key.strip_prefix("fn").unwrap_or(key))
 }
 
-/// A computed column over the table on the core's evaluator (`computeColumnOnEngine`): its cells, or the error that
+/// A computed column over the table on the core's evaluator: its cells, or the error that
 /// stops it.
 fn run_column(
     planned: &[TableColumn],

@@ -32,7 +32,6 @@ fn time(date: Date) -> f64 {
     date.unwrap_or(f64::NAN)
 }
 
-/// `jsDateToSerial`.
 fn to_serial(date: Date) -> f64 {
     time(date) / MS_PER_DAY + 25569.0
 }

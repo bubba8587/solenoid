@@ -1,9 +1,6 @@
 // [[C25]] firstClassUnits
-//! A display unit's dimension, scale and offset by its id: `fcUnitToUnit` (`unitBridge.ts`) over `parseUnit`
-//! (`dimension.ts`), CONVERT's units and the currency codes, which the TS registers at start (`convert.ts`,
-//! `fxProvider.ts`). A cell carries its own display unit's scale across the wire; this is for an id no cell carries
-//! (a frame column's unit, a square of a side's unit, a unit a card applies). `fixtures/core/unit-catalog.json.gz` holds
-//! the TS's answers for every id the app can name.
+//! A display unit's dimension, scale and offset by its id, for an id no cell carries across the wire (a frame column's
+//! unit, a square of a side's unit), held to the TS `fcUnitToUnit`'s answers by `tests/graph/coreUnitCatalog.test.ts`.
 
 use crate::unit_dims::{dim_div, dim_mul, dim_pow, Dim};
 
@@ -64,7 +61,7 @@ fn base_unit(sym: &str) -> Option<Unit> {
     })
 }
 
-/// `SI_PREFIXES` in its key order, `da` first as `resolveSymbol` tries it.
+/// The SI prefixes in the order they're tried, `da` first so it wins over `d`.
 const PREFIXES: &[(&str, f64)] = &[
     ("da", 1e1),
     ("Y", 1e24),

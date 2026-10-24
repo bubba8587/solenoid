@@ -51,7 +51,7 @@ fn first(c: &Call, key: &str) -> V {
     }
 }
 
-/// `readInput(inputs[key], this.literals[key] ?? null)`.
+/// Unwired, the typed literal or null; wired, the first cable's value.
 fn read_or_null(c: &Call, key: &str) -> V {
     let lit = match c.literal(key) {
         V::Undef => V::Null,

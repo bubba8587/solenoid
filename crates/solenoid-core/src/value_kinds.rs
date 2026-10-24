@@ -61,7 +61,7 @@ pub fn decimal_from_text(text: &str) -> f64 {
     f64::NAN
 }
 
-/// `coerceLogical`'s three answers: a boolean, blank, or NaN (unreadable).
+/// A logical reading's three answers: a boolean, blank, or NaN (unreadable).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Logical {
     Bool(bool),
@@ -137,7 +137,7 @@ pub fn guard_finite(result: f64, inputs: &[f64]) -> FrameCell {
     }
 }
 
-/// `forAggregate`: the first error, else the numeric cells.
+/// An aggregate's cells: the first error, else the numeric cells.
 pub enum AggregatePrep {
     Error(FrameCell),
     Nums(Vec<f64>),

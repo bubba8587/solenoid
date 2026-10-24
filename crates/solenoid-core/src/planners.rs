@@ -136,7 +136,7 @@ fn payoff_plan(debts: &[Debt], extra: f64, order: &str) -> Result<Plan, String> 
     Ok(Plan { schedule, per_debt })
 }
 
-/// The Payoff Planner's `addMonthsSerial`: as EDATE, a day past the target month's end lands on its last day.
+/// The Payoff Planner's month step: as EDATE, a day past the target month's end lands on its last day.
 fn add_months_serial(start: f64, months: f64) -> f64 {
     let Some(ms) = serial_to_ms(start) else { return f64::NAN };
     let p = parts_of_ms(ms);
@@ -289,7 +289,6 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
             }
         }
     }
-    // settleGroup
     let weighted = split == "weighted" && share_col.is_some();
     let n = people.len();
     let paid: Vec<f64> = people.iter().map(|p| if p.1.is_finite() { p.1 } else { 0.0 }).collect();
@@ -303,7 +302,6 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
     let shares: Vec<f64> = weights.iter().map(|w| if n > 0 { (total * w) / wsum } else { 0.0 }).collect();
     let transfers =
         min_transfers(&people.iter().enumerate().map(|(i, p)| (p.0.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
-    // settleNetFrame
     let paid_r: Vec<f64> = people.iter().map(|p| round2(p.1)).collect();
     let net: Vec<f64> = shares.iter().map(|&s| round2(round2(s))).collect();
     let diff: Vec<f64> = net.iter().zip(&paid_r).map(|(n, p)| round2(n - p)).collect();
@@ -326,7 +324,7 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
 
 // ─── Group Cost Settle (transactions) ───────────────────────────────────────────
 
-/// `settleLedgerCube` over a ledger's scalar cells: the transfers and the net table side by side, as `settle_frame`
+/// A ledger's scalar cells settled: the transfers and the net table side by side, as `settle_frame`
 /// answers. A column in `unit_cols` held unit cells: its numbers are amounts and never name anyone. An error in Paid by
 /// or For is the answer, and a logical there is #VALUE!.
 pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
@@ -419,7 +417,6 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
         };
         expenses.push((amount, payers, if named.is_empty() { None } else { Some(named) }));
     }
-    // settleLedger
     let mut order: Vec<String> = Vec::new();
     let see = |order: &mut Vec<String>, name: &str| -> usize {
         order.iter().position(|n| n == name).unwrap_or_else(|| {
@@ -458,7 +455,6 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     }
     let transfers =
         min_transfers(&order.iter().enumerate().map(|(i, n)| (n.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
-    // settleNetFrame
     let paid_r: Vec<f64> = paid.iter().map(|&p| round2(round2(p))).collect();
     let net: Vec<f64> = shares.iter().map(|&s| round2(round2(s))).collect();
     let diff: Vec<f64> = net.iter().zip(&paid_r).map(|(n, p)| round2(n - p)).collect();
@@ -478,7 +474,7 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
 
 // ─── Amortization ───────────────────────────────────────────────────────────────
 
-/// `amortizationSchedule` as the Amortization card's frame; None where it has no rows.
+/// The amortization schedule as the Amortization card's frame; None where it has no rows.
 pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Option<FrameValue> {
     let n = nper.floor();
     if !rate.is_finite() || !pv.is_finite() || !fv.is_finite() || n.is_nan() || n < 1.0 {
@@ -811,7 +807,7 @@ pub fn logistic_frame(f: &FrameValue, target: &str) -> Option<Option<FrameValue>
     }))
 }
 
-/// `logisticFit`'s coefficients, fitted probabilities and standard errors.
+/// The logistic fit's coefficients, fitted probabilities and standard errors.
 fn logistic_fit(x: &[Vec<f64>], y: &[f64]) -> Option<(Vec<f64>, Vec<f64>, Vec<f64>)> {
     let n = x.len();
     if n == 0 || y.len() != n {

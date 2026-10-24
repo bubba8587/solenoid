@@ -109,7 +109,7 @@ fn currency() -> Dim {
     Dim::from([("currency".to_string(), 1.0)])
 }
 
-/// `readMoneyInputs` then `moneyCard`: the `money` inputs read in one currency and every other input as a plain
+/// The `money` inputs read in one currency and every other input as a plain
 /// number, the body run on what they show, and a money answer tagged with that currency. A unit anywhere else, or two
 /// currencies, is #UNIT!.
 fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: impl FnOnce(&mut Call) -> V) -> Answer {
@@ -606,7 +606,7 @@ fn bond_pricing(c: &mut Call) -> Answer {
     answer(c, result)
 }
 
-/// `periodReturns`: `b / a − 1` per period, the first blank, an error kept where it stands.
+/// `b / a − 1` per period, the first blank, an error kept where it stands.
 fn simple_returns(prices: &V) -> V {
     let ps = super::stats::items(prices);
     list(

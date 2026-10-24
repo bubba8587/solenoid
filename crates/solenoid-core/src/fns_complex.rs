@@ -178,7 +178,7 @@ fn cx_cosh(z: Cx) -> Cx {
     (cosh(z.0) * cos(z.1), sinh(z.0) * sin(z.1))
 }
 
-/// `NUM` of `parseCx`'s patterns: the end of the longest match from `i`, if any.
+/// The end of the longest number match from `i`, if any.
 fn scan_num(b: &[u8], i: usize) -> Option<usize> {
     let digits = |mut j: usize| {
         while j < b.len() && b[j].is_ascii_digit() {

@@ -44,7 +44,7 @@ struct Criterion {
 const PREFIX: [(&str, Op); 6] =
     [("<>", Op::Neq), (">=", Op::Gte), ("<=", Op::Lte), ("=", Op::Eq), (">", Op::Gt), ("<", Op::Lt)];
 
-/// `wildcardSource` compiled: `?` one unit, `*` any run, `~` takes the next unit literally; and whether it has a
+/// A wildcard pattern compiled: `?` one unit, `*` any run, `~` takes the next unit literally; and whether it has a
 /// wildcard.
 fn wildcard_tokens(pattern: &[u16]) -> (Vec<Wild>, bool) {
     let (mut out, mut has_wild, mut i) = (Vec::with_capacity(pattern.len()), false, 0);
@@ -69,13 +69,13 @@ fn wildcard_tokens(pattern: &[u16]) -> (Vec<Wild>, bool) {
     (out, has_wild)
 }
 
-/// `wildcardToRegex`: None without a wildcard.
+/// None without a wildcard.
 fn wildcard_pattern(pattern: &[u16]) -> Option<Vec<Wild>> {
     let (out, has_wild) = wildcard_tokens(pattern);
     has_wild.then_some(out)
 }
 
-/// SEARCH's `new RegExp(wildcardSource(find).source, "i").exec(text)`: where the leftmost match starts.
+/// SEARCH's case-blind wildcard match: where the leftmost match starts.
 pub fn wild_search(find: &[u16], text: &[u16]) -> Option<usize> {
     let (mut tokens, _) = wildcard_tokens(find);
     tokens.push(Wild::Any);
@@ -149,7 +149,7 @@ fn unescape(s: &str) -> Rc<str> {
     Rc::from(out)
 }
 
-/// What `parseDate` answers for a criterion's text: a serial, NaN, or `#AMBIGUOUS!`.
+/// A criterion's text read as a date: a serial, NaN, or `#AMBIGUOUS!`.
 pub(crate) enum DateReading {
     Serial(f64),
     NotADate,

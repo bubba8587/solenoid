@@ -13,7 +13,7 @@ use crate::value_kinds::OVERFLOW_MESSAGE;
 use crate::zone;
 use std::rc::Rc;
 
-/// `broadcast`: as `broadcastErr`, but every answer but null goes through the non-finite guard, so one that isn't a
+/// As `broadcast_err`, but every answer but null goes through the non-finite guard, so one that isn't a
 /// number (an error included) is `#OVERFLOW!` unless an input was infinite.
 fn broadcast(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     each(args, |ops| match short_circuit(ops) {

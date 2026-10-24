@@ -8,7 +8,7 @@ use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
 use crate::jsnum::js_trim;
 
-/// `readAsRole`'s raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
+/// An input's raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
 pub(crate) fn role_value(c: &Call, key: &str) -> V {
     let lit = match c.literal(key) {
         V::Undef | V::Null => c.string_literal(key),
@@ -25,7 +25,7 @@ pub(crate) fn role_value(c: &Call, key: &str) -> V {
     }
 }
 
-/// `readRole` of a `setting` role ([[D86]] blankRoles): a blank reads as `blank`, item by item in a list.
+/// A `setting` input ([[D86]] blankRoles): a blank reads as `blank`, item by item in a list.
 pub(crate) fn setting(c: &Call, key: &str, blank: V) -> V {
     fn fill(v: &V, blank: &V) -> V {
         match v {
@@ -42,7 +42,7 @@ pub(crate) fn setting(c: &Call, key: &str, blank: V) -> V {
     }
 }
 
-/// `readRole` of the `required` role: a blank is `#SYNTAX!`, item by item in a list.
+/// A `required` input: a blank is `#SYNTAX!`, item by item in a list.
 pub(crate) fn required(c: &Call, key: &str) -> V {
     fn need(v: &V, label: &str) -> V {
         match v {
@@ -64,7 +64,7 @@ pub(crate) fn left_out_as(v: V, dflt: f64) -> V {
     }
 }
 
-/// `readInput(inputs[key], this.stringLiterals[key] ?? dflt)`.
+/// Unwired, the typed text, else `dflt`; wired, the first cable's value.
 fn str_input(c: &Call, key: &str, dflt: &str) -> V {
     let lit = match c.string_literal(key) {
         V::Undef | V::Null => V::str(dflt),
@@ -421,7 +421,7 @@ fn roman_arabic(c: &mut Call) -> Answer {
 fn fuzzy_best(needle: &V, cands: &[V], method: &V, threshold: f64) -> Result<Option<(V, f64)>, V> {
     let mut best: Option<(V, f64)> = None;
     for cand in cands {
-        // `textSimilarity` spreads its text into code points; anything else isn't iterable.
+        // `text_similarity` spreads its text into code points; anything else isn't iterable.
         if !matches!(needle, V::Str(_)) {
             return Err(err(ErrorCode::Error, "This node failed to compute: a is not iterable"));
         }
@@ -525,7 +525,7 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
     n.is_finite().then_some(n + 0.0)
 }
 
-/// A pattern compiled with the card's flags, as `regexApply` runs it on one text.
+/// A pattern compiled with the card's flags.
 struct Pattern {
     re: std::rc::Rc<regress::Regex>,
     global: bool,
@@ -617,7 +617,7 @@ fn regex(c: &mut Call) -> Answer {
         if replace && occ != 0.0 {
             let all = p.all(&t);
             let target = if occ < 0.0 { all.len() as f64 + occ + 1.0 } else { occ };
-            // `expandReplacement` calls the replacement's own `replace`, which only text has.
+            // `expand_replacement` calls the replacement's own `replace`, which only text has.
             if target >= 1.0 && target <= all.len() as f64 && !matches!(replacement, V::Str(_)) {
                 return Err(super::frames::thrown("replacement.replace is not a function"));
             }
@@ -713,7 +713,7 @@ fn unit_labels(c: &Call) -> Vec<(String, String, bool, Option<crate::unit_dims::
         .collect()
 }
 
-/// A separator as `parseValueText` takes it: its first character, or the default where blank.
+/// A separator as `parse_value_text` takes it: its first character, or the default where blank.
 fn separator(v: &V) -> String {
     match v {
         V::Str(s) => s.encode_utf16().next().map(|u| String::from_utf16_lossy(&[u])).unwrap_or_default(),
@@ -827,7 +827,7 @@ fn parse_cx(s: &str) -> (f64, f64) {
     nan
 }
 
-/// What `castOne` answers for one value: a scalar, `None` for a blank, or NaN parts where it can't convert.
+/// A scalar, `None` for a blank, or NaN parts where it can't convert.
 fn cast_one(
     x: &V,
     target: &str,

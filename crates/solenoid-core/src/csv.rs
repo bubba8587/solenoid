@@ -1,8 +1,7 @@
 // [[C103]] untrustedContentSeams, [[C130]] rustCore
 //! CSV text read and written by the `csv` crate, with Solenoid's layers on top: newlines normalized, the delimiter
-//! guess, the blank-line options `src/graph/csv.ts`'s callers pass, and the typed columns `inferColumn` reads off text
-//! cells (`csvToFrame` in `frameBackend.ts`, the CSV half of `parseFrameSource` in `frame.ts`). Held to frozen answers
-//! by `tests/csv.rs` (`fixtures/core/csv-*.json.gz`, frozen by `tests/graph/coreCsv.test.ts`).
+//! guess, the blank-line options and the typed columns read off text cells. Held to frozen answers by `tests/csv.rs`
+//! (`fixtures/core/csv-*.json.gz`, frozen by `tests/graph/coreCsv.test.ts`).
 
 use std::borrow::Cow;
 
@@ -186,7 +185,7 @@ pub fn normalize_newlines(text: &str) -> Cow<'_, str> {
     Cow::Owned(out)
 }
 
-/// `parseCsvRows` over text whose newlines are already `\n` (`normalize_newlines`).
+/// Every row of text whose newlines are already `\n` (`normalize_newlines`).
 pub fn rows_of(normalized: &str, opts: CsvOptions) -> Rows {
     let keep_blank = opts.keep_blank_lines;
     let delim = if opts.detect_delimiter { guess_delimiter(normalized, keep_blank).unwrap_or(b',') } else { b',' };
@@ -197,7 +196,6 @@ pub fn rows_of(normalized: &str, opts: CsvOptions) -> Rows {
     rows
 }
 
-/// `parseCsvRows`: every row the text reads as.
 pub fn parse_rows(text: &str, opts: CsvOptions) -> Vec<Vec<String>> {
     rows_of(&normalize_newlines(text), opts).to_vecs()
 }
@@ -254,7 +252,7 @@ pub(crate) fn iso_date_text(t: &str) -> bool {
     }
 }
 
-/// `dateCellSerial` on text: ISO date text as its serial.
+/// ISO date text as its serial.
 pub(crate) fn date_text_serial(s: &str) -> Option<f64> {
     let t = js_trim(s);
     if let Some(serial) = plain_date_serial(t) {
@@ -312,7 +310,7 @@ fn short_integer(s: &str) -> Option<f64> {
     Some(if neg { -n } else { n })
 }
 
-/// A column's text cells read as one type: what `inferColumn` makes of strings (a missing cell is blank).
+/// A column's text cells read as one type (a missing cell is blank).
 pub enum Typed {
     Number(Vec<Option<f64>>),
     Logical(Vec<Option<bool>>),
@@ -331,7 +329,7 @@ impl Typed {
     }
 }
 
-/// `inferColumn` over text: the one type every filled cell reads as (number, then logical, then an ISO date), text
+/// The one type every filled cell reads as (number, then logical, then an ISO date), text
 /// otherwise or when none is filled.
 pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clone) -> Typed {
     let blank = |c: Option<&str>| c.is_none_or(|s| js_trim(s).is_empty());
@@ -357,7 +355,7 @@ pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clon
     Typed::String
 }
 
-/// The header row's names and the body's width: `makeHeaders` over the trimmed first row, as wide as the widest row.
+/// The header row's names and the body's width: `make_headers` over the trimmed first row, as wide as the widest row.
 fn header_names(rows: &Rows) -> Vec<String> {
     let headers: Vec<String> = rows.row(0).map(|h| js_trim(h).to_string()).collect();
     let ncols = (1..rows.len()).map(|i| rows.row_len(i)).max().unwrap_or(0).max(headers.len());

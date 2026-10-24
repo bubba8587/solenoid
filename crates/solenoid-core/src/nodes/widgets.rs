@@ -81,7 +81,7 @@ fn frame_of(columns: Vec<Column>) -> V {
 
 // ─── Value Input, Slider ────────────────────────────────────────────────────────
 
-/// `applyFcUnit` on one typed number: the FC unit's base value, a custom unit its own dimension.
+/// One typed number in the FC's unit: its base value, a custom unit its own dimension.
 fn fc_number(n: f64, unit: &str, custom: &str) -> V {
     let custom = js_trim(custom);
     if unit == "custom" && !custom.is_empty() {
@@ -352,7 +352,7 @@ fn parse_hsl(s: &str, spaced: bool) -> Option<Rgba> {
     }
     p.ws();
     let h = p.num()?;
-    // `angleUnits[unit] || 1`, the unit read as typed: only lowercase grad, turn and rad scale.
+    // The unit read as typed: only lowercase grad, turn and rad scale.
     let mut scale = 1.0;
     for (unit, by) in [("deg", 1.0), ("rad", 360.0 / (2.0 * std::f64::consts::PI)), ("grad", 0.9), ("turn", 360.0)] {
         let typed = p.rest().get(..unit.len()).unwrap_or("");

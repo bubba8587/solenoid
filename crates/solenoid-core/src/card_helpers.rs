@@ -1,9 +1,6 @@
 // [[C118]] formatTravelsWithValue, [[C114]] cardsView, [[D94]] oneNumberDisplay
-//! What the Record card shares with the Table popup and the value boxes: a number as a format annotation shows it
-//! (`formatNumberWithAnnotation`, `formatAnnotationStore.ts`, with the packs' units and formats), the Cards view's plan
-//! (`planCards`, `cardLayout.ts`) and the Record layout grammar (`parseRecordLayout`, `recordLayout.ts`). The TS keeps
-//! its copies for the UI; `fixtures/core/number-format.json.gz`, `card-plans.json.gz` and `record-layouts.json.gz`
-//! hold its answers, frozen by `tests/graph/coreCardHelpers.test.ts`.
+//! What the Record card shares with the Table popup and the value boxes: a number as a format annotation shows it, the
+//! Cards view's plan and the Record layout grammar, held to the answers `tests/graph/coreCardHelpers.test.ts` freezes.
 
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::jsnum::{
@@ -118,7 +115,7 @@ const PACK_UNITS: &[(&str, &str)] = &[
     ("cP", " cP"),
 ];
 
-/// `unitById`: the label and its side, a built-in id first, then a pack's, else none.
+/// The label and its side, a built-in id first, then a pack's, else none.
 pub fn unit_label(id: &str) -> (&'static str, bool) {
     if let Some((_, label, prefix)) = UNIT_ANNOTATIONS.iter().find(|(u, ..)| *u == id) {
         return (label, *prefix);
@@ -162,7 +159,6 @@ impl Default for NumberDisplay {
 }
 
 impl NumberDisplay {
-    /// `displayDecimals()` and `sciThreshold()` over the settings' texts.
     pub fn from_settings(number_decimals: Option<&str>, sci_above: Option<&str>) -> NumberDisplay {
         let d = number_decimals.map_or(f64::NAN, string_to_number);
         let decimals = if d.fract() == 0.0 && d >= 0.0 { d } else { 4.0 };
@@ -170,7 +166,7 @@ impl NumberDisplay {
     }
 }
 
-/// `sciThreshold()` for the "Scientific from" setting's text.
+/// The "Scientific from" setting's text as a threshold.
 pub fn sci_from_setting(sci_above: Option<&str>) -> f64 {
     match sci_above {
         Some("off") => f64::INFINITY,
@@ -526,7 +522,7 @@ fn to_fraction_advanced(n: f64, d: NumberDisplay) -> String {
     }
 }
 
-/// `applyCustomPattern`: the decimals the pattern's first `.0#` run names, grouped where it holds a comma.
+/// The decimals the pattern's first `.0#` run names, grouped where it holds a comma.
 fn custom_pattern(n: f64, pattern: &str) -> String {
     let b = pattern.as_bytes();
     let dp = (0..b.len())
@@ -538,7 +534,7 @@ fn custom_pattern(n: f64, pattern: &str) -> String {
     locale_fixed(n, dp, pattern.contains(','))
 }
 
-/// The electricity pack's SI prefix format (`toSiPrefix`).
+/// The electricity pack's SI prefix format.
 fn si_prefix(n: f64) -> String {
     use crate::unit_value::to_precision;
     if !n.is_finite() {
@@ -567,7 +563,7 @@ fn si_prefix(n: f64) -> String {
     format!("{}p", number_to_string(to_precision(n / 1e-12, 3)))
 }
 
-/// The geometry pack's degrees-minutes-seconds format (`toDMS`).
+/// The geometry pack's degrees-minutes-seconds format.
 fn dms(n: f64) -> String {
     if !n.is_finite() {
         return number_to_string(n);
@@ -759,7 +755,6 @@ fn is_email(t: &str) -> bool {
     domain.char_indices().any(|(i, c)| c == '.' && i > 0 && i + 1 < domain.len())
 }
 
-/// `cellImageSrc`'s test: a `data:image/` URL.
 fn is_data_image(t: &str) -> bool {
     strip_ci(t, "data:image/").is_some()
 }

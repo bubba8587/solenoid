@@ -1,4 +1,4 @@
-//! `cpm.ts`: the forward and backward passes, float, the critical set and the links ([[C70]] oneScheduleRule).
+//! The forward and backward passes, float, the critical set and the links ([[C70]] oneScheduleRule).
 
 use super::calendar::{calendar_key, day_key, Calendar, CalendarSpec};
 use super::graph::{build_graph, Edge, FlatTask};

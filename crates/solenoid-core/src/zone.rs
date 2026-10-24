@@ -80,7 +80,7 @@ mod host {
         })
     }
 
-    /// The `zoneOffsetMs` formatter for a zone, None where `Intl` refuses the zone.
+    /// The offset formatter for a zone, None where `Intl` refuses the zone.
     pub fn with_format<R>(zone: &str, f: impl FnOnce(Option<&DateTimeFormat>) -> R) -> R {
         FORMATS.with(|m| {
             let mut m = m.borrow_mut();
