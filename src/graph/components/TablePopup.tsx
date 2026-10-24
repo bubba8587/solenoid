@@ -4,7 +4,7 @@ import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import { copyText } from "../clipboard";
-import { tablePopup, getRecordCardsAction, getPivotHostAction, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, getRecordCardsAction, getPivotHostAction, getDashboardView, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
@@ -56,7 +56,7 @@ import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } fro
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
 
 type CellType = "number" | "string" | "date" | "logical";
-type PopupView = "pivot" | "grid" | "cards" | "form" | "csv";
+type PopupView = "dashboard" | "pivot" | "grid" | "cards" | "form" | "csv";
 
 function isTextType(t: CellType): boolean { return t === "string" || t === "logical"; }
 
@@ -262,7 +262,7 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     const live = state.pivot ? livePivotFolds(state.pivot, seeded.collapsed) : seeded.collapsed;
     if (live.length !== seeded.collapsed.length) pivotHost.current?.setView({ ...seeded, collapsed: live });
     setPivotOpts(live.length !== seeded.collapsed.length ? { ...seeded, collapsed: live } : seeded);
-    setView(state.pivot ? "pivot" : "grid");
+    setView(state.pivot ? "pivot" : state.describe && getDashboardView() ? "dashboard" : "grid");
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);
@@ -948,7 +948,9 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
     }
   };
 
+  const Dashboard = getDashboardView();
   const viewOptions: { value: PopupView; label: string }[] = [
+    ...(state.describe && Dashboard ? [{ value: "dashboard" as const, label: "Dashboard" }] : []),
     ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
     { value: "grid", label: "Grid" },
     ...(cardsCapable ? [{ value: "cards" as const, label: "Cards" }] : []),
@@ -1020,8 +1022,8 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
       resizable={{ min: { w: 320, h: 220 } }}
       fitNarrow
       headerExtra={<>
-        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot") && (
-          <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
+        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot" || view === "dashboard") && (
+          <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" && view !== "dashboard" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
         )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
       </>}
@@ -1066,7 +1068,9 @@ export function TablePopup({ footer = true }: { footer?: boolean } = {}) {
           ) : null}
         </div>
       )}
-      {view === "pivot" && state.pivot ? (
+      {view === "dashboard" && state.describe && Dashboard ? (
+        <Dashboard tiles={state.describe} query={query} />
+      ) : view === "pivot" && state.pivot ? (
         <PivotTableView
           layout={state.pivot}
           options={pivotOpts}
