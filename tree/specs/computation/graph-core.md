@@ -230,8 +230,8 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
   calls `node.edited()` first, which tells every editor holding the node (`GraphEditor.named`, found in a
   composite's editor at any depth). What a call reads from outside the node names it where it changes: an adoptive
   socket's taken type (`AdoptiveSocket.setType`) and the frame format picks (`frameFormatStore`, through
-  `nodeEdited(id)`). Enforced by `namedEdits.test.ts`: the mechanism, a sweep that every full pass a component asks
-  for follows an `edited()` (or names why none is needed), and the tests' audit (`auditNamedEdits`,
+  `nodeEdited(id)`). Enforced by `namedEdits.test.ts`: the mechanism, a sweep over all of `src/` that every full pass
+  asked for follows an `edited()` (or its module names why none is needed), and the tests' audit (`auditNamedEdits`,
   `tests/setup/graphEngine.ts`): every full clear re-reads each unnamed card's call too, and a test fails whose card
   read differently. A class's `static coreFields` are read on every call. The fields a
   body sets for its component (`cachedResult` and the rest) live on the Rust node: the object reads each through an

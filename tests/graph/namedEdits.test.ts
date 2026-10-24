@@ -89,30 +89,44 @@ describe("named edits", () => {
   });
 });
 
-const SRC = path.resolve(__dirname, "../../src/graph");
+const SRC = path.resolve(__dirname, "../../src");
 
-/** The full passes a component asks for with no node changed: each names why. */
+/** The modules that ask for a full pass with no card changed in place: each names why. */
 const NO_EDIT: Record<string, string> = {
-  "components/ConnectionDialog.tsx": "a new cable",
-  "components/ConduitComponent.tsx": "its lanes follow its cables, and a new Conduit is a new node",
+  "graph/components/ConnectionDialog.tsx": "a new cable",
+  "graph/components/ConduitComponent.tsx": "its lanes follow its cables, and a new Conduit is a new node",
+  "graph/flow/FlowCanvas.tsx": "a cable's change, and the bulk settle after cables change",
+  "graph/process.ts": "the pass itself: F9, an exact pass, a coalesced rerun, a bulk settle",
+  "graph/devHarness.ts": "a column format, which frameFormatStore names itself",
+  "graph/catalogUtils.ts": "a new node",
+  "graph/collapseSweep.ts": "new source nodes and their cables",
+  "graph/landing/LandingGraph.tsx": "a new node or cable on a site page",
+  "graph/landing/landingCompute.ts": "a site page's graph, built fresh",
+  "graph/showcase/NodeShowcase.tsx": "a new node",
+  "graph/modelFuzz.ts": "a new Clamp and its cables",
+  "graph/canvasKeyboard.ts": "a new group",
+  "graph/connectionStore.ts": "a live connection's refresh, read in JavaScript by its cards, which are shells",
+  "graph/canvasActions.ts": "new Conduits, removed cables, a docked Format Controller: nodes and cables, no field",
+  "graph/persistence.ts": "a document loaded: every node is new",
 };
 
-describe("every component edit names its node", () => {
-  it("a full pass a component asks for follows a node's edited()", () => {
+describe("every edit names its node", () => {
+  it("a full pass asked for after an edit follows the node's edited()", () => {
     const misses: string[] = [];
-    for (const dir of ["components", "flow"]) {
-      for (const f of fs.readdirSync(path.join(SRC, dir), { recursive: true }) as string[]) {
-        if (!/\.tsx?$/.test(f)) continue;
-        const rel = `${dir}/${f}`;
-        const lines = fs.readFileSync(path.join(SRC, rel), "utf8").split("\n");
-        lines.forEach((line, i) => {
-          if (!line.includes("processGraph()")) return;
-          if (lines.slice(Math.max(0, i - 12), i + 1).some((l) => /\.edited\??\.?\(\)/.test(l))) return;
-          if (!(rel in NO_EDIT)) misses.push(`${rel}:${i + 1}`);
-        });
-      }
+    const exempted = new Set<string>();
+    for (const f of fs.readdirSync(SRC, { recursive: true }) as string[]) {
+      if (!/\.tsx?$/.test(f) || f.includes("engineWasm")) continue;
+      const rel = f.split(path.sep).join("/");
+      const lines = fs.readFileSync(path.join(SRC, f), "utf8").split("\n");
+      lines.forEach((line, i) => {
+        if (!/\bprocessGraph\((\)|undefined)/.test(line)) return;
+        if (lines.slice(Math.max(0, i - 12), i + 1).some((l) => /\.edited\??\.?\(\)/.test(l))) return;
+        if (rel in NO_EDIT) exempted.add(rel);
+        else misses.push(`${rel}:${i + 1}`);
+      });
     }
     expect(misses).toEqual([]);
+    expect([...exempted].sort()).toEqual(Object.keys(NO_EDIT).sort());
   });
 });
 
