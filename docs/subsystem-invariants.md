@@ -17,7 +17,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 
 | Spec | Subsystem | Main code |
 |---|---|---|
-| `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `coerceInputs.ts`, `nodeRegistry.ts` |
+| `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `passSession.ts`, `nodeBoundary.ts`, `listLiterals.ts`, `nodeRegistry.ts`, `crates/solenoid-graph/src/boundary.rs` |
 | `../tree/specs/computation/formula-language.md` | the formula grammar, operators, name resolution, dispatch, broadcasting, LAMBDA, Expression | `excelFormula.ts`, `excelFunctions.ts`, `formulaSignatures.ts` |
 | `../tree/specs/computation/formulajs-divergences.md` | where Solenoid answers otherwise than Formula.js did, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
 | `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `crates/solenoid-core/src/nodes/columns.rs`, `nodes/frame.ts` |

@@ -69,7 +69,7 @@ A node that forwards a value to an output (a selector, a pure passthrough, an el
 - trueany type adoption: `trueAnyAdopt` `reconcileOnce`, through `resolvePassthroughType` with the `agree` rule;
 - unit flow: `unitFlow` reads `selected()` first, else combines over the inputs, and `pure` drives the downstream FC-segment walk;
 - the frame-shape resolver: `frameShapeResolver` `passthroughForOutput`, which column pickers and INDEX's frame projection depend on;
-- coerceInputs' keep-tags boundary: `unitAware || isPassthroughNode`;
+- the input boundary's keep-tags rule: `unitAware || isPassthroughNode`;
 - `ValueDisplay`'s carried-annotation branch: `isPassthroughNode`;
 - the FC's `refreshAnnotation` check for a Convert ahead: `isPurePassthroughNode`.
 
@@ -162,7 +162,7 @@ A socket type can also come from static config (INDEX's Column literal, and the 
 
 **Invariants:**
 
-- Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, `coerceInputs.ts` `numericCells`; the other families pass the value through).
+- Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, the input boundary's `family_cell`; the other families pass the value through).
 - Adopted types are never saved. They're worked out from the wiring on load.
 - An adopting port owns its socket instance, since a shared one would leak adoption between cards ([[socket-lattice#Each port owns its socket instance]]).
 - A drilled-into composite settles its inner editor itself (`composite.ts` `settleInternalTypes`: the same joint settle plus boundary adoption). The main canvas pipe never touches the inner editor.

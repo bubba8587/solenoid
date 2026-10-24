@@ -321,7 +321,7 @@ the op (reading in MIN/compare, delta in +/−). That is a lot of per-op special
 
 ## 17. #TYPE! strictness through wildcard cables
 Commits: 6663ad35, dbec53dd, 95a48fdf, 4ff1d2bc, f81d2bff, 10bb4cfa
-Where: `coerceInputs.ts` (`familyCells`, 309 lines), `nodes/coerce.ts`, `nodes/cast.ts`
+Where: `crates/solenoid-graph/src/boundary.rs` (`family_cells`; was `coerceInputs.ts`), `nodes/coerce.ts`, `nodes/cast.ts`
 Leaves: [[B17]] typedValueModel, [[C10]] socketLattice (D11 noAutoCross, D13 widenNeverNarrow, both folded into it).
 Why risky: two agents fixed the same bug differently and the merge "kept both intents"; a
 value of another family on a typed port is now a per-cell #TYPE!. Number→date still bridges,

@@ -283,7 +283,7 @@ Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
 
 ## A Frame's per-column format rides the value
 
-`FrameColumn.format` flows downstream like `FrameColumn.unit`, not through the annotation resolver. The coercion wrapper's output step (`coerceInputs.ts` `wrapNodeData`, the one seam every node's `data()` result passes, a composite's inner editor included) stamps each emitted Frame with that node's own `frameFormatStore` picks, memoized on the Frame's identity so the backend's upload cache still hits.
+`FrameColumn.format` flows downstream like `FrameColumn.unit`, not through the annotation resolver. The input boundary's output step (the one seam every node's `data()` result passes, a composite's inner editor included; `nodeBoundary.ts` `stamp`) stamps each emitted Frame with that node's own `frameFormatStore` picks, memoized on the Frame's identity so the backend's upload cache still hits.
 
 - Verbs that spread columns carry it. A column a verb builds takes a source column's format only where it already takes the unit (nest, the Allocator's Allocation).
 - `frameFormatStore` is the one saved home, keyed by the node that picked. `format` is worked out on every compute and never saved.

@@ -255,6 +255,13 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
    shim that would change what a bundled component draws is refused, and the component gets a
    real seam under requirement 1. `PLUGIN_REPORT=1 npm run plugin:build` writes what the bundle
    pulled in; `PLUGIN_TRACE=<path,…>` adds the import chain to each named module.
+
+   **The graph core** ([[graph-core]]) is not shimmed. The bundle reaches `graphModel.ts` (through `sockets.ts`),
+   whose node and cable ids come from the graph module, so it carries that module's glue and never instantiates it:
+   a chip or a popup builds no node and computes nothing. Code built on the plugin's modules that does build a node or
+   a cable, run an engine or a pass, or change the calc mode loads the graph module first (`loadGraphEngine()`,
+   `graphEditor.ts`; and `loadWasmEngine()`, `engineWasm.ts`, for the card bodies), as the app's `main.tsx` does. The
+   chips, the popups and the YAML readers need neither.
 3. **Every chip and the one popup layer render in Shadow DOM** (`shadow.ts`), because Obsidian
    and its themes style bare `button`, `input`, `select` and checkboxes. The build moves
    `@font-face` rules into `styles.css` (a font registers only from the document) and hands the

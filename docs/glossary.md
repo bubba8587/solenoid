@@ -104,7 +104,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Frame verbs**: the core's implementation of every verb (`frame_verbs.rs`); their
   vocabulary is `frameOps.ts`.
 - **Materialization boundary**: the point where a lazy `FrameRef` is collected into a
-  real `FrameValue` (e.g. Get Column, a chart, an export). (`coerceInputs.ts`)
+  real `FrameValue` (e.g. Get Column, a chart, an export). (the input boundary, `boundary.rs`)
 - **Preview / collectPreview**: a verb card shows head-N rows, not the whole frame;
   `FrameValue.__totalRows` carries the true count. (`frameBackend.ts`)
 - **Source-handle cache**: a WeakMap keyed by frame identity so a given frame uploads to
