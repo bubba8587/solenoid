@@ -1204,18 +1204,8 @@ fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
     V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
 }
 
-fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
-    if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
-        return e.clone();
-    }
-    let nums: Vec<f64> = arr
-        .iter()
-        .filter_map(|v| match v {
-            V::Num(n) if n.is_finite() => Some(*n),
-            _ => None,
-        })
-        .collect();
-    let s = sorted_nums(&nums);
+/// Over the list's finite numbers, sorted (`sorted_of`, `Reading::PercentRank`).
+fn excel_percent_rank(s: &[f64], x: f64, sig: f64, exc: bool) -> V {
     let n = s.len();
     if n == 0 || x.is_nan() {
         return value_err("PERCENTRANK");
@@ -1226,7 +1216,7 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
     if n == 1 {
         return V::Num(1.0);
     }
-    let below = s.iter().filter(|&&v| v < x).count();
+    let below = s.partition_point(|&v| v < x);
     let pos = if s[below] == x {
         below as f64
     } else {
@@ -2424,6 +2414,75 @@ fn sorted_nums(arr: &[f64]) -> Vec<f64> {
     s
 }
 
+/// How a function reads a list into the numbers it sorts.
+#[derive(Clone, Copy, PartialEq)]
+enum Reading {
+    /// `nums_of`: numbers and logicals, one level of items.
+    Nums,
+    /// PERCENTRANK's: finite numbers through nested rows, the first error the answer.
+    PercentRank,
+}
+
+type Sorted = Rc<Result<Vec<f64>, V>>;
+
+/// The lists `sorted_of` keeps, each with how it was read and its sorted numbers.
+type SortedCache = std::cell::RefCell<Vec<(Rc<Vec<V>>, Reading, Sorted)>>;
+
+/// A list's numbers sorted, kept for the list they came from (the cache holds the list, so its address can't come
+/// back as another): PERCENTILE(col, @p) and kin, called once per row with a scalar that changes each row, miss the
+/// range memo, and re-sorting the column every row was n² log n ([[C120]] linearWork).
+fn sorted_of(list: &V, reading: Reading) -> Sorted {
+    thread_local! {
+        static SORTED: SortedCache = const { std::cell::RefCell::new(Vec::new()) };
+    }
+    let read = || -> Result<Vec<f64>, V> {
+        Ok(sorted_nums(&match reading {
+            Reading::Nums => nums_of(std::slice::from_ref(list)),
+            Reading::PercentRank => {
+                let cells: Vec<V> = match list {
+                    V::List(items) => items
+                        .iter()
+                        .flat_map(|v| match v {
+                            V::List(inner) => inner.as_ref().clone(),
+                            other => vec![other.clone()],
+                        })
+                        .collect(),
+                    V::Null | V::Undef => Vec::new(),
+                    other => vec![other.clone()],
+                };
+                if let Some(e) = cells.iter().find(|v| v.is_sol_error()) {
+                    return Err(e.clone());
+                }
+                cells
+                    .iter()
+                    .filter_map(|v| match v {
+                        V::Num(n) if n.is_finite() => Some(*n),
+                        _ => None,
+                    })
+                    .collect()
+            }
+        }))
+    };
+    let V::List(items) = list else { return Rc::new(read()) };
+    if items.len() < 64 {
+        return Rc::new(read());
+    }
+    if let Some(hit) = SORTED
+        .with(|c| c.borrow().iter().find(|(l, r, _)| Rc::ptr_eq(l, items) && *r == reading).map(|(_, _, s)| s.clone()))
+    {
+        return hit;
+    }
+    let sorted: Sorted = Rc::new(read());
+    SORTED.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() >= 4 {
+            c.remove(0);
+        }
+        c.push((items.clone(), reading, sorted.clone()));
+    });
+    sorted
+}
+
 /// A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
 /// `undefined` (None); one `undefined` end makes the blend NaN.
 pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
@@ -2451,6 +2510,7 @@ fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
     }
 }
 
+/// Over sorted numbers.
 #[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
     let n = arr.len() as f64;
@@ -2466,9 +2526,10 @@ fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
             "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)",
         ));
     }
-    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+    finite_opt(percentile_of(arr, p, exc), arr)
 }
 
+/// Over sorted numbers.
 #[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
     let qi = q.trunc();
@@ -2488,9 +2549,10 @@ fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
             "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)",
         ));
     }
-    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+    finite_opt(percentile_of(arr, p, exc), arr)
 }
 
+/// Over sorted numbers.
 fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
     if k.is_nan() {
         return V::err(sol_error(ErrorCode::Value, "k must be a number"));
@@ -2502,9 +2564,8 @@ fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
     if arr.is_empty() || k > n {
         return V::Null;
     }
-    let sorted = sorted_nums(arr);
     let at = (if largest { n - k + 1.0 } else { k }).floor() - 1.0;
-    V::Num(sorted[at as usize])
+    V::Num(arr[at as usize])
 }
 
 fn mode_single(arr: &[f64]) -> V {
@@ -3498,28 +3559,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             excel_trimmean(n, items, to_num(arg(a, 1)))
         }
         F::PERCENTRANK | F::PERCENTRANK_INC | F::PERCENTRANK_EXC => {
-            let arr: Vec<V> = match arg(a, 0) {
-                V::List(items) => items
-                    .iter()
-                    .flat_map(|v| match v {
-                        V::List(inner) => inner.as_ref().clone(),
-                        other => vec![other.clone()],
-                    })
-                    .collect(),
-                V::Null | V::Undef => Vec::new(),
-                other => vec![other.clone()],
-            };
             let sig = arg(a, 2);
             let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
-            excel_percent_rank(&arr, to_num(arg(a, 1)), sig, arm == F::PERCENTRANK_EXC)
+            match &*sorted_of(arg(a, 0), Reading::PercentRank) {
+                Ok(s) => excel_percent_rank(s, to_num(arg(a, 1)), sig, arm == F::PERCENTRANK_EXC),
+                Err(e) => e.clone(),
+            }
         }
         F::GCD | F::LCM => gcd_lcm(arm == F::GCD, &nums_of(a)),
-        F::LARGE | F::SMALL => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::LARGE),
+        F::LARGE | F::SMALL => {
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            nth_extreme(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::LARGE)
+        }
         F::PERCENTILE | F::PERCENTILE_INC | F::PERCENTILE_EXC => {
-            percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::PERCENTILE_EXC)
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            percentile(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::PERCENTILE_EXC)
         }
         F::QUARTILE | F::QUARTILE_INC | F::QUARTILE_EXC => {
-            quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::QUARTILE_EXC)
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            quartile(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::QUARTILE_EXC)
         }
         F::MODE | F::MODE_SNGL => mode_single(&nums_of(a)),
         F::SUMIFS | F::AVERAGEIFS | F::MINIFS | F::MAXIFS => {

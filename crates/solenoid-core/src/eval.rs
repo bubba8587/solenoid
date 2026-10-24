@@ -627,6 +627,32 @@ pub struct Eval<'a> {
     /// address, which a body cloned per call and dropped would hand to the next one. A wired LAMBDA's tree is parsed
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
+    /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
+    /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
+    readied: RefCell<Vec<Rc<Readied>>>,
+}
+
+/// A list as a range call with `prep` reads it: flattened from a one-wide table, its first error, its blanks gone.
+struct Readied {
+    from: Rc<Vec<V>>,
+    prep: Prep,
+    flatten: bool,
+    list: V,
+    has_cx: bool,
+    err: Option<V>,
+}
+
+impl Readied {
+    fn of(from: &Rc<Vec<V>>, prep: Prep, flatten: bool) -> Readied {
+        let whole = V::List(from.clone());
+        let flat = if flatten && is_matrix(&whole) { flat1(&whole) } else { whole };
+        let has_cx = contains_cx(&flat);
+        let (list, err) = match ready_list(prep, flat) {
+            Ok(list) => (list, None),
+            Err(e) => (V::Undef, Some(e)),
+        };
+        Readied { from: from.clone(), prep, flatten, list, has_cx, err }
+    }
 }
 
 /// A range call's last answer at its site.
@@ -954,6 +980,12 @@ impl Eval<'_> {
                 column = col;
             }
         }
+        if t.kind == Kind::Range && matches!(t.prep, Prep::Default | Prep::Zero) {
+            return match self.ready_range(name, t, argv) {
+                Ok(args) => self.range_dispatch(name, t, args),
+                Err(e) => e,
+            };
+        }
         if !t.matrix_args && argv.iter().any(is_matrix) {
             if t.prep == Prep::Positional {
                 return V::err(sol_error(
@@ -971,10 +1003,7 @@ impl Eval<'_> {
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
-            return V::err(sol_error(
-                ErrorCode::Type,
-                format!("{name} doesn't compute on complex numbers. Use the IM* family"),
-            ));
+            return cx_refusal(name);
         }
         match t.kind {
             Kind::Whole => {
@@ -990,36 +1019,84 @@ impl Eval<'_> {
                     r
                 }
             }
-            Kind::Range => {
-                let args = match prep_range_args(t.prep, argv) {
-                    Ok(a) => a,
-                    Err(e) => return e,
-                };
-                let flat_owned: Vec<V>;
-                let flat: &[V] = if args.iter().any(|a| matches!(a, V::List(_))) {
-                    flat_owned = args
-                        .iter()
-                        .flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] })
-                        .collect();
-                    &flat_owned
-                } else {
-                    &args
-                };
-                // The range bodies read their lists flat, but for those that read each list in place. A value nested
-                // past a table would reach a flat reader as a list among its numbers.
-                let in_place = crate::excel_functions::reads_lists(name);
-                if !in_place && flat.iter().any(is_arr) {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        format!("{name} reads values and tables, not lists nested inside a table"),
-                    ));
-                }
-                match self.dispatch(name, Some(t), if in_place { &args } else { flat }) {
-                    V::Num(r) if !r.is_finite() => guard(r, flat),
-                    r => r,
-                }
-            }
+            Kind::Range => match prep_range_args(t.prep, argv) {
+                Ok(args) => self.range_dispatch(name, t, args),
+                Err(e) => e,
+            },
             _ => self.broadcast_call(name, t, &argv, settled),
+        }
+    }
+
+    /// Each list through `Readied`, kept while this evaluator lives. A complex number anywhere answers first, then the
+    /// first list's error, as the steps for the other preps in `route_call` do.
+    fn ready_range(&self, name: &str, t: &Traits, argv: Vec<V>) -> Result<Vec<V>, V> {
+        let flatten = !t.matrix_args;
+        let (mut cx, mut err) = (false, None);
+        let mut out = Vec::with_capacity(argv.len());
+        for a in argv {
+            let V::List(l) = &a else {
+                cx |= contains_cx(&a);
+                out.push(a);
+                continue;
+            };
+            let r = if l.len() < 64 {
+                Rc::new(Readied::of(l, t.prep, flatten))
+            } else {
+                let mut cache = self.readied.borrow_mut();
+                match cache.iter().find(|r| Rc::ptr_eq(&r.from, l) && r.prep == t.prep && r.flatten == flatten) {
+                    Some(r) => r.clone(),
+                    None => {
+                        if cache.len() >= 8 {
+                            cache.remove(0);
+                        }
+                        let r = Rc::new(Readied::of(l, t.prep, flatten));
+                        cache.push(r.clone());
+                        r
+                    }
+                }
+            };
+            cx |= r.has_cx;
+            if err.is_none() {
+                err.clone_from(&r.err);
+            }
+            out.push(r.list.clone());
+        }
+        if t.checks_cx && cx {
+            return Err(cx_refusal(name));
+        }
+        err.map_or(Ok(out), Err)
+    }
+
+    fn range_dispatch(&self, name: &str, t: &Traits, args: Vec<V>) -> V {
+        let flat_of = || -> Vec<V> {
+            args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect()
+        };
+        // The range bodies read their lists flat, but for those that read each list in place. A value nested past a
+        // table would reach a flat reader as a list among its numbers.
+        if crate::excel_functions::reads_lists(name) {
+            return match self.dispatch(name, Some(t), &args) {
+                V::Num(r) if !r.is_finite() => guard(r, &flat_of()),
+                r => r,
+            };
+        }
+        let flat_owned: Vec<V>;
+        let flat: &[V] = match args.as_slice() {
+            [V::List(l)] => l.as_slice(),
+            _ if args.iter().any(|a| matches!(a, V::List(_))) => {
+                flat_owned = flat_of();
+                &flat_owned
+            }
+            _ => &args,
+        };
+        if flat.iter().any(is_arr) {
+            return V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name} reads values and tables, not lists nested inside a table"),
+            ));
+        }
+        match self.dispatch(name, Some(t), flat) {
+            V::Num(r) if !r.is_finite() => guard(r, flat),
+            r => r,
         }
     }
 
@@ -1423,31 +1500,19 @@ pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
     prep_range_args(t.prep, flat).err()
 }
 
+fn cx_refusal(name: &str) -> V {
+    V::err(sol_error(ErrorCode::Type, format!("{name} doesn't compute on complex numbers. Use the IM* family")))
+}
+
 /// A list's first error answers, then its blanks go as `prep` says.
 fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
-    if matches!(prep, Prep::Raw | Prep::Positional) {
-        return Ok(argv);
-    }
-    for a in &argv {
-        if let V::List(l) = a {
-            for v in l.iter() {
-                match v {
-                    V::Err(_) => return Err(v.clone()),
-                    V::Fx(code) => return Err(V::err(fx_error_to_sol(*code))),
-                    _ => {}
-                }
-            }
-        }
-    }
-    Ok(match prep {
-        Prep::Zero => argv
-            .into_iter()
-            .map(|a| match a {
-                V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
-                other => other,
-            })
-            .collect(),
+    match prep {
+        Prep::Raw | Prep::Positional => Ok(argv),
+        Prep::Default | Prep::Zero => argv.into_iter().map(|a| ready_list(prep, a)).collect(),
         Prep::Paired => {
+            if let Some(e) = argv.iter().find_map(first_error) {
+                return Err(e);
+            }
             let lens: Vec<usize> =
                 argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
             let Some(&n) = lens.iter().min() else { return Ok(argv) };
@@ -1456,21 +1521,42 @@ fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
             if keep.len() == n {
                 return Ok(argv);
             }
-            argv.into_iter()
+            Ok(argv
+                .into_iter()
                 .map(|a| match a {
                     V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
                     other => other,
                 })
-                .collect()
+                .collect())
         }
-        Prep::Default => argv
-            .into_iter()
-            .map(|a| match a {
-                V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
-                other => other,
-            })
-            .collect(),
-        Prep::Raw | Prep::Positional => argv,
+    }
+}
+
+fn first_error(a: &V) -> Option<V> {
+    let V::List(l) = a else { return None };
+    l.iter().find_map(|v| match v {
+        V::Err(_) => Some(v.clone()),
+        V::Fx(code) => Some(V::err(fx_error_to_sol(*code))),
+        _ => None,
+    })
+}
+
+/// One list as `Prep::Default` or `Prep::Zero` reads it: the same list when it holds no blank.
+fn ready_list(prep: Prep, a: V) -> Result<V, V> {
+    if let Some(e) = first_error(&a) {
+        return Err(e);
+    }
+    Ok(match a {
+        V::List(l) if l.iter().any(is_missing) => list(
+            l.iter()
+                .filter_map(|v| match (is_missing(v), prep) {
+                    (false, _) => Some(v.clone()),
+                    (true, Prep::Zero) => Some(V::Num(0.0)),
+                    (true, _) => None,
+                })
+                .collect(),
+        ),
+        other => other,
     })
 }
 

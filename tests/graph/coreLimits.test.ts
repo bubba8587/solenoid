@@ -87,3 +87,20 @@ it("the Lookup card over a Cube reads its key column once for a list of lookups"
   expect(ms).toBeLessThan(3000);
   expect((v as number[])[0]).toBe(19_999);
 });
+
+it("PERCENTILE, PERCENTRANK and LARGE per row of a computed column sort the column once", async () => {
+  const { computeColumnOnEngine } = await import("../../src/graph/frameBackend");
+  const n = 20_000;
+  const score = Array.from({ length: n }, (_, i) => (i * 7919) % n);
+  const frame = { __frame: true as const, columns: [
+    { name: "score", type: "number" as const, values: score },
+    { name: "p", type: "number" as const, values: score.map((s) => s / n) },
+  ] };
+  for (const src of ["PERCENTRANK(score, @score)", "PERCENTILE(score, @p)", "LARGE(score, 1 + MOD(@score, 10))"]) {
+    const { v, ms } = timed(() => computeColumnOnEngine(frame, src, n));
+    expect(ms, src).toBeLessThan(3000);
+    expect((v as { cells: unknown[] }).cells.length, src).toBe(n);
+  }
+  const small = computeColumnOnEngine({ __frame: true, columns: [{ name: "s", type: "number", values: [10, 20, 30, 40] }] }, "PERCENTRANK(s, @s)", 4);
+  expect((small as { cells: unknown[] }).cells).toEqual([0, 0.333, 0.666, 1]);
+});
