@@ -34,6 +34,88 @@ mindmap
       ["shares its kernel with the<br>formula, in an op module"]
 ```
 
+## A new function across the app
+
+A function that is both a formula and a card is declared in three places that never import each other: the formula
+side on the core, the card side in TypeScript and Rust, and the catalog that makes it findable. The `add-node` skill
+walks the steps; this is the map of what each one is and which check catches a gap. A function that is only a formula
+needs the first box and its catalog Excel name; a card no formula expresses (a Frame verb, a figure, an input) needs
+the last two.
+
+```mermaid
+flowchart TB
+    subgraph formula["the formula: a name in the formula bar"]
+        fbody["the body: an arm of route<br>(excel_functions.rs, fns_*.rs;<br>a pack's in fns_packs.rs)"]
+        traits["its contract, call_traits.json:<br>kind and prep (routing), free (orient),<br>matrixArgs, checksCx, scalar,<br>roles, blanks (empty slots), refusal"]
+        arity["FUNCTION_ARITY and its<br>signature hint (excelFunctions.ts,<br>formulaSignatureTable.ts)"]
+        roles["ARG_ROLES (inputRoles.ts):<br>the same roles, for cards"]
+        units["its unit class (unit_dims.rs);<br>without one a dimensioned<br>argument is #UNIT!"]
+    end
+    subgraph card["the card"]
+        cls["the class (src/graph/nodes/*.ts):<br>sockets from shared.ts, saved fields<br>in INIT_FIELD_ORDER, data() = nodeOnCore"]
+        decl["its declarations: inputRoles (rolesFrom),<br>literals only if edited inline, unitAware,<br>passthrough(), noWidenInputs, coreFields"]
+        cbody["its body on the core:<br>nodes/family.rs, reached by nodes::run,<br>listed in DIRECT"]
+        ui["kind.ts (its accent), a component,<br>components/index.ts, nodeRegistry.ts"]
+    end
+    subgraph find["finding it (add-menu.md)"]
+        leaf["a catalog leaf (nodeCatalog.ts): label,<br>description, keywords, accent, fx"]
+        ops["an op of a family: OP_META,<br>NODE_OPS"]
+        excel["its Excel names: NODE_EXCEL"]
+        insp["socketDocs, frameHints:<br>the Inspector's socket notes"]
+    end
+    cbody -->|"the same kernel,<br>or the function by name"| fbody
+    decl -->|"rolesFrom"| roles
+    roles -.->|"must match (inputRoles.test.ts)"| traits
+    leaf -->|"fx, else the despaced label:<br>the formula name"| fbody
+    ops --> leaf
+    excel --> leaf
+```
+
+Each declaration in the map, and the spec that governs it:
+
+| Declaration | What it says | Governed by |
+|---|---|---|
+| an arm of `route` | the body that answers the formula name | [[formula-language#The registry]] |
+| `call_traits.json` | how a call routes (`kind`, `prep`), its vector direction (`free`), whether a matrix (`matrixArgs`) or a complex value (`checksCx`) reaches the body, the arguments a list lifts in (`scalar`), each argument's role and empty-slot reading, a blocked name's message | [[formula-language#The registry]], [[formula-language#Argument routing]], [[input-roles]] |
+| `FUNCTION_ARITY`, the signature table | the argument count and the hint the editor shows | [[formula-language#The registry]] |
+| `ARG_ROLES` | each argument's role (data, setting, required, picks), the same as the call table's | [[input-roles#The declaration]] |
+| a unit class in `unit_dims.rs` | what dimension the answer carries | [[unit-flow#Formula dimensions (`unit_dims.rs`)]] |
+| the class, `INIT_FIELD_ORDER` | the card's sockets and saved fields, in the save's order | this spec, [[save-format]] |
+| `data() = nodeOnCore` | the card's body is on the core | [[node-bodies]] |
+| `inputRoles`, literal maps, `unitAware`, `passthrough()`, `noWidenInputs` | which roles its sockets take, which values it types inline, whether it sees units, which inputs it hands on unchanged, whether a Cube arrives as is | this spec, [[inline-literal-maps]], [[unit-flow]], [[compute-pass]] |
+| `coreFields` | run-time fields the body reads that no save keeps (a resolved angle mode) | [[node-bodies#The call (`nodeOnCore.ts`, `engine_node`)]] |
+| `nodes::run`, `DIRECT` | the Rust body's dispatch by class name; the classes the engine calls in Rust with no JavaScript between | [[node-bodies]], [[graph-core#Direct calls (phase C)]] |
+| `kind.ts`, the component, the registry | the card's accent, its face, and the class-to-component table persistence also reads | [[components]] |
+| the catalog leaf, `OP_META`, `NODE_OPS`, `NODE_EXCEL` | its name, description, search words and formula name; an op family's ops; its Excel names | [[add-menu]] |
+| `socketDocs`, `frameHints` | the Inspector's sentence per socket, and an example table per frame input | this spec |
+
+What catches a gap:
+
+```mermaid
+mindmap
+  root(("the checks"))
+    ["the formula"]
+      ["rangeRouting.test.ts, rangeLift.test.ts:<br>a range function's routing and lifts"]
+      ["vectorOrient.test.ts: every free<br>function on a list and a column"]
+      ["inputRoles.test.ts: roles within arity,<br>the same on both sides"]
+      ["coreConformance.test.ts:<br>the frozen answers"]
+    ["the card"]
+      ["the family's vitest file"]
+      ["coreNodes.test.ts, cargo test --test nodes:<br>the body's frozen cases"]
+      ["directBodies.test.ts: DIRECT is the<br>classes whose data() is their body"]
+      ["persistenceSweep.test.ts:<br>every field saved or transient"]
+      ["coerceInputs.test.ts: a typeable<br>list declares stringLiterals"]
+      ["readInputSweep.test.ts: no ?? literal"]
+    ["finding it"]
+      ["catalogRegistry.test.ts: every class<br>built by a leaf, Excel names resolve"]
+      ["nodeOps.test.ts: every op reachable"]
+      ["formulaNodeCoverage.test.ts,<br>formulaNodeParity.test.ts:<br>cards and formulas cover each other"]
+      ["catalogSearch.test.ts: queries<br>land on their cards"]
+    ["the whole graph"]
+      ["socketConnect.test.ts: the lattice"]
+      ["seeds.test.ts, seedsCompute.test.ts:<br>every seed loads and computes"]
+```
+
 ## Identity and persistence
 
 - **A node class is a `GraphNode`** (`graphModel.ts`), its ports `GraphInput`s and `GraphOutput`s holding sockets. Its ports change only through `addInput`, `removeInput`, `addOutput`, `removeOutput`, `moveInputLast`, a port's `socket` setter and a `MutableSocket`'s `setType`, which reach the graph core while the node is in an editor; `inputs` and `outputs` are read-only otherwise ([[graph-core#The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)]]).
@@ -52,6 +134,7 @@ mindmap
   - Where the combinations are few, flat ops beat a second picker: each op keeps its own hover description and no new saved field is needed (Hypothesis Test's six tests, Rank & Percentile's INC and EXC forms).
   - A merge keeps the old Add-menu leaf types, so `NODE_EXCEL` and the Function Reference are untouched; the merged nodes are inventoried in `docs/node-coverage.md`. Old saves load as Placeholders ([[B7]] preAlphaBreakFreely).
   - After a merge, run `nodeOps.test.ts` and `formulaNodeCoverage.test.ts` beside the parity, catalog and seed suites.
+
 ```mermaid
 mindmap
   root(("a picker on a card"))

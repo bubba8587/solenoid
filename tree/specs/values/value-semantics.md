@@ -74,6 +74,17 @@ Three distinctions carry the most weight:
   ```
 
   So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[D93]] oneTextReading) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
+
+```mermaid
+flowchart LR
+    t["typed text its type can't read<br>(any typed cell, list item or field,<br>through coerceFrameCell)"] --> nan["a NaN cell"]
+    d["dirty imported data"] --> nan
+    bug["a UnitCell past the unit-blind<br>boundary (a bug: stripUnitCells<br>exists to stop it)"] --> nan
+    nan --> show["shows NaN on a muted chip:<br>not an error, not #N/A, not blank;<br>ISERROR is FALSE, IFNA passes it"]
+    nan -->|"enters a numeric op"| dom["#DOMAIN! (guardFinite)"]
+    op["a computation's own result"] -.->|"never NaN: a NaN result<br>is #DOMAIN!"| dom
+```
+
 - **`null`** comes from data (blank cells, CSV holes), from padding a ragged list, from an empty aggregation (`AVG([])`), and from Kleene logic that really cannot answer.
 
 ## Propagation, by context
@@ -90,6 +101,18 @@ Which rule applies is decided by the kind of computation, not by the function's 
 | **The COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` |
 | **A ragged element-wise zip** | — | pads to the longest with null; a padded position is missing | every broadcaster |
 | **Computed column, per row** | a row-bound error cell (a λ parameter or an `@`-read) fails that row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | the core's `tag_computed_cell` (`excel_formula.rs`) ([[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas) |
+
+```mermaid
+mindmap
+  root(("a blank inside<br>a computation"))
+    ["element-wise math:<br>propagates, null + 5 is null"]
+    ["element-wise logic: Kleene,<br>FALSE AND null is FALSE"]
+    ["a reduction (SUM, AVERAGE,<br>formula AND): skipped"]
+    ["a paired range (SUMPRODUCT,<br>CORREL): the whole row drops"]
+    ["a positional lookup (XLOOKUP,<br>INDEX): stays in place"]
+    ["the COUNT family:<br>counted or not, by name"]
+    ["a computed column row:<br>flows in, ISBLANK sees it"]
+```
 
 The one sanctioned divergence ([[D51]] oneAnswerOneDivergence): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 

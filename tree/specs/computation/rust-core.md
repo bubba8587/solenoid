@@ -20,6 +20,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
   3. Delete: the TS copy and its differential test go, and the fixtures stay as the test. `FREEZE_CORE=1` re-answers
      every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is
      how a deliberate change in behaviour moves a fixture.
+
 ```mermaid
 flowchart LR
     ts["a TypeScript copy<br>and its tests"] -->|"1. freeze"| fx["its answers written<br>to fixtures/core/"]

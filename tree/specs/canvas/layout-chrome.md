@@ -209,36 +209,25 @@ flowchart LR
 
 Chrome only; nodes are 0, and cables and overlay planes are negative.
 
-```
-1    .solenoid-topbar (local, inside the header)
-2    .solenoid-menubar (local; 8 on mobile)
-4    composite drill-in backdrop
-5    nav pill / navigator / web-demo banner / docked report and inspector panels (under the header on purpose: the docks tuck beneath the bars)
-6    header / status bar / apptools palette
-7    align pill
-20   menu-bar dropdown (local to the header) / Tidy options pop-over (local to the top bar, top: 100% + 6px under the layout group; it overflows onto the canvas)
-60   docked Conduit toolbar / node-budget modal
-100  minimap / socket legend / mobile bottom bar
-110  HUD stack / cable inspector
-150  persistent command palette
-200  Add menu (201 submenu) / Settings / Shortcuts / document-title menu
-300  command palette scrim
-9999 socket context menu
-```
-
-The bands, from the top down:
-
 ```mermaid
 block-beta
-    columns 1
-    z1["9999: a transient context menu"]
-    z2["300: the command palette's scrim"]
-    z3["200 to 201: modals and menus (Add menu, Settings, Shortcuts)"]
-    z4["150: the persistent command palette"]
-    z5["100 to 110: corner panels (minimap, legend, mobile bar, HUD, cable inspector)"]
-    z6["20 to 60: pop-overs, the Conduit toolbar, the node-budget modal"]
-    z7["4 to 7: the drill-in backdrop, floating pills, docks, header, align pill"]
-    z8["0: cards (cables and overlay planes below)"]
+    columns 4
+    z0["9999"] d0["socket context menu"]:3
+    z1["300"] d1["command palette scrim"]:3
+    z2["200"] d2["Add menu (201 submenu) / Settings / Shortcuts / document-title menu"]:3
+    z3["150"] d3["persistent command palette"]:3
+    z4["110"] d4["HUD stack / cable inspector"]:3
+    z5["100"] d5["minimap / socket legend / mobile bottom bar"]:3
+    z6["60"] d6["docked Conduit toolbar / node-budget modal"]:3
+    z7["20"] d7["menu-bar dropdown (local to the header) / Tidy options pop-over (local to the top bar, top: 100% + 6px under the layout group; it overflows onto the canvas)"]:3
+    z8["7"] d8["align pill"]:3
+    z9["6"] d9["header / status bar / apptools palette"]:3
+    z10["5"] d10["nav pill / navigator / web-demo banner / docked report and inspector panels (under the header on purpose: the docks tuck beneath the bars)"]:3
+    z11["4"] d11["composite drill-in backdrop"]:3
+    z12["2"] d12[".solenoid-menubar (local; 8 on mobile)"]:3
+    z13["1"] d13[".solenoid-topbar (local, inside the header)"]:3
+    classDef num font-weight:bold
+    class z0,z1,z2,z3,z4,z5,z6,z7,z8,z9,z10,z11,z12,z13 num
 ```
 
 The menu bar's 2 and the top bar's 1 are local values inside `.solenoid-header`, which is 6 at the app level. The canvas gets its own stacking context through `isolation: isolate` (`canvas.css`), which is why the minimap needs 100 to paint over node cards.

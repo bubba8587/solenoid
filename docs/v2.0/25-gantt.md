@@ -522,36 +522,34 @@ consumer exists**, not before.
 
 ### 7.4 Package boundaries and how Solenoid consumes them
 
+`solenoid/` uses npm workspaces (npm ≥ 7, no pnpm migration):
+
+```mermaid
+mindmap
+  root(("solenoid/"))
+    ["packages/"]
+      ["schedule-engine/"]
+        calendars/
+        graph/
+        cpm/
+        codecs/
+      ["gantt-layout/"]
+      ["gantt-react/"]
+    ["fixtures/schedule/"]
+    ["src/graph/…"]
 ```
-solenoid/                       (npm workspaces; npm ≥ 7, no pnpm migration)
-├─ packages/
-│  ├─ schedule-engine/          MIT, own LICENSE + README (source list of what was studied);
-│  │    calendars/              weekly template + exceptions + intervals; serial day + tenths of a
-│  │                            minute; duration ↔ working-time conversion; the lag calendar
-│  │    graph/                  flatten the cube, name-keyed DAG, Tarjan SCC, topological order,
-│  │                            dirty-set incremental recompute (DHTMLX 10.0.3: cost scales with
-│  │                            tasks that moved)
-│  │    cpm/                    forward/backward passes, float, critical set, floors/ceilings/
-│  │                            deadlines/manual, ASAP/ALAP, direction, roll-ups on the summary
-│  │                            calendar, actuals/status date, out-of-sequence + split remainder,
-│  │                            diagnostics; Days and Minutes modes
-│  │    codecs/                 MSPDI read (pj14), the predecessor grammar (import only), CSV
-│  │                            dialects; XER and .gan behind a pack flag
-│  ├─ gantt-layout/             pure TS: time scale (the DHTMLX tier design + size distribution,
-│  │                            ported to serial math; d3-time tick tables), rows and stacking,
-│  │                            bars, links (DHTMLX/SVAR geometry ported), viewport culling →
-│  │                            a plain-number RenderFrame; golden-JSON tests
-│  └─ gantt-react/              React 19 adapter (TanStack-Virtual proportions): hooks + SVG/HTML
-│                               components, the headless payload → SVG serializer, --gantt-*
-│                               custom properties, nowheel/nodrag/nokeys; Playwright goldens
-├─ fixtures/schedule/           JSON scenarios (inputs + expected early/late/float/critical),
-│                               the MSPDI goldens the author exports, Bryntum's 14, DCMA
-│                               invariants, divergences.json; one directory, read by vitest and
-│                               by the MPXJ second-opinion CI job
-└─ src/graph/…                  nodes/schedule.ts binds Frames/Cubes to the engine's column
-                                arrays; chartValue.ts gains kind "gantt"; the figure component
-                                wraps gantt-react in a lazy chunk
-```
+
+| Path | What |
+|---|---|
+| `packages/schedule-engine/` | MIT, own LICENSE + README (source list of what was studied) |
+| `packages/schedule-engine/calendars/` | weekly template + exceptions + intervals; serial day + tenths of a minute; duration ↔ working-time conversion; the lag calendar |
+| `packages/schedule-engine/graph/` | flatten the cube, name-keyed DAG, Tarjan SCC, topological order, dirty-set incremental recompute (DHTMLX 10.0.3: cost scales with tasks that moved) |
+| `packages/schedule-engine/cpm/` | forward/backward passes, float, critical set, floors/ceilings/deadlines/manual, ASAP/ALAP, direction, roll-ups on the summary calendar, actuals/status date, out-of-sequence + split remainder, diagnostics; Days and Minutes modes |
+| `packages/schedule-engine/codecs/` | MSPDI read (pj14), the predecessor grammar (import only), CSV dialects; XER and .gan behind a pack flag |
+| `packages/gantt-layout/` | pure TS: time scale (the DHTMLX tier design + size distribution, ported to serial math; d3-time tick tables), rows and stacking, bars, links (DHTMLX/SVAR geometry ported), viewport culling → a plain-number RenderFrame; golden-JSON tests |
+| `packages/gantt-react/` | React 19 adapter (TanStack-Virtual proportions): hooks + SVG/HTML components, the headless payload → SVG serializer, `--gantt-*` custom properties, nowheel/nodrag/nokeys; Playwright goldens |
+| `fixtures/schedule/` | JSON scenarios (inputs + expected early/late/float/critical), the MSPDI goldens the author exports, Bryntum's 14, DCMA invariants, divergences.json; one directory, read by vitest and by the MPXJ second-opinion CI job |
+| `src/graph/…` | nodes/schedule.ts binds Frames/Cubes to the engine's column arrays; chartValue.ts gains kind "gantt"; the figure component wraps gantt-react in a lazy chunk |
 
 `gantt-dom` (framework-free drag / resize / link machines) is deleted from the plan: the ruling
 is no bar editing, and `@xyflow/system`'s `XYDrag`/`XYPanZoom`, which the draft named as its

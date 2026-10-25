@@ -18,7 +18,9 @@ function mdFiles(dir: string): string[] {
   });
 }
 
-const blocks = [...mdFiles(path.join(ROOT, "tree")), ...mdFiles(path.join(ROOT, "docs"))].flatMap((f) =>
+const files = [...mdFiles(path.join(ROOT, "tree")), ...mdFiles(path.join(ROOT, "docs"))];
+
+const blocks = files.flatMap((f) =>
   [...fs.readFileSync(f, "utf8").matchAll(/```mermaid\n([\s\S]*?)```/g)].map((m, i) => ({
     at: `${path.relative(ROOT, f)}#${i}`,
     src: m[1],
@@ -44,6 +46,16 @@ describe("spec diagrams", () => {
 
   it("no Mermaid block holds a wikilink", () => {
     expect(blocks.filter((b) => b.src.includes("[[")).map((b) => b.at)).toEqual([]);
+  });
+
+  it("a Mermaid block starts after a blank line, so it never runs on from a paragraph", () => {
+    const bad = files.flatMap((f) => {
+      const lines = fs.readFileSync(f, "utf8").split("\n");
+      return lines.flatMap((l, i) =>
+        /^\s*```mermaid/.test(l) && i > 0 && lines[i - 1].trim() !== "" ? [`${path.relative(ROOT, f)}:${i + 1}`] : [],
+      );
+    });
+    expect(bad).toEqual([]);
   });
 
   // pele reads a `;` outside quotes as a line break, so a state or mindmap label holding one renders as stray

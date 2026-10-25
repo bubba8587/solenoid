@@ -75,30 +75,26 @@ script when the component needs hand-writing anyway (op select, custom render).
      `adoptiveListIn`/`adoptiveTableIn` (1-D/2-D), `trueAnyIn/Out` (the
      hollow-ring supremum). A new socket TYPE is a bigger, derived edit —
      follow the `anylist` worked example in CLAUDE.md.
-   - **`data()` is the only non-boilerplate.** Element-wise ops broadcast, and
-     WHICH broadcaster depends on the element type: `broadcast(fn, …)` /
-     `broadcastErr` for numbers and dates (a date serial is a number);
-     `broadcastCells(fn, …)` (`shared.ts`) when operands or results are text /
-     booleans / mixed families (LEN is string→number); `broadcastComplex`
-     (`complex.ts`) for complex, whose values are themselves `[re, im]` arrays
-     and so need an exact shape test plus per-operand tags. All three share the
-     ragged-zip + per-cell error/missing contract. Cache the result on the
-     instance — `cachedResult: BroadcastResult` (= `CellResult<number>`) or
-     `CellResult<T>` for another element type, or `cachedList` / `cachedString`
-     — whatever the component reads. `ValueDisplay` renders a scalar and a
-     broadcast list from the same field, so this needs no component branch.
-   - **Errors**: `installErrorGuards` wraps every `data()` at `nodecreated` —
-     an incoming `SolError` short-circuits to the outputs automatically, so
-     your `data()` sees clean inputs (unless the class opts into
-     `SEES_ERRORS`). For the node's OWN failures return
-     `solError(code, message)` from `errorValue.ts` (`#VALUE!`, `#DOMAIN!`,
-     `#SHAPE!`…) — never throw strings, never emit `NaN` as an error.
-     Container values can carry per-cell `null` (missing) + `SolError`s —
-     see `valueKinds.ts` before hand-rolling skip/propagate logic.
-   - **Units**: an algebra node (one that computes on numbers that may carry
-     units) sets `unitAware = true` and funnels through `broadcastUnit`
-     (`shared.ts`); everything else gets unit-cells unwrapped centrally by
-     `coerceInputs` — do NOT hand-unwrap. See CLAUDE.md "unit-blind boundary".
+   - **The body is Rust.** The class's `data()` is `return nodeOnCore(this, inputs)`;
+     the body lives in `crates/solenoid-core/src/nodes/<family>.rs`, reached by
+     `nodes::run` by class name, and a class whose `data()` is only that goes in
+     `nodes::DIRECT` (kept sorted) so the engine calls it in Rust
+     (`tree/specs/computation/node-bodies.md`). Element-wise bodies use the
+     family broadcasters in `nodes/kit.rs` (`broadcast_err` and kin), which share
+     the ragged-zip and per-cell error/blank contract. A body that answers the
+     same as a formula calls the formula's kernel or the function by name.
+   - **Errors**: the input boundary (`crates/solenoid-graph`) runs the error guard
+     around every call: an incoming error short-circuits to the outputs unless the
+     class is in `SEES_ERRORS`, and a throw becomes `#ERROR!`. For the node's OWN
+     failures the body answers an error value (`#VALUE!`, `#DOMAIN!`, `#SHAPE!`…);
+     never NaN as an error.
+   - **Units**: an algebra node sets `unitAware = true` and its body does the unit
+     math; everything else gets bare magnitudes from the boundary. Do NOT
+     hand-unwrap.
+   - **The formula twin**, when there is one, is its own set of declarations
+     (`call_traits.json`, `FUNCTION_ARITY`, `ARG_ROLES`, a unit class): the map of
+     everything a new function touches, and the spec governing each piece, is
+     `tree/specs/floors/node-classes.md` § A new function across the app.
 2. **Kind** → `src/graph/nodes/kind.ts`: an `instanceof` branch in
    `nodeKindOf()` assigns the accent/category (`"input"`, `"string"`,
    `"list"`, `"util"`…). The fallback is `"math"`, so math nodes skip this.
@@ -131,7 +127,7 @@ script when the component needs hand-writing anyway (op select, custom render).
 
 ## Persistence — how node state survives save/copy/undo
 
-- `extractInit` (`copyPaste.ts`) snapshots constructor-arg fields listed in
+- `extractInit` (`nodeInit.ts`) snapshots constructor-arg fields listed in
   **`INIT_FIELD_ORDER`** — `label`, `op`, `mode`, `format`, `value`, `width`…
   **Reuse an existing field name when one fits** (e.g. call your dropdown
   `mode` or `op`); a genuinely new field must be APPENDED to that list, which

@@ -143,11 +143,13 @@ A name resolves once, on the core: `route` (`excel_functions.rs`) gives it its a
 | Field | Meaning |
 |---|---|
 | `kind` | how a call routes: `range` (reads its lists whole), `broadcast` (maps over them), `whole` (a whole-list native: arguments arrive exactly as they are), `handler` (the error handlers) |
-| `prep` | a range function's preparation: `default`, or `positional` (the lookups, which skip the error scan) |
+| `prep` | how a range call readies its lists ([[#Range functions]]): `default` (blanks drop), `zero` (blanks read 0), `paired` (a position blank in any list drops from every list), `raw` (the lists as they come), `positional` (as they come, a matrix refused) |
+| `inspectsNull` | the function sees a blank argument (`NULL_INSPECTING`) instead of answering blank |
+| `nullableOk` | a whole-list native that decides blank by blank itself (`NULLABLE_SCALARS_OK`) |
 | `scalar` | the range arguments a list lifts in (`LARGE`'s k, `PERCENTILE`'s p) |
 | `matrixArgs` | the only way a matrix reaches the body whole |
 | `checksCx` | the body reads a complex value itself |
-| `free` | a one-column or one-row table reads as its items, and a list answer comes back the way the vector came in |
+| `free` | the vector direction (`orient` free, else axis): a one-column or one-row table reads as its items, and a list answer comes back the way the vector came in |
 | `roles`, `blanks` | each argument's role and empty-slot reading ([[C80]] blankArgIsExcelBlank) |
 | `known`, `resolves`, `refusal` | registered with Solenoid; resolves to a body; the message a blocked name answers |
 
@@ -295,7 +297,22 @@ A function whose `kind` is `whole` (and is not blocked) receives every argument 
 
 `INDEX` declares `listArgs`, so it takes this route even though it is also listed in `RANGE_FUNCTIONS` and `RANGE_POSITIONAL`. The matrix functions declare `listArgs` beside `matrixArgs`, so a rank-1 argument also arrives whole: TRANSPOSE of a list is a column, not an element-wise map, and COLUMNS and ROWS count a list as one row.
 
-**Vector direction** ([[D85]] columnsStayColumns). Every `listArgs` entry declares `orient`, and a test fails when one does not. Before the matrix guard, a `free` function's arguments pass through `readVectors`: a one-column table (more than one row, each row one cell) becomes its items, a one-row table becomes its one row, and anything wider stays a table, so a grid mode (INTERPOLATE, DIAGONAL) still sees its grid. When the first vector argument came in as a column, a flat list answer goes back out as a column (`asColumn`), so `price * REVERSE(price)` stays element by element instead of spreading column by row. An `axis` function (the Excel shapers: SORT, UNIQUE, TAKE, DROP, INDEX, ROWS, COLUMNS, VSTACK, HSTACK, TRANSPOSE, the matrix algebra, the LAMBDA hosts) receives the table as it is and reads its rows and columns itself. `vectorOrient.test.ts` runs every `free` function on a list and on the same values as a column and requires the same values, and a column back for a column.
+**Vector direction** ([[D85]] columnsStayColumns). A function's direction is its `free` flag in the call table: free, else axis. Before the matrix guard, a `free` function's arguments pass through `readVectors`: a one-column table (more than one row, each row one cell) becomes its items, a one-row table becomes its one row, and anything wider stays a table, so a grid mode (INTERPOLATE, DIAGONAL) still sees its grid. When the first vector argument came in as a column, a flat list answer goes back out as a column (`asColumn`), so `price * REVERSE(price)` stays element by element instead of spreading column by row. An `axis` function (the Excel shapers: SORT, UNIQUE, TAKE, DROP, INDEX, ROWS, COLUMNS, VSTACK, HSTACK, TRANSPOSE, the matrix algebra, the LAMBDA hosts) receives the table as it is and reads its rows and columns itself. `vectorOrient.test.ts` runs every `free` function on a list and on the same values as a column and requires the same values, and a column back for a column.
+
+```mermaid
+flowchart TD
+    f["a whole-list call"] --> fr{"free in the call table?"}
+    fr -->|"no: axis (SORT, TAKE,<br>VSTACK, INDEX...)"| ax["each table arrives as it is;<br>the body reads rows and columns"]
+    fr -->|yes| arg{"each argument"}
+    arg -->|"a one-column table"| items["its items"]
+    arg -->|"a one-row table"| row["its row"]
+    arg -->|"wider"| tbl["stays a table<br>(a grid mode sees its grid)"]
+    items --> ans{"the first vector<br>came in as a column?"}
+    row --> ans
+    ans -->|yes| col["a flat list answer goes<br>back out as a column"]
+    ans -->|no| lst["the answer as it is"]
+```
+
 
 ### Range functions
 

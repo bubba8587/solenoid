@@ -34,6 +34,26 @@ Leaves are hand-placed in the tree. Many are built by small helpers (`arithLeaf`
 
 The tree is curated to read well: general plotters stay at the top of Visuals while specialist figures cluster by what they show, and everyday table verbs stay at the top of Tables & Frames while column surgery, reshaping and comparison fold into subcategories.
 
+How a function can be grouped and reached, independent of how its card and formula are built
+([[node-classes#A new function across the app]]):
+
+```mermaid
+mindmap
+  root(("ways a function is reached"))
+    ["a category: a folder of leaves<br>(a pack's placement lands in one)"]
+    ["a pair: two opposite leaves in a row"]
+    ["a leaf: one card type"]
+      ["its own formula name:<br>fx, or the despaced label"]
+    ["an op family: one card, an op dropdown"]
+      ["each op its own formula name"]
+      ["an op with a leaf of its own,<br>or a hidden-op row (Host: Op)"]
+    ["an Excel name (NODE_EXCEL)"]
+      ["on a card: NAME → Card"]
+      ["on one op: NAME → Card: Op"]
+    ["a retired name (LEGACY_ALIASES):<br>lands on its replacement's card"]
+    ["keywords: other spellings,<br>searched, never shown"]
+```
+
 ### Leaf fields
 
 | Field | Meaning |
@@ -222,6 +242,38 @@ Every name a node shows comes from one home and reads the same on every surface 
 | **Formula name** | `fx ?? despace(label)` in `nodeOps` | the formula surface; letter case per [[B16]] oneFormulaSurface |
 | **Socket labels** | `addInput` / `addOutput` | the card's rows; bare nouns, with hints in `socketDocs` (`socket-reference.md` §8) |
 | **Description** | the catalog or `OP_META` description | menu row, header hover, Inspector; voice per `DESIGN.md` §7 |
+
+```mermaid
+flowchart LR
+    subgraph homes["one home each"]
+        lbl["the leaf label<br>(nodeCatalog.ts)"]
+        opm["the op label<br>(OP_META)"]
+        fam["the family name<br>(nodeTypeName)"]
+        xl["Excel names<br>(NODE_EXCEL)"]
+        fx["the formula name<br>(fx, else the label)"]
+        desc["the description"]
+        kw["keywords"]
+    end
+    lbl --> title["card title, Navigator, Inspector,<br>Problems, Pins... (nodeDisplayName)"]
+    opm --> title
+    opm --> dd["the op dropdown;<br>hidden-op search rows"]
+    fam --> hint["the hover type-hint only"]
+    xl --> alias["search: NAME → Card rows"]
+    xl --> ref["the Function Reference;<br>the Inspector's Excel rows"]
+    fx --> bar["the formula bar"]
+    desc --> ref
+    desc --> hover["menu row, header hover"]
+    kw --> search["search, never shown"]
+```
+
+The Inspector ([[C73]] inspectorIsStatic) assembles a node's page from those homes and the class:
+
+```mermaid
+flowchart LR
+    n["the selected node"] --> t["its name<br>(nodeDisplayName)"]
+    n --> fr["its Function Reference rows:<br>each Excel name with its syntax,<br>parity and note, the description"]
+    n --> sk["each socket: its label, its type's<br>plain name (SOCKET_TYPE_LABELS),<br>its socketDocs sentence, and an<br>example table (frameHints) on a<br>frame input"]
+```
 
 The name surfaces exist so that a user who reads a name in one place finds the same name in the next; when each surface picked its own source they disagreed (one node read "Table Size" in the menu and "Table Info" on hover, and a search for ROWS returned a row that never said ROWS). The Excel-name search row puts the Excel name before an arrow, never after a colon, because "Card: Excel" reads as an op the card has (the author, 2026-09-26). Socket labels carry no parentheticals: the author, 2026-09-26, "let's remove “(1-based)” from all socket labels. that's the kind of syntax which belongs in the Inspector's socket descriptions, not the main node card."
 

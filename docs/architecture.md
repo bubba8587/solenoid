@@ -12,66 +12,45 @@ This file is the map.
 
 ## Top-level layout
 
+```mermaid
+mindmap
+  root(("the repo"))
+    the app
+      ["src/: the React frontend"]
+      ["crates/: the Rust core,<br>graph and Parquet reader"]
+      ["src-tauri/: the desktop shell"]
+      ["packages/: in-repo workspaces"]
+    ["obsidian-plugin/"]
+    proof
+      ["tests/: mirrors src/"]
+      ["fixtures/: frozen answers,<br>the verb corpus"]
+    ["docs and tooling"]
+      ["docs/"]
+      ["scripts/"]
+      [".claude/, .github/workflows/"]
+    ["assets: public/, assets/"]
+    ["root config: package.json,<br>vite, vitest, index.html"]
 ```
-/
-├── docs/                     # Planning, design, decisions, this map
-├── src/                      # React + TypeScript frontend (the canvas + UI)
-├── tests/                    # ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts
-│                             #     tests src/graph/foo.ts; "(+`.test.ts`)" below means its
-│                             #     suite lives at the mirrored path)
-├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read
-├── crates/                   # solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the
-│                             #     app, native in tests; ../tree/specs/computation/rust-core.md),
-│                             #     solenoid-graph (the model, the engine and the pass on Ruggine; it links
-│                             #     solenoid-core into the one wasm module) and solenoid-parquet (the
-│                             #     desktop's Parquet reader, on the parquet and arrow crates)
-├── public/                   # Static assets served by Vite
-├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
-│                             #     kept cut of the demo video and its poster (scripts/demo-video/)
-├── fixtures/                 # frame-verbs/ — the verb corpus, run in wasm and natively;
-│                             #     core/ — the core's frozen answers (coreConformance, coreNodes);
-│                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
-├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
-│                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
-├── obsidian-plugin/          # Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real
-│                             #     chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run
-│                             #     plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault
-│                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping;
-│                             #     src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in
-│                             #     Reading view, src/knapLive.ts in Live Preview ([[D87]] knapNotes)
-├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
-│                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
-│                             #     dev server: undo position fidelity, socketBox12's rendering half, a
-│                             #     cable starts from either socket end, Tidy is a fixed point + the
-│                             #     confirm's Enter stays modal), run-graph.ts (`--vault / --tasknotes / --run`, the headless seam; `run-graph-vault.test.ts`) (headless runner; takes
-│                             #     JSON or the text form, gated on graphValidate),
-│                             #     validate-graph.ts (strict-reader CLI), ai-grounding.ts
-│                             #     (model-facing spec CLI), ai-prompt.ts (the palette's AI
-│                             #     loop from a terminal, real key),
-│                             #     formula-node-parity.ts (oneMetricImpl gap report),
-│                             #     socket-inventory.ts (regenerates socket-reference counts),
-│                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
-│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
-│                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
-│                             #     shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and
-│                             #     screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill),
-│                             #     drag-probe.mjs (counts the components a 30-step card drag renders; Drag performance),
-│                             #     zoom-perf-probe.mjs (pan and wheel cost per zoom from a Chrome trace, layers mid-pan),
-│                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
-│                             #     (pinnable .desktop launchers for the local release + debug apps),
-│                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
-│                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it),
-│                             #     motion/ (motion graphics: cards read off the live app as geometry, rebuilt and
-│                             #     animated in three.js, the rest frame held against the app; the motion skill)
-├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video, motion, shot-graph), commands/, settings.json
-├── .github/workflows/        # CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
-│                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
-├── package.json              # JS deps + scripts (dev, build, test, tauri)
-├── vite.config.ts            # Vite config (keepNames: constructor.name is load-bearing)
-├── vitest.config.ts          # Test runner config
-└── index.html                # HTML entry point
-```
+
+| Path | What |
+|---|---|
+| `docs/` | Planning, design, decisions, this map |
+| `src/` | React + TypeScript frontend (the canvas + UI) |
+| `tests/` | ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts tests src/graph/foo.ts; "(+`.test.ts`)" below means its suite lives at the mirrored path) |
+| `src-tauri/` | Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read |
+| `crates/` | solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the app, native in tests; ../tree/specs/computation/rust-core.md), solenoid-graph (the model, the engine and the pass on Ruggine; it links solenoid-core into the one wasm module) and solenoid-parquet (the desktop's Parquet reader, on the parquet and arrow crates) |
+| `public/` | Static assets served by Vite |
+| `assets/` | loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the kept cut of the demo video and its poster (scripts/demo-video/) |
+| `fixtures/` | frame-verbs/ — the verb corpus, run in wasm and natively; core/ — the core's frozen answers (coreConformance, coreNodes); schedule/ — MSPDI goldens + divergences.json for the scheduling engine |
+| `packages/` | In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest): schedule-engine, gantt-layout, gantt-react (packages/README.md) |
+| `obsidian-plugin/` | Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping; src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in Reading view, src/knapLive.ts in Live Preview ([[D87]] knapNotes) |
+| `scripts/` | new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs + socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the dev server: undo position fidelity, socketBox12's rendering half, a cable starts from either socket end, Tidy is a fixed point + the confirm's Enter stays modal), run-graph.ts (`--vault / --tasknotes / --run`, the headless seam; `run-graph-vault.test.ts`) (headless runner; takes JSON or the text form, gated on graphValidate), validate-graph.ts (strict-reader CLI), ai-grounding.ts (model-facing spec CLI), ai-prompt.ts (the palette's AI loop from a terminal, real key), formula-node-parity.ts (oneMetricImpl gap report), socket-inventory.ts (regenerates socket-reference counts), copy-inventory.ts (shipped-string extract/apply), tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share), shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill), drag-probe.mjs (counts the components a 30-step card drag renders; Drag performance), zoom-perf-probe.mjs (pan and wheel cost per zoom from a Chrome trace, layers mid-pan), debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs (pinnable .desktop launchers for the local release + debug apps), demo-video/ (the demo video: scripted scenes filmed in Chromium and a real Obsidian, cut with ffmpeg; the demo-video skill runs it), motion/ (motion graphics: cards read off the live app as geometry, rebuilt and animated in three.js, the rest frame held against the app; the motion skill) |
+| `.claude/` | Claude Code project config: skills/ (add-node, demo-video, motion, shot-graph), commands/, settings.json |
+| `.github/workflows/` | CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb), cargo-audit.yml (src-tauri/Cargo.lock advisories) |
+| `package.json` | JS deps + scripts (dev, build, test, tauri) |
+| `vite.config.ts` | Vite config (keepNames: constructor.name is load-bearing) |
+| `vitest.config.ts` | Test runner config |
+| `index.html` | HTML entry point |
 
 ## Stack
 
@@ -91,16 +70,25 @@ This file is the map.
 
 ## Frontend (`src/`)
 
+```mermaid
+mindmap
+  root(("src/"))
+    ["main.tsx: the entry"]
+    ["App.tsx: canvas and overlays"]
+    ["styles: App.css, mobile.css,<br>desktopFrame.css"]
+    ["logo/"]
+    ["graph/: everything graph-related"]
 ```
-src/
-├── main.tsx                  # Entry — init theme/packs/flow stores, mount <App />
-├── App.tsx                   # Top-level: canvas + overlays (popups, dialogs, settings)
-├── App.css                   # Theme token layer (dark/light ramps; socket colors are BUILT by palette.ts/themeVars.ts and written by appTheme.ts, not defined here. The NEUTRAL ramp IS defined here, but a palette may replace it — appTheme writes or CLEARS every chrome var per apply, see paletteAllOrNone)
-├── mobile.css                # @media (pointer: coarse) overrides (desktop layout is truth)
-├── desktopFrame.css          # Tauri window chrome
-├── logo/                     # Brand assets
-└── graph/                    # Everything graph-related (flat; grouped below by concern)
-```
+
+| Path | What |
+|---|---|
+| `main.tsx` | Entry — init theme/packs/flow stores, mount &lt;App /> |
+| `App.tsx` | Top-level: canvas + overlays (popups, dialogs, settings) |
+| `App.css` | Theme token layer (dark/light ramps; socket colors are BUILT by palette.ts/themeVars.ts and written by appTheme.ts, not defined here. The NEUTRAL ramp IS defined here, but a palette may replace it — appTheme writes or CLEARS every chrome var per apply, see paletteAllOrNone) |
+| `mobile.css` | @media (pointer: coarse) overrides (desktop layout is truth) |
+| `desktopFrame.css` | Tauri window chrome |
+| `logo/` | Brand assets |
+| `graph/` | Everything graph-related (flat; grouped below by concern) |
 
 ### Engine / core (`src/graph/`)
 
@@ -469,14 +457,22 @@ gallery is `showcase/NodeShowcase.tsx`.
 
 ## Tauri shell (`src-tauri/`)
 
+```mermaid
+mindmap
+  root(("src-tauri/"))
+    ["config: Cargo.toml,<br>tauri.conf.json"]
+    ["capabilities/default.json:<br>permissions"]
+    ["src/lib.rs: commands"]
+    ["src/ipc.rs: read_parquet"]
 ```
-src-tauri/
-├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps, solenoid-parquet)
-├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
-├── src/ipc.rs                # `read_parquet` (Local File's Parquet, as one columnar buffer) + `IpcError` (serializes SolError-shaped).
-└── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `read_parquet`
-```
+
+| Path | What |
+|---|---|
+| `Cargo.toml` | Crate manifest (+ fs/dialog plugin deps, solenoid-parquet) |
+| `tauri.conf.json` | Window, identifier, build hooks |
+| `capabilities/default.json` | Permissions: dialog + fs read/write scoped to $HOME/\*\* + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/\*\*) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview |
+| `src/ipc.rs` | `read_parquet` (Local File's Parquet, as one columnar buffer) + `IpcError` (serializes SolError-shaped). |
+| `src/lib.rs` | Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `read_parquet` |
 
 The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`ipcInvoke`, guarded by `isDesktop()` like
 `fileBridge.ts`); a Rust `Err` arrives as a tagged `SolError`. Table verbs run on the core in wasm on desktop

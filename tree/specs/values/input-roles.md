@@ -12,6 +12,23 @@ This file owns what a blank does once it reaches an input: the roles an input ca
 
 A rule that is decided but not yet built carries a `[decided <date>]` tag and an item in the backlog (the settings sweep).
 
+```mermaid
+flowchart TD
+    start["a blank where an argument<br>or input goes"] --> how{"what is it?"}
+    how -->|"an empty slot:<br>a formula comma with<br>nothing typed (C80)"| ex{"Excel reads that slot its<br>own way (EXCEL_EMPTY_SLOT)?"}
+    ex -->|yes| exv["that reading"]
+    ex -->|no| dr{"a declared role?"}
+    dr -->|yes| drv["the role's blank"]
+    dr -->|no| ty["by the parameter's type:<br>0, FALSE or empty text"]
+    how -->|"an omitted trailing<br>argument"| om["undefined: the<br>function's own default"]
+    how -->|"a card input<br>with no cable"| lit["the typed literal on the card"]
+    how -->|"a blank value: a cable or<br>variable holding blank"| role{"the input's role"}
+    role -->|"data (undeclared)"| data["stays blank: value-semantics<br>says what the computation does"]
+    role -->|setting| set["its declared blank, or<br>LEFT_OUT: the default"]
+    role -->|required| req["#SYNTAX!: it is blank<br>and has no default"]
+    role -->|picks| pk["dropped; none left is<br>the picks left out"]
+```
+
 ## The roles
 
 An input's role answers one question: what is this input for? Decide by purpose, never by socket type: a number socket can be data (SUM's values), a setting (ROUND's digits) or a pick (INDEX's position).

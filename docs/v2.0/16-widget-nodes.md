@@ -20,14 +20,17 @@ missing is the *sources* worth leaving open.
 you "water Tuesday" — that needs *your* rules over *data*. With ONE new Weather
 source node, everything else composes from existing nodes:
 
-```
-Geocode("Boise") ─▶ Weather (past_days=14, forecast=7, refreshMinutes=360)
-                      ├─ Daily frame (date, rain mm, prob, hi/lo, ET₀)
-                      ▼
-   Frame Filter (date < today) ─▶ Aggregate sum ─▶ rain_last_7d
-   Frame Filter (date ≥ today) ─▶ Aggregate sum ─▶ rain_next_3d
-   IF(rain_last_7d < 25 AND rain_next_3d < 10) ─▶ water_today (logical)
-                      ─▶ Alert ("Water the garden") + docked Report
+```mermaid
+flowchart TD
+    geo["Geocode(Boise)"] --> wx["Weather (past_days=14, forecast=7,<br>refreshMinutes=360)"]
+    wx -->|"Daily frame: date, rain mm,<br>prob, hi/lo, ET₀"| f1["Frame Filter (date < today)"]
+    wx --> f2["Frame Filter (date ≥ today)"]
+    f1 --> s1["Aggregate sum"] --> r1["rain_last_7d"]
+    f2 --> s2["Aggregate sum"] --> r2["rain_next_3d"]
+    r1 --> iff["IF(rain_last_7d < 25 AND rain_next_3d < 10)"]
+    r2 --> iff
+    iff --> w["water_today (logical)"]
+    w --> al["Alert (Water the garden)<br>+ docked Report"]
 ```
 
 Alert already fires correctly off an interval-triggered recompute

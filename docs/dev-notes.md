@@ -23,6 +23,7 @@ specific item.
 - **Big frames and lists cross the card wire as buffers** ([[node-bodies]] § The call): a 1M-row table into Get Column and its 1M-value answer back take about 0.65 s against 1.6 s over JSON.
 - **A desktop Parquet file crosses IPC as one buffer**, not JSON; the core's 4 GiB ceiling is written down ([[rust-core]] § Where it runs).
 - **A formula value holds no table** ([[C15]] matricesInFormulas): `V` lost `Frame`, `Cube` and `Json`; card bodies and the graph hold a card value (`Cv`, [[node-bodies]] § The call), a Cube's cells among them. A table reaching a value socket is `#VALUE!`, and both input boundaries pass a table through on every rung ([[compute-pass]] § Full coercion).
+- **The specs draw their mechanisms** (`docs/dte.md` § Solenoid practice): Mermaid flowcharts, mindmaps, state and block diagrams across the specs, every ASCII diagram in the live docs replaced, each rendered with pele by `specDiagrams.test.ts`. `tree/specs/floors/node-classes.md` § A new function across the app maps every declaration a formula and card need and the spec governing each. The roles the core's call table holds now match `ARG_ROLES` by test, and its unread `mapsColumns` field is gone.
 - **The chrome renders while the core loads** (`coreReady.ts`); only graph surfaces wait.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.

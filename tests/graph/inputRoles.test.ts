@@ -23,6 +23,32 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     }
   });
 
+  it("the core's call table holds the same roles, argument by argument", () => {
+    // The core reads roles from its own table, its last two entries repeating past the end (`eval.rs` `periodic`).
+    const table = JSON.parse(readFileSync("crates/solenoid-core/data/call_traits.json", "utf8")) as Record<string, { roles: unknown[] }>;
+    const coreRole = (name: string, i: number) => {
+      const r = table[name]?.roles ?? [];
+      const n = r.length;
+      return (i < n || n < 2 ? r[i] : r[(i - n) % 2 === 0 ? n - 2 : n - 1]) ?? null;
+    };
+    const asCore = (r: (typeof ARG_ROLES)[string][number] | undefined) =>
+      r === undefined ? null
+      : r.kind === "setting" ? { kind: "setting", blank: r.blank === LEFT_OUT ? { __undef: 1 } : r.blank }
+      : r.kind === "picks" ? { kind: "picks", required: r.required }
+      : { kind: r.kind };
+    const names = new Set([...Object.keys(ARG_ROLES), ...Object.keys(table).filter((n) => table[n].roles.some(Boolean))]);
+    for (const name of names) {
+      const roles = ARG_ROLES[name] ?? {};
+      const numbered = Object.keys(roles).filter((k) => k !== "rest").map(Number);
+      const top = Math.max(-1, ...numbered);
+      const span = Math.min(FUNCTION_ARITY[name]?.[1] ?? Infinity, Math.max(table[name]?.roles.length ?? 0, top + 1) + 2);
+      for (let i = 0; i < span; i++) {
+        const ts = roles[i] ?? (i > top ? roles.rest : undefined);
+        expect(coreRole(name, i), `${name} argument ${i}`).toEqual(asCore(ts));
+      }
+    }
+  });
+
   it("every card that declares roles reads each declared socket through readRole", () => {
     const dir = "src/graph/nodes";
     const src = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => readFileSync(`${dir}/${f}`, "utf8")).join("\n");
