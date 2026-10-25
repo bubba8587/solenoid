@@ -91,6 +91,7 @@ area. When you coin a new load-bearing term, add it here.
 ## Tables (frames) & the engine
 
 - **Frame**: Solenoid's table: typed columns, may carry nulls and per-cell errors.
+- **Matrix**: rows of plain values, a list of lists one level deep (rows may differ in length), with no column names or types; a formula's dynamic array. Formulas take matrices but not Frames or Cubes ([[C15]] matricesInFormulas).
   (`frame.ts`)
 - **FrameValue**: a fully-materialized frame held in JS memory. (`frame.ts`)
 - **FrameRef**: a *lazy handle* on a cable pointing at a frame living in the engine
