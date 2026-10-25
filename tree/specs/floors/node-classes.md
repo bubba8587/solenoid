@@ -12,6 +12,28 @@ This is the floor every node class and op module under `src/graph/nodes/` is bui
 
 A **node class** is the headless model of one card: its sockets, its saved fields and its `data()`, which computes outputs from inputs. An **op module** (`*Ops.ts`) holds the pure calculations that a class and its formula functions share.
 
+```mermaid
+mindmap
+  root(("a node class"))
+    identity
+      ["a GraphNode: its class name<br>is the saved type"]
+      ["unknown on load: a Placeholder"]
+    saved fields
+      ["init: extractInit, plain JSON"]
+      ["literals, stringLiterals:<br>only if edited inline"]
+      ["valueKeys: extensible rows"]
+    ports
+      ["inputs, outputs: GraphInput,<br>GraphOutput, each with a socket"]
+      ["inputRoles: data, setting, picks"]
+      ["socketDocs, frameHints"]
+    declarations
+      ["unitAware: sees units"]
+      ["noWidenInputs: takes a Cube as is"]
+      ["passthrough(): which inputs it<br>hands on unchanged"]
+    ["data(): outputs from inputs"]
+      ["shares its kernel with the<br>formula, in an op module"]
+```
+
 ## Identity and persistence
 
 - **A node class is a `GraphNode`** (`graphModel.ts`), its ports `GraphInput`s and `GraphOutput`s holding sockets. Its ports change only through `addInput`, `removeInput`, `addOutput`, `removeOutput`, `moveInputLast`, a port's `socket` setter and a `MutableSocket`'s `setType`, which reach the graph core while the node is in an editor; `inputs` and `outputs` are read-only otherwise ([[graph-core#The model (`graphEditor.ts`, `graphModel.ts`, `model.rs`)]]).
@@ -30,6 +52,20 @@ A **node class** is the headless model of one card: its sockets, its saved field
   - Where the combinations are few, flat ops beat a second picker: each op keeps its own hover description and no new saved field is needed (Hypothesis Test's six tests, Rank & Percentile's INC and EXC forms).
   - A merge keeps the old Add-menu leaf types, so `NODE_EXCEL` and the Function Reference are untouched; the merged nodes are inventoried in `docs/node-coverage.md`. Old saves load as Placeholders ([[B7]] preAlphaBreakFreely).
   - After a merge, run `nodeOps.test.ts` and `formulaNodeCoverage.test.ts` beside the parity, catalog and seed suites.
+```mermaid
+mindmap
+  root(("a picker on a card"))
+    ["an op: a different function"]
+      ["stored as op"]
+      ["a family in NODE_OPS"]
+      ["OpSelect or OpToggle,<br>top of the card, accent color"]
+      ["its own formula name"]
+    ["an argument: a parameter<br>of the same function"]
+      ["stored under its own name:<br>side, order, agg, view"]
+      ["ArgSelect or SegToggle,<br>its own row, neutral"]
+      ["a parameter in the formula:<br>SORT(list, index, order)"]
+```
+
 - **The field name is the whole op/argument classification** ([[C26]] opArgDistinct). An op is stored in a field named `op`, declared as a family in `NODE_OPS`, and picked with `OpSelect` or `OpToggle` at the top of the card, in the accent color. An argument is stored under its own name (`side`, `order`, `agg`, `view`, `condition`) and picked with a neutral `ArgSelect` or `SegToggle` in its own row; its search words go in the host leaf's `keywords`. Nothing sits between the two: no `kind` switch, no `arg` flag, no argument family in `NODE_OPS`, no argument stored as `op`. In a formula an argument is a parameter of the node's one function: `SORT(list, index, order)`, `RUNNING(op, list, [window])`, `PADTEXT(text, width, [side])`.
   - **An aggregator is an argument when the host has a job the aggregator only parameterizes.** Group Lists, GROUPBY, Cube Rollup and Running each pick SUM, AVERAGE, MIN and so on as an argument, with no function name per aggregator. Aggregate is the exception: the aggregator is the whole node, so it is an op. If users search for aggregator names and miss, the fix is more `keywords` on the host leaf, never a search row per aggregator.
   - **Classifying a new picker.** Weigh the signals together; none wins on its own. Would the user pick it, or could it arrive computed? Does it have its own name? Would the user search for it? Is it meaningless without its host? Is it an Excel function (which only corroborates)? [[formula-language#Derived names are unique]] can overrule: choices that would share a formula name can't be ops. A per-choice formula name follows from the answer, never decides it.
@@ -48,6 +84,16 @@ A **node class** is the headless model of one card: its sockets, its saved field
 - **A class that takes a Cube as is lists the input in `noWidenInputs`**, so the coercion wrapper skips rank widening there and the class runs its own Cube branch ([[frame-verbs]] § Frames and Cubes).
 - **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.
 - **A sink never acts from `data()`** ([[C38]] sinkRunButtonOnly). A class with an irreversible external effect (a disk write) computes only a preview in `data()`. The effect lives in `run()`, which fires only from the node's Run button or an explicit CLI run (`scripts/run-graph.ts --run <label>`, which stands in for the button), and only while the `enabled` arm flag is on. While Sketch is selected, `run()` goes through `withExactPass` (`process.ts`), which runs a forced exact full pass before the write, so a file, note or task carries every row rather than the sample. The arm flag never persists: it is left out of the `extractInit` whitelist, so every load path (reopening a save, paste, Placeholder restore) starts disarmed.
+
+```mermaid
+flowchart LR
+    d["data()"] --> prev["a preview only:<br>never writes"]
+    btn["the Run button,<br>or a CLI --run"] --> armed{"armed? (enabled,<br>never saved)"}
+    armed -->|no| nothing["nothing"]
+    armed -->|yes| sk{"Sketch selected?"}
+    sk -->|yes| exact["an exact full pass first<br>(withExactPass)"] --> run["run(): the write"]
+    sk -->|no| run
+```
 
 ## Sockets
 

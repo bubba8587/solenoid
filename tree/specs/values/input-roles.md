@@ -65,6 +65,14 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
   One entry serves every op that shares its arguments (TAKE for TAKE and DROP, ROUND for ROUNDUP and ROUNDDOWN, CHOOSEROWS for CHOOSECOLS). A card input with no formula twin declares its role inline: `static inputRoles = { end: setting(LEFT_OUT) }`.
 
+```mermaid
+flowchart TD
+    decl["ARG_ROLES (inputRoles.ts):<br>a role per formula argument"] --> f["a formula: applyArgRoles,<br>at dispatch step 6"]
+    decl -->|"rolesFrom: a card points<br>its sockets at the arguments"| c["a card: readRole,<br>then applyRole"]
+    f --> k["the kernel gets the declared blank,<br>LEFT_OUT, or the picks with blanks dropped"]
+    c --> k
+```
+
 `inputRoles.test.ts` pins the declaration: every declared function exists and every declared argument is within its arity, and every card that declares a role reads that socket through `readRole`.
 
 ## Reading

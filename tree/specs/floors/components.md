@@ -19,6 +19,19 @@ What every React component in the app is built to. A component that implements a
    - Two exceptions, each a value that never causes a recalculation: the variable descriptions in the formula popup save per keystroke (they are notes, not part of the formula; removed if a description ever feeds a computation), and the Slider's playback speed applies per change (it only drives the play timer, the author's call; removed if speed ever feeds a computation).
    - A live-preview field, if one is ever wanted, previews the draft as the number scrub does and still commits once.
    - The editable node title runs the same state machine (`useEditableLabel`): typing never writes `node.label`. Open drafts are flushed before a capture through `draftFlush.ts` ([[per-doc-autosave-persistence]]), so a draft is never lost when the user switches documents, saves a file or closes the window.
+A text field under rule 2 (`useDraftCommit`):
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    Shown: shows the node's value
+    Draft: a local draft
+    Shown --> Draft: typing
+    Draft --> Draft: more typing, nothing written
+    Draft --> Shown: Enter or clickaway, writes the node and recomputes
+    Draft --> Shown: Escape, the draft dropped
+```
+
 3. **A socket that is about to disappear loses its cables first**, through `dropInputCables` (or `dropOutputCables` for an output) in `components/cablePrune.ts`, never a hand-rolled loop over `editor.removeConnection` ([[input-cable-pruning#The ordering rule]]; sweep-enforced).
 4. **A node's `width` and `height` belong to the ResizeObserver**, which overwrites them with the rendered size on every layout. Only a declared size-owner class (annotation frames, the composite card, groups, overlay hosts) reads `init.width` and `init.height` back on load; any other resize gesture routes its size through `nodeSizeStore` ([[react-flow-surface-contract#Node width and height]]).
 5. **Every render is inside an error boundary**: `ErrorBoundary` wraps each card (`withNodeBoundary`) and the app root, so one throwing card shows its own error and never blanks the canvas ([[B3]] sameNodeEverywhere; [[react-flow-surface-contract]]). The node wrapper is memoized by component type, because a fresh wrapper type per render would remount the card, lose focus mid-edit and re-run every effect.
@@ -31,6 +44,21 @@ What every React component in the app is built to. A component that implements a
 ## The card shell
 
 A standard card is `NodeShell` (`nodeKit.tsx`) around `NodeCard` (`NodeCard.tsx`). `NodeCard` is the outer box; `NodeShell` adds the header, the socket content wrapper and the resize grip. Standard shapes (input rows plus one result box, add-and-remove rows, one segmented toggle) come from the factories in `standardNode.tsx`; a node needing more writes against `NodeShell` directly.
+
+```mermaid
+mindmap
+  root(("a standard card"))
+    ["NodeCard: the outer box"]
+      ["state classes: selected,<br>collapsed, grouped, ..."]
+      ["--node-accent, --group-color"]
+      ["collapse: the chevron"]
+      ["ResizeObserver: width, height"]
+    ["NodeShell: inside it"]
+      ["the header: title, hover texts"]
+      ["the content wrapper:<br>sockets anchor here"]
+      ["the resize grip"]
+    ["the standardNode factories:<br>input rows, add-and-remove rows,<br>one segmented toggle"]
+```
 
 **What `NodeCard` does**
 

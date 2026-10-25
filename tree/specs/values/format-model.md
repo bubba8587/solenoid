@@ -20,8 +20,13 @@ This would reopen if a control needed to be shown greyed out for a reason other 
 
 A displayed value goes through these stages, in order, each driven by one part of the `FormatAnnotation`:
 
-```
-value ──▶ 1 type gate ──▶ 2 style (scale-divide, then precision + grouping) ──▶ 3 unit affix ──▶ 3b negative wrap ──▶ 4 text attributes
+```mermaid
+flowchart LR
+    v["value"] --> g["1 type gate:<br>the family picks<br>the controls"]
+    g --> st["2 style: scale-divide,<br>then precision<br>and grouping"]
+    st --> u["3 unit affix"]
+    u --> neg["3b negative wrap"]
+    neg --> tx["4 text attributes"]
 ```
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family** (`familyOf`), and the family decides which controls exist at all (the truth table below). A control outside the family is hidden in the popup and inert when the format resolves: never disabled but visible, and never silently applied. The one sanctioned disabled-but-visible control is inside a family: the unit dropdown under a lock state (below). Locked is a fact worth showing; absent is not.
@@ -155,6 +160,16 @@ A style id that is not built in is looked up among the **pack formats**, whose `
 3. The style formats the magnitude, with grouping on unless `groupingApplies` and `grouping` is `false`; the scale suffix (`K`, `M`, `B`) follows inside the number (`1.2M`).
 4. The unit wraps that: a prefix unit before (`$1.2M`), any other after, and a custom unit's text after.
 5. A parenthesized negative wraps outside the unit, Excel accounting style (`($1.2M)`).
+
+For example, −1,234,567 in a parenthesized-negative style with the M scale and a `$` unit:
+
+```mermaid
+flowchart LR
+    n["−1234567"] -->|"2: scale ÷ 1M,<br>take the absolute value"| a["1.234567"]
+    a -->|"3: the style, 1 place,<br>then the suffix"| b["1.2M"]
+    b -->|"4: a prefix unit"| c["$1.2M"]
+    c -->|"5: the negative wrap"| d["($1.2M)"]
+```
 
 The red negative styles keep the minus or parentheses in the string: red is a color the render layer adds (`annotationRendersNegativeRed`) where a surface is annotation-aware, such as the value box. Plain-text surfaces (the clipboard, the text form) carry just the string. Percent takes a unit like any other style, in the fixed order prefix unit, number with its `%`, suffix unit; `$12.3%` is expressible if the user chooses it, and the model doesn't special-case it.
 

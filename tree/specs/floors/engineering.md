@@ -60,6 +60,19 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 
 The headless formula path (`run-graph` and the evaluator) shouldn't have to load the editor. While the rule was only a convention it broke three times: `excelFunctions` reached the graph model through `nodes/date.ts` and `nodes/convert.ts` until the serial helpers and the unit table were extracted, and the INDEX kernel was first created by lifting the INDEX node's `data()` whole, which imported `frame.ts`. That is why the rule binds the moment a module is created, and says what not to extract.
 
+```mermaid
+flowchart LR
+    subgraph free["the formula path: graph-free"]
+        ev["the evaluator,<br>run-graph"] --> shared["shared kernels<br>(dateSerial.ts, convertUnits.ts,<br>listOps.ts)"]
+    end
+    subgraph graph["the graph side"]
+        card["a card's data()"] --> shared
+        card --> fr["its Frame and Cube<br>branches"]
+        gm["graphModel.ts, graphEditor.ts,<br>sockets, the Frame model"]
+    end
+    shared -.->|"never imports"| gm
+```
+
 Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `unitBridge.ts` → `formatAnnotationStore.ts` → `nodes/date.ts`).
 
 ### Heavy libraries load lazily
