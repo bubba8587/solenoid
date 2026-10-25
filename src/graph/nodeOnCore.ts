@@ -8,7 +8,7 @@ import { declaredTypeOf, AdoptiveSocket, type SocketDataType } from "./sockets";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
+import { nodeWire, nodeCallWire, readNodeReply, jsonDec, jsonEnc, jsonText } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
@@ -119,7 +119,7 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
-    const w = arr.map(nodeWire);
+    const w = arr.map(nodeCallWire);
     if (w.includes(undefined)) throw solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`);
     wired.push([k, w]);
   }

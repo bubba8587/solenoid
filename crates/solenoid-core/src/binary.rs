@@ -79,31 +79,10 @@ impl<'a> Cutter<'a> {
 pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<FrameValue, SolError> {
     let schema: Vec<SchemaColumn> =
         serde_json::from_str(schema).map_err(|e| sol_error(ErrorCode::Error, format!("binary frame schema: {e}")))?;
-    let mut cut = Cutter { rest: strs, lens: lens.iter() };
-    let mut at = 0usize;
+    let mut read = Reader::new(tags, nums, strs, lens);
     let mut columns = Vec::with_capacity(schema.len());
     for c in schema {
-        let end = at + c.len;
-        if end > tags.len() || end > nums.len() {
-            return Err(sol_error(ErrorCode::Error, "binary frame: buffers shorter than the schema"));
-        }
-        let mut values = Vec::with_capacity(c.len);
-        for i in at..end {
-            values.push(match tags[i] {
-                TAG_NUM => FrameCell::Num(nums[i]),
-                TAG_STR => FrameCell::Str(Rc::from(cut.next()?)),
-                TAG_FALSE => FrameCell::Bool(false),
-                TAG_TRUE => FrameCell::Bool(true),
-                TAG_ERR => {
-                    let code = ErrorCode::from_wire(cut.next()?);
-                    let message = cut.next()?.to_string();
-                    let reference = (!nums[i].is_nan()).then_some(nums[i] as u32);
-                    FrameCell::Err(Rc::new(SolError { code, message, reference, origin: None }))
-                }
-                _ => FrameCell::Null,
-            });
-        }
-        at = end;
+        let values = read.cells(c.len)?;
         columns.push(FrameColumn {
             unit: c.unit.as_ref().and_then(ColumnUnit::from_json).map(Rc::new),
             format: c.format.map(Rc::new),
@@ -111,6 +90,46 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
         });
     }
     Ok(FrameValue { columns })
+}
+
+/// Reads the cells of a hand-off in order, one run of them at a time.
+pub struct Reader<'a> {
+    tags: &'a [u8],
+    nums: &'a [f64],
+    cut: Cutter<'a>,
+    at: usize,
+}
+
+impl<'a> Reader<'a> {
+    pub fn new(tags: &'a [u8], nums: &'a [f64], strs: &'a str, lens: &'a [u32]) -> Self {
+        Reader { tags, nums, cut: Cutter { rest: strs, lens: lens.iter() }, at: 0 }
+    }
+
+    /// The next `n` cells.
+    pub fn cells(&mut self, n: usize) -> Result<Vec<FrameCell>, SolError> {
+        let end = self.at + n;
+        if end > self.tags.len() || end > self.nums.len() {
+            return Err(sol_error(ErrorCode::Error, "binary frame: buffers shorter than the schema"));
+        }
+        let mut values = Vec::with_capacity(n);
+        for i in self.at..end {
+            values.push(match self.tags[i] {
+                TAG_NUM => FrameCell::Num(self.nums[i]),
+                TAG_STR => FrameCell::Str(Rc::from(self.cut.next()?)),
+                TAG_FALSE => FrameCell::Bool(false),
+                TAG_TRUE => FrameCell::Bool(true),
+                TAG_ERR => {
+                    let code = ErrorCode::from_wire(self.cut.next()?);
+                    let message = self.cut.next()?.to_string();
+                    let reference = (!self.nums[i].is_nan()).then_some(self.nums[i] as u32);
+                    FrameCell::Err(Rc::new(SolError { code, message, reference, origin: None }))
+                }
+                _ => FrameCell::Null,
+            });
+        }
+        self.at = end;
+        Ok(values)
+    }
 }
 
 fn utf16_len(s: &str) -> u32 {

@@ -10,6 +10,7 @@ use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
 mod backend_verbs;
+pub mod columnar;
 mod columns;
 mod complex;
 mod control;

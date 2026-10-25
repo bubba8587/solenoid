@@ -703,6 +703,40 @@ export function engine_csv_frame(text) {
 }
 
 /**
+ * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+ * and on each change.
+ * @param {number | null} [number_decimals]
+ * @param {string | null} [sci_above]
+ */
+export function display_settings(number_decimals, sci_above) {
+    var ptr0 = isLikeNone(sci_above) ? 0 : passStringToWasm0(sci_above, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.display_settings(!isLikeNone(number_decimals), isLikeNone(number_decimals) ? 0 : number_decimals, ptr0, len0);
+}
+
+/**
+ * A number nobody formatted, as the Format Controller's General style shows it.
+ * @param {number} n
+ * @returns {string}
+ */
+export function fmt_scalar(n) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.fmt_scalar(retptr, n);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
  * A number as a format annotation (its JSON) shows it.
  * @param {number} n
  * @param {string} annotation
@@ -909,6 +943,68 @@ export function engine_csv_rows(text, detect, keep_blank) {
 }
 
 /**
+ * Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
+ * call names as `{"__staged": id}`.
+ * @param {string} kind
+ * @param {string | null | undefined} schema
+ * @param {Uint8Array} tags
+ * @param {Float64Array} nums
+ * @param {string} strs
+ * @param {Uint32Array} lens
+ * @returns {number}
+ */
+export function card_stage(kind, schema, tags, nums, strs, lens) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(schema) ? 0 : passStringToWasm0(schema, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        var len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArray8ToWasm0(tags, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passArrayF64ToWasm0(nums, wasm.__wbindgen_export_1);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(strs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len4 = WASM_VECTOR_LEN;
+        const ptr5 = passArray32ToWasm0(lens, wasm.__wbindgen_export_1);
+        const len5 = WASM_VECTOR_LEN;
+        wasm.card_stage(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return r0 >>> 0;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
+ * (`{"kind", "schema"}`), or null where it was taken already.
+ * @param {number} id
+ * @returns {string | undefined}
+ */
+export function card_unstage(id) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.card_unstage(retptr, id);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        let v1;
+        if (r0 !== 0) {
+            v1 = getStringFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 1, 1);
+        }
+        return v1;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * @returns {Uint8Array}
  */
 export function take_tags() {
@@ -987,45 +1083,11 @@ export function take_lens() {
     }
 }
 
-/**
- * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
- * and on each change.
- * @param {number | null} [number_decimals]
- * @param {string | null} [sci_above]
- */
-export function display_settings(number_decimals, sci_above) {
-    var ptr0 = isLikeNone(sci_above) ? 0 : passStringToWasm0(sci_above, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.display_settings(!isLikeNone(number_decimals), isLikeNone(number_decimals) ? 0 : number_decimals, ptr0, len0);
-}
-
-/**
- * A number nobody formatted, as the Format Controller's General style shows it.
- * @param {number} n
- * @returns {string}
- */
-export function fmt_scalar(n) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.fmt_scalar(retptr, n);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred1_0 = r0;
-        deferred1_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
-    }
-}
-
 function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_186(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_190(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1666,6 +1728,10 @@ function __wbg_get_imports() {
         const ret = Promise.all(getObject(arg0));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_apply_36be6a55257c99bf = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = getObject(arg0).apply(getObject(arg1), getObject(arg2));
+        return addHeapObject(ret);
+    }, arguments) };
     imports.wbg.__wbg_apply_eb9e9b97497f91e4 = function() { return handleError(function (arg0, arg1, arg2) {
         const ret = Reflect.apply(getObject(arg0), getObject(arg1), getObject(arg2));
         return addHeapObject(ret);
@@ -1778,6 +1844,16 @@ function __wbg_get_imports() {
         const ret = result;
         return ret;
     };
+    imports.wbg.__wbg_instanceof_Float64Array_becba31e3ab3ef82 = function(arg0) {
+        let result;
+        try {
+            result = getObject(arg0) instanceof Float64Array;
+        } catch (_) {
+            result = false;
+        }
+        const ret = result;
+        return ret;
+    };
     imports.wbg.__wbg_instanceof_Object_7f2dcef8f78644a4 = function(arg0) {
         let result;
         try {
@@ -1792,6 +1868,16 @@ function __wbg_get_imports() {
         let result;
         try {
             result = getObject(arg0) instanceof Promise;
+        } catch (_) {
+            result = false;
+        }
+        const ret = result;
+        return ret;
+    };
+    imports.wbg.__wbg_instanceof_Uint32Array_b8b88c093c0d7ff4 = function(arg0) {
+        let result;
+        try {
+            result = getObject(arg0) instanceof Uint32Array;
         } catch (_) {
             result = false;
         }
@@ -1820,7 +1906,15 @@ function __wbg_get_imports() {
         const ret = Object.keys(getObject(arg0));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_length_6ca527665d89694d = function(arg0) {
+        const ret = getObject(arg0).length;
+        return ret;
+    };
     imports.wbg.__wbg_length_a446193dc22c12f8 = function(arg0) {
+        const ret = getObject(arg0).length;
+        return ret;
+    };
+    imports.wbg.__wbg_length_c67d5e5c3b83737f = function(arg0) {
         const ret = getObject(arg0).length;
         return ret;
     };
@@ -1847,7 +1941,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_186(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_190(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1866,6 +1960,10 @@ function __wbg_get_imports() {
         const ret = new Map();
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_new_78c8a92080461d08 = function(arg0) {
+        const ret = new Float64Array(getObject(arg0));
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_new_78feb108b6472713 = function() {
         const ret = new Array();
         return addHeapObject(ret);
@@ -1882,12 +1980,28 @@ function __wbg_get_imports() {
         const ret = new Error(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_new_e3b321dcfef89fc7 = function(arg0) {
+        const ret = new Uint32Array(getObject(arg0));
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_new_e6b03743a20a81d7 = function() { return handleError(function (arg0, arg1, arg2) {
         const ret = new Intl.DateTimeFormat(getStringFromWasm0(arg0, arg1), getObject(arg2));
         return addHeapObject(ret);
     }, arguments) };
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
         const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_newwithbyteoffsetandlength_93c8e0c1a479fa1a = function(arg0, arg1, arg2) {
+        const ret = new Float64Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_newwithbyteoffsetandlength_d97e637ebe145a9a = function(arg0, arg1, arg2) {
+        const ret = new Uint8Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_newwithbyteoffsetandlength_f1dead44d1fc7212 = function(arg0, arg1, arg2) {
+        const ret = new Uint32Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
         return addHeapObject(ret);
     };
     imports.wbg.__wbg_newwithlength_c4c419ef0bc8a1f8 = function(arg0) {
@@ -1929,6 +2043,9 @@ function __wbg_get_imports() {
         const ret = Promise.resolve(getObject(arg0));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_set_29b6f95e6adb667e = function(arg0, arg1, arg2) {
+        getObject(arg0).set(getObject(arg1), arg2 >>> 0);
+    };
     imports.wbg.__wbg_set_37837023f3d740e8 = function(arg0, arg1, arg2) {
         getObject(arg0)[arg1 >>> 0] = takeObject(arg2);
     };
@@ -1943,6 +2060,9 @@ function __wbg_get_imports() {
         const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
         return ret;
     }, arguments) };
+    imports.wbg.__wbg_set_d23661d19148b229 = function(arg0, arg1, arg2) {
+        getObject(arg0).set(getObject(arg1), arg2 >>> 0);
+    };
     imports.wbg.__wbg_slice_a18aced6f26168b6 = function(arg0, arg1, arg2) {
         const ret = getObject(arg0).slice(arg1 >>> 0, arg2 >>> 0);
         return addHeapObject(ret);
@@ -1985,7 +2105,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper647 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper661 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 133, __wbg_adapter_38);
         return addHeapObject(ret);
     };

@@ -42,6 +42,9 @@ pub struct Cube {
 /// A wire value: a frame, a cube or plain data, or anything `decode_value` reads.
 pub fn decode(j: &Json) -> V {
     match j {
+        Json::Object(o) if o.contains_key("__staged") => {
+            o["__staged"].as_u64().and_then(super::columnar::take_in).unwrap_or(V::Undef)
+        }
         Json::Array(items) => super::list(items.iter().map(decode).collect()),
         Json::Object(o) if o.contains_key("__frame") => {
             let f = &o["__frame"];
@@ -110,6 +113,11 @@ impl serde::Serialize for Cell<'_> {
                 }
                 q.end()
             }
+        }
+        if let Some(id) = super::columnar::stage_out(self.0) {
+            let mut m = s.serialize_map(Some(1))?;
+            m.serialize_entry("staged", &id)?;
+            return m.end();
         }
         match self.0 {
             V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),

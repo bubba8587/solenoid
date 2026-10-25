@@ -7,22 +7,37 @@ import { isSolError } from "./errorValue";
 
 const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5;
 
-/** A frame's cells for the core, with each column's unit and format unless `meta` is false; any other object crosses as its text. */
-export function encodeBinary(frame: FrameValue, meta = true): BinaryCells {
-  const total = frame.columns.reduce((n, c) => n + c.values.length, 0);
+/** A frame's cells for the core, with each column's unit and format unless `meta` is false; any other object crosses as
+ *  its text, or with `flatOnly` (a value the card wire carries as JSON then: undefined, an object, an error with its
+ *  origin) the frame doesn't cross and the answer is undefined. */
+export function encodeBinary(frame: FrameValue, meta?: boolean): BinaryCells;
+export function encodeBinary(frame: FrameValue, meta: boolean, flatOnly: true): BinaryCells | undefined;
+export function encodeBinary(frame: FrameValue, meta = true, flatOnly = false): BinaryCells | undefined {
+  let total = 0;
+  for (const c of frame.columns) total += c.values.length;
   const tags = new Uint8Array(total);
   const nums = new Float64Array(total);
   const parts: string[] = [];
-  const lens: number[] = [];
-  const text = (t: string) => { parts.push(t); lens.push(t.length); };
+  let lens = new Uint32Array(total + 16);
+  let li = 0;
+  const text = (t: string) => {
+    if (li === lens.length) { const grown = new Uint32Array(lens.length * 2); grown.set(lens); lens = grown; }
+    parts.push(t);
+    lens[li++] = t.length;
+  };
   let k = 0;
   for (const c of frame.columns) {
     for (const v of c.values) {
       if (typeof v === "number") { tags[k] = TAG_NUM; nums[k] = v; }
       else if (typeof v === "string") { tags[k] = TAG_STR; text(v); }
       else if (typeof v === "boolean") tags[k] = v ? TAG_TRUE : TAG_FALSE;
-      else if (isSolError(v)) { tags[k] = TAG_ERR; nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message); }
-      else if (typeof v === "object" && v !== null) { tags[k] = TAG_STR; text(String(v)); }
+      else if (v === null) tags[k] = TAG_NULL;
+      else if (isSolError(v)) {
+        if (flatOnly && v.origin) return undefined;
+        tags[k] = TAG_ERR; nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message);
+      }
+      else if (flatOnly) return undefined;
+      else if (typeof v === "object") { tags[k] = TAG_STR; text(String(v)); }
       else tags[k] = TAG_NULL;
       k++;
     }
@@ -32,7 +47,7 @@ export function encodeBinary(frame: FrameValue, meta = true): BinaryCells {
       name: c.name, type: c.type, len: c.values.length,
       ...(meta && c.unit ? { unit: c.unit } : {}), ...(meta && c.format ? { format: c.format } : {}),
     })),
-    tags, nums, strs: parts.join(""), lens: Uint32Array.from(lens),
+    tags, nums, strs: parts.join(""), lens: lens.slice(0, li),
   };
 }
 

@@ -20,6 +20,7 @@ specific item.
 - **Typed text is read by the core** ([[D93]] oneTextReading): `parseDate` hands every absolute date to `engine_parse_date`, a closed list of shapes pinned by `coreParseDate.test.ts`; chrono-node reads only relative phrases ([[D54]]). A day/month-ambiguous date stays `#AMBIGUOUS!` with a time after it. The plugin loads the core on `onload`.
 - **Display and import reading run on the core** ([[D94]] oneNumberDisplay, [[D93]] oneTextReading): number, date and annotation formatting, the card plans, typed number and logical text, and `inferColumn` (one `engine_infer_bin` call per table, pinned by `coreInferColumn.test.ts`; imports run about 1.5x the old TS's time, about 50 ms more per 100k rows of 4 columns).
 - **A graph that's done is freed** (`GraphEditor.dispose`, [[graph-core]] § The model): composites leaving their editor and the landing, scene and showcase stages free their cores, which held their whole graphs alive.
+- **Big frames and lists cross the card wire as buffers** ([[node-bodies]] § The call): a 1M-row table into Get Column and its 1M-value answer back take about 0.65 s against 1.6 s over JSON.
 - **The chrome renders while the core loads** (`coreReady.ts`); only graph surfaces wait.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.

@@ -104,6 +104,15 @@ export function engine_read_bin(handle: string, column?: string | null, limit?: 
  */
 export function engine_csv_frame(text: string): string;
 /**
+ * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+ * and on each change.
+ */
+export function display_settings(number_decimals?: number | null, sci_above?: string | null): void;
+/**
+ * A number nobody formatted, as the Format Controller's General style shows it.
+ */
+export function fmt_scalar(n: number): string;
+/**
  * A number as a format annotation (its JSON) shows it.
  */
 export function fmt_annotated(n: number, annotation: string): string;
@@ -142,19 +151,20 @@ export function engine_infer_bin(schema: string, tags: Uint8Array, nums: Float64
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
  */
 export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
+/**
+ * Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
+ * call names as `{"__staged": id}`.
+ */
+export function card_stage(kind: string, schema: string | null | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): number;
+/**
+ * Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
+ * (`{"kind", "schema"}`), or null where it was taken already.
+ */
+export function card_unstage(id: number): string | undefined;
 export function take_tags(): Uint8Array;
 export function take_nums(): Float64Array;
 export function take_strs(): string;
 export function take_lens(): Uint32Array;
-/**
- * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
- * and on each change.
- */
-export function display_settings(number_decimals?: number | null, sci_above?: string | null): void;
-/**
- * A number nobody formatted, as the Format Controller's General style shows it.
- */
-export function fmt_scalar(n: number): string;
 /**
  * One editor's graph and its dataflow engine.
  */
@@ -368,6 +378,8 @@ export interface InitOutput {
   readonly card_image_src: (a: number, b: number, c: number) => void;
   readonly card_is_hex_color: (a: number, b: number) => number;
   readonly card_link_href: (a: number, b: number, c: number) => void;
+  readonly card_stage: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
+  readonly card_unstage: (a: number, b: number) => void;
   readonly display_settings: (a: number, b: number, c: number, d: number) => void;
   readonly engine_csv_frame: (a: number, b: number, c: number) => void;
   readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;

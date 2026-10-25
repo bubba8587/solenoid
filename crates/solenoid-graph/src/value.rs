@@ -161,17 +161,23 @@ fn to_js(a: &Arrived) -> JsValue {
         V::Str(s) => JsValue::from_str(s),
         V::Bool(b) => JsValue::from_bool(*b),
         v => {
-            let text = solenoid_core::nodes::reply_json(v);
             let unit = a
                 .munit
                 .as_ref()
                 .map_or(JsValue::UNDEFINED, |u| JsValue::from_str(&u.to_string()));
             let read = host()
                 .ok()
-                .and_then(|h| {
-                    h.from_core
-                        .call2(&JsValue::NULL, &JsValue::from_str(&text), &unit)
-                        .ok()
+                .and_then(|h| match binary_out(v) {
+                    Some(args) => {
+                        args.push(&unit);
+                        h.from_core_bin.apply(&JsValue::NULL, &args).ok()
+                    }
+                    None => {
+                        let text = solenoid_core::nodes::reply_json(v);
+                        h.from_core
+                            .call2(&JsValue::NULL, &JsValue::from_str(&text), &unit)
+                            .ok()
+                    }
                 })
                 .and_then(|r| r.dyn_into::<Array>().ok());
             match read {
@@ -182,8 +188,36 @@ fn to_js(a: &Arrived) -> JsValue {
     }
 }
 
-/// A JavaScript value as a core value: a number, text, a logical or a blank at once, anything else through the card
-/// wire (`toCore`, `nodeWire`).
+/// A frame's or a list's cells as `fromCoreBin` takes them, where it's big enough and every cell is flat
+/// (`nodes::columnar`).
+fn binary_out(v: &V) -> Option<Array> {
+    let (kind, schema, c) = solenoid_core::nodes::columnar::binary_out(v)?;
+    let args = Array::new();
+    args.push(&JsValue::from_str(kind));
+    args.push(&schema.map_or(JsValue::UNDEFINED, |s| JsValue::from_str(&s)));
+    args.push(&js_sys::Uint8Array::from(&c.tags[..]));
+    args.push(&js_sys::Float64Array::from(&c.nums[..]));
+    args.push(&JsValue::from_str(&c.strs));
+    args.push(&js_sys::Uint32Array::from(&c.lens[..]));
+    Some(args)
+}
+
+/// `toCore`'s buffers (`[kind, schema, tags, nums, strs, lens]`) as the frame or list they carry.
+fn binary_in(a: &Array) -> Option<V> {
+    use solenoid_core::nodes::columnar;
+    let tags = a.get(2).dyn_into::<js_sys::Uint8Array>().ok()?.to_vec();
+    let nums = a.get(3).dyn_into::<js_sys::Float64Array>().ok()?.to_vec();
+    let strs = a.get(4).as_string()?;
+    let lens = a.get(5).dyn_into::<js_sys::Uint32Array>().ok()?.to_vec();
+    match a.get(0).as_string()?.as_str() {
+        "frame" => columnar::frame_in(&a.get(1).as_string()?, &tags, &nums, &strs, &lens).ok(),
+        "list" => columnar::list_in(&tags, &nums, &strs, &lens).ok(),
+        _ => None,
+    }
+}
+
+/// A JavaScript value as a core value: a number, text, a logical or a blank at once, a frame or a list of flat cells
+/// as buffers, anything else through the card wire (`toCore`, `nodeWire`).
 fn from_js(v: &JsValue) -> Option<Arrived> {
     if let Some(n) = v.as_f64() {
         return Some(Arrived::bare(V::Num(n)));
@@ -200,12 +234,11 @@ fn from_js(v: &JsValue) -> Option<Arrived> {
     if v.is_undefined() {
         return Some(Arrived::bare(V::Undef));
     }
-    let text = host()
-        .ok()?
-        .to_core
-        .call1(&JsValue::NULL, v)
-        .ok()?
-        .as_string()?;
+    let wired = host().ok()?.to_core.call1(&JsValue::NULL, v).ok()?;
+    if let Some(a) = wired.dyn_ref::<Array>() {
+        return binary_in(a).map(Arrived::bare);
+    }
+    let text = wired.as_string()?;
     let json: Json = serde_json::from_str(&text).ok()?;
     let munit = json.get("__munit").cloned().map(Rc::new);
     Some(Arrived {

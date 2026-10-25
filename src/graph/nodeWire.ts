@@ -4,9 +4,11 @@
 // special numbers tagged, and everything else as `coreValue` sends it.
 import { coreValue, readReply } from "./coreValues";
 import { solError, type SolErrorCode } from "./errorValue";
+import { encodeBinary, decodeBinary } from "./binaryCells";
+import { wasmCardStage, wasmCardUnstage } from "./engineWasm";
 import { cx } from "./cxValue";
 import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
-import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn } from "./frame";
+import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn, type FrameCell } from "./frame";
 import { compilePositional } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
 
@@ -72,6 +74,12 @@ function all(vs: readonly unknown[]): unknown[] | undefined {
   return out.includes(undefined) ? undefined : out;
 }
 
+/** `nodeWire` for an `engine_node` call: a big frame or list of flat cells is staged in the core as buffers and named. */
+export function nodeCallWire(v: unknown): unknown {
+  const b = wireBinary(v);
+  return b ? { __staged: wasmCardStage(b) } : nodeWire(v);
+}
+
 /** A value as a card body on the core reads it; undefined where it can't cross (a frame ref, a closure, other objects). */
 export function nodeWire(v: unknown): unknown {
   if (Array.isArray(v)) {
@@ -103,6 +111,53 @@ export function nodeWire(v: unknown): unknown {
   // A frame ref is a backend handle and a plan of ops, plain data a card extends; the backend runs the plan later.
   if (v && typeof v === "object" && (isPlainData(v) || "__frameRef" in v)) return { __json: jsonEnc(v) };
   return coreValue(v, true);
+}
+
+/** Below this many cells a value crosses as JSON: four buffers cost more than a short string. */
+export const BINARY_MIN_CELLS = 64;
+
+/** A frame or a list whose every cell is flat (a number, text, a logical, a blank, an error with no origin) as the
+ *  columnar hand-off carries it, `[kind, schema, tags, nums, strs, lens]` (`nodes/columnar.rs`); undefined where one
+ *  isn't, or where the value is small enough that JSON is cheaper. */
+export function wireBinary(v: unknown): unknown[] | undefined {
+  if (Array.isArray(v)) {
+    if (v.length < BINARY_MIN_CELLS || matrixUnitOf(v)) return undefined;
+    const b = encodeBinary({ __frame: true, columns: [{ name: "", type: "string", values: v as FrameCell[] }] }, false, true);
+    return b && ["list", undefined, b.tags, b.nums, b.strs, b.lens];
+  }
+  if (!isFrameValue(v) || v.columns.reduce((n, c) => n + c.values.length, 0) < BINARY_MIN_CELLS) return undefined;
+  const columns: FrameColumn[] = [];
+  const entries: Record<string, unknown>[] = [];
+  for (const c of v.columns) {
+    columns.push(c);
+    entries.push({ name: c.name, type: c.type, len: c.values.length, ...(c.unit ? { unit: jsonEnc(c.unit) } : {}),
+      ...(c.format !== undefined ? { format: jsonEnc(c.format) } : {}) });
+    if (c.raw) {
+      columns.push({ name: "", type: "string", values: c.raw });
+      entries.push({ raw: true, len: c.raw.length });
+    }
+  }
+  const b = encodeBinary({ __frame: true, columns }, false, true);
+  if (!b) return undefined;
+  const schema = { columns: entries, ...(v.__totalRows !== undefined ? { totalRows: v.__totalRows } : {}), ...(v.__approx ? { approx: jsonEnc(v.__approx) } : {}) };
+  return ["frame", JSON.stringify(schema), b.tags, b.nums, b.strs, b.lens];
+}
+
+/** `wireBinary`'s inverse, for what a card body answers: the frame or list the buffers carry. */
+export function readBinary(kind: string, schema: string | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): unknown {
+  if (kind === "list") return decodeBinary({ schema: [{ name: "", type: "string", len: tags.length }], tags, nums, strs, lens })[0].values;
+  const s = JSON.parse(schema!) as { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown };
+  const cols = decodeBinary({ schema: s.columns.map((e) => ({ name: (e.name as string) ?? "", type: (e.type as string) ?? "string", len: e.len as number })), tags, nums, strs, lens });
+  const columns: FrameColumn[] = [];
+  s.columns.forEach((e, j) => {
+    if (e.raw) { columns[columns.length - 1].raw = cols[j].values as string[]; return; }
+    columns.push({ name: e.name as string, type: e.type as FrameColumn["type"], values: cols[j].values,
+      ...(e.unit ? { unit: jsonDec(e.unit) as FrameColumn["unit"] } : {}), ...("format" in e ? { format: jsonDec(e.format) as FrameColumn["format"] } : {}) });
+  });
+  const f: FrameValue = { __frame: true, columns };
+  if (s.totalRows !== undefined) f.__totalRows = s.totalRows;
+  if (s.approx) f.__approx = jsonDec(s.approx) as FrameValue["__approx"];
+  return f;
 }
 
 type LambdaWire = { params: string[]; expr: string; captured: string[]; capturedValues: unknown[]; readValues: unknown[]; descriptions?: Record<string, string> };
@@ -155,6 +210,10 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
   if (o.lambda && typeof o.lambda === "object") {
     const units = cells(o.lambda.capturedValues), read = cells(o.lambda.readValues);
     return units && read ? { value: wiredLambda(o.lambda, units.value, read.value) } : null;
+  }
+  if (typeof (o as { staged?: unknown }).staged === "number") {
+    const b = wasmCardUnstage((o as { staged: number }).staged);
+    return b ? { value: readBinary(b.kind, b.schema, b.tags, b.nums, b.strs, b.lens) } : null;
   }
   if ("json" in o) return { value: jsonDec(o.json) };
   if (o.frame) {

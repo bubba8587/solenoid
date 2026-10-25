@@ -36,7 +36,8 @@ pub fn engine_invoke(command: &str, args: &str) -> String {
         }
         Ok(parsed) if command == "engine_node" => format!(
             "{{\"ok\":{}}}",
-            serde_json::to_string(&crate::nodes::reply(&parsed)).expect("a card's reply serializes")
+            crate::nodes::columnar::staging(|| serde_json::to_string(&crate::nodes::reply(&parsed)))
+                .expect("a card's reply serializes")
         ),
         Ok(parsed) => reply(invoke(command, &parsed)),
         Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
@@ -120,6 +121,34 @@ pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {
     );
     STAGED.with(|s| *s.borrow_mut() = out);
     reply(Ok(serde_json::json!(rows)))
+}
+
+/// Holds a big input of `engine_node`'s next call, a frame or a list as buffers (`nodes::columnar`); its id, which the
+/// call names as `{"__staged": id}`.
+#[wasm_bindgen]
+pub fn card_stage(
+    kind: &str,
+    schema: Option<String>,
+    tags: &[u8],
+    nums: &[f64],
+    strs: &str,
+    lens: &[u32],
+) -> Result<u32, JsValue> {
+    use crate::nodes::columnar;
+    let v = match kind {
+        "frame" => columnar::frame_in(schema.as_deref().unwrap_or("{}"), tags, nums, strs, lens),
+        _ => columnar::list_in(tags, nums, strs, lens),
+    };
+    v.map(columnar::stage_in).map_err(|e| JsValue::from_str(&e.message))
+}
+
+/// Stages the answer `engine_node`'s reply named `{"staged": id}` for the `take_*` calls; its kind and schema as JSON
+/// (`{"kind", "schema"}`), or null where it was taken already.
+#[wasm_bindgen]
+pub fn card_unstage(id: u32) -> Option<String> {
+    let (kind, schema, out) = crate::nodes::columnar::take_out(id)?;
+    STAGED.with(|s| *s.borrow_mut() = out);
+    Some(serde_json::json!({ "kind": kind, "schema": schema }).to_string())
 }
 
 #[wasm_bindgen]

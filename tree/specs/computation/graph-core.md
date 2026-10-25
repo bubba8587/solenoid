@@ -221,7 +221,7 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
   producer made, a core value (`V`, with a table's unit beside it) or a JavaScript object, and the other form once a
   reader of the other kind first asks for it, kept beside the first so every reader of that kind gets the same one.
   A direct card's inputs are core values, a JavaScript card's are objects; converting is the card wire
-  (`nodeWire.ts`: `toCore`, `fromCore`), one host call per value converted, never per cell. An output that is one of
+  (`nodeWire.ts`: `toCore`, `fromCore`, and `fromCoreBin` for a big flat frame or list, which crosses as buffers, [[node-bodies]] § The call), one host call per value converted, never per cell. An output that is one of
   the card's inputs as it came is that very cell. Errors keep their origin on the wire ([[E9]] errorsKeepOrigin).
 - **The boundary on core values** (`boundary_core.rs`, held natively to every frozen arrival and tagging case,
   `tests/boundary_core.rs`). What only the app knows stays a host call, made only when a value needs it: a lazy

@@ -11,7 +11,7 @@ import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBac
 import { displayMagnitudeOf } from "./unitBridge";
 import { carryMatrixUnit, withMatrixUnit, type ColumnUnit, type UnitCell } from "./unitValue";
 import { coreHeader, coreFieldsOf } from "./nodeOnCore";
-import { nodeWire, readNodeReply, jsonDec } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, wireBinary, readBinary } from "./nodeWire";
 import { engineClock } from "./coreValues";
 import { parseListLiteral } from "./listLiterals";
 import { frameFormatStore } from "./frameFormatStore";
@@ -120,6 +120,8 @@ whenWasmEngineLoads(() => setBoundaryHost({
   header: coreHeader,
   fields: coreFieldsOf,
   toCore: (v: unknown) => {
+    const b = wireBinary(v);
+    if (b) return b;
     const w = nodeWire(v);
     return w === undefined ? undefined : JSON.stringify(w);
   },
@@ -128,6 +130,11 @@ whenWasmEngineLoads(() => setBoundaryHost({
     if (!r) return null;
     if (unit !== undefined) withMatrixUnit(r.value, jsonDec(JSON.parse(unit)) as ColumnUnit);
     return [r.value];
+  },
+  fromCoreBin: (kind: string, schema: string | undefined, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array, unit: string | undefined) => {
+    const value = readBinary(kind, schema, tags, nums, strs, lens);
+    if (unit !== undefined) withMatrixUnit(value, jsonDec(JSON.parse(unit)) as ColumnUnit);
+    return [value];
   },
   clock: () => engineClock().now,
 }));

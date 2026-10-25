@@ -221,6 +221,7 @@ pub(crate) struct BoundaryHost {
     pub(crate) fields: Function,
     pub(crate) to_core: Function,
     pub(crate) from_core: Function,
+    pub(crate) from_core_bin: Function,
     clock: Function,
 }
 
@@ -254,6 +255,7 @@ pub fn set_boundary_host(host: Object) -> Result<(), JsValue> {
         fields: f("fields")?,
         to_core: f("toCore")?,
         from_core: f("fromCore")?,
+        from_core_bin: f("fromCoreBin")?,
         clock: f("clock")?,
     };
     HOST.with(|h| *h.borrow_mut() = Some(Rc::new(made)));
