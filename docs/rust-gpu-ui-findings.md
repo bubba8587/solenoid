@@ -270,7 +270,7 @@ above) runs the same canvas, extracted from `develop` with the three Solenoid-si
 bench that sets the viewport transform each frame and times restyle and layout, scene encoding and
 raster. The dot grid is off on both: it is one 400,000 px SVG pattern that Chromium tiles cheaply and
 Blitz can't draw, and a Rust canvas would paint the grid itself. With the dots on, `develop` pans about
-the same and pays roughly twice the raster on a zoom step.
+1 ms a frame slower and pays two to four times the raster on a zoom step.
 
 Milliseconds per frame. `develop` is main-thread time plus raster (headless Chromium rasters on the
 CPU); its main thread includes about 5.5 ms of the app's own JavaScript per pan frame. Blitz CPU is the
@@ -285,7 +285,8 @@ painter): its raster ran on a software Vulkan driver here, 65 to 110 ms that say
 | 0.1 | 17.3 + 1.8 | 38.6 | 13.6 | 9.8 + 3.9 | 21.6 | 9.8 |
 
 - **Close in, Blitz is about three times cheaper.** Chromium pays its JavaScript, paint and layerize on
-  every frame; Blitz pays 2 to 4 ms of restyle and layout and little else, because it culls what is off screen.
+  every frame; Blitz pays 2 to 4 ms of restyle and layout and little else (its encoding at zoom 1 is under 1 ms, so it
+  appears to skip what is off screen).
 - **Far out, the cost moves to encoding.** Blitz keeps no layers between frames, so it rebuilds the scene
   for every element on screen each frame (about 9,300 at zoom 0.1), where Chromium pans one cached
   layer (finding 1 of `canvas-frame-cost-findings.md`). With the Vello painter that is about 10 ms at 0.1,
