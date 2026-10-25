@@ -14,7 +14,7 @@ import { guardFinite } from "./valueKinds";
 import { ipcInvoke } from "./ipcBridge";
 import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, wasmCsvFrame, onCore, onWasmEngineReset } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
-import { encodeBinary, decodeBinary } from "./binaryCells";
+import { encodeBinary, decodeBinary, binaryFromBytes } from "./binaryCells";
 
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
@@ -571,11 +571,12 @@ export function useWasmBackend(): void {
   setFrameBackend(new EngineBackend());
 }
 
-/** A Parquet file in `folder`, read by the desktop shell (`src-tauri/src/parquet.rs`); its cells cross in wire form. */
+/** A Parquet file in `folder`, read by the desktop shell (`src-tauri/src/ipc.rs`); it crosses as one buffer of the
+ *  columnar hand-off. */
 export async function readParquetFrame(folder: string, name: string): Promise<FrameValue | SolError> {
   try {
-    const columns = await ipcInvoke<FrameColumn[]>("read_parquet", { folder, name });
-    return { __frame: true, columns: columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] })) };
+    const bytes = await ipcInvoke<ArrayBuffer>("read_parquet", { folder, name });
+    return { __frame: true, columns: decodeBinary(binaryFromBytes(bytes)) };
   } catch (e) {
     return asErrorValue(e);
   }

@@ -146,6 +146,32 @@ impl Columnar {
         self.lens.push(utf16_len(s));
     }
 
+    /// The schema and cells as one buffer, for a channel that carries bytes (the desktop shell's IPC):
+    /// four little-endian `u32` counts (schema bytes, cells, text lengths, text bytes), then the schema as JSON text
+    /// padded to 8 bytes, the numbers, the text lengths, the tags and the text. `binaryFromBytes` (`binaryCells.ts`)
+    /// reads it, the numbers and lengths in place.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let schema = Json::Array(self.schema.clone()).to_string();
+        let pad = (8 - (16 + schema.len()) % 8) % 8;
+        let mut out = Vec::with_capacity(
+            16 + schema.len() + pad + self.nums.len() * 8 + self.lens.len() * 4 + self.tags.len() + self.strs.len(),
+        );
+        for n in [schema.len(), self.tags.len(), self.lens.len(), self.strs.len()] {
+            out.extend_from_slice(&(n as u32).to_le_bytes());
+        }
+        out.extend_from_slice(schema.as_bytes());
+        out.resize(out.len() + pad, 0);
+        for x in &self.nums {
+            out.extend_from_slice(&x.to_le_bytes());
+        }
+        for l in &self.lens {
+            out.extend_from_slice(&l.to_le_bytes());
+        }
+        out.extend_from_slice(&self.tags);
+        out.extend_from_slice(self.strs.as_bytes());
+        out
+    }
+
     /// Each column's first `limit` cells (all of them when `None`).
     pub fn encode(columns: &[&FrameColumn], limit: Option<usize>) -> Columnar {
         let mut out = Columnar::default();
@@ -223,5 +249,47 @@ mod tests {
             matches!(&v[5], FrameCell::Err(e) if e.code == ErrorCode::NotAvailable && e.message == "m" && e.reference == Some(7))
         );
         assert!(matches!(&v[6], FrameCell::Str(s) if s.is_empty()));
+    }
+
+    /// The one-buffer form `binaryFromBytes` reads (`binaryBytes.test.ts` reads this file); FREEZE_CORE=columnar-bytes
+    /// writes it again after a deliberate change.
+    #[test]
+    fn bytes_match_the_frozen_file() {
+        let col = FrameColumn {
+            unit: ColumnUnit::from_json(&json!({ "dim": { "length": 1 }, "display": "km" })).map(Rc::new),
+            ..FrameColumn::new(
+                "a",
+                FrameColType::Number,
+                vec![
+                    FrameCell::Num(-0.0),
+                    FrameCell::Num(f64::NAN),
+                    FrameCell::Num(1.5),
+                    FrameCell::Null,
+                    FrameCell::err(SolError {
+                        code: ErrorCode::NotAvailable,
+                        message: "m".into(),
+                        reference: Some(7),
+                        origin: None,
+                    }),
+                ],
+            )
+        };
+        let text = FrameColumn::new(
+            "é",
+            FrameColType::String,
+            vec![
+                FrameCell::str("x😀"),
+                FrameCell::Bool(true),
+                FrameCell::Bool(false),
+                FrameCell::str(""),
+                FrameCell::Null,
+            ],
+        );
+        let bytes = Columnar::encode(&[&col, &text], None).to_bytes();
+        let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/columnar-bytes.bin");
+        if std::env::var("FREEZE_CORE").is_ok_and(|v| v == "1" || v.split(',').any(|s| s == "columnar-bytes")) {
+            std::fs::write(&file, &bytes).unwrap();
+        }
+        assert_eq!(std::fs::read(&file).unwrap(), bytes);
     }
 }

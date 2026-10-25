@@ -13,10 +13,9 @@ use arrow_array::types::{
 use arrow_array::{Array, ArrayRef};
 use arrow_schema::{DataType, TimeUnit};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use serde_json::Value as Json;
+use solenoid_core::binary::Columnar;
 use solenoid_core::error_value::{sol_error, ErrorCode, SolError};
 use solenoid_core::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
-use solenoid_core::wire::column_to_wire;
 
 /// Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
 const UNIX_EPOCH_SERIAL: f64 = 25569.0;
@@ -67,9 +66,10 @@ pub fn read(path: &Path) -> Result<FrameValue, SolError> {
     Ok(FrameValue { columns })
 }
 
-/// The frame as the app reads it off IPC: wire columns (`wire.rs`).
-pub fn read_wire(path: &Path) -> Result<Vec<Json>, SolError> {
-    Ok(read(path)?.columns.iter().map(column_to_wire).collect())
+/// `read`'s frame as the columnar hand-off's one buffer (`Columnar::to_bytes`), for the desktop's IPC.
+pub fn read_bytes(path: &Path) -> Result<Vec<u8>, SolError> {
+    let f = read(path)?;
+    Ok(Columnar::encode(&f.columns.iter().collect::<Vec<_>>(), None).to_bytes())
 }
 
 fn append_cells(

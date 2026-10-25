@@ -123,6 +123,12 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
   lookup, sort; the frame already resident): at 1M rows 160 ms in wasm under Node and 210 ms natively. Polars, as
   the desktop ran it, took 1.17 s, nearly all of it the computed column's round trip out of Polars and back (its
   verbs alone were 60 ms, the core's 90 ms in wasm). Reopen [[C130]] if a table people open is slow in wasm.
+- **Size**: the core is wasm32, so everything it holds at once (the frames the verb backend keeps, the values on
+  cables, a verb's working copies) shares one 4 GiB memory, on desktop as on the web. A cell costs 16 bytes there, plus
+  its text for a text cell, so a frame of a few tens of millions of cells fits and a hundred million is near the edge;
+  the JavaScript side's own copy lives outside it. Running out traps (below). Polars kept a desktop frame native with no
+  such ceiling; reopen [[C130]] if a table people open runs out. A Parquet file crosses from the shell as one buffer of
+  the columnar hand-off (`Columnar::to_bytes`, `binaryFromBytes`), not JSON.
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
   where it stopped, so the instance is dropped and the compiled module instantiated afresh, the graph with it, as
   [[graph-core]] § Traps says; the core numbers its handles past the dead one's (`engine_handle_base`). The call that

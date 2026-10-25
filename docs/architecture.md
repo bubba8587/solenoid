@@ -474,7 +474,7 @@ src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps, solenoid-parquet)
 ├── tauri.conf.json           # Window, identifier, build hooks
 ├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
-├── src/ipc.rs                # `read_parquet` (Local File's Parquet, as wire columns) + `IpcError` (serializes SolError-shaped).
+├── src/ipc.rs                # `read_parquet` (Local File's Parquet, as one columnar buffer) + `IpcError` (serializes SolError-shaped).
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `read_parquet`
 ```
 

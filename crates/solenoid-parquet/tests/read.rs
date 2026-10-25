@@ -20,9 +20,19 @@ fn write(name: &str, columns: Vec<(&str, ArrayRef)>) -> std::path::PathBuf {
 }
 
 fn read(path: &std::path::Path) -> Vec<Json> {
-    let out = solenoid_parquet::read_wire(path);
+    let out = solenoid_parquet::read(path);
+    let bytes = solenoid_parquet::read_bytes(path).unwrap();
     std::fs::remove_file(path).ok();
-    out.unwrap()
+    let f = out.unwrap();
+    let cells: usize = f.columns.iter().map(|c| c.values.len()).sum();
+    assert_eq!(
+        u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize,
+        cells
+    );
+    f.columns
+        .iter()
+        .map(solenoid_core::wire::column_to_wire)
+        .collect()
 }
 
 #[test]

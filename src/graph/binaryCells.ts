@@ -77,3 +77,23 @@ export function decodeBinary(b: BinaryCells): FrameColumn[] {
   return out;
 }
 
+/** The one buffer `Columnar::to_bytes` writes (`binary.rs`): four little-endian u32 counts, the schema's JSON text padded
+ *  to 8 bytes, the numbers, the text lengths, the tags and the text. The numbers and lengths are read in place. */
+export function binaryFromBytes(data: ArrayBuffer | ArrayBufferView): BinaryCells {
+  let bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  if (bytes.byteOffset % 8) bytes = bytes.slice();
+  const head = new DataView(bytes.buffer, bytes.byteOffset, 16);
+  const [schemaLen, cells, lensLen, strsLen] = [0, 4, 8, 12].map((o) => head.getUint32(o, true));
+  const utf8 = new TextDecoder();
+  let at = 16;
+  const schema = JSON.parse(utf8.decode(bytes.subarray(at, at + schemaLen))) as BinaryCells["schema"];
+  at += schemaLen + ((8 - ((16 + schemaLen) % 8)) % 8);
+  const nums = new Float64Array(bytes.buffer, bytes.byteOffset + at, cells);
+  at += cells * 8;
+  const lens = new Uint32Array(bytes.buffer, bytes.byteOffset + at, lensLen);
+  at += lensLen * 4;
+  const tags = bytes.subarray(at, at + cells);
+  at += cells;
+  return { schema, tags, nums, strs: utf8.decode(bytes.subarray(at, at + strsLen)), lens };
+}
+

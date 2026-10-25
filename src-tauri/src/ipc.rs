@@ -1,6 +1,5 @@
 // [[C130]] rustCore
 use serde::Serialize;
-use serde_json::Value as Json;
 
 /// A failed command, shaped as the app's own tagged `SolError` so it renders as a value.
 #[derive(Debug, Serialize)]
@@ -21,10 +20,11 @@ impl From<solenoid_core::error_value::SolError> for IpcError {
     }
 }
 
-/// Local File's Parquet read: the file's columns in wire form (`crates/solenoid-parquet`).
+/// Local File's Parquet read: the file's frame as the columnar hand-off's one buffer (`crates/solenoid-parquet`
+/// `read_bytes`), which crosses as bytes, not JSON.
 #[tauri::command]
-pub fn read_parquet(folder: String, name: String) -> Result<Vec<Json>, IpcError> {
-    Ok(solenoid_parquet::read_wire(
+pub fn read_parquet(folder: String, name: String) -> Result<tauri::ipc::Response, IpcError> {
+    Ok(tauri::ipc::Response::new(solenoid_parquet::read_bytes(
         &std::path::Path::new(&folder).join(&name),
-    )?)
+    )?))
 }
