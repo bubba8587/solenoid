@@ -57,6 +57,22 @@ pub fn dim_pow(a: &Dim, n: f64) -> Dim {
         .collect()
 }
 
+/// The dimension of a plain number.
+pub static NO_DIM: Dim = Dim::new();
+
+/// A value's dimension: a unit cell's own, anything else dimensionless.
+pub fn dim_of(v: &crate::excel_functions::V) -> &Dim {
+    match v {
+        crate::excel_functions::V::Unit(u) => &u.dim,
+        _ => &NO_DIM,
+    }
+}
+
+/// Currency to the first power and nothing else.
+pub fn is_pure_currency(d: &Dim) -> bool {
+    d.iter().all(|(k, &x)| x == if k == "currency" { 1.0 } else { 0.0 }) && d.get("currency") == Some(&1.0)
+}
+
 pub fn dim_equal(a: &Dim, b: &Dim) -> bool {
     a.keys().chain(b.keys()).all(|k| a.get(k).copied().unwrap_or(0.0) == b.get(k).copied().unwrap_or(0.0))
 }

@@ -80,13 +80,7 @@ pub fn format_dim(dim: &Dim) -> String {
     }
 }
 
-fn dim_of(v: &V) -> Dim {
-    if let V::Unit(u) = v {
-        u.dim.clone()
-    } else {
-        Dim::new()
-    }
-}
+use crate::unit_dims::dim_of;
 
 fn magnitude_of(v: &V) -> f64 {
     match v {
@@ -126,7 +120,7 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
     let mut currency: Option<&str> = None;
     for v in &present {
         let d = dim_of(v);
-        if is_dimensionless(&d) {
+        if is_dimensionless(d) {
             continue;
         }
         let V::Unit(u) = v else { continue };
@@ -135,16 +129,16 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
                 dim = Some(d.clone());
                 display = Some(u.clone());
             }
-            Some(first) if !dim_equal(first, &d) => {
+            Some(first) if !dim_equal(first, d) => {
                 return Err(unit_error(&format!(
                     "Can't aggregate mixed units: {} and {}.",
                     format_dim(first),
-                    format_dim(&d)
+                    format_dim(d)
                 )));
             }
             _ => {}
         }
-        if pure_currency(&d) {
+        if pure_currency(d) {
             if let Some(code) = u.display.as_deref() {
                 match currency {
                     None => currency = Some(code),
@@ -170,7 +164,7 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
     };
     let nums = present
         .iter()
-        .map(|v| if is_dimensionless(&dim_of(v)) { adopt(magnitude_of(v)) } else { magnitude_of(v) })
+        .map(|v| if is_dimensionless(dim_of(v)) { adopt(magnitude_of(v)) } else { magnitude_of(v) })
         .collect();
     Ok(Prep { dim: dim.unwrap_or_default(), display, nums })
 }

@@ -69,27 +69,7 @@ fn tri(t: Option<bool>) -> V {
     t.map_or(V::Null, V::Bool)
 }
 
-fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
-    if a == Some(false) || b == Some(false) {
-        return Some(false);
-    }
-    if a.is_none() || b.is_none() {
-        None
-    } else {
-        Some(true)
-    }
-}
-
-fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
-    if a == Some(true) || b == Some(true) {
-        return Some(true);
-    }
-    if a.is_none() || b.is_none() {
-        None
-    } else {
-        Some(false)
-    }
-}
+use crate::excel_functions::{kleene_and, kleene_or};
 
 /// A value read as a condition; blank and an error pass through.
 fn if_test(v: &V) -> V {
@@ -178,7 +158,7 @@ fn compare_cell(op: &str, x: &V, y: &V) -> V {
         return V::Null;
     }
     let (da, db) = (dim_of(x), dim_of(y));
-    let refused = if !is_dimensionless(&da) && !is_dimensionless(&db) && !dim_equal(&da, &db) {
+    let refused = if !is_dimensionless(da) && !is_dimensionless(db) && !dim_equal(da, db) {
         Some("Can't compare values with different units.")
     } else if currency_mismatch(x, y) {
         Some("Can't compare different currencies. There is no exchange rate.")
@@ -192,12 +172,12 @@ fn compare_cell(op: &str, x: &V, y: &V) -> V {
             _ => V::err(unit_error(why)),
         };
     }
-    let l = if is_dimensionless(&da) && !is_dimensionless(&db) {
+    let l = if is_dimensionless(da) && !is_dimensionless(db) {
         adopt_reading(magnitude_of(x), shown(y))
     } else {
         magnitude_of(x)
     };
-    let r = if is_dimensionless(&db) && !is_dimensionless(&da) {
+    let r = if is_dimensionless(db) && !is_dimensionless(da) {
         adopt_reading(magnitude_of(y), shown(x))
     } else {
         magnitude_of(y)
@@ -275,7 +255,23 @@ fn if_node(c: &mut Call) -> Answer {
 }
 
 fn boolean_op(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "and").to_string();
+    #[derive(Clone, Copy, PartialEq)]
+    enum Op {
+        And,
+        Or,
+        Nand,
+        Nor,
+        Xor,
+        Xnor,
+    }
+    let op = match c.field_str("op", "and") {
+        "and" => Op::And,
+        "or" => Op::Or,
+        "nand" => Op::Nand,
+        "nor" => Op::Nor,
+        "xor" => Op::Xor,
+        _ => Op::Xnor,
+    };
     let operands: Vec<V> = keys_from(c, "a").iter().map(|k| c.read_num(k, 0.0)).collect();
     let result = broadcast_el(&operands, |xs| {
         let tris: Vec<Option<bool>> = xs.iter().map(|x| tri_bool(x)).collect();
@@ -288,17 +284,17 @@ fn boolean_op(c: &mut Call) -> Answer {
         };
         let all = || reduce(true, kleene_and);
         let any = || reduce(false, kleene_or);
-        tri(match op.as_str() {
-            "and" => all(),
-            "or" => any(),
-            "nand" => all().map(|b| !b),
-            "nor" => any().map(|b| !b),
-            _ => {
+        tri(match op {
+            Op::And => all(),
+            Op::Or => any(),
+            Op::Nand => all().map(|b| !b),
+            Op::Nor => any().map(|b| !b),
+            Op::Xor | Op::Xnor => {
                 if tris.iter().any(Option::is_none) {
                     None
                 } else {
                     let odd = tris.iter().filter(|t| **t == Some(true)).count() % 2 == 1;
-                    Some(if op == "xor" { odd } else { !odd })
+                    Some(if op == Op::Xor { odd } else { !odd })
                 }
             }
         })
@@ -543,16 +539,16 @@ fn is_test(c: &mut Call) -> Answer {
     if op == "isblank" {
         return done(c, V::Null, V::Bool(matches!(input, V::Null)));
     }
-    let test = |x: &V| match op.as_str() {
-        "isnull" => matches!(x, V::Null),
-        "istext" => matches!(x, V::Str(_)),
-        "isnontext" => !matches!(x, V::Str(_)),
-        "isnumber" => matches!(x, V::Num(n) if n.is_finite()),
-        "islogical" => matches!(x, V::Bool(_)),
-        "iserror" => x.is_sol_error(),
-        "iserr" => x.is_sol_error() && !is_na(x),
-        "isna" => is_na(x),
-        _ => false,
+    let test: fn(&V) -> bool = match op.as_str() {
+        "isnull" => |x| matches!(x, V::Null),
+        "istext" => |x| matches!(x, V::Str(_)),
+        "isnontext" => |x| !matches!(x, V::Str(_)),
+        "isnumber" => |x| matches!(x, V::Num(n) if n.is_finite()),
+        "islogical" => |x| matches!(x, V::Bool(_)),
+        "iserror" => |x| x.is_sol_error(),
+        "iserr" => |x| x.is_sol_error() && !is_na(x),
+        "isna" => is_na,
+        _ => |_| false,
     };
     fn deep(v: &V, test: &dyn Fn(&V) -> bool) -> V {
         match v {

@@ -10,13 +10,7 @@ use crate::unit_dims::{dim_div, dim_equal, dim_mul, dim_pow, is_dimensionless, D
 use crate::unit_value::{unit_error, READINGS_ADD, READINGS_SCALE};
 use std::rc::Rc;
 
-pub fn dim_of(v: &V) -> Dim {
-    if let V::Unit(u) = v {
-        u.dim.clone()
-    } else {
-        Dim::new()
-    }
-}
+pub use crate::unit_dims::dim_of;
 
 pub fn magnitude_of(v: &V) -> f64 {
     match v {
@@ -81,7 +75,7 @@ pub fn tag_ratio(value: f64) -> V {
 }
 
 fn pure_currency(v: &V) -> bool {
-    dim_equal(&dim_of(v), &Dim::from([("currency".to_string(), 1.0)]))
+    crate::unit_dims::is_pure_currency(dim_of(v))
 }
 
 /// Two amounts in different currencies.
@@ -99,7 +93,36 @@ pub fn any_dimensioned(args: &[&V]) -> bool {
 }
 
 /// One of Arithmetic's ops on two cells, either or both with a unit.
-pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
+/// Arithmetic's `op`, read once per call rather than per item ([[C120]] linearWork).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ArithOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Quotient,
+    /// An op the card doesn't know: its items are blank.
+    Unknown,
+}
+
+impl ArithOp {
+    pub fn parse(op: &str) -> Self {
+        match op {
+            "add" => ArithOp::Add,
+            "sub" => ArithOp::Sub,
+            "mul" => ArithOp::Mul,
+            "div" => ArithOp::Div,
+            "mod" => ArithOp::Mod,
+            "pow" => ArithOp::Pow,
+            "quotient" => ArithOp::Quotient,
+            _ => ArithOp::Unknown,
+        }
+    }
+}
+
+pub fn arithmetic_cell(op: ArithOp, a: &V, b: &V) -> V {
     let (da, db) = (dim_of(a), dim_of(b));
     let (x, y) = (magnitude_of(a), magnitude_of(b));
     let (ua, ub) = (shown(a), shown(b));
@@ -112,18 +135,18 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
             name(ub)
         )));
     }
-    let xc = if is_dimensionless(&da) && !is_dimensionless(&db) { adopt_magnitude(x, ub) } else { x };
-    let yc = if is_dimensionless(&db) && !is_dimensionless(&da) { adopt_magnitude(y, ua) } else { y };
+    let xc = if is_dimensionless(da) && !is_dimensionless(db) { adopt_magnitude(x, ub) } else { x };
+    let yc = if is_dimensionless(db) && !is_dimensionless(da) { adopt_magnitude(y, ua) } else { y };
     let both_cells = matches!(a, V::Unit(_)) && matches!(b, V::Unit(_));
     let any_affine = affine(a) || affine(b);
     let combine = |r: f64| -> V {
-        if dim_equal(&da, &db) {
+        if dim_equal(da, db) {
             return tag(r, da.clone(), if both_cells && any_affine { None } else { ua.or(ub) });
         }
-        if is_dimensionless(&da) {
+        if is_dimensionless(da) {
             return tag(r, db.clone(), ub);
         }
-        if is_dimensionless(&db) {
+        if is_dimensionless(db) {
             return tag(r, da.clone(), ua);
         }
         V::err(unit_error(""))
@@ -131,9 +154,9 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
     let readings = affine(a) && affine(b);
     let refused = || any_affine.then(|| V::err(unit_error(READINGS_SCALE)));
     let carry = |rd: &Dim| -> Option<&UnitCell> {
-        if ua.is_some() && dim_equal(rd, &da) {
+        if ua.is_some() && dim_equal(rd, da) {
             ua
-        } else if ub.is_some() && dim_equal(rd, &db) {
+        } else if ub.is_some() && dim_equal(rd, db) {
             ub
         } else {
             None
@@ -141,47 +164,49 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
     };
     let is_cell = |v: &V| matches!(v, V::Unit(_));
     match op {
-        "add" => {
+        ArithOp::Add => {
             if readings {
                 V::err(unit_error(READINGS_ADD))
             } else {
                 combine(xc + yc)
             }
         }
-        "sub" => combine(xc - yc),
-        "mul" => refused().unwrap_or_else(|| {
-            let rd = dim_mul(&da, &db);
+        ArithOp::Sub => combine(xc - yc),
+        ArithOp::Mul => refused().unwrap_or_else(|| {
+            let rd = dim_mul(da, db);
             tag(x * y, rd.clone(), carry(&rd))
         }),
-        "div" => refused().unwrap_or_else(|| {
+        ArithOp::Div => refused().unwrap_or_else(|| {
             if y == 0.0 {
                 return div_zero();
             }
-            let rd = dim_div(&da, &db);
+            let rd = dim_div(da, db);
             if is_dimensionless(&rd) && (is_cell(a) || is_cell(b)) {
                 return tag_ratio(x / y);
             }
             tag(x / y, rd.clone(), carry(&rd))
         }),
-        "mod" => refused().unwrap_or_else(|| if yc == 0.0 { div_zero() } else { combine(xc - yc * (xc / yc).floor()) }),
-        "quotient" => refused().unwrap_or_else(|| {
+        ArithOp::Mod => {
+            refused().unwrap_or_else(|| if yc == 0.0 { div_zero() } else { combine(xc - yc * (xc / yc).floor()) })
+        }
+        ArithOp::Quotient => refused().unwrap_or_else(|| {
             if y == 0.0 {
                 return div_zero();
             }
-            let rd = dim_div(&da, &db);
+            let rd = dim_div(da, db);
             if is_dimensionless(&rd) && (is_cell(a) || is_cell(b)) {
                 return tag_ratio((x / y).trunc());
             }
             tag((x / y).trunc(), rd.clone(), carry(&rd))
         }),
-        "pow" => refused().unwrap_or_else(|| {
-            if !is_dimensionless(&db) {
+        ArithOp::Pow => refused().unwrap_or_else(|| {
+            if !is_dimensionless(db) {
                 return V::err(unit_error("An exponent must be a plain number, not a dimensioned quantity."));
             }
             if x == 0.0 && y < 0.0 {
                 return err(ErrorCode::DivZero, "Zero to a negative power divides by zero");
             }
-            tag(crate::fdlibm::pow(x, y), dim_pow(&da, y), None)
+            tag(crate::fdlibm::pow(x, y), dim_pow(da, y), None)
         }),
         _ => V::Null,
     }

@@ -1331,23 +1331,18 @@ fn group_lists(c: &mut Call) -> Answer {
             buckets.entry(key).or_default().push(v);
         }
     }
-    let agg = c.field_str("agg", "sum").to_string();
+    let agg: fn(&[f64], f64) -> f64 = match c.field_str("agg", "sum") {
+        "avg" => |vals, sum| sum / vals.len() as f64,
+        "min" => |vals, _| vals.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }),
+        "max" => |vals, _| vals.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m }),
+        "count" => |vals, _| vals.len() as f64,
+        _ => |_, sum| sum,
+    };
     let values: Vec<V> = order
         .iter()
         .map(|k| {
             let vals = &buckets[&js_string_of(k)];
-            V::Num(if vals.is_empty() {
-                0.0
-            } else {
-                let sum = vals.iter().fold(0.0, |a, b| a + b);
-                match agg.as_str() {
-                    "avg" => sum / vals.len() as f64,
-                    "min" => vals.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m }),
-                    "max" => vals.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m }),
-                    "count" => vals.len() as f64,
-                    _ => sum,
-                }
-            })
+            V::Num(if vals.is_empty() { 0.0 } else { agg(vals, vals.iter().fold(0.0, |a, b| a + b)) })
         })
         .collect();
     let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);

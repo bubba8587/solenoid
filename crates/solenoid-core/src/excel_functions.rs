@@ -116,12 +116,6 @@ pub fn is_ported(name: &str) -> bool {
     !matches!(route(name), Route::None)
 }
 
-/// The whole-list functions whose body reads a whole column as it comes.
-pub fn takes_whole_lists(name: &str) -> bool {
-    matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
-        || is_finance_whole(name)
-}
-
 /// The range functions whose body takes each argument in its place, a list as one argument.
 pub fn reads_lists(name: &str) -> bool {
     matches!(
@@ -1400,7 +1394,8 @@ pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, 
     }
 }
 
-fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+/// Kleene's AND: false if either is false, else blank if either is blank.
+pub(crate) fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(false) || b == Some(false) {
         Some(false)
     } else if a.is_none() || b.is_none() {
@@ -1410,7 +1405,8 @@ fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     }
 }
 
-fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+/// Kleene's OR: true if either is true, else blank if either is blank.
+pub(crate) fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
     if a == Some(true) || b == Some(true) {
         Some(true)
     } else if a.is_none() || b.is_none() {
@@ -3097,8 +3093,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
     }
     // A range body written for flat arguments reads a list or a table among them as its items.
     if a.iter().any(|v| matches!(v, V::List(_)))
-        && !reads_lists(name)
-        && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range)
+        && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range && !t.fast.reads_lists)
     {
         let mut flat = Vec::with_capacity(a.len());
         for v in a {
@@ -6130,5 +6125,29 @@ mod tests {
         }
         assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), V::Num(n) if n == 1.0));
         assert!(matches!(call_function("VALUE", &[s("5")]), V::Num(n) if n == 5.0));
+    }
+}
+
+#[cfg(test)]
+mod kleene_tests {
+    use super::{kleene_and, kleene_or};
+
+    /// Every pair, against ANSI SQL's three-valued logic: false wins AND, true wins OR, a blank otherwise stays blank.
+    #[test]
+    fn truth_tables() {
+        let (t, f, n) = (Some(true), Some(false), None);
+        for (a, b, and, or) in [
+            (t, t, t, t),
+            (t, f, f, t),
+            (t, n, n, t),
+            (f, t, f, t),
+            (f, f, f, f),
+            (f, n, f, n),
+            (n, t, n, t),
+            (n, f, f, n),
+            (n, n, n, n),
+        ] {
+            assert_eq!((kleene_and(a, b), kleene_or(a, b)), (and, or), "{a:?} {b:?}");
+        }
     }
 }

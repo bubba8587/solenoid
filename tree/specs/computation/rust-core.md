@@ -142,6 +142,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts` (2026-1
 - A verb row is the op plus a 100-row preview, with the frame already in wasm.
 - An fx row includes uploading its columns and downloading the answer.
 - Frames cross as columnar buffers: uploading 200k rows takes about 55 ms, a full download about 70 ms.
+- **A name dispatches as text** below `call_function` (`route`, then each module's `match`), and stays so: ABS answers in 22 ns natively, lookups included, and a body's own work is most of a slower function's time (PERMUTATIONA, first in its module's match, takes 129 ns; 2026-10-25). A name's per-call facts are resolved once into `Traits.fast`, and a card reads its options into an enum or a function once per call, never per item ([[C120]] linearWork).
 - Run to run the times move by about 20% on a shared machine. `examples/colbench.rs` counts a formula column's
   instructions natively under callgrind, which doesn't move.
 

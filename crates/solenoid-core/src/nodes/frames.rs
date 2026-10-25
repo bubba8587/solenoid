@@ -2389,6 +2389,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
         return shown_frame(c, "frame", err(ErrorCode::Ref, format!("nested column \"{nested_name}\" not found")));
     };
     let agg = c.field_str("agg", "sum").to_string();
+    let op = agg.parse::<AggOp>().ok();
     let flat: Vec<&CubeColumn> = cube.columns.iter().enumerate().filter(|&(j, _)| j != at).map(|(_, k)| k).collect();
     let nested = &cube.columns[at];
     let rows = cube_row_count(&cube);
@@ -2427,7 +2428,6 @@ fn cube_rollup(c: &mut Call) -> Answer {
             continue;
         };
         let unit = read.as_ref().ok().and_then(|r| r.2.as_ref()).and_then(ColumnUnit::from_json).map(Rc::new);
-        let op = agg.parse::<AggOp>().ok();
         let plan_unit = op.and_then(|o| agg_unit(o, unit.as_ref())).map(|u| u.to_json());
         let r = match read {
             Err(e) => e,

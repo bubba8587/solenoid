@@ -104,3 +104,28 @@ pub fn num(v: &V) -> f64 {
         _ => f64::NAN,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error_value::{sol_error, ErrorCode};
+
+    /// A card's per-item short circuit: the first error by argument order wins as it is, then a blank, else none.
+    #[test]
+    fn short_circuit_order() {
+        let e1 = V::err(sol_error(ErrorCode::DivZero, "one"));
+        let e2 = V::err(sol_error(ErrorCode::NotAvailable, "two"));
+        let msg = |v: Option<V>| match v {
+            Some(V::Err(e)) => e.message.clone(),
+            Some(V::Null) => "blank".into(),
+            Some(_) => "other".into(),
+            None => "none".into(),
+        };
+        assert_eq!(msg(short_circuit(&[&V::Num(1.0), &e1, &V::Num(2.0)])), "one");
+        assert_eq!(msg(short_circuit(&[&e1, &e2])), "one");
+        assert_eq!(msg(short_circuit(&[&e2, &e1])), "two");
+        assert_eq!(msg(short_circuit(&[&V::Null, &e1])), "one");
+        assert_eq!(msg(short_circuit(&[&V::Num(1.0), &V::Null])), "blank");
+        assert_eq!(msg(short_circuit(&[&V::Num(0.0), &V::Num(-1.0)])), "none");
+    }
+}

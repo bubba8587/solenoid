@@ -1,7 +1,7 @@
 //! [[B16]] oneFormulaSurface. Arithmetic, Math Function and the other one-number cards.
 
 use super::kit::{broadcast_err, core_call, each, guard_finite, num, short_circuit};
-use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit};
+use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit, ArithOp};
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -103,26 +103,26 @@ fn first(c: &Call, key: &str) -> V {
 }
 
 fn arithmetic(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "mul").to_string();
+    let op = ArithOp::parse(c.field_str("op", "mul"));
     let a = c.read_input("a", c.literal("a"));
     let b = c.read_input("b", c.literal("b"));
     let result = if matches!(a, V::Null) || matches!(b, V::Null) {
         V::Null
     } else if any_dimensioned(&[&a, &b]) {
-        broadcast_unit(&[a, b], |o| arithmetic_cell(&op, o[0], o[1]))
+        broadcast_unit(&[a, b], |o| arithmetic_cell(op, o[0], o[1]))
     } else {
         broadcast_err(&[a, b], |o| {
             let (x, y) = (num(o[0]), num(o[1]));
-            match op.as_str() {
-                "add" => V::Num(x + y),
-                "sub" => V::Num(x - y),
-                "mul" => V::Num(x * y),
-                "div" if y == 0.0 => err(ErrorCode::DivZero, "Division by zero"),
-                "div" => V::Num(x / y),
-                "mod" => core_call("MOD", &[V::Num(x), V::Num(y)]),
-                "pow" => core_call("POWER", &[V::Num(x), V::Num(y)]),
-                "quotient" => core_call("QUOTIENT", &[V::Num(x), V::Num(y)]),
-                _ => V::Null,
+            match op {
+                ArithOp::Add => V::Num(x + y),
+                ArithOp::Sub => V::Num(x - y),
+                ArithOp::Mul => V::Num(x * y),
+                ArithOp::Div if y == 0.0 => err(ErrorCode::DivZero, "Division by zero"),
+                ArithOp::Div => V::Num(x / y),
+                ArithOp::Mod => core_call("MOD", &[V::Num(x), V::Num(y)]),
+                ArithOp::Pow => core_call("POWER", &[V::Num(x), V::Num(y)]),
+                ArithOp::Quotient => core_call("QUOTIENT", &[V::Num(x), V::Num(y)]),
+                ArithOp::Unknown => V::Null,
             }
         })
     };
@@ -218,7 +218,17 @@ fn sign(x: f64) -> f64 {
 }
 
 fn mround(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "nearest").to_string();
+    #[derive(Clone, Copy, PartialEq)]
+    enum Toward {
+        Nearest,
+        Up,
+        Down,
+    }
+    let op = match c.field_str("op", "nearest") {
+        "nearest" => Toward::Nearest,
+        "up" => Toward::Up,
+        _ => Toward::Down,
+    };
     let value = c.read_input("value", c.literal("value"));
     let multiple = read_role(c, "multiple", &Role::Required);
     let result = if multiple.is_sol_error() {
@@ -231,14 +241,14 @@ fn mround(c: &mut Call) -> Answer {
             if m == 0.0 {
                 return V::Num(0.0);
             }
-            if op == "nearest" && v != 0.0 && sign(v) != sign(m) {
+            if op == Toward::Nearest && v != 0.0 && sign(v) != sign(m) {
                 return err(ErrorCode::Domain, "MROUND needs the value and multiple to share a sign");
             }
             // CEILING.MATH and FLOOR.MATH read the multiple's magnitude only; the card's up and down follow its sign.
-            match op.as_str() {
-                "nearest" => core_call("MROUND", &[o[0].clone(), o[1].clone()]),
-                "up" => V::Num((v / m).ceil() * m),
-                _ => V::Num((v / m).floor() * m),
+            match op {
+                Toward::Nearest => core_call("MROUND", &[o[0].clone(), o[1].clone()]),
+                Toward::Up => V::Num((v / m).ceil() * m),
+                Toward::Down => V::Num((v / m).floor() * m),
             }
         })
     };
@@ -302,11 +312,27 @@ fn combinatorics(c: &mut Call) -> Answer {
 }
 
 fn two_input_math(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "atan2").to_string();
+    #[derive(Clone, Copy)]
+    enum Two {
+        Atan2,
+        Hypot,
+        Log,
+        Delta,
+        Gestep,
+        Unknown,
+    }
+    let op = match c.field_str("op", "atan2") {
+        "atan2" => Two::Atan2,
+        "hypot" => Two::Hypot,
+        "log" => Two::Log,
+        "delta" => Two::Delta,
+        "gestep" => Two::Gestep,
+        _ => Two::Unknown,
+    };
     let a = c.read_input("a", c.literal("a"));
-    let b = match op.as_str() {
-        "log" => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 10.0),
-        "gestep" => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 0.0),
+    let b = match op {
+        Two::Log => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 10.0),
+        Two::Gestep => left_out_as(read_role(c, "b", &Role::Setting(V::Undef)), 0.0),
         _ => c.read_input("b", c.literal("b")),
     };
     let result = if matches!(a, V::Null) || matches!(b, V::Null) {
@@ -314,16 +340,16 @@ fn two_input_math(c: &mut Call) -> Answer {
     } else {
         broadcast_err(&[a, b], |o| {
             let (x, y) = (num(o[0]), num(o[1]));
-            match op.as_str() {
-                "atan2" => core_call("ATAN2", &[o[0].clone(), o[1].clone()]),
-                "hypot" => V::Num((x * x + y * y).sqrt()),
-                "log" if x <= 0.0 || y <= 0.0 || matches!(o[1], V::Num(n) if *n == 1.0) => {
+            match op {
+                Two::Atan2 => core_call("ATAN2", &[o[0].clone(), o[1].clone()]),
+                Two::Hypot => V::Num((x * x + y * y).sqrt()),
+                Two::Log if x <= 0.0 || y <= 0.0 || matches!(o[1], V::Num(n) if *n == 1.0) => {
                     err(ErrorCode::Domain, "LOG needs x > 0 and a base > 0, ≠ 1")
                 }
-                "log" => core_call("LOG", &[o[0].clone(), o[1].clone()]),
-                "delta" => V::Num(if (x - y).abs() < 1e-12 { 1.0 } else { 0.0 }),
-                "gestep" => core_call("GESTEP", &[o[0].clone(), o[1].clone()]),
-                _ => V::Null,
+                Two::Log => core_call("LOG", &[o[0].clone(), o[1].clone()]),
+                Two::Delta => V::Num(if (x - y).abs() < 1e-12 { 1.0 } else { 0.0 }),
+                Two::Gestep => core_call("GESTEP", &[o[0].clone(), o[1].clone()]),
+                Two::Unknown => V::Null,
             }
         })
     };
@@ -460,6 +486,7 @@ fn math_fx(c: &mut Call) -> Answer {
     let deg = mode == "deg";
     let fwd_deg = deg && FORWARD_TRIG.contains(&op.as_str());
     let inv_deg = deg && INVERSE_TRIG.contains(&op.as_str());
+    let preserves = MATHFN_PRESERVE.contains(&op.as_str());
     let (deg2rad, rad2deg) = (std::f64::consts::PI / 180.0, 180.0 / std::f64::consts::PI);
     let domain_err = || err(ErrorCode::Domain, "Input is outside this function's domain");
     let name = if op == "log" { "LN".to_string() } else { op.to_uppercase() };
@@ -478,14 +505,14 @@ fn math_fx(c: &mut Call) -> Answer {
     } else if any_dimensioned(&[&input]) {
         broadcast_unit(&[input], |o| {
             let cell = o[0];
-            let rd = match math_fn_result_dim(&op, &dim_of(cell)) {
+            let rd = match math_fn_result_dim(&op, dim_of(cell)) {
                 Err(e) => return e,
                 Ok(rd) => rd,
             };
             let unit = if let V::Unit(u) = cell { Some(u.as_ref()) } else { None };
             let bare = unit.is_none() || rd.is_none();
             if let (false, Some(u)) = (bare, unit) {
-                if MATHFN_PRESERVE.contains(&op.as_str()) {
+                if preserves {
                     if let Some(shown) =
                         crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim))
                     {

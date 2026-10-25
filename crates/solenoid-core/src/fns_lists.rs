@@ -2720,3 +2720,43 @@ mod tests {
         assert_eq!(fit.seasonal, [-4.78125, 4.3984375]);
     }
 }
+
+#[cfg(test)]
+mod surface_tests {
+    use super::fit_surface;
+
+    fn close(a: f64, b: f64, tol: f64) -> bool {
+        (a - b).abs() < tol
+    }
+
+    /// The thin-plate spline passes through every point it was given.
+    #[test]
+    fn interpolates_its_points() {
+        let pts = [(0.0, 0.0, 1.0), (1.0, 0.0, 4.0), (0.0, 1.0, 2.0), (1.0, 1.0, 9.0), (0.5, 0.5, 3.0)];
+        let f = fit_surface(&pts).unwrap();
+        for (x, y, z) in pts {
+            assert!(close(f(x, y), z, 1e-6), "{x} {y}: {} vs {z}", f(x, y));
+        }
+    }
+
+    /// A plane is harmonic, so the spline gives it back everywhere, past the points too.
+    #[test]
+    fn reproduces_a_plane() {
+        let plane = |x: f64, y: f64| 2.0 + 3.0 * x - y;
+        let pts: Vec<_> =
+            [(0.0, 0.0), (2.0, 0.0), (0.0, 2.0), (2.0, 2.0)].iter().map(|&(x, y)| (x, y, plane(x, y))).collect();
+        let f = fit_surface(&pts).unwrap();
+        assert!(close(f(1.0, 1.0), plane(1.0, 1.0), 1e-4));
+        assert!(close(f(5.0, -3.0), plane(5.0, -3.0), 1e-4));
+    }
+
+    /// Points on a line fit a plane that carries their trend; one point fills flat; none fits nothing.
+    #[test]
+    fn degenerate_inputs() {
+        let line = fit_surface(&[(0.0, 0.0, 5.0), (10.0, 0.0, 15.0)]).unwrap();
+        assert!(close(line(20.0, 0.0), 25.0, 1e-3));
+        let one = fit_surface(&[(3.0, 3.0, 42.0)]).unwrap();
+        assert!(close(one(0.0, 0.0), 42.0, 1e-6) && close(one(99.0, -99.0), 42.0, 1e-6));
+        assert!(fit_surface(&[]).is_none());
+    }
+}

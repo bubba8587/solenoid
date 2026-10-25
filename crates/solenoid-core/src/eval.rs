@@ -96,6 +96,10 @@ pub struct Fast {
     pub memo_shaper: bool,
     pub ported: bool,
     pub selects: Option<fn(usize) -> bool>,
+    /// A range body that takes each argument in its place (`reads_lists`).
+    pub reads_lists: bool,
+    /// A body that reads a matrix (`reads_matrices`).
+    pub reads_matrices: bool,
 }
 
 fn periodic<T>(xs: &[T], i: usize) -> Option<&T> {
@@ -133,6 +137,8 @@ thread_local! {
                 memo_shaper: MEMO_SHAPERS.contains(&k.as_str()),
                 ported: is_ported(&k),
                 selects: branch_selector(&k),
+                reads_lists: crate::excel_functions::reads_lists(&k),
+                reads_matrices: crate::excel_functions::reads_matrices(&k),
             };
             (k, Rc::new(v))
         })
@@ -973,7 +979,7 @@ impl Eval<'_> {
                 };
                 // The range bodies read their lists flat, but for those that read each list in place. A value nested
                 // past a table would reach a flat reader as a list among its numbers.
-                let in_place = crate::excel_functions::reads_lists(name);
+                let in_place = t.fast.reads_lists;
                 if !in_place && flat.iter().any(is_arr) {
                     return V::err(sol_error(
                         ErrorCode::Value,
@@ -1063,9 +1069,9 @@ impl Eval<'_> {
 
     /// The body itself, its JavaScript failure read as #VALUE!.
     fn dispatch(&self, name: &str, t: Option<&Traits>, argv: &[V]) -> V {
-        let (lambda_host, ported) = match t {
-            Some(t) => (t.fast.lambda_host, t.fast.ported),
-            None => (LAMBDA_HOSTS.contains(&name), is_ported(name)),
+        let (lambda_host, ported, matrices) = match t {
+            Some(t) => (t.fast.lambda_host, t.fast.ported, t.fast.reads_matrices),
+            None => (LAMBDA_HOSTS.contains(&name), is_ported(name), crate::excel_functions::reads_matrices(name)),
         };
         if lambda_host {
             return self.host(name, argv);
@@ -1073,7 +1079,7 @@ impl Eval<'_> {
         if !ported {
             return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
         }
-        if argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name) {
+        if !matrices && argv.iter().any(is_matrix) {
             return V::err(sol_error(
                 ErrorCode::Shape,
                 format!("{name} works on values and 1-D lists, not a 2-D matrix"),

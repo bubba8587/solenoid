@@ -677,7 +677,7 @@ fn dim_of_val(v: &V) -> Dim {
 }
 
 fn code_of_val(v: &V, dim: &Dim) -> Option<String> {
-    if !dim_equal(dim, &BTreeMap::from([("currency".to_string(), 1.0)])) {
+    if !crate::unit_dims::is_pure_currency(dim) {
         return None;
     }
     let cells: Vec<&V> = match v {
