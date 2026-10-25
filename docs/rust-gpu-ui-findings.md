@@ -161,6 +161,49 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
   151 box shadows and 119 z-indexes, so the cards would be restyled from scratch, the GPUI route's
   pixel cost without its Rust.
 
+## Two cards, rendered three ways (2026-10-25)
+
+Does the card design survive a Rust renderer? Two cards were tried: the `quartile-band` shot graph's
+LAMBDA card (wrapping syntax-highlighted code, sockets) and its Frame Input card (buttons, dashed
+borders, a preview grid, a chip). Static rendering only; no typing, hover or drag was tested.
+
+- **The cards are almost entirely CSS.** Each card's live DOM and every stylesheet, copied into a
+  standalone page, renders identically in Chromium with no app running. The LAMBDA card is 79 elements
+  styled by 49 rules, the Frame Input card 56 elements and 45 rules; the only non-CSS parts are five
+  small inline SVGs per card (the header frame, the sockets, icons). No canvas.
+- **Blitz** (git main 2026-10-24, 0.3.0-beta.4, `vello_cpu`) rendered that same page, unmodified:
+  fonts, `color-mix()` tints, the token colors, the wrap, dashed borders, buttons, the chip and even the
+  chevron (a CSS mask over a data-URI SVG) all came through. It missed five things, all small: the
+  header's accent outline (an SVG `rect` sized by CSS geometry properties), the socket colors (SVG
+  `fill="var(--…)"`), the input placeholder, the grid's column rules (`border-right` on `td`) and the
+  ellipsis on a clipped label. Each is either a Blitz gap or a one-line markup change on our side.
+- **GPUI** (crates.io 0.2.2) needed the cards written again, 320 lines of Rust for the two (the
+  header and frame chrome shared), from the computed styles Chromium reports. After three rounds it
+  is close but not the same, and every gap was hand work:
+  - no CSS variables or `color-mix()`: every theme color is computed and kept as a Rust constant,
+    which a palette switch would need as a theme struct;
+  - no letter-spacing (the uppercase titles' 0.05em), and CSS's `line-height: normal` has to be set
+    by hand, since GPUI's default is taller;
+  - an SVG is one color, so a two-tone socket is a shape plus a glyph, and the chevron's mask and
+    rotation become a separate pre-rotated SVG;
+  - fonts had to be loaded as bytes, and the variable Atkinson files split into fixed weights, or
+    semibold and bold never show;
+  - no table (flex rows with fixed widths) and no text input in core GPUI (its own example builds one
+    in about 750 lines; `gpui-component` ships one);
+  - text wraps at different places (it breaks `2)` before the bracket where the browser doesn't).
+
+![The LAMBDA card in Chromium, Blitz and GPUI](assets/rust-gpu-ui/card-lambda.png)
+
+![The Frame Input card in Chromium, Blitz and GPUI](assets/rust-gpu-ui/card-frame-input.png)
+
+**What it means.** Whether the CSS has to be redone depends on the renderer, not on whether the
+components stay JavaScript. A renderer with a CSS engine (the browser, Blitz) keeps the 17k lines of
+CSS and the pixel work in them; one without (GPUI, egui, and gpuix-svelte, which keeps JavaScript
+components but translates CSS property by property) rebuilds every card by hand and re-tunes it by eye.
+That makes the Dioxus route the one that keeps the cards, with Blitz's gaps to close; the GPUI route
+pays the rewrite this test priced at about 160 lines of Rust per card before interaction. The test is
+two cards of 383 components, so read it as direction, not a measurement of the whole port.
+
 ## The spike (what would turn this into a decision)
 
 Build the same three things in each candidate: the step-1 scene on personal-finance (154 nodes,
