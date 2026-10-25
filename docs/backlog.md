@@ -41,6 +41,12 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Clippy in CI denies dead code**, so a helper that lands a commit before its caller turns `engine-test.yml` red. Decide: keep it strict, or add `-A dead_code` to the two clippy lines.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
 
+## Naming (proposed, awaiting the author's pick)
+- [ ] Proper Nouns for more processes: the Pass, the Dimension Pass, the Type Settle (and a name for `bulkSettle`'s wider sweep), the Rebuild, the Error Guard.
+- [ ] Names floated 2026-10-25: the Reader / the Formatter (D93 / D94), op queue for a FrameRef's pending ops (frees "plan", now five meanings), sources / transforms / views / writers, popup and preference stores, refusals, ported bodies vs owned functions.
+- [ ] Layer the core (`formula/`, `values/`, `tables/`, `planners/`, `cards/`): move `V` out of `excel_functions.rs`; drop the two upward imports (`fns_packs.rs` → `nodes::packs`, `frame_backend.rs` → `nodes::serialize_lambda`).
+- [ ] `packages/schedule-engine` still carries the TS critical-path passes the core's `schedule/` replaced; the app imports only its readers and types. Delete the passes, or keep them for the publishable package (author's call, [[C69]] ganttPackages).
+
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
