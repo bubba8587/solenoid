@@ -268,7 +268,7 @@ mod tests {
                     FrameCell::err(SolError {
                         code: ErrorCode::NotAvailable,
                         message: "m".into(),
-                        reference: Some(7),
+                        reference: None,
                         origin: None,
                     }),
                 ],
