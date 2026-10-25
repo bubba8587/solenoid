@@ -206,6 +206,56 @@ That makes the Dioxus route the one that keeps the cards, with Blitz's gaps to c
 pays the rewrite this test priced at about 160 lines of Rust per card before interaction. The test is
 two cards of 383 components, so read it as direction, not a measurement of the whole port.
 
+## Ninety cards through Blitz, and what closing the gaps took (2026-10-25)
+
+One card of each type from three seeds (`chart-showcase`, `whats-new`, `zz-scratch-new-nodes`: 90 card
+types, every one plain DOM and CSS but two that draw a `<canvas>`), rendered by Chromium and by Blitz from
+the same standalone page, and scored by the share of pixels that differ after a slight blur (so a
+one-pixel shift doesn't count, but a few pixels of vertical drift does).
+
+| Round | Mean drift | Cards over 5% |
+|---|---|---|
+| Stock Blitz | 8.1% | 81 of 90 |
+| Blitz patched: SVG `var()`, number inputs, placeholders, `<select>` | 6.4% | 76 |
+| plus Solenoid's frame drawn with divs | 3.1% | 10 |
+| plus ellipsis, alignment, SVG text font, inline `<select>`, separated grid borders | 2.9% | 12 |
+| plus Chromium's form-control defaults in Blitz's UA sheet | 2.8% | 10 |
+
+![Chromium, stock Blitz and patched Blitz on six cards](assets/rust-gpu-ui/blitz-before-after.png)
+
+What stock Blitz got wrong, and what fixed each:
+
+- **Patched in Blitz** (about 300 added lines over 10 files, `assets/rust-gpu-ui/blitz-scratch.patch`,
+  against Blitz main of 2026-10-24; a scratch test, not upstream-ready):
+  - `var()` in SVG attributes (every socket's colors, the pie's slice outlines) is resolved from the
+    element's custom properties when the SVG is serialized for the SVG renderer, as `currentColor` already was;
+  - `<input type="number">` was built as a text editor but left out of layout, so it collapsed to a line;
+  - `<select>` drew nothing, as a flex item or inline: it now shows its selected option's text (static only:
+    no popup list);
+  - placeholders show (drawn at half opacity, not from `::placeholder`);
+  - `text-overflow: ellipsis` was ignored (its stylo pref was off) and is now painted;
+  - single-line inputs honor `text-align` (the editor was never given its width);
+  - SVG `<text>` inherits the page's font, and the SVG renderer is given the app's fonts;
+  - a range input gets a thumb (a fixed white one: `::-webkit-slider-thumb` styles aren't read);
+  - the UA sheet pads inputs as Chromium does (`1px 2px`, none on a range), which had made every unpadded
+    input 2 to 4px taller.
+- **Changed on Solenoid's side** (each renders the same in Chromium, at most 0.17% of pixels on any card):
+  - the card frame: the SVG `rect`s sized by CSS geometry properties (`x`, `rx`, `width: calc(…)`) become
+    two absolutely positioned divs with the same borders, keeping the one-outline structure that
+    `72737aa59` introduced to stop the header/body seam. Blitz parses an inline SVG before layout, so
+    CSS-sized SVG geometry can't resolve there without real engine work;
+  - preview grids: `border-collapse: separate; border-spacing: 0` in place of `collapse`, since Blitz
+    paints collapsed borders as one uniform grid and drops per-cell right borders;
+  - the color picker's slider gets an explicit height.
+- **Still open:** styled range thumbs (Slider Input's orange one), checkbox `accent-color` (a
+  Gecko-only property in Blitz's stylo), 1 to 2px of line-height drift that adds up down a tall card,
+  and the two `<canvas>` cards, which a Rust UI would draw itself anyway.
+
+Not tested: typing, hover, focus, popups, scrolling, animation, a whole canvas of cards at once, and
+Blitz's GPU renderer (this ran `vello_cpu`). The gaps found were all in form controls, SVG and tables,
+none in layout or text: flexbox, the box model, `color-mix()`, variables, masks and web fonts held from the
+start.
+
 ## The spike (what would turn this into a decision)
 
 Build the same three things in each candidate: the step-1 scene on personal-finance (154 nodes,
