@@ -1,11 +1,11 @@
 // [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation
 
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { formatScalar, displaySettingsKey } from "./components/format";
-import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
+import { COMPLEX_FORMAT_STYLES } from "./formatModel";
+import { DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { assembleCx, type Cx } from "./cxValue";
-import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
+import { coreFormatAnnotated } from "./engineWasm";
 import { settingsStore } from "./settingsStore";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
@@ -90,15 +90,7 @@ export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
 
 export type DecimalMode = "places" | "sigfigs";
 
-function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
-  if (decimalMode === "sigfigs") {
-    const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
-    return n.toLocaleString(APP_LOCALE, { minimumSignificantDigits: s, maximumSignificantDigits: s, useGrouping });
-  }
-  const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
-  return n.toLocaleString(APP_LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping });
-}
-
+/** A number in one format style, with no unit, scale or negative style: the core's formatter ([[D94]] oneNumberDisplay). */
 export function applyFormatStyle(
   n: number,
   style: FormatStyleId,
@@ -107,104 +99,7 @@ export function applyFormatStyle(
   decimalMode: DecimalMode = "places",
   useGrouping = true,
 ): string {
-  if (!Number.isFinite(n)) return String(n);
-  switch (style) {
-    case "decimal":      return formatPrecise(n, decimalDigits, decimalMode, useGrouping);
-    case "percent":      return `${formatPrecise(n * 100, decimalDigits, decimalMode, useGrouping)}%`;
-    case "integer":      return Math.round(n).toLocaleString(APP_LOCALE, { useGrouping });
-    case "fraction":     return toFraction(n);
-    case "fraction_adv": return toFractionAdvanced(n);
-    case "scientific": {
-      const d = decimalMode === "sigfigs"
-        ? Math.max(0, Math.min(20, Math.round(decimalDigits) - 1))
-        : Math.max(0, Math.min(20, Math.round(decimalDigits)));
-      return n.toExponential(d);
-    }
-    case "custom":       return applyCustomPattern(n, customPattern ?? "0.00");
-    default: {
-      const pf = _packFormats.get(style);
-      return pf ? pf.apply(n) : autoFormat(n);
-    }
-  }
-}
-
-const autoFormat = formatScalar;
-
-function toFraction(n: number, maxDen = 99): string {
-  if (!Number.isFinite(n)) return String(n);
-  if (Math.abs(n) < 1e-12) return "0";
-  const neg = n < 0;
-  const abs = Math.abs(n);
-  const whole = Math.floor(abs);
-  const frac = abs - whole;
-  if (frac < 1e-12) return `${neg ? "-" : ""}${whole}`;
-  const { num, den } = cfConvergent(frac, maxDen);
-  if (!den || Math.abs(frac - num / den) > 1e-9) return autoFormat(n);
-  const sign = neg ? "-" : "";
-  return whole > 0 ? `${sign}${whole} ${num}/${den}` : `${sign}${num}/${den}`;
-}
-
-function cfConvergent(x: number, maxDen: number): { num: number; den: number } {
-  let h0 = 0, h1 = 1, k0 = 1, k1 = 0;
-  let b = x;
-  for (let i = 0; i < 40; i++) {
-    const a = Math.floor(b);
-    const h2 = a * h1 + h0;
-    const k2 = a * k1 + k0;
-    if (k2 > maxDen) break;
-    h0 = h1; h1 = h2; k0 = k1; k1 = k2;
-    const frac = b - a;
-    if (frac < 1e-12) break;
-    b = 1 / frac;
-  }
-  return { num: h1, den: k1 };
-}
-
-const FRACTION_CONSTANTS: ReadonlyArray<readonly [string, number]> = [
-  ["π", Math.PI],
-  ["e", Math.E],
-  ["√2", Math.SQRT2],
-  ["√3", Math.sqrt(3)],
-  ["√5", Math.sqrt(5)],
-  ["φ", (1 + Math.sqrt(5)) / 2],
-  ["π²", Math.PI * Math.PI],
-];
-
-function formatConstFraction(num: number, den: number, sym: string): string {
-  const neg = num < 0;
-  const p = Math.abs(num);
-  const top = `${p === 1 ? "" : p}${sym}`;
-  const body = den === 1 ? top : `${top}/${den}`;
-  return (neg ? "-" : "") + body;
-}
-
-function toFractionAdvanced(n: number): string {
-  if (!Number.isFinite(n)) return String(n);
-  if (Math.abs(n) < 1e-12) return "0";
-  const maxDen = 36;
-  const relTol = 1e-6;
-  let best: { num: number; den: number; sym: string } | null = null;
-  for (const [sym, c] of FRACTION_CONSTANTS) {
-    const q = n / c;
-    const { num, den } = cfConvergent(Math.abs(q), maxDen);
-    if (!den || num === 0) continue;
-    const approx = Math.sign(q) * (num / den) * c;
-    const err = Math.abs(approx - n) / Math.abs(n);
-    if (err < relTol && (!best || den < best.den)) {
-      best = { num: Math.sign(q) * num, den, sym };
-    }
-  }
-  return best ? formatConstFraction(best.num, best.den, best.sym) : toFraction(n);
-}
-
-function applyCustomPattern(n: number, pattern: string): string {
-  const dp = pattern.match(/\.([0#]+)/)?.[1].length ?? 0;
-  const useGrouping = pattern.includes(",");
-  return n.toLocaleString(APP_LOCALE, {
-    minimumFractionDigits: dp,
-    maximumFractionDigits: dp,
-    useGrouping,
-  });
+  return coreFormatAnnotated(n, { format: style, customPattern, decimalDigits, decimalMode, grouping: useGrouping, unit: "none" } as FormatAnnotation);
 }
 
 export type UnitGroup =
@@ -404,8 +299,6 @@ export const SCALE_MODE_LABELS: Record<ScaleMode, string> = {
   m:    "Millions (M)",
   b:    "Billions (B)",
 };
-const SCALE_DIVISOR: Record<ScaleMode, number> = { none: 1, k: 1e3, m: 1e6, b: 1e9 };
-const SCALE_SUFFIX: Record<ScaleMode, string> = { none: "", k: "K", m: "M", b: "B" };
 
 export type FormatAnnotation = {
   format: FormatStyleId;
@@ -524,27 +417,7 @@ export const formatMismatchStore = {
 };
 
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
-  if (!Number.isFinite(n)) return String(n);
-  if (isDateStyle(ann.format)) {
-    return formatDateSerial(n, dateAnnotationPattern(ann) ?? DEFAULT_DATE_FORMAT);
-  }
-  const scale: ScaleMode = ann.scaleMode && scaleApplies(ann.format) ? ann.scaleMode : "none";
-  const paren = (ann.negativeStyle === "paren" || ann.negativeStyle === "redparen") &&
-    negativeApplies(ann.format) && n < 0;
-  const magnitude = (paren ? -n : n) / SCALE_DIVISOR[scale];
-  const grouping = groupingApplies(ann.format) ? ann.grouping !== false : true;
-  const formatted =
-    applyFormatStyle(magnitude, ann.format, ann.customPattern, ann.decimalDigits, ann.decimalMode, grouping) +
-    SCALE_SUFFIX[scale];
-  let out: string;
-  if (ann.unit === "custom") {
-    const u = ann.customUnit ?? "";
-    out = u ? `${formatted}${u}` : formatted;
-  } else {
-    const u = unitById(ann.unit);
-    out = !u.label ? formatted : u.prefix ? `${u.label}${formatted}` : `${formatted}${u.label}`;
-  }
-  return paren ? `(${out})` : out;
+  return coreFormatAnnotated(n, ann);
 }
 
 export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {

@@ -70,6 +70,22 @@ it("numbers show through their annotations as frozen", () => {
     return out;
   });
   expect(cases.length).toBeGreaterThan(20000);
+  // The app's own entry point (the core's formatter since 2026-10-25) answers every frozen case.
+  initPackFcExtensions();
+  const prior = { numberDecimals: settingsStore.get("numberDecimals"), sciAbove: settingsStore.get("sciAbove") };
+  const bad: unknown[] = [];
+  try {
+    for (const c of cases) {
+      settingsStore.set("numberDecimals", (c.settings.numberDecimals ?? prior.numberDecimals) as Settings["numberDecimals"]);
+      settingsStore.set("sciAbove", (c.settings.sciAbove ?? prior.sciAbove) as Settings["sciAbove"]);
+      const got = formatNumberWithAnnotation(c.n, c.ann);
+      if (got !== c.text && bad.length < 5) bad.push({ n: c.n, ann: c.ann, settings: c.settings, want: c.text, got });
+    }
+  } finally {
+    settingsStore.set("numberDecimals", prior.numberDecimals);
+    settingsStore.set("sciAbove", prior.sciAbove);
+  }
+  expect(bad).toEqual([]);
 });
 
 const WORDS = [

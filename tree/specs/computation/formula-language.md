@@ -860,7 +860,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 `parseDateToSerial` is NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate` instead.
 
-`formatDateSerial(serial, pattern)` substitutes the tokens `YYYY`, `YY`, `MMMM` (full month name), `MMM`, `MM`, `M`, `DDDD` (full weekday), `DDD`, `DD`, `D`, `HH`, `hh`, `h` (12-hour), `mm`, `ss`, and `A` or `a` (AM/PM, am/pm), all in UTC; a non-finite serial prints as `String(serial)`.
+`formatDateSerial(serial, pattern)` (the core's `format_date_serial`) substitutes the tokens `YYYY`, `YY`, `MMMM` (full month name), `MMM`, `MM`, `M`, `DDDD` (full weekday), `DDD`, `DD`, `D`, `HH`, `hh`, `h` (12-hour), `mm`, `ss`, and `A` or `a` (AM/PM, am/pm), all in UTC; a non-finite serial prints as `String(serial)`.
 
 **Date functions** (`dateOps.ts`). Entry points take serials. A per-cell domain failure is a `SolError`; an undefined answer, such as a DATEDIF unit over a reversed range, is null.
 

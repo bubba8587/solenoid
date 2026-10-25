@@ -162,7 +162,7 @@ In Formatted mode each field shows the formatted value until it is focused, and 
 
 Every frame popup, read-only or editable, has a Cards view ([[C114]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. Every popup opens in Grid, or in Pivot on a pivot's output and Dashboard on a Describe's; Cards is chosen from the view switch. A list or matrix has no Cards view.
 
-**The plan.** `planCards` (`cardLayout.ts`) assigns each column to one part of the card, once per table, from the column names, types, raw cells and shown text, so every card has the same shape and the same frame always gets the same plan. It profiles at most the first 2000 rows (`PROFILE_ROWS`); a column with no filled cell goes to the stats. Name words are the header split at spaces, punctuation and camelCase humps (`nameWords`). Each step takes the leftmost column that fits, from the columns still free, in this order:
+**The plan.** `planCards` (`cardLayout.ts`, the core's `plan_cards` in `card_helpers.rs`, which the Record card's Cards also draw) assigns each column to one part of the card, once per table, from the column names, types, raw cells and shown text, so every card has the same shape and the same frame always gets the same plan. It profiles at most the first 2000 rows (`PROFILE_ROWS`); a column with no filled cell goes to the stats. Name words are the header split at spaces, punctuation and camelCase humps (`nameWords`). Each step takes the leftmost column that fits, from the columns still free, in this order:
 
 | Part | Takes | Shows |
 |---|---|---|

@@ -104,6 +104,22 @@ export function engine_read_bin(handle: string, column?: string | null, limit?: 
  */
 export function engine_csv_frame(text: string): string;
 /**
+ * A date serial in a `YYYY-MM-DD`-style pattern.
+ */
+export function fmt_date(serial: number, pattern: string): string;
+/**
+ * Whether a card cell's text is a hex colour, as the Cards view draws it.
+ */
+export function card_is_hex_color(text: string): boolean;
+/**
+ * The address a card cell's text links to, if any.
+ */
+export function card_link_href(text: string): string | undefined;
+/**
+ * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+ */
+export function card_image_src(text: string): string | undefined;
+/**
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
  */
 export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
@@ -111,6 +127,19 @@ export function take_tags(): Uint8Array;
 export function take_nums(): Float64Array;
 export function take_strs(): string;
 export function take_lens(): Uint32Array;
+/**
+ * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+ * and on each change.
+ */
+export function display_settings(number_decimals?: number | null, sci_above?: string | null): void;
+/**
+ * A number nobody formatted, as the Format Controller's General style shows it.
+ */
+export function fmt_scalar(n: number): string;
+/**
+ * A number as a format annotation (its JSON) shows it.
+ */
+export function fmt_annotated(n: number, annotation: string): string;
 /**
  * One editor's graph and its dataflow engine.
  */
@@ -315,11 +344,18 @@ export interface InitOutput {
   readonly setPanicHandler: (a: number) => void;
   readonly uid: (a: number) => void;
   readonly unnamedEdits: (a: number) => void;
+  readonly card_image_src: (a: number, b: number, c: number) => void;
+  readonly card_is_hex_color: (a: number, b: number) => number;
+  readonly card_link_href: (a: number, b: number, c: number) => void;
+  readonly display_settings: (a: number, b: number, c: number, d: number) => void;
   readonly engine_csv_frame: (a: number, b: number, c: number) => void;
   readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly fmt_annotated: (a: number, b: number, c: number, d: number) => void;
+  readonly fmt_date: (a: number, b: number, c: number, d: number) => void;
+  readonly fmt_scalar: (a: number, b: number) => void;
   readonly take_lens: (a: number) => void;
   readonly take_nums: (a: number) => void;
   readonly take_strs: (a: number) => void;

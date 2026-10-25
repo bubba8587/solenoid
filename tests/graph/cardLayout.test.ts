@@ -1,7 +1,7 @@
 // [[C114]] cardsView, [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
 import {
-  planCards, nameWords, cardMatches, linkHref, shortLink, splitTags, isHexColor,
+  planCards, cardMatches, linkHref, shortLink, splitTags, isHexColor,
   type CardColumnInput, type CardColType, type CardPlan,
 } from "../../src/graph/cardLayout";
 
@@ -245,13 +245,6 @@ describe("planCards: which part of the card each column fills", () => {
 });
 
 describe("cell helpers", () => {
-  it("nameWords splits spaces, punctuation and camelCase, keeping #", () => {
-    expect(nameWords("Customer ID")).toEqual(["customer", "id"]);
-    expect(nameWords("orderTotal")).toEqual(["order", "total"]);
-    expect(nameWords("unit_price")).toEqual(["unit", "price"]);
-    expect(nameWords("#")).toEqual(["#"]);
-  });
-
   it("linkHref links only http(s) and email addresses", () => {
     expect(linkHref(" https://example.org/a ")).toBe("https://example.org/a");
     expect(linkHref("ada@x.org")).toBe("mailto:ada@x.org");

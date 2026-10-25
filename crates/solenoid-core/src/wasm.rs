@@ -110,3 +110,55 @@ pub fn take_strs() -> String {
 pub fn take_lens() -> Vec<u32> {
     STAGED.with(|s| std::mem::take(&mut s.borrow_mut().lens))
 }
+
+// ─── Display formatting ([[D94]] oneNumberDisplay): the one copy the app's value boxes, popups and chips call ─────
+
+thread_local! {
+    static DISPLAY: std::cell::Cell<crate::card_helpers::NumberDisplay> =
+        std::cell::Cell::new(crate::card_helpers::NumberDisplay::default());
+}
+
+/// The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+/// and on each change.
+#[wasm_bindgen]
+pub fn display_settings(number_decimals: Option<f64>, sci_above: Option<String>) {
+    DISPLAY.with(|d| d.set(crate::card_helpers::NumberDisplay::from_settings(number_decimals, sci_above.as_deref())));
+}
+
+/// A number nobody formatted, as the Format Controller's General style shows it.
+#[wasm_bindgen]
+pub fn fmt_scalar(n: f64) -> String {
+    crate::card_helpers::format_scalar(n, DISPLAY.with(std::cell::Cell::get))
+}
+
+/// A number as a format annotation (its JSON) shows it.
+#[wasm_bindgen]
+pub fn fmt_annotated(n: f64, annotation: &str) -> String {
+    let j: serde_json::Value = serde_json::from_str(annotation).unwrap_or(serde_json::Value::Null);
+    let ann = crate::card_helpers::Annotation::from_json(&j);
+    crate::card_helpers::format_number_with_annotation(n, &ann, DISPLAY.with(std::cell::Cell::get))
+}
+
+/// A date serial in a `YYYY-MM-DD`-style pattern.
+#[wasm_bindgen]
+pub fn fmt_date(serial: f64, pattern: &str) -> String {
+    crate::date_serial::format_date_serial(serial, pattern)
+}
+
+/// Whether a card cell's text is a hex colour, as the Cards view draws it.
+#[wasm_bindgen]
+pub fn card_is_hex_color(text: &str) -> bool {
+    crate::card_helpers::is_hex_color(text)
+}
+
+/// The address a card cell's text links to, if any.
+#[wasm_bindgen]
+pub fn card_link_href(text: &str) -> Option<String> {
+    crate::card_helpers::link_href(text)
+}
+
+/// The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+#[wasm_bindgen]
+pub fn card_image_src(text: &str) -> Option<String> {
+    crate::card_helpers::record_image_src(text)
+}

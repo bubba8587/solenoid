@@ -1440,3 +1440,16 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod name_words_tests {
+    use super::name_words;
+
+    #[test]
+    fn splits_spaces_punctuation_and_camel_case_keeping_hash() {
+        assert_eq!(name_words("Customer ID"), ["customer", "id"]);
+        assert_eq!(name_words("orderTotal"), ["order", "total"]);
+        assert_eq!(name_words("unit_price"), ["unit", "price"]);
+        assert_eq!(name_words("#"), ["#"]);
+    }
+}

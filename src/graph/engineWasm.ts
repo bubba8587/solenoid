@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -49,6 +49,44 @@ function onLoaded(): void {
   _loaded = true;
   setPanicHandler(onPanic);
   for (const fn of _onLoad) fn();
+}
+
+/** Display formatting runs on the core ([[D94]] oneNumberDisplay); a number shown before the module loads (the app's
+ *  chrome renders first) reads as `String(n)`. */
+export function coreFormatScalar(n: number): string {
+  return wasmEngineLoaded() ? fmt_scalar(n) : String(n);
+}
+
+// A column's annotation is one object shown many times, so its JSON is made once.
+const annotationText = new WeakMap<FormatAnnotation, string>();
+
+export function coreFormatAnnotated(n: number, annotation: FormatAnnotation): string {
+  if (!wasmEngineLoaded()) return String(n);
+  let text = annotationText.get(annotation);
+  if (text === undefined) annotationText.set(annotation, (text = JSON.stringify(annotation)));
+  return fmt_annotated(n, text);
+}
+
+export function coreFormatDate(serial: number, pattern: string): string {
+  return wasmEngineLoaded() ? fmt_date(serial, pattern) : String(serial);
+}
+
+/** A card cell's text read as a colour, a link or an image (`card_helpers.rs`); before the module loads, none. */
+export function coreIsHexColor(text: string): boolean {
+  return wasmEngineLoaded() && card_is_hex_color(text);
+}
+
+export function coreLinkHref(text: string): string | null {
+  return wasmEngineLoaded() ? card_link_href(text) ?? null : null;
+}
+
+export function coreImageSrc(text: string): string | null {
+  return wasmEngineLoaded() ? card_image_src(text) ?? null : null;
+}
+
+/** The "Decimal places" and "Scientific from" settings, as the core formats by them. */
+export function setCoreDisplaySettings(numberDecimals: number, sciAbove: string): void {
+  if (wasmEngineLoaded()) display_settings(numberDecimals, sciAbove);
 }
 
 /** What a call into the module throws, and a fetch in flight rejects with, when the module trapped. */

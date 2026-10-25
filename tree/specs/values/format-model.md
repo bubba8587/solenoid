@@ -148,7 +148,7 @@ A style id that is not built in is looked up among the **pack formats**, whose `
 
 ### Rendering order
 
-`formatNumberWithAnnotation(n, ann)` is the one entry for a number:
+`formatNumberWithAnnotation(n, ann)` is the one entry for a number. It, `formatScalar` and `applyFormatStyle` are the TypeScript names of the core's one formatter (`card_helpers.rs`, called straight through the module's `fmt_annotated` / `fmt_scalar`, which hold the two display settings the app pushes on load and on each change); `coreCardHelpers.test.ts` replays every frozen case through them:
 
 1. A non-finite number is `String(n)`; a date style renders as a date and stops.
 2. Scale divides the magnitude (only where `scaleApplies`), and a parenthesized negative style (only where `negativeApplies`) takes the absolute value.

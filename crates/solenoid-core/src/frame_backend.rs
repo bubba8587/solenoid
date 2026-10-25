@@ -197,6 +197,37 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             crate::excel_criteria::DateReading::NotADate => Json::Null,
             crate::excel_criteria::DateReading::Ambiguous(e) => serde_json::json!({ "ambiguous": e.message }),
         }),
+        // The Cards view's plan for a table's columns, and a Record layout's placements ([[C114]] cardsView), as the
+        // Table popup draws them (`card_helpers.rs`).
+        "engine_plan_cards" => {
+            let cols = list_arg(args, "cols")?.unwrap_or_default();
+            let text = |c: &Json, k: &str| c.get(k).and_then(Json::as_str).unwrap_or("").to_string();
+            let texts = |c: &Json, k: &str| {
+                c.get(k)
+                    .and_then(Json::as_array)
+                    .map(|a| a.iter().map(|v| v.as_str().unwrap_or("").to_string()).collect())
+            };
+            let flag = |c: &Json, k: &str| c.get(k).and_then(Json::as_bool).unwrap_or(false);
+            let cols: Vec<crate::card_helpers::CardColumn> = cols
+                .iter()
+                .map(|c| crate::card_helpers::CardColumn {
+                    name: text(c, "name"),
+                    ty: text(c, "type"),
+                    cells: texts(c, "cells").unwrap_or_default(),
+                    shown: texts(c, "shown"),
+                    chip: flag(c, "chip"),
+                    nested: flag(c, "nested"),
+                    lists: flag(c, "lists"),
+                })
+                .collect();
+            Ok(crate::card_helpers::plan_cards(&cols))
+        }
+        "engine_record_layout" => Ok(Json::Array(
+            crate::card_helpers::parse_record_layout(&parse::<String>(args, "text")?)
+                .iter()
+                .map(|p| p.to_json())
+                .collect(),
+        )),
         "engine_formula_parse" => {
             Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json()))
         }

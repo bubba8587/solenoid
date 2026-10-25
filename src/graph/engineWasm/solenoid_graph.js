@@ -703,6 +703,91 @@ export function engine_csv_frame(text) {
 }
 
 /**
+ * A date serial in a `YYYY-MM-DD`-style pattern.
+ * @param {number} serial
+ * @param {string} pattern
+ * @returns {string}
+ */
+export function fmt_date(serial, pattern) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(pattern, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.fmt_date(retptr, serial, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Whether a card cell's text is a hex colour, as the Cards view draws it.
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function card_is_hex_color(text) {
+    const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.card_is_hex_color(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * The address a card cell's text links to, if any.
+ * @param {string} text
+ * @returns {string | undefined}
+ */
+export function card_link_href(text) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.card_link_href(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        let v2;
+        if (r0 !== 0) {
+            v2 = getStringFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 1, 1);
+        }
+        return v2;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * The image a Record cell's text shows, if any ([[C103]] untrustedContentSeams).
+ * @param {string} text
+ * @returns {string | undefined}
+ */
+export function card_image_src(text) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.card_image_src(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        let v2;
+        if (r0 !== 0) {
+            v2 = getStringFromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export_4(r0, r1 * 1, 1);
+        }
+        return v2;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
  * @param {string} text
  * @param {boolean} detect
@@ -807,11 +892,70 @@ export function take_lens() {
     }
 }
 
+/**
+ * The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
+ * and on each change.
+ * @param {number | null} [number_decimals]
+ * @param {string | null} [sci_above]
+ */
+export function display_settings(number_decimals, sci_above) {
+    var ptr0 = isLikeNone(sci_above) ? 0 : passStringToWasm0(sci_above, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.display_settings(!isLikeNone(number_decimals), isLikeNone(number_decimals) ? 0 : number_decimals, ptr0, len0);
+}
+
+/**
+ * A number nobody formatted, as the Format Controller's General style shows it.
+ * @param {number} n
+ * @returns {string}
+ */
+export function fmt_scalar(n) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.fmt_scalar(retptr, n);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * A number as a format annotation (its JSON) shows it.
+ * @param {number} n
+ * @param {string} annotation
+ * @returns {string}
+ */
+export function fmt_annotated(n, annotation) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(annotation, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.fmt_annotated(retptr, n, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
 function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_175(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_182(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1626,7 +1770,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_175(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_182(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
