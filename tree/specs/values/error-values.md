@@ -27,6 +27,34 @@ A `SolError` (`errorValue.ts`) is a tagged plain object, `{ __solError: true, co
 
 The set is Excel-style `#CODE!`, but more specific than Excel's seven, following SQLSTATE class 22 and OpenFormula Err:5xx. `SolErrorCode` is the union.
 
+The sixteen codes, grouped here by what went wrong (the set itself is flat):
+
+```mermaid
+mindmap
+  root(("SolError codes"))
+    a number couldn't be had
+      ["#DIV/0!"]
+      ["#DOMAIN!"]
+      ["#OVERFLOW!"]
+      ["#CONV!: no convergence"]
+      ["#SOLVE!: no root"]
+    the wrong kind or shape
+      ["#VALUE!"]
+      ["#TYPE!"]
+      ["#SHAPE!"]
+      ["#UNIT!"]
+    nothing there
+      ["#N/A"]
+      ["#NAME?"]
+      ["#REF!"]
+    what was typed
+      ["#SYNTAX!"]
+      ["#AMBIGUOUS!: D/M or M/D"]
+    the engine
+      ["#CIRC!"]
+      ["#ERROR!: the catch-all"]
+```
+
 | Code | Meaning | Maps to |
 |---|---|---|
 | `#DIV/0!` | division by zero | Excel; SQLSTATE 22012; Err:532 |

@@ -82,10 +82,11 @@ flowchart LR
     Cv --> L["Cv::Cells<br>a list of Cv,<br>a table among them"]
     Cv --> J["Cv::Json<br>a chart, document,<br>image, SVG, diagram"]
     CvV --> V(["V<br>a formula value:<br>never a table"])
-    V --> s1["Num, Str, Bool,<br>Null, Undef"]
-    V --> s2["Err, Fx"]
+    V --> s1["Num, Str, Bool:<br>a number, text, a logical"]
+    V --> s0["Null, Undef:<br>a blank, a left-out argument"]
+    V --> s2["Err: an error value<br>Fx: a Formula.js error"]
     V --> s3["List of V:<br>a list, or rows of one,<br>a matrix"]
-    V --> s4["Cx, Unit, Lambda"]
+    V --> s4["Cx: a complex number<br>Unit: a value with a unit<br>Lambda: a LAMBDA"]
 ```
 
 A table nests only inside a Cube (its cells, or a `Cv::Cells` list in one). A body reads each input one of two ways:

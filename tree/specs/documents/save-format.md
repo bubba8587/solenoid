@@ -56,6 +56,31 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `savedAt` | number? | Epoch ms of the disk write that produced this file. Stamped only by the file-write path, never by `serializeGraph`, so autosaves, undo snapshots and seeds stay stable. |
 | `packs` | string[]? | Ids of the packs active at save time, a provenance record. Nothing reads it on load. |
 
+```mermaid
+mindmap
+  root(("a SavedGraph"))
+    ["v: the format version, 2"]
+    the graph
+      ["nodes: SavedNode"]
+        ["id, type, name, x, y"]
+        ["init: the node's saved fields"]
+        ["literals, stringLiterals"]
+        ["size, collapsed, flipped, sections"]
+      ["connections"]
+    ["side tables: keyed to nodes"]
+      standoffs
+      pins
+      comments
+      frameFormats
+    ["document state"]
+      palette
+      reportPalette
+      ["meta: author, tags, network permission"]
+    ["drawnCables: free-drawn curves"]
+    ["savedAt: when the file was written to disk"]
+    ["packs: the packs on at save time, never read on load"]
+```
+
 Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-only fields (`label`, `order`, `group`, `hidden`) that the loader ignores.
 
 ### `SavedNode`

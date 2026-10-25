@@ -44,6 +44,19 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
+```mermaid
+mindmap
+  root(("13 property types"))
+    ["a scalar: Complex"]
+    ["lists, one per family"]
+      ["Numeric, String, Date,<br>Complex, Boolean List"]
+    ["matrices, one per family"]
+      ["Numeric, String, Date,<br>Complex, Boolean Matrix"]
+    tables
+      ["Frame: rows of key: value"]
+      ["Cube: rows whose values<br>may be lists or rows"]
+```
+
 **Knap notes.** A note with `knap: true` in its properties renders its body as a Knap template from
 its own properties, and a bare `{{ name }}` on an object property is that property's chip, in the
 body ([[D87]] knapNotes; [[#Knap notes]]).

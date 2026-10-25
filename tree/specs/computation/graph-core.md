@@ -103,8 +103,8 @@ flowchart TB
 flowchart LR
     edit["an edit<br>(addNode, removeConnection, ...)"] --> p1["the handle's own pipe"]
     p1 --> p2["the app's pipes,<br>in the order added"]
-    p2 --> done["the change is made;<br>its past-tense signal runs<br>the same chain"]
-    p2 -.->|"returns nothing"| cancel["chain stops: on a present-tense<br>signal the edit answers false"]
+    p2 --> done["the change is made; its after-signal<br>(nodecreated, connectionremoved...)<br>runs the same chain"]
+    p2 -.->|"returns nothing"| cancel["chain stops: on a before-signal<br>(nodecreate, connectionremove...)<br>the edit answers false"]
     p2 -.->|"throws"| rej["chain stops:<br>the edit rejects with it"]
 ```
 

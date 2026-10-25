@@ -10,6 +10,25 @@ Serves [[C10]] socketLattice: type separation and dimensional flow, derived from
 
 Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides which cables may connect. Element families never cross on their own: crossing takes a Cast, and the only bridge is `logical ↔ number`. Values flow freely up in rank: scalar, list, matrix, Frame, Cube. Going up a rank loses nothing, while going down has to drop or pick values, so only going up happens on its own; going down takes a node that picks what to keep. Which connections are legal is derived from the family × rank product, never listed pair by pair. Every node declares honestly what kind of value it gives; a node that can't know its output in advance declares a wildcard and takes on the kind of whatever is wired to it (req. 8) ([[B17]] typedValueModel).
 
+Every socket type, by element family and rank (a combo is a scalar or a list; the wildcards carry no family):
+
+```mermaid
+block-beta
+    columns 5
+    h0["family / rank"] h1["scalar"] h2["list"] h3["combo"] h4["matrix"]
+    f1["number"] n0["number"] n1["list"] n2["numlist"] n3["table"]
+    f2["string"] s0["string"] s1["strlist"] s2["strcombo"] s3["strtable"]
+    f3["date"] d0["date"] d1["datelist"] d2["datecombo"] d3["datetable"]
+    f4["complex"] x0["complex"] x1["complexlist"] x2["complexcombo"] x3["complextable"]
+    f5["logical"] l0["logical"] l1["logicallist"] l2["logicalcombo"] l3["logicaltable"]
+    f6["wildcards"] w0["any"] w1["anylist"] w2["anycombo"] w3["anytable"]
+    f7["wider wildcards"] w4["anydata: up to a matrix"]:2 w5["trueany: anything"]:2
+    f8["tables"] t0["frame"]:2 t1["cube"]:2
+    f9["objects"] o0["lambda"] o1["chart"] o2["document"] space
+    classDef head fill:none,stroke-width:0px,font-weight:bold
+    class h0,h1,h2,h3,h4,f1,f2,f3,f4,f5,f6,f7,f8,f9 head
+```
+
 Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows,
 and through any chain of them:
 
@@ -74,7 +93,7 @@ flowchart LR
     start["after a cable change or a load"] --> adopt["adoption pass: every adoptive input,<br>then every passthrough output"]
     adopt --> again{"anything changed?<br>(at most 32 passes)"}
     again -->|yes| adopt
-    again -->|no| lanes["Conduit lane typing"]
+    again -->|no| lanes["Conduit lane typing: each lane of a<br>Conduit (a card whose lanes pass<br>values straight through) takes<br>its real source's type"]
     lanes --> both{"both settled?<br>(at most 8 rounds)"}
     both -->|no| adopt
     both -->|yes| done["types settled; no cable touched,<br>nothing saved"]

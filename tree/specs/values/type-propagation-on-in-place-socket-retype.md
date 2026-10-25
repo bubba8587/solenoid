@@ -34,7 +34,7 @@ flowchart LR
     prune --> set["setOp / setMode<br>changes the sockets"]
     set --> rr["rerenderNode"]
     rr --> out{"an output<br>swapped?"}
-    out -->|yes| rt["retypeOutputCables: keep what<br>still fits, re-drive the FCs"]
+    out -->|yes| rt["retypeOutputCables: keep the cables<br>that still fit, re-adapt the<br>Format Controllers downstream"]
     out -->|no| done["done"]
 ```
 

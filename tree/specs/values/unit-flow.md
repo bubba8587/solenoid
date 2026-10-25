@@ -13,11 +13,11 @@ There are two layers. **The unit is a property of the value**: it travels as dat
 ```mermaid
 flowchart LR
     subgraph unit["The unit: data on the value"]
-        fc["an FC, Convert, a column unit,<br>a computed column, Table Input"] -->|"sets it"| cell["the value: a UnitCell,<br>base SI plus a display id"]
+        fc["a Format Controller (FC), Convert,<br>a column unit, a computed column,<br>Table Input"] -->|"sets it"| cell["the value: a UnitCell,<br>base SI plus a display id"]
         cell -->|"rides through every card;<br>the algebra works it out again"| down["every value downstream"]
     end
     subgraph fmt["The format: a display annotation"]
-        fc2["an FC locks a style, precision,<br>negatives, K/M/B"] -->|"the resolver reads it,<br>forward and back"| boxes["the boxes on its segment"]
+        fc2["an FC locks a style, precision,<br>negatives, K/M/B (thousands,<br>millions, billions)"] -->|"the resolver reads it,<br>forward and back"| boxes["the boxes on its segment"]
     end
 ```
 

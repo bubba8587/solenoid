@@ -45,6 +45,22 @@ A `FrameColumn` is:
 | `format` | `FormatAnnotation`, optional | The display format stamped by the producing node; never saved. |
 | `raw` | `string[]`, optional | The source text per cell before type inference, present only on a source frame (Frame Input, an import). A blank cell's raw entry is `""`. |
 
+```mermaid
+mindmap
+  root(("a Frame"))
+    ["columns: FrameColumn, one per column"]
+      ["name: unique in the frame"]
+      ["type: number, string, date or logical"]
+      ["values: one cell per row"]
+      ["unit: number columns only, cells as typed"]
+      ["format: stamped by the producer, never saved"]
+      ["raw: source text, source frames only"]
+    ["only at a materialization boundary"]
+      ["__totalRows: a preview's true row count"]
+      ["__ref: the lazy handle behind a preview"]
+      ["__approx: a sketch-mode scale factor"]
+```
+
 ### Rows
 
 A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (`cellAt`), so ragged columns behave as if padded with blanks. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.

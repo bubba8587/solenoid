@@ -296,8 +296,8 @@ flowchart TD
     pass1 -->|no| table{"a table?"}
     table -->|"a Frame, on cube"| toc["toCube"]
     table -->|"any other table"| asis2["unchanged; on a value rung<br>the body answers #VALUE!"]
-    table -->|no| unitq{"is or directly holds<br>a UnitCell?"}
-    unitq -->|yes| ut["the unit-cell table below"]
+    table -->|no| unitq{"is or directly holds<br>a UnitCell (a value<br>with a unit)?"}
+    unitq -->|yes| ut["the unit-cell rules below"]
     unitq -->|no| rung["the rung's row in the table below"]
 ```
 

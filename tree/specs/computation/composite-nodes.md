@@ -24,6 +24,30 @@ The code is `src/graph/nodes/composite.ts` (`CompositeNode`, `CompositeInputNode
 - **Heavy.** A mode configuration for which `isHeavyMode()` is true. A heavy composite holds its last result until Solve or Refresh.
 - **Drill-in.** The full-viewport canvas over the internal editor, opened with Edit contents.
 
+```mermaid
+mindmap
+  root(("a Composite"))
+    the card
+      ["input ports: exposed or hidden"]
+      ["output ports"]
+      ["runMode and its config"]
+      ["cachedOutputs: one value, or one per run"]
+    ["inside: never in the outer engine"]
+      ["internal editor and engine"]
+      ["Composite Input markers: a seed each"]
+      ["the member cards"]
+      ["Composite Output markers"]
+    run modes
+      ["single: live"]
+      ["manual: one pass on Refresh"]
+      ["scenarios: one pass per scenario"]
+      ["data-table: one pass per combination"]
+      ["goal-seek: trials toward a target"]
+      ["montecarlo: one pass per draw"]
+      ["by-row: one pass per input row"]
+      ["simulation: a loop, round by round"]
+```
+
 ## Value model
 
 A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). The card has sockets and a `data()`; a Group has neither.
