@@ -168,17 +168,19 @@ LAMBDA card (wrapping syntax-highlighted code, sockets) and its Frame Input card
 borders, a preview grid, a chip). Static rendering only; no typing, hover or drag was tested.
 
 - **The cards are almost entirely CSS.** Each card's live DOM and every stylesheet, copied into a
-  standalone page, renders identically in Chromium with no app running. The LAMBDA card is 79 elements
+  standalone page served from the app's origin (so its web fonts load), renders identically in
+  Chromium with no app running. The LAMBDA card is 79 elements
   styled by 49 rules, the Frame Input card 56 elements and 45 rules; the only non-CSS parts are five
   small inline SVGs per card (the header frame, the sockets, icons). No canvas.
 - **Blitz** (git main 2026-10-24, 0.3.0-beta.4, `vello_cpu`) rendered that same page, unmodified:
-  fonts, `color-mix()` tints, the token colors, the wrap, dashed borders, buttons, the chip and even the
+  the app's own woff2 web fonts (fetched over HTTP), `color-mix()` tints, the token colors, the wrap,
+  dashed borders, buttons, the chip and even the
   chevron (a CSS mask over a data-URI SVG) all came through. It missed five things, all small: the
   header's accent outline (an SVG `rect` sized by CSS geometry properties), the socket colors (SVG
   `fill="var(--…)"`), the input placeholder, the grid's column rules (`border-right` on `td`) and the
   ellipsis on a clipped label. Each is either a Blitz gap or a one-line markup change on our side.
 - **GPUI** (crates.io 0.2.2) needed the cards written again, 320 lines of Rust for the two (the
-  header and frame chrome shared), from the computed styles Chromium reports. After three rounds it
+  header and frame chrome shared), from the computed styles Chromium reports. After four rounds it
   is close but not the same, and every gap was hand work:
   - no CSS variables or `color-mix()`: every theme color is computed and kept as a Rust constant,
     which a palette switch would need as a theme struct;
