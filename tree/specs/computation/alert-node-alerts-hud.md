@@ -49,6 +49,19 @@ An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdge
 5. While the graph is rebuilding (`isGraphRebuilding()`), nothing fires, so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope.
 6. Otherwise the card fires when the status is alerting (any nonzero cell) and its key differs from the previous one.
 
+```mermaid
+flowchart TD
+    s["this run's status"] --> nul{"null (unknown)?"}
+    nul -->|yes| skip["nothing fires,<br>nothing remembered"]
+    nul -->|no| prev["compare with the remembered key<br>(NO_STATUS after a mode change)"]
+    prev --> rem["remember the new key"]
+    rem --> rb{"the graph rebuilding?"}
+    rb -->|yes| quiet["nothing fires"]
+    rb -->|no| fire{"alerting, and the<br>key changed?"}
+    fire -->|yes| f["fireAlert: a HUD event<br>and a toast"]
+    fire -->|no| calm["silent"]
+```
+
 So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. `lastStatusKey` starts at `NO_STATUS`, a sentinel that matches no real key, so a card born alerting, or switched into a condition that is already met, fires once.
 
 ## Firing

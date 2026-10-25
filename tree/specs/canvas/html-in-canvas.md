@@ -24,6 +24,21 @@ The layer makes pan and zoom cheap on a big graph. During a gesture it hides Rea
 4. **Held.** If the gesture ends below `HOLD_ZOOM = 0.4`, the canvas keeps drawing at rest. The DOM comes back muted (by opacity, so it still hit-tests) and the selected or focused cards show as live DOM on top. The renderer skips those live cards (`setDomLive`), so nothing paints twice. At that zoom DOM text is unreadable anyway, every card is in view so the settle repaint would be at its most expensive, and holding removes the pop at gesture end. `window.__hcHoldZoom` overrides it.
 5. **Idle.** Above the hold zoom the holder is fully restored and the canvas clears to transparent. The canvas element itself stays visible even when idle, because capture needs it rendered.
 
+```mermaid
+stateDiagram-v2
+    direction TB
+    Build: build (retry the capture every 120 ms)
+    Gesture: gesture (the DOM hidden, the canvas draws)
+    Held: held (the canvas keeps drawing, the DOM muted)
+    Idle: idle (the DOM back, the canvas clear)
+    [*] --> Build: the size gate crossed
+    Build --> Idle: captured
+    Idle --> Gesture: a camera change
+    Held --> Gesture: a camera change
+    Gesture --> Idle: settled at zoom 0.4 or more
+    Gesture --> Held: settled below zoom 0.4
+```
+
 A lasso never enters the gesture: it moves no camera, so the swap would only show a stale snapshot.
 
 ### The GPU texture budget

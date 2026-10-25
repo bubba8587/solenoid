@@ -60,6 +60,16 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 - A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[C89]] standoffsSolveLast) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
 - A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom, so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
 
+```mermaid
+flowchart LR
+    sel["the layout targets"] --> build["one ELK child per card,<br>ports at socket heights"]
+    build --> fold["a group: one rectangle;<br>a standoff cluster: its leader's box;<br>a docked FC: folded into its host"]
+    fold --> elk["ELK layered layout<br>(a flat graph)"]
+    elk --> anchor["shift back: keep the leading<br>edge and the cross-axis center"]
+    anchor --> move["move every card once;<br>group members ride their group"]
+    move --> after["one frame later: FCs re-dock,<br>standoffs settle, overlaps pushed apart"]
+```
+
 ## Ports
 
 Ports sit at the **same offset on both sides** of every card, so two connected cards line up instead of staircasing. `symmetricPortPreset(direction)` builds the preset per layout, so a settings change needs no re-registration. Ports are 15 × 15 and spaced 16 apart.

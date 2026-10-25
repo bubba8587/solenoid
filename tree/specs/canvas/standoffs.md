@@ -58,6 +58,14 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 | Tidy | A final `forceLock` settle of the clusters holding a laid-out box. |
 | Toolbar edits | A band, lock or angle change settles at once. |
 
+```mermaid
+flowchart LR
+    op["a layout op: a group expand<br>or collapse, autofit, Tidy"] --> moves["its own moves"]
+    moves --> solve["a forceLock standoff solve of the<br>clusters it touched: each cluster<br>a rigid block"]
+    solve --> ov["the no-overlap pass:<br>a cluster moves as one unit"]
+    drag["a live drag"] --> band["a band-only solve,<br>the dragged items pinned"]
+```
+
 Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
 ## Tidy and clusters

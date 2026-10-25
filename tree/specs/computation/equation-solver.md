@@ -28,6 +28,17 @@ The solver is Solenoid's own and uses no outside algebra library, which keeps it
 
 A variable is **known** when its input is wired, even when the cable carries a blank, and **unknown** when unwired. Each known variable's output passes its input through.
 
+```mermaid
+flowchart LR
+    v["each variable"] --> w{"its input wired<br>(even with a blank)?"}
+    w -->|yes| known["known: its output<br>passes the input through"]
+    w -->|no| unk["unknown"]
+    unk --> count{"how many unknowns?"}
+    count -->|"none"| holds["check the relation:<br>the Check output"]
+    count -->|"one"| solve["solve for it"]
+    count -->|"two or more"| ask["Wire in all but<br>one variable"]
+```
+
 - **Two or more unknowns:** the card shows "Wire in all but one variable".
 - **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equalsWithin`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[D47]] noMixCurrencies). An evaluation failure gives `#VALUE!`.
 - **One unknown:** the card solves for it. The unknown's name is `solvedFor`, which the card uses for its accent highlight. An error on any known passes through as the answer; a blank known makes the answer null.
@@ -35,6 +46,19 @@ A variable is **known** when its input is wired, even when the cable carries a b
 ## Solving for one unknown
 
 The layers run in this order.
+
+```mermaid
+flowchart TD
+    u["one unknown"] --> q{"1. the residual fits<br>a quadratic? (scalars only)"}
+    q -->|"yes, and each<br>root checks out"| roots["every real root<br>(a line solves exactly)"]
+    q -->|no| once{"2. the unknown appears<br>once, behind invertible steps?"}
+    once -->|yes| iso["invert step by step:<br>an exact formula, lists too"]
+    once -->|no| num{"3. scalars only?"}
+    num -->|no| shp["#SHAPE!"]
+    num -->|yes| grid["walk a log grid to ±10¹²,<br>bisect each sign change;<br>the root nearest zero"]
+    grid -->|"none"| sol["#SOLVE!"]
+```
+
 
 **1. Quadratic sniff** (scalar knowns only). `sniff_quadratic` probes the residual, `residual(x) = LHS(x) − RHS(x)`, at 0, 1 and −1 and fits a·x² + b·x + c exactly through those three points. It then checks the fit at 2.5, −3.75, 17 and −41.5; a miss beyond 10⁻⁹ of the local scale rejects it, which is what turns away square roots, trig and 1/x. When the fit holds, `solve_quadratic` returns the real roots:
 

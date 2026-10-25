@@ -34,6 +34,15 @@ For one group, the expanded box starts at the group's position with its full siz
 
 **Exempt boxes.** A position-locked group is never moved by these steps ([[auto-arrange-tidy#Position-locked groups]]), and neither is a box that already overlaps the collapsed card (the user parked it there). Pairs of boxes that already overlap each other before the push are recorded as baseline pairs, and the cascade never tries to separate them. The backstop below separates all of these anyway.
 
+```mermaid
+flowchart TD
+    g["a group expands"] --> rails["1. rails: wired loose nodes it would<br>touch go beside it, feeders left,<br>consumers right"]
+    rails --> clear["2. clear: each other covered box<br>steps out past the nearest edge<br>(toward its cables when it has some)"]
+    clear --> resid["3. residual: anything still overlapping<br>moves right or down"]
+    resid --> casc["4. cascade: a moved box pushes what it<br>lands on, keeping the original order"]
+    casc --> next["the next expanding group (top-left first),<br>then: standoff clusters as blocks,<br>a standoff solve, the overlap backstop"]
+```
+
 The steps, in order:
 
 1. **Rails.** Each satellite that the expanded box would touch is placed on its dataflow side: feeders just left of the box, consumers just right of it, each `PUSH_GAP` (28) clear of the edge and vertically centered on its target height, clamped within the box's vertical span. A consumer that is already right of the group and would clear rightward is left for step 2 (cleared, not re-placed). Satellites on the same side are then stacked downward in y order, `RAIL_STACK_GAP` (12) apart.

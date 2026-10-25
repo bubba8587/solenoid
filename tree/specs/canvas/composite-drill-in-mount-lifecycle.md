@@ -18,6 +18,16 @@ Two lifetimes, on purpose:
 - **The React surface lasts only while open.** Closing unmounts the whole React tree, so every card component's effects stop with it. A timer inside a card in a closed composite (a Connection node's auto-refresh, for example) cannot keep running, because there are no per-view React roots left behind.
 - **A closed level's pipes stand down.** The stack's `open` flag is raised on mount and lowered on unmount, and `isRebuilding()` reads true while it is down, so the topology pipe, the cable-settle pipe and the group-absorb pipe all do nothing for a closed level. The surface's unmount also resets the stack's handlers to idle, so the stale flow view drives no dead React state. A closed composite then behaves exactly like one never opened: its own internal pipe settles cable types ([[composite-nodes]]), and a node leaving its editor while closed is a relocation (Unpack), whose store entries stay. `drillStackGate.test.ts` pins the gate: open, close, then edit and Unpack.
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    Closed: closed (no React tree, its pipes stand down)
+    Open: open (the level is the active graph)
+    [*] --> Closed: the drill stack is made once per composite, history kept
+    Closed --> Open: mount: hydrate, place, sync, take the chrome slots
+    Open --> Closed: leave: reconcile ports, save positions, recompute
+```
+
 ## The topology pipe
 
 The cached pipe watches the internal editor for `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved` (a `noderemoved` also runs the per-node forget, below under Deleting inside a level). Each burst of events queues one sync on a microtask. A sync:

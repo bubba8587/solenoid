@@ -45,4 +45,11 @@ describe("spec diagrams", () => {
   it("no Mermaid block holds a wikilink", () => {
     expect(blocks.filter((b) => b.src.includes("[[")).map((b) => b.at)).toEqual([]);
   });
+
+  // pele reads a `;` outside quotes as a line break, so a state or mindmap label holding one renders as stray
+  // boxes with no parse error.
+  it("no Mermaid block has a semicolon outside quotes", () => {
+    const bad = blocks.filter((b) => b.src.split("\n").some((l) => l.replace(/"[^"]*"/g, "").includes(";")));
+    expect(bad.map((b) => b.at)).toEqual([]);
+  });
 });
