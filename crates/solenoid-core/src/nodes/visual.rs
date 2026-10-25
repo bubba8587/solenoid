@@ -1,8 +1,9 @@
 //! [[B11]] maximalMerge, [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue. The figure
-//! cards, each answering its chart whole as `V::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
+//! cards, each answering its chart whole as `Cv::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
 //! reader, the XY reader and the frame-column readers they share.
 
 use super::scalar::{read_role, Role};
+use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, Frame};
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::error_value::ErrorCode;
@@ -95,13 +96,12 @@ fn jv(v: &V) -> Json {
             }
             Json::Object(o)
         }
-        V::Json(j) => (**j).clone(),
         _ => Json::Null,
     }
 }
 
-fn whole(j: Json) -> V {
-    V::Json(Rc::new(j))
+fn whole(j: Json) -> Cv {
+    Cv::Json(Rc::new(j))
 }
 
 fn strs(items: &[String]) -> Json {
@@ -120,11 +120,13 @@ fn crashed(message: &str) -> V {
 // ─── Reading the card ───────────────────────────────────────────────────────────
 
 /// `inputs[key]?.[0] ?? null`.
-fn first(c: &Call, key: &str) -> V {
-    match c.wired(key).and_then(|w| w.first()) {
-        None | Some(V::Undef) => V::Null,
-        Some(v) => v.clone(),
-    }
+fn first(c: &Call, key: &str) -> Cv {
+    c.read_card(key)
+}
+
+/// `inputs[key]?.[0] ?? null` on a socket that takes values.
+fn first_v(c: &Call, key: &str) -> V {
+    c.value_of(key, &c.read_card(key))
 }
 
 /// `this.literals[key] ?? dflt`.
@@ -440,9 +442,9 @@ fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
 }
 
 /// A frame's columns, anything else none.
-fn frame_columns(v: &V) -> &[Column] {
+fn frame_columns(v: &Cv) -> &[Column] {
     match v {
-        V::Frame(f) => &f.columns,
+        Cv::Frame(f) => &f.columns,
         _ => &[],
     }
 }
@@ -489,15 +491,17 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
 
 /// The cube's flat columns as a frame, a value with a unit read as its number.
 fn flat_cube(cube: &Cube) -> Frame {
-    let nested = |cells: &[V]| cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_)));
+    let nested = |cells: &[Cv]| cells.iter().any(|v| !matches!(v, Cv::V(x) if !matches!(x, V::List(_))));
     let rows = cube.columns.iter().map(|c| c.cells.len()).max().unwrap_or(0);
     let columns = cube
         .columns
         .iter()
         .filter(|col| !nested(&col.cells))
         .map(|col| {
-            let cells: Vec<V> =
-                col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect();
+            let cells: Vec<V> = super::frames::cube_values(&col.cells)
+                .into_iter()
+                .map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v })
+                .collect();
             Column { format: col.format.clone(), ..typed_column(&col.name, &cells, rows, col.ty) }
         })
         .collect();
@@ -516,9 +520,10 @@ fn sparkline(c: &mut Call) -> Answer {
     }
     .to_string();
     let cells: Vec<Option<f64>> = match &raw {
-        V::List(items) => items.iter().map(finite).collect(),
-        V::Null => Vec::new(),
-        v => vec![finite(v)],
+        Cv::V(V::List(items)) => items.iter().map(finite).collect(),
+        Cv::V(V::Null) => Vec::new(),
+        Cv::V(v) => vec![finite(v)],
+        _ => vec![None],
     };
     let sign = |n: f64| {
         if n > 0.0 {
@@ -545,8 +550,8 @@ fn sparkline(c: &mut Call) -> Answer {
 // ─── Chart ──────────────────────────────────────────────────────────────────────
 
 /// A References table's rows as reference marks, its columns found by name.
-fn read_chart_refs(f: &V) -> Vec<Json> {
-    let V::Frame(f) = f else { return Vec::new() };
+fn read_chart_refs(f: &Cv) -> Vec<Json> {
+    let Cv::Frame(f) = f else { return Vec::new() };
     let col = |name: &str| f.columns.iter().find(|c| js_lower(js_trim(&c.name)) == name);
     let n = |v: &V| finite(v).map(jn);
     let t = |v: &V| match v {
@@ -606,8 +611,8 @@ fn list_xy(op: &str, raw: &V, opts: &Obj) -> Option<Obj> {
 
 /// A frame, a list or a number as XY series, the columns picked by the options' names. A named column the
 /// frame lacks is `#REF!`, a text column in a number role `#TYPE!`; `None` is nothing to plot.
-fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
-    let V::Frame(f) = raw else { return Ok(list_xy(op, raw, opts)) };
+fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
+    let Cv::Frame(f) = raw else { return Ok(raw.v().and_then(|raw| list_xy(op, raw, opts))) };
     let cols = &f.columns;
     if cols.is_empty() {
         return Ok(None);
@@ -833,8 +838,8 @@ const XY_OPS: [&str; 3] = ["scatter", "xyline", "bubble"];
 fn chart(c: &mut Call) -> Answer {
     let op = c.field_str("op", "column").to_string();
     let raw = match first(c, "values") {
-        V::Cube(cube) => V::Frame(Rc::new(flat_cube(&cube))),
-        V::Err(_) => V::Null,
+        Cv::Cube(cube) => Cv::Frame(Rc::new(flat_cube(&cube))),
+        Cv::V(V::Err(_)) => Cv::NULL,
         v => v,
     };
     let refs = read_chart_refs(&first(c, "references"));
@@ -853,7 +858,7 @@ fn chart(c: &mut Call) -> Answer {
     let mut opts = opt_str.map(|s| parse_chart_options(&s)).unwrap_or_default();
     let (mut labels, mut series, mut payload): (Option<Vec<V>>, Option<Json>, Option<Obj>) = (None, None, None);
     let num_col = |col: &Column| -> Vec<V> { col.values.iter().map(|v| finite(v).map_or(V::Null, V::Num)).collect() };
-    let refs_shown = if refs.is_empty() { V::Null } else { whole(Json::Array(refs.clone())) };
+    let refs_shown = if refs.is_empty() { Cv::NULL } else { whole(Json::Array(refs.clone())) };
     let mut v = V::Null;
     if XY_OPS.contains(&op.as_str()) {
         let xy = match build_xy(&op, &raw, &opts) {
@@ -865,7 +870,7 @@ fn chart(c: &mut Call) -> Answer {
                 c.show("cachedError", e.clone());
                 c.show("cachedRefs", refs_shown);
                 c.show("chartOptions", whole(Json::Object(opts)));
-                return Ok(vec![("chart".into(), e)]);
+                return Ok(vec![("chart".into(), Cv::from(e))]);
             }
         };
         if let Some(xy) = &xy {
@@ -893,8 +898,8 @@ fn chart(c: &mut Call) -> Answer {
             }
         }
         payload = xy;
-    } else if matches!(&raw, V::Frame(f) if !f.columns.is_empty()) {
-        let V::Frame(f) = &raw else { unreachable!() };
+    } else if matches!(&raw, Cv::Frame(f) if !f.columns.is_empty()) {
+        let Cv::Frame(f) = &raw else { unreachable!() };
         let cols = &f.columns;
         let many = |s: &Vec<(String, Vec<V>)>| {
             (s.len() >= 2).then(|| {
@@ -936,10 +941,10 @@ fn chart(c: &mut Call) -> Answer {
         } else {
             v = list(num_col(&cols[0]));
         }
-    } else if let V::List(items) = &raw {
+    } else if let Cv::V(V::List(items)) = &raw {
         v = list(items.iter().map(|x| finite(x).map_or(V::Null, V::Num)).collect());
-    } else if let V::Num(_) = raw {
-        v = finite(&raw).map_or(V::Null, V::Num);
+    } else if let Cv::V(V::Num(_)) = raw {
+        v = raw.v().and_then(finite).map_or(V::Null, V::Num);
     }
     let options = Json::Object(opts.clone());
     let payload_j = payload.map(Json::Object);
@@ -957,8 +962,8 @@ fn chart(c: &mut Call) -> Answer {
         chart.insert("refs".into(), Json::Array(refs));
     }
     c.show("cachedLabels", labels_v.unwrap_or(V::Null));
-    c.show("cachedSeries", series.map_or(V::Null, whole));
-    c.show("cachedPayload", payload_j.map_or(V::Null, whole));
+    c.show("cachedSeries", series.map_or(Cv::NULL, whole));
+    c.show("cachedPayload", payload_j.map_or(Cv::NULL, whole));
     c.show("cachedError", V::Null);
     c.show("cachedRefs", refs_shown);
     c.show("chartOptions", whole(options));
@@ -1015,7 +1020,7 @@ fn candlestick(c: &mut Call) -> Answer {
     let cols = frame_columns(&frame);
     if cols.is_empty() {
         c.show("cachedChart", V::Null);
-        return Ok(vec![("chart".into(), V::Null)]);
+        return Ok(vec![("chart".into(), Cv::from(V::Null))]);
     }
     if cols.len() < 4 {
         let e = err(
@@ -1023,7 +1028,7 @@ fn candlestick(c: &mut Call) -> Answer {
             "Candlestick needs Open, High, Low and Close columns (a date column first is optional)",
         );
         c.show("cachedChart", e.clone());
-        return Ok(vec![("chart".into(), e)]);
+        return Ok(vec![("chart".into(), Cv::from(e))]);
     }
     let at = usize::from(cols.len() >= 5);
     let open = col_numbers(cols.get(at));
@@ -1119,7 +1124,7 @@ fn merge_plots(c: &mut Call) -> Answer {
     let mut sources: Vec<(Rc<Json>, usize)> = Vec::new();
     let mut refusal: Option<V> = None;
     for (i, key) in keys.iter().enumerate() {
-        let V::Json(cv) = first(c, key) else { continue };
+        let Cv::Json(cv) = first(c, key) else { continue };
         if cv.get("__chart") != Some(&Json::Bool(true)) {
             continue;
         }
@@ -1145,7 +1150,7 @@ fn merge_plots(c: &mut Call) -> Answer {
         Err(e) => {
             c.show("chartOptions", whole(Json::Object(opts)));
             c.show("cachedChart", e.clone());
-            return Ok(vec![("chart".into(), e)]);
+            return Ok(vec![("chart".into(), Cv::from(e))]);
         }
     };
     let refs: Vec<Json> = sources
@@ -1530,20 +1535,20 @@ fn list_of(v: V) -> Vec<V> {
 }
 
 fn histogram(c: &mut Call) -> Answer {
-    let xs = list_of(first(c, "values"));
+    let xs = list_of(first_v(c, "values"));
     let kx = read_role(c, "bins", &Role::Setting(V::Num(10.0)));
     let opts = read_options(c)?;
     let title = title(&opts, c, "Histogram");
     c.show("chartOptions", whole(Json::Object(opts.clone())));
     if c.field_str("mode", "1d") == "2d" {
-        let ys = list_of(first(c, "y"));
+        let ys = list_of(first_v(c, "y"));
         let ky = read_role(c, "ybins", &Role::Setting(V::Num(10.0)));
         c.show("cachedResult", V::Null);
         let h = match histogram2d(&xs, &ys, &kx, &ky) {
             Ok(h) => h,
             Err(e) => {
                 c.show("cachedChart", V::Null);
-                return Ok(vec![("chart".into(), e)]);
+                return Ok(vec![("chart".into(), Cv::from(e))]);
             }
         };
         let edge = |v: &f64| Json::String(number_to_string(crate::unit_value::to_precision(*v, 3)));
@@ -1563,7 +1568,7 @@ fn histogram(c: &mut Call) -> Answer {
             "__chart": true, "op": "heatmap", "values": null, "payload": { "kind": "heatmap", "z": z, "rows": rows, "cols": cols },
             "options": options, "title": title,
         });
-        c.show("cachedChart", if h.is_some() { whole(chart.clone()) } else { V::Null });
+        c.show("cachedChart", if h.is_some() { whole(chart.clone()) } else { Cv::NULL });
         return Ok(vec![("chart".into(), whole(chart))]);
     }
     let counts = match histogram_bins(&xs, &kx) {
@@ -1571,7 +1576,7 @@ fn histogram(c: &mut Call) -> Answer {
         Err(e) => {
             c.show("cachedResult", V::Null);
             c.show("cachedChart", V::Null);
-            return Ok(vec![("chart".into(), e)]);
+            return Ok(vec![("chart".into(), Cv::from(e))]);
         }
     };
     c.show("cachedResult", list(counts.iter().map(|n| V::Num(*n)).collect()));
@@ -1705,7 +1710,10 @@ fn sankey(c: &mut Call) -> Answer {
         .any(|((s, t), v)| !s.is_empty() && !t.is_empty() && s != t && *v > 0.0);
     if dropped > 0 && !drawable {
         c.show("cachedPayload", V::Null);
-        return Ok(vec![("chart".into(), err(ErrorCode::Shape, "The flows form a loop; a Sankey needs a direction"))]);
+        return Ok(vec![(
+            "chart".into(),
+            Cv::from(err(ErrorCode::Shape, "The flows form a loop; a Sankey needs a direction")),
+        )]);
     }
     let values = Json::Array(values.iter().map(|n| jn(*n)).collect());
     let payload = json!({ "kind": "sankey", "sources": strs(&sources), "targets": strs(&targets), "values": values });
@@ -1772,8 +1780,8 @@ fn clip_heatmap((z, rows, cols): Grid) -> Json {
 
 fn heatmap(c: &mut Call) -> Answer {
     let grid = match first(c, "values") {
-        V::List(t) => heatmap_from_table(&t),
-        V::Cube(cube) => heatmap_from_columns(&flat_cube(&cube).columns),
+        Cv::V(V::List(t)) => heatmap_from_table(&t),
+        Cv::Cube(cube) => heatmap_from_columns(&flat_cube(&cube).columns),
         v => heatmap_from_columns(frame_columns(&v)),
     };
     let opts = read_options(c)?;
@@ -1827,7 +1835,7 @@ fn surface(c: &mut Call) -> Answer {
         })
     };
     let (xs_raw, ys_raw) = (axis_in("xs"), axis_in("ys"));
-    let (xs, ys, z) = grid_axes(&first(c, "z"), xs_raw.as_ref(), ys_raw.as_ref()).unwrap_or_default();
+    let (xs, ys, z) = grid_axes(&first_v(c, "z"), xs_raw.as_ref(), ys_raw.as_ref()).unwrap_or_default();
     let nums = |v: &[f64]| Json::Array(v.iter().map(|n| jn(*n)).collect());
     let z = Json::Array(z.iter().map(|r| opt_nums(r)).collect());
     if c.field_str("op", "surface") == "contour" {
@@ -1894,12 +1902,14 @@ fn boxplot(c: &mut Call) -> Answer {
         }
     };
     match first(c, "values") {
-        V::Frame(f) => {
+        Cv::Frame(f) => {
             for col in f.columns.iter().filter(|c| c.ty == FrameColType::Number) {
                 add(&col.name, col.values.iter().map(finite).collect());
             }
         }
-        V::List(items) => add("", items.iter().map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect()),
+        Cv::V(V::List(items)) => {
+            add("", items.iter().map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect())
+        }
         _ => {}
     }
     let opts = read_options(c)?;
@@ -1935,7 +1945,7 @@ fn quiver(c: &mut Call) -> Answer {
                 .collect(),
         )
     };
-    let payload = json!({ "kind": "quiver", "u": norm(first(c, "u")), "v": norm(first(c, "v")) });
+    let payload = json!({ "kind": "quiver", "u": norm(first_v(c, "u")), "v": norm(first_v(c, "v")) });
     figure(c, "quiver", Json::Null, payload, opts, "Vector Field")
 }
 
@@ -2024,5 +2034,5 @@ fn chart_builder(c: &mut Call) -> Answer {
     }
     let out = V::str(&parts.join(";"));
     c.show("cachedString", out.clone());
-    Ok(vec![("result".into(), out)])
+    Ok(vec![("result".into(), Cv::from(out))])
 }

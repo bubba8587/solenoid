@@ -10,6 +10,7 @@ use std::rc::Rc;
 use js_sys::Array;
 use serde_json::Value as Json;
 use solenoid_core::excel_functions::V;
+use solenoid_core::nodes::Cv;
 use wasm_bindgen::prelude::*;
 
 use crate::boundary::{self, host};
@@ -38,7 +39,7 @@ impl Val {
         }))
     }
 
-    pub(crate) fn bare(v: V) -> Val {
+    pub(crate) fn bare(v: impl Into<Cv>) -> Val {
         Val::from_core(Arrived::bare(v))
     }
 
@@ -71,13 +72,13 @@ impl Val {
     }
 
     /// The core form where it was made or asked for already.
-    fn core_now(&self) -> Option<&V> {
+    fn core_now(&self) -> Option<&Cv> {
         self.0.core.get().and_then(Option::as_ref).map(|a| &a.v)
     }
 
     pub(crate) fn is_err(&self) -> bool {
         match (self.core_now(), self.0.js.get()) {
-            (Some(v), _) => matches!(v, V::Err(_)),
+            (Some(v), _) => v.is_sol_error(),
             (None, Some(js)) => boundary::is_sol_error(js),
             _ => false,
         }
@@ -106,7 +107,7 @@ impl Val {
             return a != b;
         }
         match (self.core_now(), other.core_now()) {
-            (Some(V::Cx(..)), _) => true,
+            (Some(Cv::V(V::Cx(..))), _) => true,
             (Some(a), Some(b)) => !crate::boundary_core::same_obj(a, b),
             _ => true,
         }
@@ -115,6 +116,7 @@ impl Val {
     /// The value as a JavaScript primitive would compare, where it is one.
     fn prim(&self) -> Option<Prim> {
         if let Some(v) = self.core_now() {
+            let Cv::V(v) = v else { return None };
             return match v {
                 V::Num(n) => Some(Prim::Num(*n)),
                 V::Str(s) => Some(Prim::Str(s.to_string())),
@@ -155,11 +157,11 @@ enum Prim {
 /// reader (`fromCore`, `readNodeReply`), with a table's unit put back on the array.
 fn to_js(a: &Arrived) -> JsValue {
     match &a.v {
-        V::Null => JsValue::NULL,
-        V::Undef => JsValue::UNDEFINED,
-        V::Num(n) => JsValue::from_f64(*n),
-        V::Str(s) => JsValue::from_str(s),
-        V::Bool(b) => JsValue::from_bool(*b),
+        Cv::V(V::Null) => JsValue::NULL,
+        Cv::V(V::Undef) => JsValue::UNDEFINED,
+        Cv::V(V::Num(n)) => JsValue::from_f64(*n),
+        Cv::V(V::Str(s)) => JsValue::from_str(s),
+        Cv::V(V::Bool(b)) => JsValue::from_bool(*b),
         v => {
             let unit = a
                 .munit
@@ -190,7 +192,7 @@ fn to_js(a: &Arrived) -> JsValue {
 
 /// A frame's or a list's cells as `fromCoreBin` takes them, where it's big enough and every cell is flat
 /// (`nodes::columnar`).
-fn binary_out(v: &V) -> Option<Array> {
+fn binary_out(v: &Cv) -> Option<Array> {
     let (kind, schema, c) = solenoid_core::nodes::columnar::binary_out(v)?;
     let args = Array::new();
     args.push(&JsValue::from_str(kind));
@@ -203,7 +205,7 @@ fn binary_out(v: &V) -> Option<Array> {
 }
 
 /// `toCore`'s buffers (`[kind, schema, tags, nums, strs, lens]`) as the frame or list they carry.
-fn binary_in(a: &Array) -> Option<V> {
+fn binary_in(a: &Array) -> Option<Cv> {
     use solenoid_core::nodes::columnar;
     let tags = a.get(2).dyn_into::<js_sys::Uint8Array>().ok()?.to_vec();
     let nums = a.get(3).dyn_into::<js_sys::Float64Array>().ok()?.to_vec();
@@ -242,7 +244,7 @@ fn from_js(v: &JsValue) -> Option<Arrived> {
     let json: Json = serde_json::from_str(&text).ok()?;
     let munit = json.get("__munit").cloned().map(Rc::new);
     Some(Arrived {
-        v: solenoid_core::nodes::decode(&json),
+        v: solenoid_core::nodes::decode_card(&json),
         munit,
     })
 }

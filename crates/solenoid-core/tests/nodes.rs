@@ -4,7 +4,7 @@
 
 use serde_json::Value as Json;
 use solenoid_core::excel_functions::V;
-use solenoid_core::nodes::{reply, Shown};
+use solenoid_core::nodes::{reply, Cv, Shown};
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -20,31 +20,30 @@ fn load(path: &std::path::Path) -> Vec<Json> {
 
 /// The same value as the TS reads it back: numbers by their bits (any NaN is NaN), errors by code and message, unit
 /// cells by what crosses back.
-fn same(a: &V, b: &V) -> bool {
+fn same_v(a: &V, b: &V) -> bool {
     match (a, b) {
         (V::Num(x), V::Num(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
         (V::Str(x), V::Str(y)) => x == y,
         (V::Bool(x), V::Bool(y)) => x == y,
         (V::Null, V::Null) | (V::Undef, V::Undef) => true,
         (V::Err(x), V::Err(y)) => x.code == y.code && x.message == y.message,
-        (V::Cx(a1, b1), V::Cx(a2, b2)) => same(&V::Num(*a1), &V::Num(*a2)) && same(&V::Num(*b1), &V::Num(*b2)),
-        (V::List(x), V::List(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q)),
+        (V::Cx(a1, b1), V::Cx(a2, b2)) => same_v(&V::Num(*a1), &V::Num(*a2)) && same_v(&V::Num(*b1), &V::Num(*b2)),
+        (V::List(x), V::List(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same_v(p, q)),
         (V::Unit(x), V::Unit(y)) => {
-            same(&V::Num(x.value), &V::Num(y.value)) && x.display == y.display && x.ratio == y.ratio && {
+            same_v(&V::Num(x.value), &V::Num(y.value)) && x.display == y.display && x.ratio == y.ratio && {
                 let nz = |d: &std::collections::BTreeMap<String, f64>| {
                     d.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| (k.clone(), v.to_bits())).collect::<Vec<_>>()
                 };
                 nz(&x.dim) == nz(&y.dim)
             }
         }
-        (V::Json(x), V::Json(y)) => x == y,
         // A LAMBDA by what its reader sees: its parameters, its body's text, the names it captures with their values
         // as the body reads them and with their units, and its notes on its variables.
         (V::Lambda(x), V::Lambda(y)) => {
             let read = |l: &solenoid_core::eval::LambdaV| {
                 l.captured.iter().flatten().map(|n| l.env.get(n).cloned().unwrap_or(V::Undef)).collect::<Vec<_>>()
             };
-            let all = |a: &[V], b: &[V]| a.len() == b.len() && a.iter().zip(b).all(|(p, q)| same(p, q));
+            let all = |a: &[V], b: &[V]| a.len() == b.len() && a.iter().zip(b).all(|(p, q)| same_v(p, q));
             x.params == y.params
                 && x.src == y.src
                 && x.eta == y.eta
@@ -53,7 +52,17 @@ fn same(a: &V, b: &V) -> bool {
                 && all(&read(x), &read(y))
                 && all(&x.units, &y.units)
         }
-        (V::Frame(x), V::Frame(y)) => {
+        _ => false,
+    }
+}
+
+/// The same card value: a table by its columns, a value as `same_v` reads it.
+fn same(a: &Cv, b: &Cv) -> bool {
+    match (a, b) {
+        (Cv::V(x), Cv::V(y)) => same_v(x, y),
+        (Cv::Json(x), Cv::Json(y)) => x == y,
+        (Cv::Cells(x), Cv::Cells(y)) => x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| same(p, q)),
+        (Cv::Frame(x), Cv::Frame(y)) => {
             x.total_rows == y.total_rows
                 && x.approx == y.approx
                 && x.columns.len() == y.columns.len()
@@ -64,10 +73,10 @@ fn same(a: &V, b: &V) -> bool {
                         && p.format == q.format
                         && p.raw == q.raw
                         && p.values.len() == q.values.len()
-                        && p.values.iter().zip(&q.values).all(|(a, b)| same(a, b))
+                        && p.values.iter().zip(&q.values).all(|(a, b)| same_v(a, b))
                 })
         }
-        (V::Cube(x), V::Cube(y)) => {
+        (Cv::Cube(x), Cv::Cube(y)) => {
             x.columns.len() == y.columns.len()
                 && x.columns.iter().zip(&y.columns).all(|(p, q)| {
                     p.name == q.name
@@ -81,7 +90,7 @@ fn same(a: &V, b: &V) -> bool {
     }
 }
 
-fn show(v: &V) -> String {
+fn show_v(v: &V) -> String {
     match v {
         V::Num(n) => format!("{n:?}"),
         V::Str(s) => format!("{s:?}"),
@@ -90,20 +99,27 @@ fn show(v: &V) -> String {
         V::Undef => "undefined".into(),
         V::Err(e) => format!("{}({:?})", e.code, e.message),
         V::Cx(a, b) => format!("cx({a},{b})"),
-        V::List(l) => format!("[{}]", l.iter().map(show).collect::<Vec<_>>().join(", ")),
+        V::List(l) => format!("[{}]", l.iter().map(show_v).collect::<Vec<_>>().join(", ")),
         V::Unit(u) => format!("unit({} {:?} {:?})", u.value, u.dim, u.display),
         V::Lambda(_) => "lambda".into(),
         V::Fx(m) => format!("fx({m})"),
-        V::Json(j) => j.to_string(),
-        V::Frame(f) => format!(
+    }
+}
+
+fn show(v: &Cv) -> String {
+    match v {
+        Cv::V(v) => show_v(v),
+        Cv::Json(j) => j.to_string(),
+        Cv::Cells(l) => format!("[{}]", l.iter().map(show).collect::<Vec<_>>().join(", ")),
+        Cv::Frame(f) => format!(
             "frame[{}]",
             f.columns
                 .iter()
-                .map(|c| format!("{}: [{}]", c.name, c.values.iter().map(show).collect::<Vec<_>>().join(", ")))
+                .map(|c| format!("{}: [{}]", c.name, c.values.iter().map(show_v).collect::<Vec<_>>().join(", ")))
                 .collect::<Vec<_>>()
                 .join("; ")
         ),
-        V::Cube(c) => format!(
+        Cv::Cube(c) => format!(
             "cube[{}]",
             c.columns
                 .iter()
@@ -114,8 +130,8 @@ fn show(v: &V) -> String {
     }
 }
 
-fn dec(j: &Json) -> V {
-    solenoid_core::nodes::decode(j)
+fn dec(j: &Json) -> Cv {
+    solenoid_core::nodes::decode_card(j)
 }
 
 /// Why the core's answer differs from the frozen one, or `None` where they agree.
@@ -155,14 +171,14 @@ fn mismatch(case: &Json) -> Option<String> {
                 }
             }
         }
-        (Err(e), _, Some(w)) if same(e, &dec(w)) => {}
+        (Err(e), _, Some(w)) if same_v(e, &solenoid_core::nodes::decode(w)) => {}
         (Ok(outs), _, _) => {
             return Some(format!(
                 "got outputs {:?}, want {result}",
                 outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>()
             ))
         }
-        (Err(e), _, _) => return Some(format!("threw {}, want {result}", show(e))),
+        (Err(e), _, _) => return Some(format!("threw {}, want {result}", show_v(e))),
     }
     let want = case["display"].as_object().cloned().unwrap_or_default();
     let prior = case["prior"].as_object().cloned().unwrap_or_default();

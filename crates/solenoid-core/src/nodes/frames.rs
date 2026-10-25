@@ -3,6 +3,7 @@
 //! the frame backend): a body reads its inputs, calls the core on its frame, and carries the units and formats back.
 
 use super::stats::{read_role, Role};
+use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{ErrorCode, SolError};
 use crate::excel_functions::V;
@@ -96,8 +97,8 @@ pub(crate) fn from_core(f: &FrameValue) -> Frame {
     Frame { columns: f.columns.iter().map(core_column).collect(), total_rows: None, approx: None }
 }
 
-pub(crate) fn frame_v(columns: Vec<Column>) -> V {
-    V::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
+pub(crate) fn frame_v(columns: Vec<Column>) -> Cv {
+    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
 }
 
 pub(crate) fn num_column(name: &str, values: Vec<V>) -> Column {
@@ -147,7 +148,6 @@ pub(crate) fn to_json(v: &V) -> Json {
         V::Str(s) => Json::String(s.to_string()),
         V::Bool(b) => Json::Bool(*b),
         V::List(l) => Json::Array(l.iter().map(to_json).collect()),
-        V::Json(j) => (**j).clone(),
         V::Undef => json!({ "__undef": 1 }),
         _ => Json::Null,
     }
@@ -165,6 +165,16 @@ pub(crate) fn str_input(c: &Call, key: &str, dflt: &str) -> V {
 /// `inputs[key]?.[0] ?? null`.
 pub(crate) fn first(c: &Call, key: &str) -> V {
     super::stats::first(c, key)
+}
+
+/// A scalar Cube column's cells as values; a table among them (which a caller checking `nested` turned away) is blank.
+pub(crate) fn cube_values(cells: &[Cv]) -> Vec<V> {
+    cells.iter().map(|c| c.v().cloned().unwrap_or(V::Null)).collect()
+}
+
+/// `inputs[key]?.[0] ?? null` on a table or an any socket: a Frame, a Cube or plain data among what it can be.
+pub(crate) fn card(c: &Call, key: &str) -> Cv {
+    c.read_card(key)
 }
 
 /// A frame's `V8` array cap: a body that builds a longer array throws as JS does.
@@ -229,14 +239,14 @@ fn read_money(c: &mut Call, name: &str, money: &[&str]) -> Result<Option<Json>, 
         }
     }
     let mut r = Read::default();
-    let mut inputs = std::mem::take(&mut c.inputs);
+    let mut inputs = c.take_values();
     for (key, vals) in inputs.iter_mut() {
         let is_money = money.contains(&key.as_str());
         for v in vals.iter_mut() {
             *v = read(v, name, key, is_money, &mut r);
         }
     }
-    c.inputs = inputs;
+    c.set_values(inputs);
     if let Some(e) = r.fail {
         return Err(e);
     }
@@ -252,18 +262,21 @@ fn amortization(c: &mut Call) -> Answer {
         Ok(u) => u,
         Err(e) => {
             c.show("cachedResult", V::Null);
-            return Ok(vec![("frame".into(), e)]);
+            return Ok(vec![("frame".into(), Cv::from(e))]);
         }
     };
     let [rate, nper, pv, fv] = ["rate", "nper", "pv", "fv"].map(|k| c.read_num(k, 0.0));
     if [&rate, &nper, &pv, &fv].iter().any(|v| matches!(v, V::Null)) {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("frame".into(), V::Null)]);
+        return Ok(vec![("frame".into(), Cv::from(V::Null))]);
     }
     let n = super::kit::num(&nper);
     if n.floor() > 1_000_000.0 {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("frame".into(), err(ErrorCode::Domain, "Amortization takes at most 1,000,000 periods"))]);
+        return Ok(vec![(
+            "frame".into(),
+            Cv::from(err(ErrorCode::Domain, "Amortization takes at most 1,000,000 periods")),
+        )]);
     }
     let ty = if c.field_str("paymentTiming", "end") == "beg" { 1.0 } else { 0.0 };
     let frame =
@@ -271,19 +284,19 @@ fn amortization(c: &mut Call) -> Answer {
             .map(|f| from_core(&f));
     let Some(mut frame) = frame else {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("frame".into(), V::Null)]);
+        return Ok(vec![("frame".into(), Cv::from(V::Null))]);
     };
     // The card shows the schedule before its money columns take the currency; with none, the two are one frame.
     let Some(u) = unit else {
-        let frame = V::Frame(Rc::new(frame));
+        let frame = Cv::Frame(Rc::new(frame));
         c.show("cachedResult", frame.clone());
         return Ok(vec![("frame".into(), frame)]);
     };
-    c.show("cachedResult", V::Frame(Rc::new(frame.clone())));
+    c.show("cachedResult", Cv::Frame(Rc::new(frame.clone())));
     for col in frame.columns.iter_mut().filter(|col| col.name != "Period") {
         col.unit = Some(u.clone());
     }
-    Ok(vec![("frame".into(), V::Frame(Rc::new(frame)))])
+    Ok(vec![("frame".into(), Cv::Frame(Rc::new(frame)))])
 }
 
 // ─── Forecast (ETS), Fit Distribution, Decompose ────────────────────────────────
@@ -298,29 +311,29 @@ fn for_aggregate(v: &V) -> Result<Vec<f64>, V> {
 }
 
 fn ets_forecast(c: &mut Call) -> Answer {
-    let blank = |c: &mut Call, forecast: V| {
+    let blank = |c: &mut Call, forecast: Cv| {
         c.show("cachedResult", forecast.clone());
         c.show("cachedSeason", V::Null);
-        Ok(vec![("forecast".into(), forecast), ("detected".into(), V::Null)])
+        Ok(vec![("forecast".into(), forecast), ("detected".into(), Cv::from(V::Null))])
     };
     let y = match for_aggregate(&first(c, "values")) {
         Ok(y) => y,
-        Err(e) => return blank(c, e),
+        Err(e) => return blank(c, Cv::V(e)),
     };
     let horizon = read_role(c, "horizon", Role::Required);
     let season = read_role(c, "season", Role::Setting(V::Num(1.0)));
     if horizon.is_sol_error() {
-        return blank(c, horizon);
+        return blank(c, Cv::V(horizon));
     }
     if y.len() < 3 {
-        return blank(c, V::Null);
+        return blank(c, Cv::NULL);
     }
     let h = math_max(1.0, math_round(super::kit::num(&horizon)));
     let s = super::kit::num(&season);
     let m = if s == 1.0 { crate::fns_lists::detect_season(&y) as f64 } else { math_max(1.0, math_round(s)) };
     let fit =
         crate::fns_lists::fit_ets(&y, m).or_else(|| if m > 1.0 { crate::fns_lists::fit_ets(&y, 1.0) } else { None });
-    let Some(fit) = fit else { return blank(c, V::Null) };
+    let Some(fit) = fit else { return blank(c, Cv::NULL) };
     if h > MAX_ARRAY {
         return Err(thrown("Invalid array length"));
     }
@@ -332,7 +345,7 @@ fn ets_forecast(c: &mut Call) -> Answer {
     let frame = frame_v(vec![num_column("Forecast", forecast), num_column("Interval", interval)]);
     c.show("cachedSeason", detected.clone());
     c.show("cachedResult", frame.clone());
-    Ok(vec![("forecast".into(), frame), ("detected".into(), detected)])
+    Ok(vec![("forecast".into(), frame), ("detected".into(), Cv::from(detected))])
 }
 
 const FIT_LABELS: [(&str, &str); 8] = [
@@ -399,7 +412,7 @@ fn fit_names_and_ks(family: &str, p: &[f64], sorted: &[f64]) -> (&'static [&'sta
 }
 
 fn fit_distribution(c: &mut Call) -> Answer {
-    let shown = |c: &mut Call, ranking: V, best: V, params: V| {
+    let shown = |c: &mut Call, ranking: Cv, best: Cv, params: Cv| {
         c.show("cachedRanking", ranking.clone());
         c.show("cachedBest", best.clone());
         c.show("cachedParams", params.clone());
@@ -407,7 +420,7 @@ fn fit_distribution(c: &mut Call) -> Answer {
     };
     let data = match for_aggregate(&first(c, "list")) {
         Ok(y) => y,
-        Err(e) => return shown(c, e, V::Null, V::Null),
+        Err(e) => return shown(c, Cv::V(e), Cv::NULL, Cv::NULL),
     };
     let mut sorted: Vec<f64> = data.iter().copied().filter(|v| v.is_finite()).collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -431,7 +444,7 @@ fn fit_distribution(c: &mut Call) -> Answer {
     }
     fits.sort_by(|a, b| (a.aic - b.aic).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
     if fits.is_empty() {
-        return shown(c, V::Null, V::Null, V::Null);
+        return shown(c, Cv::NULL, Cv::NULL, Cv::NULL);
     }
     let text = |name: &str, f: &dyn Fn(&Fit) -> String| Column {
         name: name.into(),
@@ -455,25 +468,25 @@ fn fit_distribution(c: &mut Call) -> Answer {
     ]);
     let best = V::str(fits[0].label);
     let params = list(fits[0].params.iter().map(|v| V::Num(*v)).collect());
-    shown(c, ranking, best, params)
+    shown(c, ranking, Cv::V(best), Cv::V(params))
 }
 
 fn decompose(c: &mut Call) -> Answer {
-    let blank = |c: &mut Call, e: V| {
+    let blank = |c: &mut Call, e: Cv| {
         c.show("cachedResult", e.clone());
         Ok(vec![("decomposition".into(), e)])
     };
     let raw = first(c, "values");
     let period = read_role(c, "period", Role::Required);
     if period.is_sol_error() {
-        return blank(c, period);
+        return blank(c, Cv::V(period));
     }
     if matches!(raw, V::Null) {
-        return blank(c, V::Null);
+        return blank(c, Cv::NULL);
     }
     let xs = super::stats::items(&raw);
     if let Some(e) = xs.iter().find(|v| v.is_sol_error()) {
-        return blank(c, e.clone());
+        return blank(c, Cv::V(e.clone()));
     }
     let nums: Vec<Option<f64>> =
         xs.iter().map(|v| if let V::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
@@ -487,7 +500,7 @@ fn decompose(c: &mut Call) -> Answer {
     } else {
         crate::fns_lists::seasonal_decompose(&nums, p, model == "additive")
     };
-    let Some([t, s, r]) = d else { return blank(c, V::Null) };
+    let Some([t, s, r]) = d else { return blank(c, Cv::NULL) };
     let col =
         |name: &str, v: Vec<Option<f64>>| num_column(name, v.into_iter().map(|x| x.map_or(V::Null, V::Num)).collect());
     let frame = frame_v(vec![col("Trend", t), col("Seasonal", s), col("Residual", r)]);
@@ -497,67 +510,67 @@ fn decompose(c: &mut Call) -> Answer {
 // ─── K-Means, Logistic ──────────────────────────────────────────────────────────
 
 fn frame_in(c: &Call, key: &str) -> Option<Rc<Frame>> {
-    match first(c, key) {
-        V::Frame(f) => Some(f),
+    match card(c, key) {
+        Cv::Frame(f) => Some(f),
         _ => None,
     }
 }
 
 fn kmeans(c: &mut Call) -> Answer {
     let k = read_role(c, "k", Role::Required);
-    let out = |c: &mut Call, labels: V, centers: V, shown: (V, V)| {
+    let out = |c: &mut Call, labels: Cv, centers: Cv, shown: (Cv, Cv)| {
         c.show("cachedLabels", shown.0);
         c.show("cachedCenters", shown.1);
         Ok(vec![("labels".into(), labels), ("centers".into(), centers)])
     };
     if k.is_sol_error() {
-        return out(c, k.clone(), k, (V::Null, V::Null));
+        return out(c, Cv::V(k.clone()), Cv::V(k), (Cv::NULL, Cv::NULL));
     }
-    let Some(f) = frame_in(c, "frame") else { return out(c, V::Null, V::Null, (V::Null, V::Null)) };
+    let Some(f) = frame_in(c, "frame") else { return out(c, Cv::NULL, Cv::NULL, (Cv::NULL, Cv::NULL)) };
     if !f.columns.iter().any(|col| col.ty == FrameColType::Number) {
         let e = err(ErrorCode::Value, "K-Means needs at least one number column");
-        return out(c, e.clone(), V::Null, (e, V::Null));
+        return out(c, Cv::V(e.clone()), Cv::NULL, (Cv::V(e), Cv::NULL));
     }
     let core = to_core(&f);
     let kn = super::kit::num(&k);
     let bad = |c: &mut Call, msg: String| {
         let e = err(ErrorCode::Value, msg);
-        out(c, e.clone(), e.clone(), (e, V::Null))
+        out(c, Cv::V(e.clone()), Cv::V(e.clone()), (Cv::V(e), Cv::NULL))
     };
     if kn.is_nan() {
         return bad(c, format!("K-Means: {} is not a number", c.label("k")));
     }
     let r = match crate::planners::kmeans_frame(&core, kn) {
         Ok(Some(r)) => r,
-        Ok(None) => return out(c, V::Null, V::Null, (V::Null, V::Null)),
+        Ok(None) => return out(c, Cv::NULL, Cv::NULL, (Cv::NULL, Cv::NULL)),
         Err(msg) => return bad(c, msg),
     };
     let mut cols = from_core(&r).columns;
     let labels = list(cols.remove(0).values);
     let centers = frame_v(cols);
-    out(c, labels.clone(), centers.clone(), (labels, centers))
+    out(c, Cv::V(labels.clone()), centers.clone(), (Cv::V(labels), centers))
 }
 
 fn logistic(c: &mut Call) -> Answer {
-    let blank = |c: &mut Call, e: V| {
+    let blank = |c: &mut Call, e: Cv| {
         c.show("cachedCoefficients", e.clone());
         c.show("cachedProbabilities", V::Null);
-        Ok(vec![("coefficients".into(), e), ("probabilities".into(), V::Null)])
+        Ok(vec![("coefficients".into(), e), ("probabilities".into(), Cv::from(V::Null))])
     };
     let f = frame_in(c, "frame");
     let target = str_input(c, "target", "");
-    let (Some(f), false) = (f, matches!(target, V::Null)) else { return blank(c, V::Null) };
+    let (Some(f), false) = (f, matches!(target, V::Null)) else { return blank(c, Cv::NULL) };
     let t = trimmed(&target, "target")?;
     if t.is_empty() {
-        return blank(c, V::Null);
+        return blank(c, Cv::NULL);
     }
     let Some(ti) = f.columns.iter().position(|col| col.name == t) else {
-        return blank(c, err(ErrorCode::Ref, format!("Logistic Regression: no column \"{t}\"")));
+        return blank(c, Cv::V(err(ErrorCode::Ref, format!("Logistic Regression: no column \"{t}\""))));
     };
     if !f.columns.iter().enumerate().any(|(i, col)| i != ti && col.ty == FrameColType::Number) {
         return blank(
             c,
-            err(ErrorCode::Value, "Logistic Regression needs at least one number column besides the target"),
+            Cv::V(err(ErrorCode::Value, "Logistic Regression needs at least one number column besides the target")),
         );
     }
     match crate::planners::logistic_frame(&to_core(&f), &t) {
@@ -567,14 +580,14 @@ fn logistic(c: &mut Call) -> Answer {
             let coef = frame_v(cols);
             c.show("cachedCoefficients", coef.clone());
             c.show("cachedProbabilities", probs.clone());
-            Ok(vec![("coefficients".into(), coef), ("probabilities".into(), probs)])
+            Ok(vec![("coefficients".into(), coef), ("probabilities".into(), Cv::from(probs))])
         }
         _ => blank(
             c,
-            err(
+            Cv::V(err(
                 ErrorCode::Domain,
                 "Logistic Regression: the target must take both values and there must be more rows than columns",
-            ),
+            )),
         ),
     }
 }
@@ -606,7 +619,8 @@ fn frame_or_error(r: Result<FrameValue, SolError>) -> Result<Frame, V> {
 }
 
 /// A body's one frame output, shown on the card as `cachedResult`.
-fn shown_frame(c: &mut Call, key: &str, v: V) -> Answer {
+fn shown_frame(c: &mut Call, key: &str, v: impl Into<Cv>) -> Answer {
+    let v: Cv = v.into();
     c.show("cachedResult", v.clone());
     Ok(vec![(key.into(), v)])
 }
@@ -627,9 +641,9 @@ fn allocator(c: &mut Call) -> Answer {
         if let (Some(min), 3) = (min, out.columns.len()) {
             carry_money(&mut out.columns[1], &f.columns[min]);
         }
-        V::Frame(Rc::new(out))
+        Cv::Frame(Rc::new(out))
     });
-    shown_frame(c, "frame", out.unwrap_or_else(|e| e))
+    shown_frame(c, "frame", out.unwrap_or_else(Cv::V))
 }
 
 /// The first of this month.
@@ -662,9 +676,9 @@ fn payoff_planner(c: &mut Call) -> Answer {
                     }
                 }
             }
-            V::Frame(Rc::new(out))
+            Cv::Frame(Rc::new(out))
         });
-    shown_frame(c, "frame", out.unwrap_or_else(|e| e))
+    shown_frame(c, "frame", out.unwrap_or_else(Cv::V))
 }
 
 // ─── Choice Ladder ──────────────────────────────────────────────────────────────
@@ -726,12 +740,12 @@ fn ladder_from_wire(f: &Frame, plan: &FrameValue, wire: &V) -> (Frame, Json) {
 }
 
 fn choice_ladder(c: &mut Call) -> Answer {
-    let out = |c: &mut Call, frame: V, chart: V| {
+    let out = |c: &mut Call, frame: Cv, chart: Cv| {
         c.show("cachedResult", frame.clone());
         c.show("cachedChart", chart.clone());
         Ok(vec![("frame".into(), frame), ("chart".into(), chart)])
     };
-    let Some(f) = frame_in(c, "frame") else { return out(c, V::Null, V::Null) };
+    let Some(f) = frame_in(c, "frame") else { return out(c, Cv::NULL, Cv::NULL) };
     let close = super::list::or(c.read_num("close", 0.05), V::Num(0.0));
     let (w, l) = (frame_in(c, "weights").map(|w| to_core(&w)), frame_in(c, "limits").map(|l| to_core(&l)));
     let choices: Vec<String> = c
@@ -752,10 +766,10 @@ fn choice_ladder(c: &mut Call) -> Answer {
             let label = c.field_str("label", "");
             let title = if label.is_empty() { "Choice Ladder" } else { label };
             let chart = json!({ "__chart": true, "op": "ladder", "values": null, "payload": payload, "options": {}, "title": title });
-            out(c, V::Frame(Rc::new(plan)), V::Json(Rc::new(chart)))
+            out(c, Cv::Frame(Rc::new(plan)), Cv::Json(Rc::new(chart)))
         }
-        Some(Err(e)) => out(c, V::err(e.clone()), V::err(e)),
-        None => out(c, V::Null, V::Null),
+        Some(Err(e)) => out(c, Cv::V(V::err(e.clone())), Cv::V(V::err(e))),
+        None => out(c, Cv::NULL, Cv::NULL),
     }
 }
 
@@ -786,23 +800,23 @@ fn headers(c: &mut Call) -> Answer {
                     if fc.raw.is_some() { fc.values.iter().skip(1).cloned().collect() } else { core_column(rc).values };
                 Column { name: rc.name.clone(), values, raw, ..fc.clone() }
             });
-            V::Frame(Rc::new(Frame { columns: columns.collect(), total_rows: None, approx: None }))
+            Cv::Frame(Rc::new(Frame { columns: columns.collect(), total_rows: None, approx: None }))
         }
-        Some(Ok(r)) => V::Frame(Rc::new(from_core(&r))),
-        Some(Err(e)) => e,
-        None => V::Null,
+        Some(Ok(r)) => Cv::Frame(Rc::new(from_core(&r))),
+        Some(Err(e)) => Cv::V(e),
+        None => Cv::NULL,
     };
     shown_frame(c, "frame", out)
 }
 
 fn split_frame(c: &mut Call) -> Answer {
-    let out = |c: &mut Call, matrix: V, headers: V, mixed: bool| {
+    let out = |c: &mut Call, matrix: Cv, headers: Cv, mixed: bool| {
         c.show("cachedMatrix", matrix.clone());
         c.show("cachedHeaders", headers.clone());
         c.show("cachedMixed", V::Bool(mixed));
         Ok(vec![("matrix".into(), matrix), ("headers".into(), headers)])
     };
-    let Some(f) = frame_in(c, "frame") else { return out(c, V::Null, V::Null, false) };
+    let Some(f) = frame_in(c, "frame") else { return out(c, Cv::NULL, Cv::NULL, false) };
     let ty = c.field_str("colType", "all");
     let cols: Vec<Column> = f.columns.iter().filter(|col| ty == "all" || col.ty.as_str() == ty).cloned().collect();
     let headers = list(cols.iter().map(|col| V::str(&col.name)).collect());
@@ -828,7 +842,7 @@ fn split_frame(c: &mut Call) -> Answer {
                     .collect(),
             )
         };
-        return out(c, matrix, headers, false);
+        return out(c, Cv::V(matrix), Cv::V(headers), false);
     }
     let mixed = cols.iter().any(|col| col.ty == FrameColType::String);
     let sub = Frame { columns: cols, total_rows: None, approx: None };
@@ -836,7 +850,7 @@ fn split_frame(c: &mut Call) -> Answer {
         crate::frame_fns::FrameOut::Value(V::List(v)) => v.first().cloned().unwrap_or(V::Null),
         _ => V::Null,
     };
-    out(c, matrix, headers, mixed)
+    out(c, Cv::V(matrix), Cv::V(headers), mixed)
 }
 
 fn describe(c: &mut Call) -> Answer {
@@ -849,18 +863,18 @@ fn describe(c: &mut Call) -> Answer {
             let summary = from_core(&r);
             // No columns, no tiles: an empty array reads back as a list.
             let tiles = if f.columns.is_empty() {
-                V::List(Rc::new(Vec::new()))
+                Cv::V(V::List(Rc::new(Vec::new())))
             } else {
-                V::Json(Rc::new(describe_tiles(&f, &summary)))
+                Cv::Json(Rc::new(describe_tiles(&f, &summary)))
             };
             c.show("describeTiles", tiles);
-            V::Frame(Rc::new(summary))
+            Cv::Frame(Rc::new(summary))
         }
         Some(Err(e)) => {
             c.show("describeTiles", V::Undef);
-            e
+            Cv::V(e)
         }
-        None => V::Null,
+        None => Cv::NULL,
     };
     shown_frame(c, "frame", out)
 }
@@ -996,48 +1010,48 @@ fn corr_matrix(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "frame") else { return shown_frame(c, "frame", V::Null) };
     let method = V::str(c.field_str("method", "pearson"));
     let out = match frame_fn_frame("correlationMatrix", &f, &[method]) {
-        Some(Ok(r)) => V::Frame(Rc::new(from_core(&r))),
-        Some(Err(e)) => e,
-        None => V::Null,
+        Some(Ok(r)) => Cv::Frame(Rc::new(from_core(&r))),
+        Some(Err(e)) => Cv::V(e),
+        None => Cv::NULL,
     };
     shown_frame(c, "frame", out)
 }
 
 fn pca(c: &mut Call) -> Answer {
-    let out = |c: &mut Call, scores: V, loadings: V, explained: V| {
+    let out = |c: &mut Call, scores: Cv, loadings: Cv, explained: Cv| {
         c.show("cachedScores", scores.clone());
         c.show("cachedLoadings", loadings.clone());
         c.show("cachedExplained", explained.clone());
         Ok(vec![("scores".into(), scores), ("loadings".into(), loadings), ("explained".into(), explained)])
     };
-    let Some(f) = frame_in(c, "frame") else { return out(c, V::Null, V::Null, V::Null) };
+    let Some(f) = frame_in(c, "frame") else { return out(c, Cv::NULL, Cv::NULL, Cv::NULL) };
     if !f.columns.iter().any(|col| col.ty == FrameColType::Number) {
-        return out(c, err(ErrorCode::Value, "PCA needs at least one number column"), V::Null, V::Null);
+        return out(c, Cv::V(err(ErrorCode::Value, "PCA needs at least one number column")), Cv::NULL, Cv::NULL);
     }
     let standardize = c.field("standardize").and_then(Json::as_bool).unwrap_or(false);
     let r = match crate::frame_fns::call("pca", &[&to_core(&f)], &[V::Bool(standardize)]) {
         crate::frame_fns::FrameOut::Frame(r) => r,
-        _ => return out(c, V::Null, V::Null, V::Null),
+        _ => return out(c, Cv::NULL, Cv::NULL, Cv::NULL),
     };
     let mut cols = from_core(&r).columns;
     let d = (cols.len().saturating_sub(2)) / 2;
     let explained = list(cols.get(2 * d + 1).map(|col| col.values.clone()).unwrap_or_default());
     cols.truncate(2 * d + 1);
     let loadings = cols.split_off(d);
-    out(c, frame_v(cols), frame_v(loadings), explained)
+    out(c, frame_v(cols), frame_v(loadings), Cv::V(explained))
 }
 
 // ─── Group Cost Settle ──────────────────────────────────────────────────────────
 
-fn settle_shown(c: &mut Call, r: Result<(V, V), V>) -> Answer {
-    let (t, n) = r.unwrap_or_else(|e| (e.clone(), e));
+fn settle_shown(c: &mut Call, r: Result<(Cv, Cv), V>) -> Answer {
+    let (t, n) = r.unwrap_or_else(|e| (Cv::V(e.clone()), Cv::V(e)));
     c.show("cachedResult", t.clone());
     c.show("cachedNet", n.clone());
     Ok(vec![("transfers".into(), t), ("net".into(), n)])
 }
 
 /// The core's eight settle columns as the card's two frames, the money columns carrying `money`'s unit and format.
-fn settle_split(out: FrameValue, unit: Option<Json>, format: Option<Json>) -> Option<(V, V)> {
+fn settle_split(out: FrameValue, unit: Option<Json>, format: Option<Json>) -> Option<(Cv, Cv)> {
     if out.columns.len() != 8 {
         return None;
     }
@@ -1071,7 +1085,7 @@ fn cell_money(u: &crate::unit_dims::UnitCell) -> Json {
 
 /// A ledger's scalar cells on the core, a unit column crossing as its amounts. A row's list
 /// reads as the names it holds, and as no amount.
-fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
+fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(Cv, Cv), V> {
     let amount_names = ["amount", "cost", "total", "price", "spend"];
     let amount_col = cube.iter().position(|(n, _)| amount_names.contains(&settle_name_key(n).as_str()));
     let mut units: Vec<V> = Vec::new();
@@ -1088,7 +1102,6 @@ fn settle_ledger_card(cube: &[(String, Vec<V>)]) -> Result<(V, V), V> {
                     V::Unit(u) => FrameCell::Num(u.value),
                     V::List(_) if Some(j) == amount_col => FrameCell::Null,
                     V::List(items) => ledger_names(items),
-                    V::Frame(_) | V::Cube(_) => FrameCell::Null,
                     v => core_cell(v),
                 })
                 .collect();
@@ -1114,7 +1127,7 @@ fn ledger_names(items: &[V]) -> FrameCell {
                 FrameCell::Str(s) => out.push(s.to_string()),
                 other => return other,
             },
-            V::Null | V::Undef | V::Unit(_) | V::Frame(_) | V::Cube(_) => {}
+            V::Null | V::Undef | V::Unit(_) => {}
             V::Err(_) | V::Bool(_) => return core_cell(v),
             v => out.push(crate::excel_functions::js_string_of(v)),
         }
@@ -1123,31 +1136,35 @@ fn ledger_names(items: &[V]) -> FrameCell {
 }
 
 fn settle(c: &mut Call) -> Answer {
-    let raw = first(c, "in");
+    let raw = card(c, "in");
     let split = c.field_str("split", "equal");
     if c.field_str("mode", "totals") == "transactions" {
         let cube: Vec<(String, Vec<V>)> = match &raw {
-            V::Cube(k) => k.columns.iter().map(|col| (col.name.clone(), col.cells.clone())).collect(),
+            Cv::Cube(k) => k.columns.iter().map(|col| (col.name.clone(), cube_values(&col.cells))).collect(),
             // A unit column's numbers become unit cells.
-            V::Frame(f) => f.columns.iter().map(|col| (col.name.clone(), frame_cube_cells(col))).collect(),
-            _ => return settle_shown(c, Ok((V::Null, V::Null))),
+            Cv::Frame(f) => f.columns.iter().map(|col| (col.name.clone(), frame_cube_cells(col))).collect(),
+            _ => return settle_shown(c, Ok((Cv::NULL, Cv::NULL))),
         };
         let r = settle_ledger_card(&cube);
         return settle_shown(c, r);
     }
     let f = match &raw {
-        V::Frame(f) => (**f).clone(),
-        V::Cube(k) => Frame {
+        Cv::Frame(f) => (**f).clone(),
+        Cv::Cube(k) => Frame {
             columns: k
                 .columns
                 .iter()
-                .filter(|col| col.cells.iter().all(|v| !matches!(v, V::List(_) | V::Frame(_) | V::Cube(_))))
-                .map(|col| super::list::infer_column(&col.name, &col.cells))
+                .filter(|col| {
+                    col.cells
+                        .iter()
+                        .all(|v| !matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_)))
+                })
+                .map(|col| super::list::infer_column(&col.name, &cube_values(&col.cells)))
                 .collect(),
             total_rows: None,
             approx: None,
         },
-        _ => return settle_shown(c, Ok((V::Null, V::Null))),
+        _ => return settle_shown(c, Ok((Cv::NULL, Cv::NULL))),
     };
     let by_name = |names: &[&str]| f.columns.iter().find(|col| names.contains(&settle_name_key(&col.name).as_str()));
     let share = by_name(&["share", "weight", "shares"]);
@@ -1191,7 +1208,7 @@ fn decision_sensitivity_cube(
     scores: &FrameValue,
     scen: &FrameValue,
     normalize: crate::decision::Normalize,
-) -> Result<V, SolError> {
+) -> Result<Cv, SolError> {
     use crate::decision::{
         bounds_from, crit_key, criteria_names, criterion_row_index, decision_screen, norm_overrides, num_or_null,
         rank_options, round4, weight_columns, Resolved,
@@ -1260,13 +1277,14 @@ fn decision_sensitivity_cube(
             (Some(a), Some(b)) => V::Num(round4(a - b)),
             _ => V::Null,
         });
-        rankings.push(V::Frame(Rc::new(from_core(&ranking))));
+        rankings.push(Cv::Frame(Rc::new(from_core(&ranking))));
     }
-    let col = |name: &str, cells: Vec<V>| CubeColumn { name: name.into(), cells, ty: None, format: None };
+    let col = |name: &str, cells: Vec<Cv>| CubeColumn { name: name.into(), cells, ty: None, format: None };
+    let values = |vs: Vec<V>| vs.into_iter().map(Cv::V).collect();
     Ok(cube_from_columns(vec![
-        col("Scenario", names),
-        col("Winner", winners),
-        col("Margin", margins),
+        col("Scenario", values(names)),
+        col("Winner", values(winners)),
+        col("Margin", values(margins)),
         col("Ranking", rankings),
     ]))
 }
@@ -1276,22 +1294,22 @@ fn decision_sensitivity(c: &mut Call) -> Answer {
     let scen = frame_in(c, "scenarios");
     let flips = c.field_str("mode", "scenarios") == "flips";
     let out = match (scores, scen) {
-        (None, _) => V::Null,
-        (Some(_), None) if !flips => V::Null,
+        (None, _) => Cv::NULL,
+        (Some(_), None) if !flips => Cv::NULL,
         (Some(s), w) => {
             let s = to_core(&s);
             let w = w.map(|w| to_core(&w));
             let r = if flips {
                 let frames: Vec<&FrameValue> = std::iter::once(&s).chain(w.as_ref()).collect();
                 match crate::frame_fns::call("flipPoints", &frames, &[V::str(c.field_str("normalize", "max"))]) {
-                    crate::frame_fns::FrameOut::Frame(r) => Ok(V::Frame(Rc::new(from_core(&r)))),
+                    crate::frame_fns::FrameOut::Frame(r) => Ok(Cv::Frame(Rc::new(from_core(&r)))),
                     crate::frame_fns::FrameOut::Error(e) => Err(e),
-                    _ => Ok(V::Null),
+                    _ => Ok(Cv::NULL),
                 }
             } else {
                 decision_sensitivity_cube(&s, w.as_ref().unwrap_or(&s), normalize_of(c))
             };
-            r.unwrap_or_else(V::err)
+            r.unwrap_or_else(|e| Cv::V(V::err(e)))
         }
     };
     shown_frame(c, "cube", out)
@@ -1369,8 +1387,8 @@ pub(crate) fn tag_cube_cell_unit(v: &V, unit: &Json) -> V {
 
 // ─── Cubes ──────────────────────────────────────────────────────────────────────
 
-pub(crate) fn cube_v(columns: Vec<CubeColumn>) -> V {
-    V::Cube(Rc::new(Cube { columns }))
+pub(crate) fn cube_v(columns: Vec<CubeColumn>) -> Cv {
+    Cv::Cube(Rc::new(Cube { columns }))
 }
 
 pub(crate) fn cube_row_count(c: &Cube) -> usize {
@@ -1378,18 +1396,18 @@ pub(crate) fn cube_row_count(c: &Cube) -> usize {
 }
 
 /// The names made unique as `make_headers` makes them.
-pub(crate) fn cube_from_columns(cols: Vec<CubeColumn>) -> V {
+pub(crate) fn cube_from_columns(cols: Vec<CubeColumn>) -> Cv {
     let names: Vec<String> = cols.iter().map(|c| c.name.clone()).collect();
     let names = crate::frame::make_headers(&names, cols.len());
     cube_v(cols.into_iter().zip(names).map(|(c, name)| CubeColumn { name, ..c }).collect())
 }
 
-pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> V {
+pub(crate) fn select_cube_rows(cube: &Cube, rows: &[usize]) -> Cv {
     cube_v(
         cube.columns
             .iter()
             .map(|c| CubeColumn {
-                cells: rows.iter().map(|&i| c.cells.get(i).cloned().unwrap_or(V::Null)).collect(),
+                cells: rows.iter().map(|&i| c.cells.get(i).cloned().unwrap_or(Cv::NULL)).collect(),
                 ..c.clone()
             })
             .collect(),
@@ -1428,11 +1446,11 @@ pub(crate) fn widen_to_frame(v: &V) -> Frame {
 
 /// Add Column on a Cube: a Cube carries its unit on its cells, so `unit` tags each number, list items
 /// included, and a replaced column keeps its place and format.
-fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, unit: Option<&Json>) -> V {
+fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, unit: Option<&Json>) -> Cv {
     let (clean, _) = parse_column_unit_from_header(name);
-    let cells = match unit {
-        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
-        _ => cells,
+    let cells: Vec<Cv> = match unit {
+        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| Cv::V(tag_cube_cell_unit(v, u))).collect(),
+        _ => cells.into_iter().map(Cv::V).collect(),
     };
     let col = CubeColumn { name: clean.clone(), cells, ty: Some(ty), format: None };
     let mut cols = cube.columns.clone();
@@ -1447,10 +1465,10 @@ fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, un
 }
 
 fn add_column(c: &mut Call) -> Answer {
-    let raw = first(c, "frame");
+    let raw = card(c, "frame");
     let values = first(c, "values");
     let name_raw = str_input(c, "name", "");
-    let blank = matches!(raw, V::Null) || super::stats::falsy(&values) || matches!(name_raw, V::Null);
+    let blank = matches!(raw, Cv::V(V::Null)) || super::stats::falsy(&values) || matches!(name_raw, V::Null);
     if blank {
         return shown_frame(c, "frame", V::Null);
     }
@@ -1461,7 +1479,7 @@ fn add_column(c: &mut Call) -> Answer {
         t => t.parse().map_err(|_| err(ErrorCode::Value, format!("Add Column can't add a column as \"{t}\"")))?,
     };
     let values = super::stats::items(&values).to_vec();
-    if let V::Cube(cube) = &raw {
+    if let Cv::Cube(cube) = &raw {
         let rows = cube_row_count(cube).max(values.len());
         let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
         let unit = parse_column_unit_from_header(&name).1;
@@ -1469,8 +1487,9 @@ fn add_column(c: &mut Call) -> Answer {
         return shown_frame(c, "frame", out);
     }
     let f = match &raw {
-        V::Frame(f) => (**f).clone(),
-        other => widen_to_frame(other),
+        Cv::Frame(f) => (**f).clone(),
+        Cv::V(other) => widen_to_frame(other),
+        _ => widen_to_frame(&V::Null),
     };
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
     let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
@@ -1504,25 +1523,26 @@ fn add_column(c: &mut Call) -> Answer {
 }
 
 fn get_row(c: &mut Call) -> Answer {
-    let raw = first(c, "frame");
+    let raw = card(c, "frame");
     let idx = read_role(c, "index", Role::Required);
     if idx.is_sol_error() {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("frame".into(), idx)]);
+        return Ok(vec![("frame".into(), Cv::from(idx))]);
     }
-    if matches!(raw, V::Null) {
+    if matches!(raw, Cv::V(V::Null)) {
         return shown_frame(c, "frame", V::Null);
     }
     let i = math_round(super::kit::num(&idx)) - 1.0;
-    if let V::Cube(cube) = &raw {
+    if let Cv::Cube(cube) = &raw {
         if i < 0.0 || i >= cube_row_count(cube) as f64 {
             return shown_frame(c, "frame", V::Null);
         }
         return shown_frame(c, "frame", select_cube_rows(cube, &[if i.is_nan() { usize::MAX } else { i as usize }]));
     }
     let f = match &raw {
-        V::Frame(f) => (**f).clone(),
-        other => widen_to_frame(other),
+        Cv::Frame(f) => (**f).clone(),
+        Cv::V(other) => widen_to_frame(other),
+        _ => widen_to_frame(&V::Null),
     };
     if i < 0.0 || i >= f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0) as f64 {
         return shown_frame(c, "frame", V::Null);
@@ -1602,8 +1622,9 @@ fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str
         return Err(err(ErrorCode::Ref, format!("column \"{in_col}\" not found")));
     };
     let rows = cube_row_count(cube);
-    let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key.cells));
-    let cells: Vec<V> = (0..rows).map(|i| key.cells.get(i).cloned().unwrap_or(V::Undef)).collect();
+    let key_cells = cube_values(&key.cells);
+    let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key_cells));
+    let cells: Vec<V> = (0..rows).map(|i| key_cells.get(i).cloned().unwrap_or(V::Undef)).collect();
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
     let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
     match crate::frame_fns::call("lookupRowIndex", &[&f], &[V::str(in_col), V::str(lookup), V::str(mm), V::str(sm)]) {
@@ -1622,8 +1643,8 @@ pub fn frame_to_cube(f: &Frame) -> Cube {
             .map(|col| CubeColumn {
                 name: col.name.clone(),
                 cells: match &col.unit {
-                    Some(u) => col.values.iter().map(|v| tag_cell_unit(v, u)).collect(),
-                    None => col.values.clone(),
+                    Some(u) => col.values.iter().map(|v| Cv::V(tag_cell_unit(v, u))).collect(),
+                    None => col.values.iter().cloned().map(Cv::V).collect(),
                 },
                 ty: Some(col.ty),
                 format: col.format.clone(),
@@ -1685,7 +1706,7 @@ fn lookup_on_core(
 }
 
 /// The row as a one-row frame, its columns' units and formats kept.
-fn frame_row_at(f: &Frame, i: usize) -> V {
+fn frame_row_at(f: &Frame, i: usize) -> Cv {
     frame_v(
         f.columns
             .iter()
@@ -1694,17 +1715,17 @@ fn frame_row_at(f: &Frame, i: usize) -> V {
     )
 }
 
-fn cube_row_at(c: &Cube, i: usize) -> V {
+fn cube_row_at(c: &Cube, i: usize) -> Cv {
     cube_from_columns(
         c.columns
             .iter()
-            .map(|col| CubeColumn { cells: vec![col.cells.get(i).cloned().unwrap_or(V::Null)], ..col.clone() })
+            .map(|col| CubeColumn { cells: vec![col.cells.get(i).cloned().unwrap_or(Cv::NULL)], ..col.clone() })
             .collect(),
     )
 }
 
 fn xlookup(c: &mut Call) -> Answer {
-    let raw = first(c, "frame");
+    let raw = card(c, "frame");
     let [lookup_raw, in_raw, ret_raw, fb_raw] =
         ["lookup", "inColumn", "returnColumn", "ifNotFound"].map(|k| str_input(c, k, ""));
     if [&lookup_raw, &in_raw, &ret_raw, &fb_raw].iter().any(|v| matches!(v, V::Null)) {
@@ -1716,12 +1737,12 @@ fn xlookup(c: &mut Call) -> Answer {
         V::List(_) => false,
         other => trimmed(other, "lookupRaw")?.is_empty(),
     };
-    if matches!(raw, V::Null) || in_col.is_empty() || ret_col.is_empty() || scalar_blank {
+    if matches!(raw, Cv::V(V::Null)) || in_col.is_empty() || ret_col.is_empty() || scalar_blank {
         return shown_value(c, V::Null);
     }
     let tabular = match &raw {
-        V::Frame(_) | V::Cube(_) => true,
-        V::List(l) => matches!(l.first(), Some(V::List(_))),
+        Cv::Frame(_) | Cv::Cube(_) => true,
+        Cv::V(V::List(l)) => matches!(l.first(), Some(V::List(_))),
         _ => false,
     };
     if !tabular {
@@ -1731,12 +1752,13 @@ fn xlookup(c: &mut Call) -> Answer {
         );
     }
     let src_frame: Option<Frame> = match &raw {
-        V::Cube(_) => None,
-        V::Frame(f) => Some((**f).clone()),
-        other => Some(widen_to_frame(other)),
+        Cv::Cube(_) => None,
+        Cv::Frame(f) => Some((**f).clone()),
+        Cv::V(other) => Some(widen_to_frame(other)),
+        _ => None,
     };
     let src_cube: Cube = match (&raw, &src_frame) {
-        (V::Cube(cube), _) => (**cube).clone(),
+        (Cv::Cube(cube), _) => (**cube).clone(),
         (_, Some(f)) => frame_to_cube(f),
         _ => Cube::default(),
     };
@@ -1750,7 +1772,7 @@ fn xlookup(c: &mut Call) -> Answer {
             js_trim(&crate::excel_functions::js_string_of(v)).to_string()
         }
     };
-    let result = (|| -> Result<V, V> {
+    let result = (|| -> Result<Cv, V> {
         let raws: Vec<V> = match &lookup_raw {
             V::List(l) => l.to_vec(),
             other => vec![other.clone()],
@@ -1761,10 +1783,10 @@ fn xlookup(c: &mut Call) -> Answer {
             None => None,
         };
         let mut k = 0;
-        let mut match_one = |v: &V| -> Result<V, V> {
+        let mut match_one = |v: &V| -> Result<Cv, V> {
             let lookup = as_text(v);
             if lookup.is_empty() {
-                return Ok(V::Null);
+                return Ok(Cv::NULL);
             }
             let hit = found.as_ref().map(|f| f.get(k).cloned().unwrap_or(V::Undef));
             k += 1;
@@ -1784,13 +1806,13 @@ fn xlookup(c: &mut Call) -> Answer {
             } else {
                 match hit {
                     Some(V::Undef) => None,
-                    Some(h) => Some(h),
+                    Some(h) => Some(Cv::V(h)),
                     None => {
                         let idx = cube_lookup_index(&src_cube, &in_col, &lookup, &mm, &sm)?;
                         let Some(ret) = src_cube.columns.iter().find(|k| k.name == ret_col) else {
                             return Err(err(ErrorCode::Ref, format!("column \"{ret_col}\" not found")));
                         };
-                        (idx >= 0).then(|| ret.cells.get(idx as usize).cloned().unwrap_or(V::Null))
+                        (idx >= 0).then(|| ret.cells.get(idx as usize).cloned().unwrap_or(Cv::NULL))
                     }
                 }
             };
@@ -1798,20 +1820,21 @@ fn xlookup(c: &mut Call) -> Answer {
                 return Ok(cell);
             }
             if fb.is_empty() {
-                return Ok(err(ErrorCode::NotAvailable, "No row matched the lookup value"));
+                return Ok(Cv::V(err(ErrorCode::NotAvailable, "No row matched the lookup value")));
             }
             let n = crate::jsnum::string_to_number(&fb);
-            Ok(if n.is_nan() { V::str(&fb) } else { V::Num(n) })
+            Ok(Cv::V(if n.is_nan() { V::str(&fb) } else { V::Num(n) }))
         };
         match &lookup_raw {
-            V::List(l) => l.iter().map(&mut match_one).collect::<Result<Vec<_>, _>>().map(list),
+            V::List(l) => l.iter().map(&mut match_one).collect::<Result<Vec<_>, _>>().map(Cv::list),
             other => match_one(other),
         }
     })();
-    shown_value(c, result.unwrap_or_else(|e| e))
+    shown_value(c, result.unwrap_or_else(Cv::V))
 }
 
-fn shown_value(c: &mut Call, v: V) -> Answer {
+fn shown_value(c: &mut Call, v: impl Into<Cv>) -> Answer {
+    let v: Cv = v.into();
     c.show("cachedResult", v.clone());
     Ok(vec![("value".into(), v)])
 }
@@ -1832,7 +1855,7 @@ fn column_list(c: &Call, key: &str) -> Option<Vec<String>> {
 }
 
 /// A row per distinct key, the other columns as a nested table in it.
-fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<V, V> {
+fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<Cv, V> {
     use crate::frame_fns::FrameOut;
     let args = [list(keys.iter().map(|k| V::str(k)).collect()), V::str(name)];
     let (names, groups) = match crate::frame_fns::call("nestGroups", &[&to_core(f)], &args) {
@@ -1858,7 +1881,7 @@ fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<V, V> {
             let col = f.columns.iter().find(|c| &c.name == key).expect("the core found it");
             CubeColumn {
                 name: names[k].clone(),
-                cells: groups.iter().map(|g| cell(col, g[0])).collect(),
+                cells: groups.iter().map(|g| Cv::V(cell(col, g[0]))).collect(),
                 ty: Some(col.ty),
                 format: col.format.clone(),
             }
@@ -1890,11 +1913,12 @@ fn nest(c: &mut Call) -> Answer {
     }
     let name = trimmed(&name_raw, "nameRaw")?;
     let name = if name.is_empty() { "items".to_string() } else { name };
-    let out = nest_frame(&f, &keys, &name).unwrap_or_else(|e| e);
+    let out = nest_frame(&f, &keys, &name).unwrap_or_else(Cv::V);
     shown_cube(c, out)
 }
 
-fn shown_cube(c: &mut Call, v: V) -> Answer {
+fn shown_cube(c: &mut Call, v: impl Into<Cv>) -> Answer {
+    let v: Cv = v.into();
     c.show("cachedResult", v.clone());
     Ok(vec![("cube".into(), v)])
 }
@@ -1909,7 +1933,7 @@ fn inferred(name: &str, cells: &[V], format: Option<Json>) -> Column {
 }
 
 /// Each nested row (a list's items, a table's or a Cube's rows) under a copy of its parent row.
-fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
+fn unnest_cube(c: &Cube, nested_name: &str) -> Result<Cv, V> {
     let Some(at) = c.columns.iter().position(|col| col.name == nested_name) else {
         return Err(err(ErrorCode::Ref, format!("column \"{nested_name}\" not found")));
     };
@@ -1918,9 +1942,9 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
     let (mut saw_list, mut saw_frame, mut saw_cube) = (false, false, false);
     for cell in &nested.cells {
         match cell {
-            V::List(l) => saw_list |= !l.is_empty(),
-            V::Frame(_) => saw_frame = true,
-            V::Cube(_) => saw_cube = true,
+            Cv::V(V::List(l)) => saw_list |= !l.is_empty(),
+            Cv::Frame(_) => saw_frame = true,
+            Cv::Cube(_) => saw_cube = true,
             _ => {}
         }
     }
@@ -1928,20 +1952,22 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
         return Err(err(ErrorCode::Type, "nested cells must all be lists, all tables, or all cubes"));
     }
     if !saw_list && !saw_frame && !saw_cube {
-        saw_list = nested.cells.iter().any(|v| matches!(v, V::List(_)));
+        saw_list = nested.cells.iter().any(|v| matches!(v, Cv::V(V::List(_))));
     }
     let rows = cube_row_count(c);
-    let at_cell = |col: &CubeColumn, i: usize| col.cells.get(i).cloned().unwrap_or(V::Null);
+    let at_cell = |col: &CubeColumn, i: usize| col.cells.get(i).cloned().unwrap_or(Cv::NULL);
+    // A frame's cell: a table among the parent's cells is blank there.
+    let at_value = |col: &CubeColumn, i: usize| at_cell(col, i).v().cloned().unwrap_or(V::Null);
     if saw_list {
         let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
         let mut exploded = Vec::new();
         for i in 0..rows {
             let items = match nested.cells.get(i) {
-                Some(V::List(l)) => l.to_vec(),
+                Some(Cv::V(V::List(l))) => l.to_vec(),
                 _ => Vec::new(),
             };
             let push_parent =
-                |vals: &mut Vec<Vec<V>>| flat.iter().enumerate().for_each(|(k, fc)| vals[k].push(at_cell(fc, i)));
+                |vals: &mut Vec<Vec<V>>| flat.iter().enumerate().for_each(|(k, fc)| vals[k].push(at_value(fc, i)));
             if items.is_empty() {
                 push_parent(&mut flat_vals);
                 exploded.push(V::Null);
@@ -1961,17 +1987,17 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
         let schema: Vec<CubeColumn> = nested
             .cells
             .iter()
-            .find_map(|v| if let V::Cube(k) = v { Some(k.columns.clone()) } else { None })
+            .find_map(|v| if let Cv::Cube(k) = v { Some(k.columns.clone()) } else { None })
             .unwrap_or_default();
-        let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
-        let mut child_vals: Vec<Vec<V>> = vec![Vec::new(); schema.len()];
+        let mut flat_vals: Vec<Vec<Cv>> = vec![Vec::new(); flat.len()];
+        let mut child_vals: Vec<Vec<Cv>> = vec![Vec::new(); schema.len()];
         for i in 0..rows {
-            let Some(V::Cube(child)) = nested.cells.get(i) else { continue };
+            let Some(Cv::Cube(child)) = nested.cells.get(i) else { continue };
             for r in 0..cube_row_count(child) {
                 flat.iter().enumerate().for_each(|(k, fc)| flat_vals[k].push(at_cell(fc, i)));
                 for (k, cc) in schema.iter().enumerate() {
                     child_vals[k]
-                        .push(child.columns.iter().find(|x| x.name == cc.name).map_or(V::Null, |col| at_cell(col, r)));
+                        .push(child.columns.iter().find(|x| x.name == cc.name).map_or(Cv::NULL, |col| at_cell(col, r)));
                 }
             }
         }
@@ -1999,14 +2025,14 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
     let schema: Vec<Column> = nested
         .cells
         .iter()
-        .find_map(|v| if let V::Frame(f) = v { Some(f.columns.clone()) } else { None })
+        .find_map(|v| if let Cv::Frame(f) = v { Some(f.columns.clone()) } else { None })
         .unwrap_or_default();
     let mut flat_vals: Vec<Vec<V>> = vec![Vec::new(); flat.len()];
     let mut child_vals: Vec<Vec<V>> = vec![Vec::new(); schema.len()];
     for i in 0..rows {
-        let Some(V::Frame(child)) = nested.cells.get(i) else { continue };
+        let Some(Cv::Frame(child)) = nested.cells.get(i) else { continue };
         for r in 0..child.columns.iter().map(|col| col.values.len()).max().unwrap_or(0) {
-            flat.iter().enumerate().for_each(|(k, fc)| flat_vals[k].push(at_cell(fc, i)));
+            flat.iter().enumerate().for_each(|(k, fc)| flat_vals[k].push(at_value(fc, i)));
             for (k, cc) in schema.iter().enumerate() {
                 child_vals[k].push(
                     child
@@ -2035,8 +2061,8 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
 }
 
 fn unnest(c: &mut Call) -> Answer {
-    let cube = match first(c, "cube") {
-        V::Cube(k) => Some(k),
+    let cube = match card(c, "cube") {
+        Cv::Cube(k) => Some(k),
         _ => None,
     };
     let col_raw = str_input(c, "column", "");
@@ -2045,7 +2071,7 @@ fn unnest(c: &mut Call) -> Answer {
     if col.is_empty() {
         return shown_frame(c, "frame", V::Null);
     }
-    let out = unnest_cube(&cube, &col).unwrap_or_else(|e| e);
+    let out = unnest_cube(&cube, &col).unwrap_or_else(Cv::V);
     shown_frame(c, "frame", out)
 }
 
@@ -2063,14 +2089,14 @@ fn literal_cell(c: &Call, key: &str) -> V {
 }
 
 /// Each value input's cell, by its key's prefix in the card's order: the cable's value, else the literal.
-fn value_cells(c: &Call, prefix: char) -> Vec<V> {
+fn value_cells(c: &Call, prefix: char) -> Vec<Cv> {
     c.sockets
         .iter()
         .map(|s| s.key.as_str())
         .filter(|k| k.starts_with(prefix))
-        .map(|k| match c.wired(k) {
+        .map(|k| match c.wired_card(k) {
             Some([v, ..]) => v.clone(),
-            _ => literal_cell(c, k),
+            _ => Cv::V(literal_cell(c, k)),
         })
         .collect()
 }
@@ -2088,11 +2114,12 @@ fn build_cube(c: &mut Call) -> Answer {
 }
 
 /// A Cube's first column, a table as one cell, a list's items, a value as one cell.
-fn cube_column_from_value(v: &V) -> Vec<V> {
+fn cube_column_from_value(v: &Cv) -> Vec<Cv> {
     match v {
-        V::Null | V::Undef => Vec::new(),
-        V::Cube(k) => k.columns.first().map(|col| col.cells.clone()).unwrap_or_default(),
-        V::List(l) => l.to_vec(),
+        Cv::V(V::Null | V::Undef) => Vec::new(),
+        Cv::Cube(k) => k.columns.first().map(|col| col.cells.clone()).unwrap_or_default(),
+        Cv::V(V::List(l)) => l.iter().cloned().map(Cv::V).collect(),
+        Cv::Cells(l) => l.to_vec(),
         other => vec![other.clone()],
     }
 }
@@ -2124,7 +2151,7 @@ fn cube_columns(c: &mut Call) -> Answer {
         .map(|(name, cells)| CubeColumn {
             name,
             cells: (0..max)
-                .map(|r| cells.get(r).filter(|v| !matches!(v, V::Undef)).cloned().unwrap_or(V::Null))
+                .map(|r| cells.get(r).filter(|v| !matches!(v, Cv::V(V::Undef))).cloned().unwrap_or(Cv::NULL))
                 .collect(),
             ty: None,
             format: None,
@@ -2193,7 +2220,7 @@ fn cell_key_id(v: &V, unit: Option<&Json>) -> Option<String> {
 }
 
 /// The rows picked, their typed text kept.
-fn sub_frame(f: &Frame, rows: &[usize]) -> V {
+fn sub_frame(f: &Frame, rows: &[usize]) -> Cv {
     frame_v(
         f.columns
             .iter()
@@ -2216,11 +2243,11 @@ fn sub_frame(f: &Frame, rows: &[usize]) -> V {
 }
 
 /// Each parent row with the child rows sharing its key as a nested table.
-fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Option<V> {
+fn relate_frames(parent: &Frame, child: &Cv, key: &str, nested_name: &str) -> Option<Cv> {
     let p_key = card_column(parent, key)?;
     let (c_cells, c_unit, c_rows): (Vec<V>, Option<Json>, usize) = match child {
-        V::Cube(k) => (k.columns.iter().find(|c| c.name == key)?.cells.clone(), None, cube_row_count(k)),
-        V::Frame(f) => {
+        Cv::Cube(k) => (cube_values(&k.columns.iter().find(|c| c.name == key)?.cells), None, cube_row_count(k)),
+        Cv::Frame(f) => {
             let col = card_column(f, key)?;
             (col.values.clone(), col.unit.clone(), f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0))
         }
@@ -2245,10 +2272,10 @@ fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Opt
             let cells = (0..p_rows)
                 .map(|i| {
                     let v = c.values.get(i).cloned().unwrap_or(V::Null);
-                    match &c.unit {
+                    Cv::V(match &c.unit {
                         Some(u) => tag_cell_unit(&v, u),
                         None => v,
-                    }
+                    })
                 })
                 .collect();
             CubeColumn { name: names[j].clone(), cells, ty: Some(c.ty), format: None }
@@ -2259,9 +2286,9 @@ fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Opt
             let id = key_id_in_column(p_key.values.get(i).unwrap_or(&V::Null), p_key.unit.as_ref());
             let rows = by_key.get(&id).cloned().unwrap_or_default();
             match child {
-                V::Cube(k) => select_cube_rows(k, &rows),
-                V::Frame(f) => sub_frame(f, &rows),
-                _ => V::Null,
+                Cv::Cube(k) => select_cube_rows(k, &rows),
+                Cv::Frame(f) => sub_frame(f, &rows),
+                _ => Cv::NULL,
             }
         })
         .collect();
@@ -2270,17 +2297,17 @@ fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Opt
 }
 
 /// The join made inside the Cube's first nested column, at whatever depth.
-fn relate_cube(parent: &Cube, child: &V, key: &str, nested_name: &str) -> V {
-    let Some(at) = parent.columns.iter().position(|c| c.cells.iter().any(|v| matches!(v, V::Frame(_) | V::Cube(_))))
+fn relate_cube(parent: &Cube, child: &Cv, key: &str, nested_name: &str) -> Cv {
+    let Some(at) = parent.columns.iter().position(|c| c.cells.iter().any(|v| matches!(v, Cv::Frame(_) | Cv::Cube(_))))
     else {
-        return V::Cube(Rc::new(parent.clone()));
+        return Cv::Cube(Rc::new(parent.clone()));
     };
     let cells = parent.columns[at]
         .cells
         .iter()
         .map(|cell| match cell {
-            V::Cube(k) => relate_cube(k, child, key, nested_name),
-            V::Frame(f) => relate_frames(f, child, key, nested_name).unwrap_or_else(|| cell.clone()),
+            Cv::Cube(k) => relate_cube(k, child, key, nested_name),
+            Cv::Frame(f) => relate_frames(f, child, key, nested_name).unwrap_or_else(|| cell.clone()),
             other => other.clone(),
         })
         .collect();
@@ -2290,11 +2317,11 @@ fn relate_cube(parent: &Cube, child: &V, key: &str, nested_name: &str) -> V {
 }
 
 fn nest_join(c: &mut Call) -> Answer {
-    let parent = first(c, "parent");
-    let child = match first(c, "child") {
-        V::Null => None,
-        v @ (V::Cube(_) | V::Frame(_)) => Some(v),
-        other => Some(V::Frame(Rc::new(widen_to_frame(&other)))),
+    let parent = card(c, "parent");
+    let child = match card(c, "child") {
+        Cv::V(V::Null) => None,
+        v @ (Cv::Cube(_) | Cv::Frame(_)) => Some(v),
+        other => Some(Cv::Frame(Rc::new(widen_to_frame(&c.value_of("child", &other))))),
     };
     let key_raw = str_input(c, "key", "");
     let name_raw = str_input(c, "name", "");
@@ -2305,10 +2332,11 @@ fn nest_join(c: &mut Call) -> Answer {
     let name = trimmed(&name_raw, "nameRaw")?;
     let Some(child) = child.filter(|_| !key.is_empty()) else { return shown_cube(c, V::Null) };
     let out = match &parent {
-        V::Cube(k) => relate_cube(k, &child, &key, &name),
-        V::Frame(f) => relate_frames(f, &child, &key, &name).unwrap_or(V::Null),
-        V::Null => V::Null,
-        _ => err(ErrorCode::Type, "Nest Join parent must be a Frame or a Cube"),
+        Cv::Cube(k) => relate_cube(k, &child, &key, &name),
+        Cv::Frame(f) => relate_frames(f, &child, &key, &name).unwrap_or(Cv::NULL),
+
+        Cv::V(V::Null) => Cv::NULL,
+        _ => Cv::V(err(ErrorCode::Type, "Nest Join parent must be a Frame or a Cube")),
     };
     shown_cube(c, out)
 }
@@ -2366,8 +2394,8 @@ fn text_column(name: &str, cells: &[V]) -> Column {
 type Nested = (Vec<V>, Option<FrameColType>, Option<Json>);
 
 fn cube_rollup(c: &mut Call) -> Answer {
-    let Some(cube) = (match first(c, "cube") {
-        V::Cube(k) => Some(k),
+    let Some(cube) = (match card(c, "cube") {
+        Cv::Cube(k) => Some(k),
         _ => None,
     }) else {
         return shown_frame(c, "frame", V::Null);
@@ -2398,20 +2426,21 @@ fn cube_rollup(c: &mut Call) -> Answer {
     let mut text_rolled = false;
     for i in 0..rows {
         for (k, fc) in flat.iter().enumerate() {
-            flat_vals[k].push(fc.cells.get(i).cloned().unwrap_or(V::Null));
+            flat_vals[k].push(fc.cells.get(i).and_then(Cv::v).cloned().unwrap_or(V::Null));
         }
         let read: Option<Result<Nested, V>> = match nested.cells.get(i) {
-            Some(V::Frame(f)) => Some(match f.columns.iter().find(|k| k.name == col) {
+            Some(Cv::Frame(f)) => Some(match f.columns.iter().find(|k| k.name == col) {
                 None => Err(err(ErrorCode::Ref, format!("column \"{col}\" not found in nested frame"))),
                 Some(fc) => Ok((fc.values.clone(), Some(fc.ty), fc.unit.clone())),
             }),
-            Some(V::Cube(k)) => Some(match k.columns.iter().find(|x| x.name == col) {
+            Some(Cv::Cube(k)) => Some(match k.columns.iter().find(|x| x.name == col) {
                 None => Err(err(ErrorCode::Ref, format!("column \"{col}\" not found in nested cube"))),
-                Some(cc) if cc.cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_))) => {
+                Some(cc) if cc.cells.iter().any(|v| matches!(v, Cv::Cube(_) | Cv::Frame(_) | Cv::V(V::List(_)))) => {
                     Err(err(ErrorCode::Shape, format!("column \"{col}\" holds nested cells; roll up a flat column")))
                 }
                 Some(cc) => {
-                    let (mags, unit) = matrix_cells_from_list(&cc.cells);
+                    let (mags, unit) = matrix_cells_from_list(&cube_values(&cc.cells));
+
                     Ok(match &cc.ty {
                         Some(t) => (mags, Some(*t), unit),
                         None => {
@@ -2561,27 +2590,31 @@ fn rank_options(
 
 /// A ranked table, the input row behind each of its rows, and where its Score and Rank columns sit.
 struct Ranked {
-    table: V,
+    table: Cv,
     at: Vec<usize>,
     score_at: usize,
     rank_at: usize,
 }
 
-type Best = Option<(V, f64)>;
+type Best = Option<(Cv, f64)>;
 
-fn table_rows(t: &V) -> usize {
+fn table_rows(t: &Cv) -> usize {
     match t {
-        V::Frame(f) => f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0),
-        V::Cube(k) => cube_row_count(k),
+        Cv::Frame(f) => f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0),
+        Cv::Cube(k) => cube_row_count(k),
         _ => 0,
     }
 }
 
 /// A table's columns as name, type and cells, whichever kind it is.
-fn table_columns(t: &V) -> Vec<(String, Option<FrameColType>, Vec<V>)> {
+fn table_columns(t: &Cv) -> Vec<(String, Option<FrameColType>, Vec<Cv>)> {
     match t {
-        V::Frame(f) => f.columns.iter().map(|c| (c.name.clone(), Some(c.ty), c.values.clone())).collect(),
-        V::Cube(k) => k.columns.iter().map(|c| (c.name.clone(), c.ty, c.cells.clone())).collect(),
+        Cv::Frame(f) => f
+            .columns
+            .iter()
+            .map(|c| (c.name.clone(), Some(c.ty), c.values.iter().cloned().map(Cv::V).collect()))
+            .collect(),
+        Cv::Cube(k) => k.columns.iter().map(|c| (c.name.clone(), c.ty, c.cells.clone())).collect(),
         _ => Vec::new(),
     }
 }
@@ -2589,22 +2622,26 @@ fn table_columns(t: &V) -> Vec<(String, Option<FrameColType>, Vec<V>)> {
 /// The Cube's flat columns as a frame, cells in one unit read in it.
 fn flat_cube_scalar(c: &Cube) -> FrameValue {
     let rows = cube_row_count(c);
-    let nested = |col: &CubeColumn| col.cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_)));
+    let nested =
+        |col: &CubeColumn| col.cells.iter().any(|v| matches!(v, Cv::Cube(_) | Cv::Frame(_) | Cv::V(V::List(_))));
     FrameValue {
         columns: c
             .columns
             .iter()
             .filter(|col| !nested(col))
             .map(|col| {
-                let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) {
-                    matrix_cells_from_list(&col.cells)
+                let (mags, unit) = if col.cells.iter().any(|v| matches!(v, Cv::V(V::Unit(_)))) {
+                    matrix_cells_from_list(&cube_values(&col.cells))
                 } else {
-                    (col.cells.clone(), None)
+                    (Vec::new(), None)
                 };
                 let cells: Vec<FrameCell> = if unit.is_some() {
                     mags
                 } else {
-                    col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect()
+                    cube_values(&col.cells)
+                        .into_iter()
+                        .map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v })
+                        .collect()
                 }
                 .iter()
                 .map(core_cell)
@@ -2616,23 +2653,23 @@ fn flat_cube_scalar(c: &Cube) -> FrameValue {
 }
 
 /// A frame ranked as the Decision Matrix ranks it, a Cube with its nested choices.
-fn rank_any(t: &V, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Result<Ranked, SolError> {
-    if let V::Cube(k) = t {
+fn rank_any(t: &Cv, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Result<Ranked, SolError> {
+    if let Cv::Cube(k) = t {
         return rank_cube(k, wf, normalize, breakdown);
     }
-    let V::Frame(f) = t else { return Err(crate::error_value::sol_error(ErrorCode::Value, "not a table")) };
+    let Cv::Frame(f) = t else { return Err(crate::error_value::sol_error(ErrorCode::Value, "not a table")) };
     let f = to_core(f);
     let r = crate::decision::resolve_weights(wf, &crate::decision::criteria_names(&f))?;
     let failed = crate::decision::decision_screen(&f, r.bounds.as_deref());
     let (frame, at, score_at) = rank_options(&f, &r, normalize, breakdown, &failed, &[])?;
-    Ok(Ranked { table: V::Frame(Rc::new(from_core(&frame))), at, score_at, rank_at: score_at + 1 })
+    Ok(Ranked { table: Cv::Frame(Rc::new(from_core(&frame))), at, score_at, rank_at: score_at + 1 })
 }
 
 /// A frame's or a Cube's rows at `rows`.
-fn table_pick(t: &V, rows: &[usize]) -> V {
+fn table_pick(t: &Cv, rows: &[usize]) -> Cv {
     match t {
-        V::Cube(k) => select_cube_rows(k, rows),
-        V::Frame(f) => frame_v(
+        Cv::Cube(k) => select_cube_rows(k, rows),
+        Cv::Frame(f) => frame_v(
             f.columns
                 .iter()
                 .map(|c| Column {
@@ -2646,12 +2683,12 @@ fn table_pick(t: &V, rows: &[usize]) -> V {
 }
 
 /// A slice of a pooled ranking with its ranks recounted within the slice, and its best row.
-fn within_group(t: &V, score_at: usize, rank_at: usize) -> (V, Best) {
+fn within_group(t: &Cv, score_at: usize, rank_at: usize) -> (Cv, Best) {
     let cols = table_columns(t);
     let scores = cols.get(score_at).map(|c| c.2.clone()).unwrap_or_default();
     let mut ranks: Vec<V> = Vec::new();
     for (n, s) in scores.iter().enumerate() {
-        let r = if super::list::nullish(s) {
+        let r = if s.is_nullish() {
             V::Null
         } else if n > 0 && strict_eq(&scores[n - 1], s) {
             ranks[n - 1].clone()
@@ -2660,20 +2697,27 @@ fn within_group(t: &V, score_at: usize, rank_at: usize) -> (V, Best) {
         };
         ranks.push(r);
     }
-    let label = cols.first().and_then(|c| c.2.first().cloned()).filter(|v| !matches!(v, V::Undef)).unwrap_or(V::Null);
+    let label =
+        cols.first().and_then(|c| c.2.first().cloned()).filter(|v| !matches!(v, Cv::V(V::Undef))).unwrap_or(Cv::NULL);
     let best = match scores.first() {
-        Some(V::Num(s)) => Some((label, *s)),
+        Some(Cv::V(V::Num(s))) => Some((label, *s)),
         _ => None,
     };
     let table = match t {
-        V::Cube(k) => cube_from_columns(
+        Cv::Cube(k) => cube_from_columns(
             k.columns
                 .iter()
                 .enumerate()
-                .map(|(j, c)| if j == rank_at { CubeColumn { cells: ranks.clone(), ..c.clone() } } else { c.clone() })
+                .map(|(j, c)| {
+                    if j == rank_at {
+                        CubeColumn { cells: ranks.iter().cloned().map(Cv::V).collect(), ..c.clone() }
+                    } else {
+                        c.clone()
+                    }
+                })
                 .collect(),
         ),
-        V::Frame(f) => frame_v(
+        Cv::Frame(f) => frame_v(
             f.columns
                 .iter()
                 .enumerate()
@@ -2686,18 +2730,18 @@ fn within_group(t: &V, score_at: usize, rank_at: usize) -> (V, Best) {
 }
 
 /// JS `===` on cells: primitives by value, objects never.
-fn strict_eq(a: &V, b: &V) -> bool {
+fn strict_eq(a: &Cv, b: &Cv) -> bool {
     match (a, b) {
-        (V::Num(x), V::Num(y)) => x == y,
-        (V::Str(x), V::Str(y)) => x == y,
-        (V::Bool(x), V::Bool(y)) => x == y,
-        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
+        (Cv::V(V::Num(x)), Cv::V(V::Num(y))) => x == y,
+        (Cv::V(V::Str(x)), Cv::V(V::Str(y))) => x == y,
+        (Cv::V(V::Bool(x)), Cv::V(V::Bool(y))) => x == y,
+        (Cv::V(V::Null), Cv::V(V::Null)) | (Cv::V(V::Undef), Cv::V(V::Undef)) => true,
         _ => false,
     }
 }
 
 /// Tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube.
-fn pool_tables(ts: &[V]) -> V {
+fn pool_tables(ts: &[Cv]) -> Cv {
     let mut names: Vec<String> = Vec::new();
     let mut types: Vec<Option<FrameColType>> = Vec::new();
     for t in ts {
@@ -2708,9 +2752,9 @@ fn pool_tables(ts: &[V]) -> V {
             }
         }
     }
-    if ts.iter().all(|t| matches!(t, V::Frame(_))) {
+    if ts.iter().all(|t| matches!(t, Cv::Frame(_))) {
         let frames: Vec<&Frame> =
-            ts.iter().filter_map(|t| if let V::Frame(f) = t { Some(&**f) } else { None }).collect();
+            ts.iter().filter_map(|t| if let Cv::Frame(f) = t { Some(&**f) } else { None }).collect();
         return frame_v(
             names
                 .iter()
@@ -2721,7 +2765,7 @@ fn pool_tables(ts: &[V]) -> V {
                         .iter()
                         .flat_map(|f| match f.columns.iter().find(|c| &c.name == name) {
                             Some(c) => c.values.clone(),
-                            None => vec![V::Null; table_rows(&V::Frame(Rc::new((*f).clone())))],
+                            None => vec![V::Null; f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)],
                         })
                         .collect();
                     Column { values, ..first.clone() }
@@ -2732,9 +2776,9 @@ fn pool_tables(ts: &[V]) -> V {
     let cubes: Vec<Cube> = ts
         .iter()
         .map(|t| {
-            if let V::Cube(k) = t {
+            if let Cv::Cube(k) = t {
                 (**k).clone()
-            } else if let V::Frame(f) = t {
+            } else if let Cv::Frame(f) = t {
                 frame_to_cube(f)
             } else {
                 Cube::default()
@@ -2753,7 +2797,7 @@ fn pool_tables(ts: &[V]) -> V {
                         k.columns
                             .iter()
                             .find(|c| &c.name == name)
-                            .map_or_else(|| vec![V::Null; cube_row_count(k)], |c| c.cells.clone())
+                            .map_or_else(|| vec![Cv::NULL; cube_row_count(k)], |c| c.cells.clone())
                     })
                     .collect(),
                 ty,
@@ -2766,14 +2810,14 @@ fn pool_tables(ts: &[V]) -> V {
 /// One nested column's tables scored together and split back to their rows, each ranked within itself;
 /// None where the tables hold nothing to score.
 fn rank_nested(
-    cells: &[V],
+    cells: &[Cv],
     rows: usize,
     wf: Option<&FrameValue>,
     normalize: Normalize,
     breakdown: bool,
     parent: &Cube,
-) -> Result<Option<Vec<(V, Best)>>, SolError> {
-    let is_table = |v: &V| matches!(v, V::Frame(_) | V::Cube(_));
+) -> Result<Option<Vec<(Cv, Best)>>, SolError> {
+    let is_table = Cv::is_table;
     let mut keys: Vec<String> = Vec::new();
     for pc in &parent.columns {
         let (mut seen, mut all) = (false, true);
@@ -2786,7 +2830,7 @@ fn rank_nested(
                 continue;
             };
             seen = true;
-            let own = pc.cells.get(i).cloned().unwrap_or(V::Undef);
+            let own = pc.cells.get(i).cloned().unwrap_or(Cv::UNDEF);
             if !col.iter().all(|v| strict_eq(v, &own)) {
                 all = false;
             }
@@ -2796,10 +2840,10 @@ fn rank_nested(
         }
     }
     let label_of =
-        |t: &V| table_columns(t).iter().position(|(n, ty, _)| *ty == Some(FrameColType::String) && !keys.contains(n));
+        |t: &Cv| table_columns(t).iter().position(|(n, ty, _)| *ty == Some(FrameColType::String) && !keys.contains(n));
     let label_name =
         cells.iter().find(|v| is_table(v)).and_then(|t| label_of(t).map(|j| table_columns(t)[j].0.clone()));
-    let tidy = |t: &V| -> V {
+    let tidy = |t: &Cv| -> Cv {
         let first_text = label_of(t);
         let keep = |j: usize, name: &str| Some(j) == first_text || !keys.contains(&name.to_string());
         let rename = |j: usize, name: &String| match &label_name {
@@ -2807,7 +2851,7 @@ fn rank_nested(
             _ => name.clone(),
         };
         match t {
-            V::Cube(k) => cube_from_columns(
+            Cv::Cube(k) => cube_from_columns(
                 k.columns
                     .iter()
                     .enumerate()
@@ -2815,7 +2859,7 @@ fn rank_nested(
                     .map(|(j, c)| CubeColumn { name: rename(j, &c.name), ..c.clone() })
                     .collect(),
             ),
-            V::Frame(f) => V::Frame(Rc::new(Frame {
+            Cv::Frame(f) => Cv::Frame(Rc::new(Frame {
                 columns: f
                     .columns
                     .iter()
@@ -2828,9 +2872,9 @@ fn rank_nested(
             other => other.clone(),
         }
     };
-    let mut out: Vec<(V, Best)> =
-        (0..rows).map(|i| (cells.get(i).filter(|v| is_table(v)).map_or(V::Null, tidy), None)).collect();
-    let tables: Vec<(V, usize)> =
+    let mut out: Vec<(Cv, Best)> =
+        (0..rows).map(|i| (cells.get(i).filter(|v| is_table(v)).map_or(Cv::NULL, tidy), None)).collect();
+    let tables: Vec<(Cv, usize)> =
         out.iter().enumerate().filter(|(_, o)| table_rows(&o.0) > 0).map(|(i, o)| (o.0.clone(), i)).collect();
     if tables.is_empty() {
         return Ok(Some(out));
@@ -2840,7 +2884,7 @@ fn rank_nested(
         group.extend(std::iter::repeat_n(*i, table_rows(t)));
     }
     let pooled = pool_tables(&tables.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>());
-    if let V::Frame(p) = &pooled {
+    if let Cv::Frame(p) = &pooled {
         if crate::decision::decision_columns(&to_core(p)).1.is_empty() {
             return Ok(None);
         }
@@ -2860,14 +2904,14 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     let rows = cube_row_count(c);
     let scalar = flat_cube_scalar(c);
     let table_cols: Vec<&CubeColumn> =
-        c.columns.iter().filter(|col| col.cells.iter().any(|v| matches!(v, V::Frame(_) | V::Cube(_)))).collect();
-    let ranked: Vec<Option<Vec<(V, Best)>>> = table_cols
+        c.columns.iter().filter(|col| col.cells.iter().any(|v| matches!(v, Cv::Frame(_) | Cv::Cube(_)))).collect();
+    let ranked: Vec<Option<Vec<(Cv, Best)>>> = table_cols
         .iter()
         .map(|col| rank_nested(&col.cells, rows, wf, normalize, breakdown, c))
         .collect::<Result<_, _>>()?;
     let nested_cols: Vec<&CubeColumn> =
         table_cols.iter().zip(&ranked).filter(|(_, r)| r.is_some()).map(|(c, _)| *c).collect();
-    let inner: Vec<&Vec<(V, Best)>> = ranked.iter().flatten().collect();
+    let inner: Vec<&Vec<(Cv, Best)>> = ranked.iter().flatten().collect();
     let carried: Vec<&CubeColumn> =
         table_cols.iter().zip(&ranked).filter(|(_, r)| r.is_none()).map(|(c, _)| *c).collect();
     let mut parent = scalar.clone();
@@ -2892,7 +2936,7 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     let nested_names: Vec<String> = nested_cols.iter().map(|c| c.name.clone()).collect();
     let (frame, at, score_at) = rank_options(&parent, &r, normalize, breakdown, &failed, &nested_names)?;
     let k = nested_cols.len();
-    let col_v = |fc: &FrameColumn| fc.values.iter().map(card_cell).collect::<Vec<_>>();
+    let col_v = |fc: &FrameColumn| fc.values.iter().map(|v| Cv::V(card_cell(v))).collect::<Vec<_>>();
     let mut out = vec![CubeColumn {
         name: frame.columns[0].name.clone(),
         cells: col_v(&frame.columns[0]),
@@ -2902,7 +2946,7 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     for (n, col) in nested_cols.iter().enumerate() {
         out.push(CubeColumn {
             name: format!("Best in {}", col.name),
-            cells: at.iter().map(|&i| inner[n][i].1.as_ref().map_or(V::Null, |b| b.0.clone())).collect(),
+            cells: at.iter().map(|&i| inner[n][i].1.as_ref().map_or(Cv::NULL, |b| b.0.clone())).collect(),
             ty: Some(FrameColType::String),
             format: None,
         });
@@ -2929,7 +2973,7 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     for col in &carried {
         out.push(CubeColumn {
             name: col.name.clone(),
-            cells: at.iter().map(|&i| col.cells.get(i).cloned().unwrap_or(V::Null)).collect(),
+            cells: at.iter().map(|&i| col.cells.get(i).cloned().unwrap_or(Cv::NULL)).collect(),
             ty: None,
             format: None,
         });
@@ -2938,25 +2982,25 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
 }
 
 fn decision_matrix(c: &mut Call) -> Answer {
-    let raw = first(c, "frame");
-    if matches!(raw, V::Null) {
+    let raw = card(c, "frame");
+    if matches!(raw, Cv::V(V::Null)) {
         return shown_frame(c, "frame", V::Null);
     }
     let w = frame_in(c, "weights").map(|w| to_core(&w));
     let breakdown = c.field_str("detail", "summary") == "breakdown";
     let normalize = normalize_of(c);
     let out = match &raw {
-        V::Cube(k) => rank_cube(k, w.as_ref(), normalize, breakdown).map(|r| r.table),
+        Cv::Cube(k) => rank_cube(k, w.as_ref(), normalize, breakdown).map(|r| r.table),
         other => {
             let f = match other {
-                V::Frame(f) => (**f).clone(),
-                v => widen_to_frame(v),
+                Cv::Frame(f) => (**f).clone(),
+                v => widen_to_frame(&c.value_of("frame", v)),
             };
             crate::decision::decision_matrix(&to_core(&f), w.as_ref(), normalize, breakdown)
-                .map(|f| V::Frame(Rc::new(from_core(&f))))
+                .map(|f| Cv::Frame(Rc::new(from_core(&f))))
         }
     };
-    shown_frame(c, "frame", out.unwrap_or_else(V::err))
+    shown_frame(c, "frame", out.unwrap_or_else(|e| Cv::V(V::err(e))))
 }
 
 // ─── Reconcile, Build Frame, Frame from Lists ───────────────────────────────────
@@ -3023,7 +3067,7 @@ fn build_frame(c: &mut Call) -> Answer {
             col.unit = unit.clone();
         }
     }
-    shown_frame(c, "frame", V::Frame(Rc::new(f)))
+    shown_frame(c, "frame", Cv::Frame(Rc::new(f)))
 }
 
 fn frame_from_lists(c: &mut Call) -> Answer {
@@ -3051,21 +3095,21 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         return shown_frame(c, "frame", V::Null);
     }
     match crate::frame_fns::call("frameFromLists", &[], &[list(names), list(lists), list(known)]) {
-        crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", V::Frame(Rc::new(from_core(&f)))),
+        crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", Cv::Frame(Rc::new(from_core(&f)))),
         _ => Err(thrown("Frame from Lists got an answer it doesn't read")),
     }
 }
 
 fn reconcile(c: &mut Call) -> Answer {
-    let left = first(c, "left");
-    let right = first(c, "right");
+    let left = card(c, "left");
+    let right = card(c, "right");
     let key_raw = str_input(c, "key", "");
     let price_raw = str_input(c, "priceColumn", "");
     let qty_raw = str_input(c, "qtyColumn", "");
     let blank = |c: &mut Call| {
         c.show("cachedResult", V::Null);
         c.show("cachedSummary", V::str(""));
-        Ok(vec![("frame".into(), V::Null), ("summary".into(), V::str(""))])
+        Ok(vec![("frame".into(), Cv::from(V::Null)), ("summary".into(), Cv::from(V::str("")))])
     };
     if [&key_raw, &price_raw, &qty_raw].iter().any(|v| matches!(v, V::Null)) {
         return blank(c);
@@ -3074,7 +3118,7 @@ fn reconcile(c: &mut Call) -> Answer {
     let column = |s: String| if s.is_empty() { V::Undef } else { V::str(&s) };
     let price = column(trimmed(&price_raw, "priceRaw")?);
     let qty = column(trimmed(&qty_raw, "qtyRaw")?);
-    let (V::Frame(l), V::Frame(r)) = (&left, &right) else { return blank(c) };
+    let (Cv::Frame(l), Cv::Frame(r)) = (&left, &right) else { return blank(c) };
     if key.is_empty() {
         return blank(c);
     }
@@ -3092,14 +3136,14 @@ fn reconcile(c: &mut Call) -> Answer {
         Err(e) => {
             c.show("cachedResult", e.clone());
             c.show("cachedSummary", V::str(""));
-            Ok(vec![("frame".into(), e.clone()), ("summary".into(), e)])
+            Ok(vec![("frame".into(), Cv::from(e.clone())), ("summary".into(), Cv::from(e))])
         }
         Ok((f, summary)) => {
-            let frame = V::Frame(Rc::new(f));
+            let frame = Cv::Frame(Rc::new(f));
             let text = V::str(&summarize_reconcile(&summary));
             c.show("cachedResult", frame.clone());
             c.show("cachedSummary", text.clone());
-            Ok(vec![("frame".into(), frame), ("summary".into(), text)])
+            Ok(vec![("frame".into(), frame), ("summary".into(), Cv::from(text))])
         }
     }
 }

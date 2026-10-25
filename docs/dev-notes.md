@@ -22,6 +22,7 @@ specific item.
 - **A graph that's done is freed** (`GraphEditor.dispose`, [[graph-core]] § The model): composites leaving their editor and the landing, scene and showcase stages free their cores, which held their whole graphs alive.
 - **Big frames and lists cross the card wire as buffers** ([[node-bodies]] § The call): a 1M-row table into Get Column and its 1M-value answer back take about 0.65 s against 1.6 s over JSON.
 - **A desktop Parquet file crosses IPC as one buffer**, not JSON; the core's 4 GiB ceiling is written down ([[rust-core]] § Where it runs).
+- **A formula value holds no table** ([[C15]] matricesInFormulas): `V` lost `Frame`, `Cube` and `Json`; card bodies and the graph hold a card value (`Cv`, [[node-bodies]] § The call), a Cube's cells among them. A table reaching a value socket is `#VALUE!`, and both input boundaries pass a table through on every rung ([[compute-pass]] § Full coercion).
 - **The chrome renders while the core loads** (`coreReady.ts`); only graph surfaces wait.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.

@@ -4,6 +4,7 @@
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
+use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -15,7 +16,7 @@ use std::rc::Rc;
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "ComparisonNode" => comparison(c),
-        "NaNode" => Ok(vec![("result".into(), err(ErrorCode::NotAvailable, "Not available"))]),
+        "NaNode" => Ok(vec![("result".into(), Cv::from(err(ErrorCode::NotAvailable, "Not available")))]),
         "BetweenNode" => between(c),
         "IsCloseNode" => is_close(c),
         "IfNode" => if_node(c),
@@ -145,7 +146,7 @@ fn keys_from(c: &Call, prefix: &str) -> Vec<String> {
 
 fn answer(c: &mut Call, out: &str, result: V) -> Answer {
     c.show("cachedResult", result.clone());
-    Ok(vec![(out.into(), result)])
+    Ok(vec![(out.into(), Cv::from(result))])
 }
 
 fn select(c: &mut Call, key: Option<&str>) {
@@ -400,8 +401,12 @@ fn if_error(c: &mut Call) -> Answer {
         V::Undef => dflt,
         v => v,
     };
-    let value = wired_or(c, "value", lit(c, "value", V::Null));
-    let fallback = wired_or(c, "fallback", lit(c, "fallback", V::Num(0.0)));
+    let wired = |c: &Call, k: &str, literal: V| match c.wired_card(k) {
+        Some([first, ..]) => first.clone(),
+        _ => Cv::V(literal),
+    };
+    let value = wired(c, "value", lit(c, "value", V::Null));
+    let fallback = wired(c, "fallback", lit(c, "fallback", V::Num(0.0)));
     let na_only = c.field_str("op", "iferror") == "ifna";
     let caught = |v: &V| if na_only { is_na(v) } else { v.is_sol_error() };
     let r = replace_caught(&value, &fallback, &caught, None);
@@ -424,55 +429,75 @@ fn fits_column(fallback: &V, ty: Option<FrameColType>) -> bool {
 
 /// Each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
 /// where a fallback that doesn't suit its column is that cell's `#TYPE!`.
-fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Option<FrameColType>) -> V {
+fn replace_caught(value: &Cv, fallback: &Cv, caught: &dyn Fn(&V) -> bool, ty: Option<FrameColType>) -> Cv {
+    let item = |i: usize| match fallback {
+        Cv::V(V::List(fs)) => Cv::V(fs.get(i).cloned().unwrap_or(V::Undef)),
+        Cv::Cells(fs) => fs.get(i).cloned().unwrap_or(Cv::UNDEF),
+        f => f.clone(),
+    };
+    let misfit = |what: String| {
+        Cv::V(err(
+            ErrorCode::Type,
+            format!(
+                "The fallback doesn't fit {what}, which holds {} values",
+                ty.map_or("undefined", FrameColType::as_str)
+            ),
+        ))
+    };
     match value {
-        V::List(items) => list(
-            items
-                .iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    let f = match fallback {
-                        V::List(fs) => fs.get(i).cloned().unwrap_or(V::Undef),
-                        f => f.clone(),
-                    };
-                    replace_caught(v, &f, caught, ty)
-                })
-                .collect(),
+        Cv::V(V::List(items)) => Cv::list(
+            items.iter().enumerate().map(|(i, v)| replace_caught(&Cv::V(v.clone()), &item(i), caught, ty)).collect(),
         ),
-        V::Frame(_) | V::Cube(_) => {
-            if matches!(fallback, V::List(_) | V::Frame(_) | V::Cube(_)) {
-                return err(
+        Cv::Cells(items) => {
+            Cv::list(items.iter().enumerate().map(|(i, v)| replace_caught(v, &item(i), caught, ty)).collect())
+        }
+        Cv::Frame(_) | Cv::Cube(_) => {
+            let Some(one) = fallback.v().filter(|f| !matches!(f, V::List(_))) else {
+                return Cv::V(err(
                     ErrorCode::Value,
                     "Over a Frame or Cube the fallback is one value, used for every caught cell",
-                );
-            }
-            let cell_for = |cell: &V, name: &str, ty: Option<FrameColType>| match cell {
-                V::Frame(_) | V::Cube(_) | V::List(_) => replace_caught(cell, fallback, caught, ty),
-                x if !caught(x) => x.clone(),
-                _ if fits_column(fallback, ty) => fallback.clone(),
-                _ => err(
-                    ErrorCode::Type,
-                    format!(
-                        "The fallback doesn't fit column \"{name}\", which holds {} values",
-                        ty.map_or("undefined", FrameColType::as_str)
-                    ),
-                ),
+                ));
+            };
+            let cell_for = |cell: &Cv, name: &str, ty: Option<FrameColType>| match cell {
+                Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) => {
+                    replace_caught(cell, fallback, caught, ty)
+                }
+                Cv::V(x) if caught(x) => {
+                    if fits_column(one, ty) {
+                        Cv::V(one.clone())
+                    } else {
+                        Cv::V(err(
+                            ErrorCode::Type,
+                            format!(
+                                "The fallback doesn't fit column \"{name}\", which holds {} values",
+                                ty.map_or("undefined", FrameColType::as_str)
+                            ),
+                        ))
+                    }
+                }
+                other => other.clone(),
             };
             match value {
-                V::Frame(f) => V::Frame(Rc::new(Frame {
+                Cv::Frame(f) => Cv::Frame(Rc::new(Frame {
                     columns: f
                         .columns
                         .iter()
                         .map(|col| Column {
                             raw: None,
-                            values: col.values.iter().map(|v| cell_for(v, &col.name, Some(col.ty))).collect(),
+                            values: col
+                                .values
+                                .iter()
+                                .map(|v| {
+                                    cell_for(&Cv::V(v.clone()), &col.name, Some(col.ty)).v().cloned().unwrap_or(V::Null)
+                                })
+                                .collect(),
                             ..col.clone()
                         })
                         .collect(),
                     total_rows: None,
                     approx: None,
                 })),
-                V::Cube(q) => V::Cube(Rc::new(Cube {
+                Cv::Cube(q) => Cv::Cube(Rc::new(Cube {
                     columns: q
                         .columns
                         .iter()
@@ -485,15 +510,10 @@ fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Opti
                 _ => unreachable!(),
             }
         }
-        v if !caught(v) => v.clone(),
-        _ if fits_column(fallback, ty) => fallback.clone(),
-        _ => err(
-            ErrorCode::Type,
-            format!(
-                "The fallback doesn't fit this column, which holds {} values",
-                ty.map_or("undefined", FrameColType::as_str)
-            ),
-        ),
+        Cv::V(v) if !caught(v) => value.clone(),
+        Cv::V(_) if fallback.v().is_none_or(|f| fits_column(f, ty)) => fallback.clone(),
+        Cv::V(_) => misfit("this column".into()),
+        Cv::Json(_) => value.clone(),
     }
 }
 
@@ -502,24 +522,15 @@ fn is_test(c: &mut Call) -> Answer {
     let done = |c: &mut Call, seen: V, r: V| {
         c.show("seenError", seen);
         c.show("cachedResult", r.clone());
-        Ok(vec![("result".into(), r)])
+        Ok(vec![("result".into(), Cv::from(r))])
     };
-    let input = match c.wired("value") {
-        Some([first, ..]) if !matches!(first, V::Undef) => first.clone(),
+    let input = match c.wired_card("value") {
+        Some([first, ..]) if !matches!(first, Cv::V(V::Undef)) => first.clone(),
         _ => return done(c, V::Null, V::Null),
     };
-    if input.is_sol_error() {
-        let hit = match op.as_str() {
-            "iserror" => true,
-            "iserr" => !is_na(&input),
-            "isna" => is_na(&input),
-            _ => false,
-        };
-        return done(c, input, V::Bool(hit));
-    }
-    // A Frame is read row by row, each row its cells across the columns.
-    let value = match &input {
-        V::Frame(f) => {
+    let input = match input {
+        Cv::Frame(f) => {
+            // A Frame is read row by row, each row its cells across the columns.
             let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
             list(
                 (0..rows)
@@ -534,8 +545,20 @@ fn is_test(c: &mut Call) -> Answer {
                     .collect(),
             )
         }
-        v => v.clone(),
+        Cv::V(v) => v,
+        // A Cube or plain data is one value no test but non-text holds for.
+        _ => return done(c, V::Null, V::Bool(op == "isnontext")),
     };
+    if input.is_sol_error() {
+        let hit = match op.as_str() {
+            "iserror" => true,
+            "iserr" => !is_na(&input),
+            "isna" => is_na(&input),
+            _ => false,
+        };
+        return done(c, input, V::Bool(hit));
+    }
+    let value = input.clone();
     if op == "isblank" {
         return done(c, V::Null, V::Bool(matches!(input, V::Null)));
     }

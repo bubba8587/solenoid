@@ -6,6 +6,7 @@
 
 use super::frames::{cube_from_columns, json_num};
 use super::values::{Column, CubeColumn, Frame};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_number_of, js_parse_float, js_string_of, V};
@@ -22,7 +23,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "SliderInputNode" => slider(c),
         "ColorPickerNode" => color_picker(c),
         "ColorBlendNode" => color_blend(c),
-        "AngleDialNode" => Ok(vec![("value".into(), init_v(c, "value"))]),
+        "AngleDialNode" => Ok(vec![("value".into(), Cv::from(init_v(c, "value")))]),
         "XYPadNode" => xy_pad(c),
         "CurveNode" => curve(c),
         "GridPainterNode" => grid_painter(c),
@@ -75,8 +76,8 @@ fn num_column(name: &str, values: Vec<V>) -> Column {
     Column { name: name.to_string(), ty: FrameColType::Number, values, unit: None, format: None, raw: None }
 }
 
-fn frame_of(columns: Vec<Column>) -> V {
-    V::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
+fn frame_of(columns: Vec<Column>) -> Cv {
+    Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }))
 }
 
 // ─── Value Input, Slider ────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ fn value_input(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedValue", out.clone());
-    Ok(vec![("value".into(), out)])
+    Ok(vec![("value".into(), Cv::from(out))])
 }
 
 fn slider(c: &mut Call) -> Answer {
@@ -134,7 +135,7 @@ fn slider(c: &mut Call) -> Answer {
     c.show("effectiveMax", V::Num(hi));
     c.show("effectiveStep", V::Num(step));
     c.show("value", V::Num(value));
-    Ok(vec![("value".into(), V::Num(value))])
+    Ok(vec![("value".into(), Cv::from(V::Num(value)))])
 }
 
 // ─── Colours (colord) ───────────────────────────────────────────────────────────
@@ -465,7 +466,7 @@ fn color_picker(c: &mut Call) -> Answer {
     };
     let out = V::str(&if c.field_str("format", "hex") == "hex" { to_hex(color) } else { to_rgb_string(color) });
     c.show("cachedString", out.clone());
-    Ok(vec![("color".into(), out)])
+    Ok(vec![("color".into(), Cv::from(out))])
 }
 
 /// The W3C separable blend of one channel on [0, 1], A the backdrop and B the layer.
@@ -552,13 +553,16 @@ fn color_blend(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedString", out.clone());
-    Ok(vec![("color".into(), out)])
+    Ok(vec![("color".into(), Cv::from(out))])
 }
 
 // ─── The fixed-output widgets ───────────────────────────────────────────────────
 
 fn xy_pad(c: &mut Call) -> Answer {
-    Ok(vec![("x".into(), literal_or(c, "fx", V::Num(0.5))), ("y".into(), literal_or(c, "fy", V::Num(0.5)))])
+    Ok(vec![
+        ("x".into(), Cv::from(literal_or(c, "fx", V::Num(0.5)))),
+        ("y".into(), Cv::from(literal_or(c, "fy", V::Num(0.5)))),
+    ])
 }
 
 fn date_range(c: &mut Call) -> Answer {
@@ -567,7 +571,7 @@ fn date_range(c: &mut Call) -> Answer {
         std::mem::swap(&mut start, &mut end);
     }
     let pos = |n: f64| if n > 0.0 { V::Num(n) } else { V::Null };
-    Ok(vec![("start".into(), pos(start)), ("end".into(), pos(end))])
+    Ok(vec![("start".into(), Cv::from(pos(start))), ("end".into(), Cv::from(pos(end)))])
 }
 
 fn constant(c: &mut Call) -> Answer {
@@ -582,9 +586,9 @@ fn constant(c: &mut Call) -> Answer {
         "zero" | "false" => 0.0,
         "one" | "true" => 1.0,
         "neg-one" => -1.0,
-        op => return Ok(vec![("value".into(), err(ErrorCode::Value, format!("Unknown constant \"{op}\"")))]),
+        op => return Ok(vec![("value".into(), Cv::from(err(ErrorCode::Value, format!("Unknown constant \"{op}\""))))]),
     };
-    Ok(vec![("value".into(), V::Num(v))])
+    Ok(vec![("value".into(), Cv::from(V::Num(v)))])
 }
 
 // ─── The drawn widgets (points, curve, grid) ────────────────────────────────────
@@ -735,17 +739,13 @@ fn grid_painter(c: &mut Call) -> Answer {
         out.push(list(row));
         r += 1.0;
     }
-    Ok(vec![("result".into(), list(out))])
+    Ok(vec![("result".into(), Cv::from(list(out)))])
 }
 
 // ─── Input Switch ───────────────────────────────────────────────────────────────
 
 fn cable_switch(c: &mut Call) -> Answer {
     let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
-    let first = |c: &Call, k: &str| match c.wired(k).and_then(|w| w.first()) {
-        None | Some(V::Undef) => V::Null,
-        Some(v) => v.clone(),
-    };
     let out = if c.field("multiSelect").and_then(Json::as_bool).unwrap_or(false) {
         let selected: Vec<&str> = c
             .field("selectedKeys")
@@ -755,7 +755,7 @@ fn cable_switch(c: &mut Call) -> Answer {
         let chosen: Vec<(usize, &String)> =
             keys.iter().enumerate().filter(|(_, k)| selected.contains(&k.as_str())).collect();
         if chosen.is_empty() {
-            V::Null
+            Cv::NULL
         } else {
             let title = |i: usize, k: &str| {
                 let t = c.field("titles").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", js_trim);
@@ -768,13 +768,13 @@ fn cable_switch(c: &mut Call) -> Answer {
             cube_from_columns(vec![
                 CubeColumn {
                     name: "name".into(),
-                    cells: chosen.iter().map(|(i, k)| V::str(&title(*i, k))).collect(),
+                    cells: chosen.iter().map(|(i, k)| Cv::V(V::str(&title(*i, k)))).collect(),
                     ty: None,
                     format: None,
                 },
                 CubeColumn {
                     name: "value".into(),
-                    cells: chosen.iter().map(|(_, k)| first(c, k)).collect(),
+                    cells: chosen.iter().map(|(_, k)| c.read_card(k)).collect(),
                     ty: None,
                     format: None,
                 },
@@ -785,7 +785,7 @@ fn cable_switch(c: &mut Call) -> Answer {
         let idx = if keys.is_empty() { 0.0 } else { clamp(active, 0.0, keys.len() as f64 - 1.0) };
         // `keys[idx]`: a fractional or NaN index names no key.
         let key = (idx.fract() == 0.0 && idx >= 0.0).then(|| keys.get(idx as usize)).flatten();
-        key.map_or(V::Null, |k| first(c, k))
+        key.map_or(Cv::NULL, |k| c.read_card(k))
     };
     c.show("cachedValue", out.clone());
     Ok(vec![("out".into(), out)])
@@ -804,7 +804,7 @@ fn rand_between(c: &mut Call) -> Answer {
         _ => err(ErrorCode::Value, "Bound 1 and Bound 2 must be numbers"),
     };
     c.show("cachedResult", out.clone());
-    Ok(vec![("result".into(), out)])
+    Ok(vec![("result".into(), Cv::from(out))])
 }
 
 // ─── SVG Picker ─────────────────────────────────────────────────────────────────
@@ -912,9 +912,9 @@ fn svg_picker(c: &mut Call) -> Answer {
     let picked = c.field_str("selectedLayer", "").to_string();
     let layer = if !picked.is_empty() && source_has_layer(&source, &picked) { V::str(&picked) } else { V::Null };
     let chart = if source.is_empty() {
-        V::Null
+        Cv::NULL
     } else {
-        V::Json(Rc::new(json!({
+        Cv::Json(Rc::new(json!({
             "__svg": true,
             "source": source,
             "selected": if matches!(layer, V::Null) { Json::Null } else { Json::String(picked.clone()) },
@@ -923,7 +923,7 @@ fn svg_picker(c: &mut Call) -> Answer {
             "title": c.field_str("label", ""),
         })))
     };
-    Ok(vec![("chart".into(), chart), ("layer".into(), layer)])
+    Ok(vec![("chart".into(), chart), ("layer".into(), Cv::from(layer))])
 }
 
 /// The CSS colour names colord's names plugin reads.

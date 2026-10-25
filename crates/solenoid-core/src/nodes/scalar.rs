@@ -2,6 +2,7 @@
 
 use super::kit::{broadcast_err, core_call, each, guard_finite, num, short_circuit};
 use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit, ArithOp};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -127,7 +128,7 @@ fn arithmetic(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn base_convert(c: &mut Call) -> Answer {
@@ -136,7 +137,7 @@ fn base_convert(c: &mut Call) -> Answer {
     let to_raw = read_role(c, "to", &Role::Required);
     let done = |c: &mut Call, shown: V, result: V| {
         c.show("cachedResult", shown);
-        Ok(vec![("result".into(), result)])
+        Ok(vec![("result".into(), Cv::from(result))])
     };
     if from_raw.is_sol_error() {
         return done(c, V::Null, from_raw);
@@ -205,7 +206,7 @@ fn clamp(c: &mut Call) -> Answer {
         broadcast_num(&[value, min, max], |o| core_call("CLAMP", &[o[0].clone(), o[1].clone(), o[2].clone()]))
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 /// `Math.sign`.
@@ -253,7 +254,7 @@ fn mround(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn round_n(c: &mut Call) -> Answer {
@@ -266,7 +267,7 @@ fn round_n(c: &mut Call) -> Answer {
         broadcast_num(&[value, digits], |o| core_call(&op, &[o[0].clone(), o[1].clone()]))
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn gcd(c: &mut Call) -> Answer {
@@ -275,7 +276,7 @@ fn gcd(c: &mut Call) -> Answer {
     let b = c.read_input("b", c.literal("b"));
     let result = broadcast_err(&[a, b], |o| core_call(&op, &[o[0].clone(), o[1].clone()]));
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 /// FACT and FACTDOUBLE never read k, so a wired blank k doesn't blank them. PERMUTATIONA is the card's own; the rest
@@ -287,7 +288,7 @@ fn combinatorics(c: &mut Call) -> Answer {
     let k = if uses_k { c.read_num("k", 0.0) } else { V::Num(0.0) };
     if matches!(n, V::Null) || matches!(k, V::Null) {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("result".into(), V::Null)]);
+        return Ok(vec![("result".into(), Cv::from(V::Null))]);
     }
     let domain = || err(ErrorCode::Domain, "Counts must be finite and 0 or more");
     let (tn, tk) = (num(&n).trunc(), num(&k).trunc());
@@ -308,7 +309,7 @@ fn combinatorics(c: &mut Call) -> Answer {
         r => r,
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn two_input_math(c: &mut Call) -> Answer {
@@ -354,7 +355,7 @@ fn two_input_math(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn sum_product(c: &mut Call) -> Answer {
@@ -367,7 +368,7 @@ fn sum_product(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn series_sum(c: &mut Call) -> Answer {
@@ -384,7 +385,7 @@ fn series_sum(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn multinomial(c: &mut Call) -> Answer {
@@ -404,7 +405,7 @@ fn multinomial(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn bessel(c: &mut Call) -> Answer {
@@ -420,7 +421,7 @@ fn bessel(c: &mut Call) -> Answer {
         }
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 // ─── Math Function ──────────────────────────────────────────────────────────────
@@ -541,5 +542,5 @@ fn math_fx(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }

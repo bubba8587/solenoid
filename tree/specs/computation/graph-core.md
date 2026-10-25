@@ -218,7 +218,7 @@ The engine calls a card's body on the core in Rust, with no JavaScript between t
   called in JavaScript as before: the cards whose body is TypeScript (Note, Report, a composite, a Conduit) and the
   shells around a body on the core (an upload, a read, a draw, an alert), whose `nodeOnCore` still crosses.
 - **Values live where they were made** (`value.rs`). A value on a cable is one shared cell holding the form its
-  producer made, a core value (`V`, with a table's unit beside it) or a JavaScript object, and the other form once a
+  producer made, a card value (`Cv`, with a table's unit beside it) or a JavaScript object, and the other form once a
   reader of the other kind first asks for it, kept beside the first so every reader of that kind gets the same one.
   A direct card's inputs are core values, a JavaScript card's are objects; converting is the card wire
   (`nodeWire.ts`: `toCore`, `fromCore`, and `fromCoreBin` for a big flat frame or list, which crosses as buffers, [[node-bodies]] § The call), one host call per value converted, never per cell. An output that is one of

@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use serde_json::{json, Value as Json};
 
-use super::values::{Column, Frame};
+use super::values::{Column, Cv, Frame};
 use crate::binary::{Columnar, Reader};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_formula::cell_to_v;
@@ -18,10 +18,10 @@ use crate::frame::{FrameCell, FrameColType};
 /// `nodeWire.ts`).
 pub const BINARY_MIN_CELLS: usize = 64;
 
-fn cell_count(v: &V) -> usize {
+fn cell_count(v: &Cv) -> usize {
     match v {
-        V::Frame(f) => f.columns.iter().map(|c| c.values.len()).sum(),
-        V::List(items) => items.len(),
+        Cv::Frame(f) => f.columns.iter().map(|c| c.values.len()).sum(),
+        Cv::V(V::List(items)) => items.len(),
         _ => 0,
     }
 }
@@ -30,13 +30,13 @@ fn cell_count(v: &V) -> usize {
 pub type Binary = (&'static str, Option<String>, Columnar);
 
 /// A frame or a list as buffers, where it's big enough and every cell is flat.
-pub fn binary_out(v: &V) -> Option<Binary> {
+pub fn binary_out(v: &Cv) -> Option<Binary> {
     if cell_count(v) < BINARY_MIN_CELLS {
         return None;
     }
     match v {
-        V::Frame(f) => frame_out(f).map(|(schema, c)| ("frame", Some(schema), c)),
-        V::List(items) => list_out(items).map(|c| ("list", None, c)),
+        Cv::Frame(f) => frame_out(f).map(|(schema, c)| ("frame", Some(schema), c)),
+        Cv::V(V::List(items)) => list_out(items).map(|c| ("list", None, c)),
         _ => None,
     }
 }
@@ -44,13 +44,13 @@ pub fn binary_out(v: &V) -> Option<Binary> {
 // `engine_node`'s staging: a big input crosses as buffers before the call and as `{"__staged": id}` in it; a big
 // answer is set aside while the reply is written and crosses as `{"staged": id}`, which the caller takes right after.
 thread_local! {
-    static INBOX: RefCell<Vec<Option<V>>> = const { RefCell::new(Vec::new()) };
+    static INBOX: RefCell<Vec<Option<Cv>>> = const { RefCell::new(Vec::new()) };
     static OUTBOX: RefCell<Vec<Option<Binary>>> = const { RefCell::new(Vec::new()) };
     static STAGING: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Holds `v` for the next call to read as `{"__staged": id}`.
-pub fn stage_in(v: V) -> u32 {
+pub fn stage_in(v: Cv) -> u32 {
     INBOX.with(|b| {
         let mut b = b.borrow_mut();
         b.push(Some(v));
@@ -58,12 +58,12 @@ pub fn stage_in(v: V) -> u32 {
     })
 }
 
-pub(crate) fn take_in(id: u64) -> Option<V> {
+pub(crate) fn take_in(id: u64) -> Option<Cv> {
     INBOX.with(|b| b.borrow_mut().get_mut(id as usize).and_then(Option::take))
 }
 
 /// Sets `v` aside as buffers while a reply is written, where it qualifies; its id in the outbox.
-pub(crate) fn stage_out(v: &V) -> Option<usize> {
+pub(crate) fn stage_out(v: &Cv) -> Option<usize> {
     if !STAGING.with(Cell::get) {
         return None;
     }
@@ -152,7 +152,7 @@ fn bad(e: impl std::fmt::Display) -> SolError {
 }
 
 /// `frame_out`'s frame back.
-pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<V, SolError> {
+pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<Cv, SolError> {
     let schema: Json = serde_json::from_str(schema).map_err(bad)?;
     let mut read = Reader::new(tags, nums, strs, lens);
     let mut columns: Vec<Column> = Vec::new();
@@ -177,7 +177,7 @@ pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32
             raw: None,
         });
     }
-    Ok(V::Frame(Rc::new(Frame {
+    Ok(Cv::Frame(Rc::new(Frame {
         columns,
         total_rows: schema.get("totalRows").and_then(Json::as_f64),
         approx: schema.get("approx").cloned(),
@@ -185,9 +185,9 @@ pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32
 }
 
 /// `list_out`'s list back.
-pub fn list_in(tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<V, SolError> {
+pub fn list_in(tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<Cv, SolError> {
     let cells = Reader::new(tags, nums, strs, lens).cells(tags.len())?;
-    Ok(super::list(cells.iter().map(cell_to_v).collect()))
+    Ok(Cv::V(super::list(cells.iter().map(cell_to_v).collect())))
 }
 
 #[cfg(test)]
@@ -220,17 +220,17 @@ mod tests {
             approx: Some(json!({ "factor": 3 })),
         };
         let (schema, c) = frame_out(&f).unwrap();
-        let V::Frame(back) = frame_in(&schema, &c.tags, &c.nums, &c.strs, &c.lens).unwrap() else { panic!() };
+        let Cv::Frame(back) = frame_in(&schema, &c.tags, &c.nums, &c.strs, &c.lens).unwrap() else { panic!() };
         let col = &back.columns[0];
         assert_eq!(
             (col.unit.clone(), col.format.clone(), col.raw.clone()),
             (f.columns[0].unit.clone(), f.columns[0].format.clone(), f.columns[0].raw.clone())
         );
         assert_eq!((back.total_rows, back.approx.clone()), (f.total_rows, f.approx.clone()));
-        let text = |vs: &[V]| crate::nodes::reply_json(&super::super::list(vs.to_vec()));
+        let text = |vs: &[V]| crate::nodes::reply_json(&Cv::V(super::super::list(vs.to_vec())));
         assert_eq!(text(&col.values), text(&cells));
         let l = list_out(&cells).unwrap();
-        let V::List(items) = list_in(&l.tags, &l.nums, &l.strs, &l.lens).unwrap() else { panic!() };
+        let Cv::V(V::List(items)) = list_in(&l.tags, &l.nums, &l.strs, &l.lens).unwrap() else { panic!() };
         assert_eq!(text(&items), text(&cells));
     }
 }

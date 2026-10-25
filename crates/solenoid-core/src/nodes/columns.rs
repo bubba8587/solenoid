@@ -6,8 +6,10 @@
 
 use super::docs::{column_unit_parts, unit_err, UnitParts};
 use super::frames::{
-    cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed, widen_to_frame,
+    card, cube_from_columns, first, parse_column_unit_from_header, str_input, tag_cube_cell_unit, trimmed,
+    widen_to_frame,
 };
+use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
 use crate::eval::{LambdaV, RowColumn};
@@ -62,14 +64,17 @@ fn table_rows(table: &[TableColumn]) -> usize {
     table.iter().map(|c| c.row.values.len()).max().unwrap_or(0)
 }
 
-fn is_table(v: &V) -> bool {
-    matches!(v, V::Frame(_) | V::Cube(_))
+/// A Cube cell no formula reads: a table, a list holding one, or plain data.
+fn is_table(v: &Cv) -> bool {
+    !matches!(v, Cv::V(_))
 }
 
+/// A Cube cell as a formula reads it; a table there is blank (the caller checks `is_table` first).
 fn cube_cell(col: &CubeColumn, i: usize) -> V {
     match col.cells.get(i) {
-        None | Some(V::Undef) => V::Null,
-        Some(v) => v.clone(),
+        Some(Cv::V(V::Undef)) | None => V::Null,
+        Some(Cv::V(v)) => v.clone(),
+        Some(_) => V::Null,
     }
 }
 
@@ -96,7 +101,7 @@ fn cells_unit(col: &CubeColumn) -> Result<Option<(Json, bool)>, V> {
         }
     }
     let (mut first, mut mixed, mut clash) = (None, false, None);
-    col.cells.iter().for_each(|c| visit(c, &mut first, &mut mixed, &mut clash));
+    col.cells.iter().filter_map(Cv::v).for_each(|c| visit(c, &mut first, &mut mixed, &mut clash));
     use crate::unit_lists::format_dim;
     if let Some((a, b)) = clash {
         return Err(unit_err(format!("{} holds mixed units: {} and {}.", col.name, format_dim(&a), format_dim(&b))));
@@ -229,7 +234,7 @@ pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
         .map(|col| {
             let u = cells_unit(col);
             let tables = col.cells.iter().any(is_table);
-            if !tables && !col.cells.iter().any(|c| matches!(c, V::List(_))) {
+            if !tables && !col.cells.iter().any(|c| matches!(c, Cv::V(V::List(_)))) {
                 return scalar_read(col, rows, &u);
             }
             let table_err = err(ErrorCode::Shape, format!("This row of \"{}\" holds a table; a formula reads values and lists", col.name));
@@ -237,10 +242,10 @@ pub(crate) fn cube_row_table(cube: &Cube) -> Vec<TableColumn> {
             let mut items = Vec::new();
             let values: Vec<V> = (0..rows)
                 .map(|i| {
-                    let c = cube_cell(col, i);
-                    if is_table(&c) {
+                    if col.cells.get(i).is_some_and(is_table) {
                         return table_err.clone();
                     }
+                    let c = cube_cell(col, i);
                     let v = item_magnitude(&c, base);
                     match &v {
                         V::List(xs) => xs.iter().for_each(|x| match x {
@@ -931,11 +936,11 @@ fn cube_with_column(
     ty: FrameColType,
     after: &str,
     unit: Option<&Json>,
-) -> Result<V, V> {
+) -> Result<Cv, V> {
     let (clean, _) = parse_column_unit_from_header(name);
-    let cells = match unit {
-        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
-        _ => cells,
+    let cells: Vec<Cv> = match unit {
+        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| Cv::V(tag_cube_cell_unit(v, u))).collect(),
+        _ => cells.into_iter().map(Cv::V).collect(),
     };
     let col = CubeColumn { name: clean.clone(), cells, ty: Some(ty), format: None };
     let mut cols = cube.columns.clone();
@@ -953,12 +958,13 @@ fn computed_column(c: &mut Call) -> Answer {
     if c.wired("cells").is_some() {
         return place_on_ref(c);
     }
-    let raw = first(c, "frame");
+    let raw = card(c, "frame");
     let (cube, frame): (Option<Rc<Cube>>, Option<Rc<Frame>>) = match &raw {
-        V::Null => (None, None),
-        V::Cube(cb) => (Some(cb.clone()), None),
-        V::Frame(f) => (None, Some(f.clone())),
-        other => (None, Some(Rc::new(widen_to_frame(other)))),
+        Cv::V(V::Null) => (None, None),
+        Cv::Cube(cb) => (Some(cb.clone()), None),
+        Cv::Frame(f) => (None, Some(f.clone())),
+        Cv::V(other) => (None, Some(Rc::new(widen_to_frame(other)))),
+        _ => (None, None),
     };
     let table: Option<Vec<TableColumn>> = match (&cube, &frame) {
         (Some(cb), _) => Some(cube_row_table(cb)),
@@ -975,14 +981,14 @@ fn computed_column(c: &mut Call) -> Answer {
         V::Lambda(l) => Some(l),
         _ => None,
     };
-    let empty = |c: &mut Call, out: V| -> Answer {
+    let empty = |c: &mut Call, out: Cv| -> Answer {
         c.show("defVars", list(Vec::new()));
         c.show("sideVars", list(Vec::new()));
         c.show("cachedResult", out.clone());
         Ok(vec![("frame".into(), out)])
     };
     let placement = name_and_after(c)?;
-    let (Some(table), Some((name, after))) = (table, placement) else { return empty(c, V::Null) };
+    let (Some(table), Some((name, after))) = (table, placement) else { return empty(c, Cv::NULL) };
     let expr = c.field_str("expr", "").to_string();
     let ast = if lam.is_none() { crate::excel_formula::parse_formula(&expr) } else { None };
     if lam.is_none() {
@@ -990,14 +996,14 @@ fn computed_column(c: &mut Call) -> Answer {
             return empty(
                 c,
                 match (&cube, &frame) {
-                    (Some(cb), _) => V::Cube(cb.clone()),
-                    (_, Some(f)) => V::Frame(f.clone()),
-                    _ => V::Null,
+                    (Some(cb), _) => Cv::Cube(cb.clone()),
+                    (_, Some(f)) => Cv::Frame(f.clone()),
+                    _ => Cv::NULL,
                 },
             );
         }
         if ast.is_none() {
-            return empty(c, err(ErrorCode::Value, "The formula does not parse"));
+            return empty(c, Cv::V(err(ErrorCode::Value, "The formula does not parse")));
         }
     }
     let vars = ast.as_ref().map(crate::eval::variables).unwrap_or_default();
@@ -1097,7 +1103,7 @@ fn computed_column(c: &mut Call) -> Answer {
         Err(e) => {
             c.show("sideVars", list(Vec::new()));
             c.show("cachedResult", e.clone());
-            return Ok(vec![("frame".into(), e)]);
+            return Ok(vec![("frame".into(), Cv::from(e))]);
         }
         Ok(r) => r,
     };
@@ -1114,15 +1120,15 @@ fn computed_column(c: &mut Call) -> Answer {
         .or_else(|| cube.as_ref().and_then(|_| cube_cells_type(&values)))
         .unwrap_or_else(|| computed_column_type(&name, &values, &table, definition, &alias));
     let out = match (&cube, &frame) {
-        (Some(cb), _) => cube_with_column(cb, &name, values, ty, &after, unit.as_ref()).unwrap_or_else(|e| e),
+        (Some(cb), _) => cube_with_column(cb, &name, values, ty, &after, unit.as_ref()).unwrap_or_else(Cv::V),
         (_, Some(f)) => {
             let (cols, _, replaced) = add_column(&f.columns, &name, values, ty, unit);
             match placed(cols, replaced, &after, |c| &c.name) {
                 Ok((cols, _)) => super::frames::frame_v(cols),
-                Err(e) => e,
+                Err(e) => Cv::V(e),
             }
         }
-        _ => V::Null,
+        _ => Cv::NULL,
     };
     c.show("cachedResult", out.clone());
     Ok(vec![("frame".into(), out)])
@@ -1132,9 +1138,9 @@ fn computed_column(c: &mut Call) -> Answer {
 /// the card's TS assembles there, `fresh` the computed one's place, or `asValue` where the ref must be read and run
 /// as a value (a plan that rescales).
 fn place_on_ref(c: &mut Call) -> Answer {
-    let as_value = || Ok(vec![("frame".into(), V::Null), ("asValue".into(), V::Bool(true))]);
-    let schema = match first(c, "frame") {
-        V::Frame(f) => f,
+    let as_value = || Ok(vec![("frame".into(), Cv::from(V::Null)), ("asValue".into(), Cv::from(V::Bool(true)))]);
+    let schema = match card(c, "frame") {
+        Cv::Frame(f) => f,
         _ => return as_value(),
     };
     let cells: Vec<V> = match c.wired("cells") {
@@ -1159,9 +1165,9 @@ fn place_on_ref(c: &mut Call) -> Answer {
     let (cols, at, replaced) = add_column(&shape, &name, Vec::new(), ty, unit);
     let (cols, fresh) = match placed(cols, replaced, &after, |c| &c.name) {
         Ok((cols, fresh)) => (cols, if replaced { at } else { fresh }),
-        Err(e) => return Ok(vec![("frame".into(), e)]),
+        Err(e) => return Ok(vec![("frame".into(), Cv::from(e))]),
     };
-    Ok(vec![("frame".into(), super::frames::frame_v(cols)), ("fresh".into(), V::Num(fresh as f64))])
+    Ok(vec![("frame".into(), super::frames::frame_v(cols)), ("fresh".into(), Cv::from(V::Num(fresh as f64)))])
 }
 
 // ─── Cube Input ────────────────────────────────────────────────────────────────
@@ -1169,8 +1175,8 @@ fn place_on_ref(c: &mut Call) -> Answer {
 /// Cube Input's formula columns over its records' cube, in the order their reads allow: a column reading another
 /// waits for it, and the ones still waiting when none can go form a cycle.
 fn cube_input(c: &mut Call) -> Answer {
-    let cube = match first(c, "cube") {
-        V::Cube(cb) => cb,
+    let cube = match card(c, "cube") {
+        Cv::Cube(cb) => cb,
         _ => Rc::new(Cube::default()),
     };
     let exprs: Vec<Option<String>> = match c.wired("exprs") {
@@ -1186,7 +1192,7 @@ fn cube_input(c: &mut Call) -> Answer {
         return Ok(vec![("cube".into(), cube_from_columns(cols))]);
     }
     let fill = |cols: &mut Vec<CubeColumn>, i: usize, cell: V| {
-        cols[i] = CubeColumn { name: cols[i].name.clone(), cells: vec![cell; rows], ty: None, format: None };
+        cols[i] = CubeColumn { name: cols[i].name.clone(), cells: vec![Cv::V(cell); rows], ty: None, format: None };
     };
     let index_of = |cols: &[CubeColumn], n: &str| cols.iter().rposition(|c| c.name == n);
     let compiled: Vec<Option<(Ast, Vec<String>)>> = exprs
@@ -1219,7 +1225,7 @@ fn cube_input(c: &mut Call) -> Answer {
                 fill(&mut cols, i, err(ErrorCode::Value, "The formula does not parse"));
                 continue;
             };
-            let V::Cube(arranged) = cube_from_columns(cols.clone()) else {
+            let Cv::Cube(arranged) = cube_from_columns(cols.clone()) else {
                 unreachable!("cube_from_columns makes a cube")
             };
             let table = cube_row_table(&arranged);
@@ -1262,8 +1268,8 @@ fn cube_input(c: &mut Call) -> Answer {
             let ty = cube_cells_type(&cells)
                 .unwrap_or_else(|| computed_column_type(&cols[i].name, &cells, &table, Some(ast), &[]));
             let cells = match unit.as_ref().filter(|_| ty == FrameColType::Number) {
-                Some(u) => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
-                None => cells,
+                Some(u) => cells.iter().map(|v| Cv::V(tag_cube_cell_unit(v, u))).collect(),
+                None => cells.into_iter().map(Cv::V).collect(),
             };
             cols[i] = CubeColumn { name: cols[i].name.clone(), cells, ty: Some(ty), format: None };
         }

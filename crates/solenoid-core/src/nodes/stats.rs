@@ -3,6 +3,7 @@
 //! formula function.
 
 use super::kit::{broadcast_err, core_call, num};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
 use crate::error_value::ErrorCode;
@@ -38,18 +39,12 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// `inputs[key]?.[0] ?? null`.
 pub(crate) fn first(c: &Call, key: &str) -> V {
-    match c.wired(key) {
-        Some([v, ..]) if !matches!(v, V::Undef) => v.clone(),
-        _ => V::Null,
-    }
+    c.value_of(key, &c.read_card(key))
 }
 
 /// `inputs[key]?.[0]`: `undefined` with no cable or an empty one.
 pub(crate) fn first_raw(c: &Call, key: &str) -> V {
-    match c.wired(key) {
-        Some([v, ..]) => v.clone(),
-        _ => V::Undef,
-    }
+    c.value_of(key, &c.raw_card(key))
 }
 
 /// `x == null`.
@@ -186,7 +181,7 @@ fn len(v: &V) -> usize {
 /// One output, `result`, shown on the card as `cachedResult`.
 fn answer(c: &mut Call, result: V) -> Answer {
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 /// A JS sort with a numeric comparator `(a, b) => a - b` on the values JS's `-` reads.
@@ -405,7 +400,7 @@ fn frequency(c: &mut Call) -> Answer {
     }
     let result = list(result);
     c.show("cachedList", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 // ─── Scalars ───────────────────────────────────────────────────────────────────
@@ -809,7 +804,7 @@ fn linest(c: &mut Call) -> Answer {
         c.show("cachedSlope", s.clone());
         c.show("cachedIntercept", i.clone());
         c.show("cachedR2", r.clone());
-        Ok(vec![("slope".into(), s), ("intercept".into(), i), ("r2".into(), r)])
+        Ok(vec![("slope".into(), Cv::from(s)), ("intercept".into(), Cv::from(i)), ("r2".into(), Cv::from(r))])
     };
     let (xs, ys) = match pair_present(&first(c, "xs"), &first(c, "ys")) {
         Ok(p) => p,
@@ -986,5 +981,5 @@ fn distributions(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }

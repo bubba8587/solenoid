@@ -14,7 +14,7 @@ use ruggine_engine::{Error, Inputs, Outputs};
 use serde_json::{Map, Value as Json};
 use solenoid_core::error_value::{sol_error, ErrorCode, Origin};
 use solenoid_core::excel_functions::V;
-use solenoid_core::nodes::{self, Shown};
+use solenoid_core::nodes::{self, Cv, Shown};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
@@ -53,7 +53,7 @@ pub(crate) struct Header {
 }
 
 /// A frame as a card's format picks stamped it: the call that held the picks, the frame that arrived, the stamped one.
-type Stamped = (Rc<Header>, V, Val);
+type Stamped = (Rc<Header>, Rc<nodes::Frame>, Val);
 
 /// What the core keeps for a direct card.
 #[derive(Default)]
@@ -324,7 +324,9 @@ impl Run<'_> {
     /// Every output the error; the card's cached result fields too.
     fn error_out(&self, e: Val, slot: Option<&str>) -> Outputs<Val> {
         let tag = match e.core().map(|a| &a.v) {
-            Some(V::Err(x)) if x.origin.is_none() => Some(V::Err(tagged(x, || self.origin(slot)))),
+            Some(Cv::V(V::Err(x))) if x.origin.is_none() => {
+                Some(V::Err(tagged(x, || self.origin(slot))))
+            }
             _ => None,
         };
         let e = tag.map_or(e, Val::bare);
@@ -518,7 +520,7 @@ impl Run<'_> {
                 _ => val,
             };
         }
-        let Some(V::Frame(f)) = val.core().map(|a| &a.v) else {
+        let Some(Cv::Frame(f)) = val.core().map(|a| &a.v) else {
             return val;
         };
         let held = self
@@ -528,8 +530,7 @@ impl Run<'_> {
             .borrow()
             .get(key)
             .and_then(|(hd, input, out)| {
-                (Rc::ptr_eq(hd, header) && matches!(input, V::Frame(i) if Rc::ptr_eq(i, f)))
-                    .then(|| out.clone())
+                (Rc::ptr_eq(hd, header) && Rc::ptr_eq(input, f)).then(|| out.clone())
             });
         if let Some(out) = held {
             return out;
@@ -550,7 +551,7 @@ impl Run<'_> {
             })
             .collect();
         let out = if changed {
-            let out = Val::bare(V::Frame(Rc::new(nodes::Frame {
+            let out = Val::bare(Cv::Frame(Rc::new(nodes::Frame {
                 columns,
                 ..f.as_ref().clone()
             })));
@@ -565,10 +566,11 @@ impl Run<'_> {
         } else {
             val.clone()
         };
-        self.card.direct.stamped.borrow_mut().insert(
-            key.to_owned(),
-            (header.clone(), V::Frame(f.clone()), out.clone()),
-        );
+        self.card
+            .direct
+            .stamped
+            .borrow_mut()
+            .insert(key.to_owned(), (header.clone(), f.clone(), out.clone()));
         out
     }
 }
@@ -583,7 +585,7 @@ pub(crate) fn off_core(class: &str, inputs: &Inputs<Val>) -> bool {
         .iter()
         .find(|(k, _)| *k == key)
         .and_then(|(_, vs)| vs.first())
-        .is_some_and(|v| matches!(v.core().map(|a| &a.v), None | Some(V::Lambda(_))))
+        .is_some_and(|v| matches!(v.core().map(|a| &a.v), None | Some(Cv::V(V::Lambda(_)))))
 }
 
 /// The card computed on `inputs`: the guard, the boundary and its body, all in Rust; a lazy frame's collect and the

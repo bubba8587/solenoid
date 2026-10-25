@@ -4,6 +4,7 @@
 
 use super::kit::{core_call, guard_finite};
 use super::stats::{finite_num, first, js_num, nullish, or, read_role, Role};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_pow, V};
@@ -62,7 +63,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 fn answer(c: &mut Call, result: V) -> Answer {
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn fin(r: Fin) -> V {
@@ -159,14 +160,14 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
             other => other.clone(),
         }
     }
-    let mut inputs = std::mem::take(&mut c.inputs);
+    let mut inputs = c.take_values();
     for (key, vals) in inputs.iter_mut() {
         let is_money = money.contains(&key.as_str());
         for v in vals.iter_mut() {
             *v = read(v, name, key, is_money, &mut code, &mut seen, &mut fail);
         }
     }
-    c.inputs = inputs;
+    c.set_values(inputs);
     if let Some(e) = fail {
         return answer(c, e);
     }
@@ -189,7 +190,7 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
         }
     }
     let result = if money_out && seen { tag(result, &display) } else { result };
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 /// JS `ToInt32`.

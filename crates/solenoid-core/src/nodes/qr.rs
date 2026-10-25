@@ -1,6 +1,7 @@
 //! [[C100]] chartIsAValue, [[B2]] webTryDesktopFull. The QR Code card, a text, a Wi-Fi
 //! network or a contact as a QR image: the payload and the SVG are Solenoid's, the symbol is `qrcodegen`'s.
 
+use super::Cv;
 use super::{err, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -118,13 +119,13 @@ fn qr_code(c: &mut Call) -> Answer {
     let payload = payload(&template, &text, &lit);
     if payload.is_empty() {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("chart".into(), V::Null)]);
+        return Ok(vec![("chart".into(), Cv::from(V::Null))]);
     }
     let symbol = encode(&payload, QrCodeEcc::Medium)
         .map_err(|m| err(ErrorCode::Error, format!("This node failed to compute: {m}")))?;
     let label = c.field_str("label", "QR Code").to_string();
     let height = c.field("imageHeight").cloned().unwrap_or(Json::from(200));
-    let image = V::Json(Rc::new(
+    let image = Cv::Json(Rc::new(
         json!({ "__image": true, "src": svg_src(symbol.size() as usize, &|x, y| symbol.get_module(x as i32, y as i32)), "height": height, "alt": label, "title": label }),
     ));
     c.show("cachedResult", image.clone());

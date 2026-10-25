@@ -726,7 +726,7 @@ pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
             ErrorCode::Shape,
             "A computed column needs one value per row. Use @name to read this row's cell.",
         )),
-        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error(
+        V::Cx(..) | V::Lambda(_) | V::Unit(_) => FrameCell::err(sol_error(
             ErrorCode::Value,
             "Each row of a computed column must be a number, text, TRUE/FALSE or blank.",
         )),

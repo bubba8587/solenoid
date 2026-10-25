@@ -137,6 +137,7 @@ struct Keys {
     frame_ref: JsValue,
     unit_cell: JsValue,
     frame: JsValue,
+    cube: JsValue,
     columns: JsValue,
     values: JsValue,
     cx: JsValue,
@@ -170,6 +171,7 @@ thread_local! {
         frame_ref: "__frameRef".into(),
         unit_cell: "__unitCell".into(),
         frame: "__frame".into(),
+        cube: "__cube".into(),
         columns: "columns".into(),
         values: "values".into(),
         cx: "__cx".into(),
@@ -388,6 +390,10 @@ fn is_unit_cell(v: &JsValue) -> bool {
 
 fn is_frame_value(v: &JsValue) -> bool {
     flag(v, &keys().frame)
+}
+
+fn is_table(v: &JsValue) -> bool {
+    is_frame_value(v) || flag(v, &keys().cube)
 }
 
 fn is_cx(v: &JsValue) -> bool {
@@ -785,8 +791,10 @@ fn coerce_unit_cell_value(rung: &str, v: &JsValue) -> R<JsValue> {
 }
 
 /// A value reaching a port of `rung`, shaped for it (compute-pass.md § Full coercion, per rung).
+/// A table passes as it is, a frame turned to a Cube on a Cube port; a table reaching a value port is the body's
+/// `#VALUE!` (`Call::value_of`).
 fn coerce_value(h: &BoundaryHost, rung: &str, v: &JsValue) -> R<JsValue> {
-    if is_frame_ref(v) || is_sol_error(v) {
+    if is_frame_ref(v) || is_sol_error(v) || (is_table(v) && rung != "cube") {
         return Ok(v.clone());
     }
     if has_unit_cell(h, v)? {

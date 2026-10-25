@@ -40,11 +40,13 @@ mod widgets;
 pub(crate) use frames::core_cell;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use list::infer_cells;
-pub use values::{decode, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Frame};
+pub use values::{
+    decode, decode_card, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Cv, CvCell, Frame,
+};
 
-/// A field the body leaves on the card for its component: a value (plain data as `V::Json`), or `undefined`.
+/// A field the body leaves on the card for its component: a value (plain data as `Cv::Json`), or `undefined`.
 pub enum Shown {
-    V(V),
+    V(Cv),
     Undef,
 }
 
@@ -59,7 +61,10 @@ pub struct Call {
     /// The outputs, in the card's order.
     pub outputs: Rc<[Output]>,
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
-    pub inputs: Vec<(String, Vec<V>)>,
+    pub inputs: Vec<(String, Vec<Cv>)>,
+    /// The inputs as a body reading values sees them (`wired`): a table there is `#VALUE!`, since it reaches only a
+    /// table or an any socket, whose body reads `inputs` (`wired_card`).
+    values: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
     /// The type an adoptive socket took up (`socket.dataType`), where it differs from the declared one: inputs, then
     /// outputs, by key. A run-time fact no save keeps.
@@ -84,8 +89,28 @@ pub struct Output {
     pub ty: Option<String>,
 }
 
+/// The inputs' values: a table, which reaches only a table or an any socket, is `#VALUE!` here.
+fn values_of(inputs: &[(String, Vec<Cv>)], sockets: &[Socket]) -> Vec<(String, Vec<V>)> {
+    inputs
+        .iter()
+        .map(|(key, cvs)| {
+            let vs = cvs
+                .iter()
+                .map(|c| match c {
+                    Cv::V(v) => v.clone(),
+                    _ => {
+                        let label = sockets.iter().find(|s| &s.key == key).map_or(key.as_str(), |s| s.label.as_str());
+                        err(ErrorCode::Value, format!("{label} takes a value or a list, not a table"))
+                    }
+                })
+                .collect();
+            (key.clone(), vs)
+        })
+        .collect()
+}
+
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
-pub type Answer = Result<Vec<(String, V)>, V>;
+pub type Answer = Result<Vec<(String, Cv)>, V>;
 
 pub fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
@@ -101,7 +126,7 @@ impl Call {
         let obj = |k: &str| j.get(k).and_then(Json::as_object).cloned().unwrap_or_default();
         let rows = |k: &str| j.get(k).and_then(Json::as_array).map(Vec::as_slice).unwrap_or_default();
         let text = |r: &Json, i: usize| r.get(i).and_then(Json::as_str).map(String::from);
-        let sockets = rows("sockets")
+        let sockets: Rc<[Socket]> = rows("sockets")
             .iter()
             .map(|r| {
                 let key = text(r, 0).unwrap_or_default();
@@ -116,18 +141,19 @@ impl Call {
         };
         let (adopted_in, adopted_out) = (adopted("sockets", 3), adopted("outputs", 2));
         let mut matrix_units_in = Vec::new();
-        let inputs = rows("inputs")
+        let inputs: Vec<(String, Vec<Cv>)> = rows("inputs")
             .iter()
             .map(|r| {
                 let key = text(r, 0).unwrap_or_default();
-                let values: Vec<V> =
-                    r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default();
+                let values: Vec<Cv> =
+                    r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode_card).collect()).unwrap_or_default();
                 if let Some(u) = r.get(1).and_then(|a| a.get(0)).and_then(|v| v.get("__munit")) {
                     matrix_units_in.push((key.clone(), u.clone()));
                 }
                 (key, values)
             })
             .collect();
+        let values = values_of(&inputs, &sockets);
         Call {
             init: Rc::new(obj("init")),
             literals: Rc::new(obj("literals")),
@@ -135,6 +161,7 @@ impl Call {
             sockets,
             outputs,
             inputs,
+            values,
             display: Vec::new(),
             adopted_in: adopted_in.into(),
             adopted_out: adopted_out.into(),
@@ -144,13 +171,14 @@ impl Call {
     }
 
     /// The same card called again on `inputs`: what a save holds and the sockets shared, nothing shown yet.
-    pub fn again(&self, inputs: Vec<(String, Vec<V>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
+    pub fn again(&self, inputs: Vec<(String, Vec<Cv>)>, matrix_units_in: Vec<(String, Json)>) -> Call {
         Call {
             init: self.init.clone(),
             literals: self.literals.clone(),
             string_literals: self.string_literals.clone(),
             sockets: self.sockets.clone(),
             outputs: self.outputs.clone(),
+            values: values_of(&inputs, &self.sockets),
             inputs,
             display: Vec::new(),
             adopted_in: self.adopted_in.clone(),
@@ -162,10 +190,26 @@ impl Call {
 
     /// `inputs[key]`: the cables' values, or `None` with no cable.
     pub fn wired(&self, key: &str) -> Option<&[V]> {
+        self.values.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_slice())
+    }
+
+    /// `inputs[key]` as a card reads it, a Frame, a Cube or plain data among the values.
+    pub fn wired_card(&self, key: &str) -> Option<&[Cv]> {
         self.inputs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_slice())
     }
 
-    /// Unwired, the typed literal; wired, the first cable's value, a blank as null.
+    /// Replaces the inputs a body reads as values (a body that rereads its own inputs, `finance`'s money codes).
+    pub fn set_values(&mut self, values: Vec<(String, Vec<V>)>) {
+        self.inputs = values.iter().map(|(k, vs)| (k.clone(), vs.iter().cloned().map(Cv::V).collect())).collect();
+        self.values = values;
+    }
+
+    pub fn take_values(&mut self) -> Vec<(String, Vec<V>)> {
+        std::mem::take(&mut self.values)
+    }
+
+    /// Unwired, the typed literal; wired, the first cable's value, a blank as null. A table reaches only a table or
+    /// an any socket, which `read_card` reads; here it is `#VALUE!`.
     pub fn read_input(&self, key: &str, literal: V) -> V {
         match self.wired(key) {
             None | Some([]) => literal,
@@ -173,6 +217,29 @@ impl Call {
                 V::Undef => V::Null,
                 v => v.clone(),
             },
+        }
+    }
+
+    /// A card value where a body reads a value: itself, a table `#VALUE!` (a table reaches only a table or an any
+    /// socket, whose body reads it with `read_card`).
+    pub fn value_of(&self, key: &str, v: &Cv) -> V {
+        match v {
+            Cv::V(v) => v.clone(),
+            _ => err(ErrorCode::Value, format!("{} takes a value or a list, not a table", self.label(key))),
+        }
+    }
+
+    /// `inputs[key]?.[0]` as a card reads it: `undefined` with no cable or an empty one.
+    pub fn raw_card(&self, key: &str) -> Cv {
+        self.wired_card(key).and_then(|w| w.first()).cloned().unwrap_or(Cv::UNDEF)
+    }
+
+    /// The first cable's value as a card reads it, a Frame, a Cube or plain data among them; null with no cable, a
+    /// blank as null.
+    pub fn read_card(&self, key: &str) -> Cv {
+        match self.wired_card(key) {
+            Some([Cv::V(V::Undef), ..]) | None | Some([]) => Cv::NULL,
+            Some([first, ..]) => first.clone(),
         }
     }
 
@@ -232,8 +299,8 @@ impl Call {
         self.matrix_units_out.push((key.to_string(), unit));
     }
 
-    pub fn show(&mut self, field: &str, v: V) {
-        self.display.push((field.to_string(), Shown::V(v)));
+    pub fn show(&mut self, field: &str, v: impl Into<Cv>) {
+        self.display.push((field.to_string(), Shown::V(v.into())));
     }
 
     pub fn show_undef(&mut self, field: &str) {
@@ -521,8 +588,8 @@ pub fn off_core_input(kind: &str) -> Option<&'static str> {
 }
 
 /// A value as a card's reply carries it (`values::Cell`), the JSON `readNodeReply` reads.
-pub fn reply_json(v: &V) -> String {
-    serde_json::to_string(&values::Cell(v)).expect("a value serializes")
+pub fn reply_json(v: &Cv) -> String {
+    serde_json::to_string(&CvCell(v)).expect("a value serializes")
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
@@ -530,7 +597,7 @@ pub fn reply_json(v: &V) -> String {
 pub struct NodeReply {
     pub answer: Option<Answer>,
     /// The call's inputs, so an output that is one of them can say so.
-    pub inputs: Vec<(String, Vec<V>)>,
+    pub inputs: Vec<(String, Vec<Cv>)>,
     pub display: Vec<(String, Shown)>,
     pub matrix_units: Vec<(String, Json)>,
 }
@@ -546,9 +613,9 @@ pub fn reply(args: &Json) -> NodeReply {
     if let Some(Ok(outs)) = &answer {
         let mut shown = Vec::new();
         for (key, unit) in &matrix_units {
-            let Some((_, V::List(out))) = outs.iter().find(|(k, _)| k == key) else { continue };
+            let Some((_, out @ Cv::V(V::List(_)))) = outs.iter().find(|(k, _)| k == key) else { continue };
             for (field, v) in &c.display {
-                if matches!(v, Shown::V(V::List(l)) if Rc::ptr_eq(l, out)) {
+                if matches!(v, Shown::V(l) if l.same(out)) {
                     shown.push((format!("display:{field}"), unit.clone()));
                 }
             }
@@ -562,47 +629,35 @@ impl serde::Serialize for NodeReply {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use crate::frame_backend::Out;
         use serde::ser::SerializeMap;
-        use values::Cell;
+        use values::CvCell;
         // An output that is one of the inputs as it came (a frame ref or a LAMBDA passed through) crosses as where it came from,
         // so the TS hands back that very object: plan flushes and collects are memoized by the ref's identity.
-        struct Outs<'a>(&'a [(String, V)], &'a [(String, Vec<V>)]);
+        struct Outs<'a>(&'a [(String, Cv)], &'a [(String, Vec<Cv>)]);
         impl serde::Serialize for Outs<'_> {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
                     let from = match v {
-                        V::Json(j) => self.1.iter().find_map(|(key, vs)| {
-                            vs.iter().position(|x| matches!(x, V::Json(i) if Rc::ptr_eq(i, j))).map(|at| (key, at))
-                        }),
-                        V::Lambda(l) => self.1.iter().find_map(|(key, vs)| {
-                            vs.iter().position(|x| matches!(x, V::Lambda(i) if Rc::ptr_eq(i, l))).map(|at| (key, at))
-                        }),
+                        Cv::Json(_) | Cv::V(V::Lambda(_)) => {
+                            self.1.iter().find_map(|(key, vs)| vs.iter().position(|x| x.same(v)).map(|at| (key, at)))
+                        }
                         _ => None,
                     };
                     match from {
                         Some((key, at)) => m.serialize_entry(k, &serde_json::json!({ "input": [key, at] }))?,
-                        None => m.serialize_entry(k, &Cell(v))?,
+                        None => m.serialize_entry(k, &CvCell(v))?,
                     }
                 }
                 m.end()
             }
         }
-        struct Shows<'a>(&'a [(String, Shown)], Option<&'a [(String, V)]>);
+        struct Shows<'a>(&'a [(String, Shown)], Option<&'a [(String, Cv)]>);
         impl serde::Serialize for Shows<'_> {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 // A field that is an output itself (`cachedResult = frame`) crosses as that output's key, once.
-                let same = |v: &V| -> Option<&str> {
+                let same = |v: &Cv| -> Option<&str> {
                     let outs = self.1?;
-                    outs.iter()
-                        .find(|(_, o)| match (v, o) {
-                            (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
-                            (V::Frame(a), V::Frame(b)) => Rc::ptr_eq(a, b),
-                            (V::Cube(a), V::Cube(b)) => Rc::ptr_eq(a, b),
-                            (V::Json(a), V::Json(b)) => Rc::ptr_eq(a, b),
-                            (V::Lambda(a), V::Lambda(b)) => Rc::ptr_eq(a, b),
-                            _ => false,
-                        })
-                        .map(|(k, _)| k.as_str())
+                    outs.iter().find(|(_, o)| v.same(o)).map(|(k, _)| k.as_str())
                 };
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
@@ -610,7 +665,7 @@ impl serde::Serialize for NodeReply {
                         Shown::V(v) if same(v).is_some() => {
                             m.serialize_entry(k, &serde_json::json!({ "output": same(v) }))?
                         }
-                        Shown::V(v) => m.serialize_entry(k, &Cell(v))?,
+                        Shown::V(v) => m.serialize_entry(k, &CvCell(v))?,
                         Shown::Undef => m.serialize_entry(k, &serde_json::json!({ "undef": true }))?,
                     }
                 }

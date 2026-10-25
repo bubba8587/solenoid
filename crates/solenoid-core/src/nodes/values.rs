@@ -25,11 +25,104 @@ pub struct Frame {
     pub approx: Option<Json>,
 }
 
+/// A value on a card's wire: a formula's value, or what only cards hand each other, which never enters a formula
+/// ([[C15]] matricesInFormulas).
+#[derive(Clone, Debug)]
+pub enum Cv {
+    V(V),
+    Frame(Rc<Frame>),
+    Cube(Rc<Cube>),
+    /// Plain data a card makes or reads whole: a chart, a document, an image, as `nodeWire.ts` encodes it.
+    Json(Rc<Json>),
+    /// A Cube cell's list with a Frame or a Cube among its items; a list of values is a `V::List`.
+    Cells(Rc<Vec<Cv>>),
+}
+
+impl From<V> for Cv {
+    fn from(v: V) -> Cv {
+        Cv::V(v)
+    }
+}
+
+impl Cv {
+    pub const NULL: Cv = Cv::V(V::Null);
+    pub const UNDEF: Cv = Cv::V(V::Undef);
+
+    /// A list: a `V::List` when every item is a value, else the cells as they are.
+    pub fn list(items: Vec<Cv>) -> Cv {
+        if items.iter().all(|c| matches!(c, Cv::V(_))) {
+            Cv::V(super::list(items.into_iter().map(|c| if let Cv::V(v) = c { v } else { unreachable!() }).collect()))
+        } else {
+            Cv::Cells(Rc::new(items))
+        }
+    }
+
+    /// The formula value, where it is one.
+    pub fn v(&self) -> Option<&V> {
+        if let Cv::V(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn frame(&self) -> Option<&Rc<Frame>> {
+        if let Cv::Frame(f) = self {
+            Some(f)
+        } else {
+            None
+        }
+    }
+
+    pub fn cube(&self) -> Option<&Rc<Cube>> {
+        if let Cv::Cube(c) = self {
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    pub fn json(&self) -> Option<&Rc<Json>> {
+        if let Cv::Json(j) = self {
+            Some(j)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_sol_error(&self) -> bool {
+        matches!(self, Cv::V(V::Err(_)))
+    }
+
+    /// Blank: null or undefined.
+    pub fn is_nullish(&self) -> bool {
+        matches!(self, Cv::V(V::Null | V::Undef))
+    }
+
+    /// The same object, as JS's `===` reads two objects: a list, a LAMBDA, a frame, a cube, plain data, by allocation.
+    pub fn same(&self, other: &Cv) -> bool {
+        match (self, other) {
+            (Cv::V(V::List(a)), Cv::V(V::List(b))) => Rc::ptr_eq(a, b),
+            (Cv::V(V::Lambda(a)), Cv::V(V::Lambda(b))) => Rc::ptr_eq(a, b),
+            (Cv::Frame(a), Cv::Frame(b)) => Rc::ptr_eq(a, b),
+            (Cv::Cube(a), Cv::Cube(b)) => Rc::ptr_eq(a, b),
+            (Cv::Json(a), Cv::Json(b)) => Rc::ptr_eq(a, b),
+            (Cv::Cells(a), Cv::Cells(b)) => Rc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
+
+    /// A table: a Frame or a Cube.
+    pub fn is_table(&self) -> bool {
+        matches!(self, Cv::Frame(_) | Cv::Cube(_))
+    }
+}
+
 /// `CubeColumn`: cells of any shape, a frame or a cube among them.
 #[derive(Clone, Debug)]
 pub struct CubeColumn {
     pub name: String,
-    pub cells: Vec<V>,
+    pub cells: Vec<Cv>,
     pub ty: Option<FrameColType>,
     pub format: Option<Json>,
 }
@@ -39,18 +132,18 @@ pub struct Cube {
     pub columns: Vec<CubeColumn>,
 }
 
-/// A wire value: a frame, a cube or plain data, or anything `decode_value` reads.
-pub fn decode(j: &Json) -> V {
+/// A wire value as a card reads it: a frame, a cube or plain data, or anything `decode` reads.
+pub fn decode_card(j: &Json) -> Cv {
     match j {
         Json::Object(o) if o.contains_key("__staged") => {
-            o["__staged"].as_u64().and_then(super::columnar::take_in).unwrap_or(V::Undef)
+            o["__staged"].as_u64().and_then(super::columnar::take_in).unwrap_or(Cv::UNDEF)
         }
-        Json::Array(items) => super::list(items.iter().map(decode).collect()),
+        Json::Array(items) => Cv::list(items.iter().map(decode_card).collect()),
         Json::Object(o) if o.contains_key("__frame") => {
             let f = &o["__frame"];
             let columns =
                 f.get("columns").and_then(Json::as_array).map(|cs| cs.iter().map(column).collect()).unwrap_or_default();
-            V::Frame(Rc::new(Frame {
+            Cv::Frame(Rc::new(Frame {
                 columns,
                 total_rows: f.get("totalRows").and_then(Json::as_f64),
                 approx: f.get("approx").cloned(),
@@ -67,7 +160,7 @@ pub fn decode(j: &Json) -> V {
                             cells: c
                                 .get("cells")
                                 .and_then(Json::as_array)
-                                .map(|a| a.iter().map(decode).collect())
+                                .map(|a| a.iter().map(decode_card).collect())
                                 .unwrap_or_default(),
                             ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()),
                             format: c.get("format").cloned(),
@@ -75,10 +168,19 @@ pub fn decode(j: &Json) -> V {
                         .collect()
                 })
                 .unwrap_or_default();
-            V::Cube(Rc::new(Cube { columns }))
+            Cv::Cube(Rc::new(Cube { columns }))
         }
-        Json::Object(o) if o.contains_key("__json") => V::Json(Rc::new(o["__json"].clone())),
+        Json::Object(o) if o.contains_key("__json") => Cv::Json(Rc::new(o["__json"].clone())),
         // A table with its unit: the unit is the call's (`Call::matrix_unit`), the cells the value.
+        Json::Object(o) if o.contains_key("__munit") => decode_card(&o["m"]),
+        _ => Cv::V(crate::eval::decode_value(j)),
+    }
+}
+
+/// A wire value as a formula reads it: a literal, a frame's cell, a list's items.
+pub fn decode(j: &Json) -> V {
+    match j {
+        Json::Array(items) => super::list(items.iter().map(decode).collect()),
         Json::Object(o) if o.contains_key("__munit") => decode(&o["m"]),
         _ => crate::eval::decode_value(j),
     }
@@ -114,10 +216,12 @@ impl serde::Serialize for Cell<'_> {
                 q.end()
             }
         }
-        if let Some(id) = super::columnar::stage_out(self.0) {
-            let mut m = s.serialize_map(Some(1))?;
-            m.serialize_entry("staged", &id)?;
-            return m.end();
+        if let V::List(_) = self.0 {
+            if let Some(id) = super::columnar::stage_out(&Cv::V(self.0.clone())) {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("staged", &id)?;
+                return m.end();
+            }
         }
         match self.0 {
             V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
@@ -129,6 +233,49 @@ impl serde::Serialize for Cell<'_> {
                 m.end()
             }
             v => crate::frame_backend::Out(v).serialize(s),
+        }
+    }
+}
+
+/// A card value in a reply: a value as `Cell` writes it, a frame or a cube as `serialize_frame` and `serialize_cube`
+/// do, plain data as `{"json": ...}`, a cube cell's list of tables as `{"list": [...]}`; a big frame crosses as buffers
+/// (`{"staged": id}`, `nodes::columnar`).
+pub struct CvCell<'a>(pub &'a Cv);
+
+impl serde::Serialize for CvCell<'_> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::{SerializeMap, SerializeSeq};
+        if let Cv::Frame(_) = self.0 {
+            if let Some(id) = super::columnar::stage_out(self.0) {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("staged", &id)?;
+                return m.end();
+            }
+        }
+        struct Items<'a>(&'a [Cv]);
+        impl serde::Serialize for Items<'_> {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                let mut q = s.serialize_seq(Some(self.0.len()))?;
+                for v in self.0 {
+                    q.serialize_element(&CvCell(v))?;
+                }
+                q.end()
+            }
+        }
+        match self.0 {
+            Cv::V(v) => Cell(v).serialize(s),
+            Cv::Frame(f) => serialize_frame(f, s),
+            Cv::Cube(c) => serialize_cube(c, s),
+            Cv::Json(j) => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("json", j.as_ref())?;
+                m.end()
+            }
+            Cv::Cells(items) => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("list", &Items(items))?;
+                m.end()
+            }
         }
     }
 }
@@ -199,12 +346,12 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
 
 pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::Error> {
     use serde::ser::{SerializeMap, SerializeSeq};
-    struct Cells<'a>(&'a [V]);
+    struct Cells<'a>(&'a [Cv]);
     impl serde::Serialize for Cells<'_> {
         fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             let mut q = s.serialize_seq(Some(self.0.len()))?;
             for v in self.0 {
-                q.serialize_element(&Cell(v))?;
+                q.serialize_element(&CvCell(v))?;
             }
             q.end()
         }

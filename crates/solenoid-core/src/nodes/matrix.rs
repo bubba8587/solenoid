@@ -7,6 +7,7 @@ use super::list::{frame_cell_of, js_number, nullish, slot};
 use super::logic::pick_slot;
 use super::scalar::{read_role, Role};
 use super::units::{from_unit, tag};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::eval::{variables, Env, Eval, LambdaV};
@@ -121,12 +122,12 @@ fn mat_det(c: &mut Call) -> Answer {
     let done = |c: &mut Call, r: V| {
         c.show("cachedScalar", if scalar { r.clone() } else { V::Null });
         c.show("cachedMatrix", if scalar { V::Null } else { r.clone() });
-        Ok(vec![("result".into(), r)])
+        Ok(vec![("result".into(), Cv::from(r))])
     };
     let Some(raw) = first(c, "matrix") else {
         c.show("cachedScalar", V::Null);
         c.show("cachedMatrix", V::Null);
-        return Ok(vec![("result".into(), V::Null)]);
+        return Ok(vec![("result".into(), Cv::from(V::Null))]);
     };
     let m = match numeric(&raw) {
         Ok(m) => m,
@@ -159,14 +160,14 @@ fn mat_det(c: &mut Call) -> Answer {
 fn table_mult(c: &mut Call) -> Answer {
     let (Some(ra), Some(rb)) = (first(c, "a"), first(c, "b")) else {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("result".into(), V::Null)]);
+        return Ok(vec![("result".into(), Cv::from(V::Null))]);
     };
     let r = match (numeric(&ra), numeric(&rb)) {
         (Err(e), _) | (_, Err(e)) => e,
         (Ok(a), Ok(b)) => core_call("MMULT", &[a, b]),
     };
     c.show("cachedResult", r.clone());
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 /// `diag(i)` on the diagonal, `off` elsewhere.
@@ -199,7 +200,7 @@ fn table_unit(c: &mut Call) -> Answer {
         }
     };
     c.show("cachedResult", r.clone());
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 fn table_diag(c: &mut Call) -> Answer {
@@ -216,7 +217,7 @@ fn table_diag(c: &mut Call) -> Answer {
         }
     };
     c.show("cachedResult", r.clone());
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 fn table_outer(c: &mut Call) -> Answer {
@@ -235,13 +236,13 @@ fn table_outer(c: &mut Call) -> Answer {
         })
     };
     c.show("cachedResult", r.clone());
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 fn mat_solve(c: &mut Call) -> Answer {
     let done = |c: &mut Call, r: V| {
         c.show("cachedResult", r.clone());
-        Ok(vec![("result".into(), r)])
+        Ok(vec![("result".into(), Cv::from(r))])
     };
     let (Some(raw), Some(b)) = (first(c, "matrix"), first(c, "b")) else { return done(c, V::Null) };
     let m = match numeric(&raw) {
@@ -268,7 +269,7 @@ fn mat_eigen(c: &mut Call) -> Answer {
     let done = |c: &mut Call, values: V, vectors: V| {
         c.show("cachedValues", values.clone());
         c.show("cachedVectors", vectors.clone());
-        Ok(vec![("values".into(), values), ("vectors".into(), vectors)])
+        Ok(vec![("values".into(), Cv::from(values)), ("vectors".into(), Cv::from(vectors))])
     };
     let Some(raw) = first(c, "matrix") else { return done(c, V::Null, V::Null) };
     let m = match numeric(&raw) {
@@ -483,7 +484,7 @@ pub(crate) fn result_cell(v: &V) -> V {
 pub(crate) fn lambda_done(c: &mut Call, result: V, error: Option<String>) -> Answer {
     c.show("cachedResult", if result.is_sol_error() && error.is_some() { V::Null } else { result.clone() });
     c.show("cachedError", error.map_or(V::Null, |e| V::str(&e)));
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 pub(crate) fn fn_error(c: &mut Call, e: SolError) -> Answer {
@@ -676,7 +677,7 @@ fn table_unit_of(c: &Call, key: &str) -> Option<Json> {
 fn result(c: &mut Call, r: V, unit: Option<Json>) -> Answer {
     c.show("cachedResult", r.clone());
     put_unit(c, "result", &r, unit);
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 /// The typed rows, each cell trimmed, every row as wide as the widest, a trailing blank column dropped.
@@ -709,7 +710,7 @@ fn table_input(c: &mut Call) -> Answer {
     }
     c.show("cachedResult", m.clone());
     put_unit(c, "table", &m, tag);
-    Ok(vec![("table".into(), m)])
+    Ok(vec![("table".into(), Cv::from(m))])
 }
 
 fn table_transpose(c: &mut Call) -> Answer {
@@ -793,7 +794,7 @@ fn table_reshape(c: &mut Call) -> Answer {
         c.show("cachedList", l);
         c.show("cachedMatrix", m);
         put_unit(c, "result", &r, unit);
-        Ok(vec![("result".into(), r)])
+        Ok(vec![("result".into(), Cv::from(r))])
     };
     if op == "wraprows" || op == "wrapcols" {
         let raw = any_matrix(&slot(c, "list")).map(|m| m.into_iter().flatten().collect::<Vec<_>>());

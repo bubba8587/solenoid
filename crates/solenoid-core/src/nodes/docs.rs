@@ -9,6 +9,7 @@ use super::columns::{
     TableColumn,
 };
 use super::kit::{each, guard_finite};
+use super::Cv;
 use super::{err, list, Answer, Call, Column};
 use crate::error_value::ErrorCode;
 use crate::eval::LambdaV;
@@ -36,14 +37,16 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// `inputs[key]?.[0] ?? null`.
 fn first(c: &Call, key: &str) -> V {
-    match c.wired(key).and_then(|w| w.first()) {
-        None | Some(V::Undef) => V::Null,
-        Some(v) => v.clone(),
-    }
+    c.value_of(key, &c.read_card(key))
+}
+
+/// `first` on an any or a table socket: a Frame, a Cube or plain data among what it can be.
+fn card(c: &Call, key: &str) -> Cv {
+    c.read_card(key)
 }
 
 /// A value handed on as it came: a table keeps its unit.
-fn pass_on(c: &mut Call, from: &str, to: &str, v: V) -> (String, V) {
+fn pass_on(c: &mut Call, from: &str, to: &str, v: Cv) -> (String, Cv) {
     if let Some(u) = c.matrix_unit(from).cloned() {
         c.set_matrix_unit(to, u);
     }
@@ -102,7 +105,7 @@ fn same_value_zero(a: &V, b: &V) -> bool {
 // ─── Display ────────────────────────────────────────────────────────────────────
 
 fn display(c: &mut Call) -> Answer {
-    let raw = first(c, "in");
+    let raw = card(c, "in");
     c.show("cachedValue", raw.clone());
     Ok(vec![pass_on(c, "in", "out", raw)])
 }
@@ -175,7 +178,7 @@ fn alert_status(c: &Call) -> Result<V, V> {
 fn alert(c: &mut Call) -> Answer {
     let result = alert_status(c)?;
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 // ─── Expect ─────────────────────────────────────────────────────────────────────
@@ -188,12 +191,20 @@ fn shown_magnitude(u: &crate::unit_dims::UnitCell) -> f64 {
     }
 }
 
-/// Every scalar cell, through lists, frames, cubes and the tables a cube's cells hold.
-fn scalar_cells(v: &V, out: &mut Vec<V>) {
+/// Every scalar cell, through lists, frames, cubes and the tables a cube's cells hold; plain data holds none.
+fn scalar_cells(v: &Cv, out: &mut Vec<V>) {
     match v {
-        V::List(items) => items.iter().for_each(|x| scalar_cells(x, out)),
-        V::Frame(f) => f.columns.iter().flat_map(|c| c.values.iter()).for_each(|x| scalar_cells(x, out)),
-        V::Cube(cube) => cube.columns.iter().flat_map(|c| c.cells.iter()).for_each(|x| scalar_cells(x, out)),
+        Cv::V(v) => scalar_values(v, out),
+        Cv::Frame(f) => f.columns.iter().flat_map(|c| c.values.iter()).for_each(|x| scalar_values(x, out)),
+        Cv::Cube(cube) => cube.columns.iter().flat_map(|c| c.cells.iter()).for_each(|x| scalar_cells(x, out)),
+        Cv::Cells(items) => items.iter().for_each(|x| scalar_cells(x, out)),
+        Cv::Json(_) => {}
+    }
+}
+
+fn scalar_values(v: &V, out: &mut Vec<V>) {
+    match v {
+        V::List(items) => items.iter().for_each(|x| scalar_values(x, out)),
         V::Unit(u) => out.push(V::Num(shown_magnitude(u))),
         other => out.push(other.clone()),
     }
@@ -212,16 +223,24 @@ fn json_of(v: &V) -> String {
             format!("{{\"__solError\":true,\"code\":{},\"message\":{}}}", quote(e.code.as_str()), quote(&e.message))
         }
         V::Unit(u) => format!("{{\"__unitCell\":true,\"value\":{}}}", json_of(&V::Num(u.value))),
-        V::Json(j) => j.to_string(),
-        V::Frame(f) => format!(
+        other => js_string_of(other),
+    }
+}
+
+/// `json_of` for a cube's cell, a table among what it can be.
+fn card_json(v: &Cv) -> String {
+    let cells = |cs: &[Cv]| format!("[{}]", cs.iter().map(card_json).collect::<Vec<_>>().join(","));
+    match v {
+        Cv::V(v) => json_of(v),
+        Cv::Json(j) => j.to_string(),
+        Cv::Frame(f) => format!(
             "{{\"__frame\":[{}]}}",
             f.columns.iter().map(|c| json_of(&list(c.values.clone()))).collect::<Vec<_>>().join(",")
         ),
-        V::Cube(cube) => format!(
-            "{{\"__cube\":[{}]}}",
-            cube.columns.iter().map(|c| json_of(&list(c.cells.clone()))).collect::<Vec<_>>().join(",")
-        ),
-        other => js_string_of(other),
+        Cv::Cube(cube) => {
+            format!("{{\"__cube\":[{}]}}", cube.columns.iter().map(|c| cells(&c.cells)).collect::<Vec<_>>().join(","))
+        }
+        Cv::Cells(items) => cells(items),
     }
 }
 
@@ -259,7 +278,7 @@ struct Allowed {
 impl Allowed {
     fn new(allow: &[V]) -> Allowed {
         let mut cells = Vec::new();
-        allow.iter().for_each(|a| scalar_cells(a, &mut cells));
+        allow.iter().for_each(|a| scalar_values(a, &mut cells));
         let mut m = Allowed { texts: HashSet::new(), nums: HashSet::new(), bools: HashSet::new() };
         for a in &cells {
             match a {
@@ -303,11 +322,26 @@ impl Allowed {
 }
 
 /// The unique check: a table by whole rows, a list by its cells one level deep, blanks skipped.
-fn has_duplicate(raw: &V) -> bool {
+fn has_duplicate(raw: &Cv) -> bool {
     let mut seen = HashSet::new();
+    if let Cv::Cube(cube) = raw {
+        let rows = cube.columns.iter().map(|c| c.cells.len()).max().unwrap_or(0);
+        return (0..rows).any(|i| {
+            let k = cube
+                .columns
+                .iter()
+                .map(|col| match col.cells.get(i) {
+                    Some(Cv::V(v)) if !missing(v) => cell_key(v),
+                    Some(c @ (Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_) | Cv::Json(_))) => card_json(c),
+                    _ => cell_key(&V::Null),
+                })
+                .collect::<Vec<_>>()
+                .join("|");
+            !seen.insert(k)
+        });
+    }
     let table: Option<Vec<&[V]>> = match raw {
-        V::Frame(f) => Some(f.columns.iter().map(|c| c.values.as_slice()).collect()),
-        V::Cube(cube) => Some(cube.columns.iter().map(|c| c.cells.as_slice()).collect()),
+        Cv::Frame(f) => Some(f.columns.iter().map(|c| c.values.as_slice()).collect()),
         _ => None,
     };
     if let Some(cols) = table {
@@ -321,7 +355,7 @@ fn has_duplicate(raw: &V) -> bool {
             !seen.insert(k)
         });
     }
-    let V::List(items) = raw else { return false };
+    let Cv::V(V::List(items)) = raw else { return false };
     let flat = items.iter().flat_map(|x| match x {
         V::List(inner) => inner.to_vec(),
         other => vec![other.clone()],
@@ -330,7 +364,7 @@ fn has_duplicate(raw: &V) -> bool {
 }
 
 fn expect(c: &mut Call) -> Answer {
-    let raw = first(c, "in");
+    let raw = card(c, "in");
     c.show("cachedValue", raw.clone());
     if raw.is_sol_error() {
         c.show("violations", list(Vec::new()));
@@ -499,7 +533,8 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
         .find_map(|r| if let V::List(cells) = r { Some(cells) } else { None })
         .and_then(|cells| cells.iter().find(|x| !missing(x) && !matches!(x, V::Str(s) if s.is_empty())));
     if !matches!(first_cell, Some(V::Num(_))) {
-        return pass_on(c, key, out_key, value).1;
+        pass_on(c, key, out_key, Cv::V(value.clone()));
+        return value;
     }
     let held = c.matrix_unit(key).map(column_unit_parts);
     let (dim, shown) = match held {
@@ -536,7 +571,10 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
                     put_table_unit(c, out_key, &u.dim, Some(id));
                     return out;
                 }
-                _ => return pass_on(c, key, out_key, value).1,
+                _ => {
+                    pass_on(c, key, out_key, Cv::V(value.clone()));
+                    return value;
+                }
             }
         }
         None => (u.dim.clone(), display),
@@ -558,8 +596,8 @@ fn put_table_unit(c: &mut Call, key: &str, dim: &Dim, display: Option<&str>) {
 
 fn format_controller(c: &mut Call) -> Answer {
     use crate::card_helpers::{fc_unit_id_for_unit, is_fc_unit};
-    let val = first(c, "in");
-    let held = held_unit(c, "in", &val);
+    let val = card(c, "in");
+    let held = val.v().and_then(|v| held_unit(c, "in", v));
     let inherited: Option<String> = held
         .as_ref()
         .and_then(|(dim, display)| display.clone().or_else(|| fc_unit_id_for_unit(dim, 1.0).map(String::from)));
@@ -580,7 +618,11 @@ fn format_controller(c: &mut Call) -> Answer {
     c.show("forwarding", V::Bool(forwarding));
     c.show("unitLocked", V::Bool(locked_by_convert || forwarding));
     let custom_unit = c.field_str("customUnit", "").to_string();
-    let out = apply_fc_unit(c, "in", "out", val, &unit, &custom_unit);
+    // A table passes through as it came; only values take the format's unit.
+    let out = match val {
+        Cv::V(v) => Cv::V(apply_fc_unit(c, "in", "out", v, &unit, &custom_unit)),
+        table => table,
+    };
     c.show("unit", V::str(&unit));
     Ok(vec![("out".into(), out)])
 }
@@ -607,13 +649,13 @@ fn template(c: &mut Call) -> Answer {
     let template = match c.read_input("template", text_literal(c, "template", "")) {
         V::Null => {
             c.show("cachedText", V::Null);
-            return Ok(vec![("result".into(), V::Null)]);
+            return Ok(vec![("result".into(), Cv::from(V::Null))]);
         }
         V::Str(t) => t,
         _ => {
             let e = err(ErrorCode::Value, "The template must be one text");
             c.show("cachedText", e.clone());
-            return Ok(vec![("result".into(), e)]);
+            return Ok(vec![("result".into(), Cv::from(e))]);
         }
     };
     let tokens = template_tokens(&template);
@@ -649,7 +691,7 @@ fn template(c: &mut Call) -> Answer {
         Some(n) => list((0..n).map(|i| render(Some(i))).collect()),
     };
     c.show("cachedText", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 // ─── Frame Input ────────────────────────────────────────────────────────────────
@@ -966,9 +1008,9 @@ fn record(c: &mut Call) -> Answer {
             sci_from: crate::card_helpers::sci_from_setting(d.get("sciAbove").and_then(Json::as_str)),
         }
     });
-    let fv = first(c, "frame");
+    let fv = card(c, "frame");
     let cols: &[Column] = match &fv {
-        V::Frame(f) => &f.columns,
+        Cv::Frame(f) => &f.columns,
         _ => &[],
     };
     let order = record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or(0, |c| c.values.len()));
@@ -1149,10 +1191,10 @@ fn record(c: &mut Call) -> Answer {
         _ if c.field_str("label", "").is_empty() => "Record".into(),
         _ => c.field_str("label", "").to_string(),
     };
-    let chart = V::Json(Rc::new(serde_json::json!({
+    let chart = Cv::Json(Rc::new(serde_json::json!({
         "__chart": true, "op": "record", "values": null, "payload": Json::Object(payload), "options": Json::Object(options.clone()), "title": title,
     })));
-    c.show("chartOptions", V::Json(Rc::new(Json::Object(options))));
+    c.show("chartOptions", Cv::Json(Rc::new(Json::Object(options))));
     c.show("cachedChart", chart.clone());
     Ok(vec![("chart".into(), chart)])
 }

@@ -37,9 +37,13 @@ The reply is the outputs, or the error the body throws (thrown again for the err
 fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns.
 
 **The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
-only cards hand each other: a frame cell by cell with each column's unit, format and typed text (`V::Frame`), a cube
-(`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
-non-finite numbers, -0 and `undefined` are tagged (`V::Json`); a frame ref (a lazy verb's backend handle and plan of
+only cards hand each other, so a body holds a card value (`Cv`) where the formula language holds a value (`V`, which
+has no table, [[C15]] matricesInFormulas): a frame cell by cell with each column's unit, format and typed text
+(`Cv::Frame`), a cube, whose cells are card values so a table nests in one (`Cv::Cube`), a list holding a table
+(`Cv::Cells`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
+non-finite numbers, -0 and `undefined` are tagged (`Cv::Json`). A body reads a value socket with `Call::wired` and
+`read_input`, where a table is `#VALUE!` ("… takes a value or a list, not a table"), and a table or any socket with
+`wired_card` and `read_card`; a frame ref (a lazy verb's backend handle and plan of
 ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend runs it
 later; and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with

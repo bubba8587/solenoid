@@ -4,6 +4,7 @@
 
 use super::frames::{frame_v, json_num, tag_cell_unit, thrown};
 use super::list::{js_number, nullish, slot, truthy};
+use super::Cv;
 use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::date_serial::format_date_serial;
 use crate::error_value::{sol_error, ErrorCode, SolError};
@@ -58,15 +59,15 @@ fn num(v: Option<&V>) -> Option<f64> {
     }
 }
 
-fn is_table(v: &V) -> bool {
-    matches!(v, V::Cube(_) | V::Frame(_))
+fn is_table(v: &Cv) -> bool {
+    matches!(v, Cv::Cube(_) | Cv::Frame(_))
 }
 
 /// A frame as its cube, each column's cells in its unit.
-fn as_cube(v: &V) -> Option<Rc<Cube>> {
+fn as_cube(v: &Cv) -> Option<Rc<Cube>> {
     match v {
-        V::Cube(c) => Some(c.clone()),
-        V::Frame(f) => Some(Rc::new(super::frames::frame_to_cube(f))),
+        Cv::Cube(c) => Some(c.clone()),
+        Cv::Frame(f) => Some(Rc::new(super::frames::frame_to_cube(f))),
         _ => None,
     }
 }
@@ -75,8 +76,14 @@ fn rows_of(c: &Cube) -> usize {
     c.columns.iter().map(|col| col.cells.len()).max().unwrap_or(0)
 }
 
+/// A cell as a value; a table where a value goes reads as blank.
 fn cell(col: Option<&CubeColumn>, i: usize) -> Option<&V> {
-    col.and_then(|c| c.cells.get(i)).filter(|v| !matches!(v, V::Undef))
+    card_at(col, i).and_then(Cv::v)
+}
+
+/// A cell of a column that holds tables (Predecessors, Subtasks).
+fn card_at(col: Option<&CubeColumn>, i: usize) -> Option<&Cv> {
+    col.and_then(|c| c.cells.get(i)).filter(|v| !matches!(v, Cv::V(V::Undef)))
 }
 
 /// The first name that matches, else the first column `pick` takes.
@@ -93,7 +100,7 @@ fn find_column(c: &Cube, names: &[&str], pick: Pick) -> Option<usize> {
 }
 
 fn has_text(col: &CubeColumn) -> bool {
-    col.cells.iter().any(is_text)
+    col.cells.iter().filter_map(Cv::v).any(is_text)
 }
 
 fn read_logical(v: Option<&V>) -> bool {
@@ -209,20 +216,20 @@ struct Hours {
     is_num: bool,
 }
 
-fn read_predecessors(v: Option<&V>, task_name: &str) -> Rd<Vec<Dependency>> {
-    let Some(v) = v.filter(|v| !nullish(v)) else { return Ok(Vec::new()) };
+fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
+    let Some(v) = v.filter(|v| !v.is_nullish()) else { return Ok(Vec::new()) };
     match v {
-        V::List(items) => Ok(items
+        Cv::V(V::List(items)) => Ok(items
             .iter()
             .map(|x| if nullish(x) { String::new() } else { js_trim(&js_string_of(x)).to_string() })
             .filter(|s| !s.is_empty())
             .map(|t| Dependency::fs(&t))
             .collect()),
-        V::Str(s) => {
+        Cv::V(V::Str(s)) => {
             let t = js_trim(s);
             Ok(if t.is_empty() { Vec::new() } else { vec![Dependency::fs(t)] })
         }
-        V::Cube(_) | V::Frame(_) => {
+        Cv::Cube(_) | Cv::Frame(_) => {
             let t = as_cube(v).expect("a table");
             let mut names = vec!["predecessor"];
             names.extend_from_slice(TASK_NAMES);
@@ -367,31 +374,31 @@ struct Level {
     inactive: Vec<bool>,
 }
 
-fn holds_plan(v: &V) -> bool {
+fn holds_plan(v: &Cv) -> bool {
     is_table(v)
         && as_cube(v).is_some_and(|c| find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))).is_some())
 }
 
-fn predecessor_cell(deps: &[Dependency], typed: bool) -> V {
+fn predecessor_cell(deps: &[Dependency], typed: bool) -> Cv {
     if !typed {
-        return list(deps.iter().map(|d| V::str(&d.task)).collect());
+        return Cv::V(list(deps.iter().map(|d| V::str(&d.task)).collect()));
     }
     let mut cols = vec![
         CubeColumn {
             name: "Predecessor".into(),
-            cells: deps.iter().map(|d| V::str(&d.task)).collect(),
+            cells: deps.iter().map(|d| Cv::V(V::str(&d.task))).collect(),
             ty: Some(FrameColType::String),
             format: None,
         },
         CubeColumn {
             name: "Type".into(),
-            cells: deps.iter().map(|d| V::str(d.ty.as_str())).collect(),
+            cells: deps.iter().map(|d| Cv::V(V::str(d.ty.as_str()))).collect(),
             ty: Some(FrameColType::String),
             format: None,
         },
         CubeColumn {
             name: "Lag".into(),
-            cells: deps.iter().map(|d| V::Num(d.lag)).collect(),
+            cells: deps.iter().map(|d| Cv::V(V::Num(d.lag))).collect(),
             ty: Some(FrameColType::Number),
             format: None,
         },
@@ -399,7 +406,7 @@ fn predecessor_cell(deps: &[Dependency], typed: bool) -> V {
     if deps.iter().any(|d| d.elapsed == Some(true)) {
         cols.push(CubeColumn {
             name: "Elapsed".into(),
-            cells: deps.iter().map(|d| V::Bool(d.elapsed == Some(true))).collect(),
+            cells: deps.iter().map(|d| Cv::V(V::Bool(d.elapsed == Some(true)))).collect(),
             ty: Some(FrameColType::Logical),
             format: None,
         });
@@ -412,13 +419,13 @@ fn plain_link(d: &Dependency) -> bool {
 }
 
 /// Name lists while every link is plain, else a table in every row.
-fn predecessor_column(rows: &[Option<&[Dependency]>]) -> Vec<V> {
+fn predecessor_column(rows: &[Option<&[Dependency]>]) -> Vec<Cv> {
     let typed = rows.iter().flatten().any(|deps| !deps.iter().all(plain_link));
-    rows.iter().map(|deps| deps.map_or(V::Null, |d| predecessor_cell(d, typed))).collect()
+    rows.iter().map(|deps| deps.map_or(Cv::NULL, |d| predecessor_cell(d, typed))).collect()
 }
 
-fn col_of(name: &str, cells: Vec<V>, ty: Option<FrameColType>) -> CubeColumn {
-    CubeColumn { name: name.into(), cells, ty, format: None }
+fn col_of<T: Into<Cv>>(name: &str, cells: Vec<T>, ty: Option<FrameColType>) -> CubeColumn {
+    CubeColumn { name: name.into(), cells: cells.into_iter().map(Into::into).collect(), ty, format: None }
 }
 
 fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
@@ -435,7 +442,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
             && Some(i) != children
             && col.ty != Some(FrameColType::Date)
             && !KNOWN_NAMES.iter().any(|ns| ns.contains(&norm(&col.name).as_str()))
-            && col.cells.iter().any(|v| num(Some(v)).is_some() || matches!(v, V::Unit(_)))
+            && col.cells.iter().any(|v| num(v.v()).is_some() || matches!(v, Cv::V(V::Unit(_))))
     };
     let duration = if work.is_some() { find(DURATION_NAMES) } else { find_column(&c, DURATION_NAMES, Some(&fallback)) };
     if duration.is_none() && children.is_none() && work.is_none() {
@@ -465,6 +472,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     };
     let col = |i: Option<usize>| i.map(|i| &c.columns[i]);
     let at = |i: Option<usize>, r: usize| cell(col(i), r);
+    let card = |i: Option<usize>, r: usize| card_at(col(i), r);
     let mut tasks = Vec::new();
     let mut child_levels: Vec<Option<Level>> = Vec::new();
     let mut names = Vec::new();
@@ -484,7 +492,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         }
         let mut kids: Option<Vec<PlanTask>> = None;
         let mut child_level = None;
-        if let Some(kid) = at(children, i).filter(|v| is_table(v)) {
+        if let Some(kid) = card(children, i).filter(|v| is_table(v)) {
             let (level, sub) = read_level(as_cube(kid).expect("a table"), hours)?;
             kids = Some(sub);
             child_level = Some(level);
@@ -501,12 +509,12 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
             let base = read_date(at(cols.start, i), &name, "Start")?;
             let dur = read_duration(at(duration, i), task_hours, &name)?;
             let preds = match pred {
-                Some(_) => read_predecessors(at(pred, i), &name)?,
+                Some(_) => read_predecessors(card(pred, i), &name)?,
                 None => Vec::new(),
             };
             let n = repeat as usize;
             let occ: Vec<String> = (1..=n).map(|k| format!("{name} {k}")).collect();
-            let pred_cells: Vec<V> = (0..n)
+            let pred_cells: Vec<Cv> = (0..n)
                 .map(|k| {
                     if k == 0 {
                         predecessor_cell(&preds, !preds.iter().all(plain_link))
@@ -532,7 +540,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
                     Some(FrameColType::Date),
                 ));
             }
-            let V::Cube(gen) = super::frames::cube_from_columns(gen) else {
+            let Cv::Cube(gen) = super::frames::cube_from_columns(gen) else {
                 unreachable!("cube_from_columns makes a cube")
             };
             let (level, sub) = read_level(gen, hours)?;
@@ -542,8 +550,8 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         child_levels.push(child_level);
         let work_cell = num(at(cols.work, i));
         let units_cell = num(at(cols.units, i));
-        let has_duration = !matches!(at(duration, i), None | Some(V::Null))
-            && !matches!(at(duration, i), Some(V::Str(s)) if s.is_empty());
+        let has_duration = !matches!(card(duration, i), None | Some(Cv::V(V::Null)))
+            && !matches!(card(duration, i), Some(Cv::V(V::Str(s))) if s.is_empty());
         let task_duration = if kids.is_some() {
             0.0
         } else if has_duration || work_cell.is_none() {
@@ -554,7 +562,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         let predecessors = if generated {
             Vec::new()
         } else if pred.is_some() {
-            read_predecessors(at(pred, i), &name)?
+            read_predecessors(card(pred, i), &name)?
         } else {
             Vec::new()
         };
@@ -690,7 +698,7 @@ fn write_level(
     nested: bool,
     minutes: bool,
     merged: bool,
-) -> V {
+) -> Cv {
     let rows: Vec<Option<&ScheduledTask>> = level
         .names
         .iter()
@@ -702,7 +710,7 @@ fn write_level(
         minutes.then(|| json!({ "format": "date_custom", "customPattern": DATETIME_FORMAT, "unit": "none" }));
     let dated = |name: &str, cells: Vec<V>| CubeColumn {
         name: name.into(),
-        cells,
+        cells: cells.into_iter().map(Cv::V).collect(),
         ty: Some(FrameColType::Date),
         format: date_format.clone(),
     };
@@ -722,17 +730,17 @@ fn write_level(
         typed("Late", FrameColType::Logical, cells(&|t| V::Bool(t.late))),
     ];
     if rows.iter().flatten().any(|t| t.segments.is_some()) {
-        appended.push(col_of(
-            "Segments",
-            cells(&|t| match &t.segments {
+        let segments: Vec<Cv> = rows
+            .iter()
+            .map(|t| match t.and_then(|t| t.segments.as_ref()) {
                 Some(s) => super::frames::cube_from_columns(vec![
                     dated("Start", s.iter().map(|x| V::Num(x.0)).collect()),
                     dated("Finish", s.iter().map(|x| V::Num(x.1)).collect()),
                 ]),
-                None => V::Null,
-            }),
-            None,
-        ));
+                None => Cv::NULL,
+            })
+            .collect();
+        appended.push(col_of("Segments", segments, None));
     }
     if nested {
         appended.push(typed("WBS", FrameColType::String, cells(&|t| V::str(&t.wbs))));
@@ -750,7 +758,11 @@ fn write_level(
     if level.cols.children.is_none() && level.child_levels.iter().any(Option::is_some) {
         appended.insert(
             0,
-            col_of("Tasks", level.child_levels.iter().map(|l| l.as_ref().map_or(V::Null, child)).collect(), None),
+            col_of(
+                "Tasks",
+                level.child_levels.iter().map(|l| l.as_ref().map_or(Cv::NULL, child)).collect::<Vec<_>>(),
+                None,
+            ),
         );
     }
     let taken: HashSet<&str> = appended.iter().map(|c| c.name.as_str()).collect();
@@ -760,7 +772,7 @@ fn write_level(
         if is(level.cols.start) || is(level.cols.finish) || taken.contains(col.name.as_str()) {
             continue;
         }
-        let cells: Vec<V> = if is(level.cols.children) {
+        let cells: Vec<Cv> = if is(level.cols.children) {
             col.cells
                 .iter()
                 .enumerate()
@@ -778,7 +790,7 @@ fn write_level(
                 .iter()
                 .enumerate()
                 .map(|(i, v)| match rows.get(i).copied().flatten() {
-                    Some(t) if t.summary => V::Num(t.duration),
+                    Some(t) if t.summary => Cv::V(V::Num(t.duration)),
                     _ => v.clone(),
                 })
                 .collect()
@@ -791,7 +803,7 @@ fn write_level(
     super::frames::cube_from_columns(rebuilt)
 }
 
-fn diagnostics_frame(out: &ScheduleOutput) -> V {
+fn diagnostics_frame(out: &ScheduleOutput) -> Cv {
     let text = |name: &str, f: &dyn Fn(&engine::Diagnostic) -> &str| Column {
         name: name.into(),
         ty: FrameColType::String,
@@ -911,12 +923,12 @@ fn wired_first(c: &Call, key: &str) -> Option<V> {
 fn schedule_card(c: &mut Call) -> Answer {
     const FIELDS: [&str; 6] =
         ["cachedResult", "cachedFinish", "cachedGantt", "cachedDiagnostics", "cachedOutput", "cachedMspdi"];
-    let outs = |v: &V| -> Vec<(String, V)> {
-        ["cube", "finish", "diagnostics", "gantt", "mspdi"].iter().map(|k| (k.to_string(), v.clone())).collect()
+    let outs = |v: &V| -> Vec<(String, Cv)> {
+        ["cube", "finish", "diagnostics", "gantt", "mspdi"].iter().map(|k| (k.to_string(), Cv::V(v.clone()))).collect()
     };
-    let tasks = slot(c, "tasks");
+    let tasks = c.raw_card("tasks");
     let start = wired_first(c, "start").unwrap_or_else(today);
-    let (V::Cube(tasks), V::Num(start)) = (&tasks, &start) else {
+    let (Cv::Cube(tasks), V::Num(start)) = (&tasks, &start) else {
         for f in FIELDS {
             c.show(f, V::Null);
         }
@@ -932,8 +944,8 @@ fn schedule_card(c: &mut Call) -> Answer {
     let weekend_code = js_arith(&read_or(c, "weekend_code", 1.0));
     let hours_in = read_or(c, "hours", 8.0);
     let status = wired_first(c, "status").and_then(|v| num(Some(&v)));
-    let links = match slot(c, "links") {
-        V::Frame(f) => Some(f),
+    let links = match c.raw_card("links") {
+        Cv::Frame(f) => Some(f),
         _ => None,
     };
     let holidays_in = slot(c, "holidays");
@@ -947,7 +959,7 @@ fn schedule_card(c: &mut Call) -> Answer {
     } else {
         Hours { n: 8.0, is_num: true }
     };
-    let run = || -> Rd<(V, f64, V, V, Json, String)> {
+    let run = || -> Rd<(Cv, f64, V, Cv, Json, String)> {
         let (level, mut plan) = read_level(tasks.clone(), hours)?;
         if let Some(l) = &links {
             let mut off = HashSet::new();
@@ -1004,14 +1016,14 @@ fn schedule_card(c: &mut Call) -> Answer {
             c.show("cachedFinish", V::Num(finish));
             c.show("cachedGantt", gantt.clone());
             c.show("cachedDiagnostics", diagnostics.clone());
-            c.show("cachedOutput", V::Json(Rc::new(output)));
+            c.show("cachedOutput", Cv::Json(Rc::new(output)));
             c.show("cachedMspdi", mspdi.clone());
             Ok(vec![
                 ("cube".into(), cube),
-                ("finish".into(), V::Num(finish)),
+                ("finish".into(), Cv::from(V::Num(finish))),
                 ("diagnostics".into(), diagnostics),
-                ("gantt".into(), gantt),
-                ("mspdi".into(), mspdi),
+                ("gantt".into(), Cv::from(gantt)),
+                ("mspdi".into(), Cv::from(mspdi)),
             ])
         }
         Err(Fail::Sol(e)) => {
@@ -1033,11 +1045,11 @@ fn gantt_col<'a>(c: &'a Cube, names: &[&str]) -> Option<&'a CubeColumn> {
 }
 
 /// A Predecessors cell as the figure reads it, never refused.
-fn deps_of(v: Option<&V>) -> Vec<Dependency> {
-    let Some(v) = v.filter(|v| !nullish(v)) else { return Vec::new() };
+fn deps_of(v: Option<&Cv>) -> Vec<Dependency> {
+    let Some(v) = v.filter(|v| !v.is_nullish()) else { return Vec::new() };
     match v {
-        V::List(_) | V::Str(_) => read_predecessors(Some(v), "").unwrap_or_default(),
-        V::Cube(_) | V::Frame(_) => {
+        Cv::V(V::List(_) | V::Str(_)) => read_predecessors(Some(v), "").unwrap_or_default(),
+        Cv::Cube(_) | Cv::Frame(_) => {
             let t = as_cube(v).expect("a table");
             let mut names = vec!["predecessor"];
             names.extend_from_slice(TASK_NAMES);
@@ -1075,13 +1087,18 @@ fn deps_of(v: Option<&V>) -> Vec<Dependency> {
 struct Row {
     name: String,
     level: f64,
-    cells: HashMap<String, V>,
+    cells: HashMap<String, Cv>,
     deps: Vec<Dependency>,
 }
 
 impl Row {
     fn get(&self, k: &str) -> Option<&V> {
-        self.cells.get(k).filter(|v| !nullish(v))
+        self.cells.get(k).and_then(Cv::v).filter(|v| !nullish(v))
+    }
+
+    /// A cell that may hold a table (Segments).
+    fn card(&self, k: &str) -> Option<&Cv> {
+        self.cells.get(k).filter(|v| !v.is_nullish())
     }
 
     fn num(&self, k: &str) -> Option<f64> {
@@ -1117,10 +1134,10 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
         }
         let mut cells = HashMap::new();
         for x in &c.columns {
-            cells.insert(norm(&x.name), x.cells.get(i).cloned().unwrap_or(V::Null));
+            cells.insert(norm(&x.name), x.cells.get(i).cloned().unwrap_or(Cv::NULL));
         }
-        out.push(Row { name, level, cells, deps: if pred.is_some() { deps_of(cell(pred, i)) } else { Vec::new() } });
-        if let Some(kid) = cell(children, i).filter(|v| is_table(v)) {
+        out.push(Row { name, level, cells, deps: if pred.is_some() { deps_of(card_at(pred, i)) } else { Vec::new() } });
+        if let Some(kid) = card_at(children, i).filter(|v| is_table(v)) {
             gantt_flatten(&as_cube(kid).expect("a table"), level + 1.0, out)?;
         }
     }
@@ -1294,7 +1311,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
         if let Some(d) = dur.filter(|d| *d >= 0.0) {
             t.insert("duration".into(), json_num(d));
         }
-        if let Some(seg) = r.get("segments").filter(|v| is_table(v)) {
+        if let Some(seg) = r.card("segments").filter(|v| is_table(v)) {
             let sc = as_cube(seg).expect("a table");
             let empty = Vec::new();
             let ss = gantt_col(&sc, &["start"]).map_or(&empty, |c| &c.cells);
@@ -1302,7 +1319,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             let parts: Vec<Json> = ss
                 .iter()
                 .enumerate()
-                .filter_map(|(k, a)| Some(json!([json_num(num(Some(a))?), json_num(num(sf.get(k))?)])))
+                .filter_map(|(k, a)| Some(json!([json_num(num(a.v())?), json_num(num(sf.get(k).and_then(Cv::v))?)])))
                 .collect();
             if parts.len() > 1 {
                 t.insert("segments".into(), Json::Array(parts));
@@ -1399,7 +1416,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
 }
 
 fn gantt_card(c: &mut Call) -> Answer {
-    let schedule = slot(c, "schedule");
+    let schedule = c.raw_card("schedule");
     let lit = match c.string_literal("options") {
         V::Str(s) => Some(s.to_string()),
         _ => None,
@@ -1410,17 +1427,17 @@ fn gantt_card(c: &mut Call) -> Answer {
         _ => lit.clone(),
     };
     let chart_options = super::visual::parse_chart_options(opt.as_deref().unwrap_or(""));
-    c.show("chartOptions", V::Json(Rc::new(Json::Object(chart_options.clone()))));
-    let done = |c: &mut Call, v: V| -> Answer {
+    c.show("chartOptions", Cv::Json(Rc::new(Json::Object(chart_options.clone()))));
+    let done = |c: &mut Call, v: Cv| -> Answer {
         c.show("cachedChart", v.clone());
         Ok(vec![("chart".into(), v)])
     };
     if schedule.is_sol_error() {
         return done(c, schedule);
     }
-    let Some(cube) = as_cube(&schedule) else { return done(c, V::Null) };
+    let Some(cube) = as_cube(&schedule) else { return done(c, Cv::NULL) };
     let inputs = GanttInputs {
-        baseline: as_cube(&slot(c, "baseline")),
+        baseline: as_cube(&c.raw_card("baseline")),
         today: match today() {
             V::Num(n) => n,
             _ => f64::NAN,
@@ -1432,7 +1449,7 @@ fn gantt_card(c: &mut Call) -> Answer {
     };
     let payload = match gantt_payload(&cube, &inputs) {
         Ok(p) => p,
-        Err(Fail::Sol(e)) => return done(c, V::err(e)),
+        Err(Fail::Sol(e)) => return done(c, Cv::V(V::err(e))),
         Err(Fail::Js(e)) => return Err(e),
     };
     let title = match chart_options.get("title") {
@@ -1443,7 +1460,7 @@ fn gantt_card(c: &mut Call) -> Answer {
         },
     };
     let chart = json!({ "__chart": true, "op": "gantt", "values": null, "payload": payload, "options": chart_options, "title": title });
-    done(c, V::Json(Rc::new(chart)))
+    done(c, Cv::Json(Rc::new(chart)))
 }
 
 // ─── Earned Value ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1465,7 +1482,7 @@ fn magnitude(v: Option<&V>) -> f64 {
 
 /// The column's first unit cell as a column unit.
 fn unit_of(col: Option<&CubeColumn>) -> Option<Json> {
-    let V::Unit(u) = col?.cells.iter().find(|v| matches!(v, V::Unit(_)))? else { return None };
+    let Cv::V(V::Unit(u)) = col?.cells.iter().find(|v| matches!(v, Cv::V(V::Unit(_))))? else { return None };
     let mut o = Map::new();
     o.insert("dim".into(), Json::Object(u.dim.iter().map(|(k, v)| (k.clone(), json_num(*v))).collect()));
     if let Some(d) = u.display.as_ref().filter(|d| !d.is_empty()) {
@@ -1543,18 +1560,23 @@ fn earned_value_card(c: &mut Call) -> Answer {
         for f in ["cachedSpi", "cachedCpi", "cachedEac"] {
             c.show(f, side.clone());
         }
-        Ok(vec![("frame".into(), v), ("spi".into(), side.clone()), ("cpi".into(), side.clone()), ("eac".into(), side)])
+        Ok(vec![
+            ("frame".into(), Cv::from(v)),
+            ("spi".into(), Cv::from(side.clone())),
+            ("cpi".into(), Cv::from(side.clone())),
+            ("eac".into(), Cv::from(side)),
+        ])
     };
-    let sched = slot(c, "schedule");
-    if sched.is_sol_error() {
-        return empty(c, sched);
+    let sched = c.raw_card("schedule");
+    if let Cv::V(e @ V::Err(_)) = &sched {
+        return empty(c, e.clone());
     }
     let Some(scube) = as_cube(&sched) else { return empty(c, V::Null) };
     let status = match wired_first(c, "status").unwrap_or_else(today) {
         V::Num(n) if n.is_finite() => n,
         _ => return empty(c, V::Null),
     };
-    let bcube = as_cube(&slot(c, "baseline"));
+    let bcube = as_cube(&c.raw_card("baseline"));
     let cost_name = match c.read_input(
         "cost",
         match c.string_literal("cost") {
@@ -1588,7 +1610,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
     let mut base_idx: HashMap<String, usize> = HashMap::new();
     if let Some(bt) = b_task {
         for (i, v) in bt.cells.iter().enumerate() {
-            let n = norm(&js_str(Some(v)));
+            let n = norm(&js_str(v.v()));
             if !n.is_empty() {
                 base_idx.entry(n).or_insert(i);
             }
@@ -1681,7 +1703,12 @@ fn earned_value_card(c: &mut Call) -> Answer {
     c.show("cachedSpi", spi.clone());
     c.show("cachedCpi", cpi.clone());
     c.show("cachedEac", eac.clone());
-    Ok(vec![("frame".into(), frame), ("spi".into(), spi), ("cpi".into(), cpi), ("eac".into(), eac)])
+    Ok(vec![
+        ("frame".into(), frame),
+        ("spi".into(), Cv::from(spi)),
+        ("cpi".into(), Cv::from(cpi)),
+        ("eac".into(), Cv::from(eac)),
+    ])
 }
 
 // ─── SCAN, ODE Integrate ────────────────────────────────────────────────────────────────────────────────────────────
@@ -1755,7 +1782,7 @@ fn ode_integrate(c: &mut Call) -> Answer {
         Err(e) => {
             c.show("cachedResult", V::Null);
             c.show("cachedError", V::str(&e.message));
-            return Ok(vec![("solution".into(), V::err(e))]);
+            return Ok(vec![("solution".into(), Cv::from(V::err(e)))]);
         }
     };
     c.show("cachedError", V::Null);
@@ -1763,7 +1790,7 @@ fn ode_integrate(c: &mut Call) -> Answer {
     let steps = read_role(c, "steps", &Role::Setting(V::Num(100.0)));
     if [&y0, &t0, &t1].iter().any(|v| matches!(v, V::Null)) {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("solution".into(), V::Null)]);
+        return Ok(vec![("solution".into(), Cv::from(V::Null))]);
     }
     let finite = |v: &V| if let V::Num(n) = v { *n } else { f64::NAN };
     let ev = crate::eval::Eval::default();
@@ -1776,10 +1803,10 @@ fn ode_integrate(c: &mut Call) -> Answer {
             super::frames::num_column("t", ts.into_iter().map(V::Num).collect()),
             super::frames::num_column("y", ys.into_iter().map(V::Num).collect()),
         ]),
-        None => V::err(sol_error(
+        None => Cv::V(V::err(sol_error(
             ErrorCode::Domain,
             "The integration diverged or the derivative was undefined on the interval",
-        )),
+        ))),
     };
     c.show("cachedResult", solution.clone());
     Ok(vec![("solution".into(), solution)])

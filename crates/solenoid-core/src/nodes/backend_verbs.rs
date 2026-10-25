@@ -6,10 +6,11 @@
 //! read (`read`), and are called again with them; over a value they answer at once. PIVOTBY runs on the core's pivot
 //! and shows its layout (`pivotWire`) for the shell to keep beside the frame.
 
-use super::frames::{core_cell, first, from_core, json_num, str_input, to_core, trimmed};
+use super::frames::{card as first, core_cell, from_core, json_num, str_input, to_core, trimmed};
 use super::list::literal_items;
 use super::stats::first_raw;
 use super::verbs::{column_list, flat_column, nullish, plan, uploaded};
+use super::Cv;
 use super::{kit, list, Answer, Call, Column, Cube, Frame};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameCell;
@@ -31,12 +32,12 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     })
 }
 
-fn one(key: &str, v: V) -> Answer {
-    Ok(vec![(key.into(), v)])
+fn one(key: &str, v: impl Into<Cv>) -> Answer {
+    Ok(vec![(key.into(), v.into())])
 }
 
-fn is_ref(v: &V) -> bool {
-    matches!(v, V::Json(j) if j.get("__frameRef").is_some())
+fn is_ref(v: &Cv) -> bool {
+    matches!(v, Cv::Json(j) if j.get("__frameRef").is_some())
 }
 
 fn texts(names: &[String]) -> V {
@@ -67,23 +68,23 @@ fn join(c: &mut Call) -> Answer {
     let lk = trimmed(&lk, "lkRaw")?;
     let rk = trimmed(&rk, "rkRaw")?;
     let rk = if rk.is_empty() { lk.clone() } else { rk };
-    if nullish(&left) || nullish(&right) || (lk.is_empty() && how != "cross") {
+    if left.is_nullish() || right.is_nullish() || (lk.is_empty() && how != "cross") {
         return one("frame", V::Null);
     }
     let direction = c.field_str("asofDirection", "backward").to_string();
     Ok(vec![
-        ("leftKey".into(), V::str(&lk)),
-        ("rightKey".into(), V::str(&rk)),
-        ("how".into(), V::str(&how)),
-        ("asofDirection".into(), V::str(&direction)),
-        ("asofTolerance".into(), tolerance),
+        ("leftKey".into(), Cv::from(V::str(&lk))),
+        ("rightKey".into(), Cv::from(V::str(&rk))),
+        ("how".into(), Cv::from(V::str(&how))),
+        ("asofDirection".into(), Cv::from(V::str(&direction))),
+        ("asofTolerance".into(), Cv::from(tolerance)),
     ])
 }
 
 /// Append and Bind Columns: the wired frames in socket order; one passes on, more go to the backend to combine.
 fn stack(c: &mut Call) -> Answer {
     let keys: Vec<String> =
-        c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('f') && !nullish(&first(c, k))).collect();
+        c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with('f') && !first(c, k).is_nullish()).collect();
     match keys.as_slice() {
         [] => one("frame", V::Null),
         [k] => {
@@ -97,9 +98,9 @@ fn stack(c: &mut Call) -> Answer {
 // ─── Table Size ─────────────────────────────────────────────────────────────────
 
 fn table_info(c: &mut Call) -> Answer {
-    let (rows, cols) = match c.wired("preview") {
-        Some(p) => match p.first().cloned().unwrap_or(V::Undef) {
-            V::Frame(f) => (V::Num(f.total_rows.unwrap_or(row_count(&f) as f64)), V::Num(f.columns.len() as f64)),
+    let (rows, cols) = match c.wired_card("preview") {
+        Some(p) => match p.first().cloned().unwrap_or(Cv::UNDEF) {
+            Cv::Frame(f) => (V::Num(f.total_rows.unwrap_or(row_count(&f) as f64)), V::Num(f.columns.len() as f64)),
             p => {
                 c.show("cachedRows", V::Null);
                 c.show("cachedCols", V::Null);
@@ -113,7 +114,7 @@ fn table_info(c: &mut Call) -> Answer {
     };
     c.show("cachedRows", rows.clone());
     c.show("cachedCols", cols.clone());
-    Ok(vec![("rows".into(), rows), ("cols".into(), cols)])
+    Ok(vec![("rows".into(), Cv::from(rows)), ("cols".into(), Cv::from(cols))])
 }
 
 // ─── Slicer ─────────────────────────────────────────────────────────────────────
@@ -186,7 +187,7 @@ fn slicer(c: &mut Call) -> Answer {
     let selected = c.field_str("selectedColumn", "").to_string();
     if is_ref(&raw) {
         let names: Vec<String> = match first(c, "schema") {
-            V::Frame(f) => f.columns.iter().map(|k| k.name.clone()).collect(),
+            Cv::Frame(f) => f.columns.iter().map(|k| k.name.clone()).collect(),
             _ => Vec::new(),
         };
         let name = if names.contains(&selected) { selected } else { names.first().cloned().unwrap_or_default() };
@@ -194,8 +195,8 @@ fn slicer(c: &mut Call) -> Answer {
             return one("read", V::str(&name));
         }
         let col = match first(c, "column") {
-            V::Frame(f) => f.columns.first().cloned().map(Ok),
-            V::Err(e) => Some(Err(V::Err(e))),
+            Cv::Frame(f) => f.columns.first().cloned().map(Ok),
+            Cv::V(V::Err(e)) => Some(Err(V::Err(e))),
             _ => None,
         };
         c.show("cachedColumns", texts(&names));
@@ -224,7 +225,7 @@ fn slicer(c: &mut Call) -> Answer {
         return one("result", plan(&raw, json!({ "kind": "filterMulti", "combine": "or", "conditions": conditions })));
     }
     let frame = match &raw {
-        V::Frame(f) => Some(f.clone()),
+        Cv::Frame(f) => Some(f.clone()),
         _ => None,
     };
     let names: Vec<String> =
@@ -232,7 +233,7 @@ fn slicer(c: &mut Call) -> Answer {
     c.show("cachedColumns", texts(&names));
     let Some(f) = frame.filter(|f| !f.columns.is_empty()) else {
         c.show("cachedUniqueValues", list(Vec::new()));
-        return one("result", if matches!(raw, V::Frame(_)) { raw } else { V::Null });
+        return one("result", if matches!(raw, Cv::Frame(_)) { raw } else { Cv::NULL });
     };
     let col = f.columns.iter().find(|k| k.name == selected).unwrap_or(&f.columns[0]).clone();
     c.show("cachedColumnType", V::str(col.ty.as_str()));
@@ -275,7 +276,7 @@ fn slicer(c: &mut Call) -> Answer {
             ..k.clone()
         })
         .collect();
-    one("result", V::Frame(Rc::new(Frame { columns, total_rows: None, approx: None })))
+    one("result", Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None })))
 }
 
 // ─── PIVOTBY ────────────────────────────────────────────────────────────────────
@@ -315,7 +316,7 @@ fn source_column(k: &Column, distinct: Vec<String>) -> Json {
 
 /// The editor's field list, which crosses as a list where it is empty.
 fn show_sources(c: &mut Call, sources: Vec<Json>) {
-    let v = if sources.is_empty() { list(Vec::new()) } else { V::Json(Rc::new(Json::Array(sources))) };
+    let v = if sources.is_empty() { Cv::V(list(Vec::new())) } else { Cv::Json(Rc::new(Json::Array(sources))) };
     c.show("sourceColumns", v);
 }
 
@@ -396,7 +397,8 @@ fn js_numbers(j: Json) -> Json {
 
 /// The cube's flat columns, cells in one unit read in it.
 fn flat_cube(k: &Cube) -> Frame {
-    let nested = |cells: &[V]| cells.iter().any(|v| matches!(v, V::List(_) | V::Frame(_) | V::Cube(_)));
+    let nested =
+        |cells: &[Cv]| cells.iter().any(|v| matches!(v, Cv::V(V::List(_)) | Cv::Frame(_) | Cv::Cube(_) | Cv::Cells(_)));
     let columns = k
         .columns
         .iter()
@@ -413,7 +415,7 @@ fn pivot(c: &mut Call) -> Answer {
     let raw = first(c, "frame");
     if is_ref(&raw) {
         let schema = match first(c, "schema") {
-            V::Frame(s) => s,
+            Cv::Frame(s) => s,
             other => {
                 c.show("cachedResult", other.clone());
                 show_sources(c, Vec::new());
@@ -452,7 +454,7 @@ fn pivot(c: &mut Call) -> Answer {
             return one("read", texts(&wanted));
         }
         let read = match first(c, "columns") {
-            V::Frame(f) => f,
+            Cv::Frame(f) => f,
             other => {
                 c.show("cachedResult", other.clone());
                 return one("frame", other);
@@ -480,26 +482,26 @@ fn pivot(c: &mut Call) -> Answer {
             })
             .collect();
         let slice = Rc::new(Frame { columns, total_rows: None, approx: None });
-        return pivot_over(c, V::Frame(slice), Some(&raw));
+        return pivot_over(c, Cv::Frame(slice), Some(&raw));
     }
     let f = match &raw {
-        V::Cube(k) => V::Frame(Rc::new(flat_cube(k))),
-        V::Frame(_) => raw.clone(),
+        Cv::Cube(k) => Cv::Frame(Rc::new(flat_cube(k))),
+        Cv::Frame(_) => raw.clone(),
         _ => {
             c.show("cachedResult", V::Null);
             show_sources(c, Vec::new());
             return one("frame", V::Null);
         }
     };
-    let V::Frame(fr) = &f else { unreachable!() };
+    let Cv::Frame(fr) = &f else { unreachable!() };
     let sources = fr.columns.iter().map(|k| source_column(k, distinct_keys(&k.values))).collect();
     show_sources(c, sources);
     pivot_over(c, f, None)
 }
 
 /// The pivot of `fv` (a frame), or `source` (a ref) passed on where no value field names a column.
-fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
-    let V::Frame(f) = &fv else { unreachable!() };
+fn pivot_over(c: &mut Call, fv: Cv, source: Option<&Cv>) -> Answer {
+    let Cv::Frame(f) = &fv else { unreachable!() };
     let mut names: Vec<String> = Vec::new();
     for k in &f.columns {
         if !names.contains(&k.name) {
@@ -508,14 +510,15 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
     }
     let valid: HashSet<String> = names.iter().cloned().collect();
     let fields = kept(c, &valid);
-    let answer = |frame: V| -> Answer { Ok(vec![("frame".into(), frame), ("fieldNames".into(), texts(&names))]) };
+    let answer =
+        |frame: Cv| -> Answer { Ok(vec![("frame".into(), frame), ("fieldNames".into(), Cv::V(texts(&names)))]) };
     let mut lists = Vec::new();
     for key in AXES {
         match column_list(c, key)? {
             Some(names) => lists.push(names.into_iter().filter(|n| valid.contains(n)).collect::<Vec<_>>()),
             None => {
                 c.show("cachedResult", V::Null);
-                return answer(V::Null);
+                return answer(Cv::NULL);
             }
         }
     }
@@ -550,15 +553,15 @@ fn pivot_over(c: &mut Call, fv: V, source: Option<&V>) -> Answer {
         Err(e) => {
             let e = V::err(e);
             c.show("cachedResult", e.clone());
-            return answer(e);
+            return answer(Cv::V(e));
         }
     };
     let mut frame = from_core(&out);
     for (k, core) in frame.columns.iter_mut().zip(&out.columns) {
         k.unit = core.unit.as_ref().map(|u| u.to_json());
     }
-    c.show("pivotWire", V::Json(Rc::new(js_numbers(layout))));
-    let frame = V::Frame(Rc::new(frame));
+    c.show("pivotWire", Cv::Json(Rc::new(js_numbers(layout))));
+    let frame = Cv::Frame(Rc::new(frame));
     c.show("cachedResult", frame.clone());
     answer(frame)
 }

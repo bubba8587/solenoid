@@ -5,6 +5,7 @@
 
 use super::units::{broadcast_unit, from_unit};
 use super::values::{Column, Frame};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -69,7 +70,7 @@ fn number(v: &V) -> Option<f64> {
 }
 
 /// The outputs in order, each also shown on the card under its field.
-fn shown(c: &mut Call, outs: &[(&str, &str, V)]) -> Answer {
+fn shown(c: &mut Call, outs: &[(&str, &str, Cv)]) -> Answer {
     for (_, field, v) in outs {
         c.show(field, v.clone());
     }
@@ -111,7 +112,7 @@ fn parallel_combine(c: &mut Call) -> Answer {
         V::List(cells) => parallel_combine_of(&cells),
         _ => parallel_combine_of(&[]),
     };
-    shown(c, &[("result", "cachedResult", result)])
+    shown(c, &[("result", "cachedResult", Cv::V(result))])
 }
 
 const E24: [f64; 24] = [
@@ -166,7 +167,7 @@ fn e_series(c: &mut Call) -> Answer {
         }
         None => (V::Null, V::Null),
     };
-    shown(c, &[("nearest", "cachedNearest", nearest), ("errpct", "cachedError", errpct)])
+    shown(c, &[("nearest", "cachedNearest", Cv::V(nearest)), ("errpct", "cachedError", Cv::V(errpct))])
 }
 
 /// `AWG_AMPACITY_75C`.
@@ -207,10 +208,10 @@ fn awg(c: &mut Call) -> Answer {
     shown(
         c,
         &[
-            ("diameter", "cachedDiameter", diameter),
-            ("area", "cachedArea", area),
-            ("resistance", "cachedResistance", resistance),
-            ("ampacity", "cachedAmpacity", ampacity),
+            ("diameter", "cachedDiameter", Cv::V(diameter)),
+            ("area", "cachedArea", Cv::V(area)),
+            ("resistance", "cachedResistance", Cv::V(resistance)),
+            ("ampacity", "cachedAmpacity", Cv::V(ampacity)),
         ],
     )
 }
@@ -229,7 +230,7 @@ fn resistor_code(c: &mut Call) -> Answer {
         Ok((o, t)) => (V::Num(o), V::Num(t)),
         Err(e) => (e.clone(), e),
     };
-    shown(c, &[("ohms", "cachedOhms", ohms), ("tolerance", "cachedTol", tol)])
+    shown(c, &[("ohms", "cachedOhms", Cv::V(ohms)), ("tolerance", "cachedTol", Cv::V(tol))])
 }
 
 /// The ohms and tolerance of the digit bands, the multiplier and the tolerance band, each by its
@@ -406,7 +407,7 @@ fn element_node(c: &mut Call) -> Answer {
     let Some((n, mass)) = element(c.field_str("symbol", "H")) else {
         return Err(super::frames::thrown("Cannot read properties of undefined (reading 'mass')"));
     };
-    Ok(vec![("mass".into(), V::Num(mass)), ("number".into(), V::Num(n))])
+    Ok(vec![("mass".into(), Cv::from(V::Num(mass))), ("number".into(), Cv::from(V::Num(n)))])
 }
 
 /// `^\d+(?:\.\d+)?` at `i`: the count's length and value, or none.
@@ -541,7 +542,7 @@ fn molar_mass_node(c: &mut Call) -> Answer {
         _ => V::Null,
     };
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn physics_constant(c: &mut Call) -> Answer {
@@ -550,7 +551,7 @@ fn physics_constant(c: &mut Call) -> Answer {
         Some(v) => V::Num(v),
         None => super::err(crate::error_value::ErrorCode::Value, format!("Unknown constant \"{op}\"")),
     };
-    Ok(vec![("value".into(), v)])
+    Ok(vec![("value".into(), Cv::from(v))])
 }
 
 /// `PHYS_CONSTANTS`: CODATA 2018, SI units.
@@ -691,9 +692,9 @@ fn solar_position(c: &mut Call) -> Answer {
     shown(
         c,
         &[
-            ("elevation", "cachedElevation", elevation),
-            ("azimuth", "cachedAzimuth", azimuth),
-            ("declination", "cachedDeclination", declination),
+            ("elevation", "cachedElevation", Cv::V(elevation)),
+            ("azimuth", "cachedAzimuth", Cv::V(azimuth)),
+            ("declination", "cachedDeclination", Cv::V(declination)),
         ],
     )
 }
@@ -712,9 +713,9 @@ fn sunrise_sunset(c: &mut Call) -> Answer {
     shown(
         c,
         &[
-            ("sunrise", "cachedSunrise", sunrise),
-            ("sunset", "cachedSunset", sunset),
-            ("daylength", "cachedDayLength", daylength),
+            ("sunrise", "cachedSunrise", Cv::V(sunrise)),
+            ("sunset", "cachedSunset", Cv::V(sunset)),
+            ("daylength", "cachedDayLength", Cv::V(daylength)),
         ],
     )
 }
@@ -730,9 +731,9 @@ fn moon_phase_node(c: &mut Call) -> Answer {
     shown(
         c,
         &[
-            ("phase", "cachedPhase", phase),
-            ("age", "cachedAge", age),
-            ("illumination", "cachedIllumination", illumination),
+            ("phase", "cachedPhase", Cv::V(phase)),
+            ("age", "cachedAge", Cv::V(age)),
+            ("illumination", "cachedIllumination", Cv::V(illumination)),
         ],
     )
 }
@@ -821,10 +822,10 @@ fn isa_atmosphere(c: &mut Call) -> Answer {
     shown(
         c,
         &[
-            ("temp", "cachedT", temp),
-            ("pressure", "cachedP", pressure),
-            ("density", "cachedRho", density),
-            ("sound", "cachedA", sound),
+            ("temp", "cachedT", Cv::V(temp)),
+            ("pressure", "cachedP", Cv::V(pressure)),
+            ("density", "cachedRho", Cv::V(density)),
+            ("sound", "cachedA", Cv::V(sound)),
         ],
     )
 }
@@ -862,7 +863,7 @@ fn antoine(c: &mut Call) -> Answer {
         Some(t) => V::Num(MMHG_TO_PA * pow(10.0, a - b / (cc + t))),
     };
     let bp = V::Num(b / (a - log10(760.0)) - cc);
-    shown(c, &[("pressure", "cachedP", pressure), ("bp", "cachedBp", bp)])
+    shown(c, &[("pressure", "cachedP", Cv::V(pressure)), ("bp", "cachedBp", Cv::V(bp))])
 }
 
 // ─── Fluids ────────────────────────────────────────────────────────────────────
@@ -892,7 +893,7 @@ fn colebrook(c: &mut Call) -> Answer {
         (Some(re), Some(rr)) => V::Num(colebrook_f(re, rr)),
         _ => V::Null,
     };
-    shown(c, &[("result", "cachedResult", result)])
+    shown(c, &[("result", "cachedResult", Cv::V(result))])
 }
 
 /// `PIPE_ROUGHNESS`: absolute roughness ε in mm.
@@ -920,7 +921,7 @@ fn pipe_roughness(c: &mut Call) -> Answer {
         Some(d) if d > 0.0 => V::Num(eps / d),
         Some(_) => domain("Diameter must be positive"),
     };
-    shown(c, &[("eps", "cachedEps", V::Num(eps)), ("rel", "cachedRel", rel)])
+    shown(c, &[("eps", "cachedEps", Cv::V(V::Num(eps))), ("rel", "cachedRel", Cv::V(rel))])
 }
 
 // ─── Health ────────────────────────────────────────────────────────────────────
@@ -934,7 +935,7 @@ pub(crate) const ZONES: [(&str, f64, f64); 5] = [
 ];
 
 /// A row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
-fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> V {
+fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> Cv {
     let at = |pct: f64| {
         V::Num(math_round(match resting {
             Some(r) => r + pct * (max_hr - r),
@@ -949,7 +950,7 @@ fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> V {
         format: None,
         raw: None,
     };
-    V::Frame(Rc::new(Frame {
+    Cv::Frame(Rc::new(Frame {
         columns: vec![
             column("Zone", FrameColType::String, ZONES.iter().map(|z| V::str(z.0)).collect()),
             column("Low", FrameColType::Number, ZONES.iter().map(|z| at(z.1)).collect()),
@@ -966,13 +967,13 @@ fn hr_zones(c: &mut Call) -> Answer {
     let max_in = read_or_null(c, "max");
     let max_hr = number(&max_in).or_else(|| number(&age).map(|a| 220.0 - a));
     let zones = match max_hr {
-        None => V::Null,
+        None => Cv::NULL,
         Some(max_hr) => {
             let rest = number(&resting);
             if max_hr > 0.0 && rest.is_none_or(|r| r > 0.0 && r < max_hr) {
                 hr_zones_frame(max_hr, rest)
             } else {
-                domain("Needs max HR > 0 and resting HR below it")
+                Cv::V(domain("Needs max HR > 0 and resting HR below it"))
             }
         }
     };
@@ -1030,7 +1031,11 @@ fn em_spectrum_node(c: &mut Call) -> Answer {
     };
     shown(
         c,
-        &[("band", "cachedBand", band), ("freq", "cachedFreq", freq), ("wavelength", "cachedWavelength", wavelength)],
+        &[
+            ("band", "cachedBand", Cv::V(band)),
+            ("freq", "cachedFreq", Cv::V(freq)),
+            ("wavelength", "cachedWavelength", Cv::V(wavelength)),
+        ],
     )
 }
 
@@ -1068,7 +1073,7 @@ fn convert(c: &mut Call) -> Answer {
     c.show("cachedInput", x.clone());
     let done = |c: &mut Call, v: V| {
         c.show("cachedResult", v.clone());
-        Ok(vec![("out".to_string(), v)])
+        Ok(vec![("out".to_string(), Cv::V(v))])
     };
     if matches!(x, V::Null) {
         return done(c, V::Null);
@@ -1133,7 +1138,7 @@ fn convert(c: &mut Call) -> Answer {
 
 fn tornado(c: &mut Call) -> Answer {
     let v = first(c, "value");
-    shown(c, &[("out", "cachedResult", v)])
+    shown(c, &[("out", "cachedResult", Cv::V(v))])
 }
 
 // ─── The Triangle Solver ────────────────────────────────────────────────────────────────────────────────────────────
@@ -1427,12 +1432,12 @@ fn triangle_solver(c: &mut Call) -> Answer {
         Err(e) => {
             let keys = PART_KEYS.iter().copied().chain(["area", "perimeter", "valid"]);
             let values: serde_json::Map<String, Json> = keys.clone().map(|k| (k.to_string(), tri_json(&e))).collect();
-            c.show("cachedValues", V::Json(Rc::new(Json::Object(values))));
+            c.show("cachedValues", Cv::Json(Rc::new(Json::Object(values))));
             for f in ["cachedArea", "cachedPerimeter", "cachedValid"] {
                 c.show(f, e.clone());
             }
             c.show("solvedKeys", list(Vec::new()));
-            return Ok(keys.map(|k| (k.to_string(), e.clone())).collect());
+            return Ok(keys.map(|k| (k.to_string(), Cv::V(e.clone()))).collect());
         }
     };
     let raw: Vec<V> = PART_KEYS
@@ -1522,11 +1527,11 @@ fn triangle_solver(c: &mut Call) -> Answer {
     }
     let values_json: serde_json::Map<String, Json> =
         PART_KEYS.iter().zip(&shown_values).map(|(k, v)| (k.to_string(), tri_json(v))).collect();
-    c.show("cachedValues", V::Json(Rc::new(Json::Object(values_json))));
+    c.show("cachedValues", Cv::Json(Rc::new(Json::Object(values_json))));
     c.show("cachedArea", outs[6].clone());
     c.show("cachedPerimeter", outs[7].clone());
     c.show("cachedValid", outs[8].clone());
     c.show("solvedKeys", list(solved.iter().map(|&k| V::str(PART_KEYS[k])).collect()));
     let keys = PART_KEYS.iter().copied().chain(["area", "perimeter", "valid"]);
-    Ok(keys.zip(outs).map(|(k, v)| (k.to_string(), v)).collect())
+    Ok(keys.zip(outs).map(|(k, v)| (k.to_string(), Cv::V(v))).collect())
 }

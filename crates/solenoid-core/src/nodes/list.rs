@@ -5,6 +5,7 @@ use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::text::role_value;
 use super::units::tag;
+use super::Cv;
 use super::{err, list, Answer, Call, Column, Frame};
 use crate::error_value::ErrorCode;
 use crate::excel_criteria::DateReading;
@@ -68,7 +69,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 /// `inputs[key]?.[0]`: the first cable's value, `undefined` with none.
 pub(crate) fn slot(c: &Call, key: &str) -> V {
-    c.wired(key).and_then(|w| w.first()).cloned().unwrap_or(V::Undef)
+    c.value_of(key, &c.raw_card(key))
 }
 
 pub(crate) fn nullish(v: &V) -> bool {
@@ -127,7 +128,8 @@ fn over_limit(what: &str, n: f64) -> V {
     )
 }
 
-fn shown(c: &mut Call, field: &str, out: &str, v: V) -> Answer {
+fn shown(c: &mut Call, field: &str, out: &str, v: impl Into<Cv>) -> Answer {
+    let v = v.into();
     c.show(field, v.clone());
     Ok(vec![(out.into(), v)])
 }
@@ -243,7 +245,7 @@ fn series(c: &mut Call) -> Answer {
             c.show("lastRank", V::Num(if matches!(first, V::List(_)) { 2.0 } else { 1.0 }));
         }
     }
-    Ok(vec![("list".into(), result)])
+    Ok(vec![("list".into(), Cv::from(result))])
 }
 
 /// `a === b` on two cells.
@@ -372,7 +374,7 @@ fn slice(c: &mut Call) -> Answer {
     let end = setting(c, "end");
     if start.is_sol_error() {
         c.show("cachedList", V::Null);
-        return Ok(vec![("result".into(), start)]);
+        return Ok(vec![("result".into(), Cv::from(start))]);
     }
     let r = core_call("SLICE", &[arr, start, end]);
     shown(c, "cachedList", "result", r)
@@ -437,7 +439,7 @@ fn running(c: &mut Call) -> Answer {
         c.show("cachedList", empty());
         return Ok(vec![(
             "result".into(),
-            err(ErrorCode::Domain, "Window must be 0 (cumulative) or a positive count"),
+            Cv::V(err(ErrorCode::Domain, "Window must be 0 (cumulative) or a positive count")),
         )]);
     }
     let label = match c.field_str("agg", "sum") {
@@ -451,7 +453,7 @@ fn running(c: &mut Call) -> Answer {
     };
     let r = core_call("RUNNING", &[V::Str(label.into()), arr, w]);
     c.show("cachedList", if r.is_sol_error() { empty() } else { r.clone() });
-    Ok(vec![("result".into(), r)])
+    Ok(vec![("result".into(), Cv::from(r))])
 }
 
 fn diff(c: &mut Call) -> Answer {
@@ -495,7 +497,7 @@ fn nth_element(c: &mut Call) -> Answer {
     let n = required(c, "n");
     if n.is_sol_error() {
         c.show("cachedList", V::Null);
-        return Ok(vec![("result".into(), n)]);
+        return Ok(vec![("result".into(), Cv::from(n))]);
     }
     let r = core_call("NTHELEMENT", &[arr, n]);
     shown(c, "cachedList", "result", r)
@@ -512,7 +514,7 @@ fn pad(c: &mut Call) -> Answer {
     let fill = c.read_num("fill", 0.0);
     if n.is_sol_error() {
         c.show("cachedList", V::Null);
-        return Ok(vec![("result".into(), n)]);
+        return Ok(vec![("result".into(), Cv::from(n))]);
     }
     if matches!(fill, V::Null) {
         return shown(c, "cachedList", "result", V::Null);
@@ -614,10 +616,10 @@ fn smooth(c: &mut Call) -> Answer {
     };
     if out.is_sol_error() && op != "lowess" {
         c.show("cachedList", empty());
-        return Ok(vec![("result".into(), out)]);
+        return Ok(vec![("result".into(), Cv::from(out))]);
     }
     c.show("cachedList", or(out.clone(), empty()));
-    Ok(vec![("result".into(), out)])
+    Ok(vec![("result".into(), Cv::from(out))])
 }
 
 /// A typed row's items, trimmed, the empty ones dropped.
@@ -737,7 +739,7 @@ fn list_input(c: &mut Call) -> Answer {
     let result = list(items);
     c.show("cachedList", result.clone());
     c.show("cachedSource", list(source));
-    Ok(vec![("list".into(), result)])
+    Ok(vec![("list".into(), Cv::from(result))])
 }
 
 /// The type of the first item that has one.
@@ -786,7 +788,7 @@ fn filter(c: &mut Call) -> Answer {
     let done = |c: &mut Call, result: V, dropped: V| {
         c.show("cachedResult", result.clone());
         c.show("cachedDropped", dropped.clone());
-        Ok(vec![("result".into(), result), ("dropped".into(), dropped)])
+        Ok(vec![("result".into(), Cv::from(result)), ("dropped".into(), Cv::from(dropped))])
     };
     if nullish(&raw) {
         return done(c, V::Null, V::Null);
@@ -1227,8 +1229,8 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
     (typed, raw)
 }
 
-fn frame_of(columns: Vec<Column>) -> V {
-    V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }))
+fn frame_of(columns: Vec<Column>) -> Cv {
+    Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }))
 }
 
 fn number_column(name: &str, values: Vec<V>) -> Column {
@@ -1283,7 +1285,7 @@ fn tally(c: &mut Call) -> Answer {
         }
     }
     let r = if values.is_empty() && seen.is_empty() {
-        V::Null
+        Cv::NULL
     } else {
         let keys: Vec<V> = seen.iter().map(|(v, _)| v.clone()).collect();
         frame_of(vec![
@@ -1376,7 +1378,7 @@ fn find_peaks(c: &mut Call) -> Answer {
         })
         .collect();
     let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
-    let frame = V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
+    let frame = Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     shown(c, "cachedResult", "result", frame)
 }
 
@@ -1385,8 +1387,8 @@ fn find_peaks(c: &mut Call) -> Answer {
 /// A list takes one Position and anything else a Row and a Column ([[D85]] columnsStayColumns); the class swaps the
 /// sockets, and until it has, the sockets on the card say what the numbers mean.
 fn list_index(c: &mut Call) -> Answer {
-    let v = match slot(c, "list") {
-        V::Undef => V::Null,
+    let v = match c.raw_card("list") {
+        Cv::V(V::Undef) => Cv::NULL,
         v => v,
     };
     let has = |c: &Call, k: &str| c.sockets.iter().any(|s| s.key == k);
@@ -1397,7 +1399,7 @@ fn list_index(c: &mut Call) -> Answer {
     let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
     let unit = c.matrix_unit("list").cloned();
     let result = index_container(&v, &row, &col, unit.as_ref());
-    if let (Some(u), V::List(a), V::List(b)) = (&unit, &v, &result) {
+    if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result) {
         if std::rc::Rc::ptr_eq(a, b) {
             c.set_matrix_unit("result", u.clone());
         }
@@ -1456,6 +1458,14 @@ fn resolve_axes(row: &V, col: &V) -> Option<(bool, bool, f64, f64)> {
 }
 
 /// `xs[i]` at a position that may be NaN or out of range.
+/// A Cube column's cell at `i`, blank past its end.
+fn cube_cell_at(cells: &[Cv], i: f64) -> Cv {
+    match (i >= 0.0).then(|| cells.get(i as usize)).flatten() {
+        None | Some(Cv::V(V::Undef)) => Cv::NULL,
+        Some(c) => c.clone(),
+    }
+}
+
 fn at_pos(xs: &[V], i: f64) -> Option<&V> {
     if i >= 0.0 && i < xs.len() as f64 {
         xs.get(i as usize)
@@ -1478,28 +1488,31 @@ fn or_null(x: Option<&V>) -> V {
 
 /// A frame or a cube sliced here, anything else as the INDEX formula reads it, a table's
 /// cells in its unit.
-fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
+fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -> Cv {
     use super::frames::{cube_from_columns, cube_row_count, tag_cell_unit};
-    if matches!(v, V::Null | V::Undef) {
-        return V::Null;
+    if v.is_nullish() {
+        return Cv::NULL;
     }
-    if !matches!(v, V::Frame(_) | V::Cube(_)) {
-        return index_into(v, row, col, unit);
+    if let Cv::V(v) = v {
+        return Cv::V(index_into(v, row, col, unit));
+    }
+    if !v.is_table() {
+        return Cv::NULL;
     }
     if matches!(row, V::List(_)) || matches!(col, V::List(_)) {
-        return err(ErrorCode::Value, "INDEX takes one row and one column of a Frame or Cube at a time");
+        return Cv::V(err(ErrorCode::Value, "INDEX takes one row and one column of a Frame or Cube at a time"));
     }
-    let Some((row_all, col_all, r, ci)) = resolve_axes(row, col) else { return V::Null };
-    if let V::Cube(cube) = v {
+    let Some((row_all, col_all, r, ci)) = resolve_axes(row, col) else { return Cv::NULL };
+    if let Cv::Cube(cube) = v {
         if row_all && col_all {
             return v.clone();
         }
         let rows = cube_row_count(cube);
         if !row_all && outside(r, rows) {
-            return index_ref_error(r + 1.0, rows, "Row");
+            return Cv::V(index_ref_error(r + 1.0, rows, "Row"));
         }
         if !col_all && outside(ci, cube.columns.len()) {
-            return index_ref_error(ci + 1.0, cube.columns.len(), "Column");
+            return Cv::V(index_ref_error(ci + 1.0, cube.columns.len(), "Column"));
         }
         if row_all {
             return cube_from_columns(vec![cube.columns[ci as usize].clone()]);
@@ -1508,29 +1521,29 @@ fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) ->
             return cube_from_columns(
                 cube.columns
                     .iter()
-                    .map(|col| super::CubeColumn { cells: vec![or_null(at_pos(&col.cells, r))], ..col.clone() })
+                    .map(|col| super::CubeColumn { cells: vec![cube_cell_at(&col.cells, r)], ..col.clone() })
                     .collect(),
             );
         }
-        return or_null(at_pos(&cube.columns[ci as usize].cells, r));
+        return cube_cell_at(&cube.columns[ci as usize].cells, r);
     }
-    let V::Frame(frame) = v else { return V::Null };
+    let Cv::Frame(frame) = v else { return Cv::NULL };
     if row_all && col_all {
         return v.clone();
     }
     let rows = frame.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
     if !row_all && outside(r, rows) {
-        return index_ref_error(r + 1.0, rows, "Row");
+        return Cv::V(index_ref_error(r + 1.0, rows, "Row"));
     }
     if !col_all && outside(ci, frame.columns.len()) {
-        return index_ref_error(ci + 1.0, frame.columns.len(), "Column");
+        return Cv::V(index_ref_error(ci + 1.0, frame.columns.len(), "Column"));
     }
     if row_all {
         let col = &frame.columns[ci as usize];
-        return list(match &col.unit {
+        return Cv::V(list(match &col.unit {
             Some(u) => col.values.iter().map(|x| tag_cell_unit(x, u)).collect(),
             None => col.values.clone(),
-        });
+        }));
     }
     if col_all {
         let columns = frame
@@ -1548,13 +1561,13 @@ fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) ->
                 ..col.clone()
             })
             .collect();
-        return V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
+        return Cv::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     }
     let col = &frame.columns[ci as usize];
     let cell = or_null(at_pos(&col.values, r));
     match &col.unit {
-        Some(u) => tag_cell_unit(&cell, u),
-        None => cell,
+        Some(u) => Cv::V(tag_cell_unit(&cell, u)),
+        None => Cv::V(cell),
     }
 }
 
@@ -1814,7 +1827,7 @@ fn shuffle(c: &mut Call) -> Answer {
     };
     let refuse = |c: &mut Call, e: V| {
         c.show("cachedList", list(Vec::new()));
-        Ok(vec![("result".into(), e)])
+        Ok(vec![("result".into(), Cv::from(e))])
     };
     let key_at = |i: usize| held.get(i).copied().unwrap_or(f64::NAN);
     let keys: Vec<f64> = match &weights {
@@ -1842,7 +1855,7 @@ fn shuffle(c: &mut Call) -> Answer {
     crate::decision::sort_by_num(&mut pairs, |a, b| a.1 - b.1);
     let order = list(pairs.into_iter().map(|p| p.0).collect());
     c.show("cachedList", order.clone());
-    Ok(vec![("result".into(), order)])
+    Ok(vec![("result".into(), Cv::from(order))])
 }
 
 /// `a > b` as JS compares them: two texts by UTF-16 order, anything else as numbers.
@@ -1899,7 +1912,7 @@ fn rand_array(c: &mut Call) -> Answer {
         c.show("cachedList", e.clone());
         c.show("rolls", list(Vec::new()));
         c.show("rollsNeeded", V::Null);
-        return Ok(vec![("list".into(), e)]);
+        return Ok(vec![("list".into(), Cv::from(e))]);
     }
     let rolls: Vec<f64> = c
         .field("rolls")
@@ -1908,7 +1921,7 @@ fn rand_array(c: &mut Call) -> Answer {
         .unwrap_or_default();
     if rolls.len() as f64 != count {
         c.show("rollsNeeded", V::Num(count));
-        return Ok(vec![("list".into(), V::Null)]);
+        return Ok(vec![("list".into(), Cv::from(V::Null))]);
     }
     c.show("rollsNeeded", V::Null);
     let (a, b) = (js_number(&lo), js_number(&hi));
@@ -1925,5 +1938,5 @@ fn rand_array(c: &mut Call) -> Answer {
             .collect(),
     );
     c.show("cachedList", drawn.clone());
-    Ok(vec![("list".into(), drawn)])
+    Ok(vec![("list".into(), Cv::from(drawn))])
 }

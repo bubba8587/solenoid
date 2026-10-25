@@ -11,18 +11,21 @@ use serde_json::Value as Json;
 use solenoid_core::error_value::{sol_error, ErrorCode, Origin, SolError};
 use solenoid_core::excel_functions::V;
 use solenoid_core::nodes::frames::{frame_from_rows, frame_to_cube};
-use solenoid_core::nodes::{Cube, CubeColumn, Frame};
+use solenoid_core::nodes::{Cube, CubeColumn, Cv, Frame};
 
 /// A value as it reaches a card: its cells, and the unit of a table (`matrixUnitOf` on the JS array).
 #[derive(Clone, Debug)]
 pub struct Arrived {
-    pub v: V,
+    pub v: Cv,
     pub munit: Option<Rc<Json>>,
 }
 
 impl Arrived {
-    pub fn bare(v: V) -> Arrived {
-        Arrived { v, munit: None }
+    pub fn bare(v: impl Into<Cv>) -> Arrived {
+        Arrived {
+            v: v.into(),
+            munit: None,
+        }
     }
 }
 
@@ -53,12 +56,16 @@ pub struct Facts {
 }
 
 /// Two values that are one JavaScript object: a container by its allocation, a complex number by its parts.
-pub fn same_obj(a: &V, b: &V) -> bool {
+pub fn same_obj(a: &Cv, b: &Cv) -> bool {
+    match (a, b) {
+        (Cv::V(x), Cv::V(y)) => same_v(x, y),
+        _ => a.same(b),
+    }
+}
+
+fn same_v(a: &V, b: &V) -> bool {
     match (a, b) {
         (V::List(x), V::List(y)) => Rc::ptr_eq(x, y),
-        (V::Frame(x), V::Frame(y)) => Rc::ptr_eq(x, y),
-        (V::Cube(x), V::Cube(y)) => Rc::ptr_eq(x, y),
-        (V::Json(x), V::Json(y)) => Rc::ptr_eq(x, y),
         (V::Lambda(x), V::Lambda(y)) => Rc::ptr_eq(x, y),
         (V::Err(x), V::Err(y)) => Rc::ptr_eq(x, y),
         (V::Unit(x), V::Unit(y)) => Rc::ptr_eq(x, y),
@@ -67,8 +74,8 @@ pub fn same_obj(a: &V, b: &V) -> bool {
     }
 }
 
-pub fn is_frame_ref(v: &V) -> bool {
-    matches!(v, V::Json(j) if j.get("__frameRef").is_some())
+pub fn is_frame_ref(v: &Cv) -> bool {
+    matches!(v, Cv::Json(j) if j.get("__frameRef").is_some())
 }
 
 fn nullish(v: &V) -> bool {
@@ -377,21 +384,21 @@ fn collapse(v: V) -> V {
 }
 
 /// `frameFromRows`: a row JavaScript gives no length (a number, an object) leaves the frame with no columns.
-fn rows_frame(rows: &[V]) -> V {
+fn rows_frame(rows: &[V]) -> Cv {
     let read: Option<Vec<Vec<V>>> = rows.iter().map(row_cells).collect();
-    V::Frame(Rc::new(match read {
+    Cv::Frame(Rc::new(match read {
         Some(rows) => frame_from_rows(&rows),
         None => Frame::default(),
     }))
 }
 
-fn cube_from_rows(rows: &[V]) -> V {
+fn cube_from_rows(rows: &[V]) -> Cv {
     let Some(rows) = rows.iter().map(row_cells).collect::<Option<Vec<Vec<V>>>>() else {
-        return V::Cube(Rc::new(Cube::default()));
+        return Cv::Cube(Rc::new(Cube::default()));
     };
     let ncols = rows.iter().map(Vec::len).max().unwrap_or(0);
     let names = solenoid_core::frame::make_headers(&[], ncols);
-    V::Cube(Rc::new(Cube {
+    Cv::Cube(Rc::new(Cube {
         columns: names
             .into_iter()
             .enumerate()
@@ -399,7 +406,7 @@ fn cube_from_rows(rows: &[V]) -> V {
                 name,
                 cells: rows
                     .iter()
-                    .map(|r| r.get(j).cloned().unwrap_or(V::Null))
+                    .map(|r| Cv::V(r.get(j).cloned().unwrap_or(V::Null)))
                     .collect(),
                 ty: None,
                 format: None,
@@ -409,59 +416,70 @@ fn cube_from_rows(rows: &[V]) -> V {
 }
 
 /// `toCube`: a cube as it is, a frame's cells in their units, rows otherwise.
-pub fn to_cube(v: &V) -> V {
+pub fn to_cube(v: &Cv) -> Cv {
     match v {
-        V::Cube(_) => v.clone(),
-        V::Frame(f) => V::Cube(Rc::new(frame_to_cube(f))),
-        V::List(a) if matches!(a.first(), Some(V::List(_))) => cube_from_rows(a),
-        V::List(_) => cube_from_rows(std::slice::from_ref(v)),
-        _ => cube_from_rows(&[list(vec![v.clone()])]),
+        Cv::Cube(_) => v.clone(),
+        Cv::Frame(f) => Cv::Cube(Rc::new(frame_to_cube(f))),
+        Cv::V(V::List(a)) if matches!(a.first(), Some(V::List(_))) => cube_from_rows(a),
+        Cv::V(l @ V::List(_)) => cube_from_rows(std::slice::from_ref(l)),
+        Cv::V(v) => cube_from_rows(&[list(vec![v.clone()])]),
+        _ => Cv::Cube(Rc::new(Cube::default())),
     }
 }
 
-fn coerce_unit_cell_value(rung: &str, v: &V) -> R<V> {
-    match rung {
+fn coerce_unit_cell_value(rung: &str, v: &V) -> R<Cv> {
+    Ok(Cv::V(match rung {
         "number" => match v {
-            V::Unit(_) => Ok(v.clone()),
+            V::Unit(_) => v.clone(),
             V::List(a) => {
                 if a.len() == 1 && matches!(a[0], V::Unit(_)) {
-                    return Ok(a[0].clone());
+                    return Ok(Cv::V(a[0].clone()));
                 }
-                Err(Thrown::Shape(format!(
+                return Err(Thrown::Shape(format!(
                     "Expected a single value, got {}",
                     a.len()
-                )))
+                )));
             }
-            _ => Err(Thrown::Shape("Expected a single value, got a table".into())),
+            _ => return Err(Thrown::Shape("Expected a single value, got a table".into())),
         },
-        "list" | "anylist" => Ok(if matches!(v, V::Unit(_)) {
-            list(vec![v.clone()])
-        } else {
-            v.clone()
-        }),
-        "table" => Ok(to_any_matrix(v)),
-        "frame" => Ok(match v {
-            V::Frame(_) => v.clone(),
-            V::List(_) => rows_frame(std::slice::from_ref(v)),
-            _ => rows_frame(&[list(vec![v.clone()])]),
-        }),
-        "cube" => Ok(to_cube(v)),
-        _ if COLLAPSING.contains(&rung) => Ok(collapse(v.clone())),
-        _ => Ok(v.clone()),
-    }
+        "list" | "anylist" => {
+            if matches!(v, V::Unit(_)) {
+                list(vec![v.clone()])
+            } else {
+                v.clone()
+            }
+        }
+        "table" => to_any_matrix(v),
+        "frame" => {
+            return Ok(match v {
+                V::List(_) => rows_frame(std::slice::from_ref(v)),
+                _ => rows_frame(&[list(vec![v.clone()])]),
+            })
+        }
+        "cube" => return Ok(to_cube(&Cv::V(v.clone()))),
+        _ if COLLAPSING.contains(&rung) => collapse(v.clone()),
+        _ => v.clone(),
+    }))
 }
 
 /// A value reaching a port of `rung`, shaped for it (compute-pass.md § Full coercion, per rung).
+/// A table, plain data or an error passes as it is, a frame turned to a Cube on a Cube port; a table reaching a value
+/// port is the body's `#VALUE!` (`Call::value_of`).
 fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
-    let v = &a.v;
     let same = || Ok(a.clone());
     let new = |v: V| Ok(Arrived::bare(v));
-    if is_frame_ref(v) || matches!(v, V::Err(_)) {
-        return same();
-    }
+    let v = match &a.v {
+        Cv::V(v) if !matches!(v, V::Err(_)) => v,
+        Cv::Frame(_) if rung == "cube" => return Ok(Arrived::bare(to_cube(&a.v))),
+        _ => return same(),
+    };
     if has_unit_cell(v) {
         let out = coerce_unit_cell_value(rung, v)?;
-        return if same_obj(&out, v) { same() } else { new(out) };
+        return if matches!(&out, Cv::V(o) if same_v(o, v)) {
+            same()
+        } else {
+            Ok(Arrived::bare(out))
+        };
     }
     let fam = family_of(rung);
     let cells = || match fam {
@@ -473,7 +491,7 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
             let m = to_matrix(&cells());
             Ok(match m {
                 V::List(_) => Arrived {
-                    v: m,
+                    v: Cv::V(m),
                     munit: a.munit.clone(),
                 },
                 m => Arrived::bare(m),
@@ -491,7 +509,7 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
         }
         "logical" | "logicalcombo" | "string" | "date" | "strcombo" | "datecombo" => {
             let out = scalar_or_throw(collapse(cells()))?;
-            if same_obj(&out, v) {
+            if same_v(&out, v) {
                 same()
             } else {
                 new(out)
@@ -500,7 +518,7 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
         "logicaltable" | "strtable" | "datetable" => new(cells()),
         "complex" | "complexcombo" | "anydata" | "anycombo" => {
             let out = collapse(v.clone());
-            if same_obj(&out, v) || !matches!(v, V::List(_)) {
+            if same_v(&out, v) || !matches!(v, V::List(_)) {
                 same()
             } else {
                 new(out)
@@ -524,25 +542,20 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
             new(list(vec![v.clone()]))
         }
         "frame" => {
-            if matches!(v, V::Frame(_)) || nullish(v) {
+            if nullish(v) {
                 return same();
             }
-            new(match v {
+            Ok(Arrived::bare(match v {
                 V::List(items) if matches!(items.first(), Some(V::List(_))) => rows_frame(items),
                 V::List(_) => rows_frame(std::slice::from_ref(v)),
                 _ => rows_frame(&[list(vec![v.clone()])]),
-            })
+            }))
         }
         "cube" => {
             if nullish(v) {
                 return same();
             }
-            let out = to_cube(v);
-            if same_obj(&out, v) {
-                same()
-            } else {
-                new(out)
-            }
+            Ok(Arrived::bare(to_cube(&a.v)))
         }
         _ => same(),
     }
@@ -550,15 +563,15 @@ fn coerce_value(rung: &str, a: &Arrived) -> R<Arrived> {
 
 /// `noWidenInputs`: the value keeps its rank, its cells their family's coercion.
 fn coerce_value_no_widen(rung: &str, a: &Arrived) -> R<Arrived> {
-    let v = &a.v;
-    if is_frame_ref(v) || matches!(v, V::Err(_)) || has_unit_cell(v) {
-        return Ok(a.clone());
-    }
+    let v = match &a.v {
+        Cv::V(v) if !matches!(v, V::Err(_)) && !has_unit_cell(v) => v,
+        _ => return Ok(a.clone()),
+    };
     match family_of(rung) {
         Some(f) => {
             let out = scalar_or_throw(family_cells(f, v))?;
             Ok(
-                if same_obj(&out, v) || (!matches!(v, V::List(_)) && family_cell(f, v).is_none()) {
+                if same_v(&out, v) || (!matches!(v, V::List(_)) && family_cell(f, v).is_none()) {
                     a.clone()
                 } else {
                     Arrived::bare(out)
@@ -601,8 +614,11 @@ pub fn blank_literal(text: &str) -> bool {
 pub fn first_input_error(inputs: &[(String, Vec<Arrived>)]) -> Option<(V, String)> {
     inputs.iter().find_map(|(key, arr)| {
         arr.iter()
-            .find(|a| matches!(a.v, V::Err(_)))
-            .map(|e| (e.v.clone(), key.clone()))
+            .find_map(|a| match &a.v {
+                Cv::V(e @ V::Err(_)) => Some(e.clone()),
+                _ => None,
+            })
+            .map(|e| (e, key.clone()))
     })
 }
 
@@ -618,7 +634,7 @@ pub fn coerce_all(
         let keep = facts.unit_aware || facts.pass_keys.iter().any(|k| k == key);
         let mut values: Vec<Arrived> = arr
             .iter()
-            .map(|a| match (keep, strip_unit_cells(&a.v)) {
+            .map(|a| match (keep, a.v.v().and_then(strip_unit_cells)) {
                 (false, Some(s)) => Arrived::bare(s),
                 _ => a.clone(),
             })
@@ -669,7 +685,27 @@ fn sampled_cell_indices(len: usize) -> impl Iterator<Item = usize> {
 }
 
 /// The first error a bounded scan finds in a value.
-pub fn find_cell_error(v: &V) -> Option<V> {
+pub fn find_cell_error(v: &Cv) -> Option<V> {
+    match v {
+        Cv::V(v) => find_value_error(v),
+        Cv::Cells(a) => {
+            sampled_cell_indices(a.len()).find_map(|i| a[i].v().and_then(find_value_error))
+        }
+        Cv::Frame(f) => {
+            for col in &f.columns {
+                for i in sampled_cell_indices(col.values.len()) {
+                    if matches!(col.values[i], V::Err(_)) {
+                        return Some(col.values[i].clone());
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+fn find_value_error(v: &V) -> Option<V> {
     match v {
         V::Err(_) => Some(v.clone()),
         V::List(a) => {
@@ -679,18 +715,8 @@ pub fn find_cell_error(v: &V) -> Option<V> {
                     return Some(cell.clone());
                 }
                 if matches!(cell, V::List(_)) {
-                    if let Some(e) = find_cell_error(cell) {
+                    if let Some(e) = find_value_error(cell) {
                         return Some(e);
-                    }
-                }
-            }
-            None
-        }
-        V::Frame(f) => {
-            for col in &f.columns {
-                for i in sampled_cell_indices(col.values.len()) {
-                    if matches!(col.values[i], V::Err(_)) {
-                        return Some(col.values[i].clone());
                     }
                 }
             }
@@ -714,7 +740,7 @@ pub fn tagged(e: &Rc<SolError>, origin: impl FnOnce() -> Origin) -> Rc<SolError>
 /// An untagged error in a value gets this node as its origin: the value itself, a list's cells, a frame's column
 /// cells, in a copy, one tagged error per distinct error. An origin already there is kept. `None` when nothing
 /// needed it.
-pub fn with_origin(v: &V, origin: &dyn Fn() -> Origin) -> Option<V> {
+pub fn with_origin(v: &Cv, origin: &dyn Fn() -> Origin) -> Option<Cv> {
     let mut made: Vec<(Rc<SolError>, Rc<SolError>)> = Vec::new();
     let mut tag = |e: &Rc<SolError>| -> V {
         if let Some((_, t)) = made.iter().find(|(o, _)| Rc::ptr_eq(o, e)) {
@@ -737,9 +763,21 @@ pub fn with_origin(v: &V, origin: &dyn Fn() -> Origin) -> Option<V> {
         out
     };
     match v {
-        V::Err(e) if e.origin.is_none() => Some(V::Err(tagged(e, origin))),
-        V::List(a) => tag_cells(a).map(list),
-        V::Frame(f) => {
+        Cv::V(V::Err(e)) if e.origin.is_none() => Some(Cv::V(V::Err(tagged(e, origin)))),
+        Cv::V(V::List(a)) => tag_cells(a).map(|c| Cv::V(list(c))),
+        Cv::Cells(a) => {
+            let mut out: Option<Vec<Cv>> = None;
+            for (i, cell) in a.iter().enumerate() {
+                if let Cv::V(V::Err(e)) = cell {
+                    if e.origin.is_none() {
+                        let t = tag(e);
+                        out.get_or_insert_with(|| a.to_vec())[i] = Cv::V(t);
+                    }
+                }
+            }
+            out.map(|c| Cv::Cells(Rc::new(c)))
+        }
+        Cv::Frame(f) => {
             let mut out: Option<Frame> = None;
             for (ci, col) in f.columns.iter().enumerate() {
                 if let Some(values) = tag_cells(&col.values) {
@@ -747,7 +785,7 @@ pub fn with_origin(v: &V, origin: &dyn Fn() -> Origin) -> Option<V> {
                     frame.columns[ci].values = values;
                 }
             }
-            out.map(|f| V::Frame(Rc::new(f)))
+            out.map(|f| Cv::Frame(Rc::new(f)))
         }
         _ => None,
     }

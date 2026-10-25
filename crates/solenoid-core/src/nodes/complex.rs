@@ -2,6 +2,7 @@
 //! keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
 use super::kit::{core_call, each, num, short_circuit};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
@@ -74,7 +75,7 @@ fn complex_from(c: &mut Call) -> Answer {
     let im = c.read_num("im", 0.0);
     let z = broadcast_complex(&[re, im], |o| V::Cx(num(o[0]), num(o[1])));
     c.show("cachedResult", z.clone());
-    Ok(vec![("z".into(), z)])
+    Ok(vec![("z".into(), Cv::from(z))])
 }
 
 fn complex_unpack(c: &mut Call) -> Answer {
@@ -88,7 +89,12 @@ fn complex_unpack(c: &mut Call) -> Answer {
     c.show("cachedIm", im.clone());
     c.show("cachedAbs", abs.clone());
     c.show("cachedArg", arg.clone());
-    Ok(vec![("re".into(), re), ("im".into(), im), ("abs".into(), abs), ("arg".into(), arg)])
+    Ok(vec![
+        ("re".into(), Cv::from(re)),
+        ("im".into(), Cv::from(im)),
+        ("abs".into(), Cv::from(abs)),
+        ("arg".into(), Cv::from(arg)),
+    ])
 }
 
 fn complex_unary(c: &mut Call) -> Answer {
@@ -113,7 +119,7 @@ fn complex_unary(c: &mut Call) -> Answer {
     let z = cx_op(&first(c, "z"), &label(c));
     let result = broadcast_complex(&[z], |o| core_call(name, &[o[0].clone()]));
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn complex_binary(c: &mut Call) -> Answer {
@@ -127,7 +133,7 @@ fn complex_binary(c: &mut Call) -> Answer {
     let b = cx_op(&first(c, "b"), &label(c));
     let result = broadcast_complex(&[a, b], |o| core_call(name, &[o[0].clone(), o[1].clone()]));
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn complex_power(c: &mut Call) -> Answer {
@@ -142,14 +148,14 @@ fn complex_power(c: &mut Call) -> Answer {
         _ => core_call("IMPOWER", &[o[0].clone(), o[1].clone()]),
     });
     c.show("cachedResult", result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn poly_roots(c: &mut Call) -> Answer {
     let done = |c: &mut Call, roots: V, real: V| {
         c.show("cachedRoots", roots.clone());
         c.show("cachedReal", real.clone());
-        Ok(vec![("roots".into(), roots), ("real".into(), real)])
+        Ok(vec![("roots".into(), Cv::from(roots)), ("real".into(), Cv::from(real))])
     };
     let coeffs = match first(c, "coeffs") {
         V::Null => return done(c, V::Null, V::Null),
@@ -227,5 +233,5 @@ fn quadratic_roots_node(c: &mut Call) -> Answer {
     let (x1, x2) = (root(0), root(1));
     c.show("cachedX1", x1.clone());
     c.show("cachedX2", x2.clone());
-    Ok(vec![("x1".into(), x1), ("x2".into(), x2)])
+    Ok(vec![("x1".into(), Cv::from(x1)), ("x2".into(), Cv::from(x2))])
 }

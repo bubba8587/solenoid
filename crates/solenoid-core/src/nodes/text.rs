@@ -3,6 +3,7 @@
 //! Cast, which reads a value as each of the five targets.
 
 use super::kit::{broadcast_err, core_call};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
@@ -191,7 +192,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 
 fn done(c: &mut Call, field: &str, result: V) -> Answer {
     c.show(field, result.clone());
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 /// A one-text formula over the `text` input, item by item.
@@ -228,7 +229,7 @@ fn wrap_text(c: &mut Call) -> Answer {
     let w = required(c, "width");
     if w.is_sol_error() {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("result".into(), w)]);
+        return Ok(vec![("result".into(), Cv::from(w))]);
     }
     if matches!(text, V::Null) {
         return done(c, "cachedResult", V::Null);
@@ -327,7 +328,7 @@ fn text_join(c: &mut Call) -> Answer {
         }
     };
     c.show("cachedText", if result.is_sol_error() { V::Null } else { result.clone() });
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn text_split(c: &mut Call) -> Answer {
@@ -335,7 +336,7 @@ fn text_split(c: &mut Call) -> Answer {
     let delimiter = required(c, "delimiter");
     if delimiter.is_sol_error() {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("result".into(), delimiter)]);
+        return Ok(vec![("result".into(), Cv::from(delimiter))]);
     }
     if matches!(text, V::Null) {
         return done(c, "cachedResult", V::Null);
@@ -452,7 +453,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
     if matches!(needle, V::Null) {
         c.show("cachedMatch", V::Null);
         c.show("cachedScore", V::Null);
-        return Ok(vec![("match".into(), V::Null), ("score".into(), V::Null)]);
+        return Ok(vec![("match".into(), Cv::from(V::Null)), ("score".into(), Cv::from(V::Null))]);
     }
     let method = V::str(match c.field_str("method", "ratio") {
         "levenshtein" => "ratio",
@@ -475,7 +476,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
     };
     c.show("cachedMatch", m.clone());
     c.show("cachedScore", s.clone());
-    Ok(vec![("match".into(), m), ("score".into(), s)])
+    Ok(vec![("match".into(), Cv::from(m)), ("score".into(), Cv::from(s))])
 }
 
 fn text_after_before(c: &mut Call) -> Answer {
@@ -951,14 +952,14 @@ fn cast(c: &mut Call) -> Answer {
             })
             .collect();
         c.show("cachedResult", list(shown));
-        return Ok(vec![("result".into(), list(out))]);
+        return Ok(vec![("result".into(), Cv::from(list(out)))]);
     }
     let scalar = one(&raw)?;
     if cast_failed(&scalar) {
         return done(c, "cachedResult", failed());
     }
     c.show("cachedResult", cast_display(&scalar, &target));
-    Ok(vec![("result".into(), scalar)])
+    Ok(vec![("result".into(), Cv::from(scalar))])
 }
 
 // ─── UUID and Promo, over what their shells drew ([[D46]] freezeVolatilePerCalc) ─
@@ -969,7 +970,7 @@ fn uuid(c: &mut Call) -> Answer {
         _ => V::Undef,
     };
     c.show("cachedText", generated.clone());
-    Ok(vec![("result".into(), generated)])
+    Ok(vec![("result".into(), Cv::from(generated))])
 }
 
 const PROMO_LINES: [&str; 7] = [
@@ -987,5 +988,5 @@ fn promo(c: &mut Call) -> Answer {
     let at = (roll * PROMO_LINES.len() as f64).floor();
     let line = if at >= 0.0 && at < PROMO_LINES.len() as f64 { V::str(PROMO_LINES[at as usize]) } else { V::Undef };
     c.show("cachedText", line.clone());
-    Ok(vec![("value".into(), line)])
+    Ok(vec![("value".into(), Cv::from(line))])
 }

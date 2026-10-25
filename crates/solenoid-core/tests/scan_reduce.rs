@@ -21,7 +21,7 @@ fn answer(case: &Json, kind: &str) -> Option<V> {
         args["outputs"] = serde_json::json!([["result", "scalar"]]);
     }
     let r = reply(&args);
-    r.answer?.ok()?.into_iter().find(|(k, _)| k == "result").map(|(_, v)| v)
+    r.answer?.ok()?.into_iter().find(|(k, _)| k == "result")?.1.v().cloned()
 }
 
 fn same(a: &V, b: &V) -> bool {

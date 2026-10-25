@@ -9,7 +9,7 @@ use std::rc::Rc;
 use serde_json::{json, Map, Value as Json};
 use solenoid_core::error_value::{sol_error, ErrorCode, Origin, SolError};
 use solenoid_core::excel_functions::V;
-use solenoid_core::nodes::{Column, Cube, CubeColumn, Frame};
+use solenoid_core::nodes::{Column, Cube, CubeColumn, Cv, Frame};
 use solenoid_core::unit_dims::UnitCell;
 use solenoid_graph::boundary_core::{
     coerce_all, from_thrown, same_obj, with_origin, Arrived, Facts,
@@ -38,19 +38,23 @@ fn num(j: &Json) -> f64 {
     }
 }
 
-fn list(items: Vec<V>) -> V {
-    V::List(Rc::new(items))
-}
-
 /// A described value (`describe_` in coreBoundary.test.ts, through `enc`) as the core holds it.
 fn value(j: &Json) -> Arrived {
-    let bare = |v| Arrived { v, munit: None };
+    let bare = |v: V| Arrived {
+        v: Cv::V(v),
+        munit: None,
+    };
+    let cell = |x: &Json| value(x).v;
+    let flat = |x: &Json| value(x).v.v().cloned().expect("a frame cell is a value");
     match j {
         Json::Null => bare(V::Null),
         Json::Bool(b) => bare(V::Bool(*b)),
         Json::Number(_) => bare(V::Num(num(j))),
         Json::String(s) => bare(V::str(s)),
-        Json::Array(a) => bare(list(a.iter().map(|x| value(x).v).collect())),
+        Json::Array(a) => Arrived {
+            v: Cv::list(a.iter().map(cell).collect()),
+            munit: None,
+        },
         Json::Object(o) => {
             if o.contains_key("__nf") {
                 return bare(V::Num(num(j)));
@@ -100,22 +104,20 @@ fn value(j: &Json) -> Arrived {
                     .map(|c| Column {
                         name: c["name"].as_str().unwrap().to_string(),
                         ty: c["type"].as_str().unwrap().parse().unwrap(),
-                        values: c["values"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|x| value(x).v)
-                            .collect(),
+                        values: c["values"].as_array().unwrap().iter().map(flat).collect(),
                         unit: c.get("unit").cloned(),
                         format: c.get("format").cloned(),
                         raw: c.get("raw").cloned(),
                     })
                     .collect();
-                return bare(V::Frame(Rc::new(Frame {
-                    columns,
-                    total_rows: None,
-                    approx: None,
-                })));
+                return Arrived {
+                    v: Cv::Frame(Rc::new(Frame {
+                        columns,
+                        total_rows: None,
+                        approx: None,
+                    })),
+                    munit: None,
+                };
             }
             if o.get("__cube") == Some(&Json::Bool(true)) {
                 let columns = o["columns"]
@@ -124,12 +126,7 @@ fn value(j: &Json) -> Arrived {
                     .iter()
                     .map(|c| CubeColumn {
                         name: c["name"].as_str().unwrap().to_string(),
-                        cells: c["cells"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|x| value(x).v)
-                            .collect(),
+                        cells: c["cells"].as_array().unwrap().iter().map(cell).collect(),
                         ty: c
                             .get("type")
                             .and_then(Json::as_str)
@@ -137,7 +134,10 @@ fn value(j: &Json) -> Arrived {
                         format: c.get("format").cloned(),
                     })
                     .collect();
-                return bare(V::Cube(Rc::new(Cube { columns })));
+                return Arrived {
+                    v: Cv::Cube(Rc::new(Cube { columns })),
+                    munit: None,
+                };
             }
             panic!("a described value this test can't read: {j}")
         }
@@ -157,48 +157,17 @@ fn n(x: f64) -> Json {
 }
 
 /// A value described as `describe_` and `enc` write it, a cube's depth left out.
-fn describe(v: &V, munit: Option<&Json>) -> Json {
-    let d = |x: &V| describe(x, None);
-    match v {
-        V::Null => Json::Null,
-        V::Undef => json!({ "__undef": 1 }),
-        V::Num(x) => n(*x),
-        V::Str(s) => Json::String(s.to_string()),
-        V::Bool(b) => Json::Bool(*b),
-        V::Err(e) => {
-            let mut o = Map::new();
-            o.insert("#err".into(), e.code.as_str().into());
-            o.insert("msg".into(), e.message.clone().into());
-            if let Some(origin) = &e.origin {
-                o.insert("origin".into(), origin.to_json());
-            }
-            Json::Object(o)
-        }
-        V::List(items) => {
-            let cells = Json::Array(items.iter().map(d).collect());
-            match munit {
-                Some(u) => json!({ "#arr": cells, "unit": u }),
-                None => cells,
-            }
-        }
-        V::Cx(re, im) => json!({ "__cx": true, "re": n(*re), "im": n(*im) }),
-        V::Unit(u) => {
-            let mut o = Map::new();
-            o.insert("__unitCell".into(), true.into());
-            o.insert("value".into(), n(u.value));
-            o.insert(
-                "dim".into(),
-                Json::Object(u.dim.iter().map(|(k, x)| (k.clone(), n(*x))).collect()),
-            );
-            if let Some(display) = &u.display {
-                o.insert("display".into(), display.clone().into());
-            }
-            if u.ratio {
-                o.insert("ratio".into(), true.into());
-            }
-            Json::Object(o)
-        }
-        V::Frame(f) => {
+fn describe(v: &Cv, munit: Option<&Json>) -> Json {
+    let d = |x: &Cv| describe(x, None);
+    let dv = |x: &V| describe(&Cv::V(x.clone()), None);
+    let cells = |items: Json| match munit {
+        Some(u) => json!({ "#arr": items, "unit": u }),
+        None => items,
+    };
+    let v = match v {
+        Cv::V(v) => v,
+        Cv::Cells(items) => return cells(Json::Array(items.iter().map(d).collect())),
+        Cv::Frame(f) => {
             let columns: Vec<Json> = f
                 .columns
                 .iter()
@@ -208,7 +177,7 @@ fn describe(v: &V, munit: Option<&Json>) -> Json {
                     o.insert("type".into(), c.ty.as_str().into());
                     o.insert(
                         "values".into(),
-                        Json::Array(c.values.iter().map(d).collect()),
+                        Json::Array(c.values.iter().map(dv).collect()),
                     );
                     for (k, x) in [("unit", &c.unit), ("format", &c.format), ("raw", &c.raw)] {
                         if let Some(x) = x {
@@ -218,9 +187,9 @@ fn describe(v: &V, munit: Option<&Json>) -> Json {
                     Json::Object(o)
                 })
                 .collect();
-            json!({ "__frame": true, "columns": columns })
+            return json!({ "__frame": true, "columns": columns });
         }
-        V::Cube(c) => {
+        Cv::Cube(c) => {
             let columns: Vec<Json> = c
                 .columns
                 .iter()
@@ -237,7 +206,42 @@ fn describe(v: &V, munit: Option<&Json>) -> Json {
                     Json::Object(o)
                 })
                 .collect();
-            json!({ "__cube": true, "columns": columns })
+            return json!({ "__cube": true, "columns": columns });
+        }
+        other => panic!("no description for {other:?}"),
+    };
+    match v {
+        V::Null => Json::Null,
+        V::Undef => json!({ "__undef": 1 }),
+        V::Num(x) => n(*x),
+        V::Str(s) => Json::String(s.to_string()),
+        V::Bool(b) => Json::Bool(*b),
+        V::Err(e) => {
+            let mut o = Map::new();
+            o.insert("#err".into(), e.code.as_str().into());
+            o.insert("msg".into(), e.message.clone().into());
+            if let Some(origin) = &e.origin {
+                o.insert("origin".into(), origin.to_json());
+            }
+            Json::Object(o)
+        }
+        V::List(items) => cells(Json::Array(items.iter().map(dv).collect())),
+        V::Cx(re, im) => json!({ "__cx": true, "re": n(*re), "im": n(*im) }),
+        V::Unit(u) => {
+            let mut o = Map::new();
+            o.insert("__unitCell".into(), true.into());
+            o.insert("value".into(), n(u.value));
+            o.insert(
+                "dim".into(),
+                Json::Object(u.dim.iter().map(|(k, x)| (k.clone(), n(*x))).collect()),
+            );
+            if let Some(display) = &u.display {
+                o.insert("display".into(), display.clone().into());
+            }
+            if u.ratio {
+                o.insert("ratio".into(), true.into());
+            }
+            Json::Object(o)
         }
         other => panic!("no description for {other:?}"),
     }
@@ -293,7 +297,7 @@ fn arrival_on_every_rung() {
             },
             ..Facts::default()
         };
-        let got = if let V::Err(_) = input.v {
+        let got = if let Cv::V(V::Err(_)) = input.v {
             json!({ "error": describe(&input.v, None)["#err"], "msg": describe(&input.v, None)["msg"] })
         } else {
             let rung_of = |k: &str| (k == "a").then(|| rung.clone());
@@ -302,8 +306,13 @@ fn arrival_on_every_rung() {
                     // The probe answers its input list, whose cells the guard then tags: an error as the value itself
                     // gets the probe as its origin.
                     let a = &out[0].1[0];
-                    match with_origin(&list(vec![a.v.clone()]), &probe) {
-                        Some(V::List(t)) => json!({ "val": describe(&t[0], None), "same": false }),
+                    match with_origin(&Cv::list(vec![a.v.clone()]), &probe) {
+                        Some(Cv::V(V::List(t))) => {
+                            json!({ "val": describe(&Cv::V(t[0].clone()), None), "same": false })
+                        }
+                        Some(Cv::Cells(t)) => {
+                            json!({ "val": describe(&t[0], None), "same": false })
+                        }
                         Some(_) => unreachable!("a list tags as a list"),
                         None => {
                             json!({ "val": describe(&a.v, a.munit.as_deref()), "same": same_obj(&a.v, &input.v) })
@@ -311,7 +320,7 @@ fn arrival_on_every_rung() {
                     }
                 }
                 Err(t) => {
-                    let e = describe(&from_thrown(t), None);
+                    let e = describe(&Cv::V(from_thrown(t)), None);
                     json!({ "error": e["#err"], "msg": e["msg"] })
                 }
             }
@@ -338,7 +347,10 @@ fn origin_tagging() {
         // `out === v`, which NaN never is.
         let (out, same) = match with_origin(&input.v, &probe) {
             Some(t) => (t, false),
-            None => (input.v.clone(), !matches!(input.v, V::Num(x) if x.is_nan())),
+            None => (
+                input.v.clone(),
+                !matches!(input.v, Cv::V(V::Num(x)) if x.is_nan()),
+            ),
         };
         let got = json!({ "val": describe(&out, input.munit.as_deref()), "same": same });
         if norm(&got) != norm(&c["want"]) {

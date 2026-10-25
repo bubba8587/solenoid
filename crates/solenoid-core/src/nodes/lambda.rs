@@ -4,6 +4,7 @@
 //! compiles into a callable LAMBDA.
 
 use super::list::strip_unit_cells;
+use super::Cv;
 use super::{err, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env, LambdaV};
@@ -50,7 +51,7 @@ fn lambda(c: &mut Call) -> Answer {
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {
         c.show("cachedValue", V::Null);
         c.show("cachedError", shown.map_or(V::Null, |s| V::str(&s)));
-        Ok(vec![("result".to_string(), result)])
+        Ok(vec![("result".to_string(), Cv::V(result))])
     };
     if !params.iter().all(|p| is_ident(p)) {
         return refuse(
@@ -102,5 +103,5 @@ fn lambda(c: &mut Call) -> Answer {
     }));
     c.show("cachedValue", lam.clone());
     c.show("cachedError", V::Null);
-    Ok(vec![("result".into(), lam)])
+    Ok(vec![("result".into(), Cv::from(lam))])
 }

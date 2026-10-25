@@ -1,6 +1,7 @@
 //! [[C47]] equationNode, [[C25]] firstClassUnits. The Expression card, its formula read over its inputs and wrapped
 //! in their units; the Equation card and Time Value of Money, a relation solved for its one unwired variable.
 
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env};
@@ -185,7 +186,7 @@ fn expression_done(c: &mut Call, result: V, error: Option<&str>, ranked: bool) -
     }
     c.show("cachedResult", result.clone());
     c.show("cachedError", error.map_or(V::Null, V::str));
-    Ok(vec![("result".into(), result)])
+    Ok(vec![("result".into(), Cv::from(result))])
 }
 
 fn expression(c: &mut Call) -> Answer {
@@ -921,16 +922,17 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
 
 /// The card's outputs and the fields its component shows; `extra` joins the values (Time Value of Money's rate).
 fn equation_done(c: &mut Call, s: Solved, names: &[String], extra: Option<(&str, V)>) -> Answer {
-    let mut out: Vec<(String, V)> = names.iter().map(|v| (v.clone(), s.get(v).cloned().unwrap_or(V::Null))).collect();
-    out.push(("holds".into(), s.holds.clone()));
+    let mut out: Vec<(String, Cv)> =
+        names.iter().map(|v| (v.clone(), Cv::V(s.get(v).cloned().unwrap_or(V::Null)))).collect();
+    out.push(("holds".into(), Cv::from(s.holds.clone())));
     let mut values = s.values;
     if let Some((k, v)) = extra {
-        out.push((k.to_string(), v.clone()));
+        out.push((k.to_string(), Cv::V(v.clone())));
         values.retain(|(x, _)| x != k);
         values.push((k.to_string(), v));
     }
     let shown: Map<String, Json> = values.iter().map(|(k, v)| (k.clone(), js_json(v))).collect();
-    c.show("cachedValues", V::Json(Rc::new(Json::Object(shown))));
+    c.show("cachedValues", Cv::Json(Rc::new(Json::Object(shown))));
     c.show("cachedHolds", s.holds);
     c.show("solvedFor", s.solved_for.map_or(V::Null, |v| V::str(&v)));
     c.show("cachedError", s.error.map_or(V::Null, |e| V::str(&e)));

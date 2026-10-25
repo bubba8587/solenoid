@@ -4,6 +4,7 @@
 use super::kit::{broadcast_err, core_call, each, guard_finite, short_circuit};
 use super::text::{js_floor, setting};
 use super::values::{Column, Frame};
+use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_less, to_f64_js, V};
@@ -112,7 +113,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         _ => return None,
     };
     c.show("cachedResult", result.clone());
-    Some(Ok(vec![("result".into(), result)]))
+    Some(Ok(vec![("result".into(), Cv::from(result))]))
 }
 
 /// Null until there is a finite date and both zones, then `TIMEZONECONVERT`.
@@ -133,7 +134,7 @@ fn time_zone_convert(c: &Call) -> V {
 
 /// A row per zone at the card's `nowMs`, from the wired list or else the typed one: the place (the name's last part,
 /// underscores as spaces) and "Thu 14:32". A blank entry is dropped; a zone `Intl` refuses keeps its name, with "?" for its time.
-fn world_clock(c: &Call) -> V {
+fn world_clock(c: &Call) -> Cv {
     let now = c.field("nowMs").and_then(serde_json::Value::as_f64).unwrap_or(f64::NAN);
     let zones = match c.wired("zones") {
         None | Some([]) => match c.string_literal("zones") {
@@ -171,7 +172,7 @@ fn world_clock(c: &Call) -> V {
         format: None,
         raw: None,
     };
-    V::Frame(Rc::new(Frame {
+    Cv::Frame(Rc::new(Frame {
         columns: vec![column("Place", places), column("Local", times)],
         total_rows: None,
         approx: None,
