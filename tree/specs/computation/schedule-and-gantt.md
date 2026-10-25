@@ -47,6 +47,20 @@ Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`,
 
 A Predecessors cell takes one of three shapes:
 
+```mermaid
+mindmap
+  root(("a Predecessors cell"))
+    ["a list of task names"]
+      ["each a finish-to-start<br>(FS) link, lag 0"]
+    ["text"]
+      ["one task name, FS, lag 0"]
+    ["a nested table"]
+      ["Predecessor: the name"]
+      ["Type: FS, SS, FF or SF"]
+      ["Lag: working days,<br>negative for a lead"]
+      ["Elapsed: count calendar days"]
+```
+
 1. **A list of task names.** Each is a finish-to-start (FS) link with lag 0. This is the TaskNotes `blockedBy` shape.
 2. **Text.** The whole text is one task name, FS with lag 0. A Frame cannot hold a list, so a frame-only plan names one predecessor per cell.
 3. **A nested table** with a Predecessor (or Task) column and optional Type, Lag and Elapsed columns (`link` or `kind` for Type; `lead` or `offset` for Lag). Type is `FS`, `SS`, `FF` or `SF` (default `FS`); Lag is in working days on the successor's calendar, negative for a lead, and counts calendar days when Elapsed is true. An unknown type or a lag that is not a number is an error naming the task.
@@ -58,6 +72,15 @@ The Schedule node's `links` socket takes the same dependencies as a flat Frame, 
 ### Hierarchy
 
 Hierarchy is nesting. A parent row holding its children as a nested table is the work breakdown, at any depth, which Cube Input already edits (drill in on the breadcrumb, `Add Column`). The engine flattens the cube for the dependency graph. A parent's dates roll up from its children, and a link to a parent applies to every leaf beneath it. Because names are global, a dependency may name a task in any subtree.
+
+```mermaid
+flowchart LR
+    plan["the plan: a Cube"] --> row["a parent row"]
+    row --> kids["its Tasks cell:<br>a nested table of children"]
+    kids --> grand["a child's own Tasks cell:<br>any depth"]
+    grand -.->|"dates roll up"| row
+    link["a link to the parent"] -.->|"applies to every<br>leaf beneath it"| grand
+```
 
 There is no `parent_id`, indent level or `1.2.3` WBS column in a plan. Those exist only in import formats (MSPDI `OutlineLevel`, XER's PROJWBS) and are converted to nesting in one pass. There is no `order` column: row order is the order, and Sort exists.
 
@@ -76,6 +99,19 @@ The Schedule node is in the Add menu's Plan category.
 | `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
 | `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00 (a day longer than 16 hours starts earlier, so it ends at midnight). |
+
+```mermaid
+flowchart LR
+    tasks["tasks: the plan cube"] --> s["Schedule"]
+    links["links: flat<br>dependencies"] --> s
+    cal["start, holidays,<br>weekend_code, hours"] --> s
+    st["status: the status date"] --> s
+    s --> cube["cube: the plan plus<br>computed columns"]
+    s --> fin["finish: the project finish"]
+    s --> diag["diagnostics: one<br>row per finding"]
+    s --> gantt["gantt: Mermaid source"]
+    s --> mspdi["mspdi: Microsoft Project XML"]
+```
 
 The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, over the one working-day implementation the app shares.
 
@@ -99,6 +135,16 @@ The card has four options, each persisted with the node:
 The Tasks socket's doc is the column contract for the AI palette, since a cube input has no `frameHints` mechanism. The `links` socket carries a `frameHints` example.
 
 ### The one rule
+
+```mermaid
+mindmap
+  root(("one rule per column"))
+    ["Start: a floor,<br>no earlier than"]
+    ["Finish: a ceiling,<br>caps the late finish"]
+    ["Deadline: a flag,<br>never moves the task"]
+    ["Manual: a pin,<br>ignores predecessors"]
+```
+
 
 Every run recomputes the whole schedule from the table, and four visible columns carry one rule each ([[C70]] oneScheduleRule): Start is a floor, Finish is a ceiling, Deadline is a flag, and Manual is a pin. A gap between two tasks is a lag on the link between them. There are no constraint-type columns, no per-task scheduling mode and no project-wide shift switch. The passes that apply the rule are in the schedule-engine README.
 

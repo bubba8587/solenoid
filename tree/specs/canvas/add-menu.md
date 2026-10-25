@@ -18,6 +18,18 @@ The Add menu is the panel a user opens to place a new card. With the search box 
 - a **pair** (`CatalogPair`): two leaves drawn side by side in one row, used for opposites;
 - a **leaf** (`NodeCatalogEntry`): one card type the user can place.
 
+```mermaid
+mindmap
+  root(("what search lists"))
+    ["the tree, NODE_CATALOG"]
+      ["a category: a folder"]
+      ["a pair: two opposite<br>leaves in one row"]
+      ["a leaf: one card type"]
+    ["rows generated at search time"]
+      ["a hidden-op row: places the<br>host card set to that op"]
+      ["an Excel-alias row:<br>NAME → its card"]
+```
+
 Leaves are hand-placed in the tree. Many are built by small helpers (`arithLeaf`, `mathLeaf`, `seriesLeaf` and the like) that read the label and description from the family's `OP_META` table. Some families' leaf `type` strings do not follow their op names (`nth-large`, `t-test-paired`, `date-value`), because `NODE_EXCEL` keys on them.
 
 The tree is curated to read well: general plotters stay at the top of Visuals while specialist figures cluster by what they show, and everyday table verbs stay at the top of Tables & Frames while column surgery, reshaping and comparison fold into subcategories.
@@ -51,6 +63,17 @@ The tree is curated to read well: general plotters stay at the top of Visuals wh
 4. Insert each pack placement (`packPlacements`) at its target category path, creating categories as needed. A placement with no path goes to Docs & Files. Packs therefore never add a top-level category. A type that is already in the tree gains the pack as another owner; a pack copy of a core node is ignored with a console warning.
 5. Apply the op declarations (below).
 6. With `activeOnly`, drop every leaf that is `hidden` or whose packs are all inactive, then every empty category. A pair that loses one half becomes a single leaf, since a one-child pair would break the grid. Without it, only empty categories are pruned.
+
+```mermaid
+flowchart LR
+    t["NODE_CATALOG,<br>deep-cloned"] --> p["tag pack leaves"]
+    p --> x["add each leaf's<br>Excel names"]
+    x --> pl["insert pack placements<br>(Docs & Files by default)"]
+    pl --> ops["apply the op<br>declarations"]
+    ops --> act{"activeOnly?"}
+    act -->|yes| drop["drop hidden and inactive-pack<br>leaves, then empty categories"]
+    act -->|no| prune["prune empty<br>categories only"]
+```
 
 The Packs category is declared empty so it sits last among the core categories; the build fills it per active pack and prunes it when no pack targets it. Docs & Files, as the placement fallback, is never empty.
 
@@ -117,6 +140,17 @@ On top of the word total, the row gets the best **whole-query bonus** from its f
 - the family name, scored 5 lower, so "table reshape" lands on the reshape ops and "bessel" on the Bessel functions;
 - each Excel name, scored 10 lower so an exact label still wins a tie;
 - each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place.
+
+```mermaid
+flowchart TD
+    q["the query, split into words"] --> w{"every word lands<br>on the row?"}
+    w -->|no| out["the row is out"]
+    w -->|yes| ws["each word: a word hit of 90+<br>counts alone; else its subsequence<br>score plus any word score"]
+    ws --> sum["the words' scores add up"]
+    sum --> bonus["+ the best whole-query bonus<br>over the row's fields<br>(exact 1000+, prefix 400, word start 150)"]
+    bonus --> typo["a near-typo of the label or an<br>Excel name: at least 200"]
+    typo --> dedupe["sorted best first; one row<br>per thing it places"]
+```
 
 Finally, when the whole query has 4 or more characters and is within one edit of the label, the stripped label or an Excel name, the bonus is at least 200. A typo of the name itself ("sunm" for SUM) therefore outranks a row that only carries the corrected word somewhere in its type or keywords (IMSUM's `cx-binary-sum`).
 

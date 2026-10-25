@@ -18,6 +18,16 @@ Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupSt
 
 `valuePopup.ts` is the one home for opening a value's data popup, shared by the collapsed chips (`ArrayChip`, `FrameChip`, `CubeChip`) and the Display's corner expand button (`ValueExpandButton`).
 
+```mermaid
+flowchart LR
+    from["a collapsed chip, or a<br>Display's expand button"] --> kind{"popOutKindFor(value)"}
+    kind -->|frame| fr["openFramePopup: a head-N<br>preview read in full first"]
+    kind -->|cube| cu["openCubePopup"]
+    kind -->|"table: 2-D"| ar["openArrayPopup:<br>rows"]
+    kind -->|"list: 1-D"| ar2["openArrayPopup:<br>one row"]
+    kind -->|"a scalar,<br>a chart"| none["no data popup<br>(a chart has its own)"]
+```
+
 - **`popOutKindFor(value)`** names the popup a value has: `frame`, `cube`, `table` (a 2-D array) or `list` (a non-empty 1-D array), from `POP_OUT_KINDS`. A scalar or a chart has none (a chart has its own popup, [[chart-figures]]). `displayPopupCoverage.test.ts` checks that every Display value kind resolves to one of these.
 - **`openValuePopup(value, opts)`** is the read-only dispatcher the expand button calls. Editing chips call the typed openers directly so their Save callback keeps its shape.
 - **`openFramePopup(frame, opts)`** first resolves a head-N preview (one carrying `__totalRows` and `__ref`) to the whole frame through `readFrame`, so the popup never shows the truncated sample. It opens with the title (the label, else `Frame`), `cellType: "number"`, per-column format controls and `framePopupData`: the cells, the column names, the column types, the column units, the column formats that arrived, the `raw` text as `sourceCells` for the Source view when any column carries it, the frame's pivot layout when it has one (§ The Pivot view), and Describe's tiles when it has them (§ The Dashboard view).
@@ -58,6 +68,15 @@ A frame input's example hint ([[B14]] oneDesignSystem) draws as the popup grid i
 ## Modes and what Save writes back
 
 The opener's callback sets the mode. The popup is editable when it has `onSaveSource` or `onSaveRaw`, and either makes it a literal-source editor: the grid holds the raw typed text and never coerces it ([[C58]] tableInputRawText). Save calls the first callback present in this order, then closes the popup:
+
+```mermaid
+flowchart LR
+    save["Save"] --> raw{"onSaveRaw?"}
+    raw -->|yes| r["the grid's cells, verbatim<br>(Table Input, plugin lists<br>and matrices)"]
+    raw -->|no| src{"onSaveSource?"}
+    src -->|yes| s["source columns<br>(Frame Input, plugin frames)"]
+    src -->|no| ro["nothing: a read-only<br>viewer with Done"]
+```
 
 | Callback | Save returns | Built by | Who passes it |
 |---|---|---|---|
@@ -201,6 +220,18 @@ Stats, ratings and meters share the tile grid in column order. A card shows its 
 **The footer** has two parts: the tools (the view switch, the Source checkbox, the Insert and Delete menus, the Pivot's sheet button), which wrap onto as many lines as they need (`table-popup__tools`), and the actions, Done or Cancel and Save, which never wrap and stay pinned to the right of the last line (`table-popup__actions`). The Cube popup's footer is built the same way.
 
 The footer's view switch offers the views the value has, in this order: Dashboard (a Describe's output), Pivot (a pivot's output), Grid, Cards (a frame), Form (a frame-source editor) and CSV. It is a row of segments while the footer has room for them, else a dropdown in the same pill (`PopupChoice`, `PopupChoice.tsx`): the room is the footer's width less its other items in the flow (`useFreeWidth`: an open sheet or menu takes none), which never change size with the switch, so the choice can't flip back and forth, measured only when the row or an item resizes or an item comes or goes, against the segments' width estimated from their labels (`segmentsWidth`). The same rule turns the Pivot view's Report layout into segments when the ribbon has room.
+
+```mermaid
+mindmap
+  root(("the views a popup offers"))
+    ["Dashboard: Describe's output"]
+    ["Pivot: a pivot's output"]
+    ["Grid"]
+    ["Cards: a frame"]
+    ["Form: a frame-source editor"]
+    ["CSV"]
+```
+
 
 **The pill family.** Every footer and ribbon control is one of three shapes on one height (28 pixels, 30 on touch, with the footer's smaller touch type): segments (`table-popup__view`), a dropdown (`sol-pill-select`) and a lone button (`sol-pill-btn`, `sol-pill-btn--icon` for an icon). A pressed segment or an open button takes the popup accent's 22% tint. The shape says what a control is: segments only for one-of-several choices, a checkbox with its label for an on-off option (`table-popup__check`, as the footer's Source), and separate buttons for actions, never a joined pill, which would read as a choice.
 

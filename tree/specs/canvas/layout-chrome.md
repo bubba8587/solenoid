@@ -29,6 +29,18 @@ Both envelopes publish rounded down (`Math.floor`). A `top:` or `bottom: var(...
 
 This is the layout with a mouse and a desktop user agent (no `html.is-mobile`). The header is one absolutely positioned, full-width column pinned to the top; the footer is pinned to the bottom; everything else floats over the canvas.
 
+Where each piece sits on desktop (everything between the header and the status bar floats over the canvas):
+
+```mermaid
+block-beta
+    columns 3
+    h["header: menu bar (22) + top bar (44), publishes --chrome-top"]:3
+    a["navigator pill<br>(upper left)"] b["align pill (top center,<br>two or more selected)"] c["nav and zoom pill,<br>the HUD stack under it<br>(upper right)"]
+    d["Conduit toolbar,<br>cable inspector<br>(left)"] e["the canvas"] f["socket legend<br>over the minimap<br>(bottom right)"]
+    space g["command palette<br>(bottom center)"] space
+    s["status bar (19), publishes --chrome-bottom"]:3
+```
+
 | Element | Class | Anchor | z-index | File |
 | --- | --- | --- | --- | --- |
 | Header wrapper | `.solenoid-header` | `top: 0`, full width, flex column | 6 | `Header.css` |
@@ -183,6 +195,16 @@ Serves [[C119]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile
 - **Presenting**: `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides nearly all chrome: the header, nav pill, status bar, navigator and its open-pill, legend, minimap, mobile bar and HUD (`PresentationOverlay.css`). The canvas is the slide.
 - **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
 
+```mermaid
+flowchart LR
+    rep["the Report docked<br>(440 px)"] --> slot{"the right dock:<br>one at a time"}
+    ins["the Inspector docked<br>(340 px)"] --> slot
+    slot --> c1["the canvas shrinks by the dock,<br>carrying the minimap and Add menu"]
+    slot --> c2["the nav pill, HUD stack and<br>socket legend move in<br>to clear the dock"]
+    slot --> c3["the command palette<br>re-centers on the canvas"]
+    nav["the navigator open (left)"] -.->|"overlays; shoves only"| left["the Conduit toolbar and<br>cable inspector, right"]
+```
+
 ## The z-index ladder
 
 Chrome only; nodes are 0, and cables and overlay planes are negative.
@@ -202,6 +224,21 @@ Chrome only; nodes are 0, and cables and overlay planes are negative.
 200  Add menu (201 submenu) / Settings / Shortcuts / document-title menu
 300  command palette scrim
 9999 socket context menu
+```
+
+The bands, from the top down:
+
+```mermaid
+block-beta
+    columns 1
+    z1["9999: a transient context menu"]
+    z2["300: the command palette's scrim"]
+    z3["200 to 201: modals and menus (Add menu, Settings, Shortcuts)"]
+    z4["150: the persistent command palette"]
+    z5["100 to 110: corner panels (minimap, legend, mobile bar, HUD, cable inspector)"]
+    z6["20 to 60: pop-overs, the Conduit toolbar, the node-budget modal"]
+    z7["4 to 7: the drill-in backdrop, floating pills, docks, header, align pill"]
+    z8["0: cards (cables and overlay planes below)"]
 ```
 
 The menu bar's 2 and the top bar's 1 are local values inside `.solenoid-header`, which is 6 at the app level. The canvas gets its own stacking context through `isolation: isolate` (`canvas.css`), which is why the minimap needs 100 to paint over node cards.

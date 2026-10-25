@@ -24,6 +24,19 @@ Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotat
 | `pages` | `[{ name, body }]`, one per record, present only on a mail merge. |
 | `total` | The record count, present only when it exceeds `pages.length` (the merge hit the page cap). |
 
+```mermaid
+mindmap
+  root(("a DocumentValue"))
+    ["body: rendered markdown,<br>internal =name spans kept"]
+    ["refs: name to value,<br>for those spans"]
+    ["source: the raw Knap text"]
+    ["sourceId: the producing node"]
+    ["a mail merge only"]
+      ["pages: name and body,<br>one per record"]
+      ["total: the true count<br>past the page cap"]
+    ["frontmatter: no producer sets it"]
+```
+
 A batch document's `body` is its page bodies joined by `PAGE_SEPARATOR` (`"\n\n---\n\n"`), for a consumer that reads one document.
 
 ## What an author types
@@ -54,6 +67,17 @@ In a Report, a **bare tag** is exactly `{{ name }}` (optional inner spaces) or `
 - `{{ name | highlight }}` becomes `` `=name!` ``. The `!` is display-only tinting and is not part of the name, so `=rate` and `=rate!` share one input.
 
 The rewrite walks tags left to right. A `{# … #}` comment is passed through verbatim before anything else matches, so a commented-out block never affects scope. A `{% for x in … %}` pushes `x` onto a shadow stack and `{% endfor %}` pops it; a `{% set n = … %}` adds `n` to a set of shadowed names from that point on. A bare tag is left for Knap when its name is shadowed or is not an input; a tag with any other filter, a path or an expression is never a bare tag. The input list is the Report's variable inputs, plus `template` when a template is wired and `records` when records are wired.
+
+```mermaid
+flowchart LR
+    tag["a bare tag {{ name }}<br>naming a Report input"] -->|"embedBareVariables"| span["the internal span =name<br>(=name! with | highlight)"]
+    span --> knap["Knap renders the body,<br>copying code spans as they are"]
+    knap --> res{"each consumer resolves<br>the span by kind"}
+    res --> screen["on screen:<br>inlineRefDisplay.tsx"]
+    res --> write["Write to Obsidian:<br>obsidianMarkdown.ts"]
+    res --> exp["the webpage export:<br>reportExport.ts"]
+    other["any other use of a name:<br>a path, a filter, an expression"] --> data["Knap reads the<br>value's data form"]
+```
 
 After the rewrite the body goes through Knap. Knap copies a backtick code span through untouched, so the spans survive the render. Each consumer then resolves them by kind: `inlineRefDisplay.tsx` on screen, `obsidianMarkdown.ts` at write, `reportExport.ts` at export. The span grammar is `` /`=([A-Za-z_][A-Za-z0-9_]*)!?`/ ``: `obsidianMarkdown.ts` reads it in the markdown, and `noteInlineRefs.ts`'s `substituteRefCodes` reads the rendered `<code>` form for the screen and the export. `inlineRefDisplay.tsx` repeats the identifier grammar locally; `obsidianMarkdown.test.ts` checks that the write copy agrees.
 
@@ -122,6 +146,17 @@ A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. 
 
 A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else `logical` or `number` when every present cell is one, else `string` (`guessNoteColumnType` in `frame.ts`, which the Obsidian plugin also guesses with). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
 
+```mermaid
+flowchart TD
+    txt["the Note's text"] --> fence{"a --- block at the top,<br>with a closing ---?"}
+    fence -->|no| body1["all of it is the body"]
+    fence -->|yes| yaml["parse the YAML between"]
+    fence -->|yes| body2["the body: after the<br>closing fence"]
+    yaml --> key["each key"]
+    key --> guess["its type guessed from the value<br>(or a type pin, reshaped<br>onto that rank)"]
+    guess --> sock["an output socket of that type<br>(syncFields adds, retypes, removes)"]
+```
+
 ### Type pins
 
 `fieldTypes[key]` is the user's pick, made from the glyph on the field row. A pin holds only the element family (number, text, date, logical, complex). On every sync the pin is reshaped onto the guessed rank (`typeAtRank`), so a scalar pin on a list value becomes the matching list type. A pin is dropped when either side is a frame or cube, and a pin for a key that no longer exists is pruned. Frame and cube rows show no picker. When a pin disagrees with the guess, `coerceScalar` converts each element: to number with `Number()` (logical gives 1 or 0, non-finite gives null); to text with `String()`; to logical as `true` for `1`, `"1"` or case-insensitive `"true"`; to date by parsing the text to a rounded serial.
@@ -181,6 +216,20 @@ During `data()`, when the active source's variables differ from the current ones
 6. Rewrite bare tags (`templateSource`). When records are unwired and no Knap syntax remains, return `makeDocument(src, refs)` synchronously.
 7. Otherwise go async. If the template source has Knap syntax, render the throwaway Note first, so an unwired variable defaults to the field's rendered value rather than its tag text. Convert every present variable with `toTemplateValue` (a lazy frame reference is read in full first). With a template wired, the `template` variable is the raw source text.
 8. With records wired, convert them to rows (a Frame or Cube becomes rows; anything that is not an array of plain objects contributes nothing), bind them as the `records` variable, and run the mail merge. Without records, render once.
+
+```mermaid
+flowchart TD
+    r["read template and records"] --> rec["reconcile the variable inputs<br>to the active source"]
+    rec --> def["a template wired: its<br>frontmatter gives defaults"]
+    def --> vars["each variable: wired value,<br>else default; absent ones left out"]
+    vars --> bare["rewrite the bare tags"]
+    bare --> knapq{"records wired, or<br>Knap syntax left?"}
+    knapq -->|no| sync["the document, synchronously"]
+    knapq -->|yes| conv["async: convert the variables<br>to template values"]
+    conv --> merge{"records wired?"}
+    merge -->|yes| pages["a mail merge:<br>one page per record, up to 500"]
+    merge -->|no| once["render once"]
+```
 
 A render or page-name error yields `#SYNTAX!` on `document`. `templateVars` (the data form of every input as of the last compute) and `pages` stay on the node for the overlay and the export. `renderedBody()` re-renders the current source against the last compute's variables for the webpage export; errors render as empty.
 

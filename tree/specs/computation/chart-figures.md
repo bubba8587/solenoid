@@ -31,6 +31,19 @@ Every consumer recognizes a value by its brand field, never by structure: `isCha
 | `options` | `ChartOptions` | The parsed options string (see The options string). Figures that take no options carry `{}`. |
 | `title` | string, optional | The display title: the options `title`, else the node label, else the node's default name. It labels the popup header, the Report embed bar and the chip; it is never drawn inside the figure (the in-figure title is `options.title`, see Titles). |
 
+```mermaid
+mindmap
+  root(("a ChartValue"))
+    ["__chart: the brand"]
+    ["op: the figure kind,<br>picks the renderer"]
+    ["values: the raw numbers"]
+    ["series: two or more named series"]
+    ["labels: one per data point"]
+    ["payload: structured data<br>for the non-series figures"]
+    ["options: the parsed options string"]
+    ["title: popup, embed and chip only"]
+```
+
 `ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the sixteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`). `chartValueOps()` enumerates all 27 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
 
 ### Payloads
@@ -325,6 +338,23 @@ The Chart Builder node has one input per field (42 text, 11 number) and one outp
 | `ladder` | `LadderView` (`ladderView.tsx`) | CSS cards over SVG ribbons |
 | `scatter`, `xyline`, `bubble` with no payload | the empty dash | |
 | the other Chart ops | the series path | recharts |
+
+```mermaid
+mindmap
+  root(("ChartFigure:<br>every surface"))
+    ["recharts, lazy"]
+      ["the series ops: column, bar,<br>line, area, pie, radar..."]
+      ["XYView: scatter, xyline,<br>bubble, an XY overlay"]
+      ["overlay, sankey, treemap,<br>the dial gauge"]
+    ["CSS cards"]
+      ["KPI, the bar gauge, Record"]
+      ["the ladder: cards over SVG"]
+    ["one canvas"]
+      ["waffle, surface, contour,<br>waterfall, candle, boxplot"]
+      ["calendar heatmap,<br>heatmap, quiver"]
+    ["its own lazy chunk"]
+      ["gantt"]
+```
 
 The series path: when `series` has two or more entries and the op is `column`, `bar`, `line`, `area` or `radar`, `MultiSeriesView` draws one mark per series with a legend. Otherwise `toSeries(values)` keeps each finite cell as `{ i, v }` with `i` its original index (so labels stay aligned across gaps); none left draws the empty dash; else `ChartView` draws one series.
 
