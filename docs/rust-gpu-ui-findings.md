@@ -256,6 +256,45 @@ Blitz's GPU renderer (this ran `vello_cpu`). The gaps found were all in form con
 none in layout or text: flexbox, the box model, `color-mix()`, variables, masks and web fonts held from the
 start.
 
+## Pan and zoom: Blitz against `develop` (2026-10-25)
+
+**Blitz on the web.** It builds for `wasm32` and draws through WebGL2 (`vello_hybrid`), bundling its
+fonts since the browser gives it none. Its TodoMVC example is 12.5 MB of wasm after `wasm-opt -Oz`,
+4.4 MB gzipped (Stylo, Parley, the renderer and a font); Solenoid's whole core is 1.9 MB gzipped. The
+numbers below are native, not wasm, which runs slower and, without threads, on one core.
+
+**The test.** personal-finance (154 cards, 172 cables, 89 cards hidden in collapsed groups), 1600×1000 at
+1×, the camera paths of `scripts/zoom-perf-probe.mjs`: 60 pan frames, and 40 wheel steps that each cross
+a 0.1 zoom step. `develop` (`c7da52b`) runs in headless Chromium through that probe; Blitz (patched as
+above) runs the same canvas, extracted from `develop` with the three Solenoid-side tweaks, through a
+bench that sets the viewport transform each frame and times restyle and layout, scene encoding and
+raster. The dot grid is off on both: it is one 400,000 px SVG pattern that Chromium tiles cheaply and
+Blitz can't draw, and a Rust canvas would paint the grid itself. With the dots on, `develop` pans about
+the same and pays roughly twice the raster on a zoom step.
+
+Milliseconds per frame. `develop` is main-thread time plus raster (headless Chromium rasters on the
+CPU); its main thread includes about 5.5 ms of the app's own JavaScript per pan frame. Blitz CPU is the
+whole frame on `vello_cpu`. Blitz GPU is the CPU side only (restyle, layout and encoding with the Vello
+painter): its raster ran on a software Vulkan driver here, 65 to 110 ms that say nothing about a real GPU.
+
+| Zoom | `develop` pan | Blitz CPU pan | Blitz GPU pan, CPU side | `develop` zoom step | Blitz CPU step | Blitz GPU step, CPU side |
+|---|---|---|---|---|---|---|
+| 1 | 12.1 + 1.4 | 4.1 | 4.1 | 21.4 + 6.4 | 3.4 | 3.9 |
+| 0.5 | 13.1 + 1.5 | 8.1 | | 13.6 + 4.1 | 6.1 | |
+| 0.25 | 14.1 + 1.8 | 17.1 | 7.8 | 17.0 + 4.5 | 11.3 | 6.2 |
+| 0.1 | 17.3 + 1.8 | 38.6 | 13.6 | 9.8 + 3.9 | 21.6 | 9.8 |
+
+- **Close in, Blitz is about three times cheaper.** Chromium pays its JavaScript, paint and layerize on
+  every frame; Blitz pays 2 to 4 ms of restyle and layout and little else, because it culls what is off screen.
+- **Far out, the cost moves to encoding.** Blitz keeps no layers between frames, so it rebuilds the scene
+  for every element on screen each frame (about 9,300 at zoom 0.1), where Chromium pans one cached
+  layer (finding 1 of `canvas-frame-cost-findings.md`). With the Vello painter that is about 10 ms at 0.1,
+  level with `develop`; with the CPU painter it is 32 ms, over a 60 Hz frame.
+- **That far-zoom cost is what step 1 removes.** Drawn as silhouettes below a zoom threshold, a card is
+  a handful of shapes instead of 60 elements, whichever renderer draws the cards.
+- **Not measured:** real GPU raster (no GPU here), wasm in a browser, a phone, input latency, and the
+  app's own event handling on the Blitz side (it has none; a Rust canvas's would be far below Chromium's 5.5 ms).
+
 ## The spike (what would turn this into a decision)
 
 Build the same three things in each candidate: the step-1 scene on personal-finance (154 nodes,
