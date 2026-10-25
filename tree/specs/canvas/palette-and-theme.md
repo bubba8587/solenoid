@@ -10,6 +10,15 @@ Serves [[B14]] oneDesignSystem: every color rule below exists so the app wears o
 
 Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. The palette half lives in `palette.ts`; the theme half in `appTheme.ts` and `themeVars.ts`. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors. `palette.test.ts` and `chrome.test.ts` pin the behavior.
 
+```mermaid
+flowchart LR
+    pal["the palette in effect:<br>12 accent slots,<br>maybe a neutral ramp"] --> tv["themeVars"]
+    th["the theme: the accent slot,<br>light or dark mode"] --> tv
+    tv -->|"apply() writes CSS custom<br>properties onto html"| css["--accent, every --sock-*,<br>the status and chrome tokens"]
+    css --> paint["everything the app paints"]
+    card["a card, group, note or<br>drawn cable: stores a slot id"] -->|"resolveColor at render"| pal
+```
+
 ## Slots: how a color is stored
 
 A card, group, note or drawn cable never stores a hex. It stores a **slot id**, one of the twelve keys of `PALETTE`, and the color is looked up at render time. The id is never an index either, because the swatch order can change while the id stays put. Ids are opaque names: in a given palette the `green` slot need not be green.
@@ -55,6 +64,19 @@ Each socket color is derived in this order:
 2. Apply the light-mode accent drop (`themeAccent`). This comes first so the drop compounds exactly once, not again on top of the shade.
 3. Apply the kind's shade. `socketArrayShade` multiplies HSV value by 0.85. `socketMatrixShade` shifts hue by −11°, multiplies saturation by 1.18 (capped at 1) and value by 0.92. The hue shift is what tells a 2-D socket from its scalar; the saturation and value steps only keep it in the same weight class.
 4. Write the result as `--sock-X` and a ring as `--sock-X-ring`: `socketRingShade`, a fixed HSV value drop of 0.23 off that same fill, so every glyph's border reads at the same contrast whatever the fill's lightness.
+
+```mermaid
+flowchart LR
+    slot["the socket's slot"] --> r["1. resolve it through<br>the effective palette"]
+    r --> drop["2. the light-mode<br>accent drop"]
+    drop --> kind{"3. its kind"}
+    kind -->|scalar| as["as is"]
+    kind -->|"array: a list"| arr["HSV value × 0.85"]
+    kind -->|matrix| mat["hue −11°, saturation × 1.18,<br>value × 0.92"]
+    as --> out["4. --sock-X, and its ring<br>(value − 0.23)"]
+    arr --> out
+    mat --> out
+```
 
 All of these steps run in HSV (`DESIGN.md` §Tertiary). A canvas renderer (the minimap, the HTML-in-Canvas snapshot) cannot read a CSS variable, so `socketVarHex(expr, mode)` runs the same derivation without the DOM. It accepts a bare `--sock-*` name or a `var(--sock-*)` expression, passes a bare hex through unchanged, and returns gray for anything it does not recognize.
 
@@ -175,6 +197,14 @@ Three layers decide the palette:
 - **The app base**, the user's switcher choice: a built-in name or `"Custom"`. It persists in `localStorage` under `solenoid.palette`.
 - **The document pin**: a document may declare `palette: { base?, overrides? }` ([[save-format]]). The base must be a built-in name; `overrides` maps slot ids to hexes, and unknown slots or non-string values are dropped. The pin wins over the app base for that document and never changes it.
 - **The report palette**: a document may also declare `reportPalette` in the same shape. It colors only report and export surfaces, never the canvas, so a brand override for an export does not retint the live graph ([[reports-and-notes]]).
+
+```mermaid
+flowchart TD
+    app["the app base:<br>the user's switcher pick"] --> eff
+    pin["a document pin:<br>base and overrides"] -->|"wins for that document"| eff["the effective palette:<br>the canvas"]
+    rep["a document's reportPalette"] --> repm["the report palette:<br>report and export surfaces only"]
+    eff -.->|"falls back through"| repm
+```
 
 From these, `recompute` builds:
 

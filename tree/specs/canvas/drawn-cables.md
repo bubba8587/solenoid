@@ -22,6 +22,19 @@ A drawn cable has no sockets, no value, no Conduit run, no ribbon and no part in
 | `headScale` | a multiple of the arrowhead size, independent of `width`; Small 0.7, Medium 1, Large 1.5, Huge 2.2 | 1 |
 | `color` | a palette slot id, resolved to a color at render | gray |
 
+```mermaid
+mindmap
+  root(("a drawn cable"))
+    ["points: placed by the user"]
+      ["angle: an optional pinned<br>heading, 45° steps"]
+    ["its own style"]
+      ["shape: spline, diagonal, straight"]
+      ["arrows: none, start, end, both"]
+      ["width, headScale"]
+      ["color: a palette slot"]
+    ["never: sockets, a value,<br>a ribbon, the engine"]
+```
+
 ## Stacking
 
 The layer's svg sits above every card (`z-index: 6`). Standoffs sit under the graph at `z-index: -3`. This is the author's call.

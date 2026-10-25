@@ -14,6 +14,14 @@ Loading a document tears down the current graph and builds the new one (`rebuild
 
 The main surface (`flow/FlowCanvas.tsx`) installs an editor pipe that watches `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`. The first such event queues one `syncTopology` call; later events while it is queued add nothing. The queued sync waits while `isGraphRebuilding()` is true, re-checking on a zero-delay timer until the rebuild ends. A load's hundreds of events therefore become a single `setNodes` / `setEdges` commit instead of one per event.
 
+```mermaid
+flowchart LR
+    ev["hundreds of node and cable<br>events during a load"] --> q["the first one queues one<br>syncTopology; the rest add nothing"]
+    q --> wait{"still rebuilding?"}
+    wait -->|"yes: check again<br>on a zero-delay timer"| wait
+    wait -->|no| commit["one setNodes / setEdges commit,<br>unchanged nodes and edges<br>keeping their objects"]
+```
+
 The composite drill-in (`flow/FlowCompositeOverlay.tsx`) has the same pipe with its own local gate, `s.rebuilding`. After its sync it also recomputes the graph and schedules autosave.
 
 ## Survivors keep their identity

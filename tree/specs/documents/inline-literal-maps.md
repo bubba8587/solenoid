@@ -36,6 +36,21 @@ A class that initializes a map with defaults, such as `literals = { rate: 0.05, 
 
 An unwired input row's field is picked by its socket type, and the field decides which map it writes.
 
+```mermaid
+flowchart TD
+    row["an unwired input row"] --> t{"its socket type"}
+    t -->|"number, numlist"| nf["a number field"] --> lit["literals"]
+    t -->|"string, strcombo"| tf["a text field<br>or a column picker"] --> sl["stringLiterals"]
+    t -->|"strlist, datelist, logicallist,<br>an opted-in numlist"| csv["a CSV field"] --> sl
+    t -->|"any, anydata, trueany"| w{"the node opts in?"}
+    w -->|autoLiterals| auto["the auto field: a number<br>to literals, else text"]
+    auto --> lit
+    auto --> sl
+    w -->|textLiterals| txt["a text field, as typed"] --> sl
+    w -->|neither| wire["wire-only"]
+    t -->|"anything else"| wire
+```
+
 In `InlineInputs` (the fixed rows of most cards):
 
 | Socket type | Field | Map |

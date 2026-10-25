@@ -21,6 +21,17 @@ The flags live in `coarse.ts`. Derive from them; never duplicate the tests.
 | `isMobile()` | `IS_PHONE` held in portrait, read live (mirrored to `html.is-mobile` by `main.tsx`; `useIsMobile()` in a render) | The mobile model: selection-gated nodes, the bottom action bar. |
 | `isTablet()` | `IS_COARSE` and not `isMobile()` | The desktop interaction model, with touch actions in the top bar; a phone turned sideways runs it ([[layout-chrome#Phones in landscape]]). |
 
+```mermaid
+flowchart TD
+    d["the device"] --> c{"pointer: coarse?<br>(IS_COARSE)"}
+    c -->|no| desk["desktop: mouse and pen"]
+    c -->|yes| ph{"a mobile user agent?<br>(IS_PHONE)"}
+    ph -->|no| tab["isTablet(): the desktop model,<br>touch actions in the top bar"]
+    ph -->|yes| por{"held in portrait?"}
+    por -->|yes| mob["isMobile(): selection-gated nodes,<br>the bottom action bar"]
+    por -->|"no: landscape"| tab
+```
+
 "Request desktop site" flips the user-agent test, and that is the user's way out of the mobile model. Never gate on coarseness alone something that must flip with it.
 
 ## Standing rules

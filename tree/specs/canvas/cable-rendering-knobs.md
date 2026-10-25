@@ -39,6 +39,15 @@ Per-socket exit-angle overrides live in `cableAngleStore`, keyed by `${nodeId}::
 
 A ribbon forms when 2 or more cables leave one visible Conduit's outputs for the same entity: another visible Conduit's inputs, or one collapsed group's combined input pill. The destination resolves to a collapsed group's pill first, because a hidden target Conduit belongs to its group, and to a visible Conduit's lane input otherwise. `ribbonForConnection` derives membership fresh on every render and never stores it. Ghost cables (`cableGhostStore`) never join a ribbon. Members are sorted by lane index, and the lowest lane is the representative (`repId`).
 
+```mermaid
+flowchart TD
+    c["cables leaving one visible<br>Conduit's outputs"] --> dest["resolve each destination: a collapsed<br>group's pill first, else a visible<br>Conduit's lane input"]
+    dest --> same{"2 or more going<br>to the same entity?<br>(ghosts never count)"}
+    same -->|yes| rib["one ribbon: members by lane,<br>the lowest lane its representative"]
+    same -->|no| plain["plain cables"]
+```
+
+
 Drawing:
 
 - The ribbon renders as one wide, neutral trunk (`RIBBON_WIDTH` 7.2, `#8a909c`) with flat (butt) caps. Near each Conduit face it fans out into per-lane branches, or it lands whole on a group's combined pill.
