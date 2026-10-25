@@ -114,7 +114,8 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
   platform, desktop included: one build, one answer ([[C130]] rustCore). The app's first render waits for it with no
   deadline (`main.tsx`), since the cards' bodies run on it ([[node-bodies]]). The desktop shell adds only what a
   browser can't do; for tables that is reading a Parquet file (`crates/solenoid-parquet`, [[frame-verbs]] § Reading
-  Parquet).
+  Parquet). Its webview fetches the module from the app's own origin, so the CSP's `connect-src` carries `'self'`
+  (`tauri.conf.json`, `desktopCsp.test.ts`). The 1.5.0-era `.deb` was 24 MB with Polars; on the core alone it is 18 MB.
 - **Speed** (2026-10-23, one chain of filter, computed column, group with sum, mean and median, join to a 1,000-row
   lookup, sort; the frame already resident): at 1M rows 160 ms in wasm under Node and 210 ms natively. Polars, as
   the desktop ran it, took 1.17 s, nearly all of it the computed column's round trip out of Polars and back (its
