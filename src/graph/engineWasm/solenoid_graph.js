@@ -703,6 +703,31 @@ export function engine_csv_frame(text) {
 }
 
 /**
+ * A number as a format annotation (its JSON) shows it.
+ * @param {number} n
+ * @param {string} annotation
+ * @returns {string}
+ */
+export function fmt_annotated(n, annotation) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(annotation, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.fmt_annotated(retptr, n, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * A date serial in a `YYYY-MM-DD`-style pattern.
  * @param {number} serial
  * @param {string} pattern
@@ -815,6 +840,45 @@ export function read_logical(text) {
         return r0 === 0 ? undefined : r2;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+ * Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
+ * (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
+ * is written as text, since a table of thousands of short columns spends more on building JSON values than on
+ * reading its cells.
+ * @param {string} schema
+ * @param {Uint8Array} tags
+ * @param {Float64Array} nums
+ * @param {string} strs
+ * @param {Uint32Array} lens
+ * @returns {string}
+ */
+export function engine_infer_bin(schema, tags, nums, strs, lens) {
+    let deferred6_0;
+    let deferred6_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(schema, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(tags, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayF64ToWasm0(nums, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(strs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passArray32ToWasm0(lens, wasm.__wbindgen_export_1);
+        const len4 = WASM_VECTOR_LEN;
+        wasm.engine_infer_bin(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred6_0 = r0;
+        deferred6_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred6_0, deferred6_1, 1);
     }
 }
 
@@ -957,36 +1021,11 @@ export function fmt_scalar(n) {
     }
 }
 
-/**
- * A number as a format annotation (its JSON) shows it.
- * @param {number} n
- * @param {string} annotation
- * @returns {string}
- */
-export function fmt_annotated(n, annotation) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(annotation, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.fmt_annotated(retptr, n, ptr0, len0);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred2_0 = r0;
-        deferred2_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
-    }
-}
-
 function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_184(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_185(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1801,7 +1840,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_184(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_185(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }

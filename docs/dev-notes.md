@@ -18,6 +18,8 @@ specific item.
 - **Dead TS deleted in two rounds**, then two comment sweeps cut the core's TS-twin provenance from its comments.
 - **The isolate endpoint terminals mount again** (lost with the graph move).
 - **Typed text is read by the core** ([[D93]] oneTextReading): `parseDate` hands every absolute date to `engine_parse_date`, a closed list of shapes pinned by `coreParseDate.test.ts`; chrono-node reads only relative phrases ([[D54]]). A day/month-ambiguous date stays `#AMBIGUOUS!` with a time after it. The plugin loads the core on `onload`.
+- **Display and import reading run on the core** ([[D94]] oneNumberDisplay, [[D93]] oneTextReading): number, date and annotation formatting, the card plans, typed number and logical text, and `inferColumn` (one `engine_infer_bin` call per table, pinned by `coreInferColumn.test.ts`; imports run about 1.5x the old TS's time, about 50 ms more per 100k rows of 4 columns).
+- **The chrome renders while the core loads** (`coreReady.ts`); only graph surfaces wait.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.
 - **The Vercel build passes on Node 24** (`@types/node` declared); CI's `vercel-build` job builds as Vercel does.
@@ -25,7 +27,7 @@ specific item.
 - **Open for the author:**
   - the criteria strings' redesign (backlog § Formula library);
   - deleting the TS schedule engine ([[C69]] ganttPackages);
-  - the app's size (first render still waits for the core);
+  - the app's size;
   - which ring a top-level session works at (`docs/dte.md` § Solenoid's rings);
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);
   - TEXT answers an ISO date whatever its code (Formula.js's behavior, kept).

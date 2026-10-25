@@ -35,6 +35,10 @@ mod verbs;
 mod visual;
 mod widgets;
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) use frames::core_cell;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use list::infer_cells;
 pub use values::{decode, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Frame};
 
 /// A field the body leaves on the card for its component: a value (plain data as `V::Json`), or `undefined`.

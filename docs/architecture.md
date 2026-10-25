@@ -228,6 +228,7 @@ src/
 | Module | Role |
 |---|---|
 | `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (the core in wasm, web and desktop alike), the Parquet read, the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `binaryCells.ts` | The columnar hand-off's TypeScript side: a frame's cells to the core's buffers and back (`binary.rs`). |
 | `frameOps.ts` | The verbs' vocabulary: `FrameOp` and its settings (the verbs are the core's, `frame_verbs.rs`). Contracts: `../tree/specs/computation/frame-verbs.md` |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
 | `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |

@@ -104,6 +104,10 @@ export function engine_read_bin(handle: string, column?: string | null, limit?: 
  */
 export function engine_csv_frame(text: string): string;
 /**
+ * A number as a format annotation (its JSON) shows it.
+ */
+export function fmt_annotated(n: number, annotation: string): string;
+/**
  * A date serial in a `YYYY-MM-DD`-style pattern.
  */
 export function fmt_date(serial: number, pattern: string): string;
@@ -128,6 +132,13 @@ export function read_decimal(text: string): number;
  */
 export function read_logical(text: string): number | undefined;
 /**
+ * Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
+ * (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
+ * is written as text, since a table of thousands of short columns spends more on building JSON values than on
+ * reading its cells.
+ */
+export function engine_infer_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
+/**
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
  */
 export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
@@ -144,10 +155,6 @@ export function display_settings(number_decimals?: number | null, sci_above?: st
  * A number nobody formatted, as the Format Controller's General style shows it.
  */
 export function fmt_scalar(n: number): string;
-/**
- * A number as a format annotation (its JSON) shows it.
- */
-export function fmt_annotated(n: number, annotation: string): string;
 /**
  * One editor's graph and its dataflow engine.
  */
@@ -358,6 +365,7 @@ export interface InitOutput {
   readonly display_settings: (a: number, b: number, c: number, d: number) => void;
   readonly engine_csv_frame: (a: number, b: number, c: number) => void;
   readonly engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_infer_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
   readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;

@@ -80,6 +80,37 @@ pub fn engine_csv_frame(text: &str) -> String {
     reply(Ok(schema))
 }
 
+/// Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
+/// (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
+/// is written as text, since a table of thousands of short columns spends more on building JSON values than on
+/// reading its cells.
+#[wasm_bindgen]
+pub fn engine_infer_bin(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> String {
+    use crate::frame::FrameColType;
+    use std::fmt::Write;
+    let f = match decode_frame(schema, tags, nums, strs, lens) {
+        Ok(f) => f,
+        Err(e) => return reply(Err(e)),
+    };
+    let mut out = Columnar::default();
+    let mut schema = String::from("{\"ok\":[");
+    for (j, c) in f.columns.iter().enumerate() {
+        let cells: Vec<_> = c.values.iter().map(crate::excel_formula::cell_to_v).collect();
+        let (typed, _) = crate::nodes::infer_cells(&c.name, &cells);
+        if j > 0 {
+            schema.push(',');
+        }
+        let n = if typed.ty == FrameColType::String { 0 } else { cells.len() };
+        let _ = write!(schema, "{{\"type\":\"{}\",\"len\":{n}}}", typed.ty.as_str());
+        if n > 0 {
+            out.push_cells(&typed.values.iter().map(crate::nodes::core_cell).collect::<Vec<_>>());
+        }
+    }
+    schema.push_str("]}");
+    STAGED.with(|s| *s.borrow_mut() = out);
+    schema
+}
+
 /// Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
 #[wasm_bindgen]
 pub fn engine_csv_rows(text: &str, detect: bool, keep_blank: bool) -> String {

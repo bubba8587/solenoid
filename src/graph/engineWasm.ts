@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, engine_infer_bin, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -215,6 +215,15 @@ export function wasmCsvFrame(text: string): BinaryCells & { rowCount: number } {
   if ("err" in reply) throw toSolError(reply.err);
   const ok = reply.ok!;
   return command(() => ({ schema: ok.columns, rowCount: ok.rowCount, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
+}
+
+/** Each column's cells read as one type, with its trimmed text as `raw` (`nodes::infer_column`). */
+export function wasmInferBin(cells: BinaryCells): BinaryCells {
+  const reply = JSON.parse(command(() => engine_infer_bin(JSON.stringify(cells.schema), cells.tags, cells.nums, cells.strs, cells.lens))) as
+    { ok?: BinaryCells["schema"]; err?: unknown };
+  if ("err" in reply) throw toSolError(reply.err);
+  const schema = reply.ok!;
+  return command(() => ({ schema, tags: take_tags(), nums: take_nums(), strs: take_strs(), lens: take_lens() }));
 }
 
 /** The rows CSV text reads as (`csv::rows_columnar`). */

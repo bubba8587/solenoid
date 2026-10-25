@@ -15,6 +15,7 @@ use crate::jsnum::{js_trim, math_round, number_to_string};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
 use crate::value_kinds::{guard_finite as guard_cells, Logical};
+use std::rc::Rc;
 
 const MAX_GENERATED: f64 = 1_000_000.0;
 
@@ -1088,12 +1089,19 @@ fn date_serial(v: &V) -> Option<f64> {
 
 /// A column of the one type every filled cell reads as, text otherwise; a list of one unit keeps it.
 pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
-    let mut cells: Vec<V> = cells.to_vec();
+    let (mut column, raw) = infer_cells(name, cells);
+    column.raw = Some(serde_json::Value::Array(raw.iter().map(|t| serde_json::Value::String(t.to_string())).collect()));
+    column
+}
+
+/// `infer_column` with each cell's trimmed text (an error's code, blank as empty) beside the column, not in it.
+pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
     let mut unit: Option<serde_json::Value> = None;
-    if cells.iter().any(|c| matches!(c, V::Unit(_))) {
+    let mags: Vec<V>;
+    let cells: &[V] = if cells.iter().any(|c| matches!(c, V::Unit(_))) {
         let mut first: Option<&UnitCell> = None;
         let mut same = true;
-        for c in &cells {
+        for c in cells {
             let V::Unit(u) = c else { continue };
             match first {
                 None => first = Some(u),
@@ -1113,7 +1121,7 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
             }
             serde_json::Value::Object(o)
         });
-        cells =
+        mags =
             cells
                 .iter()
                 .map(|c| {
@@ -1124,34 +1132,48 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
                     }
                 })
                 .collect();
-    }
-    let text = |c: &V| js_trim(&js_string_of(c)).to_string();
-    let raw: Vec<serde_json::Value> = cells
+        &mags
+    } else {
+        cells
+    };
+    let empty: Rc<str> = Rc::from("");
+    let raw: Vec<Rc<str>> = cells
         .iter()
         .map(|c| match c {
-            V::Err(e) => e.code.to_string(),
-            c if blank(c) => String::new(),
-            c => text(c),
+            V::Err(e) => Rc::from(e.code.as_str()),
+            V::Null | V::Undef => empty.clone(),
+            V::Str(s) => {
+                let t = js_trim(s);
+                if t.is_empty() {
+                    empty.clone()
+                } else if t.len() == s.len() {
+                    s.clone()
+                } else {
+                    Rc::from(t)
+                }
+            }
+            c => Rc::from(js_trim(&js_string_of(c))),
         })
-        .map(serde_json::Value::String)
         .collect();
-    let filled: Vec<&V> = cells.iter().filter(|c| !blank(c) && !c.is_sol_error()).collect();
-    let read = |f: &dyn Fn(&V) -> V| -> Vec<V> {
+    let filled = || cells.iter().filter(|c| !blank(c) && !c.is_sol_error());
+    let any_filled = filled().next().is_some();
+    let read = |f: &dyn Fn(usize, &V) -> V| -> Vec<V> {
         cells
             .iter()
-            .map(|c| {
+            .enumerate()
+            .map(|(i, c)| {
                 if c.is_sol_error() {
                     c.clone()
                 } else if blank(c) {
                     V::Null
                 } else {
-                    f(c)
+                    f(i, c)
                 }
             })
             .collect()
     };
     let read_all = |f: &dyn Fn(&V) -> Option<f64>| -> Option<Vec<V>> {
-        if filled.is_empty() {
+        if !any_filled {
             return None;
         }
         cells
@@ -1173,30 +1195,36 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
         values,
         unit,
         format: None,
-        raw: Some(serde_json::Value::Array(raw.clone())),
+        raw: None,
     };
-    if !filled.is_empty() && filled.iter().all(|c| matches!(c, V::Bool(_))) {
-        return column(FrameColType::Logical, read(&|c| c.clone()), None);
-    }
-    if let Some(values) = read_all(&cell_number) {
-        return column(FrameColType::Number, values, unit);
-    }
-    let logical_text = |c: &V| match c {
-        V::Bool(_) => true,
-        V::Str(s) => matches!(crate::jsnum::js_lower(js_trim(s)).as_ref(), "true" | "false"),
-        _ => false,
-    };
-    if !filled.is_empty() && filled.iter().all(|c| logical_text(c)) {
-        return column(
+    let typed = if any_filled && filled().all(|c| matches!(c, V::Bool(_))) {
+        column(FrameColType::Logical, read(&|_, c| c.clone()), None)
+    } else if let Some(values) = read_all(&cell_number) {
+        column(FrameColType::Number, values, unit)
+    } else if any_filled
+        && filled().all(|c| match c {
+            V::Bool(_) => true,
+            V::Str(s) => matches!(crate::jsnum::js_lower(js_trim(s)).as_ref(), "true" | "false"),
+            _ => false,
+        })
+    {
+        column(
             FrameColType::Logical,
-            read(&|c| if let V::Bool(_) = c { c.clone() } else { V::Bool(crate::jsnum::js_lower(&text(c)) == "true") }),
+            read(&|i, c| {
+                if let V::Bool(_) = c {
+                    c.clone()
+                } else {
+                    V::Bool(crate::jsnum::js_lower(&raw[i]) == "true")
+                }
+            }),
             None,
-        );
-    }
-    if let Some(values) = read_all(&date_serial) {
-        return column(FrameColType::Date, values, None);
-    }
-    column(FrameColType::String, read(&|c| V::str(&text(c))), None)
+        )
+    } else if let Some(values) = read_all(&date_serial) {
+        column(FrameColType::Date, values, None)
+    } else {
+        column(FrameColType::String, read(&|i, _| V::Str(raw[i].clone())), None)
+    };
+    (typed, raw)
 }
 
 fn frame_of(columns: Vec<Column>) -> V {

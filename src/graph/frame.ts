@@ -1,6 +1,7 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[D43]] unitByGranularity
-import { wasmInvokeSync } from "./engineWasm";
-import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+import { wasmInvokeSync, wasmInferBin } from "./engineWasm";
+import { encodeBinary, decodeBinary } from "./binaryCells";
+import { parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
@@ -267,23 +268,6 @@ function cellToNumber(v: unknown): number | null {
   return null;
 }
 
-function isBlank(v: unknown): boolean {
-  return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
-}
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
-function dateCellSerial(v: unknown): number | null {
-  if (typeof v !== "string" || !ISO_DATE.test(v.trim())) return null;
-  const serial = parseDateToSerial(v);
-  return Number.isFinite(serial) ? serial : null;
-}
-
-function isLogicalCell(v: unknown): boolean {
-  if (typeof v === "boolean") return true;
-  if (typeof v !== "string") return false;
-  const t = v.trim().toLowerCase();
-  return t === "true" || t === "false";
-}
 function cellToBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   return String(v).trim().toLowerCase() === "true";
@@ -299,46 +283,28 @@ export function guessNoteColumnType(values: ReadonlyArray<unknown>, isDate: (v: 
   return "string";
 }
 
+/** Each column of the one type every filled cell reads as, text otherwise, its trimmed text kept as `raw`; a list of one unit keeps it. The types are read on the core in one call (`nodes::infer_cells`); a text column's cells are its trimmed text, which the core doesn't send back. */
+export function inferColumns(cols: ReadonlyArray<{ name: string; cells: ReadonlyArray<unknown> }>): FrameColumn[] {
+  if (cols.length === 0) return [];
+  const units: (ColumnUnit | undefined)[] = [];
+  const raws: string[][] = [];
+  const columns = cols.map(({ name, cells }): FrameColumn => {
+    let unit: ColumnUnit | undefined;
+    if (cells.some(isUnitCell)) ({ mags: cells, unit } = matrixCellsFromList(cells));
+    units.push(unit);
+    raws.push(cells.map((c) => (isSolError(c) ? c.code : c == null ? "" : String(c).trim())));
+    return { name, type: "string", values: cells as FrameCell[] };
+  });
+  return decodeBinary(wasmInferBin(encodeBinary({ __frame: true, columns }))).map(({ type, values }, j) => {
+    const name = cols[j].name;
+    const raw = raws[j], unit = units[j];
+    if (type === "string") values = raw.map((t, i) => (isSolError(columns[j].values[i]) ? columns[j].values[i] : t === "" ? null : t));
+    return { name, type, values, raw, ...(type === "number" && unit ? { unit } : {}) };
+  });
+}
+
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
-  let recovered: ColumnUnit | undefined;
-  if (cells.some(isUnitCell)) {
-    const { mags, unit } = matrixCellsFromList(cells);
-    cells = mags;
-    recovered = unit;
-  }
-  const raw = cells.map((c) => (isSolError(c) ? c.code : isBlank(c) ? "" : String(c).trim()));
-  const nonBlank = cells.filter((c) => !isBlank(c) && !isSolError(c));
-  const read = (fn: (c: unknown) => FrameCell): FrameCell[] =>
-    cells.map((c) => (isSolError(c) ? c : isBlank(c) ? null : fn(c)));
-  if (nonBlank.length > 0 && nonBlank.every((c) => typeof c === "boolean")) {
-    return { name, type: "logical", values: read((c) => c as boolean), raw };
-  }
-  const readAll = (fn: (c: unknown) => number | null): FrameCell[] | null => {
-    if (nonBlank.length === 0) return null;
-    const out = new Array<FrameCell>(cells.length);
-    for (let i = 0; i < cells.length; i++) {
-      const c = cells[i];
-      if (isSolError(c)) { out[i] = c; continue; }
-      if (isBlank(c)) { out[i] = null; continue; }
-      const v = fn(c);
-      if (v === null) return null;
-      out[i] = v;
-    }
-    return out;
-  };
-  const numbers = readAll(cellToNumber);
-  if (numbers) {
-    return { name, type: "number", values: numbers, raw, ...(recovered ? { unit: recovered } : {}) };
-  }
-  const logical = nonBlank.length > 0 && nonBlank.every(isLogicalCell);
-  if (logical) {
-    return { name, type: "logical", values: read(cellToBool), raw };
-  }
-  const dates = readAll(dateCellSerial);
-  if (dates) {
-    return { name, type: "date", values: dates, raw };
-  }
-  return { name, type: "string", values: read((c) => String(c).trim()), raw };
+  return inferColumns([{ name, cells }])[0];
 }
 
 /** From column `from` on, and for any column with no type of its own, each column the rows reach takes the type its cells read as; the others keep theirs. */
@@ -349,16 +315,16 @@ export function columnTypesAfterCsvEdit(
 ): FrameColType[] {
   const out = types.slice();
   const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
-  for (let j = Math.max(0, Math.min(from, out.length)); j < width; j++) {
-    out[j] = inferColumn("", rows.map((r) => r[j] ?? "")).type;
-  }
+  const start = Math.max(0, Math.min(from, out.length));
+  const read = inferColumns(Array.from({ length: Math.max(0, width - start) }, (_, k) => ({ name: "", cells: rows.map((r) => r[start + k] ?? "") })));
+  read.forEach((c, k) => (out[start + k] = c.type));
   return out;
 }
 
 export function frameFromCells(headers: ReadonlyArray<string>, rows: ReadonlyArray<ReadonlyArray<unknown>>): FrameValue {
   const ncols = Math.max(headers.length, rows.reduce((m, r) => Math.max(m, r.length), 0));
   const names = makeHeaders(headers, ncols);
-  const columns = names.map((name, j) => inferColumn(name, rows.map((r) => r[j] ?? null)));
+  const columns = inferColumns(names.map((name, j) => ({ name, cells: rows.map((r) => r[j] ?? null) })));
   return { __frame: true, columns };
 }
 
@@ -371,7 +337,7 @@ function recordKeys(records: ReadonlyArray<Record<string, unknown>>): string[] {
 export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
-  const columns = keys.map((key, j) => inferColumn(names[j], records.map((r) => r[key])));
+  const columns = inferColumns(keys.map((key, j) => ({ name: names[j], cells: records.map((r) => r[key]) })));
   return { __frame: true, columns };
 }
 
@@ -383,10 +349,14 @@ const flatCell = (v: unknown): string | number | boolean | null =>
 export function frameCellFromRecords(records: ReadonlyArray<Record<string, unknown>>, picks: ColumnTypes = {}): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
+  const cellsOf = keys.map((key) => records.map((r) => flatCell(r[key])));
+  const unpicked = keys.flatMap((key, j) => (picks[key] ? [] : [j]));
+  const inferred = inferColumns(unpicked.map((j) => ({ name: names[j], cells: cellsOf[j] })));
+  const inferredAt = new Map(unpicked.map((j, k) => [j, inferred[k]]));
   const columns = keys.map((key, j): FrameColumn => {
-    const cells = records.map((r) => flatCell(r[key]));
+    const cells = cellsOf[j];
     const type = picks[key];
-    if (!type) return inferColumn(names[j], cells);
+    if (!type) return inferredAt.get(j)!;
     const raw = cells.map((c) => (c == null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name: names[j], type, values: raw.map((t, i) => (cells[i] == null ? null : coerceFrameCell(type, t))), raw };
   });
@@ -429,21 +399,24 @@ export function recordsToCube(
     if (typeof v === "object") return tableAt([v as Record<string, unknown>], at);
     return v as FrameCell;
   };
+  const cellsOf = keys.map((key) => records.map((r, i) => toCell(r[key], [...base, i, key])));
+  const guessed = keys.flatMap((key, j) => (!picks[key] && cellsOf[j].every((c) => c == null || typeof c !== "object") ? [j] : []));
+  const inferred = inferColumns(guessed.map((j) => ({ name: names[j], cells: cellsOf[j] })));
+  const guessedType = new Map(guessed.map((j, k) => [j, inferred[k].type]));
   return cubeFromColumns(keys.map((key, j) => {
-    const cells = records.map((r, i) => toCell(r[key], [...base, i, key]));
-    const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
+    const cells = cellsOf[j];
     const pick = picks[key];
-    if (!scalarOnly) return pick ? { name: names[j], cells: cells.map((c) => typedCubeCell(pick, c)), type: pick } : { name: names[j], cells };
-    if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
-    const inferred = inferColumn(names[j], cells);
-    return { name: names[j], cells, type: inferred.type };
+    const type = guessedType.get(j);
+    if (type) return { name: names[j], cells, type };
+    if (pick && cells.every((c) => c == null || typeof c !== "object")) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
+    return pick ? { name: names[j], cells: cells.map((c) => typedCubeCell(pick, c)), type: pick } : { name: names[j], cells };
   }));
 }
 
 export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, headers?: ReadonlyArray<string>): FrameValue {
   const ncols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   const names = makeHeaders(headers ?? [], ncols);
-  const columns = names.map((name, j) => inferColumn(name, rows.map((r) => r[j])));
+  const columns = inferColumns(names.map((name, j) => ({ name, cells: rows.map((r) => r[j]) })));
   return { __frame: true, columns };
 }
 
@@ -557,10 +530,10 @@ export function toCube(v: unknown): CubeValue {
 export function frameFromColumnar(obj: Record<string, unknown>): FrameValue {
   const keys = Object.keys(obj);
   const names = makeHeaders(keys, keys.length);
-  const columns = keys.map((key, j) => {
+  const columns = inferColumns(keys.map((key, j) => {
     const v = obj[key];
-    return inferColumn(names[j], Array.isArray(v) ? v : [v]);
-  });
+    return { name: names[j], cells: Array.isArray(v) ? v : [v] };
+  }));
   return { __frame: true, columns };
 }
 

@@ -51,6 +51,13 @@ impl<'a> Cutter<'a> {
     fn next(&mut self) -> Result<&'a str, SolError> {
         let want = *self.lens.next().ok_or_else(|| sol_error(ErrorCode::Error, "binary frame: text lengths run out"))?
             as usize;
+        if let Some(head) = self.rest.as_bytes().get(..want) {
+            if head.is_ascii() {
+                let (piece, rest) = self.rest.split_at(want);
+                self.rest = rest;
+                return Ok(piece);
+            }
+        }
         let mut units = 0;
         let mut end = 0;
         for c in self.rest.chars() {
@@ -126,35 +133,40 @@ impl Columnar {
         for c in columns {
             let n = limit.map_or(c.values.len(), |l| l.min(c.values.len()));
             out.schema.push(crate::wire::column_meta(json!({ "name": c.name, "type": c.ty.as_str(), "len": n }), c));
-            for v in &c.values[..n] {
-                match v {
-                    FrameCell::Null => {
-                        out.tags.push(TAG_NULL);
-                        out.nums.push(0.0);
-                    }
-                    FrameCell::Num(x) => {
-                        out.tags.push(TAG_NUM);
-                        out.nums.push(*x);
-                    }
-                    FrameCell::Str(s) => {
-                        out.tags.push(TAG_STR);
-                        out.nums.push(0.0);
-                        out.push_str(s);
-                    }
-                    FrameCell::Bool(b) => {
-                        out.tags.push(if *b { TAG_TRUE } else { TAG_FALSE });
-                        out.nums.push(0.0);
-                    }
-                    FrameCell::Err(e) => {
-                        out.tags.push(TAG_ERR);
-                        out.nums.push(e.reference.map_or(f64::NAN, f64::from));
-                        out.push_str(e.code.as_str());
-                        out.push_str(&e.message);
-                    }
+            out.push_cells(&c.values[..n]);
+        }
+        out
+    }
+
+    /// The cells' tags, numbers and text, after those already pushed; the schema is the caller's.
+    pub fn push_cells(&mut self, values: &[FrameCell]) {
+        for v in values {
+            match v {
+                FrameCell::Null => {
+                    self.tags.push(TAG_NULL);
+                    self.nums.push(0.0);
+                }
+                FrameCell::Num(x) => {
+                    self.tags.push(TAG_NUM);
+                    self.nums.push(*x);
+                }
+                FrameCell::Str(s) => {
+                    self.tags.push(TAG_STR);
+                    self.nums.push(0.0);
+                    self.push_str(s);
+                }
+                FrameCell::Bool(b) => {
+                    self.tags.push(if *b { TAG_TRUE } else { TAG_FALSE });
+                    self.nums.push(0.0);
+                }
+                FrameCell::Err(e) => {
+                    self.tags.push(TAG_ERR);
+                    self.nums.push(e.reference.map_or(f64::NAN, f64::from));
+                    self.push_str(e.code.as_str());
+                    self.push_str(&e.message);
                 }
             }
         }
-        out
     }
 }
 

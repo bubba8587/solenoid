@@ -67,6 +67,7 @@ export const card_link_href: (a: number, b: number, c: number) => void;
 export const display_settings: (a: number, b: number, c: number, d: number) => void;
 export const engine_csv_frame: (a: number, b: number, c: number) => void;
 export const engine_csv_rows: (a: number, b: number, c: number, d: number, e: number) => void;
+export const engine_infer_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
 export const engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
 export const engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
