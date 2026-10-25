@@ -20,6 +20,14 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
   3. Delete: the TS copy and its differential test go, and the fixtures stay as the test. `FREEZE_CORE=1` re-answers
      every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is
      how a deliberate change in behaviour moves a fixture.
+```mermaid
+flowchart LR
+    ts["a TypeScript copy<br>and its tests"] -->|"1. freeze"| fx["its answers written<br>to fixtures/core/"]
+    fx -->|"2. cover"| rust["the core answers<br>every caller's case"]
+    rust -->|"3. delete"| gone["the TS copy and its differential<br>test go; the fixtures stay"]
+    gone --> change["later changes: edit the Rust,<br>FREEZE_CORE re-answers its fixtures,<br>one commit"]
+```
+
 - Gone so far: the error guard and arrival coercion (into the graph module, [[graph-core]]), the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
   the pack functions' JavaScript, the JS frame verbs and their backend, the card bodies ([[node-bodies]]), the
   statistics kernels (`statsOps.ts`) and the table popups' footer profile. The TS keeps the editor's walkers over the
@@ -47,6 +55,15 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
   - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively.
 
 ## Tracking develop
+
+```mermaid
+flowchart LR
+    dev["develop changes a TS copy<br>this branch deleted"] --> diff["list what moved<br>(the git diff below)"]
+    diff --> port["port each change into the Rust<br>and the fixtures it moves"]
+    port --> check["run the checks"]
+    check --> pin["move the pin"]
+    port -.->|"never"| back["porting back to TS"]
+```
 
 Pinned upstream: `develop` @ `c7da52b`.
 
@@ -109,6 +126,22 @@ the core, `unit_expression.rs` and `unit_fold.rs`). A wired LAMBDA crosses with 
 captures with their units (`capturedValues`), which the core's unit plan (`nodes/columns.rs`) reads.
 
 ## Where it runs
+
+```mermaid
+flowchart LR
+    subgraph web["a browser"]
+        wa["the app"]
+    end
+    subgraph desk["desktop (Tauri)"]
+        wv["the app in a webview"]
+        shell["the native shell:<br>what a browser can't do"]
+    end
+    mod["one wasm module:<br>formulas, verbs, pivots,<br>card bodies, the graph"]
+    wa --> mod
+    wv -->|"fetched from the app's origin"| mod
+    shell -->|"a Parquet file, as one buffer<br>of the columnar hand-off"| wv
+```
+
 
 - **Everything:** formulas, computed columns, frame verbs, pivots and card bodies run on the core in wasm on every
   platform, desktop included: one build, one answer ([[C130]] rustCore). The app's chrome renders while it loads; the canvas

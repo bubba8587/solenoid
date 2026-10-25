@@ -10,6 +10,17 @@ Serves [[C25]] firstClassUnits and its policies [[D41]] formatFlowsDownstream, [
 
 There are two layers. **The unit is a property of the value**: it travels as data on the value itself. **The number format** (style, precision, negatives, K/M/B) is a separate display annotation that an FC locks onto its own segment and sends down the stream. Nothing walks the graph to propagate units; `makeAnnotationResolver` (pure, duck-typed, memoized, cycle-guarded) resolves the format, forward and back.
 
+```mermaid
+flowchart LR
+    subgraph unit["The unit: data on the value"]
+        fc["an FC, Convert, a column unit,<br>a computed column, Table Input"] -->|"sets it"| cell["the value: a UnitCell,<br>base SI plus a display id"]
+        cell -->|"rides through every card;<br>the algebra works it out again"| down["every value downstream"]
+    end
+    subgraph fmt["The format: a display annotation"]
+        fc2["an FC locks a style, precision,<br>negatives, K/M/B"] -->|"the resolver reads it,<br>forward and back"| boxes["the boxes on its segment"]
+    end
+```
+
 ## The unit on the value
 
 - **What it is.** A base-SI `UnitCell` (`unitValue.ts`) with an optional `display` id.
@@ -50,6 +61,25 @@ The value-side model is small and strict. Every tagged value stores its magnitud
 ### Combining two operands (`arithmetic_cell`, `compareUnits`)
 
 The dimensional half of an element-wise op sees only present operands, since the per-cell contract ([[error-values]]) runs first. In order:
+
+```mermaid
+flowchart TD
+    op["a op b, both present"] --> cur{"two different<br>currency codes?"}
+    cur -->|yes| u1["#UNIT!"]
+    cur -->|no| which{"the op?"}
+    which -->|"+, −, mod"| same{"same dimension, or<br>one side bare?"}
+    same -->|no| u2["#UNIT!"]
+    same -->|yes| temp{"two temperature<br>readings?"}
+    temp -->|"subtract"| delta["a delta in K"]
+    temp -->|"add"| u3["#UNIT!"]
+    temp -->|no| keep["keeps the first<br>operand's display"]
+    which -->|"×, ÷, power"| aff{"an affine display<br>(°C, °F)?"}
+    aff -->|yes| u4["refused: convert<br>to kelvin first"]
+    aff -->|no| mul["dimensions multiply;<br>a display kept only if the<br>result stays in its dimension"]
+    which -->|"compare"| cmp{"two real dimensions<br>that differ?"}
+    cmp -->|yes| u5["#UNIT!"]
+    cmp -->|no| base["compare the<br>base magnitudes"]
+```
 
 1. **Different currency codes** give `#UNIT!` in every op, checked up front so no op below can forget it ([[D47]] noMixCurrencies).
 2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adopt_magnitude` (`nodes/units.rs`) multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adopt_reading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
@@ -111,6 +141,24 @@ A unit attaches where values are guaranteed to match ([[D43]] unitByGranularity)
 | cube | per cell, like a list; a dimensioned cell is a base-SI `UnitCell` (`CubeCell` includes it) | base SI |
 
 `cubeCellsFromColumn` tags a Frame column into the Cube, and `inferColumn` recovers a uniform column unit on the way back (`cellToNumber` and `cellKeyId` read the display magnitude).
+
+```mermaid
+flowchart LR
+    subgraph si["stored in base SI"]
+        sc["scalar:<br>a UnitCell"]
+        li["list: a UnitCell<br>per cell"]
+        cu["cube: per cell"]
+    end
+    subgraph typed["stored as typed"]
+        fr["frame: a ColumnUnit<br>per column"]
+        ma["matrix: one ColumnUnit,<br>a Symbol tag on the grid"]
+    end
+    fr -->|"tagFrameCellUnit"| li
+    li -->|"displayMagnitudeOf,<br>matrixCellsFromList"| ma
+    fr -->|"cubeCellsFromColumn"| cu
+    cu -->|"inferColumn recovers<br>a uniform column unit"| fr
+```
+
 
 **Watch the storage split.** Scalar and list `UnitCell.value` is base SI, but frame and matrix cells are as typed, so crossing between them converts: `tagFrameCellUnit` goes from as-typed to a base `UnitCell`, and `displayMagnitudeOf` and `matrixCellsFromList` go from base to as-typed.
 
@@ -255,6 +303,22 @@ Convert (`nodes/convert.ts`, its body `convert` in `crates/solenoid-core/src/nod
 
 For one output, the first rule that applies decides:
 
+```mermaid
+flowchart TD
+    o["one output"] --> r1{"Convert?"}
+    r1 -->|yes| d1["drops the format"]
+    r1 -->|no| r2{"a per-output producer<br>with one for this output?"}
+    r2 -->|yes| d2["its own format"]
+    r2 -->|no| r3{"an FC that inherits?"}
+    r3 -->|yes| d3["the arriving format<br>merged with its unit"]
+    r3 -->|no| r4{"an FC or a<br>node-level producer?"}
+    r4 -->|yes| d4["its own annotation"]
+    r4 -->|no| r5{"a passthrough or<br>a Conduit lane?"}
+    r5 -->|yes| d5["the format of the<br>branch it computed"]
+    r5 -->|no| d6["a transform: carries only<br>where the op keeps the meaning"]
+```
+
+
 1. **Convert** (duck-typed: string `fromUnit` and `toUnit`) drops the inherited format. It sets a new unit and rescales the number, so the old precision no longer fits. It is the one transform that drops.
 2. **A per-output producer** (`hasAnnotationFor`, `annotationFor(outKey)`) locks each output's own format, such as a Triangle angle's ° or an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So a Triangle side (a value-level unit, not a format) or Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
 3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model]], "Inheriting the format"); it wins wherever it is present.
@@ -272,6 +336,14 @@ Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
 - **Pass-through nodes** (Sort, Reverse, Slice, Filter, INDEX, TRANSPOSE) compute nothing new, so they forward the format unchanged.
 
 ### Both directions, bounded only upstream
+
+```mermaid
+flowchart LR
+    src["a box before the FC"] -->|cable| fc["the FC"]
+    fc -->|cable| after["the boxes after it"]
+    fc -.->|"format, back through<br>passthroughs only<br>(downstreamAnnotation)"| src
+    fc -.->|"format, on through passthroughs<br>and meaning-keeping transforms<br>until a nearer FC (inAnnotation)"| after
+```
 
 - **Downstream:** a box after the FC inherits through `inAnnotation`, walking back through passthroughs and through declared meaning-preserving transforms, with no limit until a nearer FC overrides.
 - **Upstream:** a box before a trailing FC, even several hops back, inherits through `downstreamAnnotation`, walking forward through pure passthroughs only and stopping at the first transform. A format chosen after a transform says nothing about the value before it.

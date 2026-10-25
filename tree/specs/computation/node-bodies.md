@@ -36,6 +36,17 @@ call. It sends:
 The reply is the outputs, or the error the body throws (thrown again for the error guard), beside `display`: the
 fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns.
 
+```mermaid
+flowchart TD
+    shell["TS: the card's data() calls nodeOnCore"] -->|"kind, init, literals,<br>sockets, inputs, clock"| en["Rust: engine_node"]
+    gc["Rust: the graph core,<br>for a direct card in an editor"] --> run
+    en --> run["nodes::run<br>picks the body by kind"]
+    run --> body["the body"]
+    body -->|"outputs or a thrown error,<br>plus display fields"| back["TS: nodeOnCore sets the display fields,<br>answers the outputs"]
+    body -->|"the same answer, no JavaScript between"| gc2["the graph core hands it on"]
+```
+
+
 **The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
 only cards hand each other, so a body holds a card value (`Cv`) where the formula language holds a value (`V`, which
 has no table, [[C15]] matricesInFormulas): a frame cell by cell with each column's unit, format and typed text
@@ -58,13 +69,65 @@ cube's cells) cross bare where they can (a finite number other than -0, text, a 
 output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as
 where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush
 and collect by its ref. Uploading a frame to the backend for a handle is async I/O and stays in the card's TS before
+
 the call. **A big value crosses as buffers** (`nodes/columnar.rs`, `wireBinary` and `readBinary` in `nodeWire.ts`): a frame or a list of at least `BINARY_MIN_CELLS` (64) cells, every one a number, text, a logical, a blank or an error with no origin, crosses in the columnar hand-off (`binary.rs`) instead of as JSON: each column's schema entry, its typed text as a `raw` entry after it, and the frame's row total and sampling factor ride in one schema. Into `engine_node` it is staged first (`card_stage`) and the call names it `{__staged: id}`; a big answer in the reply is set aside while the reply is written and named `{staged: id}`, which `readNodeReply` takes (`card_unstage`); each call clears what the last left. Between a direct card and a JavaScript one the host's `toCore` hands the buffers over and `fromCoreBin` takes them back. A smaller or nested value, or an error carrying its origin, crosses as JSON. `cardWireBinary.test.ts` holds the two ways to the same answers. A value that can't cross (text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
 runs says.
+
+```mermaid
+flowchart LR
+    Cv(["Cv<br>a card value:<br>what a cable holds"])
+    Cv --> CvV["Cv::V"]
+    Cv --> F["Cv::Frame<br>named, typed columns<br>whose cells are V"]
+    Cv --> C["Cv::Cube<br>columns whose cells are Cv:<br>a table can nest here"]
+    Cv --> L["Cv::Cells<br>a list of Cv,<br>a table among them"]
+    Cv --> J["Cv::Json<br>a chart, document,<br>image, SVG, diagram"]
+    CvV --> V(["V<br>a formula value:<br>never a table"])
+    V --> s1["Num, Str, Bool,<br>Null, Undef"]
+    V --> s2["Err, Fx"]
+    V --> s3["List of V:<br>a list, or rows of one,<br>a matrix"]
+    V --> s4["Cx, Unit, Lambda"]
+```
+
+A table nests only inside a Cube (its cells, or a `Cv::Cells` list in one). A body reads each input one of two ways:
+
+```mermaid
+flowchart LR
+    in["an input's cables:<br>a list of Cv"] --> how{"how the body<br>reads it"}
+    how -->|"table or any socket:<br>wired_card, read_card"| as["the Cv as it came"]
+    how -->|"value socket:<br>wired, read_input"| isv{"a Cv::V?"}
+    isv -->|yes| v["its V"]
+    isv -->|"no, a table"| e["#VALUE!<br>takes a value or a list, not a table"]
+```
+
+A value crosses the wire one of two ways ("flat": a number, text, a logical, a blank, or an error with no origin):
+
+```mermaid
+flowchart TD
+    val["a frame or a list<br>crossing the card wire"] --> q{"64+ cells,<br>all flat?"}
+    q -->|yes| bin["columnar buffers, binary.rs"]
+    q -->|no| json["JSON, nodeWire.ts"]
+    bin --> inq{"which way?"}
+    inq -->|"into engine_node"| st["card_stage,<br>the call names it __staged: id"]
+    inq -->|"in the reply"| un["set aside as staged: id,<br>readNodeReply takes it, card_unstage"]
+    inq -->|"direct card to JS card"| host["toCore hands the buffers over,<br>fromCoreBin takes them back"]
+```
+
 
 The core is required: the app's first render waits for it with no deadline (`main.tsx`), and every test file loads it
 (`tests/setup/graphEngine.ts`).
 
 ## Freezing (`FREEZE_NODES`)
+
+```mermaid
+flowchart LR
+    rec["FREEZE_NODES=1 npx vitest run<br>records every body call"] --> fold["scripts/freeze-nodes.mjs<br>dedupe, at most 2,500 a class"]
+    fold --> fx["fixtures/core/nodes/Class.json.gz"]
+    fx --> nat["cargo test --test nodes<br>native replay"]
+    fx --> wasm["coreNodes.test.ts<br>replay through wasm"]
+    nat --> del["both agree: the TypeScript body is deleted;<br>the fixture changes only on purpose"]
+    wasm --> del
+```
+
 
 - `FREEZE_NODES=1 npx vitest run` records every body call the suite makes (`tests/setup/nodeRecorder.ts` wraps each
   class's `data()`, or its `body()` where `data()` is an async shell around one, as a lazy verb's is: the shell

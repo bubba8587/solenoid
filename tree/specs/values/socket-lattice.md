@@ -10,6 +10,32 @@ Serves [[C10]] socketLattice: type separation and dimensional flow, derived from
 
 Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides which cables may connect. Element families never cross on their own: crossing takes a Cast, and the only bridge is `logical ↔ number`. Values flow freely up in rank: scalar, list, matrix, Frame, Cube. Going up a rank loses nothing, while going down has to drop or pick values, so only going up happens on its own; going down takes a node that picks what to keep. Which connections are legal is derived from the family × rank product, never listed pair by pair. Every node declares honestly what kind of value it gives; a node that can't know its output in advance declares a wildcard and takes on the kind of whatever is wired to it (req. 8) ([[B17]] typedValueModel).
 
+Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows,
+and through any chain of them:
+
+```mermaid
+flowchart LR
+    s["scalar<br>number"] --> c["combo<br>numlist"]
+    s --> l["list<br>list"]
+    l <--> c
+    c -.->|"narrows: a singleton<br>collapses on arrival"| s
+    c --> m["matrix<br>table"]
+    l --> m
+    m --> f["Frame"]
+    f --> k["Cube"]
+```
+
+Families never cross on their own; the one bridge is logical and number, at every rank:
+
+```mermaid
+flowchart LR
+    num["number family"] <-->|"0 and 1, FALSE and TRUE"| log["logical family"]
+    str["string family"]
+    date["date family"]
+    cx["complex family"]
+    cast["a Cast card"] -.->|"the only other way across"| str
+```
+
 ## Constraints
 
 - [[C10]] socketLattice: a value's type is part of its meaning, so a connection that would silently coerce is refused.
@@ -41,6 +67,19 @@ Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides w
 11. **Each port owns its mutable socket.** `MutableSocket` (the FC, Conduit lanes) and `AdoptiveSocket` instances are per port, never module-level, so a retype on one card never lands on another; the reconcile pass finds adoptive ports by `instanceof`. An `AdoptiveSocket` reverts to its `base` when unwired, and a base narrower than `trueany` keeps the port restricted to that rung while it still adopts the wired concrete type. [[#Each port owns its socket instance]].
 12. **A new socket type is a derived edit.** Extend the product; the sweep picks it up. Hand-writing its pairs is the failure mode this spec exists to prevent. [[#New socket types are derived]].
 
+How the adoption settle runs (req. 9):
+
+```mermaid
+flowchart LR
+    start["after a cable change or a load"] --> adopt["adoption pass: every adoptive input,<br>then every passthrough output"]
+    adopt --> again{"anything changed?<br>(at most 32 passes)"}
+    again -->|yes| adopt
+    again -->|no| lanes["Conduit lane typing"]
+    lanes --> both{"both settled?<br>(at most 8 rounds)"}
+    both -->|no| adopt
+    both -->|yes| done["types settled; no cable touched,<br>nothing saved"]
+```
+
 ## Rules and their reasons
 
 ### Date-valued ports are date-typed
@@ -58,6 +97,32 @@ A date serial and a plain number are the same `number` at runtime, so once a dat
 ### The wildcard ladder keeps rank
 
 **MUST:** the untyped ladder is `any` (scalar) → `anycombo` (scalar or list) → `anylist` (list) → `anytable` (matrix) → `anydata` (up to a matrix) → `trueany` (anything). The strict rungs, `anylist` and `anytable`, keep their rank and adopt only the wired element family; the elastic rungs, `any`, `anycombo` and `anydata`, adopt the wired type as is; every rung keeps its base on a family-less wire (req. 8, `adoptTypeForBase`, `RANK_BASES` in the sweep).
+
+```mermaid
+flowchart LR
+    any["any<br>scalar"] --> ac["anycombo<br>scalar or list"]
+    ac --> al["anylist<br>list"]
+    al --> at["anytable<br>matrix"]
+    at --> ad["anydata<br>up to a matrix"]
+    ad --> ta["trueany<br>anything"]
+    classDef strict stroke-width:3px
+    class al,at strict
+```
+
+Bold: the strict rungs, which keep their rank. What a wildcard input becomes when a cable lands on it
+(`adoptTypeForBase`):
+
+```mermaid
+flowchart TD
+    wire["a cable lands on an adoptive input"] --> base{"its base?"}
+    base -->|trueany| asis["the wired type as is"]
+    base -->|"anylist, anytable"| fam{"the wire has<br>a family?"}
+    base -->|"any, anycombo, anydata"| fam2{"the wire has<br>a family?"}
+    fam -->|yes| rank["the wired family at the base's rank:<br>a wider wire taken as is,<br>a narrower one lifted"]
+    fam -->|no| keep["keeps its base"]
+    fam2 -->|yes| asis2["the wired type as is"]
+    fam2 -->|no| keep
+```
 
 **MUST:** adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting anything, and the adopted type is never saved; it is worked out again from the wiring after load (req. 9).
 

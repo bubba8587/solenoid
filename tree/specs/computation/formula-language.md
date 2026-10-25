@@ -14,6 +14,14 @@ The formula language is the Excel-style expression language typed into an Expres
 
 The per-name reasons Solenoid answers otherwise than Formula.js did are [[formulajs-divergences]]; this spec does not repeat them. The mechanics below name the TypeScript functions the core was ported from: `crates/solenoid-core` keeps them in snake_case (`mapCells` is `map_cells`), and the TypeScript copies are gone ([[D99]] rustIsSpec). Computed-column name resolution is [[computed-columns]]. The Equation node's symbolic rearrangement of the same AST is [[equation-solver]]. The dimension pass that runs beside the numeric evaluator is [[unit-flow]].
 
+```mermaid
+flowchart LR
+    text["formula text, from an Expression,<br>a LAMBDA card or a computed column"] -->|"parsed once<br>(excel_formula.rs)"| tree["a syntax tree"]
+    tree -->|"evaluated each recompute<br>against the variables (eval.rs)"| calls["each call:<br>the dispatch ladder"]
+    calls --> bodies["function bodies on the core<br>(excel_functions.rs, fns_*.rs),<br>sharing kernels with the cards"]
+    bodies --> ans["the answer: a V"]
+```
+
 ## Files
 
 | File | Owns |
@@ -201,6 +209,29 @@ A naming rule without a collision check collides silently, and whoever registers
 
 Evaluating `{ t: "call", name, args }` uppercases the name and takes the first matching step:
 
+```mermaid
+flowchart TD
+    c["a call: NAME(args)"] --> s1{"a LAMBDA bound<br>to that name?"}
+    s1 -->|yes| lam["call it (arity checked)"]
+    s1 -->|no| s2{"LAMBDA itself?"}
+    s2 -->|yes| sf["the special form"]
+    s2 -->|no| s3{"a blocked or<br>wrong-surface name?"}
+    s3 -->|yes| blk["its error"]
+    s3 -->|no| s4{"known?"}
+    s4 -->|no| nm["#NAME?"]
+    s4 -->|yes| ev["evaluate the arguments;<br>empty slots and roles read"]
+    ev --> s7{"an error handler?"}
+    s7 -->|yes| eh["gets its arguments<br>as they are"]
+    s7 -->|no| s8{"a top-level<br>error argument?"}
+    s8 -->|yes| err["that error is the answer"]
+    s8 -->|no| s9{"a matrix it doesn't<br>declare matrixArgs for?"}
+    s9 -->|yes| shp["#SHAPE!, or flattened<br>for a range function"]
+    s9 -->|no| s10{"a complex it doesn't<br>declare cxArgs for?"}
+    s10 -->|yes| typ["#TYPE!"]
+    s10 -->|no| route["route: whole-list native,<br>range function, or broadcast"]
+```
+
+
 1. **Lambda binding.** If `env[rawName]` (case-sensitive) is a `LambdaValue`, evaluate the arguments, return the first `SolError` among them, answer `#VALUE!` "{name} takes N arguments, not M" when the lambda declares parameters and the count differs, and otherwise call it.
 2. **LAMBDA.** The special form (see *LAMBDA*).
 3. **Blocked.** `LEGACY_ALIASES`, then `FRAME_SURFACE_NAMES`, then `NODE_SURFACE_NAMES`, as tabled above.
@@ -246,6 +277,16 @@ The author, 2026-09-26, on SORT and UNIQUE over a list: "strict excel. if we hav
 
 A dispatched call takes exactly one of three routes, chosen by the function's declaration ([[#Argument routing]]).
 
+```mermaid
+flowchart TD
+    call["a dispatched call"] --> w{"kind: whole?"}
+    w -->|yes| whole["whole-list native:<br>every argument unchanged,<br>positions kept"]
+    w -->|no| r{"in RANGE_FUNCTIONS?"}
+    r -->|yes| rng["range function: a list<br>arrives as one list,<br>its policy preparing it"]
+    r -->|no| b["broadcast: called per cell<br>through mapCells"]
+```
+
+
 **MUST:** a function that takes a whole list is routed past the element-wise broadcaster, and so is a function whose arguments are all scalars but whose result is a list. Otherwise the evaluator calls the function once per element and returns N answers to a question that has one, and a list-returning function broadcast that way builds a 2-D value that slips past the formula rank rules ([[C15]] matricesInFormulas).
 
 ### Whole-list natives
@@ -288,9 +329,30 @@ Every other function is element-wise. With no list or matrix argument it is call
 
 If every list argument is empty, the answer is `[]`.
 
+```mermaid
+flowchart LR
+    cell["one cell's operands"] --> e{"an error<br>among them?"}
+    e -->|yes| ea["that error"]
+    e -->|no| n{"a null among them,<br>not NULL_INSPECTING?"}
+    n -->|yes| na["null"]
+    n -->|no| run["the function runs;<br>a number passes guardFinite"]
+```
+
+
 ## Broadcasting
 
 `mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[#Broadcasting]]). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
+
+```mermaid
+flowchart TD
+    args["the arguments"] --> deep{"nested deeper<br>than a matrix?"}
+    deep -->|yes| sh["one #SHAPE!"]
+    deep -->|no| col["each collapses a singleton:<br>a one-item list or a 1×1<br>matrix is its value"]
+    col --> rank{"the highest rank"}
+    rank -->|0| one["one call"]
+    rank -->|1| zip["zip to the longest list;<br>scalars repeat; past a<br>short list's end is null"]
+    rank -->|2| grid["rows: the most matrix rows;<br>a list is one row, repeated down;<br>a cell nobody supplies is null"]
+```
 
 - A value nested deeper than a matrix (a matrix cell that is itself an array) answers one `#SHAPE!`.
 - Each argument first collapses a singleton: a 1×1 matrix and a one-element list are their scalar, so `[5] + [1,2,3]` is `[6,7,8]` (B10, B11).

@@ -31,6 +31,19 @@ A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialSca
 - a 1-D `Array` of cells;
 - a 2-D `Array` of row `Array`s.
 
+```mermaid
+flowchart TD
+    v["a runtime value"] --> a{"an Array?"}
+    a -->|no| t{"a tagged object?"}
+    t -->|"SolError, UnitCell,<br>complex"| ts["a tagged scalar"]
+    t -->|no| ps["a primitive scalar"]
+    a -->|yes| r{"are its items<br>Arrays?"}
+    r -->|no| l["a 1-D list"]
+    r -->|"yes: rows"| d{"are the rows' items<br>Arrays?"}
+    d -->|no| m["a matrix"]
+    d -->|yes| sh["not a value:<br>#SHAPE!"]
+```
+
 No scalar is a bare array, so `Array.isArray` at two depths is the complete rank test, and no code carries a private way of sniffing shape. Depth 3 or more is not a value: a surface that meets one answers `#SHAPE!`. Anything deeper than a matrix is a Cube, which is a container, not a value shape.
 
 A bare-array scalar collides with the list representation, and every consumer that checks shape then needs its own way to tell the two apart. Complex numbers as an `[re, im]` tuple once forced four such workarounds: complex.ts's own broadcaster, special cases in `coerceInputs`, array canonicalization in `setKey`, and `ArrayChip.is2D`, where a complex list reaching a generic chip rendered as a two-column table. With one grammar, [[C15]] matricesInFormulas admits matrices without a branded value type, and a new nesting scheme would reopen the ambiguity.
@@ -49,6 +62,16 @@ Three distinctions carry the most weight:
   - a `NaN` result is `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`, `∞/∞`, `0×∞`, or a NaN input entering the op);
   - a `±Infinity` result from all-finite inputs is `#OVERFLOW!`;
   - a `±Infinity` result with an infinite input passes through, since it is definable.
+
+  ```mermaid
+  flowchart LR
+      op["a numeric op's result"] --> n{"NaN?"}
+      n -->|yes| dom["#DOMAIN!"]
+      n -->|no| inf{"±Infinity?"}
+      inf -->|"from all-finite inputs"| ov["#OVERFLOW!"]
+      inf -->|"from an infinite input"| pass["passes: definable"]
+      inf -->|no| ok["the number"]
+  ```
 
   So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[D93]] oneTextReading) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
 - **`null`** comes from data (blank cells, CSV holes), from padding a ragged list, from an empty aggregation (`AVG([])`), and from Kleene logic that really cannot answer.
@@ -88,6 +111,20 @@ const n = readInput(inputs.count, this.literals.count ?? 1);
 
 - When the slot is **unwired** (`undefined`), the typed literal is the value: the field on the card is the input.
 - When the slot is **wired**, the cable's value wins, **even when it is `null`**: the typed value never stands in for a wired blank. What the blank then means is the input's role ([[input-roles]]).
+
+```mermaid
+flowchart TD
+    slot["an input slot"] --> w{"wired?"}
+    w -->|no| lit["the typed literal<br>on the card"]
+    w -->|yes| cable["the cable's value,<br>even a blank"]
+    cable --> b{"a blank?"}
+    b -->|no| val["the value"]
+    b -->|yes| role{"the input's role"}
+    role -->|data| stay["stays blank"]
+    role -->|"a setting"| def["its default"]
+    role -->|"a pick"| drop["dropped"]
+    role -->|"required,<br>no default"| syn["#SYNTAX!"]
+```
 
 **Never write `inputs.x?.[0] ?? this.literals.x`.** `??` can't tell "no cable" from "a cable carrying blank", so it silently puts the card's value in place of the graph's answer: a number the user never asked for, with an origin they can't see. This is the most common way a Solenoid node has produced a confidently wrong answer. `nodes/readInputSweep.test.ts` ratchets the remaining occurrences down and fails on new ones.
 

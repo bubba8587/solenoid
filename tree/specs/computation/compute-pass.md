@@ -76,6 +76,19 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 ### Entry order
 
+```mermaid
+flowchart TD
+    call["processGraph(changed?, renderOnly?, opts?)"] --> name["name the changed node to the core"]
+    name --> gate{"manual mode, not forced,<br>no rebuild scope open?"}
+    gate -->|yes| dirty["mark dirty, signal the change<br>(autosave, history); no pass"]
+    gate -->|no| busy{"a pass already running?"}
+    busy -->|yes| rerun["record a rerun<br>(forced, exact, its node id); return"]
+    busy -->|no| run["overlay counter up, run the pass body,<br>clear dirty; finally: counter down"]
+    run --> drain{"a rerun was recorded?"}
+    drain -->|yes| full["exactly one more full pass"]
+    drain -->|no| done["done"]
+```
+
 1. **Naming.** A `changedNodeId` is named to the core first ([[graph-core]] § Direct calls), so the full pass F9 or a coalesced rerun later runs reads that card's call afresh even though this call's own pass never ran.
 2. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty, signals the graph changed (autosave and a history entry, as a finished pass would, so an edit made in manual mode is saved before the next F9), and returns without computing. This is the only gate that drops a pass ([[#Only the calc-mode gate skips a pass]]). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
 3. **Single flight.** If a pass is already running, the call records a rerun (forced when `opts.force` is set, exact when a `beginForceExact` bracket is open, with its changed node id) and returns. Passes never nest: a nested pass would share and corrupt the per-pass state (the engine cache, the collect memo, the loop set). Components that call `processGraph` from a mount or render effect during a pass are the usual source.
@@ -83,6 +96,23 @@ A targeted pass is correct only for a change whose effect flows solely through c
 5. **Drain.** If a rerun was requested, runs exactly one more full pass (a pass that throws leaves it to the next pass that finishes; a trap loses it), `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9), inside its own `beginForceExact` bracket when any was exact (the F9 caller's bracket has already closed by then, so sketch would otherwise sample the pass F9 asked for). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped, except their changed node ids: an id inside a composite gets its nesting chain's `markInternalEdit()` (`engine.markNested`) before the rerun (step 2 of the pass below would otherwise never see it). A coalesced call returns at once, before the rerun, because a call awaited from inside the running pass (a render effect) would otherwise wait on its own pass. A caller outside the pass that must read the result of its call (the Tornado sweep) awaits `graphSettled()` after it, which resolves once no pass is running and no rerun is queued; nothing inside a pass may await it, for the same reason. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
 
 ### The pass body (`runGraphPass`)
+
+```mermaid
+flowchart TD
+    retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"] --> ts["TS: clearCollectMemo, resolveTrigModes"]
+    ts --> inv{"which pass?"}
+    inv -->|full| reset["engine.reset()"]
+    inv -->|targeted| cone["drop the cone's cache entries"]
+    inv -->|additive| keep["drop nothing"]
+    reset --> loops["loop set: reused only by a plain targeted pass;<br>seed #CIRC! on its members"]
+    cone --> loops
+    keep --> loops
+    loops --> fetch["fetchAll in editor order;<br>the core compares each node's outputs"]
+    fetch --> bump["cable readouts re-read"]
+    bump --> render["re-render: full = every node,<br>additive = renderOnly, targeted = changed outputs"]
+    render --> hooks["composite drill-ins, then the<br>graph-changed hook (autosave, undo step)"]
+```
+
 
 1. Returns immediately if the editor, engine or view refs are unset.
 2. **Retarget into composites** (the core). If `changedNodeId` is not a node of the main editor, the pass searches every composite's editor (recursively, through nested composites) for it; an editor knows each composite node's own editor core, registered (`nest`) when the node joins it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
@@ -127,6 +157,19 @@ The graph core's session holds `mode: "auto" | "manual" | "sketch"`, a `dirty` b
 - `beginForceExact()` and `endForceExact()` bracket a pass that must run on full data while sketch stays selected. The bracket is a depth counter, not a boolean, so an overlapping second forced call can't clear the first one's bracket early. The counter never drops below zero.
 - The status bar shows, in manual mode only, a plain "Manual" label when the graph is current and an actionable "Calculate" button (running `requestRecalc()`) when `dirty` is set.
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    Auto: auto or sketch
+    Clean: manual, clean
+    Dirty: manual, dirty
+    Auto --> Clean: switch to manual
+    Clean --> Dirty: an edit (no pass)
+    Dirty --> Clean: F9 (forced exact pass)
+    Clean --> Auto: switch back (catch-up pass)
+    Dirty --> Auto: switch back (dirty cleared, catch-up pass)
+```
+
 | State | Edit | F9 | Switch to auto or sketch | Switch to manual |
 |---|---|---|---|---|
 | auto or sketch | pass runs | forced exact pass, new generation | no-op if same mode, else catch-up pass | mode changes, no pass |
@@ -143,7 +186,16 @@ The graph core's session holds `mode: "auto" | "manual" | "sketch"`, a `dirty` b
 
 `getRecalcGen()` returns the session's generation, which starts at 0 and only `requestRecalc()` increments. It is global so every "roll everything" entry point (F9, the menu, the status bar, the midnight rollover, the Save Times card) shares one clock.
 
-A node whose `data()` draws random numbers keeps its raw draw and a `lastGen` field initialized to `-1`. In `data()` it reads `getRecalcGen()`; when that differs from `lastGen` (or the stored draws no longer match the input's length) it draws fresh raw values (uniforms in [0, 1)) and stores the generation. It then derives the output from the stored raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[D46]] freezeVolatilePerCalc). Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form. Draws are not saved; a reload or a new instance rolls on its first pass.
+A node whose `data()` draws random numbers keeps its raw draw and a `lastGen` field initialized to `-1`. In `data()` it reads `getRecalcGen()`; when that differs from `lastGen` (or the stored draws no longer match the input's length) it draws fresh raw values (uniforms in [0, 1)) and stores the generation. It then derives the output from the stored raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[D46]] freezeVolatilePerCalc). ```mermaid
+flowchart LR
+    data["data() runs"] --> gen{"recalc generation<br>= lastGen, and the draws<br>fit the input?"}
+    gen -->|yes| keep["keep the stored raw draws"]
+    gen -->|no| draw["draw fresh raws in [0, 1),<br>store the generation"]
+    keep --> derive["the output from the raws<br>and the current inputs"]
+    draw --> derive
+```
+
+Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form. Draws are not saved; a reload or a new instance rolls on its first pass.
 
 `sourceInvariants.test.ts` fails when a file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
 
@@ -185,6 +237,22 @@ Every engine that computes (the main canvas stack in `FlowCanvas.tsx`, the headl
 
 A card whose body runs on the core is called in Rust and its boundary runs on core values (`boundary_core.rs`, [[graph-core]] § Direct calls). For every other card the values are the app's JavaScript objects; the core walks them in place, so a value that needs no change keeps its identity. It reads what each cell of an array is in one call per array (`cellKinds`), so a walk touches only the cells it changes. What only the app knows it asks of `nodeBoundary.ts` (`setBoundaryHost`, installed at load and again in a trap's fresh instance): collecting a lazy frame (`readFrame`), building a frame or cube from rows (`frameFromRows`, `toCube`), a unit cell's display magnitude, a matrix's unit tag, reading a typed list literal (`parseListLiteral`, `listLiterals.ts`), the frame format picks, a node's display name, the error sinks, the perf probe, and sending the node's port changes when its `data()` returns (it may change its own sockets while it computes). The frozen answers (`coreBoundary.test.ts`, `fixtures/core/boundary-*`) hold the coercion, the literals, the tagging and the reading of a throw to what the TypeScript wrappers answered.
 
+```mermaid
+flowchart TD
+    raw["the raw inputs"] --> lazy["collect lazy frames<br>(unless the class is lazy)"]
+    lazy --> sc{"an input error,<br>class not in<br>SEES_ERRORS?"}
+    sc -->|yes| eo["error-out: that error,<br>tagged with this node, on every output"]
+    sc -->|no| unit["the unit boundary:<br>strip units unless kept"]
+    unit --> coerce["coerce each value to its rung<br>(raw, element only, or full)"]
+    coerce --> lit["inject typed list literals<br>on unwired list inputs"]
+    lit --> data["the node's data()"]
+    data -->|"throws, or answers nothing"| conv["#SHAPE! for a ShapeError,<br>else #ERROR!"] --> eo
+    data -->|answers| stamp["stamp frame formats"]
+    stamp --> tag["tag untagged errors<br>with this node as origin"]
+    tag --> sink["report to the error sinks"]
+    eo --> sink
+```
+
 ## The error guard
 
 On each call with `inputs`:
@@ -220,6 +288,18 @@ Coercion turns each arriving value into the shape of the rung the consuming sock
 **Why the unit boundary is central** ([[C25]] firstClassUnits). A node that doesn't do unit math gets plain numbers, never values with units; only a node that says it does (`unitAware`, or the inputs its `passthrough()` names) sees them, so a new node that does unit math has to say so. Otherwise a value with a unit reaches a node that compares it as a plain number, and `5 km > 3` answers wrong. Stripping in one shared place rather than in each `data()` means a new node can't forget to; the cost is one flag per unit-math node. A node may also opt in to read units for its own purpose: the Triangle Solver is `unitAware` so it reads angle cells in degrees. Stripping is the fallback for a card that doesn't carry units yet, not the rule: every card is owed carrying ([[C25]] firstClassUnits), and the cards still stripping are tracked in the backlog.
 
 ### Full coercion, per rung
+
+```mermaid
+flowchart TD
+    v["a value arrives on a rung"] --> pass1{"a FrameRef or<br>a SolError?"}
+    pass1 -->|yes| asis["unchanged"]
+    pass1 -->|no| table{"a table?"}
+    table -->|"a Frame, on cube"| toc["toCube"]
+    table -->|"any other table"| asis2["unchanged; on a value rung<br>the body answers #VALUE!"]
+    table -->|no| unitq{"is or directly holds<br>a UnitCell?"}
+    unitq -->|yes| ut["the unit-cell table below"]
+    unitq -->|no| rung["the rung's row in the table below"]
+```
 
 Three cases come first on every rung: a `FrameRef` or a `SolError` passes through unchanged; a table (a Frame or a Cube) passes through unchanged, except that a Frame reaching `cube` becomes a Cube (`toCube`), so one reaching a value rung is the body's `#VALUE!` ("… takes a value or a list, not a table", `Call::value_of`; [[C15]] matricesInFormulas); and a value that is or directly contains a `UnitCell` (only possible on a kept-unit input) takes the unit-cell table below. Otherwise:
 

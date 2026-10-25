@@ -13,6 +13,36 @@ owns how the model and the engine are hosted.
 
 ## The module
 
+```mermaid
+flowchart TB
+    subgraph app["TypeScript app"]
+        rf["React Flow view"]
+        ge["GraphEditor handle"]
+        de["DataflowEngine handle"]
+    end
+    obj["TypeScript node objects:<br>class, saved fields,<br>data() of a JS card"]
+    subgraph wasm["one wasm module"]
+        subgraph graph["solenoid-graph"]
+            gcore["GraphCore: a Ruggine NodeEditor<br>with its dataflow engine"]
+            bnd["the input boundary"]
+            pass["the pass and its session"]
+        end
+        subgraph core["solenoid-core"]
+            fx["formulas and functions"]
+            bodies["card bodies"]
+        end
+    end
+    rf --> ge
+    ge -->|"every edit"| gcore
+    de -->|"fetch, pass"| pass
+    pass --> gcore
+    gcore --> bnd
+    bnd -->|"a direct card"| bodies
+    bnd -->|"a JS card"| obj
+    bodies --> fx
+```
+
+
 - **One WebAssembly module with the core**, `src/graph/engineWasm/`: `crates/solenoid-graph` depends on
   `crates/solenoid-core` and is the one `cdylib`, so the engine calls a card's body in Rust (§ Direct calls) and the
   formula core's commands (`engine_invoke` and the rest) come out of the same instance. A trap anywhere takes the
@@ -68,6 +98,16 @@ owns how the model and the engine are hosted.
   change (the edit answers `false`, and a cancelled `clear` signals `clearcancelled`). A pipe that throws stops the
   chain and the edit rejects with what it threw. Pipes are synchronous. The handle's own pipe is the first, so
   `getNode(id)` answers in a `nodecreated` pipe and not in a `nodecreate` one, as rete's did.
+
+```mermaid
+flowchart LR
+    edit["an edit<br>(addNode, removeConnection, ...)"] --> p1["the handle's own pipe"]
+    p1 --> p2["the app's pipes,<br>in the order added"]
+    p2 --> done["the change is made;<br>its past-tense signal runs<br>the same chain"]
+    p2 -.->|"returns nothing"| cancel["chain stops: on a present-tense<br>signal the edit answers false"]
+    p2 -.->|"throws"| rej["chain stops:<br>the edit rejects with it"]
+```
+
 - **A composite's own editor is known to the one holding it.** When a node with an `internalEditor` joins an editor,
   that editor's core records the inner one's (`nest`; `unnest` when it leaves), so the pass can retarget an edit made
   inside it (§ The pass).
@@ -153,6 +193,17 @@ A trap anywhere in the module (a formula, a card body, the graph's own code) dro
 module's panic hook (`setPanicHandler`) first; a trap with no panic (a stack overflow) surfaces as a
 `WebAssembly.RuntimeError` at the call that crossed in. Either way (`engineWasm.ts`):
 
+```mermaid
+flowchart TD
+    t["a trap: a panic,<br>or a stack overflow"] --> c["the call that trapped throws CoreTrap"]
+    c --> a["a formula or card answers #ERROR!;<br>waiting fetches reject, so the pass ends"]
+    a --> m["a microtask later: the instance is dropped<br>and the module instantiated afresh"]
+    m --> h["the load hooks run again: boundary host,<br>session snapshot, handle numbering"]
+    h --> r["each live GraphEditor rebuilds its core:<br>pipes and engine, then nodes and cables,<br>pipes held silent"]
+    r --> n["caches start empty: the next pass<br>recomputes everything"]
+```
+
+
 - the call that trapped throws `CoreTrap`: a formula or a card's body answers `#ERROR!` with the restart message, and
   every fetch and `fetchAll` still waiting rejects with `CoreTrap`, so a pass ends instead of waiting forever;
 - once the stack has left the module (a microtask later), the instance is dropped and the compiled module
@@ -208,6 +259,17 @@ card's text the same.
 ## Direct calls (phase C)
 
 The engine calls a card's body on the core in Rust, with no JavaScript between two such cards.
+
+```mermaid
+flowchart LR
+    out["an output:<br>one shared cell"] --> who{"who reads it?"}
+    who -->|"a direct card"| cv["its core form, a Cv,<br>made once"]
+    who -->|"a JS card"| js["its JS form, an object,<br>made once"]
+    cv --> bc["boundary_core.rs"] --> rb["the body in Rust"]
+    js --> bj["boundary.rs"] --> jd["data() in JavaScript"]
+    cv <-.->|"converted on first ask:<br>toCore, fromCore, fromCoreBin"| js
+```
+
 
 - **Which cards** (`nodes::DIRECT`; `directBodies.test.ts` holds the list to the classes' source). A class whose
   `data()` is its body on the core and nothing else (`return nodeOnCore(this, inputs)`), and the classes in

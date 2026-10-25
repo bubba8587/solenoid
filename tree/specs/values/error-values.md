@@ -10,6 +10,15 @@ Serves [[C24]] arraySemantics, [[D35]] errorInErrorOut and [[E9]] errorsKeepOrig
 
 Failures in Solenoid are values. A node that cannot answer returns a tagged error, the error travels down the cables like any other value, and the value box shows it as a red badge until something catches it.
 
+```mermaid
+flowchart LR
+    a["a card can't answer:<br>÷0 gives #DIV/0!"] -->|"the guard tags it:<br>origin = this card"| b["a downstream card"]
+    b -->|"error in, the same error out;<br>its body never runs,<br>the origin is kept"| c["another card"]
+    c --> d{"a card in SEES_ERRORS?"}
+    d -->|"IFERROR"| e["catches it:<br>the fallback value goes on"]
+    d -->|"any other card"| f["the error goes on,<br>a red badge on each card"]
+```
+
 ## Errors are values
 
 A `SolError` (`errorValue.ts`) is a tagged plain object, `{ __solError: true, code, message, origin? }`, not a class instance, so it survives `structuredClone` and never trips a cross-module `instanceof`. `solError(code, message)` mints one and `isSolError(v)` tests for the tag. The `message` is a short structural explanation ("Division by zero") that is safe for a tooltip; `ERROR_EXPLANATIONS` holds the longer per-code text that inspection surfaces show, so the badge and the producer's message stay terse.
@@ -132,6 +141,14 @@ There is one kind of error, never two. With two notions, ISERROR and IFERROR wou
 3. The `#N/A` test lives in one place, the `IFNA | ISNA` arm of `error_handler` (`crates/solenoid-core/src/excel_functions.rs`), shared by ISNA and IFNA so they can't drift.
 4. An error consumer reading a wired input that may be `null` uses `readInput`, never `inputs.x?.[0] ?? literal`, which treats a delivered `null` as absent and hides the missing cell.
 
+```mermaid
+flowchart TD
+    cell["a cell"] --> k{"what is it?"}
+    k -->|"null: missing"| m["ISNULL detects it;<br>Fill recovers it;<br>IFERROR passes it by"]
+    k -->|"a SolError"| e["ISERROR detects it;<br>IFERROR recovers it;<br>Fill passes it by"]
+    k -->|"a value"| v["none of them touch it"]
+```
+
 Fill and IFERROR split cleanly: Fill never touches errors and IFERROR never touches null. Fill's `coalesce` op is IFERROR's shape applied to `null`. Coalesce takes any number of inputs: FillNode's Else rows are extensible (`e0`, `e1`… with CHOOSE-style `valueKeys` round-tripping), the first present value of the List and then each Else wins per position, and a typed literal on an unwired Else row is a last-resort constant, broadcast.
 
 ## Shape errors are part of this system
@@ -150,9 +167,31 @@ The pull-based DataflowEngine resolves a node's inputs recursively before callin
 
 A downstream node then resolves a member straight from the cache instead of recursing in, so it computes normally and shows the propagated `#CIRC!`; only the actual members dead-end. Seed only the SCC members, never their descendants, which would blank their own computation. The connection guard already blocks self-loops on creation; multi-node loops are caught here.
 
+```mermaid
+flowchart LR
+    x["A"] --> y["B"]
+    y --> x
+    y --> z["C, downstream"]
+    seed["seedLoops: #CIRC! on A and B,<br>before any fetch"] -.-> x
+    seed -.-> y
+    z --> show["C computes from the cache<br>and shows the propagated #CIRC!"]
+```
+
+
 ## Per-cell errors surface through a bounded scan
 
 `reportOut` (the error sink behind the Problems panel) and `modelFuzz.badValue` find a per-cell error inside a list, matrix or Frame, not just a top-level `SolError`, through `findCellError` (`errorValue.ts`). A full rows × cols scan of every node every pass costs too much, so the scan is capped: `sampledCellIndices(len)` checks the head (`CELL_SCAN_HEAD` = 64) plus a stride sample of the tail (`CELL_SCAN_STRIDE_SAMPLES` = 32), a constant per container, with matrix rows recursing under the same bound.
+
+```mermaid
+flowchart LR
+    c["a container of N cells"] --> head["cells 0 to 63:<br>always checked"]
+    c --> tail["the rest:<br>32 evenly strided samples"]
+    head --> found{"an error?"}
+    tail --> found
+    found -->|yes| rep["reported to the sinks"]
+    found -->|no| ok["clean (a lone bad cell<br>between strides can slip by)"]
+```
+
 
 An error on every row, the common case of a bad transform, is always caught by the head. A lone bad cell buried past the head, between two strides, can be missed; that is the accepted cost of a constant-time check per output. `modelFuzz` reuses the same bound (`badValue` → `collectFinite` / `sampledCellIndices`). Nulls are not flagged, since a missing value is legitimate. See `cellErrorScan.test.ts`.
 
