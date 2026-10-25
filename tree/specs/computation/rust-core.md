@@ -164,7 +164,9 @@ Before the JS verbs went, the same ops ran 1.3 to 5 times slower on them.
   render also waits for. What would move it is a smaller module, or a first render that doesn't wait for the core.
   Size against speed was measured too (2026-10-22): rustc's `opt-level = "z"` cuts the module from 860 KB to 650 KB
   gzipped but runs formula columns 1.5 to 3 times slower; `"s"` saves 11% for about a third slower; `wasm-opt`'s level
-  moves it under 1%. It stays at 3. What's big after rustc: the dispatch functions `wasm-opt` inlines into, `.rodata`
+  moves it under 1%. Re-measured on the one module (2026-10-25): `opt-level = 2` is 6% smaller than 3 (1.26 MB against
+  1.31 MB with brotli) and runs the same, within 5% either way on every verb, formula column and pass benchmark, so it
+  is 2. Per-dependency levels change nothing under LTO. What's big after rustc: the dispatch functions `wasm-opt` inlines into, `.rodata`
   (the call table's JSON among it) and serde's derive for `FrameOp`.
 - **A function call costs about 1,100 to 2,000 instructions a row** (`ABS(@value)` 1,140, `PROPER(@key)` 1,820,
   `ROUND(@value, 2)` 2,000), against about 490 for an operator (`@value * 1.2`), counted natively by `colbench` under
@@ -172,7 +174,7 @@ Before the JS verbs went, the same ops ran 1.3 to 5 times slower on them.
   or the module that holds its body, and the call path's per-name facts (eta host, LAMBDA host, memo shaper, branch
   selector, ported) sit in its `Traits` as `fast`, so no string is compared per row; that cut `ABS` from 1,440.
   What's left is spread thin: each call's argument vector, the call site's cache lookup, the column lookup by name.
-- **Size.** The module is 4.9 MB raw / 1.8 MB gzipped (2026-10-24, the pack functions and the graph core in) after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. HASH's digests and base64 run on `md-5`, `sha1`, `sha2`, `crc32fast` and `base64` (20 KB gzipped; `hash_ops.rs` keeps the FNV-1a lines and base64's whitespace, URL-safe, padding and byte-order-mark rules), the hash maps on `rustc-hash`. `regress`
+- **Size.** The module is 4.6 MB raw / 1.7 MB gzipped / 1.26 MB brotli, what a browser downloads (2026-10-25, the pack functions and the graph core in) after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. HASH's digests and base64 run on `md-5`, `sha1`, `sha2`, `crc32fast` and `base64` (20 KB gzipped; `hash_ops.rs` keeps the FNV-1a lines and base64's whitespace, URL-safe, padding and byte-order-mark rules), the hash maps on `rustc-hash`. `regress`
   is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) reads as V8's: a non-ASCII unit never goes to ASCII (`ſ` and `s` don't match each other), and a unit whose full uppercase is two units stays itself (`ᾳ` and `ᾼ` don't), from a 102-unit table taken from V8 (`corePlatform.test.ts` checks every BMP unit against V8). The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own

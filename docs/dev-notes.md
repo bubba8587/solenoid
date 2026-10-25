@@ -21,11 +21,11 @@ specific item.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.
 - **The Vercel build passes on Node 24** (`@types/node` declared); CI's `vercel-build` job builds as Vercel does.
-- **Module size**: 4.9 MB raw, 1.8 MB gzipped.
+- **Module size**: 4.6 MB raw, 1.26 MB with brotli (what a browser downloads), at `opt-level = 2`, which runs as fast as 3 here.
 - **Open for the author:**
   - the criteria strings' redesign (backlog § Formula library);
   - deleting the TS schedule engine ([[C69]] ganttPackages);
-  - the app's size;
+  - the app's size (first render still waits for the core);
   - which ring a top-level session works at (`docs/dte.md` § Solenoid's rings);
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);
   - TEXT answers an ISO date whatever its code (Formula.js's behavior, kept).

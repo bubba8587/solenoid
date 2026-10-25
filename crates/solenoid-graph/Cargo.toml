@@ -20,7 +20,7 @@ wasm-bindgen-futures = "=0.4.50"
 js-sys = "=0.3.77"
 
 [profile.release]
-opt-level = 3
+opt-level = 2
 lto = true
 codegen-units = 1
 panic = "abort"
