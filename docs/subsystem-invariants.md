@@ -87,3 +87,4 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/integrations/obsidian-plugin.md` | Solenoid Properties, the Obsidian plugin | `obsidian-plugin/` |
+| `../tree/specs/integrations/vault-bridge.md` | VaultBridge: the cards and processes between a document and a vault | `vaultCube.ts`, `obsidianWrite.ts`, `frontmatterPatch.ts`, `taskNotesApi.ts` |

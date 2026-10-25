@@ -62,9 +62,19 @@ Three more passes run over the same boxes, after every expanding group has had i
 
 `separateAll` runs its placement pass (`separateUnits`) twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. The pass places the boxes one at a time, pinned ones first, then the rest from the top-left (by `x + y`). A pinned box stays where it is. Every other box, while it overlaps one already placed, moves right or down, whichever is cheaper, to clear the placed box it overlaps most by `PUSH_GAP`. So the top-left box keeps its anchor corner, a pinned box's partner yields, and two pinned boxes are left alone. Moves only ever go right or down, so it always finishes, and a few hundred boxes take milliseconds. Afterwards only two fixed units can still overlap.
 
-## What is not a layout op
+## LayoutFx
 
-The user's own moves are not layout ops: a drag, Align and paste put cards where the user put them, and no no-overlap pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next layout op's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
+A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, the group expand push, the collapse restore and autofit ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way: a `forceLock` standoff solve of what it moved ([[standoffs]]), then the no-overlap pass ([[C112]] noOverlapsEver), and none moves a position-locked group ([[auto-arrange-tidy#Position-locked groups]]).
+
+```mermaid
+flowchart LR
+    fx["a LayoutFx: Tidy, Cleanup,<br>expand push, collapse restore,<br>autofit"] --> own["its own moves"]
+    own --> solve["a forceLock standoff solve<br>of what it moved"]
+    solve --> ov["the no-overlap pass"]
+    user["the user's moves: a drag,<br>Align, paste"] --> stay["stay where they're put"]
+```
+
+The user's own moves are not LayoutFx: a drag, Align and paste put cards where the user put them, and no no-overlap pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next LayoutFx's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
 
 ## Records and restore
 

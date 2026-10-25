@@ -29,6 +29,10 @@ area. When you coin a new load-bearing term, add it here.
   socket. (`drawnCables.ts`)
 - **Group** (Add menu: Node Group): a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
+- **LayoutFx**: a process that moves cards the user didn't move: Tidy, Cleanup, the group
+  expand push, the collapse restore, autofit. Each ends with a `forceLock` standoff solve and
+  the no-overlap pass; the user's own moves (drag, Align, paste) aren't LayoutFx. "Fx" names a
+  process, kept apart from graph items. (`../tree/specs/canvas/group-expand-push.md` § LayoutFx)
 - **Tidy / auto-arrange**: ELK-based layout with a custom symmetric port preset.
   (elkjs via `elkTidyLayout`, `arrangeFn`, in `tidyArrange.ts`)
 - **Isolate**: a focus mode showing only a scoped sub-region of the graph.
@@ -203,6 +207,11 @@ area. When you coin a new load-bearing term, add it here.
 - **Mail merge / Records**: a Report's Records input: one rendering (a **page**) per
   row, `record` and `index` in scope, named by the page name; the pages write as one
   note each. (`nodes/report.ts`, `documentValue.ts`)
+- **VaultBridge**: everything between a document and an Obsidian vault. The **VaultBridge
+  Nodes** are its cards (Vault Folder, Import Obsidian Note, TaskNotes, Write to Obsidian, Write
+  Tasks); the **VaultBridgeFx** are the processes behind them (the vault read, the note read,
+  the type read-back, the note write, the property patch, the TaskNotes API).
+  (`../tree/specs/integrations/vault-bridge.md`)
 - **Document / library**: the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 

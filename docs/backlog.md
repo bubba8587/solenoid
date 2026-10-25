@@ -41,6 +41,9 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Clippy in CI denies dead code**, so a helper that lands a commit before its caller turns `engine-test.yml` red. Decide: keep it strict, or add `-A dead_code` to the two clippy lines.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
 
+## VaultBridge
+- [ ] Spec the vault read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
+
 ## Tooling
 - [ ] **Warm vitest cache hides a new globbed file** (`fsModuleCache: true`): a new seed JSON was invisible to `seeds.ts` locally, so `siteThumbs`/`prerender` passed locally and failed in CI. Workaround: delete `node_modules/.vitest-cache`. Decide whether to keep the cache or invalidate it on glob changes.
 - [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.

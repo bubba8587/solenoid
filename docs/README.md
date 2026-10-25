@@ -187,6 +187,7 @@ results get retried and settled rulings relapse.
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
+| `vaultCube.ts`, `obsidianWrite.ts`, `frontmatterPatch.ts`, `taskNotesApi.ts`, `obsidianTypes.ts`, `pluginColumnTypes.ts` | `../tree/specs/integrations/vault-bridge.md` (VaultBridge Nodes and VaultBridgeFx: which spec governs each), under [[B1]] obsidianBet |
 | `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[C10]] socketLattice; `../tree/specs/canvas/conduit-lane-faces.md` |
 

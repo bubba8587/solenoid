@@ -43,9 +43,9 @@ Select exactly two linkable items, right-click one of them, and choose "Link wit
 
 - It is iterative projection: up to 48 rounds, each correcting every active standoff in turn, stopping once no correction exceeds 0.25px.
 - Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned is skipped.
-- `forceLock` treats every standoff as locked for that one solve, without touching the saved `locked` flag. Every layout operation uses it, so a cluster of items joined by standoffs (`standoffClusters()`, the connected groups) behaves as one rigid block.
+- `forceLock` treats every standoff as locked for that one solve, without touching the saved `locked` flag. Every LayoutFx uses it, so a cluster of items joined by standoffs (`standoffClusters()`, the connected groups) behaves as one rigid block.
 - Position-locked groups are always pinned (`withLockedGroupsPinned`).
-- A settle can be scoped with `touching`: only the clusters holding one of those ids solve (`standoffsTouching`). Every layout pass scopes its `forceLock` solve to what it moved, so an unrelated unlocked slant survives it.
+- A settle can be scoped with `touching`: only the clusters holding one of those ids solve (`standoffsTouching`). Every LayoutFx scopes its `forceLock` solve to what it moved, so an unrelated unlocked slant survives it.
 
 The solver runs as the last step after every pass that affects layout ([[C89]] standoffsSolveLast):
 
@@ -60,13 +60,13 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 
 ```mermaid
 flowchart LR
-    op["a layout op: a group expand<br>or collapse, autofit, Tidy"] --> moves["its own moves"]
+    op["a LayoutFx: a group expand<br>or collapse, autofit, Tidy"] --> moves["its own moves"]
     moves --> solve["a forceLock standoff solve of the<br>clusters it touched: each cluster<br>a rigid block"]
     solve --> ov["the no-overlap pass:<br>a cluster moves as one unit"]
     drag["a live drag"] --> band["a band-only solve,<br>the dragged items pinned"]
 ```
 
-Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
+Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
 ## Tidy and clusters
 
