@@ -1,5 +1,6 @@
 // [[C24]], [[D51]], [[D48]] classifyNonFinite (guardFinite), [[D36]] nullSkippedNotZero
 import { solError, type SolError } from "./errorValue";
+import { coreReadDecimal, coreReadLogical } from "./engineWasm";
 
 export type Missing = null;
 
@@ -15,12 +16,8 @@ export function coerceLogical(v: unknown): boolean | null | number {
   if (typeof v === "boolean") return v;
   if (typeof v === "number") return Number.isFinite(v) ? numberToLogical(v) : NaN;
   if (typeof v === "string") {
-    const t = v.trim().toLowerCase();
-    if (t === "") return null;
-    if (t === "true") return true;
-    if (t === "false") return false;
-    const n = decimalFromText(t);
-    if (Number.isFinite(n)) return numberToLogical(n);
+    const r = coreReadLogical(v);
+    return r === undefined ? null : Number.isNaN(r) ? NaN : r === 1;
   }
   return NaN;
 }
@@ -40,15 +37,10 @@ export function coerceNumber(v: unknown): number {
   return NaN;
 }
 
-const DECIMAL_TEXT = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
-const GROUPED_TEXT = /^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$/;
 
 /** The one text-to-number reading: plain decimal or scientific, or thousands grouped by commas, trimmed. Anything else, a `0x`/`0b`/`0o` radix prefix or `Infinity` included, is NaN. */
 export function decimalFromText(text: string): number {
-  const t = text.trim();
-  if (DECIMAL_TEXT.test(t)) return Number(t);
-  if (GROUPED_TEXT.test(t)) return Number(t.replace(/,/g, ""));
-  return NaN;
+  return coreReadDecimal(text);
 }
 
 export interface UncertainNumber {

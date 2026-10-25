@@ -2,7 +2,7 @@
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
-import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
+import init, { initSync, __wbg_reset, setPanicHandler, display_settings, fmt_scalar, fmt_annotated, fmt_date, card_is_hex_color, card_link_href, card_image_src, read_decimal, read_logical, engine_invoke, engine_source_bin, engine_read_bin, engine_csv_frame, engine_csv_rows, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_graph.js";
 import { toSolError } from "./errorValue";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -82,6 +82,16 @@ export function coreLinkHref(text: string): string | null {
 
 export function coreImageSrc(text: string): string | null {
   return wasmEngineLoaded() ? card_image_src(text) ?? null : null;
+}
+
+/** Text read as a number or a logical, as every typed input reads it ([[D93]] oneTextReading). */
+export function coreReadDecimal(text: string): number {
+  return read_decimal(text);
+}
+
+/** 1 for TRUE, 0 for FALSE, NaN when it isn't a logical, undefined for blank. */
+export function coreReadLogical(text: string): number | undefined {
+  return read_logical(text);
 }
 
 /** The "Decimal places" and "Scientific from" settings, as the core formats by them. */

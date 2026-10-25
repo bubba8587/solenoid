@@ -120,6 +120,14 @@ export function card_link_href(text: string): string | undefined;
  */
 export function card_image_src(text: string): string | undefined;
 /**
+ * Text as a number: plain decimal or scientific, or thousands grouped by commas; NaN otherwise.
+ */
+export function read_decimal(text: string): number;
+/**
+ * Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+ */
+export function read_logical(text: string): number | undefined;
+/**
  * Stages `parseCsvRows`'s fields for the `take_*` calls (`csv::rows_columnar`) and answers how many rows they make.
  */
 export function engine_csv_rows(text: string, detect: boolean, keep_blank: boolean): string;
@@ -356,6 +364,8 @@ export interface InitOutput {
   readonly fmt_annotated: (a: number, b: number, c: number, d: number) => void;
   readonly fmt_date: (a: number, b: number, c: number, d: number) => void;
   readonly fmt_scalar: (a: number, b: number) => void;
+  readonly read_decimal: (a: number, b: number) => number;
+  readonly read_logical: (a: number, b: number, c: number) => void;
   readonly take_lens: (a: number) => void;
   readonly take_nums: (a: number) => void;
   readonly take_strs: (a: number) => void;

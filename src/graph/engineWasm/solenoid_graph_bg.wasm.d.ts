@@ -73,6 +73,8 @@ export const engine_source_bin: (a: number, b: number, c: number, d: number, e: 
 export const fmt_annotated: (a: number, b: number, c: number, d: number) => void;
 export const fmt_date: (a: number, b: number, c: number, d: number) => void;
 export const fmt_scalar: (a: number, b: number) => void;
+export const read_decimal: (a: number, b: number) => number;
+export const read_logical: (a: number, b: number, c: number) => void;
 export const take_lens: (a: number) => void;
 export const take_nums: (a: number) => void;
 export const take_strs: (a: number) => void;

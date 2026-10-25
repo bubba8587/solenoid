@@ -162,3 +162,22 @@ pub fn card_link_href(text: &str) -> Option<String> {
 pub fn card_image_src(text: &str) -> Option<String> {
     crate::card_helpers::record_image_src(text)
 }
+
+// ─── Typed text reading ([[D93]] oneTextReading): the one reader the input surfaces call ─────
+
+/// Text as a number: plain decimal or scientific, or thousands grouped by commas; NaN otherwise.
+#[wasm_bindgen]
+pub fn read_decimal(text: &str) -> f64 {
+    crate::value_kinds::decimal_from_text(text)
+}
+
+/// Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+#[wasm_bindgen]
+pub fn read_logical(text: &str) -> Option<f64> {
+    use crate::value_kinds::{coerce_logical, Logical};
+    match coerce_logical(&crate::frame::FrameCell::Str(std::rc::Rc::from(text))) {
+        Logical::Bool(b) => Some(if b { 1.0 } else { 0.0 }),
+        Logical::Blank => None,
+        Logical::Unreadable => Some(f64::NAN),
+    }
+}
