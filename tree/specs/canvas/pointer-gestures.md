@@ -14,6 +14,15 @@ This spec is the mechanics of canvas pointer input: which listener handles each 
 
 Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[C92]] pinchUnvetoable). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
 
+```mermaid
+flowchart TD
+    ev["a pointer or touch event"] --> cap["capture phase, on the canvas wrapper:<br>the pinch, wheel zoom, card pan, lasso"]
+    cap -->|"two fingers: consumed here,<br>no stopPropagation can hide them"| zoom["the camera moves"]
+    cap -->|"anything else"| ctl["a control inside a card<br>(slider, dial, text field)"]
+    ctl -->|"may stop it"| stop["no pan, no drag"]
+    ctl -->|"lets it bubble"| bub["bubble phase: React Flow's<br>node drag and pane pan"]
+```
+
 React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pane elements. The pinch listens in capture on the canvas wrapper, so it sees every two-finger move first and consumes it. No component's `stopPropagation` can hide a finger from the pinch. A control that wants the pointer for itself (a slider, a dial, a text field) can still stop the event and so block the pan and the drag. Only the zoom is unstoppable, and no call site has to remember anything to keep it that way.
 
 ## Pinch: `installFlowPinch`
@@ -46,6 +55,18 @@ Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% ste
 ## One finger on a card: `installTouchCardPan`
 
 `flow/flowTouchPan.ts`, on the canvas wrapper in capture ([[C93]] gestureByPointerType). On touch, a one-finger drag that starts on an unselected card or group pans the canvas; a busy graph otherwise leaves no blank space to pan from. A selected node drags, so on touch you tap to select and then drag. Mouse and pen keep select-and-drag in one motion. The rule keys on the event's pointer type, not on the device class.
+
+```mermaid
+flowchart TD
+    p["a press on the canvas"] --> kind{"its pointerType"}
+    kind -->|"mouse or pen"| rf["React Flow: select and drag<br>in one motion"]
+    kind -->|"touch: count fingers"| n{"how many<br>fingers down?"}
+    n -->|"two"| pinch["the pinch zooms"]
+    n -->|"one"| on{"on an unselected card,<br>not on a control?"}
+    on -->|yes| pan["the canvas pans;<br>a tap still selects"]
+    on -->|"no: a selected card"| drag["the card drags"]
+    on -->|"no: empty canvas"| pane["the pane pans<br>(the lasso in touch-select mode)"]
+```
 
 **The claim test.** A press belongs to the card pan when all of these hold:
 

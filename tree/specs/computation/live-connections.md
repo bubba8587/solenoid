@@ -26,6 +26,15 @@ A card keeps out of the reference whatever it can apply to the cached result: Ge
 
 An ordinary `processGraph()`, such as one caused by editing an unrelated card, leaves all three parts unchanged, so the card answers from its cache with no network or disk access. A refresh changes exactly one part:
 
+```mermaid
+flowchart LR
+    key["the cache key:<br>globalGen : nodeToken : reference"]
+    one["refreshConnection(id),<br>its button or timer"] -->|"bumps nodeToken"| key
+    all["refreshAllConnections()"] -->|"bumps globalGen"| key
+    edit["editing the card's reference<br>(URL, path, query)"] -->|"changes reference"| key
+    other["any other processGraph()"] -.->|"changes nothing:<br>answers from the cache"| key
+```
+
 - `refreshConnection(id)` bumps that card's token, so only that card fetches again. The card's refresh button and its auto-refresh timer both call it. The timer lives in the store (`connectionStore.autoRefresh(id, minutes)`), kept in step by the card's own `data()` and by the cadence field, so a card that is not mounted (inside a composite or a collapsed group) keeps refreshing. A timer whose card is gone from every graph clears itself when it next fires.
 - `refreshAllConnections()` bumps the global counter, so every card fetches again. It is the "Refresh all connections" menu item, and it also notifies the store's subscribers. Import Obsidian Note sees the new counter in its own `data()` and re-reads its note (the wired path, or the picked file), so a card that is not mounted, inside a composite or a collapsed group, refreshes too; a note renamed or deleted since keeps what was loaded.
 
@@ -41,6 +50,19 @@ A connection card's `data()` stays synchronous. On each run it:
 2. asks the network gate (below); if the gate says no, it returns the cached result. A card records the key as fetched only once the fetch actually launches, so a pass the gate refused asks again on the next run;
 3. if no fetch for this key is already in flight (`inflightKey`), starts one without waiting for it;
 4. returns the cached result, which is stale or null until the fetch lands.
+
+```mermaid
+flowchart TD
+    d["the card's data(), synchronous"] --> same{"key = the last<br>fetched key?"}
+    same -->|yes| cache["the cached result"]
+    same -->|no| gate{"the network gate<br>allows it?"}
+    gate -->|no| gated["the cached result,<br>status gated; asks again next run"]
+    gate -->|yes| fly{"already fetching<br>this key?"}
+    fly -->|no| start["start the fetch,<br>don't wait"]
+    fly -->|yes| ret
+    start --> ret["the cached result for now<br>(stale or null)"]
+    start -.->|"it lands"| land["store it; one coalesced<br>processGraph() next tick"]
+```
 
 Import HTML, Import XML and Local File are the exception: their `data()` is async and returns the in-flight promise for the current key (`inflight`), so a recompute waits for their read.
 

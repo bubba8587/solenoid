@@ -13,6 +13,17 @@ note keeps plain YAML. A note that asks for it also reads as its Note card does 
 differs from the full app. A divergence lives here under the rule it bends, with what would remove
 it (`docs/dte.md` § Solenoid practice).
 
+```mermaid
+flowchart LR
+    note["a note's YAML properties<br>(plain YAML, always)"] --> plugin["Solenoid Properties:<br>a chip per object type,<br>the app's popup editors"]
+    plugin -->|"edits write plain YAML"| note
+    plugin -->|"column-type picks"| data["the plugin's data.json"]
+    other["another plugin<br>(Decision Matrix Bases View)"] -->|"api: frameChip,<br>columnTypes, ..."| plugin
+    note --> app["Solenoid: a Note, Import Obsidian Note,<br>Vault Folder read the same sockets"]
+    data --> app
+    types["the vault's .obsidian/types.json"] --> app
+```
+
 ## What it has
 
 **Thirteen property types.** One per container rung of the socket lattice
@@ -484,6 +495,17 @@ the text, and a column mixing a date with text is text with the date as written.
 the frame's `raw`, as Frame Input's literal source does: a picked type that cannot read a cell
 shows NaN over the text, never a silent blank, and the note keeps its text ([[D72]]). The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
 `pluginColumnTypes.test.ts`, `vaultCube.test.ts`, `noteFrontmatter.test.ts`, `noteNodeRanks.test.ts`.
+
+```mermaid
+flowchart TD
+    cell["a frame column's cells,<br>as written"] --> pick{"a column-type pick<br>in data.json?"}
+    pick -->|yes| typed["that type"]
+    pick -->|no| guess{"every present cell a number,<br>a Boolean or an ISO date?"}
+    guess -->|yes| that["that type"]
+    guess -->|no| txt["text"]
+    typed --> cross["each cell crosses coerceFrameCell,<br>its text kept as raw:<br>what the type can't read is NaN"]
+    that --> cross
+```
 
 ## The API for other plugins
 

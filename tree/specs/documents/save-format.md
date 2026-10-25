@@ -138,6 +138,14 @@ Table Input and the paint grid store the raw typed text (`tableText`) as the sav
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
+```mermaid
+flowchart LR
+    main["the main graph<br>(never a drill-in)"] --> raw["buildRawSavedGraph:<br>nodes, cables, side tables,<br>palettes, meta, packs"]
+    raw --> w["writeTextForm:<br>node lines + sidecar"]
+    w --> r["readTextForm"]
+    r --> sg["the SavedGraph that is stored:<br>ids renamed to names,<br>topological order"]
+```
+
 The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. **MUST:** every save passes through the text form, so every top-level `SavedGraph` field is written by `writeTextForm` and read back by `readTextForm`; a new field is added to both. Why: a field that either direction omits is deleted from every save, and autosave then writes the lossy result over the good copy ([[B12]] losslessSaves). That happened to `comments` and `reportPalette`: `buildRawSavedGraph` built them and the round trip dropped them, losing real data on every save until the gap was found.
 
 The line order is by dependency, never canvas position (the writing rules below), so a git diff shows only what an edit touched; canvas order would reshuffle the file on every drag.
@@ -274,6 +282,20 @@ A newer file is refused rather than opened with the parts this build doesn't und
 
 `loadGraph` returns `true` on success and `false` when it refused or rolled back; in both failure cases the previous graph is on screen.
 
+```mermaid
+flowchart TD
+    g["a SavedGraph"] --> sg{"structurally valid?"}
+    sg -->|no| r1["refused: the current<br>work is unchanged"]
+    sg -->|yes| vg{"v = 2?"}
+    vg -->|no| r2["refused: newer or<br>older format"]
+    vg -->|yes| snap["snapshot the live graph;<br>autosave off, rebuild scope open"]
+    snap --> rb["rebuildGraph"]
+    rb -->|throws| back["rebuild the snapshot:<br>previous work restored"]
+    rb -->|ok| fin
+    back --> fin["always: close the scope,<br>autosave back on,<br>undo history cleared"]
+```
+
+
 1. **Structural gate.** `validateSavedGraph(g)` runs first, before anything is torn down, so a malformed file cannot fail partway through a rebuild after the user's graph is gone. It requires an object with a numeric `v`, a `nodes` array whose entries are objects with string `id` and `type` and numeric-or-absent `x` and `y`, a `connections` array (when present) of objects with four string fields, and `standoffs` (when present) an array. Failure: sticky notice "Couldn't open this graph: *reason*. Your current work is unchanged." Unknown types and bad cables are not structural failures.
 2. **Version gate**, as above.
 3. **Snapshot** the live graph with `serializeGraph()` for rollback.
@@ -285,6 +307,22 @@ A newer file is refused rather than opened with the parts this build doesn't und
 ### `rebuildGraph`
 
 `rebuildGraph` assumes the graph passed the structural gate and that its caller holds the autosave suspension and the rebuild scope, because the rollback in step 6 calls it a second time inside the same scope.
+
+```mermaid
+flowchart TD
+    t["tear down the old graph<br>(curtain over 300 items)"] --> doc["document state first:<br>palettes, meta"]
+    doc --> build["construct every node, fresh ids;<br>an unknown type is a Placeholder"]
+    build --> add["add and position them"]
+    add --> remap["remap saved ids in<br>references to fresh ones"]
+    remap --> wire["reconnect: a cable that<br>doesn't resolve is skipped"]
+    wire --> side["side tables, then each<br>Composite's inside"]
+    side --> settle["settle wildcard types"]
+    settle --> fc["then dock Format Controllers,<br>sync Convert arrows"]
+    fc --> rest["drawn cables, group membership"]
+    rest --> pass["processGraph(): compute"]
+    pass --> cam["fit the camera,<br>re-hide collapsed groups"]
+```
+
 
 1. **Curtain.** When `curtain` is allowed (the default) and the old plus new node and connection count exceeds 300, the "Loading graph" overlay shows before teardown, and teardown and build yield to a paint every 24 items to advance its progress bar ([[graph-load-teardown-performance]]). Undo and redo pass `curtain: false`: a restore is a reload underneath, but it must feel like an edit, not a document open.
 2. **Teardown.** Remove every connection, then every node; each `noderemoved` undocks any Format Controller, so no extra cleanup is needed. Then `forgetAllNodes()` clears every per-node store in one pass. Close the report overlay and stop any presentation, so no overlay keyed to an outgoing node id keeps its chrome (the docked report's canvas squeeze) across a switch. Close any Composite drill-in, which would otherwise keep rendering a Composite from a graph that no longer exists; closing also unmounts its internal views and stops their timers.

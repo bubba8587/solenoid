@@ -35,6 +35,25 @@ A name resolves in a fixed order: a column (or the column an explicit binding pi
 
 `@name` and `[Name]` only work inside a computed column. Anywhere else they are a `#REF!` saying so.
 
+```mermaid
+flowchart TD
+    n["a name in the formula"] --> at{"written with @?"}
+    at -->|"@name: this row"| a1{"a column of that name,<br>or the one bound to it?"}
+    a1 -->|yes| cell["this row's cell"]
+    a1 -->|no| a2{"a LAMBDA capture?"}
+    a2 -->|yes| cap["the capture, for this row"]
+    a2 -->|no| side1{"a side value?"}
+    side1 -->|yes| sv1["its item for this row:<br>row-aligned or #SHAPE!"]
+    side1 -->|no| miss1["a miss: the surface says<br>what it means"]
+    at -->|"bare name"| b1{"a column of that name,<br>or the one bound to it?"}
+    b1 -->|yes| whole["the whole column,<br>a one-column table"]
+    b1 -->|no| b2{"a LAMBDA capture?"}
+    b2 -->|yes| cap2["the captured value"]
+    b2 -->|no| side2{"a side value?"}
+    side2 -->|yes| sv2["the side value whole"]
+    side2 -->|no| miss2["a miss"]
+```
+
 **How a row read finds its row.** While a column computes, a row context is pushed around every evaluation, the inline formula and a wired LAMBDA's body alike, and popped after; contexts nest as a stack. `readRowCell` (`@name`) and `readWholeColumn` (`[Name]`) read the top of that stack, so even a zero-parameter LAMBDA can read `@price` with no binding. An `@name` read tries the explicit binding or the column of that name (this row's cell), then the definition's own environment (a LAMBDA's captures, read for this row), then the side value. A `[Name]` read returns the bound or named column whole, else the side value as it is, not indexed by row. On both paths a reserved name that reaches the side-value step is the reserved-name `#REF!`. A LAMBDA's bare captured name reads the same way: while a row context is up, a capture that names a column (or the column an explicit binding picks) is that whole column, and the captured value is used only when no column matches (`readCapturedColumn`). A parameter is this row's value whether written `x` or `@x`, so a LAMBDA card whose body writes one parameter both ways shows a hint pointing at `[x]` for the whole column (`perRowParamClashes`). A bare `x` in such a body is almost always meant as the column, and the answer it gives is believable, so it must not pass silently (the author's word, 2026-09-27).
 
 ## Evaluating a column
@@ -50,6 +69,20 @@ A name resolves in a fixed order: a column (or the column an explicit binding pi
    - anything else is `#VALUE!` ("each row must be a number, text, TRUE/FALSE or blank").
 
 Errors are per row: one bad row never blanks the column.
+
+```mermaid
+flowchart LR
+    rows["for each row"] --> e{"a LAMBDA parameter<br>bound to an error cell?"}
+    e -->|yes| err["that error,<br>the body never runs"]
+    e -->|no| run["run the formula with<br>this row's context"]
+    run --> tag{"the result"}
+    tag -->|"an error, a number,<br>text, a logical, blank"| keep["kept<br>(NaN becomes #DOMAIN!)"]
+    tag -->|"a list"| lst{"in a Cube?"}
+    lst -->|yes| cubecell["that row's cell,<br>its items tagged alike"]
+    lst -->|no| shp["#SHAPE!: one value per row"]
+    tag -->|"anything else"| val["#VALUE!"]
+```
+
 
 **Side values.** A side value is fetched once per column (`sideValue(name, kind)`, where `kind` says whether it was bound as a variable or reached from inside a row) and must be the same on every row. A column is found by its exact name, never by position. Read with `@name`, a side list must be row-aligned: a list whose length equals the row count reads its element for this row, a matrix is `#SHAPE!` ("a matrix has no single this-row value"), and a list of the wrong length is `#SHAPE!` naming both counts. A scalar reads the same on every row. Read bare, the side value arrives whole, so `SUM(list)` works; a list with one value per row arrives as a column, like the table's own columns, so `SUM(price * weights)` pairs them element by element ([[D85]] columnsStayColumns).
 

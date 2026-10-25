@@ -31,6 +31,14 @@ Prune **before** the socket is hidden or removed:
 2. `await dropInputCables(node.id, keys)`.
 3. Then hide the sockets or call `removeInput`, and re-render.
 
+```mermaid
+flowchart LR
+    k["which input keys<br>are going away?"] --> d["await dropInputCables<br>on the owning editor"]
+    d --> h["then hide or remove<br>the sockets"]
+    h --> r["re-render"]
+    h -.->|"never first: a live cable<br>into a gone socket"| bad["an invisible wire"]
+```
+
 A cable that references a removed socket is unsafe, and a hidden socket with a live cable is an invisible wire.
 
 ## Who must use it

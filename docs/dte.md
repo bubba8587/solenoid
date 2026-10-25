@@ -62,6 +62,10 @@ leaf, because none is a product call.
   how it works, a leaf only for a choice a person could make. Ordinary work needs neither.
 - **Comments are the last resort** (DTE B38 commentsMigrate). The policy is
   `tree/specs/floors/engineering.md` § Comments.
+- **A spec draws its mechanisms.** A flow, a decision chain or a shape the prose describes gets a
+  Mermaid block beside that prose (flowcharts mostly, plain text, so Obsidian renders it with pele,
+  the renderer MermaidView uses). The prose stays the spec; a diagram that disagrees with it is the
+  one to fix. `specDiagrams.test.ts` renders every block and keeps `[[` out of them.
 
 ## Wikilinks
 

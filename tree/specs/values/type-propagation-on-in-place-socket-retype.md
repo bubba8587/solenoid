@@ -28,6 +28,16 @@ This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch
 4. then `rerenderNode`,
 5. and after an output swap only, `retypeOutputCables`, because the swap fired no connection event. An input retyped in place (the socket stays, its type changes) is pruned by `retypeInputCables` instead of step 2, which keeps a cable the new type still accepts.
 
+```mermaid
+flowchart LR
+    pick["the user picks an op,<br>mode or option"] --> prune["dropInputCables on the<br>inputs the swap removes"]
+    prune --> set["setOp / setMode<br>changes the sockets"]
+    set --> rr["rerenderNode"]
+    rr --> out{"an output<br>swapped?"}
+    out -->|yes| rt["retypeOutputCables: keep what<br>still fits, re-drive the FCs"]
+    out -->|no| done["done"]
+```
+
 **Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), `GetColumnNode`, `SplitFrameNode` and `AddColumnNode` (`setReadAs`, `setColType`, `setAddAs`, driven from `frameEdit.ts`), and `Expression`, `composite` and `formatController` (`setType`).
 
 ## The result-type selector (`ResultTypeToggle`)
@@ -153,6 +163,14 @@ Machine-checked by `frameShapeCoverage.test.ts` (every catalog Frame output has 
    - XLOOKUP's result is `staticTrueAnyOut`, the shared singleton that never changes, because a Cube cell's type varies by row.
    - The cube-family pair lets a row verb hand back the rank it received. `cubeAdoptIn` (base `cube`, which accepts a Frame or a Cube) with a `single` passthrough into `tableAdoptOut` gives a Frame out for a Frame in and a Cube out for a Cube in. The output's base is `frame`, not `cube`, so an unadopted output (a fresh node, or a static `validateText` check before adoption runs) reads as a Frame and still feeds a frame-only consumer (GROUPBY, Pivot, Join) as well as a cube one; a wired Cube adopts it to `cube`.
    - `anyTableIn` and `anyListIn` adopt only for display: acceptance is unchanged, and coercion treats the adopted type exactly like the base rung ([[compute-pass]]). `anyComboIn` accepts what `anyListIn` does but lets a scalar reach `data()` as a scalar, for a producer whose rank follows its input. `adoptiveDataOut` (base `anydata`) adopts the input's rank and element family together, so a same-rank op (TAKE, DROP) hands back a list for a list and a matrix for a matrix.
+
+```mermaid
+flowchart TD
+    ev["a cable change, a retype, a paste or a load"] --> settle["settleWildcardTypes:<br>Conduit lanes and trueany adoption<br>until both settle"]
+    settle --> conv["Convert arrows synced"]
+    conv --> fc["each Format Controller adapts<br>to its settled input type"]
+    fc --> cab["cables redrawn"]
+```
 
 **`settleWildcardTypes(editor)`** alternates the Conduit and trueany passes until both settle, and it is the one entry point. `reconcileFcTypes` and the load path (`persistence.ts`) both go through it, so the connection pipe, Note retypes, paste and load all settle the same way.
 

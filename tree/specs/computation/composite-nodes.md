@@ -28,6 +28,21 @@ The code is `src/graph/nodes/composite.ts` (`CompositeNode`, `CompositeInputNode
 
 A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). The card has sockets and a `data()`; a Group has neither.
 
+```mermaid
+flowchart LR
+    subgraph outer["the outer graph: one card"]
+        win["a wired input"] --> card["the Composite card"]
+        card --> wout["its output sockets"]
+    end
+    subgraph inner["inside: a private editor and engine"]
+        im["Composite Input<br>markers"] --> mem["the member cards"]
+        mem --> om["Composite Output<br>markers"]
+    end
+    card -.->|"each internal pass sets<br>the markers' values"| im
+    om -.->|"fetched: one value<br>per output port"| card
+```
+
+
 - The constructor builds `internalEditor`, adds a pipe (below), then builds `internalEngine` and attaches it with `internalEditor.use(internalEngine)`. Its engine runs every member through the same input boundary as the main canvas's, so a member narrows its inputs and is guarded exactly as there ([[compute-pass]] § The per-node wrappers).
 - Nothing inside the subgraph is registered with the outer engine, appears in the outer cache, or gets a value in `cableValueStore`. The outer engine sees one node, the card, whose `data()` returns one value per output port.
 - The composite's own cache of results is `cachedOutputs`, keyed by output port id. In a multi-run mode each value is an array with one entry per run, in run order.
@@ -63,6 +78,18 @@ An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwire
 ### The input value fallback order
 
 For each input port in one internal pass, the marker's `value` is the first of these that is not `undefined` (and, for the wired value and the seed, not `null` either, because the chain uses `??`):
+
+```mermaid
+flowchart LR
+    o{"a run-mode override<br>for this port?"} -->|yes| ov["the override"]
+    o -->|no| w{"exposed, and a value<br>on the card input?"}
+    w -->|yes| wv["the wired value"]
+    w -->|no| s{"a seed on<br>the marker?"}
+    s -->|yes| sv["the seed"]
+    s -->|no| d{"a port default?"}
+    d -->|yes| dv["the default"]
+    d -->|no| nv["null"]
+```
 
 1. the run mode's override for this port id (a scenario cell, a Data Table value, a Monte Carlo draw, a goal-seek trial, a By-Row row);
 2. for an exposed port only, the first value on the card's wired input (`inputs[id][0]`);
@@ -132,6 +159,17 @@ Every mode is built from `runPass(inputs, overrides?)`:
 4. For each output port, `internalEngine.fetch(marker.id)` and take `.value ?? null`. A missing marker gives null; a fetch that throws gives null.
 
 Values that are `SolError`s travel through the subgraph like any other value; an internal error reaches the output as that error.
+
+```mermaid
+flowchart LR
+    a["set each input marker's value<br>by the fallback order"] --> b["reset the<br>internal engine"]
+    b --> c["seed #CIRC! on the<br>internal loop members"]
+    c --> d["fetch each output marker:<br>its value, or null"]
+```
+
+Every run mode but Simulation is some number of these passes: one for Single and Manual, one per scenario, Data
+Table combination, Monte Carlo draw or By-Row row, and one per value Goal Seek tries plus one at its solution.
+Simulation runs its loop round by round instead (§ Loops).
 
 `collectMultiple(inputs, overridesList)` runs one pass per overrides entry and returns, per output port, the array of that port's values in run order.
 
@@ -287,6 +325,18 @@ Every `data(inputs)`:
 
 Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids with a notifier; forgetting a node clears it), and step 4 the wall time of its rounds (`ran`, read by `lastRunMs`; not saved). The run controls subscribe to it, because a held card's outputs do not change and the pass's changed-output render pruning would otherwise skip it.
 
+```mermaid
+flowchart TD
+    data["data(inputs)"] --> stamp["stamp the markers; resolve trig modes"]
+    stamp --> heavy{"heavy?"}
+    heavy -->|no| live["run the mode on inputs:<br>fresh outputs, not stale"]
+    heavy -->|yes| req{"Solve or Refresh<br>asked for?"}
+    req -->|yes| solve["run the mode (again while live<br>fetches inside land, up to 4 rounds);<br>store outputs and the solve key"]
+    req -->|no| ever{"ever solved?"}
+    ever -->|no| blank["every output blank, stale"]
+    ever -->|yes| held["the held outputs; stale<br>when the solve key changed"]
+```
+
 `solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
 
 **Solve from inside.** `requestSolve(insideOnly)` sets `solveRequested` and sets `solveInsideOnly` to `insideOnly && runMode !== "manual"`. The drill-in's controls pass `insideOnly`, so a Solve there runs on empty inputs: every exposed port falls to its seed, and Monte Carlo means and the goal-seek start come from the seeds too. The key is still taken on the real inputs, so the card does not read stale right after.
@@ -363,6 +413,19 @@ Copy and paste treat a composite like any node: the clone is constructed from `e
 ## Edits inside and how they reach the outside
 
 The drill-in is the main canvas's surface component over the internal editor ([[B3]] sameNodeEverywhere). What it changes flows out this way:
+
+```mermaid
+flowchart TD
+    edit["an edit inside the drill-in"] --> k{"what changed?"}
+    k -->|"a node or cable"| topo["the composite's pipe bumps<br>internalEditSeq, settles types"]
+    k -->|"a value, a seed, a spread"| val["processGraph(the inner id)"]
+    k -->|"card or run-control config"| cfg["processGraph(the card)"]
+    topo --> pass["a pass at the outermost composite<br>on the breadcrumb"]
+    val -->|"not in the main editor: mark the<br>nesting chain, retarget"| pass
+    cfg --> pass
+    pass --> recompute["the card's data() runs its<br>internal passes afresh<br>(a held heavy card recomputes nothing)"]
+```
+
 
 - **Topology** (a node or cable added or removed inside). The composite's own pipe bumps `internalEditSeq` and, for a cable, settles internal types and boundary adoption. The drill stack's pipe then runs `processGraph(stack[0].id)`, targeting the outermost composite on the breadcrumb, and schedules an autosave and an undo record.
 - **Values** (a field on an internal card, a marker seed, a Monte Carlo spread). The component calls `processGraph` with the internal node's id, or with no id. The outer pass does not find that id in the main editor, so it bumps `markInternalEdit()` on every composite in the nesting chain and retargets the pass at the outermost owner ([[compute-pass]] § Retarget into composites).

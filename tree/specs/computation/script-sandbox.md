@@ -38,6 +38,20 @@ The one global a script sees is `Solenoid`, frozen, with a single method. JavaSc
 
 ## One call
 
+```mermaid
+flowchart TD
+    d["the card's data()"] --> c{"compiles?"}
+    c -->|"empty"| nul["null"]
+    c -->|no| syn["#SYNTAX!"]
+    c -->|yes| args["each argument to plain JS<br>(a Frame as rows, a Cube as<br>nested rows; a LAMBDA is #TYPE!)"]
+    args --> e{"an error anywhere<br>in an argument?"}
+    e -->|yes| ee["that error,<br>the script never runs"]
+    e -->|no| w["to the worker: network and<br>storage names removed,<br>a 1 s limit"]
+    w -->|"throws or times out"| val["#VALUE!"]
+    w -->|"returns"| clone["made clonable,<br>back to the main thread"]
+    clone --> fold["folded onto the value model;<br>the result socket takes its family"]
+```
+
 1. The card's `data()` returns null for an empty source, and `#SYNTAX!` with the compile message when the source does not compile. The main thread compiles too, for immediate syntax feedback on the card.
 2. Each parameter's argument is its cable's value, or the typed literal when unwired, converted to plain JavaScript (`scriptArgToJs`, below). A parameter is a value slot (`autoLiterals`), so an unwired one takes a typed number or text; exactly one of `literals` and `stringLiterals` holds it, because the inline field clears the other. An unwired input with nothing typed is `undefined`; a wired blank is `null`.
 3. An error anywhere in an argument, at any depth (a list cell, a row cell, a converted Frame row), becomes the result without running the script ([[D35]] errorInErrorOut at cell grain; the engine's error guard sees only whole-value errors).

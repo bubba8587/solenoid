@@ -138,6 +138,17 @@ A Cube is a `CubeValue`: `{ __cube: true, columns: CubeColumn[], depth }`, recog
 
 A `CubeColumn` is `{ name, cells, type?, format? }`. `type` is the column's element type. A declared type (Cube Input's column type, a Solenoid Properties pick, a source Frame column's type) holds the column's values and list items to it, never a table nested in it, which carries its own columns' types ([[D90]] cubeTypesAtDepth); one inferred for a column nobody typed is a display hint, not a promise that every cell matches. A list column's type is its items' type, so its chips tint and print by it. `format` is the Cube counterpart of `FrameColumn.format`: a producing verb can stamp a date pattern on a column (a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm` on Start and Finish).
 
+```mermaid
+flowchart LR
+    cube["a Cube"] --> col["CubeColumn:<br>name, cells, type?, format?"]
+    col --> cell{"a cell"}
+    cell --> sc["a scalar or a<br>Frame cell"]
+    cell --> uc["a UnitCell,<br>base SI"]
+    cell --> li["a list of cells"]
+    cell --> fr["a whole Frame"]
+    cell --> sub["a Cube:<br>depth + 1"]
+```
+
 - **Depth.** `depth` is cached at construction, bottom-up, so it never needs a re-walk: a Cube's depth is 1 plus the deepest Cube found in any of its cells. A Cube cell contributes its own cached depth, a list cell contributes the deepest of its items, and everything else, a nested Frame included, contributes nothing. So a flat Cube is depth 1 and a Cube of Cubes is depth 2. `makeCube` is the only constructor, so every Cube carries its depth.
 - **Rows.** The row count is the longest column (`cubeRowCount`).
 - **Constructors.** `cubeFromColumns(cols)` names the columns through `makeHeaders` and keeps each `type` and `format`. `cubeFromRows(rows, headers?)` builds from a row-major grid, padding short rows with `null`. `toCube(v)` widens any value, as arrival coercion widens into a Frame ([[compute-pass]] § Arrival coercion): a Cube passes, a Frame goes through `frameToCube`, a 2-D array is a grid, a 1-D list is one row, and a scalar is 1×1. Build Cube reads one wired value as a column (`cube_column_from_value`, `nodes/frames.rs`): a list gives its elements, a single-column Cube gives that column's cells (so a cell-wise Build Cube pipes straight in), a Frame, matrix or scalar is one cell holding it, and `null` is no cells.
@@ -162,6 +173,17 @@ On a Cube parent, `relate_cube(parent, child, key, nested_name)` deepens a chain
 ### FrameRef
 
 A Frame on a cable between verb cards is usually a `FrameRef`: `{ __frameRef: FrameHandle, __plan: FrameOp[] }`. The handle names a frame stored in the backend; the plan is a queue of unary ops not yet run. `isFrameRef` tests for the `__frameRef` key. A consumer never reads a handle's data except through the boundaries below.
+
+```mermaid
+flowchart LR
+    src["a FrameValue"] -->|"runFrameUnary uploads it<br>(once per object)"| r1["a ref:<br>handle, plan: op 1"]
+    r1 -->|"the next verb appends,<br>no backend call"| r2["a ref:<br>handle, plan: op 1, op 2"]
+    r2 --> mb{"a materialization<br>boundary"}
+    mb -->|"flush: applyMany,<br>rebased on the longest<br>plan already flushed"| h["a real handle"]
+    h --> full["readFrame:<br>the whole frame"]
+    h --> prev["collectPreview:<br>the first 100 rows"]
+    h --> one["readRefColumn:<br>one column"]
+```
 
 | Runner | Input | Result |
 |---|---|---|
@@ -190,6 +212,14 @@ Every boundary applies sketch scaling and then the aggregate guard (below) befor
 
 ### Who receives a ref
 
+```mermaid
+flowchart LR
+    ref["a FrameRef<br>on a cable"] --> lazy{"the class in<br>LAZY_FRAME_NODES?"}
+    lazy -->|yes| as["its data() gets the ref:<br>it extends the plan or<br>reads through a primitive"]
+    lazy -->|no| col["the boundary collects it<br>(readFrame) first;<br>data() gets a FrameValue"]
+```
+
+
 `LAZY_FRAME_NODES` (`crates/solenoid-graph/src/boundary.rs`) lists the classes whose `data()` receives a FrameRef as is: `DistinctNode`, `HeadNode`, `SortFrameNode`, `FilterFrameNode`, `JoinNode`, `ColumnsNode`, `GroupByFrameNode`, `UnpivotNode`, `AppendNode`, `BindColumnsNode`, `RenameNode`, `FillBlanksNode`, `ReplaceValuesNode`, `WindowNode` (the verb cards), plus `GetColumnNode`, `SumIfsNode`, `TableInfoNode`, `WriteFileNode`, `PivotNode` and `SlicerNode`, which read through the column, preview or read-at-Run primitives instead of a full collect. A card whose body runs on the core never reads a ref in its body: its shell reads what the body names (Table Size's zero-row preview, Slicer's and PIVOTBY's schema and then the columns they ask for) and calls the body again with them, and runs the join or stack a Join, Append or Bind Columns body asks for ([[node-bodies]]). For every other node, the input boundary sees a ref among the inputs and collects it with `readFrame` before calling `data()`. `lazyChain.test.ts` requires every class that emits a ref to be in the set.
 
 ### Verb card lifecycle
@@ -199,6 +229,16 @@ A verb card's `data()` calls `beginPass(this)` before its first await, runs its 
 Ownership: only a ref with an empty plan owns its handle (`dropFrameRef` drops nothing else), which in practice means a binary verb's output. Handles created by flushing are owned by the per-pass memo: `clearCollectMemo()`, called at the start of every `processGraph` pass and every `computeAll`, drops every handle the previous pass flushed and clears all memos. A preview's `__ref` still works after that, because its plan re-flushes from the base handle.
 
 ### Sketch mode and the aggregate guard
+
+```mermaid
+flowchart LR
+    flush["a flush in sketch mode"] --> samp["sample the base handle:<br>10,000 evenly strided rows"]
+    samp --> run["run the plan on the sample"]
+    run --> g{"a groupBy<br>in the plan?"}
+    g -->|yes| scale["at read time: the last groupBy's<br>sum and count × total/sampled,<br>the value marked approx"]
+    g -->|no| plain["the sampled rows as they are"]
+```
+
 
 In the sketch calculation mode, a flush first asks the backend for a deterministic sample of the plan's base handle (`SKETCH_SAMPLE_ROWS = 10,000`; evenly strided rows `floor(i × total / n)`, order kept, never random). The factor is `total / sampled`. When the plan contains a `groupBy`, the output columns of the last `groupBy`'s `sum` and `count` aggregates are multiplied by the factor at read time, and the collected value carries `__approx`. Scaling is never written into backend data, because a re-upload carries only plain columns and would lose the `__approx` mark. The sampled handle is temporary and dropped once the plan has run.
 

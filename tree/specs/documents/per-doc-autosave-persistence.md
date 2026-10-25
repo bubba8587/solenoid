@@ -23,6 +23,16 @@ Autosave keeps the user's whole document library in the browser's `localStorage`
 
 Each pair rotates so a crash in the middle of a write never destroys the only good copy ([[B12]] losslessSaves). **MUST:** a pair always writes the older slot and reads the newer one; a slot's `seq` is a strictly increasing counter kept for the session, never a raw clock reading; `seq` is the first key of every slot payload. The last two each close a way the rotation could silently bring back an older write, as the bullets below say.
 
+```mermaid
+flowchart LR
+    subgraph pair["one key pair"]
+        a["slot a: seq 41"]
+        b["slot b: seq 42"]
+    end
+    w["a write, seq 43"] -->|"goes to the older slot"| a
+    r["a read"] -->|"takes the newer slot;<br>falls back to the other<br>if it is bad"| b
+```
+
 - **Write** goes to the older slot (`chooseWriteSlot`): an empty slot first (`a` before `b`), otherwise the one with the lower `seq`, with a tie going to `a`.
 - **Read** takes the newer slot (`chooseReadSlot`), the higher `seq`, with a tie going to `a`. If that slot is missing, unparsable or fails validation, the read falls through to the other slot.
 - `seq` comes from a counter kept for the session. It starts at `Date.now()` when the module loads, and every write takes the next value. A raw `Date.now()` would let two writes in the same millisecond tie and make the newer slot ambiguous, so a read could bring back the older write.
@@ -35,6 +45,14 @@ Each pair rotates so a crash in the middle of a write never destroys the only go
 1. writes the index, always, since it is tiny and rebuilt wholesale from memory;
 2. writes each document whose object is not the one it last wrote for that id (`_lastPersisted`), and records it on success;
 3. removes the slots of every id in `_lastPersisted` that is no longer in the library (`removeDocSlots`), which frees the quota a deleted document held.
+
+```mermaid
+flowchart LR
+    p["persist()"] --> idx["write the index<br>(always, it is tiny)"]
+    p --> docs["write each document whose<br>object isn't the last one written"]
+    p --> gone["remove the slots of<br>deleted documents"]
+    docs -.->|"a write refused"| note["one sticky notice:<br>save to a file"]
+```
 
 When any write is refused (storage full or disabled), one sticky error notice says "Couldn't autosave: local storage may be full or disabled. Save your graph to a file (Ctrl+S) to be safe." It stays until a later persist fully succeeds, which dismisses it.
 
@@ -66,6 +84,17 @@ A capture whose graph equals the stored one leaves the library as it was (`updat
 4. With no documents left, restore reports nothing to show, and the caller creates a first document.
 5. The current document is the index's `currentId` if that document loaded, and otherwise the first document.
 6. It seeds `_lastPersisted` with the loaded objects, persists once to settle the library into the current write slots, and shows the current document.
+
+```mermaid
+flowchart TD
+    start["startup"] --> idx["read the newest valid index"]
+    idx --> each["read each document's<br>newest valid slot;<br>skip a missing or corrupt one"]
+    each --> any{"any documents?"}
+    any -->|no| first["create a first document"]
+    any -->|yes| cur["show the index's current one,<br>else the first"]
+    cur --> settle["persist once into<br>the current write slots"]
+```
+
 
 The index is metadata only. A document's own slot is the truth wherever the two disagree.
 

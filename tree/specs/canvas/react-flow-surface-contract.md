@@ -14,6 +14,16 @@ The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraph
 
 The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`, the view you get by opening a composite node) render the same `FlowSurface` over a `SurfaceStack`. The two hosts differ only through `SurfaceHooks`.
 
+```mermaid
+flowchart TD
+    main["FlowCanvas<br>the main canvas"] --> surf["FlowSurface: gestures, menus,<br>keys, layers, installers"]
+    drill["FlowCompositeOverlay<br>a composite's drill-in"] --> surf
+    main -.->|"its SurfaceHooks"| surf
+    drill -.->|"its SurfaceHooks: where edits land,<br>which undo answers, Escape, Delete"| surf
+    surf --> stack["a SurfaceStack:<br>flow model, view, handlers"]
+```
+
+
 Inside a composite the user works on the same canvas as the main one: gestures, the lasso, menus and keys all behave the same ([[B3]] sameNodeEverywhere: the inside of a composite is one more place a node appears). They differ only where the place has to: what an edit lands in, which undo history answers, and what Escape and Delete do (the hooks table below lists every difference). Two separate canvases would drift apart, and the inside would slowly stop feeling like the canvas the user learned; the drill-in's old bare delete loop was exactly that drift. **Reopen if:** one of the two genuinely needs a behavior the other must not have.
 
 - Anything that belongs to the surface goes in `FlowSurface`, never in one host. That covers gestures, menus, keys, layers and installers. A behavior installed in one host is a behavior the other silently lacks.
@@ -58,6 +68,15 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 
 `_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`), the pointer's canvas position, and each card's measured size (from `onNodesChange` dimension changes). The view offers:
 
+```mermaid
+flowchart LR
+    model["the flow model:<br>GraphEditor + DataflowEngine"] -->|"verbs, through late-bound<br>callbacks (moveNode, rerender...)"| view["the View seam<br>(flowView.ts)"]
+    view --> rf["React Flow state:<br>only a renderer"]
+    rf -->|"viewport, pointer,<br>measured card sizes"| view
+    view -->|"positions, camera,<br>sizes read back"| model
+```
+
+
 - `position(id)`, a live read of `node.position`, undefined for an id the view's editor doesn't hold; `hasNode(id)`, the "belongs to this surface" test;
 - `nodeElement(id)`, the live RF node wrapper, and `connectionElement(id)`, the live edge group;
 - the pane (`container`) and the transformed content element (`viewport`);
@@ -88,6 +107,13 @@ The surface reaches the model through three things, each in [[graph-core]]: the 
 ## Groups are sub-flows
 
 A group is an RF parent node, and each member sets `parentId` to it. The model keeps absolute positions; RF holds a member's position relative to its group and tows members itself. Conversion happens only at the boundary: `flowModel.toFlowPosition` / `fromFlowPosition`, `handlers.moveNode` (where moving a group re-bases every member, so a Tidy that moves members before their group still ends consistent) and `onNodesChange` (which applies RF-driven moves to the model, groups first, so a member resolves against its group's new spot). Never write a member's RF position from absolute coordinates.
+
+```mermaid
+flowchart LR
+    abs["the model: every position<br>absolute (node.position)"] -->|"toFlowPosition"| rel["React Flow: a member's position<br>relative to its group"]
+    rel -->|"onNodesChange,<br>fromFlowPosition"| abs
+    saves["saves, Tidy, standoffs,<br>lasso, docking"] -->|"read only"| abs
+```
 
 `SolenoidNode.position` is the node's absolute canvas position. The model layer stamps it when the node is added; no node class declares it, and it is optional in the type only for the instant before the stamp. Write it only through `View.moveNode` or `flowModel.moveNode`.
 

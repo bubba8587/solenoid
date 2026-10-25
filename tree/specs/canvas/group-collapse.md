@@ -18,6 +18,16 @@ Collapsing a group shrinks it to a small card that shows the group's results as 
 - **Hidden cables.** A cable is hidden only when both ends are hidden in the same collapsed group. A cable that crosses the group's edge stays visible and is redirected to a pill on the card: outbound cables to a pill on the right, next to that value's readout row, and inbound cables to a pill on the left, one per member input. A cable between two different collapsed groups stays visible and runs between both groups' pills.
 - **Conduit bundles.** Outputs of a hidden Conduit that land on one external destination share one combined row and pill, so their cables draw as a single ribbon; a combined row shows the lane count instead of one lane's value. Inbound cables from one external Conduit likewise share one left pill, since their ribbon trunk ends whole and needs one anchor. The bundling destination is derived from membership, not from the order pills are computed in, so a first pass maps every hidden member to its group, for every collapsed group, before any group is processed: bundling needs to know whether a target is hidden in a different collapsed group.
 
+```mermaid
+flowchart TD
+    c["a cable touching a collapsed group"] --> both{"both ends hidden<br>in the same group?"}
+    both -->|yes| hid["hidden"]
+    both -->|no| dir{"which way does it cross?"}
+    dir -->|"out of the group"| right["drawn to a pill on the right,<br>beside that value's readout row"]
+    dir -->|"into the group"| left["drawn to a pill on the left,<br>one per member input"]
+    dir -->|"between two<br>collapsed groups"| two["runs between<br>both groups' pills"]
+```
+
 **Pills.** A pill is keyed by the socket it stands in for (`nodeId::socketKey`), not by a connection, so a cable being dragged out of an output pill redirects to the pill instead of anchoring at the hidden member's origin. A pill's index is its row, which sets its vertical offset; the row gap must match the `.solenoid-group__summary` flex `gap` in GroupNode.css, or cable ends drift a gap further off with every row down.
 
 **Settling cable ends** (`settleCollapse`). Pills reuse the members' socket keys, so an expand re-renders the members a frame before re-measuring, and a collapse must not re-render them, which would clobber the pills' positions. A docked FC gets the same treatment even when it was never absorbed as a member, since a retained Display-to-FC hop registers a pill on the FC's `out` socket.
@@ -27,6 +37,18 @@ Collapsing a group shrinks it to a small card that shows the group's results as 
 ## Which readouts the card shows
 
 A readout row shows one of the group's terminals: a value that leaves the group or goes nowhere. Rows are built in three passes.
+
+```mermaid
+flowchart TD
+    m["a member"] --> disp{"a Display whose effective<br>output leaves the group<br>or goes nowhere?"}
+    disp -->|yes| r1["pass 1: a Display row"]
+    disp -->|no| cross{"an output with a cable<br>leaving the group?"}
+    cross -->|yes| r2["pass 2: a generic row<br>(or a pill on the Display<br>row that already shows it)"]
+    cross -->|no| leaf{"an output with<br>no cable at all?"}
+    leaf -->|yes| r3["pass 3: a row for its<br>first shown output"]
+    leaf -->|"no: feeds members only"| none["hidden, no row"]
+```
+
 
 1. **Display members.** A Display is the special visible readout. Its "effective output" is its own `out`, unless the Display feeds a Format Controller (FC) that is also a member; then the FC's `out` is the effective output (the Display stays the visible readout and the FC is hidden). The Display gets a row when its effective output has no connection, or has any connection that leaves the group.
    - Display → nothing: shown.
