@@ -50,6 +50,12 @@ export type GraphPipe<S extends GraphSchemes> = (signal: GraphSignal<S>) => Grap
 /** A pipe in the chain, or the engine's place in it; `handle` is the core's. */
 type Piped = { run?(signal: GraphSignal<GraphSchemes>): unknown; engine?: true; handle?: number; removed?: boolean };
 
+/** A composite's own editor. */
+function innerEditor(node: unknown): GraphEditor<GraphSchemes> | undefined {
+  const inner = (node as { internalEditor?: unknown }).internalEditor;
+  return inner instanceof GraphEditor ? inner : undefined;
+}
+
 function portsOf(ports: Record<string, { socket: { name: string } } | undefined>): [string[], string[]] {
   const keys = Object.keys(ports);
   return [keys, keys.map((k) => ports[k]!.socket.name)];
@@ -104,6 +110,17 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     this._core = null;
   }
 
+  /** Frees the core, and the cores of the composites' editors here: the core holds the nodes, cables and pipes as
+   *  JavaScript values the garbage collector can't reach past. The fields it held go back to their nodes, so a later
+   *  call builds a core again from what the handle holds. */
+  dispose(): void {
+    const core = this._core;
+    if (!core) return;
+    this._core = null;
+    for (const node of this.nodes.values()) innerEditor(node)?.dispose();
+    if (wasmEngineLoaded()) guarded(() => { core.release(); core.free(); });
+  }
+
   /** A field the core holds for a direct card (graph-core.md § Direct calls): the object reads it from the core,
    *  converted when read, and writing it stores it there; once the core holds none for it, it is a plain field again. */
   private adopt(node: S["Node"], field: string): void {
@@ -154,10 +171,13 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
 
   /** A composite's own editor, made known to this core so a pass can retarget an edit inside it. */
   private nest(core: GraphCore, node: S["Node"], on: boolean): void {
-    const inner = (node as unknown as { internalEditor?: unknown }).internalEditor;
-    if (!(inner instanceof GraphEditor)) return;
+    const inner = innerEditor(node);
+    if (!inner) return;
     if (on) core.nest(node.id, inner.core());
-    else core.unnest(node.id);
+    else {
+      core.unnest(node.id);
+      inner.dispose();
+    }
   }
 
   private sendConnection(core: GraphCore, c: S["Connection"]): boolean {
@@ -231,6 +251,7 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     const p = this.piped[handle];
     if (!p || handle === 0 || p.engine || p.removed) return;
     p.removed = true;
+    p.run = undefined;
     if (this._core && p.handle !== undefined) guarded(() => this._core!.removePipe(p.handle!));
   }
 

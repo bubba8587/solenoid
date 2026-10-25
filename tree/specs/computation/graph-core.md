@@ -71,6 +71,13 @@ owns how the model and the engine are hosted.
 - **A composite's own editor is known to the one holding it.** When a node with an `internalEditor` joins an editor,
   that editor's core records the inner one's (`nest`; `unnest` when it leaves), so the pass can retarget an edit made
   inside it (§ The pass).
+- **An editor that's done frees its core** (`dispose`). The core holds every node's and cable's object, each pipe and
+  the editor's own callbacks as JavaScript values the garbage collector can't reach past, so a core nothing frees keeps
+  its whole graph alive. `dispose` hands each field the core held back to its node (`release`, as a node leaving does),
+  frees the core and the cores of the composites inside, and the next call builds a core again from the handle, as
+  after a trap. A composite leaving its editor frees its own editor's core; a stage that builds its own editor (the
+  landing graph, a scene, the showcase) frees it when it unmounts; `removePipe` drops the pipe's function.
+  `graphEditorDispose.test.ts` holds it to the garbage collector.
 - **Edits finish before they return.** `addNode` and the other edits return promises, as rete's did, but the change
   and all its signals have run when the call returns, where rete's landed a microtask or more later.
 - Rete's errors keep their messages: adding an id twice ("node has already been added"), removing a missing node or

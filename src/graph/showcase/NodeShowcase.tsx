@@ -35,6 +35,7 @@ function LoadedShowcase({ initialType }: { initialType: string }) {
   const [zoom, setZoom] = useState(1);
   const listRef = useRef<HTMLDivElement>(null);
   const stack = useMemo(makeStaticStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();

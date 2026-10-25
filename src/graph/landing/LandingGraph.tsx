@@ -210,6 +210,7 @@ export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<voi
 
 export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {
   const stack = useMemo(makeLandingStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
   const [resetNonce, setResetNonce] = useState(0);
   const [sceneIdx, setSceneIdx] = useState(0);
   const activeBuild = scenes ? scenes[sceneIdx].build : build!;

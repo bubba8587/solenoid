@@ -1025,7 +1025,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_185(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_186(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1491,6 +1491,13 @@ export class GraphCore {
         return takeObject(ret);
     }
     /**
+     * Every node's fields the core held go back to its object, so the editor can free this core and build another
+     * from its objects when it's used again (`GraphEditor.dispose`).
+     */
+    release() {
+        wasm.graphcore_release(this.__wbg_ptr);
+    }
+    /**
      * `false` when a `nodecreate` pipe cancelled it.
      * @param {string} id
      * @param {object} object
@@ -1840,7 +1847,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_185(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_186(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1978,7 +1985,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper645 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper647 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 133, __wbg_adapter_38);
         return addHeapObject(ret);
     };

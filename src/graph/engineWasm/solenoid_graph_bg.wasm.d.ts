@@ -30,6 +30,7 @@ export const graphcore_new: (a: number, b: number) => number;
 export const graphcore_nodeIds: (a: number, b: number) => void;
 export const graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const graphcore_ports: (a: number, b: number, c: number, d: number) => number;
+export const graphcore_release: (a: number) => void;
 export const graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_removePipe: (a: number, b: number) => number;

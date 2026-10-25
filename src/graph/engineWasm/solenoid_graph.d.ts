@@ -269,6 +269,11 @@ export class GraphCore {
    */
   compute(id: string, inputs: any): Promise<any>;
   /**
+   * Every node's fields the core held go back to its object, so the editor can free this core and build another
+   * from its objects when it's used again (`GraphEditor.dispose`).
+   */
+  release(): void;
+  /**
    * `false` when a `nodecreate` pipe cancelled it.
    */
   addNode(id: string, object: object, input_keys: string[], input_types: string[], output_keys: string[], output_types: string[]): boolean;
@@ -328,6 +333,7 @@ export interface InitOutput {
   readonly graphcore_nodeIds: (a: number, b: number) => void;
   readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
   readonly graphcore_ports: (a: number, b: number, c: number, d: number) => number;
+  readonly graphcore_release: (a: number) => void;
   readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removePipe: (a: number, b: number) => number;

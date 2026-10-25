@@ -88,6 +88,7 @@ export function SceneStage(props: SceneStageProps) {
 
 function LoadedSceneStage({ build, className, manualLayout, awaitConnections }: SceneStageProps) {
   const stack = useMemo(makeSceneStack, []);
+  useEffect(() => () => stack.editor.dispose(), [stack]);
   const rfId = useId();
   // Held until the headless layout settles, or the entrance plays at the origin-stacked positions.
   const [ready, setReady] = useState(false);

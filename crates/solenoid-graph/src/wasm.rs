@@ -748,6 +748,14 @@ impl GraphCore {
         Ok(cleared)
     }
 
+    /// Every node's fields the core held go back to its object, so the editor can free this core and build another
+    /// from its objects when it's used again (`GraphEditor.dispose`).
+    pub fn release(&self) {
+        for node in self.shared.graph.editor().get_nodes() {
+            self.shared.left(&node);
+        }
+    }
+
     /// Gives the node exactly these ports, in order: a node's socket changes reach the core as one call.
     #[wasm_bindgen(js_name = setPorts)]
     pub fn set_ports(
