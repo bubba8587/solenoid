@@ -111,8 +111,9 @@ captures with their units (`capturedValues`), which the core's unit plan (`nodes
 ## Where it runs
 
 - **Everything:** formulas, computed columns, frame verbs, pivots and card bodies run on the core in wasm on every
-  platform, desktop included: one build, one answer ([[C130]] rustCore). The app's first render waits for it with no
-  deadline (`main.tsx`), since the cards' bodies run on it ([[node-bodies]]). The desktop shell adds only what a
+  platform, desktop included: one build, one answer ([[C130]] rustCore). The app's chrome renders while it loads; the canvas
+  waits for it (`useCoreReady`, [[graph-core]]), since the cards' bodies run on it ([[node-bodies]]). At 4 Mbps that
+  brings the chrome up at about 3 s where it waited about 13 s for the whole module. The desktop shell adds only what a
   browser can't do; for tables that is reading a Parquet file (`crates/solenoid-parquet`, [[frame-verbs]] § Reading
   Parquet). Its webview fetches the module from the app's own origin, so the CSP's `connect-src` carries `'self'`
   (`tauri.conf.json`, `desktopCsp.test.ts`). The 1.5.0-era `.deb` was 24 MB with Polars; on the core alone it is 18 MB.

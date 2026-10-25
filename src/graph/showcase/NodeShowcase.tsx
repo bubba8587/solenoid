@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SolenoidNode } from "../schemes";
 import { makeStaticStack, StaticFlowStage } from "../flow/StaticFlowStage";
+import { useCoreReady } from "../coreReady";
 import { FLAT_CATALOG } from "../catalogUtils";
 import { setEditorRefs, processGraph } from "../process";
 import { nodeNameStore } from "../nodeNameStore";
@@ -18,6 +19,11 @@ import "./NodeShowcase.css";
 const PAD = 48;
 
 export default function NodeShowcase({ initialType }: { initialType: string }) {
+  if (!useCoreReady()) return null;
+  return <LoadedShowcase initialType={initialType} />;
+}
+
+function LoadedShowcase({ initialType }: { initialType: string }) {
   const entries = useMemo(
     () => [...FLAT_CATALOG.values()].filter((e) => !e.hidden),
     [],

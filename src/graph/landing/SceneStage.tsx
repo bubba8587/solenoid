@@ -13,6 +13,7 @@ import { measuredBox } from "../nodeSize";
 import { registerOwnedGraph } from "../activeGraph";
 import { whenConnectionsSettled, hasInflightConnections } from "../connectionStore";
 import { computeStack } from "./landingCompute";
+import { useCoreReady } from "../coreReady";
 
 const ensureElk = makeEnsureElk(() => false);
 
@@ -70,19 +71,22 @@ function waitForMeasured(stack: SurfaceStack, budget = 30): Promise<void> {
   });
 }
 
-export function SceneStage({
-  build,
-  className,
-  manualLayout,
-  awaitConnections,
-}: {
+type SceneStageProps = {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
   /** The build fn positions the nodes itself, so the ELK/Tidy pass is skipped. */
   manualLayout?: boolean;
   /** The scene reads a connection: wait for every in-flight read and recompute before measuring. */
   awaitConnections?: boolean;
-}) {
+};
+
+/** Holds the scene's box empty until the core loads; the scene builds a graph on it. */
+export function SceneStage(props: SceneStageProps) {
+  if (!useCoreReady()) return <div className={props.className} />;
+  return <LoadedSceneStage {...props} />;
+}
+
+function LoadedSceneStage({ build, className, manualLayout, awaitConnections }: SceneStageProps) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
   // Held until the headless layout settles, or the entrance plays at the origin-stacked positions.

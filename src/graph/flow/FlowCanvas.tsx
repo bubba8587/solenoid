@@ -36,6 +36,7 @@ import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
 import { settingsStore } from "../settingsStore";
 import { useIsMobile } from "../useDeviceMode";
+import { useCoreReady } from "../coreReady";
 
 type Stack = {
   editor: GraphEditor<Schemes>;
@@ -251,6 +252,7 @@ function FlowCanvasInner() {
 }
 
 export function FlowCanvas() {
+  if (!useCoreReady()) return null;
   return (
     <ReactFlowProvider>
       {/* Node components under this provider render RF Handles. */}

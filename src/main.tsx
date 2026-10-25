@@ -10,7 +10,7 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
-import { initFrameBackend } from "./graph/frameBackend";
+import { startCore } from "./graph/coreReady";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
@@ -114,8 +114,9 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[D102]] graphOnCore).
-const backendReady = initFrameBackend();
+// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[D102]] graphOnCore);
+// the chrome renders while it loads, and the surfaces that build a graph wait for it (`useCoreReady`).
+void startCore();
 
 initDevtoolsHotkey();
 
@@ -127,12 +128,11 @@ if (import.meta.env.DEV) {
 }
 
 // Not wrapped in <React.StrictMode>: its double-invoked mount races the async editor init, leaving two elements per socket.
-// A backend that fails to start still renders, on the TS; the rejection reaches the unhandled-rejection notice.
-void backendReady.finally(() => ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">
     <App />
   </ErrorBoundary>,
-));
+);
 
 if (import.meta.env.DEV) {
   void import("./graph/seedTune");

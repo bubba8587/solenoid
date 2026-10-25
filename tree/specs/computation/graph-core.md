@@ -23,7 +23,8 @@ owns how the model and the engine are hosted.
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
-  app's first render waits for `loadWasmEngine()` (`engineWasm.ts`) with no deadline (`main.tsx`). An editor or
+  app's chrome renders at once while `startCore()` (`coreReady.ts`) loads it; the surfaces that build a graph (the
+  canvas, the landing scenes, the node showcase) render nothing until `useCoreReady()` says it has loaded. An editor or
   engine made before it loads is fine, since the core is built on first use (`GraphEditor.core()`); the first edit then
   throws "the wasm engine isn't loaded". Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes
   at `wasmUrl` and calls `loadWasmEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every
