@@ -134,7 +134,7 @@ A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the outp
 
 Four verbs have their own entry points:
 
-- `shapeOfJoin(left, right, opts)` checks both keys, then gives the left columns only for semi and anti (a filter, not a widening join), otherwise the left columns followed by the right's non-key columns, names made unique. It mirrors `joinFrames`.
+- `shapeOfJoin(left, right, opts)` checks both keys, then gives the left columns only for semi and anti (a filter, not a widening join), otherwise the left columns followed by the right's non-key columns, names made unique. It mirrors `join_frames`.
 - `shapeOfAppend(shapes)` is the union by name in first-seen order; a shared name with two different types is `#TYPE!`.
 - `shapeOfAddIndex(input, name)` puts one number column first (`name`, default "Index"), names made unique.
 - `shapeOfSplitColumn(input, column, delimiter)` drops the split column and flags `dynamic`, because the part count is the maximum across rows; an empty delimiter returns the input.

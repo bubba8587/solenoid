@@ -104,9 +104,9 @@ one-liner" is not a good look for a project this otherwise-tested.
 > re-cut, corpus and pins with it. Everything below is the record of the reasoning.
 
 **I was wrong, and the review process is only honest if it says so.** My original claim:
-`encodeCell` → `JSON.stringify` serializes every non-finite number to `null`
+`encode_cell` → `JSON.stringify` serializes every non-finite number to `null`
 (reproduced: `JSON.stringify(["#", Infinity]) === '["#",null]'`, same for `-Inf`/`NaN`),
-so `distinctRows` and `groupByFrame` collapse `+Inf`/`-Inf`/`NaN` into one key. I framed
+so `distinct_rows` and `group_by_frame` collapse `+Inf`/`-Inf`/`NaN` into one key. I framed
 that as a silent JS↔Polars *divergence*.
 
 It is the opposite. The collapse is a **deliberate, documented, cross-backend

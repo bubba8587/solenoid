@@ -38,7 +38,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Collapse**: shrinking a node's body to just its result box (per-node chevron).
   (`collapseStore.ts`)
 - **Snap to grid**: dropped nodes round to the 24px background-dot grid.
-  (`gridSnapStore.ts`, `GRID_SNAP_STEP`)
+  (`gridSnapStore.ts`, `DOT_SPACING`)
 - **Load curtain**: the progress overlay shown while a document loads.
   (`loadReveal.ts`, `LoadOverlay.tsx`)
 
@@ -58,6 +58,13 @@ area. When you coin a new load-bearing term, add it here.
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
   (`sockets.ts`, `nodes/logic.ts`)
+- **V / Cv**: the core's two value types. **V** is a formula value: a scalar, a list, a matrix,
+  a complex number, a LAMBDA, never a table. **Cv** is a card value, what a cable holds: a `V`,
+  or a Frame, a Cube (whose cells are `Cv`, so tables nest), a list holding tables (`Cells`) or
+  a chart, document or image as JSON. A table reaching a value socket is `#VALUE!`.
+  (`../tree/specs/computation/node-bodies.md` § The call)
+- **Card wire**: how a card's values cross between TypeScript and the core: the formula value
+  wire plus what only cards hand each other (`nodeWire.ts`, the core's `nodes/values.rs`).
 - **Socket lattice**: the rules for what can connect to what. Type families never cross on
   their own (that takes a Cast), and values flow freely up in rank. (`sockets.ts`,
   `socketConnect.test.ts`; [[C10]] socketLattice, `../tree/specs/values/socket-lattice.md`)
@@ -148,11 +155,30 @@ area. When you coin a new load-bearing term, add it here.
   the tree's `atcol`/`wholecol`)
 - **Structured (bracket) reference**: how to write a column name that isn't a valid
   identifier. `[Unit Price]` is the whole column; `@[Unit Price]` or `[@Unit Price]` is this
-  row. (`excelFormula.ts` tokenizer `colref`/`rowref`)
-- **Formula evaluator**: the tree-walking `evalAst` in `excelFormula.ts` is THE
-  evaluation core (the old `compileFormula` codegen path was retired outright).
-- **RANGE_FUNCTIONS**: formula functions that take a whole list at once (SUM, MEDIAN…)
-  vs. element-wise broadcast ones. (`excelFormula.ts`)
+  row. (the core's `excel_formula.rs` tokens `ColRef`/`RowRef`)
+- **Formula evaluator**: the tree-walking `Eval` in the core's `eval.rs`, the one place a
+  formula is evaluated; `excel_formula.rs` parses it.
+- **Call table**: one row per formula function (`crates/solenoid-core/data/call_traits.json`):
+  how a call routes (`kind`), how a range call readies its lists (`prep`), whether it reads a
+  one-column table as a list (`free`), each argument's role and empty-slot reading, and a
+  blocked name's message. The formula half of a function's declarations.
+  (`../tree/specs/computation/formula-language.md` § The registry)
+- **Listing**: everything that makes a function findable, kept apart from what it computes:
+  its catalog leaf (name, description, search keywords, accent, formula name), its op entry in
+  a family's `OP_META`, its Excel names (`NODE_EXCEL`) and the Inspector's socket notes
+  (`socketDocs`, `frameHints`). A function that is both a formula and a card is declared three
+  times, its call-table row, its card and its listing, and one function can be listed several
+  ways (a leaf, an op of a family, an alias row) without touching the other two.
+  (`../tree/specs/canvas/add-menu.md`; `../tree/specs/floors/node-classes.md` § A new function across the app)
+- **Range function**: a function whose call-table `kind` is `range` (SUM, MEDIAN…): a list
+  argument arrives as one list, never called per element. vs. **broadcast** (called per cell)
+  and **whole-list native** (`whole`: every argument exactly as it is).
+- **Dispatch ladder**: the fixed order every formula call is checked in, lambda binding first
+  and routing last; the first matching step answers.
+  (`../tree/specs/computation/formula-language.md` § The dispatch ladder)
+- **Per-cell contract**: the one rule every element-wise op runs before it computes: an error
+  operand is the answer, else a blank operand is blank, else compute.
+  (`../tree/specs/values/error-values.md` § The per-cell contract and the non-finite guard)
 
 ## Persistence & structure
 

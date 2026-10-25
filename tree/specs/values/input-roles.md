@@ -96,11 +96,11 @@ flowchart TD
 
 **A card** reads a declared input with `readRole(this, key, inputs.key)` (`nodes/shared.ts`). Unwired, the value is the typed literal; wired, the cable's value, and a blank cable overrides the typed value ([[D86]] blankRoles). The value then goes through `applyRole` with the socket's label for the error. An unwired input with no typed value (CHOOSEROWS's indices) is a blank. The card still hides its typed field while a cable is plugged in, so the override is visible.
 
-**A formula** reads its arguments in `applyArgRoles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). An empty slot and a blank value take different paths: the empty slot reads as its parameter's Excel blank ([[#Empty slots]]), and a blank value reads by the role. A declared slot, and any empty slot, is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
+**A formula** reads its arguments in `apply_arg_roles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). An empty slot and a blank value take different paths: the empty slot reads as its parameter's Excel blank ([[#Empty slots]]), and a blank value reads by the role. A declared slot, and any empty slot, is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
 
 **A computed column** runs the formula once per row, so a blank setting cell is a whole blank setting on that row: `ROUND(@Price, @Digits)` rounds a row with a blank digits cell to 0 places, the same answer the Round card gives for a digits list with a blank item.
 
-**A kernel** never sees a blank setting or a blank pick: it receives the declared blank, `LEFT_OUT`, or a list with the blank picks gone. Kernels shared by a card and a formula (`chooseAxis`, `indexInto`) take numbers and `undefined` only.
+**A kernel** never sees a blank setting or a blank pick: it receives the declared blank, `LEFT_OUT`, or a list with the blank picks gone. Kernels shared by a card and a formula (`choose_axis`, `index_into`) take numbers and `undefined` only.
 
 ## Empty slots
 

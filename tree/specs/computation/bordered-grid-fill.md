@@ -12,7 +12,7 @@ Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTE
 
 ## Inputs and coordinates
 
-The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix. `gridAxes` normalizes the inputs:
+The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix. `grid_axes` normalizes the inputs:
 
 - The table becomes a rectangle as wide as its longest row. A cell that is not a finite number (a blank, an error, text) becomes blank.
 - An empty table, or one with no columns, gives a null result.
@@ -34,7 +34,7 @@ The known cells are the ones holding numbers. The **coarse grid** is the set of 
 3. Try every box formed by one line from each side, nearest lines first. Skip a box when any of its four corners is blank, and skip it when it is contested (below). The first box that survives wins, so the closest box with four known corners fills the cell. Widening past blank corners is what lets a run of holes interpolate across the missing samples; the query always stays inside the box, so this is still interpolation.
 4. Fill the cell by true bilinear interpolation of the four corners, the same answer as MATLAB `interp2` or SciPy `RegularGridInterpolator` with `"linear"`: interpolate along X on the top and bottom edges, then along Y between them. When the box has zero width or height, that direction's weight is 0.
 
-**Pass 2, forecast.** With `forecast` on, the default, every cell pass 1 left blank fills from a smooth surface fitted through all the known points (`fitSurface`). This covers scattered gaps and extrapolates past the data with a linear trend at the edges. A surface value that is not finite leaves the cell blank. With `forecast` off, only cells pass 1 enclosed are filled and every other blank stays null; a lookup table does not extrapolate.
+**Pass 2, forecast.** With `forecast` on, the default, every cell pass 1 left blank fills from a smooth surface fitted through all the known points (`fit_surface`). This covers scattered gaps and extrapolates past the data with a linear trend at the edges. A surface value that is not finite leaves the cell blank. With `forecast` off, only cells pass 1 enclosed are filled and every other blank stays null; a lookup table does not extrapolate.
 
 ## The widening cap
 
@@ -51,8 +51,8 @@ The effect is that edges defer to the surface: an uncontested segment along the 
 
 ## The forecast surface
 
-`fitSurface(points)` returns a function of (x, y), or nothing when there are no points.
+`fit_surface(points)` returns a function of (x, y), or nothing when there are no points.
 
 1. Scale x and y to 0 to 1 over the points' range, for numerical stability. An axis with no spread scales to 0.
-2. With 3 to 220 points (`TPS_MAX_POINTS`), fit a thin-plate spline: exact through every point, with kernel r²·log r and an affine term a₀ + a₁x + a₂y, solved by Gauss-Jordan elimination with partial pivoting. Past 220 points the O(n³) solve is not worth it.
+2. With 3 to 220 points (`fit_surface`, `fns_lists.rs`), fit a thin-plate spline: exact through every point, with kernel r²·log r and an affine term a₀ + a₁x + a₂y, solved by Gauss-Jordan elimination with partial pivoting. Past 220 points the O(n³) solve is not worth it.
 3. With fewer than 3 points, more than 220, or a singular system (collinear points), fall back to a least-squares plane. The slope terms are regularized by 10⁻⁶ times the matrix trace plus one, so the plane always solves; if it still cannot, the surface is flat at the mean of the known values.

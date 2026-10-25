@@ -8,6 +8,8 @@ tags: [spec, canvas]
 
 Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
+A function's **listing** is everything that makes it findable: its leaf, its op entry, its Excel names, its search words and its Inspector notes. It is declared apart from what the function computes (its call-table row and its card, [[node-classes#A new function across the app]]), so one function can be listed several ways, as the map below shows.
+
 The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. The catalog is declared in `nodeCatalog.ts` and assembled by `catalogUtils.ts`; op families are declared in `nodeOps.ts`; search is `catalogSearch.ts` and `fuzzy.ts`; the panel is `AddNodeMenu.tsx`. `catalogSearch.test.ts`, `fuzzy.test.ts` and `nodeOps.test.ts` pin the behavior.
 
 ## The catalog tree

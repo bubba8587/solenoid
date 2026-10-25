@@ -12,6 +12,7 @@ import * as path from "path";
 //  3. every archived doc is listed in docs/archive/README.md;
 //  4. every code file the README index cites exists in the repo;
 //  5. the routing table never sends live work into docs/archive.
+//  6. every code name a spec cites is a word somewhere in the code.
 
 const ROOT = path.resolve(__dirname, "../..");
 const DOCS = path.join(ROOT, "docs");
@@ -163,5 +164,56 @@ describe("the tree/ vault's wikilinks resolve", () => {
       .map((m) => m[1].trim())
       .filter((t) => !targets.has(t));
     expect(dead).toEqual([]);
+  });
+});
+
+describe("the specs name code that exists", () => {
+  // A spec that names a deleted function sends a reader looking for nothing, and the Rust port renamed most of
+  // them. Every backticked camelCase, snake_case or CONSTANT name in the specs and the index docs must be a word
+  // somewhere in the code. Names that belong to someone else, or that a spec names to say they don't exist, are
+  // listed with why.
+  const NOT_OURS = new Set([
+    "getDiagonalPath", "getSmoothStepPath", "HandleComponent", "useConnection", // React Flow
+    "useReducer", "ElementImage", "WM_CLASS", "requireLiteralLeadingDot", // React, the browser, X11, Tauri's fs
+    "RegularGridInterpolator", "yaml_property", "row_num", // SciPy, a Knap filter, an Excel argument
+    "__content", "__body", // BEM suffixes of a class named in the same sentence
+    "globalGen", "nodeToken", // placeholders in a key's written form
+    "withAngleLeads", "MatrixValue", "columnFromCells", "WritePropertiesNode", "parent_id", // named as gone or rejected
+  ]);
+  const words = new Set<string>();
+  const walk = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (["node_modules", "target", "dist", "pkg"].includes(e.name) || e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(ts|tsx|rs|mjs|cjs|js|css|py|toml|json)$/.test(e.name) && fs.statSync(p).size < 2_000_000)
+        for (const w of read(p).match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) words.add(w);
+    }
+  };
+  for (const d of ["src", "crates", "tests", "scripts", "tools", "src-tauri", "obsidian-plugin", "packages"]) walk(path.join(ROOT, d));
+  for (const f of ["vite.config.ts", "vitest.config.ts", "package.json"]) for (const w of read(path.join(ROOT, f)).match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []) words.add(w);
+
+  const specs: string[] = [];
+  const walkMd = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walkMd(p);
+      else if (e.name.endsWith(".md")) specs.push(p);
+    }
+  };
+  walkMd(path.join(ROOT, "tree", "specs"));
+  for (const f of ["glossary.md", "README.md", "architecture.md", "mental-model.md", "node-coverage.md", "subsystem-invariants.md"])
+    specs.push(path.join(DOCS, f));
+
+  it("every code name a spec cites is in the code", () => {
+    const dead = specs.flatMap((f) =>
+      [...read(f).matchAll(/`([A-Za-z_][A-Za-z0-9_]{5,})(?:\(\)`|`|\()/g)]
+        .map((m) => m[1])
+        .filter((n) => /[A-Z]/.test(n.slice(1)) || n.includes("_"))
+        .filter((n) => !words.has(n) && !NOT_OURS.has(n))
+        .map((n) => `${path.relative(ROOT, f)}: ${n}`),
+    );
+    expect([...new Set(dead)]).toEqual([]);
   });
 });

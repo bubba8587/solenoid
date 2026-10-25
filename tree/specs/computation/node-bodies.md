@@ -139,7 +139,7 @@ flowchart LR
   at most 2,500 a class, a call holding a value that can't cross counted in `.dev/node-freeze-report.json` and not
   kept. A call whose answer differed between two identical calls (a random draw, the clock) is kept marked
   `unstable` and not checked. A call whose body threw a JS exception freezes as its text (`thrownJs`) and is checked
-  as the error the error guard shows for it (`fromThrown`: `#SHAPE!` for a `ShapeError`, else `#ERROR!` "This node
+  as the error the error guard shows for it (`from_thrown`: `#SHAPE!` for a `ShapeError`, else `#ERROR!` "This node
   failed to compute: …"), which is what the card answered. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
 - A class is frozen while its TypeScript body exists; once it is deleted, its fixture changes only on purpose, in the
   commit that changes the behaviour.

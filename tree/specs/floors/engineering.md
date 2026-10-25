@@ -28,7 +28,7 @@ A separate map is a second place that must be kept in step, sitting away from th
 
 **MUST:** when code keeps a list of names that share some trait (which functions take a whole range, which ops a card offers), the list is generated from wherever that trait is declared. If it truly can't be generated, a test checks what each listed name does, not just that the name is on the list.
 
-A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM`) were once missing from `RANGE_FUNCTIONS`, so each ran once per cell and gave a believable wrong answer. A test that compares the list against a second typed-in list proves nothing, since both can be wrong together; a test that `T.TEST` returns one number, not four, is a real check.
+A typed-in list breaks without a sound: leave a name off and nothing errors, the name just behaves differently. Ten functions (`T.TEST`, `F.TEST`, `Z.TEST`, `CHISQ.TEST`, `SUMX2MY2`, `SUMX2PY2`, `SUMXMY2`, `MODE.SNGL`, `PROB`, `SERIESSUM`) were once missing from the range functions, so each ran once per cell and gave a believable wrong answer. A test that compares the list against a second typed-in list proves nothing, since both can be wrong together; a test that `T.TEST` returns one number, not four, is a real check.
 
 *Exception:* the routing of the functions taken from Formula.js (`kind` and `scalar` in the core's `data/call_traits.json`) was typed by hand, because Formula.js published no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** generating the call table from the bodies' own signatures.
 
@@ -99,23 +99,23 @@ Serves [[C120]] linearWork. Each rule names the shape that broke it, since every
 
 **MUST:** inside a loop over rows or cells, no call walks the whole table or list again: no `filter`, `find`, `indexOf`, `includes`, `slice` or aggregate over the collection being looped, and no `JSON.stringify` of a row to make a key. Work that doesn't depend on the row is done once before the loop.
 
-- *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compileFilter`), a formula call's name, blank slots and routing are resolved once per call site and per function (`callPlan`, `callRefusal`, `nameTraits`), and a plain computed column builds its environment once.
-- *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until `memoRangeCall` answered repeat calls with identical arguments from the last result.
+- *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compile_filter`), a formula call's name, blank slots and routing are resolved once per call site (`Site`, `eval.rs`), and a plain computed column builds its environment once.
+- *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until the range memo (`Memo`, `eval.rs`) answered repeat calls with identical arguments from the last result.
 - *Count with a sort, not a scan.* Rank normalization counted smaller values with a `filter` per row (33 s at 20k rows); it now sorts once and binary-searches.
 - *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominator` keeps one sum per row span and column span.
-- *Key rows on the raw cell.* A one-column group, distinct or partition keys a `Map` on the cell itself (`rowKeyer`; `Map`'s SameValueZero groups exactly as `encodeCell` does), and the engine keys on `CellKey`. Several columns may still join a JSON key.
+- *Key rows on the raw cell.* A one-column group, distinct or partition keys on the cell itself (`CellKey`, which groups as SameValueZero does, exactly as `encode_cell`). Several columns may still join a JSON key.
 
 ### Sorting compares precomputed keys
 
-**MUST:** a comparator only compares. Each row's sort key is derived once into an array before `sort`, and blanks and errors are split out first rather than tested inside the comparator. One shared `Intl.Collator` stands in for `localeCompare` with options. `sortedIndexOrder`, the window ORDER BY and the popup's `sortedOrder` follow it; a pivot's value sort scores each row once.
+**MUST:** a comparator only compares. Each row's sort key is derived once into an array before `sort`, and blanks and errors are split out first rather than tested inside the comparator. One shared `Intl.Collator` stands in for `localeCompare` with options. `sorted_index_order`, the window ORDER BY and the popup's `sortedOrder` follow it; a pivot's value sort scores each row once.
 
 ### A cache names everything its answer depends on
 
-**MUST:** a cache keys on the identity of values that never change in place, or on a generation that every input bumps (`registryGeneration()` for anything resolved through the function registry, `displaySettingsKey()` for number formatting). If every input of the cached answer can't be named, there is no cache.
+**MUST:** a cache keys on the identity of values that never change in place, or on a generation that every input bumps (the range memo compares its arguments by identity, `same` in `eval.rs`; `displaySettingsKey()` keys number formatting). If every input of the cached answer can't be named, there is no cache.
 
 Values on cables are never changed in place once a node returns them, which is what makes identity a key: `WeakMap`s keyed by a list, a column's `values` or a call site hold the date and unit display copies, the chip color index (`categoryColorIndexOf`) and the range-call memo. Two caches were left out on this rule: the table popup's filter depends on more display state than can be listed, and sharing one capture between undo and autosave would need an edit counter every mutation bumps, without which a store-only edit between the two timers could be dropped from the save.
 
-The one exception runs the other way: a typed input reaches its node as a fresh copy (`familyCells`), because a node may reorder or splice what it is given. **Removed by:** an audit that no node changes an input in place.
+The one exception runs the other way: a typed input reaches its node as a fresh copy (`family_cells`), because a node may reorder or splice what it is given. **Removed by:** an audit that no node changes an input in place.
 
 ### Drawing stops at the screen
 
@@ -127,5 +127,5 @@ The one exception runs the other way: a typed input reaches its node as a fresh 
 
 ### A speed-up proves the answer didn't move
 
-**MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one (the engine's `streamed_values_match_the_cell_path`), and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
+**MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one, and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
 

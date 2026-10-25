@@ -40,7 +40,7 @@ flowchart LR
 ```
 
 - **Two or more unknowns:** the card shows "Wire in all but one variable".
-- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equalsWithin`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[D47]] noMixCurrencies). An evaluation failure gives `#VALUE!`.
+- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[D47]] noMixCurrencies). An evaluation failure gives `#VALUE!`.
 - **One unknown:** the card solves for it. The unknown's name is `solvedFor`, which the card uses for its accent highlight. An error on any known passes through as the answer; a blank known makes the answer null.
 
 ## Solving for one unknown
@@ -67,7 +67,7 @@ flowchart TD
 - `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant, once numeric root-finding (layer 3) has also come up empty; a root it finds wins;
 - nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solve_linear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
 
-Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`rootHolds`, 10⁻⁹ of the fit's term sizes at that root). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
+Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`root_holds`, 10⁻⁹ of the fit's term sizes at that root). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
 
 This runs before symbolic isolation because isolation would take the principal square root and lose a root: x² = 36 must give [−6, 6], not 6.
 
@@ -91,4 +91,4 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 
 ## Units
 
-The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dimEvalWithCode`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`.
+The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dim_eval_with_code`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`.

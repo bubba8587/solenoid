@@ -28,7 +28,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |
 | `../tree/specs/computation/schedule-and-gantt.md` | the tasks cube, the Schedule and Gantt nodes, plan import, the Gantt figure, dates and precision | `nodes/schedule.ts`, `nodes/gantt.ts`, `crates/solenoid-core/src/nodes/sched.rs`, `crates/solenoid-core/src/schedule/`, `planImport.ts`, `packages/schedule-engine`, `packages/gantt-layout`, `packages/gantt-react` |
 | `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `equationSolve.ts` |
-| `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `mathUtils.ts` `fillBorderedGrid` |
+| `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `fns_lists.rs` `fill_grid` |
 | `../tree/specs/computation/script-sandbox.md` | running Script code in a worker | `scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts` |
 | `../tree/specs/computation/live-connections.md` | fetched data: caching, refresh, the network gate | `connectionStore.ts`, `nodes/connection.ts`, `httpBridge.ts` |
 | `../tree/specs/computation/alert-node-alerts-hud.md` | the Alert node and the Alerts HUD | `nodes/display.ts`, `alertStore.ts`, `AlertLayer.tsx` |

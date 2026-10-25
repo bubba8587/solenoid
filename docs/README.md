@@ -142,9 +142,9 @@ results get retried and settled rulings relapse.
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
-| `mathUtils.ts` `fillBorderedGrid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
+| `fns_lists.rs` `fill_grid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
 | `excel_functions.rs`, `fns_*.rs` (an answer that differs from Formula.js) | `../tree/specs/computation/formulajs-divergences.md` (why each one differs) |
-| `applyOp` scalar operators (`excelFormula.ts`) | `../tree/specs/computation/formula-language.md` § Scalar operators |
+| `excel_formula.rs` `apply_op` scalar operators | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |

@@ -36,17 +36,18 @@ mindmap
 
 ## A new function across the app
 
-A function that is both a formula and a card is declared in three places that never import each other: the formula
-side on the core, the card side in TypeScript and Rust, and the catalog that makes it findable. The `add-node` skill
+A function that is both a formula and a card is declared in three places that never import each other: its call-table
+row and body on the core, its card in TypeScript and Rust, and its **listing**, the catalog entries that make it findable
+([[add-menu]]). The `add-node` skill
 walks the steps; this is the map of what each one is and which check catches a gap. A function that is only a formula
-needs the first box and its catalog Excel name; a card no formula expresses (a Frame verb, a figure, an input) needs
+needs the first box and an Excel name in its listing; a card no formula expresses (a Frame verb, a figure, an input) needs
 the last two.
 
 ```mermaid
 flowchart TB
     subgraph formula["the formula: a name in the formula bar"]
         fbody["the body: an arm of route<br>(excel_functions.rs, fns_*.rs;<br>a pack's in fns_packs.rs)"]
-        traits["its contract, call_traits.json:<br>kind and prep (routing), free (orient),<br>matrixArgs, checksCx, scalar,<br>roles, blanks (empty slots), refusal"]
+        traits["its call-table row (call_traits.json):<br>kind and prep (routing), free (orient),<br>matrixArgs, checksCx, scalar,<br>roles, blanks (empty slots), refusal"]
         arity["FUNCTION_ARITY and its<br>signature hint (excelFunctions.ts,<br>formulaSignatureTable.ts)"]
         roles["ARG_ROLES (inputRoles.ts):<br>the same roles, for cards"]
         units["its unit class (unit_dims.rs);<br>without one a dimensioned<br>argument is #UNIT!"]
@@ -57,7 +58,7 @@ flowchart TB
         cbody["its body on the core:<br>nodes/family.rs, reached by nodes::run,<br>listed in DIRECT"]
         ui["kind.ts (its accent), a component,<br>components/index.ts, nodeRegistry.ts"]
     end
-    subgraph find["finding it (add-menu.md)"]
+    subgraph find["its listing (add-menu.md)"]
         leaf["a catalog leaf (nodeCatalog.ts): label,<br>description, keywords, accent, fx"]
         ops["an op of a family: OP_META,<br>NODE_OPS"]
         excel["its Excel names: NODE_EXCEL"]
@@ -76,7 +77,7 @@ Each declaration in the map, and the spec that governs it:
 | Declaration | What it says | Governed by |
 |---|---|---|
 | an arm of `route` | the body that answers the formula name | [[formula-language#The registry]] |
-| `call_traits.json` | how a call routes (`kind`, `prep`), its vector direction (`free`), whether a matrix (`matrixArgs`) or a complex value (`checksCx`) reaches the body, the arguments a list lifts in (`scalar`), each argument's role and empty-slot reading, a blocked name's message | [[formula-language#The registry]], [[formula-language#Argument routing]], [[input-roles]] |
+| `call_traits.json` | how a call routes (`kind`, `prep`), its vector direction (`free`), whether a matrix reaches the body (`matrixArgs`) and a complex value is refused before it (`checksCx`), the arguments a list lifts in (`scalar`), each argument's role and empty-slot reading, a blocked name's message | [[formula-language#The registry]], [[formula-language#Argument routing]], [[input-roles]] |
 | `FUNCTION_ARITY`, the signature table | the argument count and the hint the editor shows | [[formula-language#The registry]] |
 | `ARG_ROLES` | each argument's role (data, setting, required, picks), the same as the call table's | [[input-roles#The declaration]] |
 | a unit class in `unit_dims.rs` | what dimension the answer carries | [[unit-flow#Formula dimensions (`unit_dims.rs`)]] |
@@ -106,7 +107,7 @@ mindmap
       ["persistenceSweep.test.ts:<br>every field saved or transient"]
       ["coerceInputs.test.ts: a typeable<br>list declares stringLiterals"]
       ["readInputSweep.test.ts: no ?? literal"]
-    ["finding it"]
+    ["the listing"]
       ["catalogRegistry.test.ts: every class<br>built by a leaf, Excel names resolve"]
       ["nodeOps.test.ts: every op reachable"]
       ["formulaNodeCoverage.test.ts,<br>formulaNodeParity.test.ts:<br>cards and formulas cover each other"]
@@ -162,7 +163,7 @@ mindmap
   - an error beats a missing value in the same cell ([[C24]] arraySemantics);
   - a producer turns a non-finite result into a classified error rather than emitting it bare ([[D48]] classifyNonFinite);
   - an input ignores units only where that input is declared unit-blind ([[C25]] firstClassUnits).
-- **Wired beats literal, even when blank.** A connected cable's value wins even when it carries null; only an unwired slot falls back to the card's typed literal ([[D86]] blankRoles). So a card tests connection presence (`readInput`, or `inputs[key]?.length`), never `?? literal`, which would hide a wired blank behind the literal. A setting or pick socket declares its role (`static inputRoles`, usually `rolesFrom` its formula twin) and reads through `readRole` ([[input-roles]]). A wildcard slot on an `autoLiterals` card reads through `pickSlot`, which applies the same rule over both literal maps.
+- **Wired beats literal, even when blank.** A connected cable's value wins even when it carries null; only an unwired slot falls back to the card's typed literal ([[D86]] blankRoles). So a card tests connection presence (`readInput`, or `inputs[key]?.length`), never `?? literal`, which would hide a wired blank behind the literal. A setting or pick socket declares its role (`static inputRoles`, usually `rolesFrom` its formula twin) and reads through `readRole` ([[input-roles]]). A wildcard slot on an `autoLiterals` card reads through `pick_slot`, which applies the same rule over both literal maps.
 - **A unit-aware class sets `unitAware = true`.** It then receives `UnitCell` tags intact and runs the dimension algebra itself ([[unit-flow]]); every other class sees bare magnitudes.
 - **A class that takes a Cube as is lists the input in `noWidenInputs`**, so the coercion wrapper skips rank widening there and the class runs its own Cube branch ([[frame-verbs]] § Frames and Cubes).
 - **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.

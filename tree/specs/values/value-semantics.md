@@ -46,7 +46,7 @@ flowchart TD
 
 No scalar is a bare array, so `Array.isArray` at two depths is the complete rank test, and no code carries a private way of sniffing shape. Depth 3 or more is not a value: a surface that meets one answers `#SHAPE!`. Anything deeper than a matrix is a Cube, which is a container, not a value shape.
 
-A bare-array scalar collides with the list representation, and every consumer that checks shape then needs its own way to tell the two apart. Complex numbers as an `[re, im]` tuple once forced four such workarounds: complex.ts's own broadcaster, special cases in `coerceInputs`, array canonicalization in `setKey`, and `ArrayChip.is2D`, where a complex list reaching a generic chip rendered as a two-column table. With one grammar, [[C15]] matricesInFormulas admits matrices without a branded value type, and a new nesting scheme would reopen the ambiguity.
+A bare-array scalar collides with the list representation, and every consumer that checks shape then needs its own way to tell the two apart. Complex numbers as an `[re, im]` tuple once forced four such workarounds: complex.ts's own broadcaster, special cases in `coerceInputs`, array canonicalization in `set_key`, and `ArrayChip.is2D`, where a complex list reaching a generic chip rendered as a two-column table. With one grammar, [[C15]] matricesInFormulas admits matrices without a branded value type, and a new nesting scheme would reopen the ambiguity.
 
 Three distinctions carry the most weight:
 
@@ -93,12 +93,12 @@ Which rule applies is decided by the kind of computation, not by the function's 
 
 | Context | An error | A `null` | Where |
 |---|---|---|---|
-| **Element-wise numeric** (operators, mapped functions) | propagates unchanged, per cell, the first in argument order | propagates (`null + 5` is `null`: the SQL model, not Excel's blank-as-0) | the shared broadcasters (`broadcast`, `broadcastErr`, `broadcastCall`) |
-| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null, `TRUE OR null` is TRUE, `FALSE OR null` is null: a test with a blank in it answers unknown, never FALSE ([[D38]] kleeneLogic) | `broadcastEl`; the Kleene tables in `valueKinds.ts` |
-| **Reduction or aggregate** (SUM, AVG, the formula AND and OR, the Aggregate node) | propagates, the first error wins | skipped (Excel's range behavior, SQL aggregates) | `for_aggregate`, `prepRangeArgs` |
-| **Paired, index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in any range drops that whole row pairwise; ragged ranges keep the shortest zip (pad-then-drop is the same as truncating) | `RANGE_PAIRED` |
-| **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls stay put, since dropping them would shift indices | `RANGE_POSITIONAL` |
-| **The COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` |
+| **Element-wise numeric** (operators, mapped functions) | propagates unchanged, per cell, the first in argument order | propagates (`null + 5` is `null`: the SQL model, not Excel's blank-as-0) | `map_cells` and `broadcast_call` (`eval.rs`) for formulas; `broadcast_err` (`nodes/kit.rs`) for cards |
+| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null, `TRUE OR null` is TRUE, `FALSE OR null` is null: a test with a blank in it answers unknown, never FALSE ([[D38]] kleeneLogic) | `broadcast_el` and the Kleene tables (`nodes/logic.rs`) |
+| **Reduction or aggregate** (SUM, AVG, the formula AND and OR, the Aggregate node) | propagates, the first error wins | skipped (Excel's range behavior, SQL aggregates) | `for_aggregate`, `prep_range_args` |
+| **Paired, index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in any range drops that whole row pairwise; ragged ranges keep the shortest zip (pad-then-drop is the same as truncating) | `prep: paired` |
+| **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls stay put, since dropping them would shift indices | `prep: positional` |
+| **The COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `prep: raw` |
 | **A ragged element-wise zip** | — | pads to the longest with null; a padded position is missing | every broadcaster |
 | **Computed column, per row** | a row-bound error cell (a λ parameter or an `@`-read) fails that row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | the core's `tag_computed_cell` (`excel_formula.rs`) ([[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas) |
 
@@ -116,7 +116,7 @@ mindmap
 
 The one sanctioned divergence ([[D51]] oneAnswerOneDivergence): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 
-**Scalar operators.** The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `ARG_ROLES` declares its role, [[input-roles]], so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
+**Scalar operators.** The operator table (`apply_op`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `ARG_ROLES` declares its role, [[input-roles]], so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
 
 ## Reading an input: a wired blank versus the typed literal
 
@@ -151,7 +151,7 @@ flowchart TD
 
 **Never write `inputs.x?.[0] ?? this.literals.x`.** `??` can't tell "no cable" from "a cable carrying blank", so it silently puts the card's value in place of the graph's answer: a number the user never asked for, with an origin they can't see. This is the most common way a Solenoid node has produced a confidently wrong answer. `nodes/readInputSweep.test.ts` ratchets the remaining occurrences down and fails on new ones.
 
-**A wildcard slot's literal lives in one of two maps.** A slot typed `any` or `trueany` is element-agnostic, so its typed literal may be a number (`literals`) or text (`stringLiterals`). The inline field writes exactly one and clears the other, so the reader never has to break a tie. Only a node that declares `autoLiterals = true` gets that field: the value selectors IF, IFS, SWITCH and CHOOSE, whose wildcard rows are value branches, and the builders whose wildcard slots take a typed value (Build Cube, Cube Columns, Script, XMATCH, Set Cell). A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The unwired-versus-wired rule is unchanged; it just reads both maps (`pickSlot` in `nodes/logic.ts`).
+**A wildcard slot's literal lives in one of two maps.** A slot typed `any` or `trueany` is element-agnostic, so its typed literal may be a number (`literals`) or text (`stringLiterals`). The inline field writes exactly one and clears the other, so the reader never has to break a tie. Only a node that declares `autoLiterals = true` gets that field: the value selectors IF, IFS, SWITCH and CHOOSE, whose wildcard rows are value branches, and the builders whose wildcard slots take a typed value (Build Cube, Cube Columns, Script, XMATCH, Set Cell). A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The unwired-versus-wired rule is unchanged; it just reads both maps (`pick_slot` in the core's `nodes/logic.rs`).
 
 ### What the node does with a blank
 
