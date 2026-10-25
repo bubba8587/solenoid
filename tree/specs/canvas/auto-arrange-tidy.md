@@ -14,18 +14,18 @@ Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK
 
 Tidy is an ELK layered layout, called directly, that only moves nodes. Ports sit at their sockets' heights (or symmetrically) so two connected nodes line up; the result is anchored to the flow's leading edge and its cross-axis center; no LayoutFx leaves a fixed inline size on a card. A global Tidy keeps each group as a rigid unit and never enters it; a group's own Tidy arranges exactly that group's members.
 
-Why: each of these closes a failure the opposite choice produced. rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high. Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side. And its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else. Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then autofit is a fixed point. **Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
+Why: each of these closes a failure the opposite choice produced. rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high. Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side. And its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else. Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then Autofit is a fixed point. **Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
 
 ## Entry points
 
 - **Tidy** runs from the top-bar Tidy button, View ▸ Tidy in the menu bar, or the `T` key. It lays out the selection if there is one, otherwise the whole canvas. A selection that lies entirely inside one group becomes a within-group Tidy of that group. Above `TIDY_CONFIRM_THRESHOLD` layout units (docked FCs and group members do not count) it asks for confirmation first. The count uses the same predicate as `layoutTargets`, or the dialog would misstate the scope.
-- **Group Tidy** is the button in a group's header. It runs a within-group arrange (`arrangeFn({ groupId })`), waits two animation frames so the deferred docked-FC snap-back lands, then autofits the box to its members. A locked group keeps its corner through the autofit: its members move to it instead.
+- **Group Tidy** is the button in a group's header. It runs a within-group arrange (`arrangeFn({ groupId })`), waits two animation frames so the deferred docked-FC snap-back lands, then autofits the box to its members. A locked group keeps its corner through the Autofit: its members move to it instead.
 - **Cleanup** runs from View ▸ Cleanup or the `C` key. Above `TIDY_CONFIRM_THRESHOLD` units it asks for confirmation first.
 - The composite drill-in has its own arrange (`FlowCompositeOverlay.tsx`) that reads the same Tidy settings.
 
 ## Size reads
 
-Every size read in the movement stack (tidy, push, standoffs, splice, align, autofit, focus, the Outline panel) goes through `measuredBox()` in `nodeSize.ts`. It never returns a zero size. Its tiers, in order:
+Every size read in the movement stack (tidy, push, standoffs, splice, align, Autofit, focus, the Outline panel) goes through `measuredBox()` in `nodeSize.ts`. It never returns a zero size. Its tiers, in order:
 
 1. React Flow's own measure of the mounted card (`view.measured`), which costs nothing; a DOM read forces a synchronous reflow after any pending write.
 2. The live rendered size (`offsetWidth` / `offsetHeight`), once both are non-zero. Once a card has painted, the live DOM is the truth and already includes its collapse state.
@@ -40,7 +40,7 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 
 - `zoomAt.frameSize` takes a narrower surface, so callers outside the flow view can frame a node.
 - The push world reads an expanded group at its stored size, which is exactly what it renders, since React Flow's measure lags a resize by a frame.
-- The expand push reads a collapsed card by its layout formula.
+- The Expand Push reads a collapsed card by its layout formula.
 - Group containment falls back to the stored box.
 - A docked FC's caller supplies the fallback.
 
@@ -124,7 +124,7 @@ The selection is cleared for the layout and restored afterwards, because transla
 2. The pin-drop loop clears inline sizes (see Cards stay content-sized).
 3. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
 4. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
-5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the no-overlap pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
+5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the No-Overlap Pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
 
 ## Cards stay content-sized
 
@@ -132,13 +132,13 @@ No LayoutFx may leave a fixed inline `height` on a card. A pinned height freezes
 
 ## Position-locked groups
 
-A group locked in place never moves in any LayoutFx: Tidy, Cleanup, the expand push, the collapse restore and autofit, and the standoff solve and no-overlap pass that end each one, all treat it as a fixed obstacle and move everything else around it ([[C112]] noOverlapsEver). A lock that a LayoutFx could move isn't a lock, and since every LayoutFx ends with nothing overlapping, the locked group can't just sit the action out: everything else has to move around it. The lock holds the box, not its contents. **Reopen if:** the lock should also freeze the group's contents, or people expect a locked group to still move in a Tidy.
+A group locked in place never moves in any LayoutFx: Tidy, Cleanup, the Expand Push, the Collapse Restore and Autofit, and the Standoff Solve and No-Overlap Pass that end each one, all treat it as a fixed obstacle and move everything else around it ([[C112]] noOverlapsEver). A lock that a LayoutFx could move isn't a lock, and since every LayoutFx ends with nothing overlapping, the locked group can't just sit the action out: everything else has to move around it. The lock holds the box, not its contents. **Reopen if:** the lock should also freeze the group's contents, or people expect a locked group to still move in a Tidy.
 
 A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER`) sits out global Tidy and Cleanup as a fixed obstacle.
 
 - It is dropped from `layoutTargets`, so global Tidy never places it or carries its members.
-- Cleanup skips it in its member tidy, autofit and collapse steps. It stays exactly where it was pinned.
-- The final no-overlap pass holds every locked box fixed, so any tidied card that lands on one yields, moving right or down. A pushed group tows its members and a pushed host its docked FCs.
+- Cleanup skips it in its member tidy, Autofit and collapse steps. It stays exactly where it was pinned.
+- The final No-Overlap Pass holds every locked box fixed, so any tidied card that lands on one yields, moving right or down. A pushed group tows its members and a pushed host its docked FCs.
 - Its own header Tidy button still works; the lock only fixes the box's corner.
 - The lock also wins over a Standoff band. Every `solveStandoffs` call site pins locked groups (`withLockedGroupsPinned`), so a locked standoff end holds and the whole correction falls on the other end.
 
@@ -150,7 +150,7 @@ After laying out its members, a within-group Tidy grows the box to wrap them: `w
 
 If the box grew by more than half a pixel, `tidyArrange.ts` calls `pushForGrownGroups` (`groupPush.ts`). It uses the same `runExpandPushes` engine as expanding a collapsed group, with the pre-grow size as `preSizes`, so neighbors are shoved off the grown edges. It passes `record: false`: a Tidy is a deliberate manual action, so the displacement is permanent. No restore record is written, and pushed neighbors stay put when the group later collapses. A neighbor that already had an expand-push record from before now counts as manually moved, so it does not snap back either. The push only runs when the `groupPush` setting is on.
 
-Cleanup passes `skipPush: true` to its per-group arranges, because it runs its own autofit, collapse and top-level re-tidy right after. A selection or whole-canvas Tidy runs no grow push, because it moves groups as whole units and leaves their interiors alone; only the final no-overlap pass moves what it lands on.
+Cleanup passes `skipPush: true` to its per-group arranges, because it runs its own Autofit, collapse and top-level re-tidy right after. A selection or whole-canvas Tidy runs no grow push, because it moves groups as whole units and leaves their interiors alone; only the final No-Overlap Pass moves what it lands on.
 
 ## Cleanup
 
@@ -158,11 +158,11 @@ Cleanup passes `skipPush: true` to its per-group arranges, because it runs its o
 
 1. Clear the node and cable selection.
 2. Tidy every unlocked group's members with `skipPush: true`.
-3. Wait two frames (the snap-back's animation frame, then its translate) so the deferred FC snap-backs land, then autofit every unlocked group. Autofitting earlier would pad the boxes around stale FC positions.
+3. Wait two frames (the snap-back's animation frame, then its translate) so the deferred FC snap-backs land, then Autofit every unlocked group. Autofitting earlier would pad the boxes around stale FC positions.
 4. Collapse every unlocked group that is still expanded, then wait two frames: React Flow measures a card a frame after it renders, and a top-level Tidy that read the expanded sizes laid the collapsed groups out far apart, so a second Cleanup moved everything again.
 5. Tidy the top level, with groups as rigid collapsed units and no confirmation. That Tidy fits the view and schedules the autosave.
 
-A second Tidy or Cleanup moves nothing unless a card's content changed size in between. ELK is deterministic, but a sub-pixel change in any size it is handed can flip its ordering and move cards by hundreds of pixels, so every input is kept exact: whole-pixel positions from Tidy, the standoff solve and autofit, and zoom-free socket offsets. `tidyArrangeGroups.test.ts` pins the group Tidy and autofit cycle with fractional card heights.
+A second Tidy or Cleanup moves nothing unless a card's content changed size in between. ELK is deterministic, but a sub-pixel change in any size it is handed can flip its ordering and move cards by hundreds of pixels, so every input is kept exact: whole-pixel positions from Tidy, the Standoff Solve and Autofit, and zoom-free socket offsets. `tidyArrangeGroups.test.ts` pins the group Tidy and Autofit cycle with fractional card heights.
 
 ## Align and distribute
 

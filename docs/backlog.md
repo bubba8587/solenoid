@@ -42,7 +42,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
 
 ## VaultBridge
-- [ ] Spec the vault read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
+- [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
 ## Tooling
 - [ ] **Warm vitest cache hides a new globbed file** (`fsModuleCache: true`): a new seed JSON was invisible to `seeds.ts` locally, so `siteThumbs`/`prerender` passed locally and failed in CI. Workaround: delete `node_modules/.vitest-cache`. Decide whether to keep the cache or invalidate it on glob changes.

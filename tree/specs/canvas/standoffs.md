@@ -52,7 +52,7 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 | Pass | When and how |
 |---|---|
 | Live drag | Only when a dragged item (or a member of a dragged group) is linked; ties are sparse, so a plain drag costs nothing (`standoffStore.participants()` gates the work). Once per animation frame during the drag, and once more exactly on drop, with the dragged items pinned. Band only, never `forceLock`, so an unlocked slant survives a drag. Programmatic moves never trigger it. |
-| Group expand | Inside `runExpandPushes`. After the push heuristics, each cluster moves as one block: every member takes the cluster's largest displacement, so a lone push isn't pulled partway back. Then a `forceLock` solve, with its corrections folded into the push records so a later collapse restores them too ([[group-expand-push]]). |
+| Group expand | Inside `runExpandPushes`. After the push heuristics, each cluster moves as one block: every member takes the cluster's largest displacement, so a lone push isn't pulled partway back. Then a `forceLock` solve, with its corrections folded into the push records so a later Collapse Restores them too ([[group-expand-push]]). |
 | Group collapse | After the pushes are restored, a `forceLock` re-solve of the touched clusters, because the shrink moved the anchors. A cluster that would land on another box is skipped; the moves are recorded, and the expand slides them back ([[group-expand-push]]). |
 | Autofit | `autofitGroupWithHistory` re-solves the fitted group's cluster with `forceLock`, pinning the group. |
 | Tidy | A final `forceLock` settle of the clusters holding a laid-out box. |
@@ -60,13 +60,13 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 
 ```mermaid
 flowchart LR
-    op["a LayoutFx: a group expand<br>or collapse, autofit, Tidy"] --> moves["its own moves"]
-    moves --> solve["a forceLock standoff solve of the<br>clusters it touched: each cluster<br>a rigid block"]
-    solve --> ov["the no-overlap pass:<br>a cluster moves as one unit"]
+    op["a LayoutFx: a group expand<br>or collapse, Autofit, Tidy"] --> moves["its own moves"]
+    moves --> solve["a forceLock Standoff Solve of the<br>clusters it touched: each cluster<br>a rigid block"]
+    solve --> ov["the No-Overlap Pass:<br>a cluster moves as one unit"]
     drag["a live drag"] --> band["a band-only solve,<br>the dragged items pinned"]
 ```
 
-Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
+Every pass in the table except the live drag and toolbar edits is a LayoutFx, so it then ends with the No-Overlap Pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
 ## Tidy and clusters
 

@@ -358,7 +358,7 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
     `{type, icon, name(), validate(value), render(el, value, ctx)}` in
     `app.metadataTypeManager.registeredTypeWidgets`, `ctx` is
     `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. A Knap
-    note reads a property's assigned type from `app.metadataTypeManager.getAssignedWidget(name)`
+    Note reads a property's assigned type from `app.metadataTypeManager.getAssignedWidget(name)`
     (the type id, or null). The plugin touches nothing else private.
 
 ## Column name suggestions

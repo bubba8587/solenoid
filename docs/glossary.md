@@ -6,6 +6,10 @@ about what "Standoff" or "FrameRef" means sends an agent down the wrong path. Th
 single place to learn the words. One line each, plus where it lives in code, grouped by
 area. When you coin a new load-bearing term, add it here.
 
+A precise, named process is a Proper Noun (Vault Read, the No-Overlap Pass), and a family of
+processes is an **Fx** (LayoutFx, VaultBridgeFx), kept apart from graph items such as nodes and
+cables (the author, 2026-10-25).
+
 ## Graph & canvas
 
 - **Node**: one computation unit; a card on the canvas. Its `data()` method is a pure
@@ -30,8 +34,8 @@ area. When you coin a new load-bearing term, add it here.
 - **Group** (Add menu: Node Group): a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **LayoutFx**: a process that moves cards the user didn't move: Tidy, Cleanup, the group
-  expand push, the collapse restore, autofit. Each ends with a `forceLock` standoff solve and
-  the no-overlap pass; the user's own moves (drag, Align, paste) aren't LayoutFx. "Fx" names a
+  Expand Push, the Collapse Restore, Autofit. Each ends with a `forceLock` Standoff Solve and
+  the No-Overlap Pass; the user's own moves (drag, Align, paste) aren't LayoutFx. "Fx" names a
   process, kept apart from graph items. (`../tree/specs/canvas/group-expand-push.md` § LayoutFx)
 - **Tidy / auto-arrange**: ELK-based layout with a custom symmetric port preset.
   (elkjs via `elkTidyLayout`, `arrangeFn`, in `tidyArrange.ts`)
@@ -209,8 +213,8 @@ area. When you coin a new load-bearing term, add it here.
   note each. (`nodes/report.ts`, `documentValue.ts`)
 - **VaultBridge**: everything between a document and an Obsidian vault. The **VaultBridge
   Nodes** are its cards (Vault Folder, Import Obsidian Note, TaskNotes, Write to Obsidian, Write
-  Tasks); the **VaultBridgeFx** are the processes behind them (the vault read, the note read,
-  the type read-back, the note write, the property patch, the TaskNotes API).
+  Tasks); the **VaultBridgeFx** are the processes behind them (the Vault Read, the Note Read,
+  the Type Read-Back, the Note Write, the Property Patch, the TaskNotes API).
   (`../tree/specs/integrations/vault-bridge.md`)
 - **Document / library**: the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)

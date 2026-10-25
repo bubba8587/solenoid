@@ -1,10 +1,10 @@
 ---
-aliases: ["Group expand push"]
+aliases: ["Group Expand Push"]
 tags: [spec, canvas]
 ---
 <!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[C112]] noOverlapsEver -->
 
-# Spec: Group expand push
+# Spec: Group Expand Push
 
 Serves [[C85]] groupPushDeterministic (the push and its records), [[A1]] visualGraphCalculator (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
@@ -20,7 +20,7 @@ The push runs over plain boxes, with no editor or DOM, so the core (`computeExpa
 - A group moves with its members and with every FC docked to one of them; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
-The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the overlap backstop on expand; whether the backstop should run anyway is open with the author.
+The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the No-Overlap Pass on expand; whether it should run anyway is open with the author.
 
 ## The push, per expanding group
 
@@ -40,7 +40,7 @@ flowchart TD
     rails --> clear["2. clear: each other covered box<br>steps out past the nearest edge<br>(toward its cables when it has some)"]
     clear --> resid["3. residual: anything still overlapping<br>moves right or down"]
     resid --> casc["4. cascade: a moved box pushes what it<br>lands on, keeping the original order"]
-    casc --> next["the next expanding group (top-left first),<br>then: standoff clusters as blocks,<br>a standoff solve, the overlap backstop"]
+    casc --> next["the next expanding group (top-left first),<br>then: standoff clusters as blocks,<br>a Standoff Solve, the No-Overlap Pass"]
 ```
 
 The steps, in order:
@@ -52,29 +52,29 @@ The steps, in order:
 3. **Residual clear.** Any box, satellites included, still overlapping the expanded box after steps 1 and 2 adds the cheaper of a move right or a move down to clear it plus `PUSH_GAP`.
 4. **Cascade.** Each moved box, in order of its original `x + y`, pushes any box it now lands on just clear of itself (plus `PUSH_GAP`) along its main direction of travel. It pushes only boxes that started ahead of it on that axis, and never exempt boxes or baseline pairs. Each pushed box then cascades in turn. A band of cleared boxes therefore restacks in its original order instead of flattening or reversing.
 
-## After all groups: standoffs and the backstop
+## After all groups: the Standoff Solve and the No-Overlap Pass
 
 Three more passes run over the same boxes, after every expanding group has had its push:
 
 1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member except a locked group takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
-2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the clusters this expansion touched (`standoffsTouching`: those holding an expanding group or a moved box), with the expanding groups and any position-locked group pinned. An unrelated cluster keeps its slant. Its corrections are added to the same totals, credited to every expanding group.
-3. **Overlap backstop** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too. Each standoff cluster moves as one unit, so it can't tear, but only its members' own boxes collide: a card sitting between a group and its standoff partner, touching neither, stays put. Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield. Its moves are credited to every expanding group.
+2. **Standoff Solve.** `solveStandoffs` runs with `forceLock` over the clusters this expansion touched (`standoffsTouching`: those holding an expanding group or a moved box), with the expanding groups and any position-locked group pinned. An unrelated cluster keeps its slant. Its corrections are added to the same totals, credited to every expanding group.
+3. **No-Overlap Pass** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too. Each standoff cluster moves as one unit, so it can't tear, but only its members' own boxes collide: a card sitting between a group and its standoff partner, touching neither, stays put. Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield. Its moves are credited to every expanding group.
 
 `separateAll` runs its placement pass (`separateUnits`) twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. The pass places the boxes one at a time, pinned ones first, then the rest from the top-left (by `x + y`). A pinned box stays where it is. Every other box, while it overlaps one already placed, moves right or down, whichever is cheaper, to clear the placed box it overlaps most by `PUSH_GAP`. So the top-left box keeps its anchor corner, a pinned box's partner yields, and two pinned boxes are left alone. Moves only ever go right or down, so it always finishes, and a few hundred boxes take milliseconds. Afterwards only two fixed units can still overlap.
 
 ## LayoutFx
 
-A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, the group expand push, the collapse restore and autofit ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way: a `forceLock` standoff solve of what it moved ([[standoffs]]), then the no-overlap pass ([[C112]] noOverlapsEver), and none moves a position-locked group ([[auto-arrange-tidy#Position-locked groups]]).
+A **LayoutFx** is a process that moves cards the user didn't move: Tidy, Cleanup, the group Expand Push, the Collapse Restore and Autofit ("Fx" names a process, keeping it apart from the graph's items). Every LayoutFx ends the same way: a `forceLock` Standoff Solve of what it moved ([[standoffs]]), then the No-Overlap Pass ([[C112]] noOverlapsEver), and none moves a position-locked group ([[auto-arrange-tidy#Position-locked groups]]).
 
 ```mermaid
 flowchart LR
-    fx["a LayoutFx: Tidy, Cleanup,<br>expand push, collapse restore,<br>autofit"] --> own["its own moves"]
-    own --> solve["a forceLock standoff solve<br>of what it moved"]
-    solve --> ov["the no-overlap pass"]
+    fx["a LayoutFx: Tidy, Cleanup,<br>Expand Push, Collapse Restore,<br>Autofit"] --> own["its own moves"]
+    own --> solve["a forceLock Standoff Solve<br>of what it moved"]
+    solve --> ov["the No-Overlap Pass"]
     user["the user's moves: a drag,<br>Align, paste"] --> stay["stay where they're put"]
 ```
 
-The user's own moves are not LayoutFx: a drag, Align and paste put cards where the user put them, and no no-overlap pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next LayoutFx's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
+The user's own moves are not LayoutFx: a drag, Align and paste put cards where the user put them, and no No-Overlap Pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next LayoutFx's No-Overlap Pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
 
 ## Records and restore
 
@@ -90,7 +90,7 @@ Each moved box gets a push record in memory (never saved; a reload keeps everyth
 
 1. Measure the collapsed card size of each group about to expand, before the flip re-renders it at full size. These are the seam origins. A collapsed card's size is read from its painted element first: React Flow's measured size still holds the old size in the frame of a toggle.
 2. Flip `collapsed`, recompute collapse state (`syncGroupCollapse`), wait for each group to re-render so the footprints measured next are current, and settle the cable endpoints (`settleCollapse`).
-3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock` over the clusters holding a collapsed group or a restored box, because the shrink moved their anchors (a no-op when the restores already landed everything in band). A collapse never rearranges the canvas: a cluster whose re-solve would land a box on another stays where it is, its bar stretched past the band until the group opens. Each move the re-solve makes is recorded like a push, and on expand, before the push, every record whose groups are all open again slides its box back if it is still within `EPS` of where the collapse left it. Two frames later, once React Flow has measured the cards, `settleOverlapsAfterPaint` runs the no-overlap pass, preferring the collapsed groups: a restore can land a card on one placed while the group was open. On expand (with `groupPush` on): run the push.
+3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock` over the clusters holding a collapsed group or a restored box, because the shrink moved their anchors (a no-op when the restores already landed everything in band). A collapse never rearranges the canvas: a cluster whose re-solve would land a box on another stays where it is, its bar stretched past the band until the group opens. Each move the re-solve makes is recorded like a push, and on expand, before the push, every record whose groups are all open again slides its box back if it is still within `EPS` of where the collapse left it. Two frames later, once React Flow has measured the cards, `settleOverlapsAfterPaint` runs the No-Overlap Pass, preferring the collapsed groups: a restore can land a card on one placed while the group was open. On expand (with `groupPush` on): run the push.
 4. Schedule an autosave.
 
 ELK (the automatic layout engine behind Tidy) is never used in this path.
@@ -111,12 +111,12 @@ A membership change re-projects the nodes through the `groupMembershipStore` sub
 
 ## Creating and fitting a group
 
-- **Group** (the `G` key, or the menu) wraps the current selection (`createGroupFromSelection`, `groupLogic.ts`). A selected member of another group leaves that group, since membership is exclusive. The new box may cover cards outside the selection; the no-overlap pass pushes them off it. Nodes hidden inside a collapsed group are left out, since they already belong to one and a selection path such as Ctrl+A then G would otherwise absorb them ([[C52]] visibleSelection). The cable selection is cleared first, because a selected cable carried into the group-forming reflow garbles its rendering.
-- The box is the members' bounding box (through `measuredBox`) plus `GROUP_PAD` (24) on each side and `GROUP_HEADER` (34, matching GroupNode.css) on top, each edge rounded to a whole pixel on its own: a fractional edge puts the selection ring on a half-pixel, and rounding the size instead of the edges left the interior up to half a pixel lopsided, which a within-group Tidy (it centers members in the interior) turned into a quarter-pixel creep on every Cleanup. Creation, the within-group Tidy and autofit share these two constants; if they disagreed, Cleanup's tidy-then-autofit cycle would drift the box a few pixels on every run.
+- **Group** (the `G` key, or the menu) wraps the current selection (`createGroupFromSelection`, `groupLogic.ts`). A selected member of another group leaves that group, since membership is exclusive. The new box may cover cards outside the selection; the No-Overlap Pass pushes them off it. Nodes hidden inside a collapsed group are left out, since they already belong to one and a selection path such as Ctrl+A then G would otherwise absorb them ([[C52]] visibleSelection). The cable selection is cleared first, because a selected cable carried into the group-forming reflow garbles its rendering.
+- The box is the members' bounding box (through `measuredBox`) plus `GROUP_PAD` (24) on each side and `GROUP_HEADER` (34, matching GroupNode.css) on top, each edge rounded to a whole pixel on its own: a fractional edge puts the selection ring on a half-pixel, and rounding the size instead of the edges left the interior up to half a pixel lopsided, which a within-group Tidy (it centers members in the interior) turned into a quarter-pixel creep on every Cleanup. Creation, the within-group Tidy and Autofit share these two constants; if they disagreed, Cleanup's tidy-then-autofit cycle would drift the box a few pixels on every run.
 - The group's color is the most common card color in the selection, read as the palette slot the card wears (`nodeAccentSlot`, the slot behind `nodeAccent`, so an unfiled card counts its output's color per [[palette-and-theme#Card colors]]); a tie, or all kinds distinct, falls back to gray (`GROUP_DEFAULT_COLOR`). The members tint at once.
-- **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, then re-settles the standoffs as a rigid block, pinning the fitted group, and runs the no-overlap pass preferring it, since a box that grows can land on a neighbor. A locked group keeps its corner: the members move to it instead ([[auto-arrange-tidy#Position-locked groups]]).
+- **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, then re-settles the standoffs as a rigid block, pinning the fitted group, and runs the No-Overlap Pass preferring it, since a box that grows can land on a neighbor. A locked group keeps its corner: the members move to it instead ([[auto-arrange-tidy#Position-locked groups]]).
 - The group element stacks behind its members and behind member Conduits (−1), so a Conduit inside a group stays selectable ([[react-flow-surface-contract#Stacking]]).
-- **The position lock** is set only through `setGroupLocked`; its re-projection repaints the RF `draggable` flag and the header lock icon ([[auto-arrange-tidy#Position-locked groups]]). Every standoff solve pins every locked group and its members (`withLockedGroupsPinned`), since the solver works on raw endpoint ids and a member's standoff would otherwise slide the member out of the locked box.
+- **The position lock** is set only through `setGroupLocked`; its re-projection repaints the RF `draggable` flag and the header lock icon ([[auto-arrange-tidy#Position-locked groups]]). Every Standoff Solve pins every locked group and its members (`withLockedGroupsPinned`), since the solver works on raw endpoint ids and a member's standoff would otherwise slide the member out of the locked box.
 
 ## Who is a member
 
