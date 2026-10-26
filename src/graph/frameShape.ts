@@ -2,7 +2,7 @@
 // A verb's static output shape is the core's verb run on an empty frame of its input's shape (graph-core.md § Phase D),
 // so it can never disagree with what the verb answers; a verb that refuses the shape throws, as it would on data.
 import type { FrameValue } from "./frame";
-import { onCoreFrames, encodeOpCells, type FrameSchemaColumn } from "./frameBackend";
+import { onCoreFrames, encodeOpCells, frameFnOnCore, type FrameSchemaColumn } from "./frameBackend";
 import { wasmInvokeSync } from "./engineWasm";
 import type { FrameOp, JoinOpts } from "./frameOps";
 
@@ -28,6 +28,19 @@ export function emptyFrameOf(shape: Shape): FrameValue {
 /** How many leading key columns a totals row writes "Grand Total" / "Total" into, so they run as text. */
 export function totalLabelledKeys(depth: number, nKeys: number): number {
   return depth === 0 || nKeys === 0 ? 0 : 1 + Math.min(Math.abs(depth) - 1, nKeys - 1);
+}
+
+/** One row of plausible cells for `shape` (text, a number, TRUE, a date), for a card whose columns appear only once a
+ *  row does: the card's own function run on it answers the columns it makes. */
+export function sampleRowOf(shape: Shape): FrameValue {
+  const cell = (t: string) => (t === "string" ? "a" : t === "logical" ? true : t === "date" ? 45000 : 1);
+  return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [cell(c.type)] })) };
+}
+
+/** The columns a core frame function (`frame_fns.rs`) answers over one sample row of each input. */
+export function sampleShapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = []): Shape | null {
+  const r = frameFnOnCore(name, inputs.map(sampleRowOf), args);
+  return r && "frame" in r ? shapeOfFrameValue(r.frame) : null;
 }
 
 function onEmpty(inputs: readonly Shape[], run: (handles: string[]) => string): Shape {

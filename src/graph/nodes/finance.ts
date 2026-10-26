@@ -3,7 +3,7 @@ import { GraphInput, GraphNode, GraphSocket } from "../graphModel";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, BASIS_DOC } from "./shared";
 import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
-import type { Shape } from "../frameShape";
+import { sampleShapeOnCore, type Shape } from "../frameShape";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import { EquationNode } from "./equation";
@@ -763,12 +763,10 @@ export class AmortizationNode extends GraphNode {
     this.addOutput("frame", frameOut("Schedule"));
   }
 
-  frameShape(): Shape {
-    return { columns: [
-      { name: "Period", type: "number" }, { name: "Payment", type: "number" }, { name: "Interest", type: "number" },
-      { name: "Principal", type: "number" }, { name: "Balance", type: "number" },
-    ] };
+  frameShape(): Shape | null {
+    return sampleShapeOnCore("amortizationSchedule", [], [0.05, 12, 1000, 0, 0]);
   }
+
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };

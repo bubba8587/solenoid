@@ -35,7 +35,7 @@ import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, uploa
 import { TRAPPED_MESSAGE } from "../coreValues";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
-  emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
+  emptyFrameOf, totalLabelledKeys, sampleShapeOnCore, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import { listLiteralText } from "../listLiterals";
@@ -46,6 +46,10 @@ import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 import { setDescribeTiles, type DescribeTile } from "../describeProfile";
 
 /** A frame computation's shape: the core answers it over no rows. */
+/** Sample inputs for a card whose columns don't depend on its input's: options to score, and people who paid. */
+const SAMPLE_OPTIONS: Shape = { columns: [{ name: "Option", type: "string" }, { name: "Score", type: "number" }] };
+const SAMPLE_PEOPLE: Shape = { columns: [{ name: "Person", type: "string" }, { name: "Paid", type: "number" }] };
+
 function shapeOnCore(name: string, inputs: readonly Shape[], args: unknown[] = []): Shape | null {
   const r = frameFnOnCore(name, inputs.map(emptyFrameOf), args);
   return r && "frame" in r ? shapeOfFrameValue(r.frame) : null;
@@ -1261,8 +1265,10 @@ export class DropBlankRowsNode extends GraphNode {
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
-    return ctx.inputShape("frame");
+    const input = ctx.inputShape("frame");
+    return input && shapeOf({ kind: "dropBlankRows", mode: this.mode }, input);
   }
+
 
   async data(inputs: { frame?: (FrameInput | null)[] }) {
     return lazyFramePass(this, inputs);
@@ -1319,17 +1325,11 @@ export class DecisionMatrixNode extends GraphNode {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
-    const label = input.columns.find((c) => c.type === "string");
-    const criteria = input.columns.filter((c) => c !== label && (c.type === "number" || c.type === "logical"));
-    if (criteria.length === 0) return null;
-    const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
-    if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
-    cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
-    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    const shape = input && sampleShapeOnCore("decisionMatrix", [input], [this.normalize, this.detail === "breakdown"]);
     // Ruled out by and Filled in come and go with the data, so the shape is never the whole story.
-    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: true };
+    return shape && { ...shape, dynamic: true };
   }
+
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | CubeValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | CubeValue | SolError | null };
@@ -1388,13 +1388,9 @@ export class DecisionSensitivityNode extends GraphNode {
   }
 
   frameShape(_outKey: string, _ctx: FrameShapeContext): Shape | null {
-    if (this.mode !== "flips") return null;
-    return { columns: [
-      { name: "Criterion", type: "string" }, { name: "Weight", type: "number" },
-      { name: "Less at", type: "number" }, { name: "Winner if less", type: "string" },
-      { name: "More at", type: "number" }, { name: "Winner if more", type: "string" },
-    ] };
+    return this.mode === "flips" ? sampleShapeOnCore("flipPoints", [SAMPLE_OPTIONS], [this.normalize]) : null;
   }
+
 
   data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { cube: CubeValue | FrameValue | SolError | null };
@@ -1452,13 +1448,11 @@ export class ChoiceLadderNode extends GraphNode {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
-    const label = input.columns.find((c) => c.type === "string")?.name ?? "Option";
-    const names = makeHeaders(["Rung", label, "Choice", "Score"], 4);
-    const types = ["number", "string", "string", "number"] as const;
+    const shape = input && sampleShapeOnCore("choiceLadder", [input], [this.normalize, 0, [], false, false]);
     // The cost columns follow, one per Limits row.
-    return { columns: names.map((name, i) => ({ name, type: types[i] })), dynamic: true };
+    return shape && { ...shape, dynamic: true };
   }
+
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null; chart: ChartValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null; chart: ChartValue | SolError | null };
@@ -1558,13 +1552,10 @@ export class PayoffPlannerNode extends GraphNode {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("debts");
-    if (!input) return null;
-    if (this.mode === "summary") {
-      const name = input.columns.find((c) => c.type === "string")?.name ?? "Debt";
-      return { columns: [{ name, type: "string" }, { name: "Months", type: "number" }, { name: "Interest", type: "number" }, { name: "Payoff date", type: "date" }] };
-    }
-    return null; // Schedule has one column per debt row, so no static shape.
+    // Schedule has one column per debt row, so no static shape.
+    return input && this.mode === "summary" ? sampleShapeOnCore("payoffFrame", [input], [0, this.order, "summary", null]) : null;
   }
+
 
   data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | SolError | null } {
     return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null };
@@ -1628,12 +1619,13 @@ export class SettleNode extends GraphNode {
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
-    if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
-    const name = this.mode === "totals"
-      ? (ctx.inputShape("in")?.columns.find((c) => c.type === "string")?.name ?? "Person")
-      : "Person";
-    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
+    const input = this.mode === "totals" ? ctx.inputShape("in") : null;
+    const both = sampleShapeOnCore("settleFrame", [input ?? SAMPLE_PEOPLE], [this.split]);
+    if (!both) return null;
+    // The core answers the transfers and the net table side by side, the transfers' three columns first.
+    return { columns: outKey === "transfers" ? both.columns.slice(0, 3) : both.columns.slice(3) };
   }
+
 
   /** A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a
    *  coercion #VALUE!; the canvas says which, so it is read here and `body` settles. */
