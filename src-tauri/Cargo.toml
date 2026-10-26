@@ -32,7 +32,8 @@ tauri-plugin-http = "2"
 tauri-plugin-decorum = "1"
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: serde_json's default float parse can land one ulp off; a cell crossing IPC must arrive exact.
-serde_json = { version = "1", features = ["float_roundtrip"] }
+# preserve_order: an object keeps its keys in the order they were written, as a save does.
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 # Local File's Parquet reader, on the core's frame ([[C130]] rustCore).
 solenoid-core = { path = "../crates/solenoid-core" }
 solenoid-parquet = { path = "../crates/solenoid-parquet" }

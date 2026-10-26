@@ -1,11 +1,14 @@
 // [[D102]] graphOnCore, [[D99]] rustIsSpec, [[B12]] losslessSaves
 // The text form's frozen answers (fixtures/core/text-form.json.gz): every seed graph written to text and read back,
-// and hand-written texts read, well-formed and not. Compared as text, since a save's key order is part of it; the Rust
+// and hand-written texts read, well-formed and not. Valid JSON, not JavaScript's spelling of it: a number keeps its
+// sign and digits, an object the order its keys were written in. Compared as text, since a save's key order is part of it; the Rust
 // is held to the same answers natively (`crates/solenoid-graph/tests/text_form.rs`).
 import { describe, expect, it } from "vitest";
 import { frozen } from "./coreFixtures";
 import { SEEDS } from "../../src/graph/seeds";
-import { writeTextForm, readTextForm, assignNames } from "../../src/graph/textForm";
+import { writeTextForm, assignNames } from "../../src/graph/textForm";
+import { textFormRead } from "../../src/graph/engineWasm/solenoid_graph.js";
+import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import type { SavedGraph } from "../../src/graph/persistence";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/nodeInit";
 
@@ -17,9 +20,8 @@ const writeCase = (graph: string, g: SavedGraph): Case => {
   return { kind: "write", graph, input: JSON.stringify(g), names: g.nodes.map((n) => names.get(n.id)!), want: writeTextForm(g) };
 };
 
-const read = (text: string): string => {
-  try { return JSON.stringify(readTextForm(text)); } catch (e) { return `!${(e as Error).message}`; }
-};
+/** The save the core reads from a text, as the JSON text it answers (or `!` and why not). */
+const read = (text: string): string => textFormRead(text, CURRENT_SAVE_VERSION);
 
 const SIDECAR = '---\n{ "v": 2, "positions": { "B": { "x": 5, "y": 6 }, "A": { "x": 1, "y": 2, "size": { "w": 3, "h": 4 }, "collapsed": true } } }\n';
 const TEXTS = [

@@ -253,27 +253,16 @@ pub fn lattice_tables() -> String {
 /// A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text.
 #[wasm_bindgen(js_name = textFormWrite)]
 pub fn text_form_write(graph: &str, names: &str, order: &str) -> String {
-    let g = crate::js_json::parse(graph).unwrap_or(crate::js_json::Js::Null);
-    let strings = |t: &str| -> Vec<String> {
-        crate::js_json::parse(t)
-            .ok()
-            .and_then(|v| {
-                v.arr().map(|a| {
-                    a.iter()
-                        .map(|x| x.str().unwrap_or("").to_string())
-                        .collect()
-                })
-            })
-            .unwrap_or_default()
-    };
+    let g = serde_json::from_str(graph).unwrap_or(serde_json::Value::Null);
+    let strings = |t: &str| serde_json::from_str::<Vec<String>>(t).unwrap_or_default();
     crate::text_form::write(&g, &strings(names), &strings(order))
 }
 
 /// The save a text holds, as JSON text, or `!` and why it can't be read (`text_form::read`).
 #[wasm_bindgen(js_name = textFormRead)]
-pub fn text_form_read(text: &str, version: f64) -> String {
+pub fn text_form_read(text: &str, version: u32) -> String {
     match crate::text_form::read(text, version) {
-        Ok(g) => crate::js_json::stringify(&g),
+        Ok(g) => g.to_string(),
         Err(e) => format!("!{e}"),
     }
 }
@@ -282,25 +271,17 @@ pub fn text_form_read(text: &str, version: f64) -> String {
 /// and why it can't be.
 #[wasm_bindgen(js_name = textFormLine)]
 pub fn text_form_line(line: &str) -> String {
-    use crate::js_json::{stringify, Js, Obj};
     match crate::text_form::parse_line(line) {
         Ok(l) => {
-            let mut o = Obj::new();
-            o.set("name", Js::Str(l.name));
-            o.set("type", Js::Str(l.ty));
-            o.set("init", Js::Obj(l.init));
+            let mut o = serde_json::json!({ "name": l.name, "type": l.ty, "init": l.init });
             if let Some(m) = l.literals {
-                o.set("literals", Js::Obj(m));
+                o["literals"] = serde_json::Value::Object(m);
             }
             if let Some(m) = l.string_literals {
-                o.set("stringLiterals", Js::Obj(m));
+                o["stringLiterals"] = serde_json::Value::Object(m);
             }
-            let conns = l
-                .conns
-                .into_iter()
-                .map(|(i, s, out)| Js::Arr(vec![Js::Str(i), Js::Str(s), Js::Str(out)]));
-            o.set("conns", Js::Arr(conns.collect()));
-            stringify(&Js::Obj(o))
+            o["conns"] = serde_json::json!(l.conns);
+            o.to_string()
         }
         Err(e) => format!("!{e}"),
     }

@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 solenoid-core = { path = "../solenoid-core" }
-serde_json = { version = "1", features = ["float_roundtrip"] }
+serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 parquet = "60"
 arrow-array = "60"
 arrow-schema = "60"

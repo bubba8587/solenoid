@@ -5,7 +5,6 @@
 use std::io::Read;
 
 use serde_json::Value as Json;
-use solenoid_graph::js_json::{parse, stringify};
 use solenoid_graph::text_form::{read, write};
 
 fn frozen() -> Vec<Json> {
@@ -33,7 +32,7 @@ fn every_text_reads_and_writes_as_frozen() {
         let want = c["want"].as_str().unwrap();
         let got = match c["kind"].as_str().unwrap() {
             "write" => {
-                let g = parse(c["input"].as_str().unwrap()).unwrap();
+                let g: Json = serde_json::from_str(c["input"].as_str().unwrap()).unwrap();
                 let names: Vec<String> = c["names"]
                     .as_array()
                     .unwrap()
@@ -42,8 +41,8 @@ fn every_text_reads_and_writes_as_frozen() {
                     .collect();
                 write(&g, &names, &order)
             }
-            _ => match read(c["text"].as_str().unwrap(), 2.0) {
-                Ok(g) => stringify(&g),
+            _ => match read(c["text"].as_str().unwrap(), 2) {
+                Ok(g) => g.to_string(),
                 Err(e) => format!("!{e}"),
             },
         };
