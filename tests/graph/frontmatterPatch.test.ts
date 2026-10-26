@@ -115,6 +115,8 @@ describe("the write plan", () => {
     expect(writableKeys(cube, "")).toEqual(["status", "priority", "due"]);
     expect(writableKeys(cube, "status, due")).toEqual(["status", "due"]);
     expect(writableKeys(cube, "status, nope")).toEqual(["status"]); // absent column dropped
+    const commaKey: CubeValue = { ...cube, columns: [...cube.columns, { name: "a, b", type: "string", cells: cube.columns[0].cells.map(() => "x") }] } as CubeValue;
+    expect(writableKeys(commaKey, '"a, b", status')).toEqual(["a, b", "status"]); // a quoted key keeps its comma
   });
 
   it("planPropertyWrites is one row per (note × key), dates formatted", () => {

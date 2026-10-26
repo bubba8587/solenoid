@@ -1,4 +1,5 @@
 // [[B11]], [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution
+import { listLiteralItems } from "../listLiterals";
 import { GraphNode } from "../graphModel";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
@@ -216,7 +217,7 @@ export class WriteTasksNode extends GraphNode {
   }
 
   private keys(): string[] {
-    return (this.stringLiterals.keys ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+    return listLiteralItems(this.stringLiterals.keys ?? "");
   }
 
   data(inputs: { tasks?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {

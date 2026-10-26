@@ -1,4 +1,5 @@
 // [[C38]] sinkRunButtonOnly, [[B11]] maximalMerge, [[C26]] opArgDistinct
+import { listLiteralItems, listLiteralText } from "../listLiterals";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../nodeClasses";
 import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
@@ -217,7 +218,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); d.edited(); void processGraph(); }
   function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
   function commitKeys() {
-    const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
+    const next = listLiteralText(listLiteralItems(keys));
     setKeys(next);
     if (next !== (d.stringLiterals.keys ?? "")) { d.stringLiterals.keys = next; d.edited(); void processGraph(); }
   }
@@ -414,7 +415,7 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
   useEffect(() => { setKeys(data.stringLiterals.keys ?? ""); }, [data.stringLiterals.keys]);
 
   function commitKeys() {
-    const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
+    const next = listLiteralText(listLiteralItems(keys));
     setKeys(next);
     if (next !== (data.stringLiterals.keys ?? "")) { data.stringLiterals.keys = next; data.edited(); void processGraph(); }
   }

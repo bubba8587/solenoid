@@ -226,10 +226,6 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
   drill-through from a value cell (Details lists a leaf's rows; a cell's rows also split by its column item), and
   Details on a subtotal or the grand total.
-- [ ] **Write nodes' Keys split on bare commas** (`WriteNodes.tsx`, two places): read and write them with
-  `listLiteralItems` / `listLiteralText` so a key holding a comma survives.
-- [ ] **Escape with the column-format panel open closes the whole popup** (`ColumnFormatButton` registers no
-  escape layer); it should close the panel first, as the ⋯ menu does.
 - [ ] **The editor footer's Insert and Delete menus and Cancel / Save keep their older square style** beside the
   pill family; Cancel and Save are dialog actions, the menus could join the pills.
 

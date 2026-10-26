@@ -1,4 +1,5 @@
 // [[C101]] onePatchPath
+import { listLiteralItems } from "./listLiterals";
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
@@ -238,7 +239,7 @@ export interface PlanRow {
 
 export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
   const present = new Set(cube.columns.map((c) => c.name));
-  const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const listed = listLiteralItems(keysCsv);
   if (listed.length > 0) return listed.filter((k) => present.has(k) && k !== "path" && k !== NOTE_BODY);
   return cube.columns.map((c) => c.name).filter((k) => k !== "path" && k !== NOTE_BODY && !BUILTIN_READONLY.has(k));
 }
@@ -269,7 +270,7 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
       rows.push({ path: p, key: c.key, value, after: displayValue(value), before: "", action: "pending" });
     }
   }
-  const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const listed = listLiteralItems(keysCsv);
   const bodyCol = cube.columns.find((c) => c.name === NOTE_BODY);
   if (bodyCol && (listed.length === 0 || listed.includes(NOTE_BODY))) {
     for (let i = 0; i < pathCol.cells.length; i++) {

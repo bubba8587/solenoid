@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useEscapeLayer } from "./escapeLayers";
 import { createPortal } from "react-dom";
 import { stepListSel } from "./gridKeyboard";
 import { tokenAtCaret } from "../formulaSyntax";
@@ -71,6 +72,7 @@ export function ColumnFormatButton({ picked, children, title = "Column format", 
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(open, () => setOpen(false), [btnRef, panelRef]);
+  useEscapeLayer(open, () => setOpen(false));
   const style = useHangUnder(open, btnRef, panelRef, "right");
 
   return (
