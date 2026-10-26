@@ -2807,8 +2807,10 @@ fn pool_tables(ts: &[Cv]) -> Cv {
     )
 }
 
-/// One nested column's tables scored together and split back to their rows, each ranked within itself;
-/// None where the tables hold nothing to score.
+/// One nested column's tables scored together and split back to their rows, each ranked within itself (None where
+/// the tables hold nothing to score), and the parent's key columns the tables repeat.
+type RankedNested = (Vec<String>, Option<Vec<(Cv, Best)>>);
+
 fn rank_nested(
     cells: &[Cv],
     rows: usize,
@@ -2816,22 +2818,41 @@ fn rank_nested(
     normalize: Normalize,
     breakdown: bool,
     parent: &Cube,
-) -> Result<Option<Vec<(Cv, Best)>>, SolError> {
+) -> Result<RankedNested, SolError> {
     let is_table = Cv::is_table;
     let mut keys: Vec<String> = Vec::new();
+    // A parent column every table repeats, row for row, is the Nest Join's key: matched as Nest Join matches keys
+    // (a unit cell by its quantity, a number by its text), so it neither scores nor labels.
+    let key_ids =
+        |t: &Cv, name: &str| -> Option<Vec<Option<String>>> {
+            match t {
+                Cv::Frame(f) => f
+                    .columns
+                    .iter()
+                    .find(|c| c.name == name)
+                    .map(|c| c.values.iter().map(|v| cell_key_id(v, c.unit.as_ref())).collect()),
+                Cv::Cube(k) => k.columns.iter().find(|c| c.name == name).map(|c| {
+                    c.cells.iter().map(|v| if let Cv::V(v) = v { cell_key_id(v, None) } else { None }).collect()
+                }),
+                _ => None,
+            }
+        };
     for pc in &parent.columns {
         let (mut seen, mut all) = (false, true);
         for (i, t) in cells.iter().enumerate() {
             if !is_table(t) {
                 continue;
             }
-            let Some((_, _, col)) = table_columns(t).into_iter().find(|(n, _, _)| *n == pc.name) else {
+            let Some(ids) = key_ids(t, &pc.name) else {
                 all = false;
                 continue;
             };
             seen = true;
-            let own = pc.cells.get(i).cloned().unwrap_or(Cv::UNDEF);
-            if !col.iter().all(|v| strict_eq(v, &own)) {
+            let own = match pc.cells.get(i) {
+                Some(Cv::V(v)) => cell_key_id(v, None),
+                _ => None,
+            };
+            if !ids.iter().all(|id| id.is_some() && *id == own) {
                 all = false;
             }
         }
@@ -2877,7 +2898,7 @@ fn rank_nested(
     let tables: Vec<(Cv, usize)> =
         out.iter().enumerate().filter(|(_, o)| table_rows(&o.0) > 0).map(|(i, o)| (o.0.clone(), i)).collect();
     if tables.is_empty() {
-        return Ok(Some(out));
+        return Ok((keys, Some(out)));
     }
     let mut group: Vec<usize> = Vec::new();
     for (t, i) in &tables {
@@ -2886,7 +2907,7 @@ fn rank_nested(
     let pooled = pool_tables(&tables.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>());
     if let Cv::Frame(p) = &pooled {
         if crate::decision::decision_columns(&to_core(p)).1.is_empty() {
-            return Ok(None);
+            return Ok((keys, None));
         }
     }
     let ranked = rank_any(&pooled, wf, normalize, breakdown)?;
@@ -2895,7 +2916,40 @@ fn rank_nested(
         let sub = table_pick(&ranked.table, &mine);
         out[*i] = within_group(&sub, ranked.score_at, ranked.rank_at);
     }
-    Ok(Some(out))
+    Ok((keys, Some(out)))
+}
+
+/// A non-text key column the nested tables repeat names its row and never scores: the first labels the rows where no
+/// text column does, as its shown text, and the rest go.
+fn key_label(mut f: FrameValue, keys: &std::collections::HashSet<String>, c: &Cube) -> FrameValue {
+    let is_key = |col: &FrameColumn| keys.contains(&col.name) && col.ty != FrameColType::String;
+    let has_text = f.columns.iter().any(|col| col.ty == FrameColType::String);
+    let shown = |v: &Cv| match v {
+        Cv::V(V::Unit(u)) => FrameCell::Str(
+            format!(
+                "{} {}",
+                crate::jsnum::number_to_string(crate::unit_expression::display_magnitude_of(u)),
+                u.display.as_deref().unwrap_or_default()
+            )
+            .trim_end()
+            .into(),
+        ),
+        Cv::V(V::Num(n)) => FrameCell::Str(crate::jsnum::number_to_string(*n).into()),
+        Cv::V(V::Str(t)) => FrameCell::Str(t.clone()),
+        _ => FrameCell::Null,
+    };
+    let label = f
+        .columns
+        .iter()
+        .find(|col| is_key(col))
+        .filter(|_| !has_text)
+        .and_then(|col| c.columns.iter().find(|cc| cc.name == col.name))
+        .map(|cc| FrameColumn::new(cc.name.clone(), FrameColType::String, cc.cells.iter().map(shown).collect()));
+    f.columns.retain(|col| !is_key(col));
+    if let Some(l) = label {
+        f.columns.insert(0, l);
+    }
+    f
 }
 
 /// [[C126]] chainedDecisions: the nested tables under each column ranked together, each row counting its
@@ -2905,16 +2959,18 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     let scalar = flat_cube_scalar(c);
     let table_cols: Vec<&CubeColumn> =
         c.columns.iter().filter(|col| col.cells.iter().any(|v| matches!(v, Cv::Frame(_) | Cv::Cube(_)))).collect();
-    let ranked: Vec<Option<Vec<(Cv, Best)>>> = table_cols
+    let nested: Vec<RankedNested> = table_cols
         .iter()
         .map(|col| rank_nested(&col.cells, rows, wf, normalize, breakdown, c))
         .collect::<Result<_, _>>()?;
+    let keys: std::collections::HashSet<String> = nested.iter().flat_map(|n| n.0.iter().cloned()).collect();
+    let ranked: Vec<Option<Vec<(Cv, Best)>>> = nested.into_iter().map(|n| n.1).collect();
     let nested_cols: Vec<&CubeColumn> =
         table_cols.iter().zip(&ranked).filter(|(_, r)| r.is_some()).map(|(c, _)| *c).collect();
     let inner: Vec<&Vec<(Cv, Best)>> = ranked.iter().flatten().collect();
     let carried: Vec<&CubeColumn> =
         table_cols.iter().zip(&ranked).filter(|(_, r)| r.is_none()).map(|(c, _)| *c).collect();
-    let mut parent = scalar.clone();
+    let mut parent = key_label(scalar, &keys, c);
     for (n, col) in nested_cols.iter().enumerate() {
         parent.columns.push(FrameColumn::new(
             col.name.clone(),

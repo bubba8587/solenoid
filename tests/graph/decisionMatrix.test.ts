@@ -649,6 +649,31 @@ describe("chained decisions ([[C126]] chainedDecisions)", () => {
     expect(col(alone, "Neighborhood").values[0]).toBe("Hillside");
   });
 
+  it("a number key Nest Join matched, across a unit or from text, labels the rows and never scores", () => {
+    const zones = (unit?: { dim: Record<string, number>; display: string }): FrameValue => ({ __frame: true, columns: [
+      { name: "Zone", type: "number", values: [1, 2], ...(unit ? { unit } : {}) },
+      { name: "Safety", type: "number", values: [9, 6] },
+    ] });
+    const flats = (zone: { type: "number" | "string"; values: unknown[]; unit?: { dim: Record<string, number>; display: string } }): FrameValue => ({ __frame: true, columns: [
+      { name: "Flat", type: "string", values: ["A", "B", "C"] },
+      { name: "Zone", ...zone },
+      { name: "Rent", type: "number", values: [900, 800, 700] },
+    ] as FrameValue["columns"] });
+    const km = { dim: { length: 1 }, display: "km" }, m = { dim: { length: 1 }, display: "m" };
+    for (const c of [
+      relateFramesToCube(zones(km), flats({ type: "number", values: [1000, 1000, 2000], unit: m }), "Zone", "Flats")!,
+      relateFramesToCube(zones(), flats({ type: "string", values: ["1", "1", "2"] }), "Zone", "Flats")!,
+    ]) {
+      const out = decisionCube(c, weights([["Rent", -1, null], ["Safety", 1, null]]), "max", true);
+      expect(out.columns.map((x) => x.name)).toEqual(["Zone", "Best in Flats", "Safety", "Flats score", "Score", "Rank", "Flats"]);
+      expect(["A", "B", "C"]).toContain(cubeCol(out, "Best in Flats")[0]);
+      const nested = cubeCol(out, "Flats")[0] as FrameValue;
+      expect(nested.columns.map((x) => x.name)).not.toContain("Zone");
+    }
+    const labels = (c: CubeValue) => cubeCol(decisionCube(c, null, "max"), "Zone");
+    expect(labels(relateFramesToCube(zones(km), flats({ type: "number", values: [1000, 1000, 2000], unit: m }), "Zone", "Flats")!).sort()).toEqual(["1 km", "2 km"]);
+  });
+
   it("keeps every nested table, ranked best first", () => {
     const out = decisionCube(cube, weights([["Rent", -1, null], ["Light", 2, null]]), "max");
     const hill = cubeCol(out, "Apartments")[cubeCol(out, "Neighborhood").indexOf("Hillside")] as FrameValue;

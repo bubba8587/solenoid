@@ -117,7 +117,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   environment verifies it before starting.
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
-- [ ] **Loose ends from the last review (NICE):** a Nest Join key carrying a unit, or matched number-to-text, isn't recognized as a key and scores; ladder cards show 3 decimals where Plan shows 4.
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)
 Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.

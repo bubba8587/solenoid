@@ -11,7 +11,8 @@ import "./ladderView.css";
 
 /** How far each piece of the flow spills over its neighbors, so no hairline shows where they meet. */
 const SEAM = 0.8;
-const fmt3 = (x: number) => (Math.round(x * 1000) / 1000).toFixed(3);
+/** A score as the Plan table shows it: four decimals, the precision `round4` keeps. */
+const fmt4 = (x: number) => x.toFixed(4);
 
 function amount(p: LadderPayload, k: number, v: number): string {
   const f = p.resources[k].format;
@@ -48,7 +49,7 @@ function RungCard({ p, e, colors, act }: { p: LadderPayload; e: LadderEdge; colo
   const costs = costText(p, e.pick);
   const body = (
     <>
-      <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt3(o.score)}</span></div>
+      <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt4(o.score)}</span></div>
       {costs && <div className="sol-ladder__mono">{costs}</div>}
       <ValueBar p={p} i={e.pick} colors={colors} />
       {e.struck.length > 0 && <div className="sol-ladder__struck"><span>Skips</span>{e.struck.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
