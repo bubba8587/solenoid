@@ -1,7 +1,9 @@
-// [[C10]] socketLattice
-import { makeHeaders, type FrameColType, type FrameValue } from "./frame";
-import { solError } from "./errorValue";
-import type { FrameSchemaColumn } from "./frameBackend";
+// [[C10]] socketLattice, [[D102]] graphOnCore
+// A verb's static output shape is the core's verb run on an empty frame of its input's shape (graph-core.md § Phase D),
+// so it can never disagree with what the verb answers; a verb that refuses the shape throws, as it would on data.
+import type { FrameValue } from "./frame";
+import { onCoreFrames, encodeOpCells, type FrameSchemaColumn } from "./frameBackend";
+import { wasmInvokeSync } from "./engineWasm";
 import type { FrameOp, JoinOpts } from "./frameOps";
 
 export type ShapeColumn = FrameSchemaColumn;
@@ -23,161 +25,38 @@ export function emptyFrameOf(shape: Shape): FrameValue {
   return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) };
 }
 
-function requireCol(s: Shape, name: string): ShapeColumn {
-  const col = s.columns.find((c) => c.name === name);
-  if (!col) throw solError("#REF!", `column "${name}" not found`);
-  return col;
-}
-
 /** How many leading key columns a totals row writes "Grand Total" / "Total" into, so they run as text. */
 export function totalLabelledKeys(depth: number, nKeys: number): number {
   return depth === 0 || nKeys === 0 ? 0 : 1 + Math.min(Math.abs(depth) - 1, nKeys - 1);
 }
 
+function onEmpty(inputs: readonly Shape[], run: (handles: string[]) => string): Shape {
+  return shapeOfFrameValue(onCoreFrames(inputs.map(emptyFrameOf), run));
+}
+
+/** The shape `op` leaves. A pivot's and a split's columns grow with the data (`dynamic`), and a pivot's totals write
+ *  "Total" into its leading row keys, which an empty frame never shows. */
 export function shapeOf(op: FrameOp, input: Shape): Shape {
-  switch (op.kind) {
-    case "select": {
-      const seen = new Set<string>();
-      const wanted = op.columns.filter((n) => !seen.has(n) && (seen.add(n), true));
-      return { columns: wanted.map((n) => requireCol(input, n)) };
-    }
-    case "drop": {
-      const remove = new Set(op.columns);
-      return { columns: input.columns.filter((c) => !remove.has(c.name)) };
-    }
-    case "rename": {
-      const proposed = input.columns.map((c) => op.map[c.name] ?? c.name);
-      const unique = makeHeaders(proposed, proposed.length);
-      return { columns: input.columns.map((c, i) => ({ ...c, name: unique[i] })) };
-    }
-    case "sort":
-    case "distinct":
-    case "head":
-    case "filter":
-    case "filterMulti":
-    case "sliceRows":
-      return input;
-    case "dropBlankRows":
-    case "formats":
-      return input;
-    case "addIndex":
-      return shapeOfAddIndex(input, op.name);
-    case "splitColumn":
-      return shapeOfSplitColumn(input, op.column, op.delimiter);
-    case "mergeColumns":
-      return shapeOfMergeColumns(input, op.columns, op.name);
-    case "fillBlanks":
-      for (const c of op.columns) requireCol(input, c);
-      return input;
-    case "replaceValues":
-      if (op.column.trim()) requireCol(input, op.column.trim());
-      return input;
-    case "groupBy": {
-      const keyCols = op.keys.map((n) => requireCol(input, n));
-      const aggCols = op.aggs.map((a) => ({ spec: a, col: requireCol(input, a.column) }));
-      const keyOut: ShapeColumn[] = keyCols.map((c) => ({ name: c.name, type: c.type }));
-      const aggOut: ShapeColumn[] = aggCols.map(({ spec, col }) => ({
-        name: spec.as,
-        type: spec.op === "min" || spec.op === "max" ? col.type : "number",
-      }));
-      const out = [...keyOut, ...aggOut];
-      const unique = makeHeaders(out.map((c) => c.name), out.length);
-      return { columns: out.map((c, i) => ({ ...c, name: unique[i] })) };
-    }
-    case "unpivot": {
-      const idCols = op.idColumns.map((n) => requireCol(input, n));
-      const valCols = op.valueColumns.map((n) => requireCol(input, n));
-      const names = makeHeaders(
-        [...idCols.map((c) => c.name), op.variableName ?? "variable", op.valueName ?? "value"],
-        idCols.length + 2,
-      );
-      return {
-        columns: [
-          ...idCols.map((c, k) => ({ name: names[k], type: c.type })),
-          { name: names[idCols.length], type: "string" },
-          { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number" },
-        ],
-      };
-    }
-    case "pivot": {
-      const rowFields = op.rowFields.filter((s) => s.trim() !== "");
-      const valueNames = op.values.filter((s) => s.trim() !== "");
-      if (valueNames.length === 0) throw solError("#VALUE!", "PIVOTBY needs at least one value field");
-      const rowCols = rowFields.map((n) => requireCol(input, n));
-      const keyNames = makeHeaders(rowFields, rowFields.length);
-      const labelled = totalLabelledKeys(op.rowTotalDepth ?? 0, rowCols.length);
-      return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: k < labelled ? "string" : c.type })), dynamic: true };
-    }
-    case "window": {
-      for (const k of op.partitionBy) requireCol(input, k);
-      if (op.orderBy) requireCol(input, op.orderBy);
-      const valCol = op.column ? requireCol(input, op.column) : null;
-      const name = op.as.trim() || op.fn;
-      const type: FrameColType = valCol && (op.fn === "lag" || op.fn === "lead" || op.fn === "first" || op.fn === "last") ? valCol.type : "number";
-      return { columns: [...input.columns.filter((c) => c.name !== name), { name, type }] };
-    }
+  const out = onEmpty([input], (h) => wasmInvokeSync<string>("engine_apply", { handle: h[0], op: encodeOpCells(op) }));
+  if (op.kind === "pivot") {
+    const labelled = totalLabelledKeys(op.rowTotalDepth ?? 0, op.rowFields.filter((f) => f.trim() !== "").length);
+    return { columns: out.columns.map((c, k) => (k < labelled ? { ...c, type: "string" } : c)), dynamic: true };
   }
+  return op.kind === "splitColumn" && op.delimiter !== "" ? { ...out, dynamic: true } : out;
 }
 
 export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
-  requireCol(left, opts.leftKey);
-  requireCol(right, opts.rightKey);
-  if (opts.how === "semi" || opts.how === "anti") {
-    return { columns: left.columns.map((c) => ({ name: c.name, type: c.type })) };
-  }
-  const rightNonKey = right.columns.filter((c) => c.name !== opts.rightKey);
-  const names = makeHeaders(
-    [...left.columns.map((c) => c.name), ...rightNonKey.map((c) => c.name)],
-    left.columns.length + rightNonKey.length,
-  );
-  const out: ShapeColumn[] = [];
-  left.columns.forEach((c, ci) => out.push({ name: names[ci], type: c.type }));
-  rightNonKey.forEach((c, ri) => out.push({ name: names[left.columns.length + ri], type: c.type }));
-  return { columns: out };
+  return onEmpty([left, right], (h) => wasmInvokeSync<string>("engine_join", { left: h[0], right: h[1], opts }));
 }
 
 export function shapeOfAppend(shapes: readonly Shape[]): Shape {
-  const names: string[] = [];
-  const typeOf = new Map<string, FrameColType>();
-  for (const s of shapes) {
-    for (const c of s.columns) {
-      const existing = typeOf.get(c.name);
-      if (existing === undefined) { typeOf.set(c.name, c.type); names.push(c.name); }
-      else if (existing !== c.type) {
-        throw solError("#TYPE!", `append: column "${c.name}" is ${existing} in one frame and ${c.type} in another`);
-      }
-    }
-  }
-  return { columns: names.map((name) => ({ name, type: typeOf.get(name)! })) };
+  return onEmpty(shapes, (h) => wasmInvokeSync<string>("engine_append", { handles: h }));
 }
 
 export function shapeOfAddIndex(input: Shape, name: string): Shape {
-  const nm = name.trim() || "Index";
-  const unique = makeHeaders([nm, ...input.columns.map((c) => c.name)], 1 + input.columns.length);
-  return {
-    columns: [
-      { name: unique[0], type: "number" },
-      ...input.columns.map((c, i) => ({ name: unique[i + 1], type: c.type })),
-    ],
-  };
-}
-
-/** `mergeColumns`' columns: the merged text column sits where the first source was. */
-function shapeOfMergeColumns(input: Shape, columns: readonly string[], name: string): Shape {
-  const sources = columns.map((c) => requireCol(input, c));
-  if (sources.length < 2) throw solError("#VALUE!", "Merge needs at least two columns");
-  const drop = new Set(sources.map((c) => c.name));
-  const at = input.columns.findIndex((c) => c.name === sources[0].name);
-  const kept = input.columns.filter((c) => !drop.has(c.name));
-  const keptBefore = input.columns.slice(0, at).filter((c) => !drop.has(c.name)).length;
-  const out = [...kept.slice(0, keptBefore), { name: name.trim() || "Merged", type: "string" as const }, ...kept.slice(keptBefore)];
-  const unique = makeHeaders(out.map((c) => c.name), out.length);
-  return { columns: out.map((c, i) => ({ ...c, name: unique[i] })) };
+  return shapeOf({ kind: "addIndex", name, start: 1 }, input);
 }
 
 export function shapeOfSplitColumn(input: Shape, column: string, delimiter: string): Shape {
-  if (delimiter === "") return input;
-  const idx = input.columns.findIndex((c) => c.name === column);
-  if (idx < 0) throw solError("#REF!", `column "${column}" not found`);
-  return { columns: input.columns.filter((_, i) => i !== idx), dynamic: true };
+  return shapeOf({ kind: "splitColumn", column, delimiter }, input);
 }

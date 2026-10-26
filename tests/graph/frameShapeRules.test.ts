@@ -272,7 +272,7 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode({ rowTotalDepth: -1 });
     p.stringLiterals.rowFields = "Year, Qtr";
     p.stringLiterals.values = "Qty";
-    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number"]);
+    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number", "Qty:number"]);
   });
 
   it("a min or max of dates with totals runs as a date, as its shape says", async () => {
@@ -302,7 +302,7 @@ describe("a wired config socket makes the shape unknown", () => {
     const p = new PivotNode();
     p.stringLiterals.rowFields = "Region";
     p.stringLiterals.values = "Qty";
-    expect(cols(await shapeOf(p, "frame", SALES))).toEqual(["Region:string"]);
+    expect(cols(await shapeOf(p, "frame", SALES))).toEqual(["Region:string", "Qty:number"]);
     for (const key of ["rowFields", "colFields", "values"]) {
       const wired = new PivotNode();
       wired.stringLiterals.rowFields = "Region";

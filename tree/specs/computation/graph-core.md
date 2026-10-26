@@ -342,9 +342,9 @@ flowchart LR
 - **D2, the settle's facts** (done): `settleFacts.ts` reads each node's sockets (type now, declared base, kind), its
   passthroughs as data (the active input, the projection a table reads as) and its Conduit lanes; the core holds the
   order and the cables.
-- **D3, frame shapes** (open): the settle reads a table's static shape through the facts, as `frameShapeResolver.ts`
-  works it out; the `frameShape` hooks (49, across 15 node modules) answer a card's output columns from its
-  saved fields and its inputs' shapes; each moves beside its body on the core.
+- **D3, frame shapes**: a verb's shape is the core's verb on an empty frame of its input's shape (done:
+  `frameShape.ts`, frozen in `fixtures/core/shapes.json.gz`, `coreShapes.test.ts`); the settle reads shapes through
+  the facts. Open: the `frameShape` hooks that work a card's columns out by hand instead of through a verb.
 - **D4 and D5, Conduit lanes and the Type Settle** (done): `settle.rs` runs both to a joint fixpoint over the graph
   (`GraphCore.settleTypes`) and answers each socket that changed; `settleWildcardTypes` retypes those sockets and the
   view rerenders the nodes. Frozen over every seed graph three ways (`fixtures/core/settle.json.gz`,

@@ -116,32 +116,14 @@ A node that emits a Frame states its output columns once, through `frameShape(ou
 
 ### Static shape rules (`frameShape.ts`)
 
-A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. `shapeOf(op, input)` is the static twin of the core's `apply_verb` (`frame_verbs.rs`), with one arm per `FrameOp` kind, and its columns must be exactly what a real `preview()` reports. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. A column a rule needs that the input lacks throws `#REF!` ("column … not found").
+A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the output's column count depends on the data: `columns` lists what is known ahead of running, and more may appear at compute time. **A verb's shape is the verb itself** ([[graph-core#Phase D: the graph's derived state]]): `shapeOf(op, input)`, `shapeOfJoin`, `shapeOfAppend`, `shapeOfAddIndex` and `shapeOfSplitColumn` run the core's verb on an empty frame of the input's shape, so a shape is exactly what the verb answers and a verb that refuses the input (a missing column is `#REF!`, mixed value columns in an unpivot `#TYPE!`) throws, which the walk reads as unknown. Nest, Unnest and Frame Lookup are not frame shapes and have no rule. Two answers depend on rows an empty frame doesn't have, so the wrapper adds them:
 
-| Verb | Output shape |
-|---|---|
-| select | the named columns, first occurrence only, in the order named |
-| drop | the input minus the named columns |
-| rename | renamed through the map, made unique by `makeHeaders` |
-| sort, distinct, head, filter, filterMulti, sliceRows, dropBlankRows, formats | the input unchanged |
-| addIndex, splitColumn | `shapeOfAddIndex`, `shapeOfSplitColumn` (below) |
-| mergeColumns | `shapeOfMergeColumns`: the input minus the sources, a string column (`name`, default "Merged") where the first source sat, names made unique; fewer than two columns is `#VALUE!` |
-| fillBlanks, replaceValues | the input unchanged, after checking the target columns exist |
-| groupBy | the key columns, then one column per aggregate named by its `as`; min and max keep the source column's type and every other aggregate is a number; names made unique |
-| unpivot | the id columns, a `string` variable column (`variableName`, default "variable") and a value column (`valueName`, default "value") typed like the first value column (number when none) |
-| pivot | the row-field columns only, flagged `dynamic`, since the cross-tab width depends on the data; no value field is `#VALUE!` |
-| window | the input without any column of the new name, plus the new column (`as`, else the function name): lag, lead, first and last take the value column's type, everything else a number |
-
-Four verbs have their own entry points:
-
-- `shapeOfJoin(left, right, opts)` checks both keys, then gives the left columns only for semi and anti (a filter, not a widening join), otherwise the left columns followed by the right's non-key columns, names made unique. It mirrors `join_frames`.
-- `shapeOfAppend(shapes)` is the union by name in first-seen order; a shared name with two different types is `#TYPE!`.
-- `shapeOfAddIndex(input, name)` puts one number column first (`name`, default "Index"), names made unique.
-- `shapeOfSplitColumn(input, column, delimiter)` drops the split column and flags `dynamic`, because the part count is the maximum across rows; an empty delimiter returns the input.
+- a pivot is `dynamic` (its cross-tab columns come from the data), and its totals write a "Total" label into its leading row keys, which then run as text (`totalLabelledKeys`);
+- a split is `dynamic`, its part count being the most any row has.
 
 `shapeOfFrameValue(f)` reads a literal frame's shape. `emptyFrameOf(shape)` builds a zero-row frame, so a producer whose columns never depend on row data can declare its shape by running its own verb instead of keeping a second copy of the rule that could drift. `columnNamesOf(shape)` lists a shape's column names for the column picker: empty for an unknown shape, and the known columns for a `dynamic` one, with free text still open.
 
-`frameShapeResolver.ts` is only the walk: pure, with no engine call and no IPC, and `null` means unknown. It knows no node classes beyond the Conduit. `makeFrameShapeResolver(editor).outShape(nodeId, outKey)` indexes the connections by target once, memoizes per output and answers `null` on a cycle. Per output, in order:
+`frameShapeResolver.ts` is only the walk, and `null` means unknown; the rules it reaches run the core's verbs synchronously. It knows no node classes beyond the Conduit. `makeFrameShapeResolver(editor).outShape(nodeId, outKey)` indexes the connections by target once, memoizes per output and answers `null` on a cycle. Per output, in order:
 
 1. **A Conduit lane** `out_i` forwards `in_i` verbatim. It is named here because the Conduit declares no `passthrough()`; the core's Type Settle owns lane typing (`settle.rs`), and `conduitTrace.ts` the run a cable belongs to.
 2. **A node with both a `passthrough()` and a `frameShape()`** runs its hook: it adds or reshapes columns while still forwarding the input's rank (Computed Column or Add Column over a Cube), so its own columns win over the forwarded shape.
