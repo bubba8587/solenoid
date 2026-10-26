@@ -372,13 +372,13 @@ rest stays.
 | Group | Modules | Lines |
 |---|---|---|
 | Graph model | moved: the text form (`text_form.rs`, frozen in `fixtures/core/text-form.json.gz`). Stays: `graphValidate` (it reads the node classes; the one rule it shares, `canConnect`, already reads the core's tables), `persistenceCore`, `copyPaste`, `persistence`, `compositeLogic`, `nodeInit`, `historyDigest` (they drive the editor, the view and the stores, or format a label) | about 2,800 |
-| Layout (the LayoutFx) | `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK | about 3,000 |
-| Cable geometry | `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints` | about 1,400 |
-| Values and annotations | moved: the unit catalog, the dimension labels and the FC's tagging rule (`fc_unit_to_unit`, `format_dim`, `tag_fc_unit`; `dimension.ts` and `unitBridge.ts` read them, frozen in `fixtures/core/unit-catalog.json.gz`, `dim-labels.json.gz`, `fc-tag.json.gz`). Stays: the value shape and its cheap checks (`dimEqual`, `displayMagnitudeOf`, `stripUnitCells`), which run while drawing; `formatModel`, `numberSpec`, `frame` to weigh | about 1,800 |
-| Catalog and search | `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils` | about 900 |
-| Colors and drawing math | `palette`, `colormaps`, the geometry in `htmlCanvasRenderer` | about 2,000 |
-| Vault and files | `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers | about 2,800 |
-| Node classes | `nodes/*.ts`: sockets, saved fields, op lists, the `frameShape` and `passthrough()` declarations | about 19,500 |
+| Layout (the LayoutFx) | stays: `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK. No rule here has a core twin, and they work on the view's live boxes; reopen if one turns out slow | about 3,000 |
+| Cable geometry | stays: `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints`. Drawing math with no core twin | about 1,400 |
+| Values and annotations | moved: the unit catalog, the dimension labels and the FC's tagging rule (`fc_unit_to_unit`, `format_dim`, `tag_fc_unit`; `dimension.ts` and `unitBridge.ts` read them, frozen in `fixtures/core/unit-catalog.json.gz`, `dim-labels.json.gz`, `fc-tag.json.gz`). Moved too: the date style patterns, through the core's formatter. Stays: the value shape and its cheap checks (`dimEqual`, `displayMagnitudeOf`, `stripUnitCells`), which run while drawing, and `frame`'s builders for the frames the app makes itself, whose text readings are already the core's ([[D93]] oneTextReading); `formatModel`, `numberSpec` | about 1,800 |
+| Catalog and search | stays: `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils`. They read the node classes and the catalog | about 900 |
+| Colors and drawing math | stays: `palette`, `colormaps` (its colour stops are drawn here; the core keeps only the names, to check a card's pick), the geometry in `htmlCanvasRenderer` | about 2,000 |
+| Vault and files | stays: `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers, and Write to Obsidian's and Write Tasks' preview columns. File access and YAML, with no core twin | about 2,800 |
+| Node classes | stays: `nodes/*.ts`, sockets, saved fields, op lists and the `frameShape` and `passthrough()` declarations. The core already reads what they declare as facts (`settleFacts`, `annotationFacts`, `fcFacts`) and runs their bodies; moving the declarations would buy nothing. Reopen on the author's word (this was put to the author on 2026-10-26) | about 19,500 |
 
 The walks through Conduits (`conduit.rs`) are done: where an output's value comes from and the run a cable belongs to,
 frozen over 300 seeded graphs (`fixtures/core/conduit-walks.json.gz`, `coreConduitWalks.test.ts`, `tests/conduit.rs`).
