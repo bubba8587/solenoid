@@ -23,7 +23,9 @@ src-tauri/Cargo.toml
 crates/solenoid-core/Cargo.toml
 crates/solenoid-graph/Cargo.toml
 crates/solenoid-parquet/Cargo.toml
+crates/solenoid-schedule/Cargo.toml
 crates/solenoid-core/rustfmt.toml
+crates/solenoid-schedule/rustfmt.toml
 src-tauri/build.rs
 src-tauri/tauri.conf.json
 src-tauri/tauri.live.conf.json
@@ -57,6 +59,7 @@ docs/assets
 
 why: fixtures and sample data are inputs to tests and demos, not artifacts that serve a decision
 fixtures
+crates/solenoid-schedule/tests/corpus
 assets
 public/fonts
 tests/fixtures

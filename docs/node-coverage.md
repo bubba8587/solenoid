@@ -217,7 +217,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Schedule
 
-`nodes/schedule.ts`, whose body is the core's port of `@solenoid/schedule-engine` (`crates/solenoid-core/src/schedule/`, `nodes/sched.rs`); frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `../tree/specs/computation/schedule-and-gantt.md` contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
+`nodes/schedule.ts`, whose body is `nodes/sched.rs` over the scheduling crate (`crates/solenoid-schedule`); frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `../tree/specs/computation/schedule-and-gantt.md` contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
 - **Core columns:**
   - Task: `Task` / `name` / `title` or the first text column. Names are unique, matched trimmed and case-insensitive.
   - Duration: `Duration` / `days` or the first number column, in days. Blank or 0 is a milestone. An hour-united column converts through `hours`.
@@ -245,20 +245,19 @@ The governing principle: keep types separate (a Cast crosses element families, a
   - `finish`.
   - `diagnostics` (Check · Task · Detail under plain names; declared `frameShape`): no predecessor / no successor with phase links inherited, negative float, high float, held by a typed start, past deadline, lead, lag, link type, broken link, long task, manual, should have started / finished, finished early.
   - `gantt` (Mermaid): `excludes weekends, <holidays>`, `section` per Project, `crit` / `milestone` / `done` / `active`, nested indent, exclusive ends.
-  - `mspdi`: Project XML through `writeMspdi`. Write File saves it.
+  - `mspdi`: Project XML through `write_mspdi`. Write File saves it.
 - **Errors:** a cycle, an unknown predecessor, a duplicate name, a bad duration, or an unreadable or ambiguous date gives one `#VALUE!` (or the `#AMBIGUOUS!`) naming the row, on every socket (the aggregate rule).
-- **Engine** (`packages/schedule-engine/src/`, MIT, no Date object):
+- **Engine** (`crates/solenoid-schedule`, MIT, publishable on its own; `README.md` is the contract):
   - `calendar`: a unit index space, negative for leads, with a day layer and a minute layer.
   - `graph`: flattens the WBS into a name-keyed DAG (Kahn).
   - `cpm`: forward and backward passes, total and free float per link, the driving predecessor, roll-ups, Complete versus the status date.
-  - `diagnostics`, `mermaid`.
-  - `predecessors`: the `3FS+2d` grammar (import only), plus the grid text.
+  - `report`: diagnostics, Mermaid, MSPDI write (round trip pinned) and the grid's predecessor text.
+  - `grammar`: the `3FS+2d` predecessor grammar (import only).
   - `mspdi`: the Project XML pj14 read. It covers outline nesting, link codes 0=FF / 1=FS / 2=SF / 3=SS, lag in tenths of a minute, the eight constraint types onto Start / Finish / Manual, and the base calendar's weekdays, exceptions and working times. Unmodelled fields are named in `unsupported`.
-  - `xml`: a small reader.
-  - Formats (`packages/schedule-engine/src/formats.ts`): GanttProject `.gan` and Primavera XER read (Local File's plan socket, by extension), and MSPDI write (round trip pinned).
-- **Corpus:** `fixtures/schedule/`, hand-authored MSPDI whose stored dates the engine reproduces in both modes. `divergences.json` names any field it may not.
+  - `gan`, `xer`: GanttProject `.gan` and Primavera XER read (Local File's plan socket, by extension), over a small `xml` reader; `sniff` tells the formats apart. The app reads them through `crates/solenoid-core/src/plan_files.rs`.
+- **Corpus:** `crates/solenoid-schedule/tests/corpus/`, hand-authored MSPDI whose stored dates the engine reproduces in both modes. `divergences.json` names any field it may not.
 - Not built (named, not hidden): resource leveling.
-- Seeds: `product-launch-gantt` (three phases, SS+2, FS−3, a deadline, a pinned task, progress against a status date, Holidays, Earned Value) and `kitchen-remodel-tasknotes` (live TaskNotes). Tests: `packages/schedule-engine/src/*.test.ts` (engine, minutes, mspdi), `scheduleCpm.test.ts`, `nodes/schedule.test.ts`.
+- Seeds: `product-launch-gantt` (three phases, SS+2, FS−3, a deadline, a pinned task, progress against a status date, Holidays, Earned Value) and `kitchen-remodel-tasknotes` (live TaskNotes). Tests: the crate's own (`src/tests.rs`, `tests/files.rs`), `corePlanReaders.test.ts`, `scheduleCpm.test.ts`, `nodes/schedule.test.ts`.
 
 ### Earned Value
 

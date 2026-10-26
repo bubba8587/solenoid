@@ -38,11 +38,11 @@ mindmap
 | `src/` | React + TypeScript frontend (the canvas + UI) |
 | `tests/` | ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts tests src/graph/foo.ts; "(+`.test.ts`)" below means its suite lives at the mirrored path) |
 | `src-tauri/` | Tauri (Rust) shell: window, fs/dialog plugins, the Parquet read |
-| `crates/` | solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the app, native in tests; ../tree/specs/computation/rust-core.md), solenoid-graph (the model, the engine and the pass on Ruggine; it links solenoid-core into the one wasm module) and solenoid-parquet (the desktop's Parquet reader, on the parquet and arrow crates) |
+| `crates/` | solenoid-core, the Rust core (formulas, functions, verbs, card bodies; wasm in the app, native in tests; ../tree/specs/computation/rust-core.md), solenoid-schedule (the scheduling engine and the plan-file readers, MIT and publishable on its own), solenoid-graph (the model, the engine and the pass on Ruggine; it links solenoid-core into the one wasm module) and solenoid-parquet (the desktop's Parquet reader, on the parquet and arrow crates) |
 | `public/` | Static assets served by Vite |
 | `assets/` | loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the kept cut of the demo video and its poster (scripts/demo-video/) |
 | `fixtures/` | frame-verbs/ — the verb corpus, run in wasm and natively; core/ — the core's frozen answers (coreConformance, coreNodes); schedule/ — MSPDI goldens + divergences.json for the scheduling engine |
-| `packages/` | In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest): schedule-engine, gantt-layout, gantt-react (packages/README.md) |
+| `packages/` | In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest): gantt-layout, gantt-react (packages/README.md) |
 | `obsidian-plugin/` | Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping; src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in Reading view, src/knapLive.ts in Live Preview ([[D87]] knapNotes) |
 | `scripts/` | new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs + socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the dev server: undo position fidelity, socketBox12's rendering half, a cable starts from either socket end, Tidy is a fixed point + the confirm's Enter stays modal), run-graph.ts (`--vault / --tasknotes / --run`, the headless seam; `run-graph-vault.test.ts`) (headless runner; takes JSON or the text form, gated on graphValidate), validate-graph.ts (strict-reader CLI), ai-grounding.ts (model-facing spec CLI), ai-prompt.ts (the palette's AI loop from a terminal, real key), formula-node-parity.ts (oneMetricImpl gap report), socket-inventory.ts (regenerates socket-reference counts), copy-inventory.ts (shipped-string extract/apply), tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share), shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill), drag-probe.mjs (counts the components a 30-step card drag renders; Drag performance), zoom-perf-probe.mjs (pan and wheel cost per zoom from a Chrome trace, layers mid-pan), debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs (pinnable .desktop launchers for the local release + debug apps), demo-video/ (the demo video: scripted scenes filmed in Chromium and a real Obsidian, cut with ffmpeg; the demo-video skill runs it), motion/ (motion graphics: cards read off the live app as geometry, rebuilt and animated in three.js, the rest frame held against the app; the motion skill) |
 | `.claude/` | Claude Code project config: skills/ (add-node, demo-video, motion, shot-graph), commands/, settings.json |
@@ -113,7 +113,7 @@ mindmap
 | `nodeOnCore.ts`, `nodeWire.ts`, `coreValues.ts` | A card's body on the core: its call (`coreHeader`, `coreInit`) and `nodeOnCore`; the card wire (`toCore`, `fromCore`); values across to the formula core and back (`../tree/specs/computation/node-bodies.md`) |
 | `nodeBoundary.ts` | What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`: the error guard and arrival coercion every `data()` call runs through) asks the app for: lazy frame collects, frame and cube construction, unit display magnitudes, list literals, format stamps, names, the error sinks, the perf probe, each array's cell kinds. Mechanics: `../tree/specs/computation/compute-pass.md` § The per-node wrappers |
 | `listLiterals.ts` | The typed list literals: `TYPEABLE_LIST`, how a list input's text splits (`listLiteralItems`, `listLiteralText`) and reads (`parseListLiteral`) |
-| `planImport.ts` | A Project XML / grammar CSV → the plan cube (Local File's `plan` socket), through `@solenoid/schedule-engine`'s readers. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the core's port of the engine (`crates/solenoid-core/src/schedule/`); the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
+| `planImport.ts` (+`planTypes.ts`) | A Project XML / GanttProject / XER file or a grammar CSV → the plan cube (Local File's `plan` socket), through the core's readers (`crates/solenoid-core/src/plan_files.rs` over `crates/solenoid-schedule`); `planTypes.ts` holds the plan JSON's shapes. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the same crate; the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. The rebuild tail docks every FC, then `reconcileFcTypes` (which settles the wildcards before typing the FCs, `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); `clipboard.ts` is the execCommand-fallback text copy |
@@ -428,15 +428,14 @@ Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the
 authoring guide `docs/pack-architecture.md`.
 
-### Packages (`packages/`)
+### Packages (`packages/`, `crates/solenoid-schedule`)
 
-Three separately publishable MIT packages the app consumes by alias, extracted only on a
-second consumer ([[C69]] ganttPackages): `schedule-engine` (calendar in unit index space,
-WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
-`gantt-layout` (payload → render frame at a width; the headless SVG serializer),
-`gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
-the app calls `schedule-engine` only for `planImport.ts`'s readers and its types;
-scheduling runs on the core's port (above).
+Separately publishable MIT packages, extracted only on a second consumer ([[C69]] ganttPackages):
+the Rust crate `solenoid-schedule` (calendar in unit index space, WBS graph, the CPM passes,
+diagnostics, Mermaid, the predecessor grammar, the MSPDI, GanttProject and XER readers and the
+MSPDI writer; the core depends on it), and two TS packages the app consumes by alias,
+`gantt-layout` (payload → render frame at a width; the headless SVG serializer) and
+`gantt-react` (the read-only figure). The TS tests live beside the source (`packages/**/*.test.ts`).
 
 ### Landing & showcase (`src/graph/landing/`)
 

@@ -32,10 +32,11 @@ specific item.
 - **A card added a moment ago lands and draws** (`FlowSurface.tsx`: its move and first refresh were dropped).
 - **Develop is synced at `c7da52b`** ([[rust-core]] § Tracking develop): Pele for Mermaid, Describe's Dashboard on the core.
 - **The Vercel build passes on Node 24** (`@types/node` declared); CI's `vercel-build` job builds as Vercel does.
+- **The scheduler is a Rust crate** ([[C69]] ganttPackages, author 2026-10-26): `crates/solenoid-schedule` (MIT, ready for `cargo publish`) holds the engine and the MSPDI, GanttProject and XER readers; the core calls it, and the app reads plan files through `plan_files.rs`. The TS package is gone; the readers' answers are frozen in `fixtures/core/plan-readers.json.gz`. The predecessor grammar now keeps a name like `Build` or `Class` whole (the TS read `Buil` with a day unit).
 - **Module size**: 4.6 MB raw, 1.26 MB with brotli (what a browser downloads), at `opt-level = 2`, which runs as fast as 3 here.
 - **Open for the author:**
   - the criteria strings' redesign (backlog § Formula library);
-  - deleting the TS schedule engine ([[C69]] ganttPackages);
+  - publishing `solenoid-schedule` to crates.io (the name is free);
   - the app's size;
   - which ring a top-level session works at (`docs/dte.md` § Solenoid's rings);
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);

@@ -1,19 +1,33 @@
-//! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D66]]
-//! daysMinutesModes. The scheduling engine: critical-path passes over a name-keyed task
-//! graph with working calendars, typed links, floors, ceilings, deadlines and diagnostics, in serial-day arithmetic
-//! (`packages/schedule-engine/README.md` is the contract). The file readers (MSPDI, GanttProject, XER) stay at the
-//! import border in the TS.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D66]] daysMinutesModes
+//! Headless project scheduling: critical-path passes over a name-keyed task graph with working
+//! calendars, typed links, floors, ceilings, deadlines and diagnostics, in serial-day arithmetic, and the plan-file
+//! readers (Microsoft Project XML, GanttProject, Primavera XER). `README.md` is the contract.
+#![forbid(unsafe_code)]
+#![allow(clippy::needless_range_loop, reason = "the passes index the per-task arrays side by side")]
 
 pub mod calendar;
 mod cpm;
+pub mod dates;
+mod files;
+mod gan;
+mod grammar;
 mod graph;
+mod mspdi;
+mod num;
 mod report;
 #[cfg(test)]
 mod tests;
+mod xer;
+mod xml;
 
 pub use calendar::{intervals_for_hours, Calendar, CalendarSpec, Interval};
 pub use cpm::schedule;
+pub use files::{sniff, PlanFile, PlanFormat};
+pub use gan::read_gan;
+pub use grammar::parse_predecessor_text;
+pub use mspdi::{read_mspdi, xsd_duration_to_hours, Golden, MspdiPlan};
 pub use report::{mermaid_gantt, predecessor_text, write_mspdi, MspdiOptions};
+pub use xer::read_xer;
 
 /// A failure the plan's own content causes, naming a task where one is to blame.
 #[derive(Clone, Debug, PartialEq)]

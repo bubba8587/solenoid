@@ -9,6 +9,7 @@ publish = false
 crate-type = ["rlib"]
 
 [dependencies]
+solenoid-schedule = { path = "../solenoid-schedule" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip", "preserve_order"] }
 ryu-js = "1"

@@ -1,20 +1,19 @@
 //! [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[C25]] firstClassUnits, [[C50]]
-//! lambdaBindsByName. The plan cards on the scheduling engine (`crate::schedule`): Schedule, Gantt (its view keys
+//! lambdaBindsByName. The plan cards on the scheduling engine (`solenoid_schedule`): Schedule, Gantt (its view keys
 //! those of `@solenoid/gantt-layout`'s `payload.ts`) and Earned Value, and the LAMBDA hosts SCAN and ODE Integrate.
 
 use super::frames::{frame_v, json_num, tag_cell_unit, thrown};
 use super::list::{js_number, nullish, slot, truthy};
 use super::Cv;
 use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
-use crate::date_serial::format_date_serial;
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, string_to_number};
-use crate::schedule::{
+use serde_json::{json, Map, Value as Json};
+use solenoid_schedule::{
     self as engine, CalendarSpec, Dependency, LinkType, PlanTask, ScheduleOutput, ScheduledTask, TaskCalendar,
 };
-use serde_json::{json, Map, Value as Json};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -881,10 +880,6 @@ fn output_json(out: &ScheduleOutput) -> Json {
     })
 }
 
-fn iso(serial: f64) -> String {
-    format_date_serial(serial, "YYYY-MM-DD")
-}
-
 /// The calc's day: the local day of the clock the call carries.
 fn today() -> V {
     super::kit::core_call("TODAY", &[])
@@ -995,7 +990,6 @@ fn schedule_card(c: &mut Call) -> Answer {
             &engine::MspdiOptions {
                 title: Some("Schedule"),
                 hours_per_day: Some(hours.n),
-                format_iso: &iso,
                 minutes,
                 holidays: mspdi_holidays,
             },
@@ -1003,7 +997,7 @@ fn schedule_card(c: &mut Call) -> Answer {
         Ok((
             cube,
             out.project_finish,
-            V::str(&engine::mermaid_gantt(&out, iso)),
+            V::str(&engine::mermaid_gantt(&out)),
             diagnostics_frame(&out),
             output_json(&out),
             mspdi,

@@ -1,0 +1,16 @@
+[package]
+name = "solenoid-schedule"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Headless project scheduling: critical-path passes over a name-keyed task graph with working calendars, typed links, floors, ceilings, deadlines and diagnostics, plus Microsoft Project XML, GanttProject and Primavera XER readers. Serial-day arithmetic, no clock."
+repository = "https://github.com/bubba8587/solenoid"
+readme = "README.md"
+keywords = ["scheduling", "gantt", "critical-path", "mspdi", "xer"]
+categories = ["date-and-time", "parser-implementations"]
+
+[dependencies]
+ryu-js = "1"
+
+[dev-dependencies]
+serde_json = "1"

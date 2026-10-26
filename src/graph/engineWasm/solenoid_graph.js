@@ -237,6 +237,25 @@ export function setDirectCalls(on) {
 }
 
 /**
+ * A new recalc generation, which every volatile node rolls on.
+ * @returns {number}
+ */
+export function sessionNextGeneration() {
+    const ret = wasm.sessionNextGeneration();
+    return ret;
+}
+
+/**
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ * @param {boolean} begin
+ * @returns {boolean}
+ */
+export function sessionRebuild(begin) {
+    const ret = wasm.sessionRebuild(begin);
+    return ret !== 0;
+}
+
+/**
  * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
  * @param {boolean} open
  * @returns {Array<any>}
@@ -330,6 +349,49 @@ export function setPanicHandler(handler) {
     wasm.setPanicHandler(addHeapObject(handler));
 }
 
+function passArrayJsValueToWasm0(array, malloc) {
+    const ptr = malloc(array.length * 4, 4) >>> 0;
+    const mem = getDataViewMemory0();
+    for (let i = 0; i < array.length; i++) {
+        mem.setUint32(ptr + 4 * i, addHeapObject(array[i]), true);
+    }
+    WASM_VECTOR_LEN = array.length;
+    return ptr;
+}
+/**
+ * A cell's predecessor text against the 1-based row names (`plan_files::parse_predecessors`).
+ * @param {string} text
+ * @param {string[]} names
+ * @returns {string}
+ */
+export function parsePredecessors(text, names) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayJsValueToWasm0(names, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.parsePredecessors(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap() {
+    wasm.graphTrap();
+}
+
 /**
  * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
  * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
@@ -400,25 +462,6 @@ export function sessionDirty(dirty) {
  */
 export function sessionForceExact(begin) {
     wasm.sessionForceExact(begin);
-}
-
-/**
- * A new recalc generation, which every volatile node rolls on.
- * @returns {number}
- */
-export function sessionNextGeneration() {
-    const ret = wasm.sessionNextGeneration();
-    return ret;
-}
-
-/**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
- * @param {boolean} begin
- * @returns {boolean}
- */
-export function sessionRebuild(begin) {
-    const ret = wasm.sessionRebuild(begin);
-    return ret !== 0;
 }
 
 /**
@@ -592,10 +635,30 @@ export function formatDim(dim) {
 }
 
 /**
- * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ * A plan file read (`plan_files::read_plan_file`): `format` is `mspdi`, `gan` or `xer`, or "" to tell by content.
+ * @param {string} text
+ * @param {string} format
+ * @returns {string}
  */
-export function graphTrap() {
-    wasm.graphTrap();
+export function readPlanFile(text, format) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(format, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.readPlanFile(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred3_0, deferred3_1, 1);
+    }
 }
 
 /**
@@ -681,16 +744,6 @@ export function setBoundaryHost(host) {
 export function findCellError(v) {
     const ret = wasm.findCellError(addHeapObject(v));
     return takeObject(ret);
-}
-
-function passArrayJsValueToWasm0(array, malloc) {
-    const ptr = malloc(array.length * 4, 4) >>> 0;
-    const mem = getDataViewMemory0();
-    for (let i = 0; i < array.length; i++) {
-        mem.setUint32(ptr + 4 * i, addHeapObject(array[i]), true);
-    }
-    WASM_VECTOR_LEN = array.length;
-    return ptr;
 }
 
 function _assertClass(instance, klass) {
@@ -1236,7 +1289,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_201(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_203(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -2209,7 +2262,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_201(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_203(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2373,7 +2426,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper854 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper857 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 157, __wbg_adapter_38);
         return addHeapObject(ret);
     };

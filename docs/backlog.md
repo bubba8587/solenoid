@@ -31,11 +31,11 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - Same answers, trade-offs: NFD (`unicode-normalization`, +35 KB gzipped; `../tree/specs/computation/rust-core.md` § Size chose our table for size), `letters.rs` (`unicode-general-category`), `spelled.rs` (`strum`, adds proc-macro build deps), the day ↔ year/month/day helpers (`jiff`, already the core's time zones in `zone.rs`), Levenshtein and OSA (`strsim`; keep our Jaro-Winkler, whose prefix bonus differs), native random and UUID (`fastrand`, `uuid` on `crypto.getRandomValues`).
   - Answers change: the distribution kernels (`statrs`: more accurate, off Formula.js/jStat in the last digits) and Bessel (`libm`/`puruspe`: Formula.js's bessel.js is imprecise by design). Decide jStat parity vs accuracy ([[C14]] currentExcelParity).
 - [ ] **IronCalc as an Excel-parity test oracle** (`ironcalc_base`, MIT/Apache, builds for wasm): a dev-dependency to check PRICE, YIELD, the COUP* functions, WORKDAY and kin against Excel's answers without Excel. Not a runtime dependency (it follows Excel, not Formula.js).
+- [ ] **Publish `solenoid-schedule`** (author): the crate is ready for `cargo publish` (MIT, README contract, `cargo package` lists cleanly); the name on crates.io and the first version are the author's.
 - [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Text left half-read after [[C131]] noTextGuessing**: pack bodies read text through `to_f64_js` and answer blank (SUNRISE, AWGWIRE, COLEBROOK, STANDARDATMOSPHERE; TRIANGLESOLVER solves a different triangle) where they should refuse; `ACCRINT`/`COUPDAYS` basis, `FORECAST.LINEAR` and `TRIMMEAN` answer #DOMAIN! for text where #VALUE! is meant; IRR/MIRR/XIRR/XNPV, CONVOLVE and SPECTRUM read a text cell as 0 (a third reading beside skip and refuse); the IM* family still reads `"2"` as 2 (author: list IM* as a text-form reader, or refuse).
 - [ ] **`UUID()` draws from `Math.random()`** (`fns_random.rs`) since a7ea3eb; the TS used `crypto.getRandomValues`, as the UUID card still does.
 - [ ] **Card bodies still on the TS:** Note and Report (knap templating, async frame reads); `tree/specs/computation/node-bodies.md` lists what moved.
-- [ ] **The TS schedule engine** (`packages/schedule-engine`'s cpm, graph, calendar, diagnostics, mermaid, `writeMspdi`) is unused by the app now that Schedule, Gantt and Earned Value run on the core's port; only its own tests use it. Deleting it touches [[C69]] ganttPackages (an MIT package meant to publish on its own): the author's call. The MSPDI round trip and DCMA corpus tests would move onto the card first.
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 - [ ] **CLAUDE.md still routes "a `registerInternal` override"** to `tree/specs/computation/formulajs-divergences.md`; the registry is gone (the core's `route` and `data/call_traits.json`). The author's file: reword the pointer to "before changing a function whose answer differs from Formula.js's".
 - [ ] **Module size** (the author's call): the one wasm module is 4.6 MB raw, 1.26 MB with brotli (2026-10-25, `opt-level = 2`). No module dominates the code (the largest is about 7%), so splitting it saves little; what would move the first load is a first render that doesn't wait for the core; `../tree/specs/computation/rust-core.md` § Follow-ups (Size) holds the measurements.
@@ -46,7 +46,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] Proper Nouns for more processes: the Pass, the Dimension Pass, the Type Settle (and a name for `bulkSettle`'s wider sweep), the Rebuild, the Error Guard.
 - [ ] Names floated 2026-10-25: the Reader / the Formatter (D93 / D94), op queue for a FrameRef's pending ops (frees "plan", now five meanings), sources / transforms / views / writers, popup and preference stores, refusals, ported bodies vs owned functions.
 - [ ] Layer the core (`formula/`, `values/`, `tables/`, `planners/`, `cards/`): move `V` out of `excel_functions.rs`; drop the two upward imports (`fns_packs.rs` → `nodes::packs`, `frame_backend.rs` → `nodes::serialize_lambda`).
-- [ ] `packages/schedule-engine` still carries the TS critical-path passes the core's `schedule/` replaced; the app imports only its readers and types. Delete the passes, or keep them for the publishable package (author's call, [[C69]] ganttPackages).
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
@@ -185,7 +184,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `crates/solenoid-core/src/nodes/sched.rs`) fails on every fault and the whole run is one `#VALUE!` on all
   outputs. Either the code grows a per-row path or C70's line changes.
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
-  seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
+  seeds' plans and drop them in `crates/solenoid-schedule/tests/corpus/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
 
 ## Decision Matrix (author 2026-09-28)

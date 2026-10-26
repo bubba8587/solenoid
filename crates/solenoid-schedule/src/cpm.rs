@@ -1,10 +1,11 @@
-//! The forward and backward passes, float, the critical set and the links ([[C70]] oneScheduleRule).
+// [[C70]] oneScheduleRule
+//! The forward and backward passes, float, the critical set and the links.
 
 use super::calendar::{calendar_key, day_key, Calendar, CalendarSpec};
 use super::graph::{build_graph, Edge, FlatTask};
 use super::report::diagnose;
 use super::{LinkType, ScheduleInput, ScheduleLink, ScheduleOutput, ScheduledTask, Sr};
-use crate::jsnum::{math_max, math_min, math_round};
+use crate::num::{math_max, math_min, math_round};
 use std::collections::HashMap;
 
 const LONG_TASK_DAYS: f64 = 44.0;

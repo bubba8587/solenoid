@@ -1,8 +1,9 @@
-//! What a schedule reports: the DCMA-style checks ([[B14]] oneDesignSystem), a Mermaid `gantt` block ([[B1]]
-//! obsidianBet), the MSPDI file and the predecessors' link text.
+// [[B14]] oneDesignSystem, [[B1]] obsidianBet
+//! What a schedule reports: the DCMA-style checks, a Mermaid `gantt` block, the MSPDI file and the predecessors' link text.
 
 use super::{Dependency, Diagnostic, LinkType, ScheduleLink, ScheduleOutput, ScheduledTask};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string};
+use crate::dates::iso;
+use crate::num::{is_js_space, js_lower, js_trim, math_round, number_to_string};
 use std::collections::{HashMap, HashSet};
 
 const HIGH_FLOAT_DAYS: f64 = 44.0;
@@ -136,7 +137,7 @@ fn label(s: &str) -> String {
 
 const WEEKDAY_NAMES: [&str; 7] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-pub fn mermaid_gantt(out: &ScheduleOutput, format_iso: impl Fn(f64) -> String) -> String {
+pub fn mermaid_gantt(out: &ScheduleOutput) -> String {
     let mut lines: Vec<String> =
         vec!["gantt".into(), "    dateFormat YYYY-MM-DD".into(), "    axisFormat %d %b".into()];
     if !out.weekend.is_empty() {
@@ -146,7 +147,7 @@ pub fn mermaid_gantt(out: &ScheduleOutput, format_iso: impl Fn(f64) -> String) -
         } else {
             out.weekend.iter().map(|d| WEEKDAY_NAMES[*d as usize].to_string()).collect()
         };
-        days.extend(out.holidays.iter().map(|h| format_iso(*h)));
+        days.extend(out.holidays.iter().map(|h| iso(*h)));
         lines.push(format!("    excludes {}", days.join(", ")));
     }
     let mut sections: Vec<(Option<&str>, Vec<usize>)> = Vec::new();
@@ -180,8 +181,8 @@ pub fn mermaid_gantt(out: &ScheduleOutput, format_iso: impl Fn(f64) -> String) -
             .into_iter()
             .filter(|s| !s.is_empty())
             .collect();
-            let start_iso = format_iso(t.start);
-            let span = if t.milestone { "0d".to_string() } else { format_iso(t.finish + 1.0) };
+            let start_iso = iso(t.start);
+            let span = if t.milestone { "0d".to_string() } else { iso(t.finish + 1.0) };
             let indent = "  ".repeat(t.level as usize);
             let tagged = if tags.is_empty() { String::new() } else { format!("{}, ", tags.join(", ")) };
             lines.push(format!("    {indent}{} :{tagged}t{i}, {start_iso}, {span}", label(&t.name)));
@@ -227,7 +228,6 @@ fn link_code(t: LinkType) -> u8 {
 pub struct MspdiOptions<'a> {
     pub title: Option<&'a str>,
     pub hours_per_day: Option<f64>,
-    pub format_iso: &'a dyn Fn(f64) -> String,
     pub minutes: bool,
     /// `opts.holidays`, which stands in for the schedule's own where given.
     pub holidays: Option<&'a [Option<f64>]>,
@@ -255,7 +255,6 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
     }
     holidays.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let h = opts.hours_per_day.unwrap_or(8.0);
-    let iso = opts.format_iso;
     let stamp = |serial: f64, end: bool| -> String {
         let day = (serial + 1e-9).floor();
         let frac = serial - day;

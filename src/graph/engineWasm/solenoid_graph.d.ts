@@ -6,6 +6,14 @@
  */
 export function setDirectCalls(on: boolean): void;
 /**
+ * A new recalc generation, which every volatile node rolls on.
+ */
+export function sessionNextGeneration(): number;
+/**
+ * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
+ */
+export function sessionRebuild(begin: boolean): boolean;
+/**
  * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
  */
 export function sessionRebuildScope(open: boolean): Array<any>;
@@ -33,6 +41,14 @@ export function unnamedEdits(): string[];
  */
 export function setPanicHandler(handler: Function): void;
 /**
+ * A cell's predecessor text against the 1-based row names (`plan_files::parse_predecessors`).
+ */
+export function parsePredecessors(text: string, names: string[]): string;
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap(): void;
+/**
  * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
  * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
  * node.
@@ -58,14 +74,6 @@ export function sessionDirty(dirty: boolean): boolean;
  * Opens (`true`) or closes a force-exact bracket.
  */
 export function sessionForceExact(begin: boolean): void;
-/**
- * A new recalc generation, which every volatile node rolls on.
- */
-export function sessionNextGeneration(): number;
-/**
- * Opens (`true`) or closes a rebuild scope; closing answers whether none is open after it.
- */
-export function sessionRebuild(begin: boolean): boolean;
 /**
  * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
  */
@@ -96,9 +104,9 @@ export function fcUnit(id: string): string;
  */
 export function formatDim(dim: string): string;
 /**
- * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ * A plan file read (`plan_files::read_plan_file`): `format` is `mspdi`, `gan` or `xer`, or "" to tell by content.
  */
-export function graphTrap(): void;
+export function readPlanFile(text: string, format: string): string;
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
@@ -413,6 +421,8 @@ export interface InitOutput {
   readonly isLazyFrameNode: (a: number, b: number) => number;
   readonly latticeTables: (a: number) => void;
   readonly offCoreBodies: (a: number) => void;
+  readonly parsePredecessors: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly readPlanFile: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly seesErrors: (a: number, b: number) => number;
   readonly sessionDirty: (a: number) => number;
   readonly sessionEnter: (a: number, b: number, c: number, d: number) => void;

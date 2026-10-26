@@ -309,6 +309,19 @@ pub fn format_dim(dim: &str) -> String {
     solenoid_core::unit_lists::format_dim(&dim)
 }
 
+/// A plan file read (`plan_files::read_plan_file`): `format` is `mspdi`, `gan` or `xer`, or "" to tell by content.
+#[wasm_bindgen(js_name = readPlanFile)]
+pub fn read_plan_file(text: &str, format: &str) -> String {
+    solenoid_core::plan_files::read_plan_file(text, Some(format).filter(|f| !f.is_empty()))
+        .to_string()
+}
+
+/// A cell's predecessor text against the 1-based row names (`plan_files::parse_predecessors`).
+#[wasm_bindgen(js_name = parsePredecessors)]
+pub fn parse_predecessors(text: &str, names: Vec<String>) -> String {
+    solenoid_core::plan_files::parse_predecessors(text, &names).to_string()
+}
+
 /// Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
 #[wasm_bindgen(js_name = graphTrap)]
 pub fn graph_trap() {

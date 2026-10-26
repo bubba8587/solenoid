@@ -1,5 +1,5 @@
-# The Rust crates' own tests: the core ([[C130]] rustCore, the frame-verb corpus natively), the desktop's Parquet
-# reader and the graph core. It runs only when a crate or the corpus changes, so an ordinary push asks for one
+# The Rust crates' own tests: the core ([[C130]] rustCore, the frame-verb corpus natively), the scheduler, the
+# desktop's Parquet reader and the graph core. It runs only when a crate or the corpus changes, so an ordinary push asks for one
 # runner, not several.
 name: Engine test
 
@@ -39,6 +39,30 @@ jobs:
           cargo fmt --manifest-path crates/solenoid-parquet/Cargo.toml --check
           cargo clippy --manifest-path crates/solenoid-parquet/Cargo.toml --all-targets -- -D warnings
           cargo test --manifest-path crates/solenoid-parquet/Cargo.toml
+
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-schedule -> target"
+
+      - name: Scheduler lints, docs and tests
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          cargo fmt --manifest-path crates/solenoid-schedule/Cargo.toml --check
+          cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+          cargo doc --manifest-path crates/solenoid-schedule/Cargo.toml --no-deps
+          cargo test --manifest-path crates/solenoid-schedule/Cargo.toml
 
   core:
     runs-on: ubuntu-latest

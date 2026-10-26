@@ -1,8 +1,8 @@
-//! The working calendar and its unit index space ([[C44]] dateSerials, [[D36]] nullSkippedNotZero,
-//! [[D66]] daysMinutesModes).
+// [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D66]] daysMinutesModes
+//! The working calendar and its unit index space.
 
 use super::{ScheduleError, Sr};
-use crate::jsnum::{math_max, math_min, math_round};
+use crate::num::{math_max, math_min, math_round};
 use std::cell::RefCell;
 use std::collections::HashSet;
 

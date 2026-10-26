@@ -4,7 +4,7 @@ import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, f
 import { type SolError } from "../errorValue";
 import { frameToCube, type CubeValue, type FrameValue } from "../frame";
 import { nodeOnCore } from "../nodeOnCore";
-import type { ScheduleOutput } from "@solenoid/schedule-engine";
+import type { ScheduleOutput } from "../planTypes";
 import { hintFrame, cardShapeOnCore, type Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 

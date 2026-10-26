@@ -1,9 +1,10 @@
-//! [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors. The nested plan flattened and the name-keyed dependency graph
+// [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors
+//! The nested plan flattened and the name-keyed dependency graph
 //! built over it.
 
 use super::calendar::{hours_per_day_of, CalendarSpec};
 use super::{Dependency, LinkType, PlanTask, ScheduleError, Sr, TaskCalendar};
-use crate::jsnum::{js_lower, js_trim, math_max, math_min, number_to_string};
+use crate::num::{js_lower, js_trim, math_max, math_min, number_to_string};
 use std::collections::{HashMap, VecDeque};
 
 pub fn name_key(name: &str) -> String {

@@ -1,11 +1,12 @@
-//! [[C70]] oneScheduleRule. The engine's own tests.
+// [[C70]] oneScheduleRule
+//! The engine's own tests.
 
 use super::calendar::{day_of_week, intervals_for_hours, Calendar, CalendarSpec};
 use super::*;
-use crate::date_serial::{days_from_civil, format_date_serial};
+use crate::dates;
 
 fn s(y: i64, m: u32, d: u32) -> f64 {
-    days_from_civil(y, m, d) as f64 + 25569.0
+    dates::serial(y, m, d)
 }
 
 fn mon() -> f64 {
@@ -13,11 +14,11 @@ fn mon() -> f64 {
 }
 
 fn iso(x: f64) -> String {
-    format_date_serial(x, "YYYY-MM-DD")
+    dates::iso(x)
 }
 
 fn stamp(x: f64) -> String {
-    format_date_serial(x, "YYYY-MM-DD HH:mm")
+    dates::iso_minute(x)[..16].replace('T', " ")
 }
 
 enum P {
@@ -434,7 +435,7 @@ fn mermaid_excludes_sections_tags_and_exclusive_ends() {
         ])
     });
     assert_eq!(
-        mermaid_gantt(&o, iso).split('\n').collect::<Vec<_>>(),
+        mermaid_gantt(&o).split('\n').collect::<Vec<_>>(),
         [
             "gantt",
             "    dateFormat YYYY-MM-DD",
@@ -778,7 +779,7 @@ fn a_circular_link_is_refused_by_name() {
 #[test]
 fn mermaid_ends_are_exclusive() {
     let o = run(vec![after("A", 5.0, &[])]);
-    assert!(mermaid_gantt(&o, iso).contains("A :crit, t0, 2026-01-05, 2026-01-10"));
+    assert!(mermaid_gantt(&o).contains("A :crit, t0, 2026-01-05, 2026-01-10"));
 }
 
 #[test]
@@ -797,10 +798,7 @@ fn a_walk_past_the_date_range_is_an_error_at_once() {
 #[test]
 fn mspdi_writes_a_midnight_minutes_finish_on_the_day_it_ended() {
     let o = run_minutes(vec![after("A", 1.0, &[])]);
-    let xml = write_mspdi(
-        &o,
-        &MspdiOptions { title: Some("T"), hours_per_day: None, format_iso: &iso, minutes: true, holidays: None },
-    );
+    let xml = write_mspdi(&o, &MspdiOptions { title: Some("T"), hours_per_day: None, minutes: true, holidays: None });
     assert!(xml.contains("<Finish>2026-01-05T17:00:00</Finish>"));
     assert!(xml.contains("<Start>2026-01-05T08:00:00</Start>"));
 }
@@ -815,10 +813,8 @@ fn mspdi_writes_a_start_floor_with_its_date() {
             ..input(vec![after("A", 2.0, &[]), PlanTask { start: Some(floor), ..after("B", 1.0, &["A"]) }])
         });
         assert!(o.tasks[1].floored);
-        let xml = write_mspdi(
-            &o,
-            &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: minutes_mode, holidays: None },
-        );
+        let xml =
+            write_mspdi(&o, &MspdiOptions { title: None, hours_per_day: None, minutes: minutes_mode, holidays: None });
         assert!(xml.contains("<ConstraintType>4</ConstraintType><ConstraintDate>2026-03-11T08:00:00</ConstraintDate>"));
     }
     let o = run_with(ScheduleInput {
@@ -826,9 +822,6 @@ fn mspdi_writes_a_start_floor_with_its_date() {
         ..input(vec![after("A", 5.0, &[]), PlanTask { start: Some(s(2026, 3, 3)), ..after("B", 1.0, &["A"]) }])
     });
     assert!(!o.tasks[1].floored);
-    let xml = write_mspdi(
-        &o,
-        &MspdiOptions { title: None, hours_per_day: None, format_iso: &iso, minutes: false, holidays: None },
-    );
+    let xml = write_mspdi(&o, &MspdiOptions { title: None, hours_per_day: None, minutes: false, holidays: None });
     assert!(xml.contains("<ConstraintDate>2026-03-03T08:00:00</ConstraintDate>"));
 }

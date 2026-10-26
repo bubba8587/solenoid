@@ -478,6 +478,7 @@ dependencies = [
  "serde_json",
  "sha1",
  "sha2",
+ "solenoid-schedule",
  "wasm-bindgen",
 ]
 
@@ -493,6 +494,13 @@ dependencies = [
  "solenoid-core",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "solenoid-schedule"
+version = "0.1.0"
+dependencies = [
+ "ryu-js",
 ]
 
 [[package]]

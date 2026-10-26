@@ -1,4 +1,6 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials
+// The plan model's JSON shapes as the core writes them: a plan file's tasks (`crates/solenoid-core/src/plan_files.rs`)
+// and the Schedule card's output (`nodes/sched.rs`). The fields' meanings are crates/solenoid-schedule/README.md's.
 
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 
@@ -7,6 +9,14 @@ export interface PlanDependency {
   type: LinkType;
   lag: number;
   elapsed?: boolean;
+}
+
+export interface CalendarSpec {
+  workingDays: boolean;
+  weekendCode?: number;
+  holidays?: readonly (number | null)[];
+  precision?: "days" | "minutes";
+  intervals?: ReadonlyArray<readonly [number, number]>;
 }
 
 export interface PlanTask {
@@ -27,25 +37,6 @@ export interface PlanTask {
   calendar?: Partial<CalendarSpec> | null;
   children?: PlanTask[];
   row?: number;
-}
-
-export interface CalendarSpec {
-  workingDays: boolean;
-  weekendCode?: number;
-  holidays?: readonly (number | null)[];
-  precision?: "days" | "minutes";
-  intervals?: ReadonlyArray<readonly [number, number]>;
-}
-
-export interface ScheduleInput {
-  tasks: PlanTask[];
-  start: number;
-  calendar: CalendarSpec;
-  statusDate?: number | null;
-  criticalSlack?: number;
-  multipleCriticalPaths?: boolean;
-  longestPath?: boolean;
-  splitInProgress?: boolean;
 }
 
 export interface ScheduledTask {
@@ -77,36 +68,13 @@ export interface ScheduledTask {
   predecessors: PlanDependency[];
 }
 
-export interface ScheduleLink {
-  from: string;
-  to: string;
-  type: LinkType;
-  lag: number;
-  driving: boolean;
-  critical: boolean;
-  violated: boolean;
-}
-
-export interface Diagnostic {
-  check: string;
-  task: string;
-  detail: string;
-}
-
 export interface ScheduleOutput {
   tasks: ScheduledTask[];
-  links: ScheduleLink[];
+  links: Array<{ from: string; to: string; type: LinkType; lag: number; driving: boolean; critical: boolean; violated: boolean }>;
   projectStart: number;
   projectFinish: number;
-  diagnostics: Diagnostic[];
+  diagnostics: Array<{ check: string; task: string; detail: string }>;
   nonWorking: Array<[number, number]>;
   weekend: number[];
   holidays: number[];
-}
-
-export class ScheduleError extends Error {
-  constructor(message: string, public readonly task?: string) {
-    super(message);
-    this.name = "ScheduleError";
-  }
 }

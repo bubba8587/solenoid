@@ -5,7 +5,7 @@ import { ScheduleNode, type SchedulePrecision, type ScheduleProgress } from "../
 import { GanttNode } from "../../src/graph/nodes/gantt";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import type { CubeValue, FrameValue } from "../../src/graph/frame";
-import type { ScheduleOutput } from "@solenoid/schedule-engine";
+import type { ScheduleOutput } from "../../src/graph/planTypes";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
 export interface ScheduleOptions {
