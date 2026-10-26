@@ -3,7 +3,7 @@
 //! (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Each node's facts are the app's
 //! (`settleFacts.ts`); the order and the cables are the graph's.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use serde_json::{json, Value as Json};
 
@@ -124,23 +124,24 @@ pub fn node_from_json(j: &Json) -> Node {
 
 struct Graph<'a> {
     cables: &'a [Cable],
+    /// Each node's place in the order, and the first cable into each input.
+    at: HashMap<&'a str, usize>,
+    feeds: HashMap<(&'a str, &'a str), &'a Cable>,
 }
 
 impl Graph<'_> {
     fn feed(&self, target: &str, input: &str) -> Option<&Cable> {
-        self.cables
-            .iter()
-            .find(|c| c.target == target && c.target_input == input)
+        self.feeds.get(&(target, input)).copied()
     }
-}
 
-fn index(nodes: &[Node], id: &str) -> Option<usize> {
-    nodes.iter().position(|n| n.id == id)
-}
+    fn index(&self, id: &str) -> Option<usize> {
+        self.at.get(id).copied()
+    }
 
-fn out_type(nodes: &[Node], id: &str, key: &str) -> Option<String> {
-    let n = &nodes[index(nodes, id)?];
-    n.outs.iter().find(|o| o.key == key).map(|o| o.now.clone())
+    fn out_type(&self, nodes: &[Node], id: &str, key: &str) -> Option<String> {
+        let n = &nodes[self.index(id)?];
+        n.outs.iter().find(|o| o.key == key).map(|o| o.now.clone())
+    }
 }
 
 fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
@@ -157,7 +158,7 @@ fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
             else {
                 continue;
             };
-            let is_conduit = |id: &str| index(nodes, id).is_some_and(|n| nodes[n].lanes.is_some());
+            let is_conduit = |id: &str| g.index(id).is_some_and(|n| nodes[n].lanes.is_some());
             let want = g
                 .feed(&nodes[i].id, &in_key)
                 .and_then(|f| {
@@ -167,7 +168,7 @@ fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
                         &f.source,
                         &f.source_output,
                     );
-                    out_type(nodes, &id, &key)
+                    g.out_type(nodes, &id, &key)
                 })
                 .unwrap_or_else(|| "trueany".into());
             if nodes[i].outs[o].now != want {
@@ -216,7 +217,7 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
             }
             let base = nodes[i].ins[k].base.clone();
             let want = match g.feed(&id, &nodes[i].ins[k].key) {
-                Some(f) => match out_type(nodes, &f.source, &f.source_output) {
+                Some(f) => match g.out_type(nodes, &f.source, &f.source_output) {
                     Some(out) => adopt_type_for_base(&base, &out).to_string(),
                     None => base,
                 },
@@ -229,7 +230,7 @@ fn adoption_once(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
         }
         let vote = |nodes: &[Node], key: &str| -> Option<String> {
             let f = g.feed(&id, key)?;
-            if index(nodes, &f.source).is_some_and(|s| nodes[s].error_only) {
+            if g.index(&f.source).is_some_and(|s| nodes[s].error_only) {
                 return None;
             }
             Some(
@@ -309,7 +310,22 @@ fn adoption(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
 /// Settles every wildcard socket in `nodes` (in graph order) over `cables`: Conduit lanes and adoption alternate until
 /// both settle, at most 8 rounds.
 pub fn settle(nodes: &mut [Node], cables: &[Cable]) -> Settled {
-    let g = Graph { cables };
+    let ids: Vec<String> = nodes.iter().map(|n| n.id.clone()).collect();
+    let mut feeds = HashMap::new();
+    for c in cables {
+        feeds
+            .entry((c.target.as_str(), c.target_input.as_str()))
+            .or_insert(c);
+    }
+    let g = Graph {
+        cables,
+        at: ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (id.as_str(), i))
+            .collect(),
+        feeds,
+    };
     let mut conduit_changed = false;
     let mut adopted = BTreeSet::new();
     for _ in 0..8 {

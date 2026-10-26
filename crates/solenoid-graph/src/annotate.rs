@@ -53,7 +53,9 @@ fn resolve(f: &Json, inherited: Option<Json>) -> Json {
 
 pub struct Walk<'a> {
     nodes: HashMap<&'a str, &'a Json>,
-    cables: &'a [Cable],
+    /// The cables into each node and out of each node, in cable order.
+    into: HashMap<&'a str, Vec<&'a Cable>>,
+    from: HashMap<&'a str, Vec<&'a Cable>>,
     memo: HashMap<(String, String), Option<Json>>,
     visiting: HashSet<(String, String)>,
     down_memo: HashMap<(String, String), Option<Json>>,
@@ -64,7 +66,14 @@ impl<'a> Walk<'a> {
     pub fn new(nodes: &'a [Node<'a>], cables: &'a [Cable]) -> Self {
         Walk {
             nodes: nodes.iter().map(|n| (n.id.as_str(), n.facts)).collect(),
-            cables,
+            into: cables.iter().fold(HashMap::new(), |mut m, c| {
+                m.entry(c.target.as_str()).or_insert_with(Vec::new).push(c);
+                m
+            }),
+            from: cables.iter().fold(HashMap::new(), |mut m, c| {
+                m.entry(c.source.as_str()).or_insert_with(Vec::new).push(c);
+                m
+            }),
             memo: HashMap::new(),
             visiting: HashSet::new(),
             down_memo: HashMap::new(),
@@ -72,12 +81,16 @@ impl<'a> Walk<'a> {
         }
     }
 
+    fn cables_into(&self, id: &str) -> &[&'a Cable] {
+        self.into.get(id).map_or(&[], Vec::as_slice)
+    }
+
     /// The annotation on the cable into `id.key`.
     pub fn in_annotation(&mut self, id: &str, key: &str) -> Option<Json> {
-        let feed = self
-            .cables
+        let feed = *self
+            .cables_into(id)
             .iter()
-            .find(|c| c.target == id && c.target_input == key)?;
+            .find(|c| c.target_input == key)?;
         let (source, output) = (feed.source.clone(), feed.source_output.clone());
         self.out_annotation(&source, &output)
     }
@@ -116,7 +129,7 @@ impl<'a> Walk<'a> {
                 return self.in_annotation(id, sel);
             }
             let Some(keys) = pass["keys"].as_array() else {
-                let first = self.cables.iter().find(|c| c.target == id)?;
+                let first = *self.cables_into(id).first()?;
                 let (source, output) = (first.source.clone(), first.source_output.clone());
                 return self.out_annotation(&source, &output);
             };
@@ -179,9 +192,11 @@ impl<'a> Walk<'a> {
         }
         let mut found = None;
         let consumers: Vec<String> = self
-            .cables
+            .from
+            .get(id)
+            .map_or(&[][..], Vec::as_slice)
             .iter()
-            .filter(|c| c.source == id && c.source_output == key)
+            .filter(|c| c.source_output == key)
             .map(|c| c.target.clone())
             .collect();
         for target in consumers {
@@ -245,9 +260,7 @@ impl<'a> Walk<'a> {
                             let wired: Vec<&str> = keys
                                 .into_iter()
                                 .filter(|k| {
-                                    self.cables
-                                        .iter()
-                                        .any(|c| c.target == id && c.target_input == *k)
+                                    self.cables_into(&id).iter().any(|c| c.target_input == *k)
                                 })
                                 .collect();
                             if wired.len() != 1 {
@@ -261,9 +274,9 @@ impl<'a> Walk<'a> {
                 break;
             };
             let Some(conn) = self
-                .cables
+                .cables_into(&id)
                 .iter()
-                .find(|c| c.target == id && in_key.as_deref().is_none_or(|k| c.target_input == k))
+                .find(|c| in_key.as_deref().is_none_or(|k| c.target_input == k))
             else {
                 break;
             };
