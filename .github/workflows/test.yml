@@ -28,7 +28,7 @@ jobs:
         run: npm ci
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npx tsrs --noEmit
 
       - name: Unit tests
         run: npx vitest run

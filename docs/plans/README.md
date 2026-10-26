@@ -17,7 +17,7 @@ backlog line is deleted; git is the record.
    for the symbol if the line has drifted.
 3. Read `CLAUDE.md` in full, then the docs a plan names under "Read first". Do NOT read
    the whole `docs/` tree.
-4. `npx tsc --noEmit` and `npx vitest run <the test files the plan names>` after every
+4. `npx tsrs --noEmit` and `npx vitest run <the test files the plan names>` after every
    step; the full `npx vitest run` before the final commit of a plan.
 5. Comments: none unless the plan says so (`../../tree/specs/floors/engineering.md` § Comments). Rulings go in
    decision leaves (`docs/dte.md`) only where the plan says.

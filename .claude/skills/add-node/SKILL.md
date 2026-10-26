@@ -187,7 +187,7 @@ script when the component needs hand-writing anyway (op select, custom render).
 
 ## Verify
 
-`npx tsc --noEmit` clean + `npx vitest run` green — the FULL suite, because
+`npx tsrs --noEmit` clean + `npx vitest run` green — the FULL suite, because
 the machine-checked sweeps (`socketConnect.test.ts`, `coerceInputs.test.ts`,
 `seeds.test.ts`) are what catch a wiring/declaration mistake. The node then
 appears in the Add menu and the Function Reference (both generated from the
