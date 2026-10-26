@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[B14]] oneDesignSystem: every color rule below exists so the app wears one look at a time. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. The palette half lives in `palette.ts`; the theme half in `appTheme.ts` and `themeVars.ts`. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors. `palette.test.ts` and `chrome.test.ts` pin the behavior.
+Every color the app paints comes from one of two places. A **palette** is a named set of twelve accent colors plus, optionally, a neutral ramp for the workbench around the graph. The **theme** is the user's accent choice and light or dark mode, which `appTheme.ts` writes onto `<html>` as CSS custom properties. The palette half lives in `palette.ts`; the theme half in `appTheme.ts` and `themeVars.ts`. What each built-in palette is meant to look like, and the structure every neutral ramp keeps, is in `DESIGN.md` §2 Colors. `palette.test.ts` pins the behavior.
 
 ```mermaid
 flowchart LR

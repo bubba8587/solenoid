@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[A1]] visualGraphCalculator. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-A drawn cable is a free-drawn annotation curve: a list of points the user places, rendered with the same three drawers (spline, diagonal, straight) as wired cables. Drawn cables live in a world-coordinate layer inside React Flow's `<ViewportPortal>`, the same pattern the standoffs use. The layer is gated on the main-graph hook `hooks.drawnCables` and has its own store (`drawnCables.ts`), its own exclusive selection and a docked panel (`DrawnCableInspector.tsx`). The geometry is pure (`drawnCablePath.ts`); the components are `DrawnCableLayer.tsx` and `DrawnCableCapture.tsx`. Tests: `drawnCablePath.test.ts`, `textForm.test.ts`, `flow/flowHistoryDigest.test.ts`.
+A drawn cable is a free-drawn annotation curve: a list of points the user places, rendered with the same three drawers (spline, diagonal, straight) as wired cables. Drawn cables live in a world-coordinate layer inside React Flow's viewport portal (through `ViewportLayer`, [[react-flow-surface-contract#World-coordinate overlays]]), the same pattern the standoffs use. The layer is gated on the main-graph hook `hooks.drawnCables` and has its own store (`drawnCables.ts`), its own exclusive selection and a docked panel (`DrawnCableInspector.tsx`). The geometry is pure (`drawnCablePath.ts`); the components are `DrawnCableLayer.tsx` and `DrawnCableCapture.tsx`. Tests: `drawnCablePath.test.ts`, `textForm.test.ts`, `flow/flowHistoryDigest.test.ts`.
 
 ## Annotation, not wiring
 
@@ -93,7 +93,7 @@ Insert ▸ Draw a cable in the menu bar is the only entry point, and it also app
 
 ## Saving and loading
 
-Drawn cables persist as `SavedGraph.drawnCables`, a plain pass-through in the text form, since nothing in one refers to a node. Ids are not saved; they are regenerated on load. `registerNodeForgetAll` clears the store when the graph rebuilds, and the restore tail loads the saved list. On load, a malformed entry is skipped, invalid points are dropped, and an entry left with fewer than two points is skipped. A missing or invalid field takes its default, and `width` and `headScale` are clamped (0.2 to 40, and 0.1 to 10).
+Drawn cables persist as `SavedGraph.drawnCables`, a plain pass-through in the text form (`text_form.rs`), since nothing in one refers to a node. Ids are not saved; they are regenerated on load. `registerNodeForgetAll` clears the store when the graph rebuilds, and the restore tail loads the saved list. On load, a malformed entry is skipped, invalid points are dropped, and an entry left with fewer than two points is skipped. A missing or invalid field takes its default, and `width` and `headScale` are clamped (0.2 to 40, and 0.1 to 10).
 
 ## Known limits
 

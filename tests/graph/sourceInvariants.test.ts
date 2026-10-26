@@ -679,7 +679,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     "components/ConnectionDialog.tsx": "deletes ONE user-selected cable (and its edit-replace predecessor) — not an input-key prune",
     "components/InterpolateNode.tsx": "the List↔Grid variant switch swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
     "components/ListInputNode.tsx": "type-compatibility prune: keeps cables the new element type still accepts (canConnect), drops the rest — a filter, not a key set",
-    "components/ReportOverlay.tsx": "targets the MAIN editor explicitly (getEditor) — a Report edits main-graph refs even while a drill-in is active",
+    "components/ReportOverlay.tsx": "targets the Report's own editor explicitly (getOwningEditor), so a Report inside a drill-in edits the graph it sits in",
     "components/expressionEdit.ts": "the Equation prune covers both directions (a variable owns an OUTPUT socket too); Expression/LAMBDA already use the helper",
   };
 

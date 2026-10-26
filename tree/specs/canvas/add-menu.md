@@ -155,7 +155,7 @@ The query splits on the same separators, and every query word must land on the r
 
 A word that scores 90 or more as a word hit counts that score alone. Otherwise it counts its subsequence score plus any word score. The words' scores add up. Word order is therefore free ("input frame" finds Frame Input), and a one-letter typo ("frane input") still ranks its target first instead of losing to rows whose longer haystacks happen to contain the letters.
 
-On top of the word total, the row gets the best **whole-query bonus** from its fields (`fieldScore`): 1000 plus the subsequence score for an exact match, 400 for a prefix, 150 for a match at the start of any space-separated word, and the bare subsequence score otherwise. The fields are:
+On top of the word total, the row gets the best **whole-query bonus** from its fields (`fieldScore`): 1000 plus the subsequence score for an exact match, 400 for a prefix, 150 for a match at the start of any space-separated word, and the bare subsequence score otherwise. A query of several words that opens a field ("date input" in a longer label) adds 400 to a score under 400, so it ranks as a one-word prefix would. The fields are:
 
 - the label; the label followed by the category path; the type words; `keywords`; the label with its op glyph stripped (without the strip, "Add Column" would outrank the Add card for "add");
 - for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label; for an alias row, the Excel name before the arrow, scored 5 higher, so on a tie with an op row that only hides the name in its keywords, the row that shows the typed name is the one kept;

@@ -64,7 +64,7 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 
 ## The `View` seam and positions
 
-`process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes; the model pass itself lives in `graphCompute.ts`, shared with the composite engine, the CLI and the tests.
+`process.ts` holds the live `_editor`, `_engine` and `_view`. `processGraph()` recomputes through the engine's `pass`; the view-less pass (`computeAll`, `graphCompute.ts`) serves the CLI and the tests ([[compute-pass#The model pass (`graphCompute.ts`)]]).
 
 `_view` is `flow/flowView.ts`, the one implementation of the `View` interface in `view.ts`. Model-side verbs become RF state through late-bound callbacks the surface supplies, and the surface writes back what RF reports: the viewport (from `onMove`), the pointer's canvas position, and each card's measured size (from `onNodesChange` dimension changes). The view offers:
 
@@ -84,7 +84,7 @@ flowchart LR
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
 - `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[auto-arrange-tidy#Size reads]]).
 
-Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (`flowModel.addNode` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
+Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (a load's `buildModel` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
 
 `view.moveNode(nodeId, …)` is async and never lands in the same paint as a React commit. If a size change would need a matching position change in the same frame, restructure so it doesn't ([[resizable-content-nodes]]).
 
@@ -322,11 +322,11 @@ What goes is the selection plus every FC docked to a doomed node, at any depth (
 `copyPaste.ts` works on the active graph, so it works inside a drill-in too.
 
 - **Copy** (Ctrl+C) takes the selected nodes (`copySet`). A selected group brings its members, and a copied node brings its docked FCs, since a docked FC is part of its host's entity. A composite's boundary markers never go, even as a group's members, because they are its ports: a pasted marker would be an orphan with no port.
-- **The clipboard is a snapshot.** It holds, per node, the constructor, a deep copy of `extractInit` ([[save-format]]), the `literals` and `stringLiterals` maps, the collapse and flip state, and the position relative to the selection's top-left corner, plus the cables internal to the copied set. Editing or deleting a source after the copy never changes what pastes.
-- **Cloning.** A clone is `new Ctor(init)` from a fresh copy of the snapshot, and its `literals` and `stringLiterals` maps are restored after construction, or the constructor's own defaults would overwrite them.
+- **The clipboard is a snapshot.** It holds, per node, the constructor, the node's saved body (`savedNodeBody`: a deep copy of `extractInit` ([[save-format]]), the `literals` and `stringLiterals` maps, and the size, collapse, flip and section-fold state) and the position relative to the selection's top-left corner, plus the cables internal to the copied set and the copied nodes' Frame column formats. Editing or deleting a source after the copy never changes what pastes.
+- **Cloning.** A clone is `new Ctor(init)` from a fresh copy of the snapshot, and its `literals` and `stringLiterals` maps are restored after construction, or the constructor's own defaults would overwrite them. A Placeholder is rebuilt from its saved body with its copied socket keys (`placeholderFor`).
 - **Paste** (Ctrl+V) places the clones at the mouse plus `PASTE_OFFSET` (30 canvas units).
   - A group's member list is remapped to the clones, dropping members that weren't copied, so a pasted group can't take originals. A docked FC's `hostNodeId` is remapped too; an FC whose host wasn't copied undocks. A Presentation's steps are remapped the same way, so a duplicated deck flies to its own nodes.
-  - Body collapse (`collapseStore`) and the socket flip (`socketFlipStore`) carry over from the snapshot. A pasted FC whose host came along re-docks onto the clone (`dockSelf`); the copied cables already carry its splice. A sequenced identity re-claims a fresh number (`assignFreshSeq`), and every clone gets a fresh name, never the source's, since the source is still on the canvas.
+  - The card state (size, body collapse, socket flip, section folds; `restoreNodeState`) and the Frame column formats carry over from the snapshot. A pasted FC whose host came along re-docks onto the clone (`dockSelf`); the copied cables already carry its splice. FC types then reconcile once (`reconcileFcs`). A sequenced identity re-claims a fresh number (`assignFreshSeq`), and every clone gets a fresh name, never the source's, since the source is still on the canvas.
   - Everything is added under the surface's edit scope (`editScopeFor`, the drill-in's own while one is open). Its gate skips the per-`nodecreated` absorb sweep, so pasted nodes keep their copied membership instead of joining whatever group they land in, and skips the per-cable settle of `connectioncreated`. A composite clone hydrates its captured subgraph once it has been added. Cables are re-added, skipping any that are incompatible or duplicate.
   - The selection clears first and the pasted nodes become the selection, through the selection slots, which a drill-in swaps to its own level. RF has no wrapper for a clone yet when it is selected, so `syncTopology` (`mergeFlowNodes`) gives a node RF hasn't seen the model's `selected` flag, while a node RF already holds keeps RF's. The scope's settle runs once: on the main canvas `bulkSettle` renders only the pasted nodes; in a drill-in `settleCableChange` settles the level and its topology pipe recomputes from the breadcrumb root.
 
