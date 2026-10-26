@@ -17,43 +17,24 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Expect
 - [ ] **Convert units the FC doesn't list show no unit label** (yd, psi, stone, knot and others): the display id resolves the number, but `unitById` has no label for it, so the value box shows a bare number. Give every Convert unit an FC entry, or a label the registry knows.
-- [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
 
 ## Formula library
-- [ ] **Replace Excel's criterion strings** (author 2026-10-23: "I always did hate Excel's syntax for those"): COUNTIFS, SUMIFS and kin read `">5"` and `">3/1/2024"` as a little language, the last place a formula reads a date out of text ([[C131]] noTextGuessing, unenforced there). Design a criterion that isn't text (an operator plus a typed value, the way the List Filter card takes one); until then the strings keep working as they do.
-- [ ] **Publish the formula library?** (author 2026-10-21, to weigh): Formula.js is gone from rust-port; the core owns every body (`excel_functions.rs`, `fns_*.rs`; the reasons it differs are `tree/specs/computation/formulajs-divergences.md`). Option: export the bodies as a crate of their own, the frozen fixtures as its tests. Weigh against [[C17]] shareImpl and what a public package must keep stable.
 
 - [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
 
 ## Rust core (rust-port, [[D99]] rustIsSpec)
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before rust-port merges into develop: the branch commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
-- [ ] **Crate swaps the audit left for the author** (`audits/crate-audit-2026-10.md`; each row's evidence is a bit-for-bit comparison):
-  - Same answers, trade-offs: NFD (`unicode-normalization`, +35 KB gzipped; `../tree/specs/computation/rust-core.md` § Size chose our table for size), `letters.rs` (`unicode-general-category`), `spelled.rs` (`strum`, adds proc-macro build deps), the day ↔ year/month/day helpers (`jiff`, already the core's time zones in `zone.rs`), Levenshtein and OSA (`strsim`; keep our Jaro-Winkler, whose prefix bonus differs), native random and UUID (`fastrand`, `uuid` on `crypto.getRandomValues`).
-  - Answers change: the distribution kernels (`statrs`: more accurate, off Formula.js/jStat in the last digits) and Bessel (`libm`/`puruspe`: Formula.js's bessel.js is imprecise by design). Decide jStat parity vs accuracy ([[C14]] currentExcelParity).
-- [ ] **IronCalc as an Excel-parity test oracle** (`ironcalc_base`, MIT/Apache, builds for wasm): a dev-dependency to check PRICE, YIELD, the COUP* functions, WORKDAY and kin against Excel's answers without Excel. Not a runtime dependency (it follows Excel, not Formula.js).
-- [ ] **A weekend code outside `WORKDAY.INTL`'s table** reads as Saturday and Sunday on the Schedule, Gantt and Earned Value cards, where `WORKDAY.INTL` and Workdays answer `#NUM!` (author: refuse it on the plan cards too, or keep the fallback).
 - [ ] **The Gantt view keys are checked against the TS `parseGanttViewOptions`** (`packages/gantt-layout/src/payload.ts`) in `chartTitles.test.ts` and `ganttBuilder.test.ts`, while the card parses them with the core's `gantt_view_options` (`nodes/sched.rs`); point the tests at the core, or freeze the TS parser's answers and port it.
-- [ ] **Publish `solenoid-schedule`** (author): the crate is ready for `cargo publish` (MIT, README contract, `cargo package` lists cleanly); the name on crates.io and the first version are the author's.
 - [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Text left half-read after [[C131]] noTextGuessing**: pack bodies read text through `to_f64_js` and answer blank (SUNRISE, AWGWIRE, COLEBROOK, STANDARDATMOSPHERE; TRIANGLESOLVER solves a different triangle) where they should refuse; `ACCRINT`/`COUPDAYS` basis, `FORECAST.LINEAR` and `TRIMMEAN` answer #DOMAIN! for text where #VALUE! is meant; IRR/MIRR/XIRR/XNPV, CONVOLVE and SPECTRUM read a text cell as 0 (a third reading beside skip and refuse); the IM* family still reads `"2"` as 2 (author: list IM* as a text-form reader, or refuse).
 - [ ] **`UUID()` draws from `Math.random()`** (`fns_random.rs`) since a7ea3eb; the TS used `crypto.getRandomValues`, as the UUID card still does.
-- [ ] **Card bodies still on the TS:** Note and Report (knap templating, async frame reads); `tree/specs/computation/node-bodies.md` lists what moved.
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
-- [ ] **CLAUDE.md still routes "a `registerInternal` override"** to `tree/specs/computation/formulajs-divergences.md`; the registry is gone (the core's `route` and `data/call_traits.json`). The author's file: reword the pointer to "before changing a function whose answer differs from Formula.js's".
-- [ ] **Module size** (the author's call): the one wasm module is 4.6 MB raw, 1.26 MB with brotli (2026-10-25, `opt-level = 2`). No module dominates the code (the largest is about 7%), so splitting it saves little; what would move the first load is a first render that doesn't wait for the core; `../tree/specs/computation/rust-core.md` § Follow-ups (Size) holds the measurements.
-- [ ] **Clippy in CI denies dead code**, so a helper that lands a commit before its caller turns `engine-test.yml` red. Decide: keep it strict, or add `-A dead_code` to the two clippy lines.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
-
-## Naming (proposed, awaiting the author's pick)
-- [ ] Proper Nouns for more processes: the Pass, the Dimension Pass, the Type Settle (and a name for `bulkSettle`'s wider sweep), the Rebuild, the Error Guard.
-- [ ] Names floated 2026-10-25: the Reader / the Formatter (D93 / D94), op queue for a FrameRef's pending ops (frees "plan", now five meanings), sources / transforms / views / writers, popup and preference stores, refusals, ported bodies vs owned functions.
-- [ ] Layer the core (`formula/`, `values/`, `tables/`, `planners/`, `cards/`): move `V` out of `excel_functions.rs`; drop the two upward imports (`fns_packs.rs` → `nodes::packs`, `frame_backend.rs` → `nodes::serialize_lambda`).
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
 ## Tooling
-- [ ] **Warm vitest cache hides a new globbed file** (`fsModuleCache: true`): a new seed JSON was invisible to `seeds.ts` locally, so `siteThumbs`/`prerender` passed locally and failed in CI. Workaround: delete `node_modules/.vitest-cache`. Decide whether to keep the cache or invalidate it on glob changes.
 - [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.
 
 ## Seeds (after the 2026-10-08 scalar input fold)
@@ -80,65 +61,28 @@ the production minify, and its "esbuild options ignored" warning is expected.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
-## For 1.6 (author 2026-09-28; 1.5 is the release in progress)
-- [ ] **Equation outputs vs the formula surface.** The Equation node takes the whole formula
-  surface, but every variable's output is a number socket ([[C47]] equationNode: "every real root"),
-  so a relation whose answer is complex (`x^2 + 1 = 0`, expected ±i), text, a date or a logical has
-  nowhere to go: a negative discriminant is `#SOLVE!`. The fix decides what an unknown's output is
-  when its answer leaves the number family (a retype, [[B11]] maximalMerge, or fixed wider
-  sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
-- [ ] **Solver cards show only what they solve** (author 2026-10-07): the Equation node, and the Triangle Solver with it,
-  take every variable as an ordinary input and grow an output box only for the unknown left unwired, instead of a hero
-  box per variable (a, b, c, A, B, C). The Triangle Solver keeps its Area, Perimeter and Valid boxes. Decide it with the
-  item above (both are what an unknown's output is) and amend C47.
-
 ## Sets pack
 - [ ] **COUNT DISTINCT on a text list is `#TYPE!`** (found 2026-10-07; numbers work): it is an op on the Aggregate card, whose
   input is a number list (`listIn`), so names never reach it, yet counting distinct names is the Sets pack's use for it.
   COUNTBLANK already reads the raw list; COUNT DISTINCT needs a socket that takes any scalar list (read input-roles and the
   socket lattice before retyping it).
 
-## Node merges (parked by the author, [[B11]] maximalMerge)
-
-- [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
-
 ## Empty argument slots (author 2026-10-05; [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue)
 
 - [ ] **Leaf number clash:** this session's D96 emptySlotShowsItsValue took the number the parked `pivot-list-cells` branch gave D96 pivotPoolsItems; move that branch's leaf (`dte move`) when it merges.
 
 ## Cubes and lists (author 2026-09-26)
-- [ ] **Cards preview what a nested cell holds** (author 2026-10-05, [[C114]] cardsView): a cube card shows a nested
-  list, table, Frame or Cube only as its drill chip. Explore example layouts (first task names, a mini table, counts) and
-  write the new card-interpreter rules into table-popup § The Cards view before building.
 
-- [ ] **Review the settings sweep ([[D86]] blankRoles).** Built on Claude's judgement (2026-09-26); the calls and the
-  exact roles are in `settings-audit.md`. Still to sweep: Frame verbs' column references, an as-of Join's tolerance,
-  the Slider's bounds (the `[decided 2026-09-26]` rows of input-roles' "What each input kind does today").
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
-- [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass
-  § Typed list literals) while `1,x,3` is `[1, null, 3]` and a wired blank stays in place.
-- [ ] **Affordances for do-nothing sorts** (the author, 2026-09-26, if needed): SORT and UNIQUE on a list change nothing
-  without by_col. Options named: card toggles (built), a custom LISTSORT / ROWSORT with shortcut behavior, or `#SYNTAX!` on a
-  do-nothing setup ("drastic").
 - [ ] **A single-record cell in the Cube editor** (a YAML mapping, or `{ ... }` typed into `cubeText`, not `[{ ... }]`):
   its chip drills to an empty level, since each level edits a records array at its path (`cubeViewAt`). Read it as a
   one-row array and write edits back through it.
-- [ ] **Formula columns on nested Cube Input levels**, if wanted; types reach every level ([[D90]] cubeTypesAtDepth),
-  Fx stays top-level.
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Functions short of Excel's signature** (the parity check, `excelArityParity.test.ts`, lists each with its reason): the
   day-count `basis` on PRICE, YIELD and the four odd-coupon functions; GROUPBY's five trailing options;
   LINEST and LOGEST's const and stats (their answer's shape first: Excel's is a row, or a 5 × 2 grid with stats); MAP past three arrays. TEXTAFTER, TEXTBEFORE and
   TEXTSPLIT read one delimiter, not Excel's array of them (formula-language § the text kernels). The reference (`fixtures/excelArity.ts`) covers the registered Excel names that declare an arity.
-- [ ] **List Sort and List Filter names** (author to rule): both take tables now; rename to Sort / Filter beside Frame Sort
-  and Frame Filter, or keep the "List" names.
-
-## Composites
-
-- [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
-  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
-  § A6. Gate: the author says go (and settles the constraint forms; integer no).
 
 ## Sources
 
@@ -152,17 +96,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 - [ ] **`whatsnew` video (plugin 0.1.5, approved 2026-09-28) to `assets/video/`** on the author's word: re-render with
   `DEMO_FPS=60`, recording `wn-cards` in its own run after the rest (`demo-video` skill).
-- [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
-  chip ([[D87]] knapNotes, as [[C68]] asks of a bare tag). Embed the card's own object fields as a Report does?
 - [ ] **Knap notes on show:** a `knap: true` note in the demo vault and on the `/obsidian` page, once the plugin
   release carrying it is in the community store (the demo vault installs from there).
-- [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
-  row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
-  `tree/specs/integrations/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
-- [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
-  today's daily note in its configured folder + format, wireable (a source node emitting the
-  daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
-  node — still shaping. (dev-notes 2026-09-11.)
 - [ ] **Knap for dynamic write paths / content** (author, parked): use Knap to template a Write to
   Obsidian `path` or the written body from wired values — the successor to the removed `{{date}}`
   grammar, now that `path` is a plain wireable string.
@@ -181,10 +116,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
-- [ ] **Schedule row faults vs [[C70]] oneScheduleRule (author to rule):** C70 says a per-row fault (a bad
-  Duration, an unparseable date) stays on its row, but the Schedule card's reader (`read_level` in
-  `crates/solenoid-core/src/nodes/sched.rs`) fails on every fault and the whole run is one `#VALUE!` on all
-  outputs. Either the code grows a per-row path or C70's line changes.
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `crates/solenoid-schedule/tests/corpus/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
@@ -199,17 +130,10 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
 - [ ] **Loose ends from the last review (NICE):** a Nest Join key carrying a unit, or matched number-to-text, isn't recognized as a key and scores; ladder cards show 3 decimals where Plan shows 4.
-- [ ] **Capital earned back changes what's possible next**: an option that earns rough capital only moves up the order today; letting it enable others makes order in time matter (the leaf's reopen condition).
 
 ## Charts
 - [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
 
-- [ ] **Radar `ymin`/`ymax` under Scale = per axis (author to pick):** a multi-series radar normalizes each axis,
-  so the range does nothing; a single-series radar honors it. Either a set range implies a shared scale, or it
-  stays the documented [[C96]] exception. Multi-series `color` is the other exception (the author skipped the fix).
-- [ ] **Gauge Dial has no Options input**, so no title or font size in Dial mode (author's call).
-- [ ] **Multi-output services still fall to math blue:** Geocode, Weather, Holidays, FX; input amber would fit
-  ([[B14]] reaches only one-output cards).
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)
 Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.
@@ -238,43 +162,10 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
   cut-off, the fullscreen chrome zoom and its 18px corner inset ([[layout-chrome#Phones in landscape]]). Open asks: refit the
   camera on rotate; a service worker if Android Chrome still won't offer Install; the six-rung mark for the desktop icon.
   Also on the phone: a pinch whose leftover finger lifts on a card no longer selects it (fixed by reading, untested headless).
-- [ ] **Collapse sweep leftovers** (`collapse-sweep.mjs`, needs the author's ruling): solver cards (TVM, Ohm's Law, Triangle Solver, Ideal Gas and kin) keep a row per variable collapsed rather than one pill; settings still visible collapsed on Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code and Query's buttons.
 
 - [ ] **Hand-tidied groups then a canvas Tidy, twice, moved personal finance ~530 px** (2026-09-30, both alignment modes; Cleanup itself is a fixed point). Recheck since `separateAll` stopped treating a standoff cluster's bounding box as solid.
-- [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover
-  preview listing EVERY cable item (name + value), not just the first. Author's extension to
-  consider with it: a special Conduit → bundled cable → Cube node (the bundle's lanes land as one
-  cube). Design first (DESIGN.md, `tree/specs/canvas/conduit-lane-faces.md`); stage after the
-  Obsidian track.
-- [ ] **Linux desktop: tooltips are very large and appear very fast** (author 2026-09-21, not urgent). Lead:
-  every tooltip is a native `title` (469 of them, no tooltip component), and WebKitGTK hands those to GTK, so
-  size and delay come from the system theme, not the app. Windows (WebView2) and the web draw the browser's own.
-  Fixing it means the app drawing its own tooltip; that is a design call (DESIGN.md, `tree/specs/canvas/layout-chrome.md`).
-- [ ] **Linux desktop: the canvas dots are harsher / sharper than on Windows and Chromium** (author 2026-09-21,
-  not urgent). Lead: the grid is React Flow's `<Background variant=Dots>` (`FlowSurface.tsx`), an SVG pattern of
-  small circles, and WebKitGTK antialiases a sub-2px circle harder than Skia does. Candidates: a per-webview
-  `--canvas-dot` a step closer to the ground, or a slightly larger, softer dot, keyed on
-  `html[data-webview="webkitgtk"]` as the zoom fixes are (`tree/specs/canvas/layout-chrome.md` § Desktop window frame). DESIGN.md
-  § 2 holds the structure: dots legible without shouting.
-- [ ] **Palette stragglers left for a call** (2026-10-02 sweep): the lasso colors (`FlowSurface.tsx`,
-  `htmlCanvasRenderer.ts`), `CableFlourish.tsx`'s fixed Okabe-Ito list, the conduit stripe (`conduit.css`, Default
-  vermilion but not an error), the slate `--node-accent` on Image, File Link and SVG Picker, and the
-  `FlowCableEdge` ribbon gray. Each is a hard-coded hue that ignores the palette.
-- [ ] **PIVOTBY over Cube list and grid cells** is parked on branch `pivot-list-cells` (D96 pivotPoolsItems lives
-  there): the author is choosing how a group reads lists (pool items vs average of row results) and grids
-  (pool every cell, lists only, or each grid column as a field).
 
-- [ ] **Palette on wide-gamut displays** (author 2026-09-21 noticed the Linux desktop reads more saturated than
-  the dev server; cause in `archive/dev-notes-history.md`, digest 2026-09-21b). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
-  with a display profile) shows them accurately and an unmanaged one (WebKitGTK) stretches them to the panel.
-  The author tuned the palette by eye on an unmanaged P3 panel, sees the same vivid look on their phone, and
-  prefers it; managed Chromium on Linux is the outlier among their screens. Design call: leave it, or
-  author the accents in `color(display-p3 …)` with sRGB fallbacks so managed engines on P3 panels get the vivid
-  version too (DESIGN.md § 2; `palette.ts` derives siblings in HSV from hex, so this is not a token swap).
 
-- [ ] **Card sections: open calls** (DESIGN.md § Card sections). Write to Obsidian was left without sections (its
-  panel lays itself out; author call). Untested: a ribbon (bundled) cable into a folded section's pill, and the
-  liquid fold on a card inside a group's sub-flow (`flowYOf` reads the viewport transform, so it should hold).
 
 ## Landing pages
 
@@ -315,7 +206,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   Ratifying adds the ID to `OWNER_RATIFIED` in `rules.test.ts`.
 - [ ] **The outbox still lists A1, B1, B2, B3, B7 as ratified with no History line**: the author cleared those
   leaves' History by hand and will handle History themselves; leave them.
-- [ ] **35 inbox items** await the author (each says what ratifying it changes, with a lean).
+- [ ] **79 inbox items** await the author (each says what ratifying it changes, with a lean); the 2026-10-26 backlog sweep moved every decision-gated item there.
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A); then `out-of-scope.md`'s 13
   categories become B leaves and that doc goes.
 - [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified): its natural parent is [[B16]]
@@ -323,25 +214,11 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **Two author-held `*Where:*` lines remain** (B7, C80). The author deletes them or rules they stay.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed; `validate` is not in CI.
 
-## Socket labels (author 2026-09-26)
-
-- [ ] **Parentheticals move to the Inspector** (the author: "backlog a wider sweep on parentheticals in socket labels which
-  should move to the Inspector per-socket descriptions"). "(1-based)" moved (ec1de47). What is left needs the author:
-  - units: `T (K)`, `p (Pa)`, `ρ (kg/m³)`, `a (m/s)` (thermo), `(UTC)` on the astro sockets, `Marker size (px)`,
-    `Font size (pt)` (chart options);
-  - the λ-table binding hints `Values (value)`, `value2 (optional)`, `value3 (optional)` (MAP), a named exception in
-    [[B14]] oneDesignSystem, so moving them amends that leaf.
-  Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`).
-
 ## Formatting & units
 
 - [ ] **The Running card adds mixed units' shown numbers**: it isn't `unitAware`, so `[1 km, 500 m, 2 km]` strips to `[1, 500, 2]` and answers `[1, 501, 503]` (develop and the core alike); RUNNING's own unit branch is never reached from the card. Making the card unit-aware means retiring its `formatCarry` for the unit.
 - [ ] **Cards that strip units** ([[C25]] firstClassUnits): 33 of about 317 card classes are `unitAware` (the money finance cards joined under [[D101]] financeCarriesMoney); the rest read the numbers their inputs show and answer plain numbers, the boundary's fallback. Each family is owed carrying, as its formula functions do; do them family by family, a unit test per card. CEILING.MATH, QUOTIENT and EVEN in formulas likewise still sit in unit-flow's "any other function" row.
 
-- [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
-  unit set at sources and displays, flowing downstream only; the docking subsystem and the
-  upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
-  downstream-flow work has been lived with, plus the source-node control design.
 
 ## Frame popup (follow-ups from the 2026-09-19 header session)
 
@@ -350,34 +227,16 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   highlighted editor edits a Frame Input column formula.
 - [ ] **A computed column's date typing is conservative** (`yields_date`, `nodes/columns.rs`): `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
   Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
-- [ ] **A blank frame's CSV view starts with a blank header line** (`buildText`): a CSV pasted below it makes its
-  header row the first data row, with the columns unnamed. Found filming the demo video (a new Frame property in
-  Obsidian); the author held the behavior until a change is shown rigorous, so the video clicks at the top first.
 - [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
   drill-through from a value cell (Details lists a leaf's rows; a cell's rows also split by its column item), and
   Details on a subtotal or the grand total.
-- [ ] **Pivot keeps or drops a missing field?** The card drops a field whose column leaves its source (frame-verbs § pivot),
-  meant for a source swap; a column briefly absent drops it too. Keeping it, flagged in Configure Fields, is the
-  alternative; the author's call.
 - [ ] **Write nodes' Keys split on bare commas** (`WriteNodes.tsx`, two places): read and write them with
   `listLiteralItems` / `listLiteralText` so a key holding a comma survives.
 - [ ] **Escape with the column-format panel open closes the whole popup** (`ColumnFormatButton` registers no
   escape layer); it should close the panel first, as the ⋯ menu does.
 - [ ] **The editor footer's Insert and Delete menus and Cancel / Save keep their older square style** beside the
   pill family; Cancel and Save are dialog actions, the menus could join the pills.
-
-## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
-
-A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
-(no override map, [[D22]] oneNamePerCard), verifying seeds + the generator (type = class name):
-- [ ] `IFErrorNode` → "If Error"; `MatDetNode` → a real family name (covers MDETERM /
-  MINVERSE / TRACE / NORM / MATRIXRANK — "Matrix"?); `MRoundNode` → a name for the
-  MROUND / CEILING / FLOOR family. Author picks the two names.
-- [ ] "URL Encode" / "E-Series" can't come from a class rename: `nodeTypeName` only
-  splits camelCase (lower→upper), so `URLEncode` and `ESeries` don't gain the space/hyphen.
-  Either teach `nodeTypeName` acronym/hyphen handling (a derivation tweak, author to okay)
-  or accept "Url Encode" / "ESeries".
 
 ## Packs
 
@@ -388,8 +247,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the comment lift (rest partition)
 - [ ] **Voice lint over option tables.** `uiCopy.test.ts` skips the `tsx-opt-*` records `copyCorpus.ts` already
   collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
-- [ ] **Custom packs.** Settings shows `customPacksFolder()`, but `loadCustomPacks()` is a stub returning none until
-  filesystem access and a pack format are settled. When they load, the Add menu's per-type caches (`catalogSearch.ts`
-  `_sigCache`, `families`) must clear, since a reloaded pack can change a type's sockets.
 
 
