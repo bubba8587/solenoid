@@ -244,6 +244,12 @@ pub fn uid() -> String {
     ruggine::get_uid()
 }
 
+/// The socket lattice as the tables the app reads (`lattice::tables_json`).
+#[wasm_bindgen(js_name = latticeTables)]
+pub fn lattice_tables() -> String {
+    crate::lattice::tables_json()
+}
+
 /// Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
 #[wasm_bindgen(js_name = graphTrap)]
 pub fn graph_trap() {

@@ -1,5 +1,6 @@
 // [[C10]] socketLattice
 import { GraphSocket } from "./graphModel";
+import { latticeTables } from "./engineWasm/solenoid_graph.js";
 
 export type SocketDataType =
   | "number"
@@ -103,158 +104,71 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   trueany:      "Anything",
 };
 
-type Dim = "scalar" | "list" | "combo" | "matrix";
-
-const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
-  number:  { scalar: "number",  list: "list",        combo: "numlist",      matrix: "table" },
-  string:  { scalar: "string",  list: "strlist",     combo: "strcombo",     matrix: "strtable" },
-  date:    { scalar: "date",    list: "datelist",    combo: "datecombo",    matrix: "datetable" },
-  complex: { scalar: "complex", list: "complexlist", combo: "complexcombo", matrix: "complextable" },
-  logical: { scalar: "logical", list: "logicallist", combo: "logicalcombo", matrix: "logicaltable" },
-};
-
-const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
-const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
-
-function dimFlows(dOut: Dim, dIn: Dim): boolean {
-  return DIM_RANK[dOut] <= DIM_RANK[dIn] || (dOut === "combo" && dIn === "scalar");
+// The rules are the core's (`crates/solenoid-graph/src/lattice.rs`, [[D102]] graphOnCore); these read its tables,
+// fetched once on first use.
+interface LatticeTables {
+  connects: Record<SocketDataType, SocketDataType[]>;
+  adopts: Record<SocketDataType, Record<SocketDataType, SocketDataType>>;
+  projects: Record<SocketDataType, Record<SocketDataType, SocketDataType>>;
+  types: Record<SocketDataType, { rank: number | null; family: ElementFamily | null; combo: SocketDataType | null; atRank: (SocketDataType | null)[] }>;
 }
 
-const MATRIX_TYPES = new Set<SocketDataType>([
-  "table", "strtable", "datetable", "complextable", "logicaltable", "anytable",
-]);
+let tables: (LatticeTables & { accepts: Map<SocketDataType, Set<SocketDataType>> }) | null = null;
 
-const FAMILY_VALUE_TYPES = new Set<SocketDataType>(
-  Object.values(FAMILIES).flatMap((fam) => Object.values(fam)),
-);
-
-const RANK1_VALUE_TYPES = new Set<SocketDataType>(
-  Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.list, fam.combo]),
-);
-const SCALAR_COMBO_TYPES = new Set<SocketDataType>(
-  Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.combo]),
-);
-const LIST_COMBO_TYPES = new Set<SocketDataType>(
-  Object.values(FAMILIES).flatMap((fam) => [fam.list, fam.combo]),
-);
-
-const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() => {
-  const map: Partial<Record<SocketDataType, SocketDataType[]>> = {};
-  for (const fam of Object.values(FAMILIES)) {
-    for (const di of DIMS) {
-      map[fam[di]] = DIMS
-        .filter((dof) => dof !== di && dimFlows(dof, di))
-        .map((dof) => fam[dof]);
-    }
+function lattice() {
+  if (!tables) {
+    const t = JSON.parse(latticeTables()) as LatticeTables;
+    tables = { ...t, accepts: new Map(Object.entries(t.connects).map(([k, v]) => [k as SocketDataType, new Set(v)])) };
   }
-  const NUM = FAMILIES.number, LOG = FAMILIES.logical;
-  for (const di of DIMS) {
-    for (const dof of DIMS) {
-      if (dimFlows(dof, di)) {
-        map[NUM[di]]!.push(LOG[dof]);
-        map[LOG[di]]!.push(NUM[dof]);
-      }
-    }
-  }
-  return map;
-})();
+  return tables;
+}
+
+const facts = (dt: SocketDataType) => lattice().types[dt];
+
+export type ElementFamily = "number" | "string" | "date" | "complex" | "logical";
 
 export function is2DType(dt: SocketDataType): boolean {
-  return MATRIX_TYPES.has(dt) || dt === "frame" || dt === "cube";
+  return dt === "frame" || dt === "cube" || (facts(dt)?.rank === 2 && dt !== "anydata");
 }
 
 export function isDateType(dt: SocketDataType): boolean {
-  return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
+  return facts(dt)?.family === "date";
 }
 
-export type ElementFamily = keyof typeof FAMILIES;
-
-const FAMILY_OF = (() => {
-  const m = new Map<SocketDataType, ElementFamily>();
-  for (const [fam, dims] of Object.entries(FAMILIES) as [ElementFamily, Record<string, SocketDataType>][]) {
-    for (const dt of Object.values(dims)) if (!m.has(dt)) m.set(dt, fam);
-  }
-  return m;
-})();
-
 export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
-  return FAMILY_OF.get(dt) ?? null;
+  return facts(dt)?.family ?? null;
 }
 
 export function comboOfType(dt: SocketDataType): SocketDataType | null {
-  const fam = elementFamilyOf(dt);
-  return fam ? FAMILIES[fam].combo : null;
+  return facts(dt)?.combo ?? null;
 }
 
 export function typeAtRank(dt: SocketDataType, rank: 0 | 1 | 2): SocketDataType | null {
-  const fam = elementFamilyOf(dt);
-  return fam ? FAMILIES[fam][rank === 0 ? "scalar" : rank === 1 ? "list" : "matrix"] : null;
+  return facts(dt)?.atRank[rank] ?? null;
 }
 
 export function comboOfFamily(fam: string): SocketDataType | null {
-  return FAMILIES[fam]?.combo ?? null;
+  return comboOfType(fam as SocketDataType);
 }
 
 export function latticeRank(dt: SocketDataType): number | null {
-  if (dt === "any") return 0;
-  if (dt === "anylist" || dt === "anycombo") return 1;
-  if (dt === "anydata") return 2;
-  if (dt === "anytable") return 2;
-  for (const dims of Object.values(FAMILIES)) {
-    for (const [dim, t] of Object.entries(dims)) if (t === dt) return DIM_RANK[dim as Dim];
-  }
-  return null;
+  return facts(dt)?.rank ?? null;
 }
 
 export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): SocketDataType {
-  const fam = elementFamilyOf(wired);
-  if (base === "anylist" || base === "anytable") {
-    const baseRank = latticeRank(base);
-    const wiredRank = latticeRank(wired);
-    if (fam === null || baseRank === null || wiredRank === null) return base;
-    if (wiredRank >= baseRank) return wired;
-    return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
-  }
-  if ((base === "any" || base === "anycombo" || base === "anydata") && fam === null) return base;
-  return wired;
+  return lattice().adopts[base]?.[wired] ?? wired;
 }
 
 export function projectTypeToBase(base: SocketDataType, t: SocketDataType): SocketDataType {
-  if (base !== "anylist" && base !== "anytable") return t;
-  const baseRank = latticeRank(base);
-  if (baseRank === null) return t;
-  const fam = elementFamilyOf(t);
-  if (fam === null) return base;
-  if (latticeRank(t) === baseRank) return t;
-  return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
-}
-
-function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
-  if (inT === outT) return true;
-  if (inT === "trueany" || outT === "trueany") return true;
-  if (inT === "any") return SCALAR_COMBO_TYPES.has(outT) || outT === "anycombo";
-  if (outT === "any") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  if (inT === "anytable" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
-  if (outT === "anytable" && MATRIX_TYPES.has(inT)) return true;
-  if (inT === "anylist" && (RANK1_VALUE_TYPES.has(outT) || outT === "anycombo")) return true;
-  if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
-  if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
-  if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // [[C10]] socketLattice
-  if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
-  if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // [[C10]] socketLattice
-  if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
-  return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
+  return lattice().projects[base]?.[t] ?? t;
 }
 
 export function areCompatible(a: SocketDataType, b: SocketDataType): boolean {
-  return accepts(a, b) || accepts(b, a);
+  return canConnect(a, b) || canConnect(b, a);
 }
 
 export function canConnect(out: SocketDataType, inp: SocketDataType): boolean {
-  return accepts(inp, out);
+  return lattice().accepts.get(out)?.has(inp) ?? false;
 }
 
 export class SolenoidSocket extends GraphSocket {

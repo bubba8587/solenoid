@@ -281,6 +281,16 @@ export function setPanicHandler(handler) {
 }
 
 /**
+ * Sets (`true`) or clears the dirty flag; `true` on a transition.
+ * @param {boolean} dirty
+ * @returns {boolean}
+ */
+export function sessionDirty(dirty) {
+    const ret = wasm.sessionDirty(dirty);
+    return ret !== 0;
+}
+
+/**
  * Opens (`true`) or closes a force-exact bracket.
  * @param {boolean} begin
  */
@@ -379,6 +389,27 @@ export function uid() {
 }
 
 /**
+ * The socket lattice as the tables the app reads (`lattice::tables_json`).
+ * @returns {string}
+ */
+export function latticeTables() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.latticeTables(retptr);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap() {
@@ -436,16 +467,6 @@ export function sessionSetMode(mode) {
     const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.sessionSetMode(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * Sets (`true`) or clears the dirty flag; `true` on a transition.
- * @param {boolean} dirty
- * @returns {boolean}
- */
-export function sessionDirty(dirty) {
-    const ret = wasm.sessionDirty(dirty);
     return ret !== 0;
 }
 
@@ -1087,7 +1108,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_190(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_191(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1941,7 +1962,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_190(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_191(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2105,8 +2126,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper663 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 131, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper683 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 133, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

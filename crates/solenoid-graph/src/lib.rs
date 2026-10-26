@@ -12,6 +12,7 @@ mod boundary;
 pub mod boundary_core;
 #[cfg(target_arch = "wasm32")]
 mod direct;
+pub mod lattice;
 pub mod model;
 pub mod pass;
 pub mod session;

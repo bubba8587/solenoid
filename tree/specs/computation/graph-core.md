@@ -319,6 +319,38 @@ flowchart LR
   `_resolvedAngleMode` (`resolveTrigModes` walks the FC annotations in TypeScript before each pass), a composite's
   `markInternalEdit`.
 
+## Phase D: the graph's derived state
+
+What a graph works out from its own shape, after an edit and before a pass, moves to the core next ([[D102]]
+graphOnCore), each piece by the [[rust-core]] routine (freeze the TypeScript's answers, cover them, delete it). It is
+the Type Settle and the Format Controller reconcile ([[type-propagation-on-in-place-socket-retype]]), and what they
+lean on:
+
+```mermaid
+flowchart LR
+    d1["D1: the socket lattice<br>(lattice.rs)"] --> d5
+    d2["D2: passthrough declarations<br>as data the core reads"] --> d5
+    d3["D3: frame shapes: each card's<br>output shape from its config"] --> d5
+    d4["D4: Conduit lane typing"] --> d5
+    d5["D5: the Type Settle in Rust:<br>adoption and passthroughs<br>to a fixpoint"] --> d6
+    d6["D6: the Format Controller<br>reconcile and the annotations"]
+```
+
+- **D1, the socket lattice** (done): `lattice.rs` holds which type connects to which, what an adoptive socket takes
+  up, and each type's rank and family; `sockets.ts` reads its tables (`latticeTables`) and keeps only the display
+  (colors, labels). Frozen in `fixtures/core/lattice.json.gz` (`coreLattice.test.ts`, `tests/lattice.rs`).
+- **D2, passthroughs**: a class's `passthrough()` specs carry functions (`activeIndex`, `selected`, `project`);
+  they become data a core reads (the field that picks the active input, the projection's name).
+- **D3, frame shapes**: the `frameShape` hooks (49, across 15 node modules) answer a card's output columns from its
+  saved fields and its inputs' shapes; each moves beside its body on the core.
+- **D4, Conduit lanes** (`conduitTrace.ts`).
+- **D5, the Type Settle** (`settleWildcardTypes`, `trueAnyAdopt.ts`): the core runs it over its own graph and answers
+  each socket that changed; the TypeScript sockets take the new types and the view rerenders those nodes.
+- **D6, the reconcile** (`fcReconcile.ts`, the FC's `adaptTypeFromConnections` and `refreshAnnotation`, Convert's
+  arrows, and the annotation flow in `unitFlow.ts` and `formatAnnotationStore.ts`).
+
+The view's side stays TypeScript: rerendering, cable paths and the requests a reconcile makes of React.
+
 ## Enforcement
 
 - `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`: the walks, the model and its port sets
@@ -329,6 +361,7 @@ flowchart LR
 - `directBodies.test.ts`: the direct classes are the ones whose `data()` is their body, and a direct card computes
   in an editor without its `data()` running.
 - `coreBoundary.test.ts`: the input boundary's frozen answers (`fixtures/core/boundary-*`).
+- `coreLattice.test.ts` and `tests/lattice.rs`: the socket lattice's frozen answers (`fixtures/core/lattice.json.gz`).
 - `dataflowEngine.test.ts`: values by reference, errors as themselves, `Cancelled`, seeding, attaching late.
 - `graphEditor.test.ts`: signal order, a cancelling pipe, a throwing pipe, removed pipes, ports and their order in
   the core, the lists.

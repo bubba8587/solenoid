@@ -8,7 +8,7 @@ tags: [spec, values]
 
 Serves [[C10]] socketLattice: type separation and dimensional flow, derived from the family × rank product. It covers what the system does and blocks, and the decision each behavior serves; a builder implements this file without reading the tree. `docs/socket-reference.md` is the per-variant reference for readers, with each socket's dot shape and color.
 
-Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides which cables may connect. Element families never cross on their own: crossing takes a Cast, and the only bridge is `logical ↔ number`. Values flow freely up in rank: scalar, list, matrix, Frame, Cube. Going up a rank loses nothing, while going down has to drop or pick values, so only going up happens on its own; going down takes a node that picks what to keep. Which connections are legal is derived from the family × rank product, never listed pair by pair. Every node declares honestly what kind of value it gives; a node that can't know its output in advance declares a wildcard and takes on the kind of whatever is wired to it (req. 8) ([[B17]] typedValueModel).
+Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides which cables may connect. The rules are the core's (`crates/solenoid-graph/src/lattice.rs`, [[graph-core#Phase D: the graph's derived state]]); `sockets.ts` reads them as tables and keeps the colors and labels. Element families never cross on their own: crossing takes a Cast, and the only bridge is `logical ↔ number`. Values flow freely up in rank: scalar, list, matrix, Frame, Cube. Going up a rank loses nothing, while going down has to drop or pick values, so only going up happens on its own; going down takes a node that picks what to keep. Which connections are legal is derived from the family × rank product, never listed pair by pair. Every node declares honestly what kind of value it gives; a node that can't know its output in advance declares a wildcard and takes on the kind of whatever is wired to it (req. 8) ([[B17]] typedValueModel).
 
 Every socket type, by element family and rank (a combo is a scalar or a list; the wildcards carry no family):
 
@@ -63,10 +63,10 @@ flowchart LR
 ## Requirements
 
 1. **The grid.** The regular types are an element × dimension product: `FAMILIES` (number, string, date, complex, logical) × `DIMS` (scalar, list, combo, matrix). Each family's rank-1 rung comes in two forms: `list` (strict) and `combo` (scalar or list). [[C10]] socketLattice, [[#New socket types are derived]].
-2. **One predicate derives the within-family accept-sets.** `dimFlows(dOut, dIn)` is `rank(dOut) ≤ rank(dIn)`, or the one exception the rank model can't express: a combo may narrow into its element scalar. `SOCKET_ACCEPTS` is built from it. [[C10]] socketLattice.
+2. **One predicate derives the within-family accept-sets.** `dim_flows(d_out, d_in)` is `rank(d_out) ≤ rank(d_in)`, or the one exception the rank model can't express: a combo may narrow into its element scalar. Every within-family accept-set is built from it (`family_accepts`). [[C10]] socketLattice.
 3. **The bridge is built by the same predicate.** `logical ↔ number` is the one cross-family bridge (0 and 1 for FALSE and TRUE, as in Excel, and the multiply-by-a-condition idiom). It is mirrored through `dimFlows` on both sides, so the combo-to-scalar exception can't hold on one side and not the other (`logicalcombo → number` flows wherever `logical → number` does). Arrival coercion in the graph core's input boundary does the runtime conversion ([[compute-pass]] § Arrival coercion). [[C10]] socketLattice.
 4. **A combo collapses a singleton on arrival.** A one-element list arriving at a combo or any scalar rung is that scalar (the input boundary's `collapse`, `boundary.rs`); a strict list rung keeps its list and re-widens a scalar on the way in, so the round trip is lossless. A complex is a tagged scalar and collapses like one. This is what makes the combo-to-scalar edge true rather than merely permitted.
-5. **Cross-type dimensional edges are explicit in `accepts()`**, because rank derivation can't express them and they are the edges a rework is most likely to lose. The complete list:
+5. **Cross-type dimensional edges are explicit in `accepts` (`lattice.rs`)**, because rank derivation can't express them and they are the edges a rework is most likely to lose. The complete list:
    - `combo → scalar` within a family (req. 2), and `anycombo → any` for the same reason.
    - `any` as an input takes every family scalar and combo, plus `anycombo`. As an output it reaches everything but the object family (lambda, chart, document).
    - `anylist` is 1-D both ways: as an input it takes every rank-1 family value and `anycombo`; as an output it reaches every family list and combo. `anycombo` is 0-D or 1-D: as an input it takes rank-1 family values and `anylist`; as an output it reaches every non-object input.
@@ -111,7 +111,7 @@ A date serial and a plain number are the same `number` at runtime, so once a dat
 
 ### New socket types are derived
 
-**MUST:** a new socket type is added by extending the family × rank product (req. 12). Cross-type dimensional edges are explicit in `accepts()` (req. 5) and swept exhaustively by test; a new type never needs its pairs written by hand. Hand-listed pairs grow with the square of the variant count, and a hand-kept list drifts from the rule it copies.
+**MUST:** a new socket type is added by extending the family × rank product (req. 12). Cross-type dimensional edges are explicit in `accepts` (`lattice.rs`) (req. 5) and swept exhaustively by test; a new type never needs its pairs written by hand. Hand-listed pairs grow with the square of the variant count, and a hand-kept list drifts from the rule it copies.
 
 ### The wildcard ladder keeps rank
 
@@ -168,15 +168,15 @@ A shared mutable socket means wiring a date into one card retypes another card's
 
 ## The API
 
-- `accepts(inT, outT)` is the one directional primitive. `canConnect(out, inp)` and `SolenoidSocket.canConnectTo(input)` are its directional forms, used by the connection guard. `areCompatible` and `isCompatibleWith` are symmetric and serve only non-connection uses such as legend and highlight grouping.
-- `is2DType` is true for the matrices, `anytable`, `frame` and `cube`. `MATRIX_TYPES` is the homogeneous matrices plus `anytable`, not `frame`.
+- `accepts(in_t, out_t)` (`lattice.rs`) is the one directional primitive. `canConnect(out, inp)` and `SolenoidSocket.canConnectTo(input)` are its directional forms, used by the connection guard. `areCompatible` and `isCompatibleWith` are symmetric and serve only non-connection uses such as legend and highlight grouping.
+- `is2DType` is true for the matrices, `anytable`, `frame` and `cube`. `is_matrix` (`lattice.rs`) is the homogeneous matrices plus `anytable`, not `frame`.
 - `elementFamilyOf(dt)` is a type's family at any rank, or `null` outside the five families. `typeAtRank(dt, rank)` is the same family at another rank (`strlist` at rank 2 is `strtable`). `comboOfType(dt)` is the family's combo rung, the honest output type for an element-preserving extraction whose rank depends on runtime arguments (INDEX), and `comboOfFamily(name)` does the same from a family name, which is what a Frame column's `type` is.
 - `latticeRank(dt)` is 0 for a scalar and `any`, 1 for a list or combo and for `anylist` and `anycombo`, 2 for a matrix and for `anytable` and `anydata`, and `null` for the rankless structural types.
 - `SOCKET_COLORS` are CSS variables, so socket colors follow the theme live; `SOCKET_TYPE_LABELS` is a socket dot's hover title, the only path to "what type is this" that doesn't depend on color.
 
 ## Enforcement
 
-`socketConnect.test.ts` sweeps the whole family × dimension cross product with the same `dimFlows` predicate (within-family widening and combo-to-scalar; cross-family blocked except `logical ↔ number`; every value of rank 2 or less reaches `anytable` and `frame`; outputs stay 2-D or Frame-only; `any` bridges both ways) and pins both family-less adoption branches. `socketReference.test.ts` checks every connection list in `docs/socket-reference.md` against `accepts()`. The "Dimensional Flow" seed shows it visually.
+`socketConnect.test.ts` sweeps the whole family × dimension cross product with the same widening predicate (within-family widening and combo-to-scalar; cross-family blocked except `logical ↔ number`; every value of rank 2 or less reaches `anytable` and `frame`; outputs stay 2-D or Frame-only; `any` bridges both ways) and pins both family-less adoption branches. `socketReference.test.ts` checks every connection list in `docs/socket-reference.md` against `accepts()`. The "Dimensional Flow" seed shows it visually.
 
 ## Out of scope
 

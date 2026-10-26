@@ -165,7 +165,7 @@ results get retried and settled rulings relapse.
 | `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
-| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice |
+| `sockets.ts`, `crates/solenoid-graph/src/lattice.rs`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice |
 | `nodes/cube.ts` | [[C10]] socketLattice; `../tree/specs/values/socket-lattice.md` (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts`, `ReportOverlay.tsx`, `reportExport.ts` | `../tree/specs/documents/reports-and-notes.md`; [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
 | `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve |

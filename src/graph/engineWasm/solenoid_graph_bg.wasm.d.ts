@@ -44,6 +44,7 @@ export const graphcore_shown: (a: number, b: number, c: number, d: number, e: nu
 export const graphcore_unnest: (a: number, b: number, c: number) => void;
 export const graphcore_useEngine: (a: number, b: number, c: number) => void;
 export const isLazyFrameNode: (a: number, b: number) => number;
+export const latticeTables: (a: number) => void;
 export const offCoreBodies: (a: number) => void;
 export const seesErrors: (a: number, b: number) => number;
 export const sessionDirty: (a: number) => number;

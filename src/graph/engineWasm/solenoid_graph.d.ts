@@ -19,6 +19,10 @@ export function unnamedEdits(): string[];
  */
 export function setPanicHandler(handler: Function): void;
 /**
+ * Sets (`true`) or clears the dirty flag; `true` on a transition.
+ */
+export function sessionDirty(dirty: boolean): boolean;
+/**
  * Opens (`true`) or closes a force-exact bracket.
  */
 export function sessionForceExact(begin: boolean): void;
@@ -49,6 +53,10 @@ export function sessionExit(finished: boolean): any;
  */
 export function uid(): string;
 /**
+ * The socket lattice as the tables the app reads (`lattice::tables_json`).
+ */
+export function latticeTables(): string;
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap(): void;
@@ -70,10 +78,6 @@ export function sessionRestore(snapshot: object): void;
  * `false` when `mode` is the mode already.
  */
 export function sessionSetMode(mode: string): boolean;
-/**
- * Sets (`true`) or clears the dirty flag; `true` on a transition.
- */
-export function sessionDirty(dirty: boolean): boolean;
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
@@ -357,6 +361,7 @@ export interface InitOutput {
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;
+  readonly latticeTables: (a: number) => void;
   readonly offCoreBodies: (a: number) => void;
   readonly seesErrors: (a: number, b: number) => number;
   readonly sessionDirty: (a: number) => number;
