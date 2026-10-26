@@ -5,6 +5,10 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::FrameCell;
 use crate::jsnum::{js_string, js_trim};
 
+/// The most elements a generated list or grid may hold: a count past it is an error naming the limit, never a
+/// hang ([[C120]] linearWork).
+pub const MAX_GENERATED: f64 = 1_000_000.0;
+
 pub const DOMAIN_MESSAGE: &str = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
 pub const OVERFLOW_MESSAGE: &str = "The result is too large to represent. The true value exceeds the numeric range.";
 

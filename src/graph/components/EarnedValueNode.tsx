@@ -6,6 +6,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { nodeDisplayName } from "../catalogUtils";
 import { isSolError } from "../errorValue";
+import { APP_LOCALE } from "../locale";
 import { isUnitCell } from "../unitValue";
 import { displayMagnitudeOf } from "../unitBridge";
 import { CardSection, useRowsInUse } from "./CardSection";
@@ -20,7 +21,7 @@ function ratioText(v: OutputRowValue): OutputRowValue {
 function moneyText(v: OutputRowValue): OutputRowValue {
   if (isSolError(v) || v == null) return v as OutputRowValue;
   const n = isUnitCell(v) ? displayMagnitudeOf(v) : v;
-  return typeof n === "number" ? Math.round(n).toLocaleString() : v;
+  return typeof n === "number" ? Math.round(n).toLocaleString(APP_LOCALE) : v;
 }
 
 const CALENDAR_KEYS = ["holidays", "weekend_code"];

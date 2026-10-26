@@ -13,7 +13,7 @@ use std::rc::Rc;
 /// The names this module answers.
 pub const NAMES: &[&str] = &["RAND", "RANDBETWEEN", "RANDARRAY", "RANDDIST", "SHUFFLE", "UUID"];
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 /// `Math.random()`.
 #[cfg(target_arch = "wasm32")]

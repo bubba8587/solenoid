@@ -223,8 +223,12 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return V::err(sol_error(ErrorCode::Value, "GEOMETRIC needs a number"));
             }
             let k = math_round(count);
-            if k > 1_000_000.0 {
-                let msg = format!("GEOMETRIC count {} exceeds the 1000000 element limit", number_to_string(k));
+            if k > crate::value_kinds::MAX_GENERATED {
+                let msg = format!(
+                    "GEOMETRIC count {} exceeds the {} element limit",
+                    number_to_string(k),
+                    number_to_string(crate::value_kinds::MAX_GENERATED)
+                );
                 return V::err(sol_error(ErrorCode::Overflow, msg));
             }
             let (mut v, ratio) = (number(arg(a, 0)), number(arg(a, 1)));

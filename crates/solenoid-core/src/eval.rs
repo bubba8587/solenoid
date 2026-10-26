@@ -35,7 +35,7 @@ pub struct LambdaV {
     pub descriptions: Option<Rc<serde_json::Value>>,
 }
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 /// A function's dispatch facts, frozen into data/call_traits.json. Its per-position lists
 /// hold only their head; past it they repeat with period two.

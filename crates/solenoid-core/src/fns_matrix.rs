@@ -69,7 +69,7 @@ pub const NAMES: &[&str] = &[
     "HISTOGRAM2D",
 ];
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 type Mat = Vec<Vec<V>>;
 type NumMat = Vec<Vec<f64>>;

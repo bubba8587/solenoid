@@ -1,8 +1,8 @@
 // [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
-import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
+import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { isRange } from "./callTraits";
+import { isRange, callTraits, callTraitNames } from "./callTraits";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
 import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
@@ -241,6 +241,12 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
       expect(isSolError(r) && r.code, name).toBe("#NAME?");
       expect(isSolError(r) && r.message, name).toBe(`Use ${use}`);
     }
+  });
+
+  it("the core refuses no #NAME? spelling the TS tables do not name", () => {
+    const named = new Set([...Object.keys(LEGACY_ALIASES), ...Object.keys(POSITION_NAMES), ...Object.keys(NODE_SURFACE_NAMES)]);
+    const extra = callTraitNames().filter((n) => callTraits(n)?.refusal?.code === "#NAME?" && !named.has(n));
+    expect(extra).toEqual([]);
   });
 
   it("COLUMN says columns go by name", () => {

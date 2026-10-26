@@ -74,7 +74,7 @@ pub const NAMES: &[&str] = &[
     "ZSCORE",
 ];
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
@@ -857,7 +857,7 @@ fn ntile(arr: &[V], n: f64) -> V {
         return value("NTILE needs at least one bucket");
     }
     if k > MAX_GENERATED {
-        return domain("NTILE takes at most 1000000 buckets");
+        return domain(&format!("NTILE takes at most {} buckets", number_to_string(MAX_GENERATED)));
     }
     let ns = present_numbers(arr);
     if ns.is_empty() {

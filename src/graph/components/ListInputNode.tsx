@@ -3,8 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../nodeClasses";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
-import { SolenoidSocket, canConnect } from "../sockets";
+import { retypeInputCables, retypeOutputCables } from "../fcReconcile";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -25,12 +24,8 @@ async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise
   const view = getOwningView(node.id);
   if (editor && view) {
     // The row input sockets were retyped too, and retypeOutputCables only walks outputs.
-    const inType = (node.valueSocket as SolenoidSocket).dataType;
-    for (const c of [...editor.getConnections()]) {
-      if (c.target !== node.id) continue;
-      const outSock = editor.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
-      const outType = outSock instanceof SolenoidSocket ? outSock.dataType : undefined;
-      if (!outType || !canConnect(outType, inType)) await editor.removeConnection(c.id);
+    for (const key of new Set(editor.getConnections().filter((c) => c.target === node.id).map((c) => c.targetInput))) {
+      await retypeInputCables(editor, view, node.id, key);
     }
     await retypeOutputCables(editor, view, node.id, "list");
   }

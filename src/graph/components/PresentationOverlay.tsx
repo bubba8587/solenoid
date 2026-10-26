@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { presentationStore } from "../presentationStore";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { flyToNodes } from "../flyToNode";
 import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
@@ -16,7 +16,7 @@ export function PresentationOverlay() {
 }
 
 function PresentationRunner({ nodeId }: { nodeId: string }) {
-  const node = getEditor()?.getNode(nodeId) as PresentationNode | undefined;
+  const node = getOwningEditor(nodeId)?.getNode(nodeId) as PresentationNode | undefined;
   const steps = node?.steps ?? [];
   const [idx, setIdx] = useState(0);
 

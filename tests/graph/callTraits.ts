@@ -13,6 +13,8 @@ export interface CallTraits {
   /** A one-column or one-row table reads as its items, and a list answer comes back the way the vector came in. */
   free: boolean;
   matrixArgs: boolean;
+  /** The ladder's Blocked step: the error a superseded or frame-only name answers. */
+  refusal?: { code: string; message: string };
 }
 
 const table = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../crates/solenoid-core/data/call_traits.json"), "utf8")) as Record<string, CallTraits>;

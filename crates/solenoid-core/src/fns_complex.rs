@@ -485,7 +485,7 @@ fn text_similarity(a: &str, b: &str, m: Sim) -> f64 {
 
 // ─── Lists ──────────────────────────────────────────────────────────────────────
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 /// `capped`: a count that isn't finite, or one past the generated-list limit, answers an error.
 fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {
@@ -496,7 +496,11 @@ fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {
     if k > MAX_GENERATED {
         return V::err(sol_error(
             ErrorCode::Overflow,
-            format!("{name} count {} exceeds the 1000000 element limit", number_to_string(k)),
+            format!(
+                "{name} count {} exceeds the {} element limit",
+                number_to_string(k),
+                number_to_string(MAX_GENERATED)
+            ),
         ));
     }
     V::List(std::rc::Rc::new(make()))

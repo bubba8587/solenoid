@@ -1,4 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { dropInputCables } from "./cablePrune";
 import { usePendingDraft } from "../draftFlush";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
@@ -190,14 +191,7 @@ export function ReportOverlay() {
     node!.body = current;
     scheduleAutosave();
     const { removedInputs } = node!.syncRefs();
-    const ed = getOwningEditor(node!.id);
-    if (ed && removedInputs.length) {
-      for (const c of ed.getConnections()) {
-        if (c.target === node!.id && removedInputs.includes(c.targetInput)) {
-          await ed.removeConnection(c.id);
-        }
-      }
-    }
+    if (removedInputs.length) await dropInputCables(node!.id, removedInputs);
     await getOwningView(node!.id)?.rerenderNode(node!.id);
     await processGraph(node!.id);
     setRenderVersion((v) => v + 1);

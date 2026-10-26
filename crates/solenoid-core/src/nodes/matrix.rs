@@ -24,7 +24,7 @@ use crate::value_kinds::guard_finite as guard_cells;
 use serde_json::Value as Json;
 use std::rc::Rc;
 
-const MAX_GENERATED: f64 = 1_000_000.0;
+use crate::value_kinds::MAX_GENERATED;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
