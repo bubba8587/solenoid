@@ -128,7 +128,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Loose ends from the last review (NICE):** a Nest Join key carrying a unit, or matched number-to-text, isn't recognized as a key and scores; ladder cards show 3 decimals where Plan shows 4.
 
 ## Charts
-- [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
 
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)

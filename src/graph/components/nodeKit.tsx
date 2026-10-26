@@ -158,7 +158,9 @@ function MeasuredOutputRow({
         >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
-          {formatRowValue(value, ann)}
+          {nodeOutputElemFamily(node.id, rowKey) === "date" && !ann
+            ? formatRowValue(dateFormatDisplay(value as DisplayValue, true, false) as OutputRowValue)
+            : formatRowValue(value, ann)}
         </span>
       )}
     </MeasuredSocketRow>
