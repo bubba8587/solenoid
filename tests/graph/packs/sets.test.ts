@@ -1,4 +1,5 @@
 // [[C24]] arraySemantics
+import { SolenoidSocket } from "../../../src/graph/sockets";
 import { describe, it, expect } from "vitest";
 import { evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/nodeClasses";
@@ -58,6 +59,14 @@ describe("COUNT DISTINCT aggregate op", () => {
     expect(n.data({ list: [[1, 2, 2, 3, 3, 3, null]] }).result).toBe(3);
     const err = solError("#N/A", "x");
     expect(n.data({ list: [[1, err]] }).result).toBe(err);
+  });
+
+  it("counts names too: its list input takes any scalar list, and the numeric ops read numbers", () => {
+    const n = new AggregateNode({ op: "countdistinct" });
+    expect(n.data({ list: [["Ana", "Bo", "Ana", null, "bo"]] }).result).toBe(3);
+    expect((n.inputs.list!.socket as SolenoidSocket).dataType).toBe("anylist");
+    n.setOp("sum");
+    expect((n.inputs.list!.socket as SolenoidSocket).dataType).toBe("list");
   });
 });
 

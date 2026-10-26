@@ -15,8 +15,6 @@ bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
 
-## Expect
-
 ## Formula library
 
 - [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
@@ -56,12 +54,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
-
-## Sets pack
-- [ ] **COUNT DISTINCT on a text list is `#TYPE!`** (found 2026-10-07; numbers work): it is an op on the Aggregate card, whose
-  input is a number list (`listIn`), so names never reach it, yet counting distinct names is the Sets pack's use for it.
-  COUNTBLANK already reads the raw list; COUNT DISTINCT needs a socket that takes any scalar list (read input-roles and the
-  socket lattice before retyping it).
 
 ## Empty argument slots (author 2026-10-05; [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue)
 
@@ -126,9 +118,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
 - [ ] **Loose ends from the last review (NICE):** a Nest Join key carrying a unit, or matched number-to-text, isn't recognized as a key and scores; ladder cards show 3 decimals where Plan shows 4.
-
-## Charts
-
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)
 Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.

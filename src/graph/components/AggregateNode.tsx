@@ -1,7 +1,21 @@
 import type { AggregateNode as AggregateNodeType, ReduceOp } from "../nodeClasses";
 import { REDUCE_OP_META } from "../nodeClasses";
+import { useState } from "react";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ValueDisplay, type NodeProps } from "./nodeKit";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { retypeInputCables } from "../fcReconcile";
+import { processGraph } from "../process";
+
+/** The list socket follows the op ([[type-propagation-on-in-place-socket-retype]]): a cable the new type refuses goes. */
+async function applyAggregateOp(node: AggregateNodeType, op: ReduceOp): Promise<void> {
+  node.setOp(op);
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
+  if (view) await view.rerenderNode(node.id);
+  if (editor) await retypeInputCables(editor, view, node.id, "list");
+  node.edited(); await processGraph();
+}
 
 // Record<ReduceOp, …> keeps this exhaustive: a new op fails the typecheck here.
 const OP_GROUP: Record<ReduceOp, string> = {
@@ -19,7 +33,8 @@ const OPS = (Object.keys(REDUCE_OP_META) as ReduceOp[])
   .sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));
 
 export function AggregateComponent({ data, emit }: NodeProps<AggregateNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpState] = useState<ReduceOp>(data.op);
+  const setOp = (v: ReduceOp) => { setOpState(v); void applyAggregateOp(data, v); };
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />

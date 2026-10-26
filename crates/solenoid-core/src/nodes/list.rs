@@ -995,6 +995,19 @@ fn aggregate(c: &mut Call) -> Answer {
     if let Some(e) = values.iter().find(|v| v.is_sol_error()) {
         return shown(c, "cachedResult", "result", e.clone());
     }
+    // Text or logicals among the items: distinct by value and kind, as COUNTA(UNIQUE(range)) counts them.
+    if op == "countdistinct" && values.iter().any(|v| matches!(v, V::Str(_) | V::Bool(_))) {
+        let mut seen = std::collections::HashSet::new();
+        for v in values.iter().filter(|v| !matches!(v, V::Null)) {
+            seen.insert(match v {
+                V::Num(n) => format!("n{}", (n + 0.0).to_bits()),
+                V::Str(s) => format!("s{s}"),
+                V::Bool(b) => format!("b{b}"),
+                other => format!("o{}", crate::excel_functions::js_string_of(other)),
+            });
+        }
+        return shown(c, "cachedResult", "result", V::Num(seen.len() as f64));
+    }
     let refs: Vec<&V> = values.iter().collect();
     let prep = match crate::unit_lists::for_aggregate_units(&refs, op != "sum") {
         Ok(p) => p,

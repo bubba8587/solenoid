@@ -1511,8 +1511,18 @@ export class AggregateNode extends GraphNode {
     super("Aggregate");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "sum";
-    this.addInput("list",    listIn("List"));
+    this.addInput("list",    AggregateNode.listFor(this.op));
     this.addOutput("result", numOut("Result"));
+  }
+
+  /** COUNT DISTINCT and COUNTBLANK count any scalar list (names, dates, logicals); every other op reads numbers. */
+  static listFor(op: ReduceOp) {
+    return op === "countdistinct" || op === "countblank" ? anyListIn("List") : listIn("List");
+  }
+
+  setOp(next: ReduceOp): void {
+    this.op = next;
+    this.inputs.list!.socket = AggregateNode.listFor(next).socket;
   }
 
   formatCarry(): FormatCarrySpec[] {
