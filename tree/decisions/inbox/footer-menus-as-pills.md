@@ -1,5 +1,5 @@
 ---
-title: "The table editor footer's Insert and Delete menus join the pill family"
+title: "The table editor's Insert and Delete menus get the rounded pill style of the toggles beside them"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-The table popup's editor footer draws its Insert and Delete menus as pills, beside the pill toggles; Cancel and Save keep the dialog-action style.
+In a table popup's editing footer, the Insert and Delete menus are drawn as rounded pills, matching the toggles next to them. Cancel and Save keep their dialog-button style. Today the two menus have square corners beside rounded toggles.
 
 ## Why
 
-The footer's Insert and Delete menus and Cancel / Save keep their older square style beside the pill family. Cancel and Save are dialog actions, so they may rightly differ; the menus are controls like the toggles.
+The menus are controls like the toggles, so their older square style stands out. Cancel and Save are dialog actions, so they may rightly differ.
 
 ## What ratifying means
 
-- **Ratify:** the two menus restyle as pills; Cancel and Save stay as they are.
-- **Reject:** the footer keeps its current look.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The two menus become pills; Cancel and Save stay as they are.
+- **Reject:** The footer keeps its current look.

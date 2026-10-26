@@ -1,5 +1,5 @@
 ---
-title: "Typing "mean" puts AVERAGE first in the Add menu"
+title: "Typing 'mean' in the Add menu lists AVERAGE first"
 proposed_ring: E
 ask: human
 made_by: ai
@@ -9,14 +9,14 @@ parents: ["[[B16]]"]
 ---
 ## Decision
 
-The query "mean" ranks AVERAGE above "Fill: Mean".
+Searching "mean" in the Add menu ranks AVERAGE above "Fill: Mean". Today AVERAGE is second, one row below Fill: Mean, whose label matches exactly. Putting it first means changing how search scores keywords, word by word.
 
 ## Why
 
-AVERAGE now carries "mean" as a keyword and ranks second, behind Fill's Mean op, whose label matches exactly. Putting AVERAGE first needs keywords weighted per word rather than per field. **Owner's call:** worth that change to scoring, or is second fine?
+AVERAGE has "mean" as a keyword, but still ranks below an exact label match.
 
 ## What ratifying means
 
-- **Ratify:** search scoring weighs keywords per word, so typing mean puts AVERAGE first. This changes ranking for other queries too, so a few other searches will reorder.
+- **Lean:** Reject. Second is visible without scrolling, and a scoring change reorders other searches for the sake of one query.
+- **Ratify:** AVERAGE comes first, and a few other searches reorder too.
 - **Reject:** AVERAGE stays second, one row below Fill: Mean.
-- **Lean:** reject. Second is visible without scrolling, and a scoring change is a lot of reordering for one query.

@@ -1,5 +1,5 @@
 ---
-title: "An Equation's unknown answers outside the number family, and solver cards show only the unknown"
+title: "An Equation can answer with a complex number, text or date, and solver cards show only the value they solve for"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Decide what an unknown's output is when its answer is complex, text, a date or a logical (a retype, B11, or fixed wider sockets), and make the Equation node and Triangle Solver grow an output box only for the unwired unknown.
+When you leave a variable unwired on the Equation card, its output changes type to fit the answer, so a complex, text, date or TRUE/FALSE answer can come out. Today `x^2 + 1 = 0` gives #SOLVE! because every output carries only numbers; after, it gives a complex answer. With that, the Equation card and Triangle Solver show an output box only for the unwired variable, not one for each.
 
 ## Why
 
-`x^2 + 1 = 0` is #SOLVE! today because every output is a number socket; the author asked (2026-10-07) for solver cards that show only what they solve. Both decide what an unknown's output is, so they go together.
+Both changes decide what a solved variable's output is, so they go together. You asked on 10-07 for solver cards that show only what they solve.
 
 ## What ratifying means
 
-- **Ratify:** C47 is amended and both cards change shape.
-- **Reject:** outputs stay number sockets and every variable keeps a box.
-- **Lean:** ratify a retype of the unknown's output to its answer's family.
+- **Lean:** Ratify, with the output changing type to fit its answer.
+- **Ratify:** Both cards change shape, and the Equation rule is updated.
+- **Reject:** Outputs stay numbers only and every variable keeps a box. Other ways to widen the output (fixed sockets that take any kind) are possible but not leaned toward.

@@ -1,5 +1,5 @@
 ---
-title: "Custom packs load from a folder in a settled format"
+title: "Custom packs load from the folder shown in Settings"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Settle a custom pack's file format and how the app reaches the folder Settings shows (`customPacksFolder()`), so `loadCustomPacks()` stops being a stub.
+Settle the file format for a custom pack (your own set of cards and formulas, like the built-in Thermo pack) and how the app reads the folder Settings already shows. Today Settings names a custom packs folder, but nothing in it loads. After, a pack saved there shows its cards in the Add menu.
 
 ## Why
 
-Loading waits on filesystem access and a format; once it loads, the Add menu's per-type caches must clear.
+Loading waits on file access and on a format nobody has written down yet.
 
 ## What ratifying means
 
-- **Ratify:** a format is specced and built.
-- **Reject:** custom packs stay unbuilt.
-- **Lean:** spec the format first.
+- **Lean:** Write the format down first, then build.
+- **Ratify:** A format is written and built, and packs in the folder load.
+- **Reject:** Custom packs stay unbuilt and the folder does nothing.

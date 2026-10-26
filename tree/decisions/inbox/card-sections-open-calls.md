@@ -1,5 +1,5 @@
 ---
-title: "Write to Obsidian stays without card sections"
+title: "Write to Obsidian keeps its own layout instead of captioned card sections"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Write to Obsidian keeps its own panel layout with no card sections.
+The Write to Obsidian card keeps its current panel layout and doesn't get card sections, the small captions that group related rows and can fold away (like Value Input's Format). Nothing on screen changes; this records the call.
 
 ## Why
 
-It was left without sections as an author call (DESIGN.md § Card sections).
+Write to Obsidian was left without sections as your call when sections were added to other cards.
 
 ## What ratifying means
 
-- **Ratify:** no change.
-- **Reject:** it gains sections like the other cards.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** No change; the card looks as it does today.
+- **Reject:** Its rows get grouped under captions, some of them folding, like other cards.

@@ -1,5 +1,5 @@
 ---
-title: "A weekend code outside WORKDAY.INTL's table is #NUM! on the plan cards"
+title: "Schedule, Gantt and Earned Value give an error for a weekend code that WORKDAY.INTL doesn't know"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Schedule, Gantt and Earned Value refuse a weekend code that is not a WORKDAY.INTL code, as WORKDAY.INTL and Workdays do.
+The plan cards refuse a weekend code that isn't one of WORKDAY.INTL's codes, as WORKDAY.INTL and the Workdays card already do. Today a mistyped code such as 99 on a Schedule silently means Saturday and Sunday. After, it shows #NUM! naming the code.
 
 ## Why
 
-Today the plan cards read such a code as Saturday and Sunday, silently, while the formula answers #NUM!.
+The plan cards and the formula read the same code differently.
 
 ## What ratifying means
 
-- **Ratify:** a typo'd code on a plan card is an error naming it.
-- **Reject:** the plan cards keep the fallback.
-- **Lean:** ratify: one reading per code.
+- **Lean:** Ratify. One code should mean one thing everywhere.
+- **Ratify:** A mistyped code on a plan card is an error that names it.
+- **Reject:** The plan cards keep falling back to Saturday and Sunday.

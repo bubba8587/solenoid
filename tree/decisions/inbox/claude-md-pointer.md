@@ -1,5 +1,5 @@
 ---
-title: "CLAUDE.md's registerInternal pointer is reworded"
+title: "A stale line in the agent instructions file is reworded"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-CLAUDE.md's "before touching a `registerInternal` override" reads "before changing a function whose answer differs from Formula.js's".
+One line in CLAUDE.md, the instructions file agents read at the start of every session, tells them when to read the list of places Solenoid's answers differ from Formula.js (the open-source library Solenoid's function answers were first matched against). It names a piece of code that has since been removed. After, it reads "before changing a function whose answer differs from Formula.js's".
 
 ## Why
 
-The registry is gone (the core's `route` and `data/call_traits.json`); CLAUDE.md is the author's file.
+The line points agents at something that no longer exists. CLAUDE.md is your file, so agents don't edit it without your word.
 
 ## What ratifying means
 
-- **Ratify:** the author edits the line, or lets an agent.
-- **Reject:** it stays stale.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** You edit the line, or let an agent do it.
+- **Reject:** The line stays out of date.

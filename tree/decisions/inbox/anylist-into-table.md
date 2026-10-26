@@ -1,5 +1,5 @@
 ---
-title: An anylist output may or may not feed a concrete matrix input
+title: "A list output that can hold any kind of value can be wired into a table input"
 proposed_ring: C
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-Decide whether an `anylist` output can connect to a `table` (matrix) input. Today it cannot, while the wider `anycombo` output can; `socketConnect.test.ts` pins the asymmetry as intended.
+A list output that may hold mixed values (numbers, text, dates) connects to a table input and is read as a one-column table. Today it can't be wired there, while the even looser output that may be a single value or a list can. After, both wire in.
 
 ## Why
 
-Found by the value-model review. **Owner's call:** is the asymmetry intended (then this becomes a Consequence on [[C10]] with its reason), or should anylist → table connect like anycombo?
+A review of how values connect found the difference. A test marks it as intended, but nothing written says why.
 
 ## What ratifying means
 
-- **Ratify connecting:** a list-of-anything output wires into a matrix input and is read as a one-column table, the same way the wider anycombo output already is. The pinning test in `socketConnect.test.ts` flips.
-- **Ratify the asymmetry:** nothing changes on screen; [[C10]] gets a line giving the reason.
-- **Lean:** none yet. The test calls the asymmetry intended but no node or spec says why, so connecting looks like the consistent choice unless you remember a reason.
+- **Lean:** None firm. Connecting looks like the consistent choice unless you remember a reason for the difference.
+- **Ratify:** The list wires into table inputs as a one-column table.
+- **Reject:** Nothing changes on screen, and the connection rules gain a line giving the reason.

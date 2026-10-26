@@ -1,5 +1,5 @@
 ---
-title: Import Obsidian Note shows when its note was renamed or deleted
+title: "Import Obsidian Note says so when its note was renamed or deleted"
 proposed_ring: E
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-When the note behind an Import Obsidian Note card is renamed or deleted, the card shows a status (as the connection cards do) while keeping its last body.
+When the note behind an Import Obsidian Note card is renamed or deleted, the card keeps its last body and shows a status line saying the note is gone, as connection cards do when they lose their source. Today it keeps showing the old body with no sign that it is stale.
 
 ## Why
 
-Today it silently keeps the old body. **Owner's call:** show a status, or stay quiet?
+A stale body that looks live is a silent wrong answer, the kind the Obsidian work is meant to avoid.
 
 ## What ratifying means
 
-- **Ratify:** when the note is renamed or deleted, the card keeps its last body and shows a status line saying the note is gone, like a connection card that has lost its source.
-- **Reject:** the card keeps the old body with no sign that it is stale.
-- **Lean:** ratify. A stale body that looks live is the kind of silent wrong answer the Obsidian track is meant to avoid.
+- **Lean:** Ratify.
+- **Ratify:** A renamed or deleted note shows a status line on the card, with the last body kept.
+- **Reject:** The card keeps the old body with no sign that it is stale.

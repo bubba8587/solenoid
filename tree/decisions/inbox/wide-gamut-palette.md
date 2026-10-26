@@ -1,5 +1,5 @@
 ---
-title: "The palette is authored for wide-gamut displays"
+title: "The app's colors are defined for wide-color screens"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Author the accents in `color(display-p3 …)` with sRGB fallbacks, so managed engines on P3 panels show the vivid look the author tuned by eye.
+Define the accent colors for wide-color displays (the P3 range on many recent laptops and phones), with standard fallbacks. Today your Linux desktop app shows the colors vivid, because its engine stretches them to the screen, while a color-accurate browser such as Chrome shows them as defined, less vivid. After, color-accurate browsers on wide-color screens show the vivid look you tuned.
 
 ## Why
 
-The hexes are sRGB; WebKitGTK stretches them to the panel, managed Chromium shows them accurately, and the author prefers the vivid look. `palette.ts` derives siblings in HSV from hex, so this is not a token swap.
+You prefer the vivid look. It isn't a simple swap: the app derives each color's shades from its standard value.
 
 ## What ratifying means
 
-- **Ratify:** the palette gains P3 values.
-- **Reject:** sRGB stays.
-- **Lean:** leave it until a managed P3 screen is the main one.
+- **Lean:** Leave it until a color-accurate wide-color screen is your main one.
+- **Ratify:** The palette gains wide-color values.
+- **Reject:** Standard colors stay.

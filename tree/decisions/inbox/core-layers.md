@@ -1,5 +1,5 @@
 ---
-title: "The core is layered into formula, values, tables, planners and cards"
+title: "The calculation engine's code is sorted into five layers"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Split `crates/solenoid-core/src/` into `formula/`, `values/`, `tables/`, `planners/` and `cards/`, move `V` out of `excel_functions.rs`, and drop the two upward imports (`fns_packs.rs` → `nodes::packs`, `frame_backend.rs` → `nodes::serialize_lambda`).
+The code that does Solenoid's math is reorganized into five groups: formulas, values, tables, planners and cards, each relying only on the ones below it. Today it is one flat list of files, and a couple of low-level pieces reach up into card code. Nothing in the app changes; the code moves without changing what it does.
 
 ## Why
 
-The flat module list hides which code depends on which; a layered core is also what a published formula crate would need.
+The flat list hides which code depends on which. A layered engine is also what publishing the function library on its own would need.
 
 ## What ratifying means
 
-- **Ratify:** a mechanical move; every module keeps its contents.
-- **Reject:** the core stays flat.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** A mechanical move with no visible change.
+- **Reject:** The engine's code stays one flat list.

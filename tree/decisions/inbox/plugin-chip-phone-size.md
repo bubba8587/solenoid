@@ -1,5 +1,5 @@
 ---
-title: "The plugin's chip grows on a phone"
+title: "On a phone, the Obsidian plugin's chips are easier to tap"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Under `body.is-phone`, the plugin's chip renders `md` (or gets a taller hit area on its button) instead of always `sm`.
+On a phone, the Solenoid plugin's chips (the small value boxes it draws in notes) render one size larger, or keep their look with a taller tap area. Today a chip is 15 pixels tall in Obsidian's 41-pixel phone row, which is hard to hit. After, it is easy to tap.
 
 ## Why
 
-A chip is 15px tall on Obsidian's 41px phone row (measured 2026-09-22), under the "always `sm`" ruling in obsidian-plugin.md.
+An earlier ruling said chips are always the small size, which is too small to tap on a phone.
 
 ## What ratifying means
 
-- **Ratify:** the ruling gains a phone exception.
-- **Reject:** the chip stays `sm` everywhere.
-- **Lean:** ratify the taller hit area: the look stays the same.
+- **Lean:** Ratify the taller tap area, so the look stays the same.
+- **Ratify:** The ruling gains a phone exception.
+- **Reject:** Chips stay small everywhere.

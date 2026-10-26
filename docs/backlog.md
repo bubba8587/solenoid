@@ -182,7 +182,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   Ratifying adds the ID to `OWNER_RATIFIED` in `rules.test.ts`.
 - [ ] **The outbox still lists A1, B1, B2, B3, B7 as ratified with no History line**: the author cleared those
   leaves' History by hand and will handle History themselves; leave them.
-- [ ] **80 inbox items** await the author (each says what ratifying it changes, with a lean); the 2026-10-26 backlog sweep moved every decision-gated item there.
+- [ ] **81 inbox items** await the author (each says what ratifying it changes, with a lean); the 2026-10-26 backlog sweep moved every decision-gated item there.
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A); then `out-of-scope.md`'s 13
   categories become B leaves and that doc goes.
 - [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified): its natural parent is [[B16]]

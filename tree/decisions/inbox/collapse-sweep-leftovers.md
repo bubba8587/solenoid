@@ -1,5 +1,5 @@
 ---
-title: "Solver cards collapse to one pill and settings hide when collapsed"
+title: "Collapsed solver cards show one pill, and settings hide when a card is collapsed"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Collapsed solver cards (TVM, Ohm's Law, Triangle Solver, Ideal Gas and kin) show one pill rather than a row per variable, and settings hide when collapsed on Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code and Query's buttons.
+Some cards don't follow the collapsed-card rules yet. The solver cards (TVM, Compound Growth, Effective Rate, Triangle Solver, Ohm's Law, dBm/W, Wavelength/Frequency, Ideal Gas, Moles/Mass, pH) collapse to a row per variable; after, they show one pill, the rounded badge a collapsed card shows for its cables. Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code and Query's buttons keep showing settings when collapsed; after, those hide.
 
 ## Why
 
-`collapse-sweep.mjs` lists them (2026-10-26: TVM, Compound Growth, Effective Rate, Triangle Solver, Ohm's Law, dBm/W, Wavelength/Frequency, Ideal Gas, Moles/Mass and pH collapse with a row per variable and no pill); components § Collapsed says one pill, but solver cards have every variable as input and output.
+The rule says a collapsed card shows one pill, but on a solver card every variable is both an input and an output.
 
 ## What ratifying means
 
-- **Ratify:** the cards follow the collapsed rules.
-- **Reject:** solver cards are an exception.
-- **Lean:** ratify for settings; decide solver cards with solver-unknown-output.
+- **Lean:** Ratify for the settings. Decide the solver cards together with the note on solver cards showing only the value they solve for.
+- **Ratify:** Every listed card follows the collapsed-card rules.
+- **Reject:** Solver cards become an exception and keep a row per variable.

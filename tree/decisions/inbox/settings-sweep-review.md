@@ -1,5 +1,5 @@
 ---
-title: "The input-role settings sweep stands as built"
+title: "The rules for what a blank setting means stand as Claude built them"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-The roles Claude assigned in the D86 settings sweep (`settings-audit.md`) stand, and the rest (Frame verbs' column references, an as-of Join's tolerance, the Slider's bounds) are swept the same way.
+An earlier sweep decided, input by input, what a blank setting means: the function's default, an error naming the setting, or a condition that is skipped. For example, a blank bound on CLAMP means no bound on that side, and a blank k on LARGE is an error. Those calls stand, and the rest are swept the same way: column choices on table cards, the tolerance on an as-of Join, and the Slider's bounds.
 
 ## Why
 
-The sweep was built on Claude's judgement (2026-09-26); the author has not reviewed it.
+The sweep was built on Claude's judgment at your word, and you haven't reviewed it. The list is in the settings audit doc.
 
 ## What ratifying means
 
-- **Ratify:** the remaining inputs get roles by the same rules.
-- **Reject:** the author marks which calls change.
-- **Lean:** review the `[decided 2026-09-26]` rows; ratify the rest.
+- **Lean:** Review the rows marked decided 2026-09-26, and ratify the rest.
+- **Ratify:** The remaining inputs get rules the same way.
+- **Reject:** You mark which calls change.

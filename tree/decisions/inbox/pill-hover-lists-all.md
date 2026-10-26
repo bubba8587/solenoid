@@ -1,5 +1,5 @@
 ---
-title: "A collapsed input pill's hover lists every cable"
+title: "Hovering a collapsed card's input pill lists every cable, not just the first"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Hovering a collapsed card's input pill previews every cable item (name and value), not just the first; and consider a Conduit that bundles into a Cube.
+A collapsed card gathers its input cables into one pill. Hovering it would preview every cable's name and value. Today the hover shows only the first; after, a card with three wired inputs lists all three. The note also carries a related idea: a Conduit (the card that bundles several cables into one) that bundles into a Cube, a table that can hold tables.
 
 ## Why
 
-The author's extension (stage after the Obsidian track); design first per DESIGN.md and conduit-lane-faces.
+It is your extension idea, to come after the Obsidian work, and it needs a design first.
 
 ## What ratifying means
 
-- **Ratify:** the hover is designed and built.
-- **Reject:** it stays first-item only.
-- **Lean:** ratify the hover; leave the Conduit-to-Cube idea for later.
+- **Lean:** Ratify the hover; leave the Conduit-to-Cube idea for later.
+- **Ratify:** The hover is designed and built.
+- **Reject:** The hover keeps showing only the first item.

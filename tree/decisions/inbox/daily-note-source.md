@@ -1,5 +1,5 @@
 ---
-title: "A source emits today's daily-note path"
+title: "A card outputs the path of today's Obsidian daily note"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-A wireable source (not template syntax) emits today's daily-note path from `.obsidian/daily-notes.json`, so a write can target the daily note.
+A new source card outputs today's daily-note path, read from your Obsidian daily-notes settings, so you can wire it into a card that writes to the vault. Today you would type the day's path, such as `Daily/2026-10-26.md`, by hand. After, the card supplies it each day.
 
 ## Why
 
-The author kept this as the successor to the removed `{{daily}}` (dev-notes 2026-09-11); its shape is still open.
+It replaces the removed `{{daily}}` template shortcut, which you wanted back as something you can wire. Its exact shape is still open.
 
 ## What ratifying means
 
-- **Ratify:** a source card is designed and built.
-- **Reject:** it stays shaping.
-- **Lean:** ratify a source card; it is the wireable shape the author asked for.
+- **Lean:** Ratify a source card, the wireable shape you asked for.
+- **Ratify:** A source card is designed and built.
+- **Reject:** The idea stays on the shelf.

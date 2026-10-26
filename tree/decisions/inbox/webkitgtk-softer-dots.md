@@ -1,5 +1,5 @@
 ---
-title: "The canvas dots soften on WebKitGTK"
+title: "The canvas dots look softer on the Linux desktop app"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-On `html[data-webview="webkitgtk"]`, the canvas dots use a softer color or a slightly larger dot, as the zoom fixes are keyed.
+On the Linux desktop app, the canvas background dots use a softer color or a slightly larger dot, the way the zoom fixes there are already set for that engine. Today the dots look harsher on Linux than in Chrome. After, they look about the same.
 
 ## Why
 
-WebKitGTK antialiases a sub-2px circle harder than Skia, so the Linux desktop's dots read harsher (author 2026-09-21).
+The Linux desktop app's web engine draws tiny circles with harsher edges than Chrome does.
 
 ## What ratifying means
 
-- **Ratify:** a per-webview `--canvas-dot`.
-- **Reject:** one look everywhere.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The Linux app gets its own dot setting.
+- **Reject:** One dot look everywhere.

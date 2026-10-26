@@ -1,5 +1,5 @@
 ---
-title: "List Sort and List Filter become Sort and Filter"
+title: "List Sort and List Filter are renamed Sort and Filter"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Rename List Sort and List Filter to Sort and Filter, beside Frame Sort and Frame Filter, since both take tables now.
+Rename List Sort and List Filter to Sort and Filter, beside Frame Sort and Frame Filter. Today the Add menu says "List Sort"; after, "Sort". The example graphs update.
 
 ## Why
 
-"List" no longer describes what they take.
+Both take tables now, so "List" no longer describes them.
 
 ## What ratifying means
 
-- **Ratify:** the classes rename (D22: the title is the class name) and the seeds update.
-- **Reject:** the List names stay.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The cards are renamed everywhere.
+- **Reject:** The List names stay.

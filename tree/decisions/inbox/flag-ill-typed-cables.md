@@ -1,5 +1,5 @@
 ---
-title: The canvas marks a cable whose types no longer match
+title: "The canvas marks a cable whose two ends no longer fit each other"
 proposed_ring: C
 ask: human
 date: 2026-09-24
@@ -9,14 +9,14 @@ parents:
 ---
 ## Decision
 
-After adoption or a retype leaves a cable joining incompatible types, the canvas marks it (a cable style or a badge), instead of showing it like any other.
+When a cable ends up joining sockets whose types don't fit (after you accept a dashed ghost cable, or a card's socket changes type), the canvas marks it, for example with a dashed or error-tinted line. Today such a cable looks like any other, and only a number input catches the wrong value when it runs.
 
 ## Why
 
-Today nothing shows it, and only number ports catch a wrong-family value at run time. **Owner's call:** flag it (and how, per DESIGN.md), or rely on D16 retypeReconciles (retired) pruning such cables?
+A mismatched cable gives no sign today. The alternative is to rely on a type change removing cables that no longer fit, and fix the cases it misses.
 
 ## What ratifying means
 
-- **Flag it:** a cable whose ends no longer fit gets a visible mark (for example a dashed or error-tinted stroke) until you fix or remove it. The exact look is a DESIGN.md call.
-- **Rely on pruning:** no new mark. Such cables should be rare because a retype prunes cables that no longer fit (D16 retypeReconciles (retired)), so the remaining cases are gaps in pruning to fix one by one.
-- **Lean:** rely on pruning and fix the gaps. A mark for a state that shouldn't exist adds chrome.
+- **Lean:** Reject: rely on the removal and fix its gaps one by one. A mark for a state that shouldn't exist adds clutter.
+- **Ratify:** A mismatched cable gets a visible mark until you fix or remove it; the exact look follows the design rules.
+- **Reject:** No new mark. Such cables stay rare, and each gap in the removal is fixed as found.

@@ -1,5 +1,5 @@
 ---
-title: "Capital an option earns back can enable others on the ladder"
+title: "On the Choice Ladder, an option that earns capital back can enable options that need it"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-An option that earns rough capital back can enable options that need it, so order in time matters on the Choice Ladder.
+The Choice Ladder (the card that turns a ranking into the order to do things in under limits) lets an option that earns back a rough cost, such as political capital, enable options that need that capital, so the order in time matters. Today, an option that earns capital back only moves higher in the order. After, doing it first could make room for another option.
 
 ## Why
 
-Today such an option only moves up the order; this is the leaf's own reopen condition.
+The ladder's own rule says to revisit this if order in time ever starts to matter. No plan has needed it yet.
 
 ## What ratifying means
 
-- **Ratify:** the ladder models capital over time.
-- **Reject:** the ladder stays timeless.
-- **Lean:** defer until a plan shows the need.
+- **Lean:** Wait until a real plan shows the need.
+- **Ratify:** The ladder tracks capital over time, so which option comes first changes what can be taken later.
+- **Reject:** The ladder stays timeless.

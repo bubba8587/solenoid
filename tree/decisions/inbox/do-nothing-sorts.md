@@ -1,5 +1,5 @@
 ---
-title: "SORT and UNIQUE on a list without by_col stay as they are"
+title: "SORT and UNIQUE on a list keep Excel's behavior, with the card toggles as the help"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Keep the card toggles (built) as the affordance for a SORT or UNIQUE that changes nothing on a list, with no LISTSORT/ROWSORT and no #SYNTAX! on a do-nothing setup.
+Nothing more is built. In Excel a list is one row, so SORT or UNIQUE on it changes nothing unless `by_col` is TRUE, and Solenoid matches that: SORT on the list 3, 1, 2 gives back 3, 1, 2. The Sort and UNIQUE cards already have a Rows / Columns toggle, and Columns sorts the list.
 
 ## Why
 
-The author named three options (2026-09-26, "if needed"); the toggles are built.
+You named three ways to help if needed: card toggles, a separate list-sorting function such as LISTSORT, or an error on a setup that does nothing. The toggles are built.
 
 ## What ratifying means
 
-- **Ratify:** nothing more is built.
-- **Reject:** add a list sort, or refuse the do-nothing call ("drastic").
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** No new function and no new error; the toggles are the way.
+- **Reject:** Add a list-sorting function, or make the do-nothing call an error (which you called drastic).

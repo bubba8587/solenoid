@@ -1,5 +1,5 @@
 ---
-title: "A Schedule row fault stays on its row"
+title: "One bad row in a Schedule marks only that row, instead of failing the whole schedule"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Either the Schedule card grows a per-row fault path (a bad Duration or unparseable date stays on its row, as C70 says), or C70's line changes to say one fault fails the run.
+The Schedule card keeps a bad row's error on that row, as its written rule says. Today one bad Duration or unreadable date makes every output of the card #VALUE!. After, only that row shows the error and the rest of the schedule computes.
 
 ## Why
 
-`read_level` in `nodes/sched.rs` fails on every fault, so the whole run is one #VALUE! on every output, against C70's text.
+The card and its written rule disagree, so one of them has to change.
 
 ## What ratifying means
 
-- **Ratify:** the card grows the per-row path.
-- **Reject:** C70 is amended to the aggregate behavior.
-- **Lean:** amend C70: E10's aggregate rule already says a structural failure is one error, and a partial schedule could mislead.
+- **Lean:** Reject, and change the rule to match the card. The error rules already say a failure in the structure is one error, and a partial schedule could mislead.
+- **Ratify:** Bad rows show their own errors and the rest of the schedule computes.
+- **Reject:** The rule is rewritten to say one bad row fails the whole schedule, as the card does today.

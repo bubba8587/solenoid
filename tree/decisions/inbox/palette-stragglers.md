@@ -1,5 +1,5 @@
 ---
-title: "The last hard-coded hues follow the palette"
+title: "The last hard-coded colors follow the app's palette"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-The lasso colors, `CableFlourish.tsx`'s Okabe-Ito list, the conduit stripe, the slate `--node-accent` on Image, File Link and SVG Picker, and the ribbon gray take palette tokens.
+A few colors still ignore the palette you pick in Settings: the lasso selection, the decorative cable flourish animation, the conduit stripe, the gray-blue accent on the Image, File Link and SVG Picker cards, and the gray of bundled cables. Today they look the same under every palette. After, each takes a palette color, so switching to, say, Solarized changes them too.
 
 ## Why
 
-Each is a hard-coded hue that ignores the palette (2026-10-02 sweep); some may be deliberate (the conduit stripe is vermilion but not an error).
+A sweep found them. Some may be on purpose: the conduit stripe is vermilion, an error-like red, but means no error.
 
 ## What ratifying means
 
-- **Ratify:** each picks a palette token.
-- **Reject:** they stay fixed.
-- **Lean:** ratify all but the conduit stripe, which needs its own call.
+- **Lean:** Ratify all but the conduit stripe, which needs its own call.
+- **Ratify:** Each of these colors follows the palette.
+- **Reject:** They stay fixed.

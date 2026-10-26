@@ -1,5 +1,5 @@
 ---
-title: AVERAGE of nothing and AVERAGEIF(S) with no matching row give the same answer
+title: "An average over nothing is blank everywhere, including AVERAGEIF and AVERAGEIFS with no matches"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-An average over no values gives one answer on every surface: either blank (as AVERAGE does today, [[D70]]) or #DIV/0! (as AVERAGEIF and AVERAGEIFS do today, and as Excel does for all three).
+AVERAGE, AVERAGEIF and AVERAGEIFS all give a blank when there is nothing to average. Today AVERAGE of an empty list is blank, but AVERAGEIF with no matching rows is #DIV/0!. After, both are blank.
 
 ## Why
 
-The two disagree today. **Owner's call:** blank everywhere, #DIV/0! everywhere, or keep the split?
+The two disagree today. Excel gives #DIV/0! for all three; Solenoid's rule is that not enough data is a quiet blank, not an error.
 
 ## What ratifying means
 
-- **Blank everywhere:** AVERAGEIF and AVERAGEIFS with no matches go blank like AVERAGE, which keeps [[D70]] nullNotEnoughData (not enough data is a quiet blank, not an error). Differs from Excel for all three, so all three get a parity note.
-- **#DIV/0! everywhere:** matches Excel, but reverses [[D70]] for averages, so an empty filter upstream shows an error downstream.
-- **Lean:** blank everywhere, unless you want Excel parity to beat [[D70]] here.
+- **Lean:** Ratify, unless you want matching Excel to win here.
+- **Ratify:** AVERAGEIF and AVERAGEIFS with no matches go blank, and all three get a note saying they differ from Excel.
+- **Reject:** Either #DIV/0! everywhere, matching Excel, so an empty filter upstream shows an error downstream; or today's split stays.

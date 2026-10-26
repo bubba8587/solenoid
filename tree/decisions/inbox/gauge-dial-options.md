@@ -1,5 +1,5 @@
 ---
-title: "Gauge Dial gets an Options input"
+title: "The Gauge Dial gets an Options input for a title and font size"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Gauge Dial takes an Options input like the other chart cards, for a title and font size.
+Gauge Dial takes an Options input like the other chart cards, so a dial can have a title and a font size. Today a dial has no title and its text size can't change. After, wiring Options with the title "Speed" shows it above the dial.
 
 ## Why
 
-Dial mode has no title or font size today.
+Dial mode is the only chart without these settings.
 
 ## What ratifying means
 
-- **Ratify:** the dial reads the shared chart options.
-- **Reject:** the dial stays bare.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The dial reads the same chart options as the others.
+- **Reject:** The dial stays bare.

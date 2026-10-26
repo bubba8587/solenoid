@@ -1,5 +1,5 @@
 ---
-title: "Composites gain an Optimize run mode"
+title: "Composites gain an Optimize mode, like Excel's Solver"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-An Excel Solver-shaped Optimize run mode beside Goal Seek, per `archive/1.4-plan.md` § A6, with the constraint forms settled and no integer constraints.
+A composite (a card that wraps a smaller graph) gets an Optimize run mode beside Goal Seek, shaped like Excel's Solver: it finds the inputs that make a result as large or as small as possible within constraints, with no whole-number constraints. Today only Goal Seek is there, which hits one target value.
 
 ## Why
 
-The author said it is in, not now (2026-09-04c); the gate is the author's go and the constraint forms.
+You said it is in, but not now. It waits on your go and on settling how constraints are written.
 
 ## What ratifying means
 
-- **Ratify:** it is built to the A6 spec.
-- **Reject:** it stays parked.
-- **Lean:** wait for the go.
+- **Lean:** Wait for your go.
+- **Ratify:** It is built to the plan already written.
+- **Reject:** It stays parked.

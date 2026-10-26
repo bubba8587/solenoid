@@ -1,5 +1,5 @@
 ---
-title: A Duration in days or weeks counts working days, as Microsoft Project does
+title: "In a Schedule, a Duration of 2 days means 2 working days, as in Microsoft Project"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -9,14 +9,14 @@ parents:
 ---
 ## Decision
 
-In the Schedule, a united Duration of `day` or `week` means working days and working weeks: 2 days is 2 working days.
+In the Schedule, a Duration in days or weeks counts working days and working weeks. Today `2 day` converts through hours to 48 hours, which an 8-hour-a-day calendar spreads over 6 working days. After, `2 day` is 2 working days and `1 week` is 5.
 
 ## Why
 
-Today a united Duration converts through hours per day, so 2 day becomes 48 hours, which is 6 working days at 8 hours a day. Found by the charts review. **Owner's call:** working days, or calendar hours?
+Nobody who types 2 days into a plan means 6 working days. Found in a review of the charts.
 
 ## What ratifying means
 
-- **Ratify:** `2 day` on an 8-hour calendar is 2 working days and `1 week` is 5 working days. This is how Microsoft Project reads d and w.
-- **Reject:** `2 day` stays 48 hours, which the calendar spreads over 6 working days.
-- **Lean:** ratify. Nobody who types 2 days into a plan means 6 working days.
+- **Lean:** Ratify. It is how Microsoft Project reads days and weeks.
+- **Ratify:** `2 day` is 2 working days and `1 week` is 5 working days.
+- **Reject:** `2 day` stays 48 hours, spread over 6 working days.

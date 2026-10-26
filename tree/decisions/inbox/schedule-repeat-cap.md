@@ -1,5 +1,5 @@
 ---
-title: "A Schedule row's Repeat count has a cap; past it the row is #OVERFLOW!"
+title: "A Schedule row may repeat at most 1,000 times; past that the row shows #OVERFLOW!"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -9,15 +9,14 @@ parents:
 ---
 ## Decision
 
-A Repeat count above a fixed cap makes that row `#OVERFLOW!`, a per-row fault like a bad duration, and generates no occurrences. The cap is the owner's pick.
+A Repeat count above 1,000 makes that row #OVERFLOW!, naming the cap, and creates no occurrences; the rest of the schedule still computes. Today a Repeat of 1e9 tries to build a billion tasks and the app hangs with no error.
 
 ## Why
 
-The Schedule card (`read_level` in `crates/solenoid-core/src/nodes/sched.rs`) builds one occurrence task per Repeat, with no limit short of JavaScript's array-length error past 2³² − 1. A Repeat of 1e9 tries to build a billion tasks and the app hangs; there is no error to catch because the pass never returns. Every other generator is capped (C21 matchNodeLimits (retired) caps lists at `MAX_GENERATED`, one million), but a million tasks would still stall the critical-path pass and the Gantt, so the list cap is too high here. **Owner's call:** how many occurrences one row may generate.
+Other generators are capped at one million, but even a million tasks would stall the critical-path math and the Gantt, so the Schedule needs a lower cap. The number is yours.
 
 ## What ratifying means
 
-- **1,000 per row:** about 19 years of a weekly task or nearly 3 years of a daily one. Past that, the row shows `#OVERFLOW!` naming the cap. The rest of the schedule still computes.
-- **10,000 per row:** covers a daily task for 27 years, but a few such rows make the Gantt slow to draw.
-- **`MAX_GENERATED` (one million):** one cap for every generator, but the pass can still take minutes before the error appears.
-- **Lean:** 1,000 per row. A plan with more occurrences than that is better modeled as a recurring rule than as rows, and the cap keeps the pass fast.
+- **Lean:** Ratify 1,000 (about 19 years of a weekly task, or nearly 3 of a daily one). A plan needing more is better modeled as a recurring rule than as rows. This goes with the note on bad rows: if a bad Duration keeps failing the whole Schedule, an oversized Repeat should too, so decide the two together.
+- **Ratify:** An oversized Repeat shows #OVERFLOW! on its row, and the schedule stays fast.
+- **Reject:** A higher cap: 10,000 (a daily task for 27 years, but a few such rows make the Gantt slow to draw), or one million like other generators (the error can take minutes to appear).

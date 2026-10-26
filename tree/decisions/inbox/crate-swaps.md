@@ -1,5 +1,5 @@
 ---
-title: "Swap hand-written core code for the crates the audit found"
+title: "Parts of the calculation engine are replaced with well-known open-source libraries"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Adopt the crates in `docs/audits/crate-audit-2026-10.md`: those with the same answers (`unicode-normalization`, `unicode-general-category`, `strum`, `jiff` for the day helpers, `strsim`, `fastrand`/`uuid`) and, separately, the ones that change answers (`statrs` for the distributions, `libm`/`puruspe` for Bessel).
+Replace hand-written engine code with open-source libraries an audit found, in two groups. Same answers: text normalization, Unicode character categories, date arithmetic, text-distance matching, and random numbers and IDs. Different answers: the statistical distributions such as NORM.DIST (the last digits change, about one part in ten billion) and the Bessel functions (up to about one part in ten thousand, because today's code copies Formula.js's less precise version; Formula.js is the library Solenoid's answers were first matched to).
 
 ## Why
 
-Each row's evidence is a bit-for-bit comparison. The same-answer swaps trade size or build deps for less code; the others trade Formula.js parity for accuracy (C14).
+Less code to maintain. The first group gives identical answers; the second trades matching Formula.js for accuracy.
 
 ## What ratifying means
 
-- **Ratify:** the listed swaps land, each with its comparison as the test.
-- **Reject:** the hand-written code stays.
-- **Lean:** ratify the same-answer swaps except `unicode-normalization` (+35 KB gzipped); hold the answer-changing ones until parity versus accuracy is ruled.
+- **Lean:** Ratify the same-answer group except text normalization, which adds 35 KB to the compressed download. Hold the second group until you rule on matching Formula.js versus accuracy.
+- **Ratify:** The swaps land, each tested against a side-by-side comparison.
+- **Reject:** The hand-written code stays.

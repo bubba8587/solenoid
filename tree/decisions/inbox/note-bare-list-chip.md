@@ -1,5 +1,5 @@
 ---
-title: "A Note card's bare list field draws the chip, as in Obsidian"
+title: "A Note card shows a list property as a chip, as Obsidian does"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-A Note card's bare `{{ list }}` on its own field embeds the card's object field as a Report does, so the card shows the chip Obsidian draws.
+When a Note's body holds a bare `{{ items }}` and `items` is a list or table property, the Note card shows the same chip, the small clickable box for a list or table, that Obsidian shows with the Solenoid plugin. Today the card prints the raw data text, such as `[1,2,3]`, while Obsidian draws the chip.
 
 ## Why
 
-Today the card prints Knap's JSON while a Knap note in Obsidian draws the chip (D87, C68).
+The card and Obsidian show the same note differently.
 
 ## What ratifying means
 
-- **Ratify:** the card and Obsidian agree.
-- **Reject:** the card keeps the JSON.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The card and Obsidian agree.
+- **Reject:** The card keeps printing the raw text.

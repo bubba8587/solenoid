@@ -1,5 +1,5 @@
 ---
-title: "The one wasm module stays whole"
+title: "The calculation engine keeps downloading as one file instead of being split"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Keep the core as one 4.6 MB wasm module (1.26 MB brotli) rather than splitting it.
+Keep the engine as one 4.6 MB file (1.26 MB compressed) that the app loads, rather than splitting it into pieces loaded when first needed. Nothing changes on screen.
 
 ## Why
 
-No module dominates (largest about 7%), so a split saves little; the first render already waits only on graph surfaces (`coreReady.ts`).
+No single part dominates (the largest is about 7%), so splitting saves little, and the first screen already waits only on what drawing the graph needs.
 
 ## What ratifying means
 
-- **Ratify:** no split; size work goes into what the first load waits on.
-- **Reject:** split the module by family and load on demand.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** No split; size work goes into what the first load waits on.
+- **Reject:** The engine is split by function family, each piece loaded when first used.

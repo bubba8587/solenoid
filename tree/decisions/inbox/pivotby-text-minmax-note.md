@@ -1,5 +1,5 @@
 ---
-title: PIVOTBY's text min and max are recorded as a deliberate difference from Excel
+title: "The PIVOTBY card's description says that min and max over text differ from Excel"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-The PIVOTBY card is marked `parity: false` with a note that min and max over text give the alphabetical first and last ([[D76]] textMinMax), where Excel ignores text.
+The PIVOTBY card is marked as differing from Excel, and its description gains one sentence: min and max over text give the alphabetically first and last, where Excel ignores text. Today PIVOTBY's MAX over a Name column gives "Zoe", which Excel would not, and the card is still marked as matching Excel.
 
 ## Why
 
-The catalog still says `parity: true`, and a `NODE_EXCEL` entry can't carry the note because PIVOTBY isn't a formula function. **Owner's call:** note it in the card description (a UI string under DESIGN.md §7), or somewhere else?
+The Function Reference can't carry the note the usual way, because PIVOTBY isn't a formula you can type.
 
 ## What ratifying means
 
-- **Ratify:** the PIVOTBY card's catalog entry becomes `parity: false`, and its description gains one sentence saying min and max over text give the alphabetical first and last, where Excel ignores text.
-- **Somewhere else:** only the Function Reference or a spec carries it, and the card description stays as is.
-- **Lean:** ratify. The description is where you'd look when a result surprises you.
+- **Lean:** Ratify. The description is where you'd look when a result surprises you.
+- **Ratify:** The card is marked as differing, with one sentence saying how.
+- **Reject:** Only the Function Reference or a spec carries the note, and the description stays as is.

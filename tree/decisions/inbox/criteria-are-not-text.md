@@ -1,5 +1,5 @@
 ---
-title: "A COUNTIFS-style criterion is an operator and a typed value, not a text string"
+title: "COUNTIFS and its kin take a condition as an operator and a value instead of a text string like '>5'"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-COUNTIFS, SUMIFS and kin take a criterion as an operator plus a typed value (as the List Filter card does), and the `">5"` strings go.
+COUNTIFS, SUMIFS and the rest of that family take each condition as an operator plus a typed value, as the List Filter card already does, and Excel's condition strings go away. Today you write `COUNTIFS(dates, ">1-Jan-2026")`. After, the operator and the date are given separately; the exact way to write that in a formula is still to be designed.
 
 ## Why
 
-The author wants Excel's criterion strings gone (2026-10-23). They are the last place a formula reads a date out of text, against C131.
+You asked for the strings to go. They are also the last place a formula reads a date out of text, which the rule against guessing types from text forbids.
 
 ## What ratifying means
 
-- **Ratify:** a design pass for the new criterion form, then the strings are replaced (pre-alpha, no shim, B7).
-- **Reject:** the strings stay, as Excel has them (B19 spreadsheetHabits).
-- **Lean:** ratify, and design the form first: the operator and value as two arguments is the obvious shape, but how a formula writes one inline needs a call.
+- **Lean:** Ratify, and design the new form first. Two separate arguments is the obvious shape, but how to write one inline needs your call.
+- **Ratify:** A design pass, then the strings are replaced outright and old formulas using them break (pre-alpha).
+- **Reject:** The strings stay, as in Excel.

@@ -1,5 +1,5 @@
 ---
-title: Expanding a group ends overlap-free even with auto-arrange on expand turned off
+title: "Expanding a group never leaves cards overlapping, even with auto-arrange on expand turned off"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-With "Auto-arrange groups on expand" off, expanding a group still runs the final no-overlap pass (`separateAll`), without the push.
+With the setting "Auto-arrange groups on expand" off, expanding a group still moves any card it covers just clear, without the bigger push. Today, with the setting off, an expanded group can sit on top of its neighbors. After, a covered neighbor moves the smallest amount needed.
 
 ## Why
 
-Today with the setting off, expand runs no push and no pass, so it can cover neighbors; [[C112]] noOverlapsEver records this as open. **Owner's call:** run the pass anyway, or let the setting mean "leave everything where it is"?
+The setting turns off both the push and the overlap cleanup, so it breaks the no-overlap rule.
 
 ## What ratifying means
 
-- **Ratify:** with the setting off, expanding a group doesn't push anything, but any card left overlapping is moved just clear of it.
-- **Reject:** the setting means leave everything where it is, and [[C112]] keeps this as a named exception.
-- **Lean:** ratify. Your no-overlaps rule has no exemptions, and the pass moves far less than the push does.
+- **Lean:** Ratify. Your no-overlap rule has no exemptions, and the cleanup moves far less than the push does.
+- **Ratify:** With the setting off, nothing is pushed, but no card is left covered.
+- **Reject:** The setting means leave everything where it is, and the no-overlap rule gets a written exception.

@@ -1,5 +1,5 @@
 ---
-title: "CI's clippy keeps denying dead code"
+title: "The automatic code check keeps failing a change that adds unused code"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Keep `-D warnings` with dead code denied in `engine-test.yml`.
+The automatic check that runs on every push keeps treating unused code as an error. Today, if a helper lands in one commit and the code that uses it lands in the next, the first commit's check turns red. That stays.
 
 ## Why
 
-A helper that lands one commit before its caller turns CI red; the alternative is `-A dead_code` on the two clippy lines.
+The red check is a nuisance when work arrives in pieces. The alternative is to let unused code pass the check.
 
 ## What ratifying means
 
-- **Ratify:** helpers land with their callers.
-- **Reject:** dead code is allowed and caught only by review.
-- **Lean:** ratify: dead code is what the no-redundant-code rule targets.
+- **Lean:** Ratify. Unused code is exactly what the no-redundant-code rule is meant to catch.
+- **Ratify:** A helper always lands together with the code that uses it.
+- **Reject:** Unused code passes the check and is caught only in review.

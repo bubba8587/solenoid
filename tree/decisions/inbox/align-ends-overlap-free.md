@@ -1,5 +1,5 @@
 ---
-title: Align ends with the no-overlap pass
+title: "Aligning cards never leaves them on top of each other"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -8,14 +8,14 @@ parents:
 ---
 ## Decision
 
-Align, like Tidy, nudge and distribute, ends with `separateAll`, so aligning cards never leaves them overlapping.
+Align ends with the same small cleanup that Tidy, nudge and distribute already end with, so no two cards are left overlapping. Today, aligning two side-by-side cards to the same left edge puts one on top of the other. After, the second is moved just clear, slightly off the edge.
 
 ## Why
 
-An agent-written spec line allows Align to overlap on purpose; the owner's older note said align, distribute and Tidy own overlap. **Owner's call:** does Align end overlap-free?
+A spec line written by an agent lets Align overlap on purpose, while your older note said align, distribute and Tidy never leave overlaps.
 
 ## What ratifying means
 
-- **Ratify:** after Align, any cards that would land on each other are nudged apart by the smallest amount. Those few cards may sit slightly off the aligned edge.
-- **Reject:** Align stays exact, and [[C112]] gains a named exception for it.
-- **Lean:** ratify. Your standing rule is no overlaps ever, with no exemption for intentional ones.
+- **Lean:** Ratify. Your standing rule is no overlaps ever, with no exemption for intentional ones.
+- **Ratify:** After Align, cards that would land on each other are nudged apart by the smallest amount, so a few may sit slightly off the aligned edge.
+- **Reject:** Align stays exact and can stack cards, and the no-overlap rule gets a written exception for it.

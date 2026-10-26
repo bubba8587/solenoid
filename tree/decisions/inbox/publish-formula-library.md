@@ -1,5 +1,5 @@
 ---
-title: "The formula library is published as its own crate"
+title: "Solenoid's Excel function library is published for others to use"
 proposed_ring: C
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Export the core's function bodies (`excel_functions.rs`, `fns_*.rs`) as a crate of their own, with the frozen fixtures as its tests.
+Release the engine's function code (SUM, XLOOKUP and the rest) as its own open-source Rust package, with today's recorded answers as its tests. Nothing in the app changes. Today the functions live only inside Solenoid; after, other programs could use them.
 
 ## Why
 
-Formula.js is gone; the core owns every body. A public crate would have to keep its API stable, which pre-alpha (B7) does not ask of the core today.
+Solenoid now owns every function. A public package must keep its interface stable, which the engine doesn't need while pre-alpha.
 
 ## What ratifying means
 
-- **Ratify:** the bodies get a public API and a crate; changes to them start to count as breaking.
-- **Reject:** the bodies stay internal to `solenoid-core`.
-- **Lean:** defer until the core's layering settles (see core-layers), then publish.
+- **Lean:** Wait until the engine's code is sorted into layers (the note on five layers), then publish.
+- **Ratify:** The functions get a public interface, and changing them starts to count as breaking other people's code.
+- **Reject:** The functions stay internal.

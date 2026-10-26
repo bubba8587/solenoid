@@ -1,5 +1,5 @@
 ---
-title: Excel's GROUPBY maps to the frame GROUPBY card, not Group Lists
+title: "The Function Reference sends Excel's GROUPBY to the table GROUPBY card, not Group Lists"
 proposed_ring: D
 ask: human
 date: 2026-09-24
@@ -9,14 +9,14 @@ parents:
 ---
 ## Decision
 
-In `nodeExcel.ts`, Excel's GROUPBY is recorded on the frame GROUPBY card. Group Lists, its one-dimensional sibling, points at it in its description rather than claiming the name.
+Excel's GROUPBY is listed against the GROUPBY card that works on tables. Group Lists, its one-dimensional sibling, gets a line in its description pointing there. Today, looking up GROUPBY in the Function Reference opens Group Lists. After, it opens the GROUPBY card.
 
 ## Why
 
-Today only Group Lists claims GROUPBY, so the Function Reference sends GROUPBY to Group Lists. Group Lists matches the formula's list form (keys, values, a function); the frame card wears the name. The Add-menu alias row is already gone (af2fc377). **Owner's call:** which card owns the Excel name?
+Group Lists matches the formula's list form (keys, values, a function), but the table card is the one wearing the name.
 
 ## What ratifying means
 
-- **Ratify:** the Function Reference entry for GROUPBY opens the frame GROUPBY card. Group Lists keeps a description line pointing there.
-- **Reject:** Group Lists keeps the name, and the frame card stays unnamed in the reference.
-- **Lean:** ratify. It matches your 09-24 wording that prose calls the frame card GROUPBY.
+- **Lean:** Ratify. It matches your 09-24 wording that calls the table card GROUPBY.
+- **Ratify:** GROUPBY in the Function Reference opens the table card, and Group Lists points there.
+- **Reject:** Group Lists keeps the name, and the GROUPBY card stays unlisted in the reference.

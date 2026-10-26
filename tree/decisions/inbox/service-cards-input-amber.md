@@ -1,5 +1,5 @@
 ---
-title: "Multi-output service cards are input amber"
+title: "Geocode, Weather, Holidays and FX cards get the amber color of input cards"
 proposed_ring: D
 ask: human
 made_by: ai
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Geocode, Weather, Holidays and FX draw in input amber instead of falling to math blue.
+These four cards draw with the amber header used for input cards, instead of the blue used for math cards. Today Weather's header is blue like SUM's. After, it is amber like the other data sources.
 
 ## Why
 
-B14's family color reaches only one-output cards, so the multi-output services fall to the default.
+The color rule for card families covers only cards with one output, so these multi-output cards fall back to the default.
 
 ## What ratifying means
 
-- **Ratify:** the color rule covers multi-output cards.
-- **Reject:** they stay blue.
-- **Lean:** ratify.
+- **Lean:** Ratify.
+- **Ratify:** The color rule covers cards with several outputs.
+- **Reject:** They stay blue.

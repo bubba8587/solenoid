@@ -1,5 +1,5 @@
 ---
-title: "INDEX's whole column comes out as a one-column table, as Excel's does"
+title: "INDEX with row 0 gives a whole column as a one-column table, as in Excel"
 proposed_ring: D
 ask: human
 date: 2026-09-28
@@ -9,15 +9,14 @@ parents:
 ---
 ## Decision
 
-`INDEX(m, 0, c)`, a whole column of a table, answers a one-column table in the formula and on the INDEX card, as Excel's column does, instead of a list.
+`INDEX(m, 0, c)`, a whole column of a table, gives a one-column table in formulas and on the INDEX card, as in Excel, instead of a list. With `m = [[3,1,2],[9,8,7]]`, today `m / INDEX(m, 0, 1)` divides across the columns. After, it divides each row by its first value.
 
 ## Why
 
-[[D85]] columnsStayColumns keeps a column-shaped answer a column because a column read as a list turns into a row, and formulas built on it come out wrong without an error. Whole-column INDEX is that case and isn't on D85's list: over `m = [[3,1,2],[9,8,7]]`, `m / INDEX(m, 0, 1)` divides across the columns instead of each row by its first value, `HSTACK(m, INDEX(m, 0, 1))` spills sideways, and `SORTBY(m, INDEX(m, 0, 2))` sorts the columns. The formula-language spec says a whole column comes out as a list, and the help points at INDEX as a way to pull a list out of a table, so the list is a deliberate card convenience; the formula and the card share `indexInto` ([[C17]] shareImpl), so one answer serves both.
+A list reads as a row, so a column turned into a list silently changes direction, and formulas built on it come out wrong with no error.
 
 ## What ratifying means
 
-- **Ratify:** `indexInto` answers a one-column table for a whole column; the formula matches Excel, and the INDEX card's output is a one-column table too. Pulling a list out of a table is Get Column, or TOROW after INDEX.
-- **Reject:** a whole column stays a list on both surfaces; the three formulas above keep their wrong answers, which then need a note in formula-language's divergences.
-- **Variant:** the formula answers a column and the card keeps its list, splitting the kernel's answer by surface against C17.
-- **Lean:** ratify. The formula's answer is silently wrong today, and the card has Get Column for the list.
+- **Lean:** Ratify. The formula's answer is silently wrong today, and Get Column still gives a list.
+- **Ratify:** Formulas match Excel, and the INDEX card also outputs a one-column table. To get a list, use Get Column, or TOROW after INDEX.
+- **Reject:** A whole column stays a list, and the wrong answers are written down as a difference from Excel. A middle way (column in formulas, list on the card) breaks the rule that a card and its formula agree.
