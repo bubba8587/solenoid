@@ -14,7 +14,7 @@ const TOL = 0.5;
 const browser = await puppeteer.launch({
   headless: true,
   executablePath: CHROME,
-  args: ["--window-size=1600,1000"],
+  args: ["--no-sandbox", "--window-size=1600,1000"],
   defaultViewport: { width: 1600, height: 1000 },
 });
 let failures = 0;
