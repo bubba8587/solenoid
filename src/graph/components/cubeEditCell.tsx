@@ -21,6 +21,7 @@ import { TypeIcon } from "./TypeIcon";
 
 const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
   const sub = path.length ? getAtPath(records, path) : records;
+  if (sub !== null && typeof sub === "object" && !Array.isArray(sub)) return [sub as CubeRecord];
   return Array.isArray(sub) ? (sub as CubeRecord[]) : [];
 };
 

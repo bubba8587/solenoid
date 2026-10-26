@@ -82,10 +82,15 @@ export function sourcePicks(source: CubeSource): ColumnTypes {
 /** Alternating row index and key, repeated per nesting level. */
 export type CubePath = (number | string)[];
 
+/** A cell holding one record (a YAML mapping, `{ ... }`) reads as a one-row table: row 0 is the record itself. */
+const isOneRecord = (v: unknown, step: string | number): boolean =>
+  step === 0 && v !== null && typeof v === "object" && !Array.isArray(v);
+
 export function getAtPath(records: readonly CubeRecord[], path: CubePath): unknown {
   let cur: unknown = records;
   for (const step of path) {
     if (cur == null) return undefined;
+    if (isOneRecord(cur, step)) continue;
     cur = (cur as Record<string | number, unknown>)[step as never];
   }
   return cur;
@@ -97,6 +102,7 @@ export function setAtPath(records: readonly CubeRecord[], path: CubePath, value:
   let cur: unknown = next;
   for (let i = 0; i < path.length - 1; i++) {
     const step = path[i];
+    if (isOneRecord(cur, step)) continue;
     const holder = cur as Record<string | number, unknown>;
     if (holder[step as never] == null) holder[step as never] = typeof path[i + 1] === "number" ? [] : {};
     cur = holder[step as never];

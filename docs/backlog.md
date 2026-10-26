@@ -63,9 +63,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
-- [ ] **A single-record cell in the Cube editor** (a YAML mapping, or `{ ... }` typed into `cubeText`, not `[{ ... }]`):
-  its chip drills to an empty level, since each level edits a records array at its path (`cubeViewAt`). Read it as a
-  one-row array and write edits back through it.
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Functions short of Excel's signature** (the parity check, `excelArityParity.test.ts`, lists each with its reason): the
   day-count `basis` on PRICE, YIELD and the four odd-coupon functions; GROUPBY's five trailing options;

@@ -201,3 +201,12 @@ describe("Cube Input typed and formula columns", () => {
     expect(n.data().cube).toBe(n.data().cube);
   });
 });
+
+describe("a cell holding one record", () => {
+  it("reads as a one-row table, and an edit writes back into the record", async () => {
+    const { getAtPath, setAtPath } = await import("../../src/graph/literalEditors");
+    const rows = [{ name: "Trip", stop: { city: "Oslo", nights: 2 } }];
+    expect(getAtPath(rows, [0, "stop", 0, "city"])).toBe("Oslo");
+    expect(setAtPath(rows, [0, "stop", 0, "nights"], 3)).toEqual([{ name: "Trip", stop: { city: "Oslo", nights: 3 } }]);
+  });
+});
