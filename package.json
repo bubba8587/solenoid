@@ -30,6 +30,7 @@
     "ai-prompt": "node scripts/vite-run.mjs scripts/ai-prompt.ts",
     "search-samples": "node scripts/search-samples-table.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
+    "build:wasm:opt": "node scripts/build-wasm.mjs --opt",
     "test:core": "cargo test --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target"
   },
   "dependencies": {

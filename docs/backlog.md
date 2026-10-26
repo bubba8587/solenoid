@@ -26,6 +26,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
 
 ## Rust core (rust-port, [[D99]] rustIsSpec)
+- [ ] **Build the shipping module with `npm run build:wasm:opt`** before rust-port merges into develop: the branch commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
 - [ ] **Crate swaps the audit left for the author** (`audits/crate-audit-2026-10.md`; each row's evidence is a bit-for-bit comparison):
   - Same answers, trade-offs: NFD (`unicode-normalization`, +35 KB gzipped; `../tree/specs/computation/rust-core.md` § Size chose our table for size), `letters.rs` (`unicode-general-category`), `spelled.rs` (`strum`, adds proc-macro build deps), the day ↔ year/month/day helpers (`jiff`, already the core's time zones in `zone.rs`), Levenshtein and OSA (`strsim`; keep our Jaro-Winkler, whose prefix bonus differs), native random and UUID (`fastrand`, `uuid` on `crypto.getRandomValues`).
   - Answers change: the distribution kernels (`statrs`: more accurate, off Formula.js/jStat in the last digits) and Bessel (`libm`/`puruspe`: Formula.js's bessel.js is imprecise by design). Decide jStat parity vs accuracy ([[C14]] currentExcelParity).

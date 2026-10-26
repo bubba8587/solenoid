@@ -1,11 +1,12 @@
 // [[C130]] rustCore, [[D102]] graphOnCore
 // Builds the one wasm module, the graph engine (crates/solenoid-graph) with the core it links (crates/solenoid-core),
-// into src/graph/engineWasm/: cargo, wasm-bindgen, then wasm-opt -O3 when it's installed (`cargo install wasm-opt`),
+// into src/graph/engineWasm/: cargo, wasm-bindgen, then, for a module that ships, wasm-opt -O3 (`--opt`, `cargo install wasm-opt`),
 // which strips names and trims about a fifth.
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { MODULE, sourceStamp } from "./wasm-stamp.mjs";
 
+const OPTIMIZE = process.argv.includes("--opt") || process.env.WASM_OPT === "1";
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: "inherit" });
 const has = (cmd) => { try { execFileSync(cmd, ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
 
@@ -53,10 +54,10 @@ function build() {
   run("cargo", ["build", "--release", "--target", "wasm32-unknown-unknown", "--manifest-path", `crates/${crate}/Cargo.toml`, "--target-dir", target]);
   run("wasm-bindgen", ["--target", "web", "--out-dir", out, "--out-name", lib, `${target}/wasm32-unknown-unknown/release/${lib}.wasm`]);
   const wasm = `${out}/${lib}_bg.wasm`;
-  if (has("wasm-opt")) {
+  // Optimizing is for a module that ships (`npm run build:wasm:opt`): it costs minutes and changes no answer.
+  if (OPTIMIZE) {
+    if (!has("wasm-opt")) throw new Error("build-wasm: --opt needs wasm-opt (cargo install wasm-opt)");
     run("wasm-opt", ["-O3", "--enable-bulk-memory", "--enable-nontrapping-float-to-int", "--enable-sign-ext", "--enable-mutable-globals", wasm, "-o", wasm]);
-  } else {
-    console.warn("wasm-opt not found: the module ships unoptimized (cargo install wasm-opt)");
   }
   const glue = `${out}/${lib}.js`;
   writeFileSync(glue, patchGlue(readFileSync(glue, "utf8")));

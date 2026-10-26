@@ -49,7 +49,9 @@ flowchart TB
   graph with it, which the graph survives by rebuilding from its handles (§ Traps); the author traded the separate
   instance for direct calls (2026-10-24).
 - **Built** by `npm run build:wasm` and stamped over both crates and the vendored ones (`source-stamp.txt`,
-  `wasmStamp.test.ts`).
+  `wasmStamp.test.ts`). That build skips `wasm-opt`, which costs minutes and changes no answer; the module that
+  ships is built with `npm run build:wasm:opt`, before rust-port merges into develop and before a release, since the
+  site and the desktop app use the committed module.
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
