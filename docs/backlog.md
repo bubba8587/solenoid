@@ -200,7 +200,6 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formatting & units
 
-- [ ] **The Running card adds mixed units' shown numbers**: it isn't `unitAware`, so `[1 km, 500 m, 2 km]` strips to `[1, 500, 2]` and answers `[1, 501, 503]` (develop and the core alike); RUNNING's own unit branch is never reached from the card. Making the card unit-aware means retiring its `formatCarry` for the unit.
 - [ ] **Cards that strip units** ([[C25]] firstClassUnits): 33 of about 317 card classes are `unitAware` (the money finance cards joined under [[D101]] financeCarriesMoney); the rest read the numbers their inputs show and answer plain numbers, the boundary's fallback. Each family is owed carrying, as its formula functions do; do them family by family, a unit test per card. CEILING.MATH, QUOTIENT and EVEN in formulas likewise still sit in unit-flow's "any other function" row.
 
 

@@ -967,3 +967,16 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
     expect(await uniqueList([a, b])).toEqual([a]);
   });
 });
+
+describe("Running over mixed units ([[C25]] firstClassUnits)", () => {
+  it("adds 1 km, 500 m and 2 km by their dimension, not their shown numbers", async () => {
+    const { computeAlone } = await import("../boundaryKit");
+    const { fromUnit, isUnitCell } = await import("../../../src/graph/unitValue");
+    const { fcUnitToUnit } = await import("../../../src/graph/dimension");
+    const km = (n: number) => fromUnit(n, fcUnitToUnit("km")!, "km");
+    const out = await computeAlone(new RunningNode({ agg: "sum" }), { list: [[km(1), fromUnit(500, fcUnitToUnit("m")!, "m"), km(2)]] });
+    const cells = out.result as unknown[];
+    expect(cells.every(isUnitCell)).toBe(true);
+    expect(cells.map((c) => Math.round((c as { value: number }).value))).toEqual([1000, 1500, 3500]);
+  });
+});

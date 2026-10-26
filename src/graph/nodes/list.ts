@@ -1122,6 +1122,8 @@ export class RunningNode extends GraphNode {
     window: "0 (the default) is cumulative from the start through this element. 1 or more slides: the last N elements ending here, running short at the start.",
   };
 
+  /** Receives UnitCell tags intact: RUNNING adds mixed units by their dimension, not their shown numbers. */
+  unitAware = true;
   label: string;
   agg: RunningOp;
   cachedList: (ListCell | UnitCell)[] | null = [];
