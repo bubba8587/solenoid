@@ -2,7 +2,6 @@
 
 import { formatScalar, displaySettingsKey } from "./components/format";
 import { COMPLEX_FORMAT_STYLES } from "./formatModel";
-import { DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { assembleCx, type Cx } from "./cxValue";
 import { createNotifier } from "./storeKit";
 import { coreFormatAnnotated } from "./engineWasm";
@@ -65,27 +64,8 @@ export const DATE_FORMAT_STYLES: FormatStyle[] = [
   "time_24", "time_12", "datetime", "date_custom",
 ];
 
-const DATE_STYLE_PATTERNS: Partial<Record<FormatStyle, string>> = {
-  date_dmy:  "DD-MMM-YYYY",
-  date_iso:  "YYYY-MM-DD",
-  date_us:   "M/D/YYYY",
-  date_long: "MMMM D, YYYY",
-  date_med:  "MMM D, YYYY",
-  date_dow:  "DDD, MMM D, YYYY",
-  time_24:   "HH:mm",
-  time_12:   "h:mm A",
-  datetime:  "YYYY-MM-DD HH:mm",
-};
-
 export function isDateStyle(style: FormatStyleId): boolean {
   return style.startsWith("date_") || style.startsWith("time_") || style === "datetime";
-}
-
-export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
-  if (!isDateStyle(ann.format)) return null;
-  return ann.format === "date_custom"
-    ? (ann.customPattern || DEFAULT_DATE_FORMAT)
-    : (DATE_STYLE_PATTERNS[ann.format as FormatStyle] ?? DEFAULT_DATE_FORMAT);
 }
 
 export type DecimalMode = "places" | "sigfigs";

@@ -1,14 +1,14 @@
 // [[C24]] arraySemantics, [[C44]] dateSerials, [[D43]] unitByGranularity
 import { wasmInvokeSync, wasmInferBin } from "./engineWasm";
 import { encodeBinary, decodeBinary } from "./binaryCells";
-import { parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+import { parseDate } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
-import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
+import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { typesAt, isFrameAt, type ColumnTypes, type NestedTables } from "./cubeTypes";
 import type { CubePath } from "./literalEditors";
 
@@ -114,8 +114,7 @@ export function formatFrameCell(type: FrameColType, v: FrameCell, format?: Forma
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (type === "date" && typeof v === "number" && Number.isFinite(v)) {
-    const pattern = (format && dateAnnotationPattern(format)) || DEFAULT_DATE_FORMAT;
-    return formatDateSerial(v, pattern);
+    return formatNumberWithAnnotation(v, format && isDateStyle(format.format) ? format : ({ ...format, format: "date_dmy" } as FormatAnnotation));
   }
   return v;
 }
