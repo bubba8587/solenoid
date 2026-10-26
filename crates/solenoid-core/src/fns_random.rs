@@ -1,7 +1,7 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 //! The random draws: Formula.js's RAND and RANDBETWEEN, and RANDARRAY, RANDDIST, SHUFFLE and UUID. Each draw is
-//! `Math.random()`'s
-//! kind, uniform over [0, 1) and fresh per call: the browser's own in wasm, a seeded generator natively.
+//! `Math.random()`'s kind, uniform over [0, 1) and fresh per call: the browser's own in wasm, a seeded generator
+//! natively. UUID's bytes come from `crypto.getRandomValues` where the browser has it.
 
 use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;
@@ -326,8 +326,33 @@ fn shuffle(v: &V) -> V {
 }
 
 /// 16 random bytes, the version and variant bits set.
+/// Bytes from the browser's `crypto.getRandomValues`, as the UUID card draws them; `random()`'s where there is none.
+#[cfg(target_arch = "wasm32")]
+fn random_bytes(b: &mut [u8]) {
+    use wasm_bindgen::JsCast;
+    let arr = js_sys::Uint8Array::new_with_length(b.len() as u32);
+    let crypto = js_sys::Reflect::get(&js_sys::global(), &"crypto".into()).ok().filter(|c| c.is_object());
+    let fill = crypto
+        .as_ref()
+        .and_then(|c| js_sys::Reflect::get(c, &"getRandomValues".into()).ok())
+        .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
+    if let (Some(c), Some(f)) = (crypto, fill) {
+        if f.call1(&c, &arr).is_ok() {
+            arr.copy_to(b);
+            return;
+        }
+    }
+    b.iter_mut().for_each(|x| *x = (random() * 256.0) as u8);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn random_bytes(b: &mut [u8]) {
+    b.iter_mut().for_each(|x| *x = (random() * 256.0) as u8);
+}
+
 fn uuid_v4() -> String {
-    let mut b: [u8; 16] = std::array::from_fn(|_| (random() * 256.0) as u8);
+    let mut b = [0u8; 16];
+    random_bytes(&mut b);
     b[6] = (b[6] & 0x0f) | 0x40;
     b[8] = (b[8] & 0x3f) | 0x80;
     let h: String = b.iter().map(|x| format!("{x:02x}")).collect();

@@ -13,7 +13,7 @@ specific item.
 - **rete is gone** ([[D102]] graphOnCore, [[graph-core]]): the model, the input boundary, the pass and its state, the ids and the direct calls to card bodies run in Rust on Ruggine, linked with the formula core into one wasm module.
 - **Card bodies on the core: every class but Note and Report** ([[node-bodies]]); direct cards run Rust to Rust with no JavaScript between them ([[graph-core]] § Direct calls).
 - **Every edit names its node** (`namedEdits.test.ts`): a full clear trusts each direct card's stamped call; a card's view fields (`VIEW_FIELDS`, `nodeInit.ts`) stay out of its call, and the sweep covers every module in `src/` that asks for a full pass.
-- **[[C131]] noTextGuessing**: a formula never reads a number, date or logical out of text; only typed inputs read text. What's still half-read is in the backlog.
+- **[[C131]] noTextGuessing**: a formula never reads a number, date or logical out of text; only typed inputs read text. Pack functions, ACCRINT and COUPDAYS refuse text, IRR and MIRR skip it as Excel does, XNPV and XIRR refuse it, and CONVOLVE and SPECTRUM refuse it in a signal; the IM* family's reading is in the inbox (`im-functions-read-text`).
 - **Crates in place of hand code**: `csv` (CSV read and write), `qrcodegen` (QR Code), `md-5`/`sha1`/`sha2`/`crc32fast` (HASH), `jiff` (time zones, bundled tzdb). The audit's remaining choices: `docs/audits/crate-audit-2026-10.md`, backlog § Rust core.
 - **Dead TS deleted in two rounds**, then two comment sweeps cut the core's TS-twin provenance from its comments.
 - **The isolate endpoint terminals mount again** (lost with the graph move).

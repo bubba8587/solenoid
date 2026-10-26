@@ -2325,6 +2325,10 @@ function __wbg_get_imports() {
         const ret = new Uint32Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_newwithlength_a381634e90c276d4 = function(arg0) {
+        const ret = new Uint8Array(arg0 >>> 0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbg_newwithlength_c4c419ef0bc8a1f8 = function(arg0) {
         const ret = new Array(arg0 >>> 0);
         return addHeapObject(ret);
@@ -2426,7 +2430,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper857 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper858 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 157, __wbg_adapter_38);
         return addHeapObject(ret);
     };

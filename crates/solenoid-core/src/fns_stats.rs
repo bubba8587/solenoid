@@ -8,8 +8,8 @@ use crate::date_serial::parts_of_ms;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
-    average_ranks, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js,
-    to_num, V,
+    average_ranks, holds_text, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw,
+    to_f64_js, to_num, V,
 };
 use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
@@ -329,6 +329,9 @@ fn truthy_value(v: &V) -> bool {
 /// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)`, its dates read as serials as every other
 /// date argument is (Formula.js's `new Date(serial)` read them as milliseconds).
 fn accrint(a: &[V]) -> V {
+    if [5, 6].iter().any(|&i| holds_text(arg(a, i))) {
+        return V::Fx(FxError::Value);
+    }
     let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else {
         return V::Fx(FxError::Num);
     };
@@ -1025,6 +1028,7 @@ fn valid_frequency(v: &V) -> Option<f64> {
     one_of(v, &[1.0, 2.0, 4.0])
 }
 
+/// A day-count basis, 0 to 4. Text is never one: the callers answer it #VALUE! ([[C131]] noTextGuessing).
 fn valid_basis(v: &V) -> Option<f64> {
     one_of(v, &[0.0, 1.0, 2.0, 3.0, 4.0])
 }
@@ -1060,6 +1064,9 @@ fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
 }
 
 fn coupdays(a: &[V]) -> V {
+    if [2, 3].iter().any(|&i| holds_text(arg(a, i))) {
+        return V::Fx(FxError::Value);
+    }
     let basis = valid_basis(arg(a, 3));
     let frequency = valid_frequency(arg(a, 2));
     let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {

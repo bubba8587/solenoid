@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, to_f64_js, V};
+use crate::excel_functions::{holds_text, js_string_of, to_f64_js, V};
 use crate::jsnum::{js_lower, js_trim, math_round};
 use crate::nodes::packs as k;
 
@@ -213,7 +213,28 @@ fn geo(a: &[V]) -> Result<(f64, f64, f64), V> {
     }
 }
 
+/// Each function's number arguments: text there is #VALUE!, never read as a blank ([[C131]] noTextGuessing).
+const NUMBER_ARGS: &[(&str, &[usize])] = &[
+    ("SUNPOSITION", &[0, 1, 2]),
+    ("SUNRISE", &[0, 1, 2]),
+    ("SUNSET", &[0, 1, 2]),
+    ("DAYLENGTH", &[0, 1, 2]),
+    ("MOONPHASE", &[0]),
+    ("ESERIESVALUE", &[0]),
+    ("AWGWIRE", &[0]),
+    ("EMSPECTRUMBAND", &[0, 1]),
+    ("COLEBROOK", &[0, 1]),
+    ("HEARTRATEZONES", &[0, 1]),
+    ("STANDARDATMOSPHERE", &[0]),
+    ("ANTOINE", &[1]),
+    ("TRIANGLESOLVER", &[0, 1, 2, 3, 4, 5]),
+];
+
 pub fn call(name: &str, a: &[V]) -> V {
+    let numbers = NUMBER_ARGS.iter().find(|(n, _)| *n == name).map_or(&[][..], |(_, i)| *i);
+    if let Some(i) = numbers.iter().find(|&&i| holds_text(arg(a, i))) {
+        return err(ErrorCode::Value, format!("{name} takes a number, not text, as argument {}", i + 1));
+    }
     match name {
         "ELEMENT" => element(arg(a, 0), arg(a, 1)),
         "MOLARMASS" => match arg(a, 0) {

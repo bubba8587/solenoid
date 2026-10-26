@@ -5705,8 +5705,20 @@ fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
         .collect()
 }
 
-/// The values' first error, then the dates', then null for a blank date.
+/// A cash-flow list with its text skipped, as Excel's IRR and MIRR read a range ([[C131]] noTextGuessing).
+fn without_text(v: &V) -> V {
+    match v {
+        V::List(_) => V::List(Rc::new(to_list(v).iter().filter(|x| !matches!(x, V::Str(_))).cloned().collect())),
+        other => other.clone(),
+    }
+}
+
+/// The values' first error, then the dates', then null for a blank date. Text among the values or dates is #VALUE!,
+/// as Excel's XNPV and XIRR answer ([[C131]] noTextGuessing).
 fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
+    if holds_text(values) || holds_text(dates) {
+        return Err(V::err(sol_error(ErrorCode::Value, "Cash flows and dates are numbers, not text")));
+    }
     let values = crate::finance_ops::cash_prep(&fin_cells(values)).map_err(V::err)?;
     let dates = to_list(dates);
     if let Some(e) = dates.iter().find(|d| d.is_sol_error()) {
@@ -5779,7 +5791,7 @@ fn finance_function(name: &str, a: &[V]) -> V {
         }
         "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0))),
         "IRR" => {
-            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+            let nums = match f::cash_prep(&fin_cells(&without_text(arg(a, 0)))) {
                 Ok(nums) => nums,
                 Err(e) => return V::err(e),
             };
@@ -5796,7 +5808,7 @@ fn finance_function(name: &str, a: &[V]) -> V {
             }
         }
         "MIRR" => {
-            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+            let nums = match f::cash_prep(&fin_cells(&without_text(arg(a, 0)))) {
                 Ok(nums) => nums,
                 Err(e) => return V::err(e),
             };

@@ -742,7 +742,7 @@ A `Cell` is a number, `null` or a `SolError`; `first_error` returns the first `S
 | `GRADIENT(arr, dx)` | Central differences inside, one-sided differences at the ends, same length; a missing neighbor makes that entry null, and fewer than two cells are all null. Any error answers that error. |
 | `EWMA(arr, alpha)` | `y[0] = x[0]`, `y[i] = α·x[i] + (1 − α)·y[i−1]`. A blank carries the previous value forward (null before the first number). Alpha outside (0, 1] is `#DOMAIN!`, as pandas refuses it; clamping would silently return the input. Any error answers that error. |
 | `TRAPZ(arr, dx)` | Trapezoidal area with uniform spacing. Any gap or non-number is `#VALUE!`; fewer than two points is 0. |
-| `CONVOLVE(a, b)` | Full linear convolution, length `a + b − 1`; a blank counts as zero; an empty operand gives `[]`. |
+| `CONVOLVE(a, b)` | Full linear convolution, length `a + b − 1`; a blank counts as zero and text is `#VALUE!`; an empty operand gives `[]`. |
 | RLE | Each run of equal consecutive values (compared by `set_key`) becomes a row `[value, count]`. |
 | `cross_product(a, b)` | The 3-D cross product of each side's present numbers; each side must have exactly three, else `#SHAPE!`. |
 | `polyfit_eval(xs, ys, degree)` | Least-squares polynomial fit, evaluated back at each x. It solves the normal equations by Gaussian elimination with partial pivoting (a pivot below 10⁻¹² is singular, `#SOLVE!`). The fit uses the pairs where both x and y are present, so a blank drops its pair and never shifts the pairing. The result follows xs: each present x gets its fitted value, a missing x stays null. No pairs gives all null; fewer than `degree + 1` points is `#VALUE!`. |
@@ -796,7 +796,7 @@ A `Cell` is a number, `null` or a `SolError`; `first_error` returns the first `S
 - `ntile(arr, n)`: quantile buckets 1 to n with right-inclusive edges, like pandas `qcut`. The edges are the PERCENTILE.INC quantiles at k/n, and a value on an edge stays in the lower bucket. Position-preserving; n below 1 is `#VALUE!`.
 - `outlier_flags(arr, method, threshold)`: `z` flags `|x − mean| / sd > t` (sample standard deviation, default 3); `iqr` flags values beyond `Q1 − t·IQR` or `Q3 + t·IQR` (default 1.5); `mad` flags a modified z-score `|0.6745·(x − median) / MAD| > t` (default 3.5). A blank stays null and an error passes; fewer than three numbers, or zero spread, flag nothing (all `FALSE`).
 - `fft_real` (`fns_lists.rs`): the discrete Fourier transform of a real list at any length, as `{ re, im }`. A power-of-two length uses iterative radix-2 Cooley–Tukey; any other length uses Bluestein's chirp-z through a power-of-two FFT of size at least 2n − 1, so no padding changes the answer.
-- `spectrum` (`fns_lists.rs`; SPECTRUM and the Spectrum card): the one-sided amplitude spectrum, bins 0 to ⌊n/2⌋, frequency `k·rate/n`, phase in radians. Magnitudes are scaled by 2/n (1/n at DC, and at Nyquist for an even length) so a pure sine of amplitude A reads A. A blank or text in the signal counts as 0; the first error in the signal, or an error rate, is the answer.
+- `spectrum` (`fns_lists.rs`; SPECTRUM and the Spectrum card): the one-sided amplitude spectrum, bins 0 to ⌊n/2⌋, frequency `k·rate/n`, phase in radians. Magnitudes are scaled by 2/n (1/n at DC, and at Nyquist for an even length) so a pure sine of amplitude A reads A. A blank in the signal counts as 0 and text in it is `#VALUE!` ([[C131]] noTextGuessing); the first error in the signal, or an error rate, is the answer.
 
 ### Statistics kernels (`excel_functions.rs`, `fns_stats.rs`)
 

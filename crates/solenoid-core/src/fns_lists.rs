@@ -534,6 +534,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             if let Some(e) = first_error(&x).or_else(|| first_error(&y)) {
                 return e;
             }
+            if x.iter().chain(y.iter()).any(|v| matches!(v, V::Str(_))) {
+                return text_signal("CONVOLVE");
+            }
             let fx: Vec<f64> = x.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
             let fy: Vec<f64> = y.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
             if fx.is_empty() || fy.is_empty() {
@@ -1626,9 +1629,18 @@ fn hypot(x: f64, y: f64) -> f64 {
     sum.sqrt() * max
 }
 
+/// A signal is numbers by position, so text in one is #VALUE!, never a 0 that shifts what follows ([[C131]]
+/// noTextGuessing).
+fn text_signal(name: &str) -> V {
+    V::err(sol_error(ErrorCode::Value, format!("{name} reads a signal of numbers, not text")))
+}
+
 fn spectrum(x: &[V], rate: f64) -> V {
     if let Some(e) = first_error(x) {
         return e;
+    }
+    if x.iter().any(|v| matches!(v, V::Str(_))) {
+        return text_signal("SPECTRUM");
     }
     let sig: Vec<f64> = x.iter().map(|v| finite(v).unwrap_or(0.0)).collect();
     let n = sig.len();
