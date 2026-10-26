@@ -5,7 +5,7 @@ import { setting } from "../inputRoles";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
 import { type FrameValue } from "../frame";
-import { type Shape } from "../frameShape";
+import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
@@ -463,8 +463,8 @@ export class WorldClockNode extends GraphNode {
     this.addOutput("clock", frameOut("World Clock"));
   }
 
-  frameShape(): Shape {
-    return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "clock", {});
   }
 
   /** The clock is read here; `body` shows each zone's wall clock at that instant. */

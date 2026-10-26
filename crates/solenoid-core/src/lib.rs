@@ -43,6 +43,7 @@ pub mod letters;
 pub mod nfd_table;
 pub mod nodes;
 pub mod planners;
+pub mod providers;
 pub mod schedule;
 pub mod shapers;
 pub mod spelled;

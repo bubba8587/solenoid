@@ -4,11 +4,9 @@ import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut } from "./sh
 import { type FrameValue, type FrameCell } from "../frame";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
-import type { Shape } from "../frameShape";
+import { hintFrame, cardShapeOnCore, type Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
-
-const SUMMARY_COLS = ["BCWS", "BCWP", "ACWP", "SV", "CV", "SPI", "CPI", "EAC", "VAC", "TCPI"] as const;
 
 export const EARNED_VALUE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
 
@@ -45,9 +43,9 @@ export class EarnedValueNode extends GraphNode {
     ] },
   };
 
+  /** The summary's columns, from the card's own body over its sample schedule. */
   frameShape(outKey: string): Shape | null {
-    if (outKey !== "frame") return null;
-    return { columns: [{ name: "Task", type: "string" }, ...SUMMARY_COLS.map((n) => ({ name: n, type: "number" as const }))] };
+    return outKey === "frame" ? cardShapeOnCore(this, "frame", { schedule: [hintFrame(EarnedValueNode.frameHints.schedule)] }) : null;
   }
 
   constructor(init?: { label?: string }) {

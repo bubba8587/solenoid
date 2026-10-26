@@ -346,7 +346,9 @@ flowchart LR
   order and the cables.
 - **D3, frame shapes**: a verb's shape is the core's verb on an empty frame of its input's shape (done:
   `frameShape.ts`, frozen in `fixtures/core/shapes.json.gz`, `coreShapes.test.ts`); the settle reads shapes through
-  the facts. Open: the `frameShape` hooks that work a card's columns out by hand instead of through a verb.
+  the facts. A card's own shape is its body, its frame function or its provider's reader on the core (done:
+  `cardShapeOnCore`, `sampleShapeOnCore`, `providers.rs`; frozen in `fixtures/core/card-shapes.json.gz`). Open: Write
+  to Obsidian's and Write Tasks' preview columns, with the vault group.
 - **D4 and D5, Conduit lanes and the Type Settle** (done): `settle.rs` runs both to a joint fixpoint over the graph
   (`GraphCore.settleTypes`) and answers each socket that changed; `settleWildcardTypes` retypes those sockets and the
   view rerenders the nodes. Frozen over every seed graph three ways (`fixtures/core/settle.json.gz`,

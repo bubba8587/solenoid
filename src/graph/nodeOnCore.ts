@@ -111,11 +111,8 @@ export function coreFieldsOf(node: GraphNode, names: readonly string[]): string 
   return jsonText(Object.fromEntries(names.map((f) => [f, n[f]])));
 }
 
-/** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
-export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
-  const n = node as unknown as { literals?: unknown; stringLiterals?: unknown } & Record<string, unknown>;
-  const watch = coreWatchOf(node);
-  const before = watch === undefined ? undefined : n[watch];
+function invoke(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Reply {
+  const n = node as unknown as { literals?: unknown; stringLiterals?: unknown };
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
@@ -140,16 +137,37 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
     throw e;
   }
   if (reply.none) throw new Error(`${node.constructor.name} has no body on the core`);
-  if ("thrown" in reply) {
-    for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
-    throw read(reply.thrown);
-  }
+  return reply;
+}
+
+function outputs(reply: Reply, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(reply.out ?? {})) {
     // An output that is one of the inputs as it came is that very object (`Outs` in nodes/mod.rs).
     const from = (v as { input?: [string, number] } | null)?.input;
     out[k] = Array.isArray(from) ? inputs[from[0]]?.[from[1]] : read(v);
   }
+  return out;
+}
+
+/** The card's outputs as its body on the core answers them over `inputs`, the card itself untouched: what it shows
+ *  stays as it was. Null where the body throws. */
+export function cardOutputsOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> | null {
+  const reply = invoke(node, inputs);
+  return "thrown" in reply ? null : outputs(reply, inputs);
+}
+
+/** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
+export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+  const n = node as unknown as Record<string, unknown>;
+  const watch = coreWatchOf(node);
+  const before = watch === undefined ? undefined : n[watch];
+  const reply = invoke(node, inputs);
+  if ("thrown" in reply) {
+    for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
+    throw read(reply.thrown);
+  }
+  const out = outputs(reply, inputs);
   // A field that is an output itself comes back as that output, the same object, as the TS body set it.
   for (const [field, v] of Object.entries(reply.display)) {
     const o = v as { output?: string } | null;

@@ -1,7 +1,10 @@
 // [[C10]] socketLattice, [[D102]] graphOnCore
 // A verb's static output shape is the core's verb run on an empty frame of its input's shape (graph-core.md § Phase D),
 // so it can never disagree with what the verb answers; a verb that refuses the shape throws, as it would on data.
-import type { FrameValue } from "./frame";
+import { isFrameValue, type FrameValue } from "./frame";
+import type { GraphNode } from "./graphModel";
+import type { FrameHint } from "./frameHint";
+import { cardOutputsOnCore } from "./nodeOnCore";
 import { onCoreFrames, encodeOpCells, frameFnOnCore, type FrameSchemaColumn } from "./frameBackend";
 import { wasmInvokeSync } from "./engineWasm";
 import type { FrameOp, JoinOpts } from "./frameOps";
@@ -35,6 +38,18 @@ export function totalLabelledKeys(depth: number, nKeys: number): number {
 export function sampleRowOf(shape: Shape): FrameValue {
   const cell = (t: string) => (t === "string" ? "a" : t === "logical" ? true : t === "date" ? 45000 : 1);
   return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [cell(c.type)] })) };
+}
+
+/** The columns of `outKey` as the card's own body on the core answers it over sample `inputs`, the card untouched
+ *  (`cardOutputsOnCore`); null when the body answers no frame there. */
+export function cardShapeOnCore(node: GraphNode, outKey: string, inputs: Record<string, unknown[]>): Shape | null {
+  const v = cardOutputsOnCore(node, inputs)?.[outKey];
+  return isFrameValue(v) ? shapeOfFrameValue(v) : null;
+}
+
+/** A frame hint's sample table as a frame. */
+export function hintFrame(hint: FrameHint): FrameValue {
+  return { __frame: true, columns: hint.columns.map((c) => ({ name: c.name, type: c.type, values: [...c.cells] })) };
 }
 
 /** The columns a core frame function (`frame_fns.rs`) answers over one sample row of each input. */

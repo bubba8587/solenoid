@@ -357,7 +357,9 @@ the sentinel root `solenoid:demo-vault`, so the vault readers work with no
 filesystem — web included; `getVaultRoot()` selects it via the "Use demo
 vault" setting, files lazily code-split from `/demo-vault`),
 `httpBridge.ts` (proxy-aware fetch), `csv.ts` (CSV rows in and out, read and written on the core's `csv.rs`),
-`nodes/connection.ts` (Web Source, Local File (CSV/Parquet), Import HTML/XML),
+`nodes/connection.ts` (Web Source, Local File (CSV/Parquet), Import HTML/XML, Weather, Holidays, Currency: the
+cards fetch and cache, `weatherProvider.ts` / `holidaysProvider.ts` / `fxProvider.ts` build the URLs, and the core's
+`providers.rs` reads each reply),
 `dataProviders.ts` + `nodes/dataFeed.ts` (the keyed data-feed providers),
 `obsidianMarkdown.ts` + `obsidianWrite.ts` + `nodes/obsidian.ts` (the
 Obsidian vault import/export direction).

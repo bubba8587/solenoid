@@ -2,7 +2,8 @@
 import { GraphNode } from "../graphModel";
 import { listIn, listOut, numIn, numOut, numListIn, numListOut, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rolesFrom, required, setting } from "../inputRoles";
-import type { Shape } from "../frameShape";
+import { cardShapeOnCore, type Shape } from "../frameShape";
+import type { LambdaValue } from "../lambdaValue";
 import { lambdaIn } from "./shared";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
@@ -729,7 +730,7 @@ export class EtsForecastNode extends GraphNode {
   }
 
   frameShape(outKey: string): Shape | null {
-    return outKey === "forecast" ? { columns: [{ name: "Forecast", type: "number" }, { name: "Interval", type: "number" }] } : null;
+    return outKey === "forecast" ? cardShapeOnCore(this, "forecast", { values: [[12, 15, 14, 18, 13, 16, 15, 19, 14, 17, 16, 20]] }) : null;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { forecast: FrameValue | SolError | null; detected: number | null } {
@@ -760,12 +761,7 @@ export class FitDistributionNode extends GraphNode {
   }
 
   frameShape(outKey: string): Shape | null {
-    if (outKey !== "ranking") return null;
-    return { columns: [
-      { name: "family", type: "string" }, { name: "parameter 1", type: "string" }, { name: "value 1", type: "number" },
-      { name: "parameter 2", type: "string" }, { name: "value 2", type: "number" },
-      { name: "log-likelihood", type: "number" }, { name: "AIC", type: "number" }, { name: "KS", type: "number" },
-    ] };
+    return outKey === "ranking" ? cardShapeOnCore(this, "ranking", { list: [[12, 15, 14, 18, 13, 16, 15, 19, 14, 17, 16, 20]] }) : null;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { ranking: FrameValue | SolError | null; best: string | null; params: number[] | null } {
@@ -803,8 +799,8 @@ export class DecomposeNode extends GraphNode {
     this.addOutput("decomposition", frameOut("Decomposition"));
   }
 
-  frameShape(): Shape {
-    return { columns: [{ name: "Trend", type: "number" }, { name: "Seasonal", type: "number" }, { name: "Residual", type: "number" }] };
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "decomposition", { values: [[12, 15, 14, 18, 13, 16, 15, 19, 14, 17, 16, 20]], period: [4] });
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { decomposition: FrameValue | SolError | null } {
@@ -843,8 +839,9 @@ export class OdeIntegrateNode extends GraphNode {
     this.addOutput("solution", frameOut("Solution"));
   }
 
-  frameShape(): Shape {
-    return { columns: [{ name: "t", type: "number" }, { name: "y", type: "number" }] };
+  frameShape(): Shape | null {
+    const flat: LambdaValue = { __lambda: true, params: ["t", "y"], fn: () => 0, expr: "0" };
+    return cardShapeOnCore(this, "solution", { lambda: [flat] });
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {

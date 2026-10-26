@@ -2,10 +2,10 @@
 import { GraphNode } from "../graphModel";
 import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut } from "./shared";
 import { type SolError } from "../errorValue";
-import { type CubeValue, type FrameValue } from "../frame";
+import { frameToCube, type CubeValue, type FrameValue } from "../frame";
 import { nodeOnCore } from "../nodeOnCore";
 import type { ScheduleOutput } from "@solenoid/schedule-engine";
-import type { Shape } from "../frameShape";
+import { hintFrame, cardShapeOnCore, type Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
 
@@ -79,7 +79,11 @@ export class ScheduleNode extends GraphNode {
 
   frameShape(outKey: string): Shape | null {
     if (outKey !== "diagnostics") return null;
-    return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
+    const tasks = frameToCube({ __frame: true, columns: [
+      { name: "Task", type: "string", values: ["Plumbing", "Electrical", "Drywall", "Paint"] },
+      { name: "Duration", type: "number", values: [3, 2, 4, 2] },
+    ] });
+    return cardShapeOnCore(this, "diagnostics", { tasks: [tasks], links: [hintFrame(ScheduleNode.frameHints.links)] });
   }
 
   constructor(init?: { label?: string; mode?: ScheduleMode; precision?: SchedulePrecision; criticalPaths?: ScheduleCriticalPaths; progress?: ScheduleProgress }) {

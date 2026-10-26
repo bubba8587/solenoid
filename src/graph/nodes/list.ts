@@ -5,7 +5,7 @@ import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboO
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
-import type { Shape } from "../frameShape";
+import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
@@ -1830,8 +1830,8 @@ export class FindPeaksNode extends GraphNode {
     this.addOutput("result", frameOut("Peaks"));
   }
 
-  frameShape(): Shape {
-    return { columns: [{ name: "Position", type: "number" }, { name: "Height", type: "number" }] };
+  frameShape(): Shape | null {
+    return cardShapeOnCore(this, "result", { list: [[0, 3, 0, 5, 0]] });
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | null } {

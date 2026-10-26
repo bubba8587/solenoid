@@ -27,6 +27,12 @@ const CARDS: [string, Record<string, unknown>[]][] = [
   ["FxNode", [{ mode: "spot" }, { mode: "history" }]],
   ["SlicerNode", [{}]],
   ["DropBlankRowsNode", [{}]],
+  ["FindPeaksNode", [{}]],
+  ["EtsForecastNode", [{}]],
+  ["FitDistributionNode", [{}]],
+  ["DecomposeNode", [{}]],
+  ["OdeIntegrateNode", [{}]],
+  ["ScheduleNode", [{}]],
 ];
 
 type Case = { card: string; init: Record<string, unknown>; input: string; wired: string[]; want?: Record<string, Shape | null> };

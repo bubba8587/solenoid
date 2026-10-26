@@ -69,6 +69,22 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         }),
         ("addColumn", Some(f)) => add_column(f, args),
         ("splitFrame", Some(f)) => Ok(FrameOut::Value(split_frame(f))),
+        // The data providers' replies (`providers.rs`). args: the reply's text, then the card's picks.
+        ("weatherFrame", _) => {
+            let (text, unit) = (str_arg(args, 0)?, str_arg(args, 1)?);
+            let (daily, now, condition) = crate::providers::weather(&text, &unit);
+            Ok(FrameOut::FrameAnd(daily, V::List(Rc::new(vec![now, condition]))))
+        }
+        ("holidaysFrame", _) => {
+            let (text, region, today) = (str_arg(args, 0)?, str_arg(args, 1)?, num_arg(args, 2)?);
+            let (frame, next) = crate::providers::holidays(&text, &region, today);
+            Ok(FrameOut::FrameAnd(frame, next))
+        }
+        ("fxRate", _) => {
+            let (date, serial, rate) = crate::providers::fx_rate(&str_arg(args, 0)?, &str_arg(args, 1)?);
+            Ok(FrameOut::Value(V::List(Rc::new(vec![V::str(&date), V::Num(serial), rate]))))
+        }
+        ("fxSeries", _) => Ok(FrameOut::Frame(crate::providers::fx_series(&str_arg(args, 0)?, &str_arg(args, 1)?))),
         ("buildFrame", _) => build_frame(args, false),
         ("buildFrameTyped", _) => build_frame(args, true),
         ("frameFromLists", _) => frame_from_lists(args),

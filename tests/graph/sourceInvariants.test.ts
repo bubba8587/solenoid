@@ -115,9 +115,6 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
     "nodes/dateSerial.ts": "noteDateSerial is gated on the ISO day and day-time shapes a note holds, never ambiguous",
     "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
     "components/TablePopup.tsx": "date-picker seed + CSV import, both best-effort UI with no error channel",
-    "weatherProvider.ts": "Open-Meteo daily.time is machine ISO YYYY-MM-DD — never ambiguous; a bad row is a blank date cell",
-    "holidaysProvider.ts": "Nager.Date PublicHolidays.date is machine ISO YYYY-MM-DD — never ambiguous; an undated row is dropped",
-    "fxProvider.ts": "Frankfurter's date is machine ISO YYYY-MM-DD — never ambiguous; a missing date is NaN",
     "taskNotesApi.ts": "TaskNotes' API dates are machine ISO YYYY-MM-DD / ISO datetimes — never ambiguous; a malformed one is a blank cell (a cube column has no error channel)",
   };
 

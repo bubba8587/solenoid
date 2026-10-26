@@ -4,8 +4,8 @@ import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strO
 import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
-import { holidaysUrl, parseHolidays, filterHolidays, holidaysFrame, daysToNextHoliday, type Holiday } from "../holidaysProvider";
-import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type FxPoint } from "../fxProvider";
+import { holidaysUrl, holidaysOnCore } from "../holidaysProvider";
+import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, fxSeriesFrame, type FxRate } from "../fxProvider";
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
@@ -16,7 +16,7 @@ import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
 import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
 import { dimEqual, isDimensionless } from "../dimension";
-import { type Shape } from "../frameShape";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
@@ -460,11 +460,7 @@ export class WeatherNode extends GraphNode {
   }
 
   frameShape(): Shape {
-    return { columns: [
-      { name: "Date", type: "date" }, { name: "Rain mm", type: "number" }, { name: "Rain %", type: "number" },
-      { name: "High", type: "number" }, { name: "Low", type: "number" }, { name: "ET₀ mm", type: "number" },
-      { name: "Condition", type: "string" },
-    ] };
+    return shapeOfFrameValue(parseWeather("{}", this.unit).daily);
   }
 
   data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null } {
@@ -521,7 +517,8 @@ export class HolidaysNode extends GraphNode {
   year: number;
   refreshMinutes: number;
   width = 240; height = 250;
-  cached: Holiday[] | null = null;
+  /** The last reply's text, read afresh against the region on each pass. */
+  cached: string | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; country?: string; region?: string; year?: number; refreshMinutes?: number }) {
@@ -537,14 +534,17 @@ export class HolidaysNode extends GraphNode {
   }
 
   frameShape(): Shape {
-    return { columns: [
-      { name: "Date", type: "date" }, { name: "Name", type: "string" }, { name: "Local", type: "string" },
-    ] };
+    return shapeOfFrameValue(holidaysOnCore("[]", "", 0).frame);
   }
 
   private static todaySerial(): number {
     const d = new Date();
     return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+  }
+
+  /** The holidays that apply in the card's region, and the days to the next. */
+  applicable(): { frame: FrameValue; next: number | null } {
+    return holidaysOnCore(this.cached ?? "[]", this.region, HolidaysNode.todaySerial());
   }
 
   data(): { frame: FrameValue; dates: number[]; next: number | null } {
@@ -562,12 +562,8 @@ export class HolidaysNode extends GraphNode {
         fetchInBackground(this.id, this.fetchHolidays(year, country));
       }
     }
-    const applicable = filterHolidays(this.cached ?? [], this.region);
-    return {
-      frame: holidaysFrame(applicable),
-      dates: applicable.map((h) => h.serial),
-      next: daysToNextHoliday(applicable, HolidaysNode.todaySerial()),
-    };
+    const { frame, next } = this.applicable();
+    return { frame, dates: (frame.columns[0]?.values ?? []) as number[], next };
   }
 
   private async fetchHolidays(year: number, country: string): Promise<void> {
@@ -576,10 +572,11 @@ export class HolidaysNode extends GraphNode {
     try {
       const { text } = await fetchText(holidaysUrl(year, country));
       if (this._lastKey !== key) return;
-      this.cached = parseHolidays(text);
-      connectionStore.setState(this.id, this.cached.length === 0
+      this.cached = text;
+      const rows = frameRowCount(holidaysOnCore(text, "", 0).frame);
+      connectionStore.setState(this.id, rows === 0
         ? { status: "error", message: "No holidays" }
-        : { status: "ok", rows: this.cached.length, cols: 3, fetchedAt: Date.now() });
+        : { status: "ok", rows, cols: 3, fetchedAt: Date.now() });
     } catch (e) {
       if (this._lastKey !== key) return;
       this.cached = null;
@@ -646,7 +643,7 @@ export class FxNode extends GraphNode {
   refreshMinutes: number;
   width = 240; height = 250;
   cached: FxRate | null = null;
-  cachedSeries: FxPoint[] | null = null;
+  cachedSeries: FrameValue | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; mode?: FxMode; refreshMinutes?: number }) {
@@ -678,7 +675,7 @@ export class FxNode extends GraphNode {
   }
 
   frameShape(): Shape {
-    return { columns: [{ name: "Date", type: "date" }, { name: "Rate", type: "number" }] };
+    return shapeOfFrameValue(fxSeriesFrame());
   }
 
   keysDroppedBySwitch(next: FxMode): { inputs: string[]; outputs: string[] } {
@@ -755,7 +752,7 @@ export class FxNode extends GraphNode {
         fetchInBackground(this.id, this.fetchSeries(from, to, start, end));
       }
     }
-    return { frame: this.seriesFrame() };
+    return { frame: this.cachedSeries ?? fxSeriesFrame() };
   }
 
   private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
@@ -767,13 +764,6 @@ export class FxNode extends GraphNode {
     return iso !== "" ? iso : isoDaysFromNow(dayOffset);
   }
 
-  private seriesFrame(): FrameValue {
-    const pts = this.cachedSeries ?? [];
-    return { __frame: true, columns: [
-      { name: "Date", type: "date", values: pts.map((p) => p.serial) },
-      { name: "Rate", type: "number", values: pts.map((p) => p.rate) },
-    ] };
-  }
 
   private async fetchRate(from: string, to: string): Promise<void> {
     const key = this._lastKey;
@@ -799,11 +789,12 @@ export class FxNode extends GraphNode {
     try {
       const { text } = await fetchText(fxRangeUrl(from, to, start, end));
       if (this._lastKey !== key) return;
-      const pts = parseFxSeries(text, to);
-      this.cachedSeries = pts;
-      connectionStore.setState(this.id, pts.length === 0
+      const series = parseFxSeries(text, to);
+      this.cachedSeries = series;
+      const rows = frameRowCount(series);
+      connectionStore.setState(this.id, rows === 0
         ? { status: "error", message: `No ${from}→${to} history` }
-        : { status: "ok", rows: pts.length, cols: 2, fetchedAt: Date.now() });
+        : { status: "ok", rows, cols: 2, fetchedAt: Date.now() });
     } catch (e) {
       if (this._lastKey !== key) return;
       this.cachedSeries = null;

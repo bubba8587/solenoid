@@ -1,70 +1,18 @@
 // [[C23]] calcModes
-// Nager.Date public holidays (keyless, CORS-open). URL builds and parses are pure; the node owns fetch and cache.
-import { type FrameValue, type FrameColumn } from "./frame";
-import { parseDateToSerial } from "./nodes/dateSerial";
-
-export interface Holiday {
-  /** Excel date serial (UTC midnight). */
-  serial: number;
-  name: string;
-  /** The country's own name for the day. */
-  localName: string;
-  /** Subdivision codes the day is limited to (for example "US-CA"); [] = nationwide. */
-  counties: string[];
-}
+// Nager.Date public holidays (keyless, CORS-open). The node owns fetch and cache; the core reads the reply.
+import { type FrameValue } from "./frame";
+import { frameFnOnCore } from "./frameBackend";
 
 export function holidaysUrl(year: number, country: string): string {
   const y = Math.trunc(year);
   return `https://date.nager.at/api/v3/PublicHolidays/${y}/${encodeURIComponent(country.trim().toUpperCase())}`;
 }
 
-/** In the API's order, already date-ascending; a malformed body, a non-array or an undated row is dropped. */
-export function parseHolidays(text: string): Holiday[] {
-  let data: unknown;
-  try { data = JSON.parse(text); } catch { return []; }
-  if (!Array.isArray(data)) return [];
-  const out: Holiday[] = [];
-  for (const r of data) {
-    const o = r as Record<string, unknown>;
-    if (typeof o.date !== "string") continue;
-    const serial = parseDateToSerial(o.date);
-    if (!Number.isFinite(serial)) continue;
-    out.push({
-      serial,
-      name: typeof o.name === "string" ? o.name : "",
-      localName: typeof o.localName === "string" ? o.localName : "",
-      counties: Array.isArray(o.counties)
-        ? (o.counties as unknown[]).filter((c): c is string => typeof c === "string")
-        : [],
-    });
-  }
-  return out;
-}
-
-/** A blank region keeps every day; a nationwide day always applies, a subdivision day only when the region is listed. */
-export function filterHolidays(holidays: readonly Holiday[], region: string): Holiday[] {
-  const r = region.trim();
-  if (r === "") return [...holidays];
-  return holidays.filter((h) => h.counties.length === 0 || h.counties.includes(r));
-}
-
-export function holidaysFrame(holidays: readonly Holiday[]): FrameValue {
-  const columns: FrameColumn[] = [
-    { name: "Date", type: "date", values: holidays.map((h) => h.serial) },
-    { name: "Name", type: "string", values: holidays.map((h) => h.name || null) },
-    { name: "Local", type: "string", values: holidays.map((h) => h.localName || null) },
-  ];
-  return { __frame: true, columns };
-}
-
-/** Today itself is 0; null when none remain. Both serials are UTC midnight, so the difference is whole days. */
-export function daysToNextHoliday(holidays: readonly Holiday[], todaySerial: number): number | null {
-  let best: number | null = null;
-  for (const h of holidays) {
-    const d = Math.round(h.serial - todaySerial);
-    if (d >= 0 && (best === null || d < best)) best = d;
-  }
-  return best;
+/** The holidays that apply in `region` (blank: every day; else the nationwide ones and that subdivision's), a row each,
+ *  read on the core (`providers.rs`); and the whole days from `todaySerial` to the next, or null when none remain. */
+export function holidaysOnCore(text: string, region: string, todaySerial: number): { frame: FrameValue; next: number | null } {
+  const r = frameFnOnCore("holidaysFrame", [], [text, region, todaySerial]);
+  return r && "frame" in r ? { frame: r.frame, next: r.value as number | null } : { frame: { __frame: true, columns: [] }, next: null };
 }
 
 // A bundled copy of Nager.Date's AvailableCountries (v3), so the picker spends no fetch on a list that rarely changes.

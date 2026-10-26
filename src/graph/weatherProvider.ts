@@ -1,8 +1,7 @@
 // [[C25]] firstClassUnits
 // Open-Meteo forecast (keyless, CORS-open): past and future daily rows plus current conditions in one call.
-import { type FrameValue, type FrameColumn } from "./frame";
-import { parseDateToSerial } from "./nodes/dateSerial";
-import { columnUnitFromSpec } from "./unitColumn";
+import { type FrameValue } from "./frame";
+import { frameFnOnCore } from "./frameBackend";
 
 export type TempUnit = "C" | "F";
 
@@ -21,51 +20,17 @@ export function weatherUrl(lat: number, lon: number, unit: TempUnit, pastDays: n
   return `https://api.open-meteo.com/v1/forecast?${p.toString()}`;
 }
 
-// WMO weather-interpretation codes → short text (Open-Meteo's documented table).
-const WMO: Record<number, string> = {
-  0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-  45: "Fog", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle", 55: "Dense drizzle",
-  56: "Freezing drizzle", 57: "Freezing drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
-  66: "Freezing rain", 67: "Freezing rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow",
-  77: "Snow grains", 80: "Light showers", 81: "Showers", 82: "Violent showers",
-  85: "Snow showers", 86: "Heavy snow showers", 95: "Thunderstorm", 96: "Thunderstorm, hail", 99: "Thunderstorm, hail",
-};
-export function wmoText(code: number | null): string {
-  return code == null ? "" : (WMO[code] ?? `Code ${code}`);
-}
-
 export interface WeatherResult {
   daily: FrameValue;
   nowTemp: number | null;
   nowCondition: string;
 }
 
-const EMPTY: FrameValue = { __frame: true, columns: [] };
-
-/** Temperature columns carry the chosen °C or °F unit so it flows downstream; a malformed body gives an empty frame. */
+/** The reply read on the core (`providers.rs`): the daily frame, its temperatures in the chosen °C or °F, and the
+ *  conditions now; a malformed body gives an empty frame. */
 export function parseWeather(text: string, unit: TempUnit): WeatherResult {
-  let data: unknown;
-  try { data = JSON.parse(text); } catch { return { daily: EMPTY, nowTemp: null, nowCondition: "" }; }
-  const root = (data ?? {}) as Record<string, unknown>;
-  const d = (root.daily ?? {}) as Record<string, unknown>;
-  const time = Array.isArray(d.time) ? (d.time as unknown[]) : [];
-  const nums = (a: unknown): (number | null)[] =>
-    Array.isArray(a) ? (a as unknown[]).map((v) => (typeof v === "number" ? v : null)) : time.map(() => null);
-  const tempUnit = columnUnitFromSpec(unit === "F" ? "degF" : "degC") ?? undefined;
-  const codes = Array.isArray(d.weather_code) ? (d.weather_code as unknown[]) : time.map(() => null);
-  const columns: FrameColumn[] = [
-    { name: "Date", type: "date", values: time.map((t) => (typeof t === "string" ? parseDateToSerial(t) : null)) },
-    { name: "Rain mm", type: "number", values: nums(d.precipitation_sum) },
-    { name: "Rain %", type: "number", values: nums(d.precipitation_probability_max) },
-    { name: "High", type: "number", values: nums(d.temperature_2m_max), ...(tempUnit ? { unit: tempUnit } : {}) },
-    { name: "Low", type: "number", values: nums(d.temperature_2m_min), ...(tempUnit ? { unit: tempUnit } : {}) },
-    { name: "ET₀ mm", type: "number", values: nums(d.et0_fao_evapotranspiration) },
-    { name: "Condition", type: "string", values: codes.map((c) => (typeof c === "number" ? wmoText(c) : null)) },
-  ];
-  const cur = (root.current ?? {}) as Record<string, unknown>;
-  return {
-    daily: { __frame: true, columns },
-    nowTemp: typeof cur.temperature_2m === "number" ? cur.temperature_2m : null,
-    nowCondition: typeof cur.weather_code === "number" ? wmoText(cur.weather_code) : "",
-  };
+  const r = frameFnOnCore("weatherFrame", [], [text, unit]);
+  if (!r || !("frame" in r)) return { daily: { __frame: true, columns: [] }, nowTemp: null, nowCondition: "" };
+  const [nowTemp, nowCondition] = r.value as [number | null, string];
+  return { daily: r.frame, nowTemp, nowCondition };
 }

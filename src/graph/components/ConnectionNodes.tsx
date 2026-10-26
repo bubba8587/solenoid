@@ -38,7 +38,7 @@ import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { nodeDisplayName } from "../catalogUtils";
 import { pickGeocodeMatch } from "../geocodeProvider";
-import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysProvider";
+import { NAGER_COUNTRIES } from "../holidaysProvider";
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount, cubeRowCount } from "../frame";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
@@ -523,11 +523,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
 }
 
 // ─── HOLIDAYS ──────────────────────────────────────────────────────────────────────
-function todaySerial(): number {
-  const d = new Date();
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
-}
-
 export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the rows when a fetch lands
   const [year, setYear] = useState(data.year ? String(data.year) : "");
@@ -545,9 +540,9 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
     if (next !== data.region) { data.region = next; data.edited(); void processGraph(); }
   }
 
-  const applicable = filterHolidays(data.cached ?? [], data.region);
-  const count = applicable.length;
-  const next = daysToNextHoliday(applicable, todaySerial());
+  const applicable = data.applicable();
+  const count = frameRowCount(applicable.frame);
+  const next = applicable.next;
   const frame = data.outputs.frame;
   const dates = data.outputs.dates;
 
@@ -686,7 +681,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   const rate = data.cached?.rate ?? null;
   // A preview off the typed amount; the socket carries the true, possibly wired, value.
   const preview = rate != null ? (data.literals.amount ?? 1) * rate : null;
-  const seriesRows = data.cachedSeries?.length ?? 0;
+  const seriesRows = data.cachedSeries ? frameRowCount(data.cachedSeries) : 0;
   const frame = data.outputs.frame;
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const inputKeys = mode === "spot" ? ["amount", "from", "to"] : ["from", "to", "from_date", "to_date"];

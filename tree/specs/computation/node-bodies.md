@@ -35,6 +35,8 @@ call. It sends:
 
 The reply is the outputs, or the error the body throws (thrown again for the error guard), beside `display`: the
 fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns.
+`cardOutputsOnCore` makes the same call and keeps only the outputs, so a card's shape hook can run its body over sample
+inputs without touching what the card shows.
 
 ```mermaid
 flowchart TD
