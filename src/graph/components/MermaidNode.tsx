@@ -21,6 +21,18 @@ const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
   { label: "Mindmap", source: "mindmap\n  root((Idea))\n    Branch A\n      Leaf 1\n      Leaf 2\n    Branch B" },
   { label: "User journey", source: "journey\n  title My day\n  section Morning\n    Wake up: 3: Me\n    Coffee: 5: Me\n  section Work\n    Code: 4: Me" },
   { label: "Git graph", source: "gitGraph\n  commit\n  branch dev\n  checkout dev\n  commit\n  checkout main\n  merge dev" },
+  { label: "Venn", source: "venn-beta\n  title Pets\n  set A[\"Cats\"]\n  set B[\"Dogs\"]\n  set C[\"Birds\"]\n  union A,B[\"Furry\"]\n  union B,C\n  union A,C" },
+  { label: "Sankey", source: "sankey-beta\nSolar,Grid,60\nWind,Grid,40\nGrid,Homes,70\nGrid,Industry,30" },
+  { label: "Timeline", source: "timeline\n  title Launch\n  2024 : Idea\n  2025 : Prototype : Beta\n  2026 : Release" },
+  { label: "Quadrant", source: "quadrantChart\n  title Effort vs impact\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Plan\n  quadrant-2 Do now\n  quadrant-3 Skip\n  quadrant-4 Delegate\n  Task A: [0.2, 0.8]\n  Task B: [0.7, 0.6]\n  Task C: [0.4, 0.2]" },
+  { label: "XY chart", source: "xychart-beta\n  title Sales\n  x-axis [Jan, Feb, Mar, Apr]\n  y-axis Units 0 --> 100\n  bar [30, 55, 70, 90]\n  line [30, 55, 70, 90]" },
+  { label: "Kanban", source: "kanban\n  todo[To do]\n    t1[Write spec]\n  doing[Doing]\n    t2[Build it]\n  done[Done]\n    t3[Plan]" },
+  { label: "Block", source: "block-beta\n  columns 3\n  A[\"Input\"] B[\"Process\"] C[\"Output\"]\n  A --> B\n  B --> C" },
+  { label: "Packet", source: "packet-beta\n  0-15: \"Source port\"\n  16-31: \"Destination port\"\n  32-63: \"Sequence number\"" },
+  { label: "Radar", source: "radar-beta\n  title Skills\n  axis a[\"Speed\"], b[\"Power\"], c[\"Range\"], d[\"Cost\"]\n  curve x[\"Model X\"]{4, 3, 5, 2}\n  curve y[\"Model Y\"]{2, 5, 3, 4}\n  max 5" },
+  { label: "Treemap", source: "treemap-beta\n\"Budget\"\n    \"Rent\": 1200\n    \"Food\": 500\n    \"Fun\"\n        \"Games\": 300\n        \"Films\": 200" },
+  { label: "Requirement", source: "requirementDiagram\n  requirement fast {\n    id: 1\n    text: Loads in a second\n    risk: medium\n    verifymethod: test\n  }\n  element page {\n    type: web page\n  }\n  page - satisfies -> fast" },
+  { label: "Architecture", source: "architecture-beta\n  group app(cloud)[App]\n  service web(internet)[Web] in app\n  service api(server)[API] in app\n  service db(database)[Database] in app\n  web:R --> L:api\n  api:R --> L:db" },
 ];
 
 export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
