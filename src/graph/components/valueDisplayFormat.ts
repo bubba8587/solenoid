@@ -9,6 +9,7 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../dimension";
+import { cellUnitAnnotation } from "../unitColumn";
 import { dimEqual } from "../dimension";
 import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
@@ -107,7 +108,7 @@ export function annotationForValue(value: unknown, ann: FormatAnnotation | undef
   const cell = isUnitCell(value)
     ? value
     : Array.isArray(value) ? (value as unknown[]).find((c) => isUnitCell(c)) : undefined;
-  return cell?.display ? { ...ann, unit: cell.display, customUnit: "" } : ann;
+  return cell?.display ? { ...ann, ...cellUnitAnnotation(cell.display) } : ann;
 }
 
 
@@ -127,7 +128,7 @@ function formatCellWithDisplay(cell: UnitCell, fmtNum: (n: number) => string): s
     const u = fcUnitToUnit(cell.display);
     if (u && dimEqual(u.dim, cell.dim)) {
       const mag = (cell.value - (u.offset ?? 0)) / u.scale;
-      const ann = { format: "auto", unit: cell.display } as FormatAnnotation;
+      const ann = { format: "auto", ...cellUnitAnnotation(cell.display) } as FormatAnnotation;
       return formatNumberWithAnnotation(mag, ann);
     }
   }

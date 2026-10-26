@@ -16,7 +16,6 @@ Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.con
 the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Expect
-- [ ] **Convert units the FC doesn't list show no unit label** (yd, psi, stone, knot and others): the display id resolves the number, but `unitById` has no label for it, so the value box shows a bare number. Give every Convert unit an FC entry, or a label the registry knows.
 
 ## Formula library
 

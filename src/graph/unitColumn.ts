@@ -5,6 +5,7 @@ import { displayMagnitudeOf, exactFcUnitId } from "./unitBridge";
 import { fcUnitToUnit } from "./dimension";
 import { unitById, type FormatAnnotation } from "./formatAnnotationStore";
 import { formatDim } from "./dimension";
+import { CONVERT_SYMBOLS } from "./nodes/convertUnits";
 
 const CURRENCY_SYMBOL: Record<string, string> = { "$": "usd", "€": "eur", "£": "gbp", "¥": "jpy" };
 
@@ -60,11 +61,11 @@ export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[
 }
 
 /** The unit a cell's number is written with: an FC unit by its own id, one the FC lists under another id by that id
- *  (`h` is written `hr`), and any other the column's text as written. */
+ *  (`h` is written `hr`), a Convert unit by its symbol, and any other the column's text as written. */
 export function cellUnitAnnotation(id: string | undefined): Pick<FormatAnnotation, "unit" | "customUnit"> {
   if (!id || id === "none") return { unit: "none" };
   if (unitById(id).label) return { unit: id };
   const u = fcUnitToUnit(id);
   const fc = u && exactFcUnitId(u);
-  return fc ? { unit: fc } : { unit: "custom", customUnit: ` ${id}` };
+  return fc ? { unit: fc } : { unit: "custom", customUnit: ` ${CONVERT_SYMBOLS[id] ?? id}` };
 }

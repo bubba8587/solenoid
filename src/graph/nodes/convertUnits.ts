@@ -34,6 +34,14 @@ function mkUnit(label: string, excelCode: string, category: Exclude<ConvertCateg
   };
 }
 
+/** How a Convert unit the Format Controller doesn't list is written after a number: its symbol. */
+export const CONVERT_SYMBOLS: Readonly<Record<string, string>> = {
+  yd: "yd", stone: "st", tonne: "t", wk: "wk", yr: "yr", cm2: "cm²", in2: "in²", yd2: "yd²", mi2: "mi²",
+  tsp: "tsp", tbs: "tbsp", cup: "cup", floz: "fl oz", pt: "pt", qt: "qt", knot: "kn",
+  J: "J", kJ: "kJ", cal: "cal", kcal: "kcal", BTU: "BTU", Wh: "Wh", kWh: "kWh",
+  Pa: "Pa", kPa: "kPa", bar: "bar", atm: "atm", psi: "psi", mmHg: "mmHg",
+};
+
 export const CONVERT_CATEGORY_LABELS: Record<ConvertCategory, string> = {
   angle:       "Angle",
   length:      "Length",
