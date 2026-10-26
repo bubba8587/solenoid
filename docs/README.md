@@ -161,7 +161,7 @@ results get retried and settled rulings relapse.
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |
-| `persistence.ts`, `textForm.ts`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
+| `persistence.ts`, `textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `js_json.rs`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
 | `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |

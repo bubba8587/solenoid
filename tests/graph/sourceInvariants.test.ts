@@ -316,15 +316,16 @@ describe("[[B12]] losslessSaves — the text form carries every SavedGraph field
     // (too short a name to grep for honestly).
     const SKIP = new Set(["v"]);
 
-    const text = fs.readFileSync(path.join(SRC, "textForm.ts"), "utf8").split("\n");
-    const fnStart = (name: string) => text.findIndex((l) => l.startsWith(`export function ${name}`));
+    // The text form is written and read on the core (`text_form.rs`).
+    const text = fs.readFileSync(path.join(SRC, "../../crates/solenoid-graph/src/text_form.rs"), "utf8").split("\n");
+    const fnStart = (name: string) => text.findIndex((l) => l.startsWith(`pub fn ${name}(`));
     const nextFn = (from: number) => {
-      const i = text.findIndex((l, idx) => idx > from && /^(export )?function /.test(l));
+      const i = text.findIndex((l, idx) => idx > from && /^(pub )?(fn|enum|struct|const) /.test(l));
       return i === -1 ? text.length : i;
     };
-    const wStart = fnStart("writeTextForm"), rStart = fnStart("readTextForm");
-    expect(wStart, "writeTextForm not found").toBeGreaterThanOrEqual(0);
-    expect(rStart, "readTextForm not found").toBeGreaterThanOrEqual(0);
+    const wStart = fnStart("write"), rStart = fnStart("read");
+    expect(wStart, "text_form::write not found").toBeGreaterThanOrEqual(0);
+    expect(rStart, "text_form::read not found").toBeGreaterThanOrEqual(0);
     const writeBody = text.slice(wStart, nextFn(wStart)).join("\n");
     const readBody = text.slice(rStart, nextFn(rStart)).join("\n");
 
@@ -332,8 +333,8 @@ describe("[[B12]] losslessSaves — the text form carries every SavedGraph field
     for (const f of fields) {
       if (SKIP.has(f)) continue;
       const re = new RegExp(`\\b${f}\\b`);
-      if (!re.test(writeBody)) missing.push(`${f} (not written by writeTextForm)`);
-      if (!re.test(readBody)) missing.push(`${f} (not read by readTextForm)`);
+      if (!re.test(writeBody)) missing.push(`${f} (not written by text_form::write)`);
+      if (!re.test(readBody)) missing.push(`${f} (not read by text_form::read)`);
     }
     expect(
       missing,

@@ -6,6 +6,15 @@
  */
 export function setDirectCalls(on: boolean): void;
 /**
+ * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
+ * `"run"`.
+ */
+export function sessionEnter(changed: string | null | undefined, force: boolean): string;
+/**
+ * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
+ */
+export function sessionExit(finished: boolean): any;
+/**
  * On, every full clear checks that no direct card's call changed with its node unnamed (`unnamedEdits`).
  */
 export function auditNamedEdits(on: boolean): void;
@@ -18,6 +27,18 @@ export function unnamedEdits(): string[];
  * it and instantiate the module afresh.
  */
 export function setPanicHandler(handler: Function): void;
+/**
+ * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
+ */
+export function sessionSnapshot(): object;
+/**
+ * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
+ */
+export function sessionRestore(snapshot: object): void;
+/**
+ * `false` when `mode` is the mode already.
+ */
+export function sessionSetMode(mode: string): boolean;
 /**
  * Sets (`true`) or clears the dirty flag; `true` on a transition.
  */
@@ -40,15 +61,6 @@ export function sessionRebuild(begin: boolean): boolean;
 export function sessionRebuildScope(open: boolean): Array<any>;
 export function sessionMarkTopoDirty(): void;
 /**
- * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
- * `"run"`.
- */
-export function sessionEnter(changed: string | null | undefined, force: boolean): string;
-/**
- * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
- */
-export function sessionExit(finished: boolean): any;
-/**
  * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
  */
 export function uid(): string;
@@ -56,6 +68,19 @@ export function uid(): string;
  * The socket lattice as the tables the app reads (`lattice::tables_json`).
  */
 export function latticeTables(): string;
+/**
+ * A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text.
+ */
+export function textFormWrite(graph: string, names: string, order: string): string;
+/**
+ * The save a text holds, as JSON text, or `!` and why it can't be read (`text_form::read`).
+ */
+export function textFormRead(text: string, version: number): string;
+/**
+ * One node line read (`text_form::parse_line`), as `{ name, type, init, literals?, stringLiterals?, conns }`, or `!`
+ * and why it can't be.
+ */
+export function textFormLine(line: string): string;
 /**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
@@ -66,18 +91,6 @@ export function graphTrap(): void;
  * node.
  */
 export function computeNode(node: object, inputs: any, data?: Function | null): any;
-/**
- * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
- */
-export function sessionSnapshot(): object;
-/**
- * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
- */
-export function sessionRestore(snapshot: object): void;
-/**
- * `false` when `mode` is the mode already.
- */
-export function sessionSetMode(mode: string): boolean;
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
@@ -405,6 +418,9 @@ export interface InitOutput {
   readonly setBoundaryHost: (a: number, b: number) => void;
   readonly setDirectCalls: (a: number) => void;
   readonly setPanicHandler: (a: number) => void;
+  readonly textFormLine: (a: number, b: number, c: number) => void;
+  readonly textFormRead: (a: number, b: number, c: number, d: number) => void;
+  readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly uid: (a: number) => void;
   readonly unnamedEdits: (a: number) => void;
   readonly card_image_src: (a: number, b: number, c: number) => void;

@@ -16,7 +16,7 @@ A document has three representations: the live graph (the editor plus side store
 |---|---|
 | `src/graph/persistence.ts` | `SavedGraph` types, `serializeGraph`, `loadGraph`, `rebuildGraph`, the autosave debounce |
 | `src/graph/persistenceCore.ts` | Pure helpers: `CURRENT_SAVE_VERSION`, `validateSavedGraph`, `deriveMissingNodeSockets`, slot choice |
-| `src/graph/textForm.ts` | `writeTextForm`, `readTextForm`, `parseNodeLine` |
+| `src/graph/textForm.ts`, `crates/solenoid-graph/src/text_form.rs`, `js_json.rs` | `writeTextForm`, `readTextForm`, `parseNodeLine`: the core writes and reads the text (`text_form.rs`, with JSON as JavaScript reads and writes it, `js_json.rs`); the app names the nodes and passes the init field order. Frozen in `fixtures/core/text-form.json.gz` (`coreTextForm.test.ts`, `tests/text_form.rs`) |
 | `src/graph/nodeInit.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste, save and a card body on the core) |
 | `src/graph/graphValidate.ts` | The strict validator (`validateGraph`, `validateText`) |
 | `src/graph/documentStore.ts`, `documentStoreCore.ts` | The document library and its localStorage persistence |
@@ -213,10 +213,10 @@ Reading rules (`parseNodeLine`):
 - Empty lines in the header are skipped. The header ends at the first line that is exactly `---`; a document without one is refused.
 - Two lines with the same name are refused.
 
-Writing rules (`writeTextForm`), which make two writes of an unchanged graph byte-identical:
+Writing rules (`writeTextForm`, `text_form::write`), which make two writes of an unchanged graph byte-identical:
 
-- **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`).
-- **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (plain JavaScript string comparison, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
+- **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`), and it runs in the app (`assignNames`), which hands the names to the core.
+- **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (JavaScript string comparison, by UTF-16 code unit, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
 - **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `varUnits`, `bindings`, `keyOrder`, `pivotView`, `detailFields`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key. A map the node declares but holds empty is written as `lit:{}` or `str:{}` in its place, so the load keeps it empty; without it the constructor's defaults would come back, turning a cleared slot on IF or SWITCH into a typed 0 ([[B12]] losslessSaves). An absent map (a hand-written seed) still takes the defaults.
 - **Values** are `JSON.stringify` output: compact, no spaces outside strings, numbers in shortest round-trip form, newlines in strings as `\n`.
 - **References become names.** In `init`, `hostNodeId` (a Format Controller's host), every entry of `members` (a Group), and every entry of each `steps[].nodeIds` (a Presentation) is rewritten from id to name. A reference to an id not in the save is written unchanged.

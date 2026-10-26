@@ -237,6 +237,42 @@ export function setDirectCalls(on) {
 }
 
 /**
+ * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
+ * `"run"`.
+ * @param {string | null | undefined} changed
+ * @param {boolean} force
+ * @returns {string}
+ */
+export function sessionEnter(changed, force) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        var len0 = WASM_VECTOR_LEN;
+        wasm.sessionEnter(retptr, ptr0, len0, force);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
+ * @param {boolean} finished
+ * @returns {any}
+ */
+export function sessionExit(finished) {
+    const ret = wasm.sessionExit(finished);
+    return takeObject(ret);
+}
+
+/**
  * On, every full clear checks that no direct card's call changed with its node unnamed (`unnamedEdits`).
  * @param {boolean} on
  */
@@ -278,6 +314,35 @@ export function unnamedEdits() {
  */
 export function setPanicHandler(handler) {
     wasm.setPanicHandler(addHeapObject(handler));
+}
+
+/**
+ * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
+ * @returns {object}
+ */
+export function sessionSnapshot() {
+    const ret = wasm.sessionSnapshot();
+    return takeObject(ret);
+}
+
+/**
+ * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
+ * @param {object} snapshot
+ */
+export function sessionRestore(snapshot) {
+    wasm.sessionRestore(addHeapObject(snapshot));
+}
+
+/**
+ * `false` when `mode` is the mode already.
+ * @param {string} mode
+ * @returns {boolean}
+ */
+export function sessionSetMode(mode) {
+    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.sessionSetMode(ptr0, len0);
+    return ret !== 0;
 }
 
 /**
@@ -332,42 +397,6 @@ export function sessionMarkTopoDirty() {
 }
 
 /**
- * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
- * `"run"`.
- * @param {string | null | undefined} changed
- * @param {boolean} force
- * @returns {string}
- */
-export function sessionEnter(changed, force) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        var ptr0 = isLikeNone(changed) ? 0 : passStringToWasm0(changed, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        var len0 = WASM_VECTOR_LEN;
-        wasm.sessionEnter(retptr, ptr0, len0, force);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred2_0 = r0;
-        deferred2_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * The pass ended (`finished` when it didn't throw): the rerun it owes as `{ force, exact, changed }`, or `null`.
- * @param {boolean} finished
- * @returns {any}
- */
-export function sessionExit(finished) {
-    const ret = wasm.sessionExit(finished);
-    return takeObject(ret);
-}
-
-/**
  * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
  * @returns {string}
  */
@@ -410,6 +439,86 @@ export function latticeTables() {
 }
 
 /**
+ * A save's text form (`text_form::write`): the save, each node's name and the init field order, as JSON text.
+ * @param {string} graph
+ * @param {string} names
+ * @param {string} order
+ * @returns {string}
+ */
+export function textFormWrite(graph, names, order) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(graph, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(names, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(order, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len2 = WASM_VECTOR_LEN;
+        wasm.textFormWrite(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred4_0 = r0;
+        deferred4_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+ * The save a text holds, as JSON text, or `!` and why it can't be read (`text_form::read`).
+ * @param {string} text
+ * @param {number} version
+ * @returns {string}
+ */
+export function textFormRead(text, version) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.textFormRead(retptr, ptr0, len0, version);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * One node line read (`text_form::parse_line`), as `{ name, type, init, literals?, stringLiterals?, conns }`, or `!`
+ * and why it can't be.
+ * @param {string} line
+ * @returns {string}
+ */
+export function textFormLine(line) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(line, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.textFormLine(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap() {
@@ -439,35 +548,6 @@ export function computeNode(node, inputs, data) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
-}
-
-/**
- * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
- * @returns {object}
- */
-export function sessionSnapshot() {
-    const ret = wasm.sessionSnapshot();
-    return takeObject(ret);
-}
-
-/**
- * A fresh instance (after a trap) takes back the state the host last saw; the coalesced rerun is gone.
- * @param {object} snapshot
- */
-export function sessionRestore(snapshot) {
-    wasm.sessionRestore(addHeapObject(snapshot));
-}
-
-/**
- * `false` when `mode` is the mode already.
- * @param {string} mode
- * @returns {boolean}
- */
-export function sessionSetMode(mode) {
-    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.sessionSetMode(ptr0, len0);
-    return ret !== 0;
 }
 
 /**
@@ -1108,7 +1188,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_196(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_199(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -2081,7 +2161,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_196(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_199(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2245,8 +2325,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper768 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 143, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper858 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 153, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

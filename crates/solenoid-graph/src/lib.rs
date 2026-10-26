@@ -15,11 +15,13 @@ pub mod conduit;
 #[cfg(target_arch = "wasm32")]
 mod direct;
 pub mod fc;
+pub mod js_json;
 pub mod lattice;
 pub mod model;
 pub mod pass;
 pub mod session;
 pub mod settle;
+pub mod text_form;
 #[cfg(target_arch = "wasm32")]
 mod value;
 #[cfg(target_arch = "wasm32")]
