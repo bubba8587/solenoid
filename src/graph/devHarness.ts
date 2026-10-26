@@ -3,6 +3,7 @@ import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getView, processGraph } from "./process";
 import { attachFormatController } from "./canvasActions";
+import { reconcileFcs } from "./fcReconcile";
 import { frameFormatStore } from "./frameFormatStore";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 if (import.meta.env.DEV) {
@@ -30,8 +31,7 @@ if (import.meta.env.DEV) {
       n.edited();
       // An FC's popup re-registers its annotation on every pick; mirror that.
       const ed = getEditor();
-      const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };
-      if (ed && typeof fc.refreshAnnotation === "function") fc.refreshAnnotation(ed);
+      if (ed) reconcileFcs(ed, null);
       await processGraph();
       return true;
     },

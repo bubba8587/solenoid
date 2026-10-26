@@ -3,8 +3,9 @@ import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import { FormatControllerNode, ConvertNode, ConduitNode } from "./nodeClasses";
-import { SolenoidSocket, canConnect, declaredTypeOf } from "./sockets";
+import { SolenoidSocket, canConnect, declaredTypeOf, type SocketDataType } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
+import { fcFacts } from "./fcFacts";
 
 export async function retypeOutputCables(
   editor: GraphEditor<Schemes>,
@@ -59,19 +60,32 @@ export function reconcileFcTypes(
     cablesStale = true;
   }
   if (cablesStale) void view?.rerenderCables();
-  for (const n of editor.getNodes()) {
-    if (n instanceof ConvertNode) {
-      n.syncUnitArrows(editor);
-      void view?.rerenderNode(n.id);
-    }
-  }
+  reconcileFcs(editor, view);
+}
+
+/** The Format Controller reconcile (`fc.rs`): every FC takes its type and its dictated from-unit, every Convert its
+ *  arrows, and then every FC writes its annotation. */
+export function reconcileFcs(editor: GraphEditor<Schemes>, view: View | null): void {
+  const answer = JSON.parse(editor.core().reconcileFcs(JSON.stringify(fcFacts(editor as never)))) as {
+    fcs: [string, SocketDataType, string][];
+    converts: [string, boolean, boolean][];
+  };
   let anyRetyped = false;
+  for (const [id, type, dictated] of answer.fcs) {
+    const n = editor.getNode(id);
+    if (n instanceof FormatControllerNode) anyRetyped = n.settle(type, dictated) || anyRetyped;
+  }
+  for (const [id, up, down] of answer.converts) {
+    const n = editor.getNode(id);
+    if (!(n instanceof ConvertNode)) continue;
+    n.imposesUp = up;
+    n.imposesDown = down;
+    void view?.rerenderNode(id);
+  }
   for (const n of editor.getNodes()) {
     if (!(n instanceof FormatControllerNode)) continue;
-    const retyped = n.adaptTypeFromConnections(editor);
-    n.refreshAnnotation(editor);
+    n.refreshAnnotation(editor as never);
     void view?.rerenderNode(n.id);
-    anyRetyped ||= retyped;
   }
   // A retyped socket's cables stay detached until their paths recompute next frame.
   if (anyRetyped && view) requestAnimationFrame(() => { void view.rerenderCables(); });

@@ -279,7 +279,7 @@ Convert (`nodes/convert.ts`, its body `convert` in `crates/solenoid-core/src/nod
 - A dimensioned cell whose dimension matches the target is re-displayed in the target unit; a mismatched one is `#UNIT!`.
 - A plain number is read as the from-unit and converted; a result too large to represent is `#OVERFLOW!`.
 - Its `unit` getter answers the to-unit as an FC unit id (`none` when there is no FC twin), so an FC's `refreshAnnotation` treats Convert as a unit forwarder.
-- `syncUnitArrows` sets the imposing-arrow markers (`imposesUp`, `imposesDown`) from whether `in` and `out` are wired, not from whether an FC sits beside them.
+- The FC reconcile (`fc.rs`) sets the imposing-arrow markers (`imposesUp`, `imposesDown`) from whether `in` and `out` are wired, not from whether an FC sits beside them.
 
 **Convert and the FC share one id space**: a Convert unit the FC also lists carries the FC's id (`kmh`, `ms1`, `degC`, `L`, `oz`, `ac`), so a Convert's output reads in its target unit and an FC downstream mirrors it (`convert.test.ts`). **Every Convert unit id must be registered with the display bridge** (`unitBridge.ts`). Then a `UnitCell.display` that Convert set (yd, psi…) resolves at render time even with no FC-registry twin. Unregistered, the downstream value box shows the base-SI derived symbol and Convert loses control of the value's unit.
 

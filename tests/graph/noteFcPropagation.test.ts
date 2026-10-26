@@ -4,6 +4,7 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { FormatControllerNode } from "../../src/graph/nodeClasses";
+import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
@@ -23,7 +24,7 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
     );
 
     // FC adopts the date type; its number pick is inert there, so the date default applies.
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("date");
     expect(fc.effectiveFormat()).toBe("date_dmy");
     expect(fc.annotation().format).toBe("date_dmy");
@@ -35,8 +36,7 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
     expect(note.outputs.x).toBeDefined(); // same key, new socket — cable still references it
 
     // Re-adapting now sees the NEW upstream type; no date style applies to a number.
-    const changed = fc.adaptTypeFromConnections(editor as never);
-    expect(changed).toBe(true);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("number");
     expect(fc.effectiveFormat()).toBe("auto");
     expect(fc.annotation().format).toBe("auto");
@@ -57,12 +57,12 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
     await editor.addConnection(new GraphConnection(note as never, "d", pass as never, "in") as never);
     await editor.addConnection(new GraphConnection(pass as never, "out", fc as never, "in") as never);
 
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("date"); // resolved through the any passthrough
 
     note.body = "---\nd: 42\n---";
     note.syncFields();
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("number");
     expect(fc.effectiveFormat()).toBe("auto");
   });

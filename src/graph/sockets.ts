@@ -110,7 +110,7 @@ interface LatticeTables {
   connects: Record<SocketDataType, SocketDataType[]>;
   adopts: Record<SocketDataType, Record<SocketDataType, SocketDataType>>;
   projects: Record<SocketDataType, Record<SocketDataType, SocketDataType>>;
-  types: Record<SocketDataType, { rank: number | null; family: ElementFamily | null; combo: SocketDataType | null; atRank: (SocketDataType | null)[] }>;
+  types: Record<SocketDataType, { rank: number | null; family: ElementFamily | null; combo: SocketDataType | null; atRank: (SocketDataType | null)[]; wildcard: boolean }>;
 }
 
 let tables: (LatticeTables & { accepts: Map<SocketDataType, Set<SocketDataType>> }) | null = null;
@@ -251,6 +251,5 @@ export function isWildcardType(dt: SocketDataType): boolean {
 }
 
 export function isWildcardRung(dt: SocketDataType): boolean {
-  return isWildcardType(dt) || dt === "anycombo" || dt === "anylist"
-    || dt === "anytable" || dt === "anydata";
+  return facts(dt)?.wildcard === true;
 }

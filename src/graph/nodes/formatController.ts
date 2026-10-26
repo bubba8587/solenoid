@@ -3,28 +3,10 @@ import type { GraphEditor } from "../graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { isPurePassthroughNode } from "./passthrough";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { nodeOnCore } from "../nodeOnCore";
 import { staysOffCore } from "./display";
-import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
-
-type FcEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
-
-function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, seen = new Set<string>()): SocketDataType {
-  const key = `${nodeId}::${outKey}`;
-  if (seen.has(key)) return "trueany";
-  seen.add(key);
-  const sock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) return sock.dataType;
-  for (const c of editor.getConnections()) {
-    if (c.target === nodeId) {
-      const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput, seen);
-      if (!isWildcardRung(t)) return t;
-    }
-  }
-  return "trueany";
-}
+import { MutableSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
 export class FormatControllerNode extends GraphNode {
   static socketDocs: Record<string, string> = {
@@ -140,7 +122,7 @@ export class FormatControllerNode extends GraphNode {
     this.addOutput("out", new GraphOutput(this._outSock, "Out"));
   }
 
-  /** Call once after editor.addNode: registration needs the node in the editor. */
+  /** Call once after editor.addNode (registration needs the node in the editor), then `reconcileFcs`. */
   dockSelf(editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>): void {
     // [[B12]] losslessSaves: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
     if (this.hostNodeId && !editor.getNode(this.hostNodeId)) this.releaseDock();
@@ -150,8 +132,6 @@ export class FormatControllerNode extends GraphNode {
       socketKey:  this.socketKey,
       side:       this.side,
     });
-    this.adaptTypeFromConnections(editor);
-    this.refreshAnnotation(editor);
   }
 
   /** Never re-default `format` here: an off-family pick stays saved and is inert through effectiveFormat(). */
@@ -169,31 +149,11 @@ export class FormatControllerNode extends GraphNode {
     return this.format;
   }
 
-  adaptTypeFromConnections(
-    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
-  ): boolean {
-    let resolved: SocketDataType = "trueany";
-    if (this.hostNodeId) {
-      if (this.side === "output") {
-        resolved = concreteTypeOfOutput(editor, this.hostNodeId, this.socketKey);
-      } else {
-        const sock = editor.getNode(this.hostNodeId)?.inputs[this.socketKey]?.socket;
-        if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) resolved = sock.dataType;
-      }
-    } else {
-      for (const c of editor.getConnections()) {
-        if (c.target === this.id && c.targetInput === "in") {
-          const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput);
-          if (!isWildcardRung(t)) { resolved = t; break; }
-        } else if (c.source === this.id && c.sourceOutput === "out") {
-          const sock = editor.getNode(c.target)?.inputs[c.targetInput]?.socket;
-          if (sock instanceof SolenoidSocket && !isWildcardRung(sock.dataType)) { resolved = sock.dataType; break; }
-        }
-      }
-    }
-    if (resolved === this.socketDataType) return false;
-    this._applyType(resolved);
-    this.refreshAnnotation(editor);
+  /** Takes the reconcile's answer (`fc.rs`): its type, and the from-unit a Convert ahead dictates; `true` when retyped. */
+  settle(type: SocketDataType, dictatedFromUnit: string): boolean {
+    this.dictatedFromUnit = dictatedFromUnit;
+    if (type === this.socketDataType) return false;
+    this._applyType(type);
     return true;
   }
 
@@ -203,25 +163,6 @@ export class FormatControllerNode extends GraphNode {
     let inSrcId = "", inSrcSock = "";
     for (const c of editor.getConnections()) {
       if (c.target === this.id && c.targetInput === "in") { inSrcId = c.source; inSrcSock = c.sourceOutput; break; }
-    }
-
-    this.dictatedFromUnit = "";
-    {
-      let nid = this.id, depth = 0;
-      walk: while (nid && depth++ < 32) {
-        let next = "";
-        for (const c of editor.getConnections()) {
-          if (c.source !== nid) continue;
-          const consumer = editor.getNode(c.target) as unknown as Record<string, unknown> | undefined;
-          if (!consumer) continue;
-          if (typeof consumer.fromUnit === "string" && typeof consumer.toUnit === "string") {
-            this.dictatedFromUnit = consumer.fromUnit as string;
-            break walk;
-          }
-          if (isPurePassthroughNode(consumer)) { next = c.target; break; }
-        }
-        nid = next;
-      }
     }
 
     const targets: Array<{ nodeId: string; socketKey: string }> = [];

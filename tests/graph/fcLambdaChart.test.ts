@@ -14,6 +14,7 @@ import { ChartNode } from "../../src/graph/nodes/visual";
 import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { formatAnnotationStore } from "../../src/graph/formatAnnotationStore";
 import { insertFcInline, removeFcInline } from "../../src/graph/fcDocking";
+import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
@@ -39,7 +40,7 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     for (const n of [lam, fc, disp]) await editor.addNode(n as never);
     await connect(editor, lam as unknown as GraphNode, "result", fc, "in");
     await connect(editor, fc, "out", disp as unknown as GraphNode, "in");
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("lambda");
     fc.lambdaView = "katex";
     fc.refreshAnnotation(editor as never);
@@ -60,7 +61,7 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     for (const n of [lam, disp, fc]) await editor.addNode(n as never);
     await connect(editor, lam as unknown as GraphNode, "result", disp as unknown as GraphNode, "in");
     await connect(editor, disp as unknown as GraphNode, "out", fc, "in");
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("lambda");
     fc.lambdaView = "mono";
     fc.refreshAnnotation(editor as never);
@@ -85,6 +86,7 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     await editor.addNode(fc as never);
     fc.dockSelf(editor as never);
     await insertFcInline(editor as never, fc);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("lambda");
 
     // The dropdown change (FormatControllerNode.tsx onLambdaViewChange → syncNode).
@@ -139,7 +141,7 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     for (const n of [chart, fc, disp]) await editor.addNode(n as never);
     await connect(editor, chart as unknown as GraphNode, "chart", fc, "in");
     await connect(editor, fc, "out", disp as unknown as GraphNode, "in");
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("chart");
     fc.chartFontScale = 1.5;
     fc.refreshAnnotation(editor as never);

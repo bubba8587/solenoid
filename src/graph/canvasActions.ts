@@ -30,6 +30,7 @@ import { scheduleAutosave } from "./persistence";
 import { processGraph } from "./process";
 import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
+import { reconcileFcs } from "./fcReconcile";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 export async function insertConduitForCables(
@@ -376,6 +377,7 @@ export async function attachFormatController(
   });
   await editor.addNode(fc as SolenoidNode);
   fc.dockSelf(editor); // needs the id addNode assigned; undocked, it lands at canvas (0,0)
+  reconcileFcs(editor, null);
   const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
   if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);

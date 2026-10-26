@@ -218,6 +218,11 @@ export class GraphCore {
    */
   typedSource(id: string, key: string): string[];
   /**
+   * The Format Controller reconcile over this graph, from each node's facts (`fcFacts.ts`): `fc::reconcile`'s
+   * answer as JSON.
+   */
+  reconcileFcs(facts: string): string;
+  /**
    * Puts the nodes in `order`, which must name every node once; `false` when it doesn't.
    */
   reorderNodes(order: string[]): boolean;
@@ -366,6 +371,7 @@ export interface InitOutput {
   readonly graphcore_nodeIds: (a: number, b: number) => void;
   readonly graphcore_pass: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
   readonly graphcore_ports: (a: number, b: number, c: number, d: number) => number;
+  readonly graphcore_reconcileFcs: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_release: (a: number) => void;
   readonly graphcore_removeConnection: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;

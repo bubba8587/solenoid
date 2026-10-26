@@ -1108,7 +1108,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_195(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_196(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1353,6 +1353,30 @@ export class GraphCore {
             return v3;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * The Format Controller reconcile over this graph, from each node's facts (`fcFacts.ts`): `fc::reconcile`'s
+     * answer as JSON.
+     * @param {string} facts
+     * @returns {string}
+     */
+    reconcileFcs(facts) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(facts, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.graphcore_reconcileFcs(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
         }
     }
     /**
@@ -2057,7 +2081,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_195(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_196(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2221,7 +2245,7 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper752 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper768 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 143, __wbg_adapter_38);
         return addHeapObject(ret);
     };

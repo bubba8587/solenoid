@@ -9,6 +9,7 @@ import { getActiveEditor, getActiveView, editScopeFor } from "./activeGraph";
 import { nodeNameStore } from "./nodeNameStore";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "./savedNodeBody";
 import { PlaceholderNode, placeholderFor } from "./nodes/placeholder";
+import { reconcileFcs } from "./fcReconcile";
 
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
@@ -195,6 +196,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       const fc = clone as unknown as { hostNodeId?: string; dockSelf?: (e: typeof editor) => void };
       if (fc.hostNodeId && typeof fc.dockSelf === "function") fc.dockSelf(editor);
     }
+    reconcileFcs(editor as never, null);
   } finally {
     scope.end();
   }

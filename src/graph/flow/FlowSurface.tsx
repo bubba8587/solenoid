@@ -56,6 +56,7 @@ import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
 import { CompositeNode, GroupNode, FormatControllerNode } from "../nodeClasses";
+import { reconcileFcs } from "../fcReconcile";
 import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
@@ -739,6 +740,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               fc.socketKey = target.socketKey;
               fc.side = target.side;
               fc.dockSelf(s.editor);
+              reconcileFcs(s.editor, null);
               const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
               const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
               if (pos) await s.view.moveNode(fc.id, pos);
@@ -748,6 +750,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             })();
           } else if (target) {
             fc.dockSelf(s.editor);
+            reconcileFcs(s.editor, null);
             const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
             const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
             if (pos) void s.view.moveNode(fc.id, pos);

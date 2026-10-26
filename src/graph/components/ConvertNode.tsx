@@ -1,7 +1,8 @@
 // [[C25]] firstClassUnits (Convert primacy)
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../nodeClasses";
-import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../nodeClasses";
+import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS } from "../nodeClasses";
+import { reconcileFcs } from "../fcReconcile";
 import {
   applyFormatStyle, type FormatStyle,
 } from "../formatAnnotationStore";
@@ -80,9 +81,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   function refreshFcs() {
     const editor = getOwningEditor(node.id);
     if (!editor) return;
-    for (const n of editor.getNodes()) {
-      if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-    }
+    reconcileFcs(editor, null);
   }
 
   async function onFromChange(e: ChangeEvent<HTMLSelectElement>) {

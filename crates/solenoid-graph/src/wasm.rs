@@ -888,6 +888,26 @@ impl GraphCore {
         crate::annotate::resolve_all(&nodes, &graph.cables()).to_string()
     }
 
+    /// The Format Controller reconcile over this graph, from each node's facts (`fcFacts.ts`): `fc::reconcile`'s
+    /// answer as JSON.
+    #[wasm_bindgen(js_name = reconcileFcs)]
+    pub fn reconcile_fcs(&self, facts: &str) -> String {
+        let facts: serde_json::Value = serde_json::from_str(facts).unwrap_or_default();
+        let by_id: std::collections::HashMap<&str, &serde_json::Value> = facts
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|f| f["id"].as_str().map(|id| (id, f)))
+            .collect();
+        let graph = &self.shared.graph;
+        let mut nodes: Vec<crate::fc::Node> = graph
+            .node_ids()
+            .iter()
+            .filter_map(|id| by_id.get(id.as_str()).map(|f| crate::fc::node_from_json(f)))
+            .collect();
+        crate::fc::reconciled_json(&crate::fc::reconcile(&mut nodes, &graph.cables())).to_string()
+    }
+
     #[wasm_bindgen(js_name = conduitPath)]
     pub fn conduit_path(&self, cable_id: &str) -> Option<String> {
         let cables = self.shared.graph.cables();

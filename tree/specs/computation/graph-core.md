@@ -353,8 +353,11 @@ flowchart LR
   `coreSettle.test.ts`, `tests/settle.rs`).
 - **D6, the annotations and the reconcile**: the annotation walk is done (`annotate.rs`, `GraphCore.annotate`, from
   `annotationFacts.ts`; [[unit-flow]] § The resolver), frozen over every seed graph three ways
-  (`fixtures/core/annotations.json.gz`, `coreAnnotations.test.ts`, `tests/annotate.rs`). Open: the reconcile
-  (`fcReconcile.ts`, the FC's `adaptTypeFromConnections` and `refreshAnnotation`, Convert's arrows).
+  (`fixtures/core/annotations.json.gz`, `coreAnnotations.test.ts`, `tests/annotate.rs`). The reconcile is done
+  too (`fc.rs`, `GraphCore.reconcileFcs`, from `fcFacts.ts`): each FC's type and dictated from-unit and each Convert's
+  arrows, frozen over every seed graph three ways and 300 seeded graphs of FCs, Displays and Converts
+  (`fixtures/core/fc-reconcile.json.gz`, `coreFcReconcile.test.ts`, `tests/fc.rs`). What stays TypeScript is the
+  annotation store's writes.
 
 What stays TypeScript is React: the components and what they render. Everything else that computes moves.
 

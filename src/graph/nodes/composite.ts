@@ -5,7 +5,6 @@ import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
-import { settleWildcardTypes } from "../trueAnyAdopt";
 import { reconcileFcTypes } from "../fcReconcile";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
 import { forgetNodeDeep } from "../nodeStoreRegistry";
@@ -363,8 +362,6 @@ export class CompositeNode extends GraphNode {
       if (mapped) p.internalNodeId = mapped.id;
     }
     this._hydrating = false;
-    // Wildcard types first, or a docked FC adapts to the wildcard (the main load's order).
-    settleWildcardTypes(this.internalEditor);
     for (const n of this.internalEditor.getNodes()) if (n instanceof FormatControllerNode) n.dockSelf(this.internalEditor);
     this.settleInternalTypes();
   }

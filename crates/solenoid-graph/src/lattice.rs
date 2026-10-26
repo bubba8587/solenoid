@@ -175,6 +175,15 @@ pub fn can_connect(out: &str, inp: &str) -> bool {
     accepts(inp, out)
 }
 
+/// A wildcard with no element family (`any`, `trueany` and the four rank-bearing `any*`): a walk resolving a family
+/// sees through it.
+pub fn is_wildcard_rung(t: &str) -> bool {
+    matches!(
+        t,
+        "any" | "trueany" | "anycombo" | "anylist" | "anytable" | "anydata"
+    )
+}
+
 /// A type's rank: 0 a value, 1 a list, 2 a matrix; none for a type outside the families and wildcards.
 pub fn lattice_rank(t: &str) -> Option<u8> {
     match t {
@@ -243,7 +252,8 @@ pub fn project_type_to_base<'a>(base: &'a str, t: &'a str) -> &'a str {
 
 /// The tables the app reads the lattice through, as JSON: `types`, and per output type the input types it connects
 /// to (`connects[out]`), per base the type adopted from each wired type (`adopts[base][wired]`), per base the type
-/// shown for each resolved type (`projects[base][t]`), and per type its `rank`, `family`, `combo` and `atRank`.
+/// shown for each resolved type (`projects[base][t]`), and per type its `rank`, `family`, `combo`, `atRank` and
+/// whether it is a family-less `wildcard`.
 pub fn tables_json() -> String {
     use serde_json::{json, Map, Value};
     let mut connects = Map::new();
@@ -286,6 +296,7 @@ pub fn tables_json() -> String {
                 "family": element_family(a),
                 "combo": combo_of(a),
                 "atRank": [type_at_rank(a, 0), type_at_rank(a, 1), type_at_rank(a, 2)],
+                "wildcard": is_wildcard_rung(a),
             }),
         );
     }

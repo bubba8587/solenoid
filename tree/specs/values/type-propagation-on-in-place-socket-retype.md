@@ -10,7 +10,7 @@ Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static
 
 ## The trap
 
-A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. `adaptTypeFromConnections` calls `concreteTypeOfOutput`, which walks upstream through passthrough wildcard sockets (all six family-less rungs, through `isWildcardRung`, since a rank with no family answers nothing) and reads the live socket `dataType`. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
+A Format Controller has no fixed type. It adopts the concrete type flowing into it, and picks a date format for a date type. The core's FC reconcile (`fc.rs`, from the facts `fcFacts.ts` gathers) walks upstream through passthrough wildcard sockets (all six family-less rungs, `is_wildcard_rung`, since a rank with no family answers nothing) and reads each socket's type now. That re-adaptation runs from the canvas's `connectioncreated` / `connectionremoved` pipe.
 
 Several nodes change an output socket's type in place from a UI control: **Cast**'s target, the **LAMBDA** and **Expression** result type (`ResultTypeToggle`), **Get Column**'s read-as, and a **Note**'s frontmatter. An in-place retype fires no connection event, so without help the downstream FCs keep formatting by the old type. A date serial retyped to a number would still render as a date.
 
@@ -61,12 +61,11 @@ So any code that changes a socket's `dataType` in place must re-drive FC adaptat
 - **`reconcileFcTypes(editor, view)`** is the shared sweep. The canvas connection pipe calls it, and so does any manual retype. It doesn't recompute or bump the connection version; the caller owns `processGraph`. In order:
   1. `settleWildcardTypes` first, so the FCs resolve against settled types.
   2. Re-render every Conduit when lane types changed, and every node whose adoption changed, then rebuild the cables once rather than once per connection.
-  3. Refresh every Convert's unit arrows (`syncUnitArrows`) before the FCs, so the chain settles in one sweep.
-  4. For every FC: `adaptTypeFromConnections`, `refreshAnnotation`, re-render.
-  5. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
+  3. `reconcileFcs`: one core call answers every FC's type (in graph order, each FC's new type seen by the ones after it) and the from-unit a Convert ahead dictates to it, and every Convert's unit arrows; each takes its answer, then every FC writes its annotation (`refreshAnnotation`) and re-renders.
+  4. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
 - **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `ResultTypeToggle` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
 
-`concreteTypeOfOutput` walks through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
+The reconcile's upstream walk goes through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
 
 ## Passthrough is one declaration (`nodes/passthrough.ts`)
 
@@ -81,7 +80,7 @@ The agreement vote (`agree_types`, `lattice.rs`) reads each branch as no vote wh
 - the frame-shape resolver: `frameShapeResolver` `passthroughForOutput`, which column pickers and INDEX's frame projection depend on;
 - the FC's `refreshAnnotation` check for a Convert ahead: `isPurePassthroughNode`.
 
-The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstream on socket `dataType` through `isWildcardRung`. One declaration exists because separate markers for type and for units drifted: Expect, CableSwitch and IFERROR once passed type but not units.
+The FC's own type-adapt walk doesn't read it: the reconcile walks upstream on socket types through `is_wildcard_rung`. One declaration exists because separate markers for type and for units drifted: Expect, CableSwitch and IFERROR once passed type but not units.
 
 **Who declares it:**
 

@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
-import { retypeOutputCables, retypeInputCables } from "../../src/graph/fcReconcile";
+import { retypeOutputCables, retypeInputCables, reconcileFcs } from "../../src/graph/fcReconcile";
 import { stringSocket, anySocket, numberSocket, dateTableSocket, SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 
@@ -77,7 +77,7 @@ describe("FC family resolution ignores every family-less wildcard rung", () => {
     await editor.addConnection(
       new GraphConnection(fc as never, "out", cons as never, "in") as never,
     );
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     return fc.socketDataType;
   };
 

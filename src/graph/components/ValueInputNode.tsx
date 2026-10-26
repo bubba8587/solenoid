@@ -1,11 +1,11 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[C95]] commitOnEnter
 import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
-import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../nodeClasses";
+import { VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../nodeClasses";
 import { NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS, type FormatStyleId, type TextCase, type TextAlign, type LogicalStyle, type DecimalMode, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor, groupingApplies, negativeApplies, scaleApplies } from "../formatModel";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { reconcileFcs, retypeOutputCables } from "../fcReconcile";
 import { clamp } from "../nodes/mathUtils";
 import { stopDragStart } from "../coarse";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -48,7 +48,7 @@ async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<
 /** A display pick changes no value, so it re-resolves every FC (one inheriting from this card) and redraws the whole graph, as the FC's own picks do. */
 function applyDisplayPick(node: ValueInputNodeType): void {
   const editor = getOwningEditor(node.id);
-  if (editor) for (const n of editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
+  if (editor) reconcileFcs(editor, null);
   node.edited(); void processGraph();
 }
 

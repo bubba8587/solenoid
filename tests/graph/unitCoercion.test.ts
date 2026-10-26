@@ -13,6 +13,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { stripUnitCells, displayMagnitudeOf } from "../../src/graph/unitBridge";
+import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 type AnyNode = GraphNode;
 
@@ -179,7 +180,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [num, fc1, fc2]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc1, "in");
     await g.conn(fc1, "out", fc2, "in");
-    for (const n of g.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(g.editor as never);
+    reconcileFcs(g.editor as never, null);
     await g.fetch(fc2);
 
     // Number → Convert(m→km) → FC: the FC INHERITS the converted value's unit
@@ -191,7 +192,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [src, cv, fcAfterConvert]) await h.editor.addNode(n as never);
     await h.conn(src, "value", cv, "in");
     await h.conn(cv, "out", fcAfterConvert, "in");
-    for (const n of h.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(h.editor as never);
+    reconcileFcs(h.editor as never, null);
     await h.fetch(fcAfterConvert);
 
     // Number → FC → Convert(m→km): the FC FEEDS a Convert, so the Convert's
@@ -204,7 +205,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of [src2, fcBeforeConvert, cv2]) await k.editor.addNode(n as never);
     await k.conn(src2, "value", fcBeforeConvert, "in");
     await k.conn(fcBeforeConvert, "out", cv2, "in");
-    for (const n of k.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(k.editor as never);
+    reconcileFcs(k.editor as never, null);
     await k.fetch(cv2);
   });
 

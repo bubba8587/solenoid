@@ -1,6 +1,6 @@
 // [[C118]] formatTravelsWithValue (the popup lights controls off the model), [[C25]] firstClassUnits.
 import { useState, useEffect, useSyncExternalStore } from "react";
-import { FormatControllerNode } from "../nodeClasses";
+import { reconcileFcs } from "../fcReconcile";
 import type { FormatControllerNode as FormatControllerNodeType } from "../nodeClasses";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
@@ -104,9 +104,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     const editor = getOwningEditor(node.id);
     if (editor) {
       // Every FC: a downstream forwarding FC's unit is locked to this one.
-      for (const n of editor.getNodes()) {
-        if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
-      }
+      reconcileFcs(editor, null);
     }
     node.edited(); void processGraph();
   }

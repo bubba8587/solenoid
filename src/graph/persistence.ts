@@ -7,8 +7,8 @@ import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } 
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./nodeClasses";
-import { settleWildcardTypes } from "./trueAnyAdopt";
+import { FormatControllerNode, PlaceholderNode, CompositeNode, placeholderFor } from "./nodeClasses";
+import { reconcileFcTypes } from "./fcReconcile";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { forgetAllNodes } from "./nodeStoreRegistry";
@@ -276,17 +276,10 @@ async function rebuildGraph(
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
-  // Wildcard types must settle before dockSelf and refreshAnnotation, or an FC resolves against the wildcard.
-  settleWildcardTypes(editor);
   for (const node of created) {
     if (node instanceof FormatControllerNode) node.dockSelf(editor);
   }
-  for (const node of editor.getNodes()) {
-    if (node instanceof ConvertNode) node.syncUnitArrows(editor);
-  }
-  for (const node of editor.getNodes()) {
-    if (node instanceof FormatControllerNode) node.refreshAnnotation(editor);
-  }
+  reconcileFcTypes(editor, null);
 
   drawnCableStore.load(g.drawnCables ?? []);
 

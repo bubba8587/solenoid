@@ -1,6 +1,5 @@
 // [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics
-import type { GraphEditor } from "../graphEditor";
-import { GraphConnection, GraphNode } from "../graphModel";
+import { GraphNode } from "../graphModel";
 import { numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
 import { registerDisplayUnits } from "../unitBridge";
@@ -45,18 +44,6 @@ export class ConvertNode extends GraphNode {
 
   get unit(): string {
     return isFcUnit(this.toUnit) ? this.toUnit : "none";
-  }
-
-  syncUnitArrows(
-    editor: GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>,
-  ): void {
-    let up = false, down = false;
-    for (const c of editor.getConnections()) {
-      if (c.target === this.id && c.targetInput === "in")    up = true;
-      if (c.source === this.id && c.sourceOutput === "out")  down = true;
-    }
-    this.imposesUp = up;
-    this.imposesDown = down;
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { out: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null } {

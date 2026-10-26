@@ -156,8 +156,8 @@ results get retried and settled rulings relapse.
 | `tidyArrange.ts` (ELK), `nodeSize.ts` | [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver; `../tree/specs/canvas/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `inputRoles.ts`, `readRole` (`nodes/shared.ts`) | `../tree/specs/values/input-roles.md`; [[D86]] blankRoles |
-| `fcReconcile.ts`, in-place socket retype | [[B11]] maximalMerge; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
-| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `crates/solenoid-graph/src/boundary.rs` (the unit boundary) | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
+| `fcReconcile.ts`, `fcFacts.ts`, `crates/solenoid-graph/src/fc.rs`, in-place socket retype | [[B11]] maximalMerge; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
+| `unitFlow.ts`, `annotationFacts.ts`, `crates/solenoid-graph/src/annotate.rs`, `unitBridge.ts`, `unitValue.ts`, `crates/solenoid-graph/src/boundary.rs` (the unit boundary) | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |

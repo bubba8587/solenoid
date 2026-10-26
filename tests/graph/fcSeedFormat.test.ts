@@ -6,6 +6,7 @@ import * as Nodes from "../../src/graph/nodeClasses";
 import { FormatControllerNode } from "../../src/graph/nodeClasses";
 import { formatAnnotationStore } from "../../src/graph/formatAnnotationStore";
 import seed from "../../src/graph/seedGraphs/personal-finance.json";
+import { reconcileFcs } from "../../src/graph/fcReconcile";
 
 // Faithfully replay the personal-finance seed's load order — build every node,
 // then add each connection in file order and, after each, run the FC derive that
@@ -42,11 +43,7 @@ describe("personal-finance FC formats survive the full load order", () => {
       const realHost = byId.get(sn.init?.hostNodeId as string);
       if (realHost) fc.hostNodeId = realHost.id;
     }
-    const refreshAllFcs = () => {
-      for (const n of editor.getNodes()) {
-        if (n instanceof FormatControllerNode) { n.adaptTypeFromConnections(editor as never); n.refreshAnnotation(editor as never); }
-      }
-    };
+    const refreshAllFcs = () => reconcileFcs(editor as never, null);
     for (const sc of seed.connections as SavedConn[]) {
       const s = byId.get(sc.source), t = byId.get(sc.target);
       if (!s || !t) continue;

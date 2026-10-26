@@ -10,10 +10,11 @@ import { TodayNowNode } from "../../src/graph/nodes/date";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { frameSourceToText } from "../../src/graph/frame";
 import type { Schemes } from "../../src/graph/schemes";
+import { reconcileFcs, reconcileFcTypes } from "../../src/graph/fcReconcile";
 
 // ─── Docked-FC reload order (the "false Frame type on reload" bug) ────────────
 // The author's chain: a computed column with a unit → INDEX pulls one cell →
-// an FC DOCKED on INDEX's output. On load, dockSelf's adaptTypeFromConnections
+// an FC DOCKED on INDEX's output. On load, the FC reconcile
 // resolves the HOST socket — and before settleWildcardTypes has run, INDEX's
 // projected wildcard output still reads as its upstream's raw type (frame), so
 // the docked FC adopted "frame" and nothing re-adapted it after the settle.
@@ -64,6 +65,7 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
     // Load order with an unfed host: the type resolves to the wildcard.
     settleWildcardTypes(editor as never);
     fc.dockSelf(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("trueany");
     expect(fc.format).toBe("date_dow");
 
@@ -72,7 +74,7 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
     await editor.addNode(today as never);
     await editor.addConnection(new GraphConnection(today as never, "result", disp as never, "in") as never);
     settleWildcardTypes(editor as never);
-    fc.adaptTypeFromConnections(editor as never);
+    reconcileFcs(editor as never, null);
     expect(fc.socketDataType).toBe("date");
     expect(fc.format).toBe("date_dow");
   });
@@ -90,8 +92,8 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
     fc.side = "output";
     await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
     await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
-    settleWildcardTypes(editor as never);
     fc.dockSelf(editor as never);
+    reconcileFcTypes(editor as never, null);
     expect(fc.socketDataType).toBe("numlist");
     expect(fc.format).toBe("date_dow");          // the pick survives
     expect(fc.effectiveFormat()).toBe("auto");    // but does not apply to a number
@@ -100,17 +102,14 @@ describe("a docked FC keeps its saved date style through load-time type hops", (
 });
 
 describe("docked FC survives a reload of the computed-column → INDEX chain", () => {
-  it("MECHANISM: docking before the settle is exactly the bug — the FC adopts the raw upstream frame", async () => {
-    // The pre-fix load order. If this half ever starts passing with "numlist",
-    // adaptTypeFromConnections learned to project through unresolved wildcards
-    // and the ordering constraint in persistence.ts can be relaxed.
+  it("docking types nothing: the reconcile settles the wildcards first, so the FC never sees the raw upstream frame", async () => {
     const { editor, fc } = await buildChain();
     fc.dockSelf(editor as never);
-    settleWildcardTypes(editor as never);
-    expect(fc.socketDataType).toBe("frame"); // the false Frame type
+    reconcileFcTypes(editor as never, null);
+    expect(fc.socketDataType).toBe("numlist");
   });
 
-  it("load order settles wildcard types before dockSelf — the FC adopts the cell's family", async () => {
+  it("on reload the docked FC adopts the cell's family", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;
     // "Reload": nodes constructed from persisted state, cables restored, no
     // per-cable settle (the rebuild gate suppresses it).
@@ -131,10 +130,8 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
     await editor.addConnection(new GraphConnection(idx as never, "result", fc as never, "in") as never);
     await editor.addConnection(new GraphConnection(fi as never, "frame", idx as never, "list") as never);
 
-    // The FIXED load order: settle wildcard types, THEN register docks.
-    settleWildcardTypes(editor as never);
     fc.dockSelf(editor as never);
-    for (const n of editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(editor as never);
+    reconcileFcTypes(editor as never, null);
 
     // The docked FC adopted the CELL's family (numlist — number's combo rung),
     // never the raw upstream "frame".
