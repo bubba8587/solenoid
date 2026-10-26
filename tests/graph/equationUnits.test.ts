@@ -6,15 +6,14 @@
 import { describe, it, expect } from "vitest";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { fromUnit, isUnitCell, dimOf, isRatio, type UnitCell } from "../../src/graph/unitValue";
-import { fcUnitToUnit } from "../../src/graph/unitBridge";
-import { parseUnit } from "../../src/graph/dimension";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { formatDim } from "../../src/graph/dimension";
 
 const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 
 const cell = (v: number, id: string): UnitCell => {
-  const u = fcUnitToUnit(id) ?? parseUnit(id);
+  const u = fcUnitToUnit(id);
   if (!u) throw new Error(`unresolvable unit ${id}`);
   const c = fromUnit(v, u, id);
   if (!isUnitCell(c)) throw new Error("expected a UnitCell");
@@ -53,7 +52,7 @@ describe("Equation node — units derive through the solve", () => {
 
   it("a quadratic through isolation derives too: x² = A (area) → x in meters", () => {
     const eq = new EquationNode({ expr: "x^2 = A" });
-    const A = fromUnit(36, parseUnit("m^2")!) as UnitCell;
+    const A = fromUnit(36, fcUnitToUnit("m^2")!) as UnitCell;
     const out = eq.data({ A: [A] });
     // both real roots, each tagged length
     const roots = out.x as (UnitCell | number)[];

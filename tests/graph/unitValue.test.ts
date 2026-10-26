@@ -6,18 +6,19 @@ import {
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   type UnitCell,
 } from "../../src/graph/unitValue";
-import { parseUnit, formatDim, type Unit } from "../../src/graph/dimension";
+import { formatDim, type Unit } from "../../src/graph/dimension";
 import { arithmeticCell } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";
 import { AggregateNode } from "../../src/graph/nodes/list";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 
 const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
 const sum = (list: unknown[]) => new AggregateNode({ op: "sum" }).data({ list: [list] }).result;
 const compare = (op: ComparisonOp, a: unknown, b: unknown) => new ComparisonNode({ op }).data({ a: [a], b: [b] }).result;
 
 const U = (s: string): Unit => {
-  const p = parseUnit(s);
+  const p = fcUnitToUnit(s);
   if (!p) throw new Error(`unparseable unit: ${s}`);
   return p;
 };

@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../../src/graph/errorValue";
 import { fromUnit, isUnitCell, type UnitCell } from "../../src/graph/unitValue";
-import { fcUnitToUnit, displayMagnitudeOf } from "../../src/graph/unitBridge";
+import { displayMagnitudeOf } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { cubeFromColumns, type CubeCell, type CubeValue } from "../../src/graph/frame";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 

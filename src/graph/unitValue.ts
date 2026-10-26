@@ -2,7 +2,7 @@
 
 import {
   type Dim, type Unit, DIMENSIONLESS,
-  dimEqual, isDimensionless, formatDim, parseUnit,
+  dimEqual, isDimensionless, formatDim, fcUnitToUnit,
 } from "./dimension";
 import { solError, type SolError } from "./errorValue";
 
@@ -14,28 +14,10 @@ export interface UnitCell {
   readonly ratio?: true;
 }
 
-let _displayScale: (id: string) => number | null = (id) => parseUnit(id)?.scale ?? null;
-
-export function setDisplayScaleResolver(fn: (id: string) => number | null): void {
-  _displayScale = fn;
-}
-
-let _displayOffset: (id: string) => number | null = (id) => parseUnit(id)?.offset ?? null;
-
-export function setDisplayOffsetResolver(fn: (id: string) => number | null): void {
-  _displayOffset = fn;
-}
-
-let _displayDim: (id: string) => Dim | null = (id) => parseUnit(id)?.dim ?? null;
-
-export function setDisplayDimResolver(fn: (id: string) => Dim | null): void {
-  _displayDim = fn;
-}
-
-/** A display unit's scale, offset and dimension as the resolvers read them, for a cell crossing into the core. */
-export const displayScale = (id: string): number | null => _displayScale(id);
-export const displayOffset = (id: string): number | null => _displayOffset(id);
-export const displayDim = (id: string): Dim | null => _displayDim(id);
+/** A display unit's scale, offset and dimension, for a cell crossing into the core. */
+export const displayScale = (id: string): number | null => fcUnitToUnit(id)?.scale ?? null;
+export const displayOffset = (id: string): number | null => fcUnitToUnit(id)?.offset ?? null;
+export const displayDim = (id: string): Dim | null => fcUnitToUnit(id)?.dim ?? null;
 
 export function isRatio(v: unknown): v is UnitCell {
   return isUnitCell(v) && v.ratio === true;
@@ -58,10 +40,6 @@ export function magnitudeOf(v: unknown): number {
 export function tagDim(value: number, dim: Dim, display?: string): UnitCell | number {
   if (isDimensionless(dim)) return value;
   return display ? { __unitCell: true, value, dim, display } : { __unitCell: true, value, dim };
-}
-
-export function withDisplay(v: unknown, display: string): unknown {
-  return isUnitCell(v) ? { __unitCell: true, value: v.value, dim: v.dim, display } : v;
 }
 
 export function fromUnit(value: number, unit: Unit, display?: string): UnitCell | number {

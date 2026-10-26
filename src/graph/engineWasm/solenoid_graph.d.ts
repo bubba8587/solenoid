@@ -6,6 +6,11 @@
  */
 export function setDirectCalls(on: boolean): void;
 /**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ */
+export function sessionRebuildScope(open: boolean): Array<any>;
+export function sessionMarkTopoDirty(): void;
+/**
  * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
  * `"run"`.
  */
@@ -27,6 +32,12 @@ export function unnamedEdits(): string[];
  * it and instantiate the module afresh.
  */
 export function setPanicHandler(handler: Function): void;
+/**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ */
+export function computeNode(node: object, inputs: any, data?: Function | null): any;
 /**
  * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
  */
@@ -56,11 +67,6 @@ export function sessionNextGeneration(): number;
  */
 export function sessionRebuild(begin: boolean): boolean;
 /**
- * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
- */
-export function sessionRebuildScope(open: boolean): Array<any>;
-export function sessionMarkTopoDirty(): void;
-/**
  * A node's or cable's id: sixteen lowercase hex digits from eight secure random bytes, Ruggine's `getUID`.
  */
 export function uid(): string;
@@ -82,15 +88,17 @@ export function textFormRead(text: string, version: number): string;
  */
 export function textFormLine(line: string): string;
 /**
+ * A unit id's unit (`unit_catalog::fc_unit_to_unit`) as `{ dim, scale, offset? }`, or `null` for an id that names none.
+ */
+export function fcUnit(id: string): string;
+/**
+ * A dimension's label (`unit_lists::format_dim`): `{ length: 1, time: -1 }` reads `m/s`; dimensionless is "".
+ */
+export function formatDim(dim: string): string;
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap(): void;
-/**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
- */
-export function computeNode(node: object, inputs: any, data?: Function | null): any;
 /**
  * The classes the engine calls in Rust (`nodes::DIRECT`), for `directBodies.test.ts`.
  */
@@ -357,7 +365,9 @@ export interface InitOutput {
   readonly auditNamedEdits: (a: number) => void;
   readonly computeNode: (a: number, b: number, c: number, d: number) => void;
   readonly directBodies: (a: number) => void;
+  readonly fcUnit: (a: number, b: number, c: number) => void;
   readonly findCellError: (a: number) => number;
+  readonly formatDim: (a: number, b: number, c: number) => void;
   readonly graphTrap: () => void;
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;

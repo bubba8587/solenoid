@@ -5,7 +5,7 @@ import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { cubeFromColumns, isCubeValue, isFrameValue, type CubeCell, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import { fromUnit } from "../../src/graph/unitValue";
-import { fcUnitToUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
 
 const qty = (spec: string, n: number) => fromUnit(n, fcUnitToUnit(spec)!, spec);

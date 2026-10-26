@@ -438,10 +438,10 @@ fn expect(c: &mut Call) -> Answer {
 // ─── Format Controller ──────────────────────────────────────────────────────────
 
 /// A unit's dimension and display unit.
-pub(crate) type UnitParts = (Dim, Option<String>);
+pub type UnitParts = (Dim, Option<String>);
 
 /// A `ColumnUnit` (a table's unit) as the wire carries it: its dimension and display unit.
-pub(crate) fn column_unit_parts(u: &Json) -> UnitParts {
+pub fn column_unit_parts(u: &Json) -> UnitParts {
     let dim = u
         .get("dim")
         .and_then(Json::as_object)
@@ -491,8 +491,17 @@ pub(crate) fn unit_err(detail: String) -> V {
     V::err(crate::unit_value::unit_error(&detail))
 }
 
-/// A number takes the unit, a quantity of its dimension shows in it, a table takes it as its own.
-fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, custom_unit: &str) -> V {
+/// What tagging a grid leaves for its unit: none (not a grid), the unit it now carries, or the one it held, passed on
+/// (also where there is no unit to apply).
+pub enum TableUnit {
+    None,
+    Put(Dim, Option<String>),
+    PassOn,
+}
+
+/// A number takes the unit, a quantity of its dimension shows in it, a table takes it as its own: `held` is the unit a
+/// grid already carries.
+pub fn tag_fc_unit(value: V, id: &str, custom_unit: &str, held: Option<UnitParts>) -> (V, TableUnit) {
     use crate::unit_lists::format_dim;
     let custom = id == "custom" && !js_trim(custom_unit).is_empty();
     let unit = if custom {
@@ -501,7 +510,7 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
     } else {
         crate::unit_catalog::fc_unit_to_unit(id)
     };
-    let Some(u) = unit else { return value };
+    let Some(u) = unit else { return (value, TableUnit::PassOn) };
     let display = (!custom).then_some(id);
     let one = |v: &V| -> V {
         match v {
@@ -524,30 +533,29 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
             other => other.clone(),
         }
     };
-    let V::List(items) = &value else { return one(&value) };
+    let V::List(items) = &value else { return (one(&value), TableUnit::None) };
     if !items.iter().any(|r| matches!(r, V::List(_))) {
-        return list(items.iter().map(one).collect());
+        return (list(items.iter().map(one).collect()), TableUnit::None);
     }
     let first_cell = items
         .iter()
         .find_map(|r| if let V::List(cells) = r { Some(cells) } else { None })
         .and_then(|cells| cells.iter().find(|x| !missing(x) && !matches!(x, V::Str(s) if s.is_empty())));
     if !matches!(first_cell, Some(V::Num(_))) {
-        pass_on(c, key, out_key, Cv::V(value.clone()));
-        return value;
+        return (value, TableUnit::PassOn);
     }
-    let held = c.matrix_unit(key).map(column_unit_parts);
-    let (dim, shown) = match held {
+    match held {
         Some((held_dim, held_display)) => {
             if !dim_equal(&held_dim, &u.dim) {
                 let mut want = format_dim(&u.dim);
                 if want.is_empty() {
                     want = "dimensionless".into();
                 }
-                return unit_err(format!(
+                let e = unit_err(format!(
                     "This grid is {}, but the format unit is {want}. Convert it first.",
                     format_dim(&held_dim)
                 ));
+                return (e, TableUnit::None);
             }
             match display {
                 Some(id) if held_display.as_deref().unwrap_or("") != id => {
@@ -568,19 +576,27 @@ fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, cus
                             })
                             .collect(),
                     );
-                    put_table_unit(c, out_key, &u.dim, Some(id));
-                    return out;
+                    (out, TableUnit::Put(u.dim.clone(), Some(id.to_string())))
                 }
-                _ => {
-                    pass_on(c, key, out_key, Cv::V(value.clone()));
-                    return value;
-                }
+                _ => (value, TableUnit::PassOn),
             }
         }
-        None => (u.dim.clone(), display),
-    };
-    put_table_unit(c, out_key, &dim, shown);
-    value
+        None => (value, TableUnit::Put(u.dim.clone(), display.map(String::from))),
+    }
+}
+
+/// The FC card's tagging: `tag_fc_unit` over the table unit its input holds, kept on its output.
+fn apply_fc_unit(c: &mut Call, key: &str, out_key: &str, value: V, id: &str, custom_unit: &str) -> V {
+    let held = c.matrix_unit(key).map(column_unit_parts);
+    let (out, table) = tag_fc_unit(value, id, custom_unit, held);
+    match table {
+        TableUnit::None => {}
+        TableUnit::Put(dim, display) => put_table_unit(c, out_key, &dim, display.as_deref()),
+        TableUnit::PassOn => {
+            pass_on(c, key, out_key, Cv::V(out.clone()));
+        }
+    }
+    out
 }
 
 /// A table's unit, kept where it has a dimension.

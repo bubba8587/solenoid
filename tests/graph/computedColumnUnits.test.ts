@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { fromUnit } from "../../src/graph/unitValue";
-import { fcUnitToUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";

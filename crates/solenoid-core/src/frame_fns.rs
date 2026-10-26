@@ -93,6 +93,32 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
                 .collect(),
         )))),
         ("fxSeries", _) => Ok(FrameOut::Frame(crate::providers::fx_series(&str_arg(args, 0)?, &str_arg(args, 1)?))),
+        // A Format Controller's tagging (`tag_fc_unit`). args: the value, the unit id, the custom unit, and the unit a
+        // grid holds as `{dim, display}` JSON or null. Answers the value beside its grid's unit: that JSON, "pass" for
+        // the held one, or null.
+        ("tagFcUnit", _) => {
+            let (id, custom) = (str_arg(args, 1)?, opt_str_arg(args, 2)?.unwrap_or_default());
+            let held = match args.get(3) {
+                Some(V::Str(j)) => {
+                    serde_json::from_str::<serde_json::Value>(j).ok().map(|u| crate::nodes::column_unit_parts(&u))
+                }
+                _ => None,
+            };
+            let value = args.first().cloned().unwrap_or(V::Null);
+            let (out, table) = crate::nodes::tag_fc_unit(value, &id, &custom, held);
+            let unit = match table {
+                crate::nodes::TableUnit::None => V::Null,
+                crate::nodes::TableUnit::PassOn => V::str("pass"),
+                crate::nodes::TableUnit::Put(dim, display) => {
+                    let mut u = serde_json::json!({ "dim": dim });
+                    if let Some(d) = display {
+                        u["display"] = d.into();
+                    }
+                    V::str(&u.to_string())
+                }
+            };
+            Ok(FrameOut::Value(V::List(Rc::new(vec![out, unit]))))
+        }
         ("buildFrame", _) => build_frame(args, false),
         ("buildFrameTyped", _) => build_frame(args, true),
         ("frameFromLists", _) => frame_from_lists(args),

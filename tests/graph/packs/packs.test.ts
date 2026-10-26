@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_PACKS, NODE_PACK_TAGS, PACK_GROUP_ORDER } from "../../../src/graph/packs";
 import { auditPackNodes } from "../../../src/graph/packs/formulaTestKit";
-import { fcUnitToUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../../src/graph/dimension";
 
 // Structural health of every built-in pack: entries construct, type ids are
 // unique pack-wide AND across packs (multi-pack claims must share the SAME

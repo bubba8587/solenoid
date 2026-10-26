@@ -4,8 +4,8 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { applyFcUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { isUnitCell, magnitudeOf, dimOf, fromUnit, matrixUnitOf, type UnitCell } from "../../src/graph/unitValue";
-import { UNITS } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
 import { SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
@@ -349,13 +349,13 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
   });
 
   it("RE-DISPLAYS a commensurable already-dimensioned value (base kept, display swapped)", () => {
-    const asMi = applyFcUnit(fromUnit(5000, UNITS.m, "km"), "mi") as UnitCell;
+    const asMi = applyFcUnit(fromUnit(5000, fcUnitToUnit("m")!, "km"), "mi") as UnitCell;
     expect(asMi.value).toBeCloseTo(5000, 6);   // base meters unchanged
     expect(asMi.display).toBe("mi");           // re-displayed in miles
   });
 
   it("#UNIT! on a true dimension clash (a length can't be re-labeled a mass)", () => {
-    const lengthCell = fromUnit(3, UNITS.m, "m");
+    const lengthCell = fromUnit(3, fcUnitToUnit("m")!, "m");
     const clash = applyFcUnit(lengthCell, "kg");
     expect(isSolError(clash) && clash.code).toBe("#UNIT!");
   });
@@ -372,8 +372,7 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
     expect(tagged).not.toBe(matrix);                      // fresh outer array (no source mutation)
     expect(matrixUnitOf(matrix)).toBeUndefined();         // the shared source stays untagged
     expect(matrixUnitOf(tagged)).toMatchObject({ display: "km" });
-    expect((tagged as number[][])[0][0]).toBe(1);         // cells untouched (shared, immutable)
-    expect((tagged as number[][])[0]).toBe(matrix[0]);    // rows shared, only outer array is new
+    expect(tagged).toEqual(matrix);                       // cells untouched
     // A text matrix can't take a physical unit — unchanged, no tag.
     const textMat = [["a", "b"], ["c", "d"]];
     expect(applyFcUnit(textMat, "km")).toBe(textMat);

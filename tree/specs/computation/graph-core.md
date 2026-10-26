@@ -365,14 +365,16 @@ What stays TypeScript is React: the components and what they render. Everything 
 
 ## Phase E: everything else that computes
 
-The rest of `src/graph/`'s non-component TypeScript, by group (lines as of 2026-10-26), each moved by the same routine:
+The rest of `src/graph/`'s non-component TypeScript, by group (lines as of 2026-10-26). A piece moves, by the same
+routine, only where the move buys a correctness fix, one copy instead of two, or speed ([[E18]] portWhenWorthIt); the
+rest stays.
 
 | Group | Modules | Lines |
 |---|---|---|
-| Graph model | `graphValidate`, `textForm`, `copyPaste`, `compositeLogic`, `persistence` and `persistenceCore`, `nodeInit`, `historyDigest` | about 2,800 |
+| Graph model | moved: the text form (`text_form.rs`, frozen in `fixtures/core/text-form.json.gz`). Stays: `graphValidate` (it reads the node classes; the one rule it shares, `canConnect`, already reads the core's tables), `persistenceCore`, `copyPaste`, `persistence`, `compositeLogic`, `nodeInit`, `historyDigest` (they drive the editor, the view and the stores, or format a label) | about 2,800 |
 | Layout (the LayoutFx) | `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK | about 3,000 |
 | Cable geometry | `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints` | about 1,400 |
-| Values and annotations | `fcReconcile` (D6), `dimension`, `unitValue`, `unitBridge`, `formatModel`, `numberSpec`, `frame` | about 2,200 |
+| Values and annotations | moved: the unit catalog, the dimension labels and the FC's tagging rule (`fc_unit_to_unit`, `format_dim`, `tag_fc_unit`; `dimension.ts` and `unitBridge.ts` read them, frozen in `fixtures/core/unit-catalog.json.gz`, `dim-labels.json.gz`, `fc-tag.json.gz`). Stays: the value shape and its cheap checks (`dimEqual`, `displayMagnitudeOf`, `stripUnitCells`), which run while drawing; `formatModel`, `numberSpec`, `frame` to weigh | about 1,800 |
 | Catalog and search | `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils` | about 900 |
 | Colors and drawing math | `palette`, `colormaps`, the geometry in `htmlCanvasRenderer` | about 2,000 |
 | Vault and files | `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers | about 2,800 |

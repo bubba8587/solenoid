@@ -8,7 +8,8 @@ import { NODE_COMPONENTS } from "../../../src/graph/nodeRegistry";
 import { throughBoundary } from "../boundaryKit";
 import { MutableSocket } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
-import { fcUnitToUnit, applyFcUnit } from "../../../src/graph/unitBridge";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../../src/graph/dimension";
 import { FormatControllerNode } from "../../../src/graph/nodes/formatController";
 
 // ─── The matrix-unit POLICY guard (unitGranularity) ──────────────────────────────────────

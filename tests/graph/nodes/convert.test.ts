@@ -5,7 +5,7 @@ import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
 import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../../../src/graph/unitValue";
 import { UNIT_ANNOTATIONS } from "../../../src/graph/formatAnnotationStore";
-import { fcUnitToUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../../src/graph/dimension";
 import { dimEqual, type Unit } from "../../../src/graph/dimension";
 
 /** `x` in `fromKey` read in `toKey` through the card, or null where it refuses. */

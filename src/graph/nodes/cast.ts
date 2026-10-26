@@ -5,7 +5,7 @@ import { trueAnyIn, strIn, numListOut, strComboOut, dateComboOut, complexOut, lo
 import { type Cx } from "./complex";
 
 import { type SolError } from "../errorValue";
-import { fcUnitToUnit } from "../unitBridge";
+import { fcUnitToUnit } from "../dimension";
 import { fcUnitAnnotations } from "../formatAnnotationStore";
 import type { Dim } from "../dimension";
 import { getOwningEditor } from "../activeGraph";

@@ -3,9 +3,9 @@ import { describe, it, expect } from "vitest";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { arithmeticCell } from "./coreVerbs";
 import { fromUnit, isUnitCell, isRatio, magnitudeOf, dimOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
-import { fcUnitToUnit, applyFcUnit } from "../../src/graph/unitBridge";
+import { applyFcUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
-import { UNITS } from "../../src/graph/dimension";
 import { formatDim } from "../../src/graph/dimension";
 
 const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
@@ -305,7 +305,7 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
 
 describe("unit bridge", () => {
   it("resolves compound + prefixed FC ids", () => {
-    expect(fcUnitToUnit("mph")).toEqual(UNITS.mi && { dim: { length: 1, time: -1 }, scale: 1609.344 / 3600 });
+    expect(fcUnitToUnit("mph")).toEqual({ dim: { length: 1, time: -1 }, scale: 1609.344 / 3600 });
     expect(fcUnitToUnit("km")?.scale).toBe(1000);
     expect(fcUnitToUnit("none")).toBeNull();
   });

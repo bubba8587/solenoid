@@ -2,15 +2,12 @@
 import { GraphNode } from "../graphModel";
 import { numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
-import { registerDisplayUnits } from "../unitBridge";
 import { type SolError } from "../errorValue";
-import { CONVERT_UNIT_DEFS } from "./convertUnits";
 import { nodeOnCore } from "../nodeOnCore";
 export { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { type UnitCell } from "../unitValue";
 
 
-registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
 
 export class ConvertNode extends GraphNode {

@@ -11,8 +11,8 @@ import { ConvertNode } from "../../src/graph/nodes/convert";
 import { formatTableCell } from "../../src/graph/components/TableDisplay";
 import { solError } from "../../src/graph/errorValue";
 import { fromUnit } from "../../src/graph/unitValue";
-import { UNITS } from "../../src/graph/dimension";
 import { formatScalar } from "../../src/graph/components/format";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 
 // resolveDisplayAnnotation is the ONE question every value surface asks (nodeKit's
 // ValueDisplay + output rows, DisplayNode, TableDisplay, the pins, the cable
@@ -141,14 +141,14 @@ describe("formatListCell — the same annotation reaches every list cell", () =>
     expect(formatListCell(true, formatScalar)).toBe("TRUE");
     expect(formatListCell("ab", formatScalar, { ...places1, textCase: "upper" })).toBe("AB");
     // A dimensioned cell renders in its display unit at the annotation's precision.
-    expect(formatListCell(fromUnit(5000, UNITS.m, "km"), formatScalar, { ...places1, unit: "km" })).toBe("5.0 km");
+    expect(formatListCell(fromUnit(5000, fcUnitToUnit("m")!, "km"), formatScalar, { ...places1, unit: "km" })).toBe("5.0 km");
   });
 
   it("a CARRIED format (unit stripped) leaves the cell's own unit standing", () => {
     // A format crossing a transform arrives with unit "none" ([[D41]] formatFlowsDownstream);
     // the unit rides the VALUE, so the $ must survive — only the style is the ann's.
     const carried: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "none", customUnit: "" };
-    const dollars = fromUnit(1000, UNITS["¤"], "usd");
+    const dollars = fromUnit(1000, fcUnitToUnit("usd")!, "usd");
     expect(annotationForValue(dollars, carried)?.unit).toBe("usd");
     expect(formatListCell(dollars, formatScalar, carried)).toBe("$1,000.00");
     // A list is read from its first dimensioned cell, and a unitless value is untouched.

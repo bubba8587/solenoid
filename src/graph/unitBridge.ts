@@ -1,95 +1,19 @@
 // [[C25]], [[D43]]
-import { type Unit, parseUnit, dimEqual, formatDim, customDim } from "./dimension";
+import { type Unit, dimEqual, fcUnitToUnit } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, setDisplayScaleResolver, setDisplayOffsetResolver, setDisplayDimResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
-import { isSolError } from "./errorValue";
+import { isUnitCell, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
+import { frameFnOnCore } from "./frameBackend";
 
-const DIRECT: Record<string, Unit> = {
-  usd: { dim: { currency: 1 }, scale: 1 },
-  eur: { dim: { currency: 1 }, scale: 1 },
-  gbp: { dim: { currency: 1 }, scale: 1 },
-  jpy: { dim: { currency: 1 }, scale: 1 },
-  ha: { dim: { length: 2 }, scale: 10000 },
-  ac: { dim: { length: 2 }, scale: 4046.8564224 },
-  gal: { dim: { length: 3 }, scale: 0.003785411784 },
-};
-
-const PARSE_AS: Record<string, string> = {
-  hr: "h",
-  ms1: "m/s",
-  kmh: "km/h",
-  mph: "mi/h",
-  b: "byte",
-  kb: "kbyte", mb: "Mbyte", gb: "Gbyte", tb: "Tbyte",
-  L: "L", mL: "mL",
-};
-
-const EXTRA: Record<string, Unit> = {};
-export function registerDisplayUnits(units: Record<string, Unit>): void {
-  Object.assign(EXTRA, units);
-  _cache.clear(); // ids may already be memoized as unresolvable
-}
-
-const _cache = new Map<string, Unit | null>();
-
-export function fcUnitToUnit(id: string): Unit | null {
-  if (id === "" || id === "none" || id === "custom") return null;
-  const hit = _cache.get(id);
-  if (hit !== undefined) return hit;
-  let u: Unit | null = DIRECT[id] ?? parseUnit(PARSE_AS[id] ?? id) ?? EXTRA[id] ?? null;
-  _cache.set(id, u);
-  return u;
-}
-
+/** A value tagged with a Format Controller's unit, on the core (`tag_fc_unit`, the card's own rule): a number takes
+ *  the unit, a quantity of its dimension shows in it, a clash or a ratio is `#UNIT!`, and a grid takes the unit as its
+ *  own, a held one rescaling. */
 export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: string): unknown {
-  const custom = fcUnitId === "custom" && customUnit && customUnit.trim() !== "";
-  const u: Unit | null = custom ? { dim: customDim(customUnit.trim()), scale: 1 } : fcUnitToUnit(fcUnitId);
-  const displayId = custom ? undefined : fcUnitId;
-  if (!u) return value;
-  const one = (v: unknown): unknown => {
-    if (v === null || isSolError(v)) return v;
-    if (isRatio(v)) {
-      return unitError("This is a pure ratio (its units canceled), so it can't be re-labeled with a unit. Multiply by a base quantity instead.");
-    }
-    if (isUnitCell(v)) {
-      if (!dimEqual(v.dim, u.dim)) {
-        return unitError(
-          `This value is ${formatDim(v.dim) || "a plain number"}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
-        );
-      }
-      return displayId ? withDisplay(v, displayId) : v;
-    }
-    return typeof v === "number" ? fromUnit(v, u, displayId) : v;
-  };
-  if (Array.isArray(value)) {
-    if (value.some((c) => Array.isArray(c))) {
-      const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
-      const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
-      if (typeof firstCell !== "number") return value;
-      const held = matrixUnitOf(value);
-      if (held) return redisplayMatrix(value as unknown[][], held, u, displayId);
-      // Tag a copy: the engine hands this same cached array to every consumer.
-      return withMatrixUnit((value as unknown[]).slice() as typeof value, { dim: u.dim, display: displayId });
-    }
-    return value.map(one);
-  }
-  return one(value);
-}
-
-/** A matrix that already carries a unit keeps its value: a clash is `#UNIT!`, and a
- *  commensurable new display unit rescales the as-typed cells. */
-function redisplayMatrix(m: unknown[][], held: ColumnUnit, u: Unit, displayId: string | undefined): unknown {
-  if (!dimEqual(held.dim, u.dim)) {
-    return unitError(
-      `This grid is ${formatDim(held.dim)}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
-    );
-  }
-  if (!displayId || (held.display ?? "") === displayId) return m;
-  const from = held.display ? fcUnitToUnit(held.display) : null;
-  const fromScale = from?.scale ?? 1, fromOff = from?.offset ?? 0, toOff = u.offset ?? 0;
-  const rescale = (c: unknown) => (typeof c === "number" ? (c * fromScale + fromOff - toOff) / u.scale : c);
-  const out = m.map((r) => (Array.isArray(r) ? r.map(rescale) : rescale(r)));
-  return withMatrixUnit(out, { dim: u.dim, display: displayId });
+  const held = Array.isArray(value) ? matrixUnitOf(value) : undefined;
+  const r = frameFnOnCore("tagFcUnit", [], [value, fcUnitId, customUnit ?? null, held ? JSON.stringify(held) : null], true);
+  if (!r || "frame" in r) return value;
+  const [out, table] = r.value as [unknown, string | null];
+  if (table === "pass") return value;
+  return table ? withMatrixUnit(out, JSON.parse(table) as ColumnUnit) : out;
 }
 
 export function displayMagnitudeOf(cell: UnitCellT): number {
@@ -123,6 +47,3 @@ export function exactFcUnitId(u: Unit): string | undefined {
   return undefined;
 }
 
-setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
-setDisplayOffsetResolver((id) => fcUnitToUnit(id)?.offset ?? null);
-setDisplayDimResolver((id) => fcUnitToUnit(id)?.dim ?? null);

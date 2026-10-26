@@ -1,7 +1,8 @@
 // [[D43]] unitByGranularity, [[D47]] noMixCurrencies
 
 import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
-import { fcUnitToUnit, displayMagnitudeOf, exactFcUnitId } from "./unitBridge";
+import { displayMagnitudeOf, exactFcUnitId } from "./unitBridge";
+import { fcUnitToUnit } from "./dimension";
 import { unitById, type FormatAnnotation } from "./formatAnnotationStore";
 import { formatDim } from "./dimension";
 

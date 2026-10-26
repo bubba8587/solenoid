@@ -363,11 +363,11 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
  *  and cells (units, formats and provenance are the caller's to carry over), and its answer as a frame, a value, or a
  *  frame with a value beside it; it throws what the TS throws. Null where the wasm engine is off, a value can't cross,
  *  or the core leaves the reading to the TS. */
-export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
+export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = [], units = false):
   { frame: FrameValue; value?: unknown } | { value: unknown } | null {
   return onCore(() => {
     if (!wasmEngineLoaded()) return null;
-    const wire = args.map((a) => coreValue(a));
+    const wire = args.map((a) => coreValue(a, units));
     if (wire.includes(undefined)) return null;
     const handles = frames.map((f) => wasmSourceBin(encodeBinary(f, false)));
     let out: string | undefined;

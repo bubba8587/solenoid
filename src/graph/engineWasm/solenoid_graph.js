@@ -237,6 +237,20 @@ export function setDirectCalls(on) {
 }
 
 /**
+ * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
+ * @param {boolean} open
+ * @returns {Array<any>}
+ */
+export function sessionRebuildScope(open) {
+    const ret = wasm.sessionRebuildScope(open);
+    return takeObject(ret);
+}
+
+export function sessionMarkTopoDirty() {
+    wasm.sessionMarkTopoDirty();
+}
+
+/**
  * A request for a pass: `"gated"` (manual mode marked the graph dirty), `"queued"` (a pass in flight reruns) or
  * `"run"`.
  * @param {string | null | undefined} changed
@@ -317,6 +331,31 @@ export function setPanicHandler(handler) {
 }
 
 /**
+ * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
+ * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
+ * node.
+ * @param {object} node
+ * @param {any} inputs
+ * @param {Function | null} [data]
+ * @returns {any}
+ */
+export function computeNode(node, inputs, data) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+        if (r2) {
+            throw takeObject(r1);
+        }
+        return takeObject(r0);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
  * The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
  * @returns {object}
  */
@@ -380,20 +419,6 @@ export function sessionNextGeneration() {
 export function sessionRebuild(begin) {
     const ret = wasm.sessionRebuild(begin);
     return ret !== 0;
-}
-
-/**
- * `withGraphRebuild`'s scope: opening clears the topology flag; closing answers `[noneOpen, cableChanged]`.
- * @param {boolean} open
- * @returns {Array<any>}
- */
-export function sessionRebuildScope(open) {
-    const ret = wasm.sessionRebuildScope(open);
-    return takeObject(ret);
-}
-
-export function sessionMarkTopoDirty() {
-    wasm.sessionMarkTopoDirty();
 }
 
 /**
@@ -519,35 +544,58 @@ export function textFormLine(line) {
 }
 
 /**
+ * A unit id's unit (`unit_catalog::fc_unit_to_unit`) as `{ dim, scale, offset? }`, or `null` for an id that names none.
+ * @param {string} id
+ * @returns {string}
+ */
+export function fcUnit(id) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.fcUnit(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * A dimension's label (`unit_lists::format_dim`): `{ length: 1, time: -1 }` reads `m/s`; dimensionless is "".
+ * @param {string} dim
+ * @returns {string}
+ */
+export function formatDim(dim) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(dim, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.formatDim(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
  */
 export function graphTrap() {
     wasm.graphTrap();
-}
-
-/**
- * A node outside any editor computed on `inputs` through the input boundary, calling `data` (its own `data()` when
- * none): the outputs at once when nothing it does waits, else a promise of them. For tests and scripts that drive one
- * node.
- * @param {object} node
- * @param {any} inputs
- * @param {Function | null} [data]
- * @returns {any}
- */
-export function computeNode(node, inputs, data) {
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        wasm.computeNode(retptr, addHeapObject(node), addHeapObject(inputs), isLikeNone(data) ? 0 : addHeapObject(data));
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-        if (r2) {
-            throw takeObject(r1);
-        }
-        return takeObject(r0);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-    }
 }
 
 /**
@@ -1188,7 +1236,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_199(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_201(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -2161,7 +2209,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_199(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_201(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2325,8 +2373,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper839 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 153, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper844 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 155, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

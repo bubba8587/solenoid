@@ -1,11 +1,7 @@
 // [[C25]] firstClassUnits
 import { describe, it, expect } from "vitest";
-import {
-  dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
-  unitMul, unitDiv, unitPow,
-  parseUnit, formatDim, UNITS, DIMENSIONLESS,
-  type Unit,
-} from "../../src/graph/dimension";
+import { dimPow, dimEqual, isDimensionless, formatDim, DIMENSIONLESS, type Unit } from "../../src/graph/dimension";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 
 /** `value` in unit `a` read in unit `b`, or null across dimensions. */
 function convert(value: number, a: Unit, b: Unit): number | null {
@@ -15,41 +11,19 @@ function convert(value: number, a: Unit, b: Unit): number | null {
 }
 
 const u = (s: string): Unit => {
-  const p = parseUnit(s);
+  const p = fcUnitToUnit(s);
   if (!p) throw new Error(`unparseable test unit: ${s}`);
   return p;
 };
 
-describe("dimension-vector algebra", () => {
-  it("multiply adds exponents, divide subtracts, power scales", () => {
-    expect(dimMul({ length: 1 }, { length: 1 })).toEqual({ length: 2 });
-    expect(dimDiv({ length: 1 }, { time: 1 })).toEqual({ length: 1, time: -1 });
+describe("dimension-vector checks", () => {
+  it("power scales the exponents", () => {
     expect(dimPow({ length: 1, time: -1 }, 2)).toEqual({ length: 2, time: -2 });
-  });
-  it("cancellation drops a zeroed dimension", () => {
-    expect(dimDiv({ length: 1 }, { length: 1 })).toEqual({});
-    expect(isDimensionless(dimDiv({ length: 1 }, { length: 1 }))).toBe(true);
   });
   it("dimEqual treats a missing key as exponent 0", () => {
     expect(dimEqual({ length: 1, time: 0 }, { length: 1 })).toBe(true);
     expect(dimEqual({ length: 1 }, { length: 2 })).toBe(false);
-  });
-});
-
-describe("unit algebra — 5 m ÷ 1 s = 5 m/s (the headline)", () => {
-  it("dividing meters by seconds yields a speed dimension", () => {
-    const speed = unitDiv(UNITS.m, UNITS.s)!;
-    expect(speed.dim).toEqual({ length: 1, time: -1 });
-  });
-  it("force = mass × acceleration lands on newtons", () => {
-    const accel = unitDiv(UNITS.m, unitMul(UNITS.s, UNITS.s)!)!; // m/s^2
-    const force = unitMul(UNITS.kg, accel)!;
-    expect(dimEqual(force.dim, UNITS.N.dim)).toBe(true);
-    expect(formatDim(force.dim)).toBe("N");
-  });
-  it("an affine unit (°C) can't be multiplied", () => {
-    expect(unitMul(UNITS.degC, UNITS.m)).toBeNull();
-    expect(unitPow(UNITS.degC, 2)).toBeNull();
+    expect(isDimensionless({ length: 0 })).toBe(true);
   });
 });
 
@@ -65,11 +39,11 @@ describe("conversion (matches the Convert node's contract)", () => {
     expect(convert(180, u("deg"), u("rad"))).toBeCloseTo(Math.PI, 10);
   });
   it("affine temperature C↔F↔K", () => {
-    expect(convert(100, UNITS.degC, UNITS.degF)).toBeCloseTo(212, 9);
-    expect(convert(32, UNITS.degF, UNITS.degC)).toBeCloseTo(0, 9);
-    expect(convert(-40, UNITS.degC, UNITS.degF)).toBeCloseTo(-40, 9);
-    expect(convert(0, UNITS.degC, UNITS.K)).toBeCloseTo(273.15, 9);
-    expect(convert(0, UNITS.K, UNITS.degC)).toBeCloseTo(-273.15, 9);
+    expect(convert(100, fcUnitToUnit("degC")!, fcUnitToUnit("degF")!)).toBeCloseTo(212, 9);
+    expect(convert(32, fcUnitToUnit("degF")!, fcUnitToUnit("degC")!)).toBeCloseTo(0, 9);
+    expect(convert(-40, fcUnitToUnit("degC")!, fcUnitToUnit("degF")!)).toBeCloseTo(-40, 9);
+    expect(convert(0, fcUnitToUnit("degC")!, fcUnitToUnit("K")!)).toBeCloseTo(273.15, 9);
+    expect(convert(0, fcUnitToUnit("K")!, fcUnitToUnit("degC")!)).toBeCloseTo(-273.15, 9);
   });
   it("compound units convert: 1 m/s = 3.6 km/h", () => {
     expect(convert(1, u("m/s"), u("km/h"))).toBeCloseTo(3.6, 9);
@@ -88,23 +62,23 @@ describe("conversion (matches the Convert node's contract)", () => {
   });
 });
 
-describe("unit-expression parser", () => {
+describe("unit expressions, read on the core", () => {
   it("bare symbols, prefixes, and litre special-case", () => {
-    expect(parseUnit("m")!.dim).toEqual({ length: 1 });
-    expect(parseUnit("km")!.scale).toBeCloseTo(1000, 9);
-    expect(parseUnit("ms")!.scale).toBeCloseTo(0.001, 12); // milli-second
-    expect(parseUnit("L")!.dim).toEqual({ length: 3 });
+    expect(fcUnitToUnit("m")!.dim).toEqual({ length: 1 });
+    expect(fcUnitToUnit("km")!.scale).toBeCloseTo(1000, 9);
+    expect(fcUnitToUnit("ms")!.scale).toBeCloseTo(0.001, 12); // milli-second
+    expect(fcUnitToUnit("L")!.dim).toEqual({ length: 3 });
   });
   it("products, quotients, powers", () => {
-    expect(parseUnit("m/s")!.dim).toEqual({ length: 1, time: -1 });
-    expect(parseUnit("kg*m/s^2")!.dim).toEqual({ mass: 1, length: 1, time: -2 });
-    expect(parseUnit("m^2")!.dim).toEqual({ length: 2 });
-    expect(parseUnit("s^-1")!.dim).toEqual({ time: -1 });
+    expect(fcUnitToUnit("m/s")!.dim).toEqual({ length: 1, time: -1 });
+    expect(fcUnitToUnit("kg*m/s^2")!.dim).toEqual({ mass: 1, length: 1, time: -2 });
+    expect(fcUnitToUnit("m^2")!.dim).toEqual({ length: 2 });
+    expect(fcUnitToUnit("s^-1")!.dim).toEqual({ time: -1 });
   });
   it("rejects the unrecognized", () => {
-    expect(parseUnit("bananas")).toBeNull();
-    expect(parseUnit("m/s/kg")).toBeNull(); // two slashes
-    expect(parseUnit("")).toBeNull();
+    expect(fcUnitToUnit("bananas")).toBeNull();
+    expect(fcUnitToUnit("m/s/kg")).toBeNull(); // two slashes
+    expect(fcUnitToUnit("")).toBeNull();
   });
 });
 

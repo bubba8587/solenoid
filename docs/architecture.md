@@ -179,8 +179,8 @@ mindmap
 | `flyToNode.ts` | Pan/zoom the viewport to center one or more nodes (expanding a collapsed host group first) — the shared "go to this node" action behind the pins HUD, alerts HUD, popup "Go to node" buttons, and Presentation's per-step camera fly |
 | `nodes/kind.ts` | node → `NodeKind` CLASSIFIER (`nodeKindOf`) + per-kind weights/resizable/wide flags; the kind → accent map (`NODE_KIND_ACCENTS`) lives in `nodes/shared.ts` |
 | `dimension.ts` | Dimensional algebra — the pure, graph-free units foundation (dimension vectors, multiply/divide/power, commensurability) |
-| `unitValue.ts` | The unit-on-the-VALUE layer (FC A4): `UnitCell` (base-SI magnitude + display id), mirrors `valueKinds.ts`'s shape; `applyFcUnit` lives at this seam via `unitBridge` |
-| `unitBridge.ts` | The unit-blind boundary (`stripUnitCells` for the app's own reads; at arrival the input boundary strips per input; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`'s three branches |
+| `unitValue.ts` | The unit-on-the-VALUE layer (FC A4): `UnitCell` (base-SI magnitude + display id), mirrors `valueKinds.ts`'s shape; the unit catalog and labels are the core's, read through `dimension.ts` (`fcUnitToUnit`, `formatDim`) |
+| `unitBridge.ts` | The unit-blind boundary (`stripUnitCells` for the app's own reads; at arrival the input boundary strips per input; `unitAware = true` opts a node into the algebra — perInputUnitBlind) + `applyFcUnit`, the FC card's tagging rule on the core (`tag_fc_unit`) |
 | `unitColumn.ts` | Per-column frame units: `ColumnUnit`, `columnUnitFromSpec`, `parseColumnUnitFromHeader` — the unitGranularity frame granularity, incl. computed columns |
 | `unitFlow.ts`, `annotationFacts.ts` | Format-annotation resolver over the core's annotation walk (`annotate.rs`, facts from `annotationFacts.ts`): `makeAnnotationResolver` (+ the microtask-shared `sharedAnnotationResolver`) answers `outAnnotation`, `inAnnotation` (upstream), `downstreamAnnotation` (an FC ahead through pure passthroughs) and `valueOrigin` (the popup Go-to-source walk) |
 | `unitFormat.ts` | Unit + number-format rendering helpers |

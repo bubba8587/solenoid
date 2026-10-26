@@ -36,6 +36,7 @@ mod verbs;
 mod visual;
 mod widgets;
 
+pub use docs::{column_unit_parts, tag_fc_unit, TableUnit};
 #[cfg(target_arch = "wasm32")]
 pub(crate) use frames::core_cell;
 #[cfg(target_arch = "wasm32")]

@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { dimWithCode } from "./coreDims";
 import { fromUnit, isUnitCell, type UnitCell } from "../../src/graph/unitValue";
-import { fcUnitToUnit } from "../../src/graph/unitBridge";
+import { fcUnitToUnit } from "../../src/graph/dimension";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import type { FrameColumn, FrameValue } from "../../src/graph/frame";

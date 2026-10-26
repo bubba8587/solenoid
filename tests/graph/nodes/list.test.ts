@@ -948,17 +948,17 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
   });
   it("5 km and 5000 m are one member", async () => {
     const { fromUnit } = await import("../../../src/graph/unitValue");
-    const { parseUnit } = await import("../../../src/graph/dimension");
-    const km = fromUnit(5, parseUnit("km")!, "km");
-    const m = fromUnit(5000, parseUnit("m")!, "m");
-    const s = fromUnit(5, parseUnit("s")!, "s");
+    const { fcUnitToUnit } = await import("../../../src/graph/dimension");
+    const km = fromUnit(5, fcUnitToUnit("km")!, "km");
+    const m = fromUnit(5000, fcUnitToUnit("m")!, "m");
+    const s = fromUnit(5, fcUnitToUnit("s")!, "s");
     expect(await uniqueList([km, m, s])).toEqual([km, s]);
   });
   it("1.1 h and 3960 s are one member despite the float residue", async () => {
     const { fromUnit } = await import("../../../src/graph/unitValue");
-    const { parseUnit } = await import("../../../src/graph/dimension");
-    const h = fromUnit(1.1, parseUnit("h")!, "h");
-    const s = fromUnit(3960, parseUnit("s")!, "s");
+    const { fcUnitToUnit } = await import("../../../src/graph/dimension");
+    const h = fromUnit(1.1, fcUnitToUnit("h")!, "h");
+    const s = fromUnit(3960, fcUnitToUnit("s")!, "s");
     expect(await uniqueList([h, s])).toEqual([h]);
   });
   it("a zero exponent is no dimension, as everywhere else units compare", async () => {

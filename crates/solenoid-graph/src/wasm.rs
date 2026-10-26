@@ -287,6 +287,28 @@ pub fn text_form_line(line: &str) -> String {
     }
 }
 
+/// A unit id's unit (`unit_catalog::fc_unit_to_unit`) as `{ dim, scale, offset? }`, or `null` for an id that names none.
+#[wasm_bindgen(js_name = fcUnit)]
+pub fn fc_unit(id: &str) -> String {
+    match solenoid_core::unit_catalog::fc_unit_to_unit(id) {
+        Some(u) => {
+            let mut j = serde_json::json!({ "dim": u.dim, "scale": u.scale });
+            if let Some(o) = u.offset {
+                j["offset"] = serde_json::json!(o);
+            }
+            j.to_string()
+        }
+        None => "null".into(),
+    }
+}
+
+/// A dimension's label (`unit_lists::format_dim`): `{ length: 1, time: -1 }` reads `m/s`; dimensionless is "".
+#[wasm_bindgen(js_name = formatDim)]
+pub fn format_dim(dim: &str) -> String {
+    let dim: solenoid_core::unit_dims::Dim = serde_json::from_str(dim).unwrap_or_default();
+    solenoid_core::unit_lists::format_dim(&dim)
+}
+
 /// Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
 #[wasm_bindgen(js_name = graphTrap)]
 pub fn graph_trap() {

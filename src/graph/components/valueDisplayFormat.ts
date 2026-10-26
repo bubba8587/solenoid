@@ -8,7 +8,7 @@ import type { ElemFamily } from "./ArrayChip";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/dateSerial";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
-import { fcUnitToUnit } from "../unitBridge";
+import { fcUnitToUnit } from "../dimension";
 import { dimEqual } from "../dimension";
 import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";

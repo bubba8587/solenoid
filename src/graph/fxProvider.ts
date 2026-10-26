@@ -1,7 +1,5 @@
 // [[C51]] formulaNaming
 // Frankfurter (ECB reference rates, keyless, CORS-open). The node owns fetch and cache; the core reads the reply.
-import { type Unit } from "./dimension";
-import { registerDisplayUnits } from "./unitBridge";
 import { frameFnOnCore } from "./frameBackend";
 import type { FrameValue } from "./frame";
 
@@ -43,11 +41,6 @@ export const FX_CURRENCIES: Currency[] = CURRENCY_TSV.trim().split("\n").map((li
   const i = line.indexOf(" ");
   return { code: line.slice(0, i), name: line.slice(i + 1) };
 });
-
-// Registered as currency display units so an authored code resolves at render; an unregistered id would fall back to
-// the base-SI symbol ([[C25]] firstClassUnits).
-const CURRENCY_UNIT: Unit = { dim: { currency: 1 }, scale: 1 };
-registerDisplayUnits(Object.fromEntries(FX_CURRENCIES.map((c) => [c.code.toLowerCase(), CURRENCY_UNIT])));
 
 export function fxLatestUrl(from: string, to: string): string {
   const f = encodeURIComponent(from.trim().toUpperCase());
