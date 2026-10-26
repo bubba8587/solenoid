@@ -352,7 +352,26 @@ flowchart LR
 - **D6, the reconcile** (`fcReconcile.ts`, the FC's `adaptTypeFromConnections` and `refreshAnnotation`, Convert's
   arrows, and the annotation flow in `unitFlow.ts` and `formatAnnotationStore.ts`).
 
-The view's side stays TypeScript: rerendering, cable paths and the requests a reconcile makes of React.
+What stays TypeScript is React: the components and what they render. Everything else that computes moves.
+
+## Phase E: everything else that computes
+
+The rest of `src/graph/`'s non-component TypeScript, by group (lines as of 2026-10-26), each moved by the same routine:
+
+| Group | Modules | Lines |
+|---|---|---|
+| Graph model | `graphValidate`, `textForm`, `copyPaste`, `compositeLogic`, `persistence` and `persistenceCore`, `nodeInit`, `historyDigest` | about 2,800 |
+| Layout (the LayoutFx) | `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK | about 3,000 |
+| Cable geometry | `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints` | about 1,400 |
+| Values and annotations | `unitFlow`, `formatAnnotationStore`'s resolver, `fcReconcile` (D6), `dimension`, `unitValue`, `unitBridge`, `formatModel`, `numberSpec`, `frame` | about 2,400 |
+| Catalog and search | `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils` | about 900 |
+| Colors and drawing math | `palette`, `colormaps`, the geometry in `htmlCanvasRenderer` | about 2,000 |
+| Vault and files | `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers | about 2,800 |
+| Node classes | `nodes/*.ts`: sockets, saved fields, op lists, the `frameShape` and `passthrough()` declarations | about 19,500 |
+
+The walks through Conduits (`conduit.rs`) are done: where an output's value comes from and the run a cable belongs to,
+frozen over 300 seeded graphs (`fixtures/core/conduit-walks.json.gz`, `coreConduitWalks.test.ts`, `tests/conduit.rs`).
+
 
 ## Enforcement
 

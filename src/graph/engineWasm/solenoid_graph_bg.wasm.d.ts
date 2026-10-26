@@ -13,6 +13,7 @@ export const graphcore_addPipe: (a: number, b: number) => number;
 export const graphcore_clear: (a: number, b: number) => void;
 export const graphcore_compute: (a: number, b: number, c: number, d: number) => number;
 export const graphcore_computeAll: (a: number, b: number, c: number) => number;
+export const graphcore_conduitPath: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_connectionIds: (a: number, b: number) => void;
 export const graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_fetch: (a: number, b: number, c: number) => number;
@@ -42,6 +43,7 @@ export const graphcore_setPorts: (a: number, b: number, c: number, d: number, e:
 export const graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const graphcore_settleTypes: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => number;
+export const graphcore_typedSource: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const graphcore_unnest: (a: number, b: number, c: number) => void;
 export const graphcore_useEngine: (a: number, b: number, c: number) => void;
 export const isLazyFrameNode: (a: number, b: number) => number;

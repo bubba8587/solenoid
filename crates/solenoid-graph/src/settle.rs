@@ -130,6 +130,7 @@ pub fn node_from_json(j: &Json) -> Node {
 
 struct Graph<'a> {
     cables: &'a [Cable],
+    wiring: Vec<crate::conduit::Cable>,
 }
 
 impl Graph<'_> {
@@ -149,19 +150,6 @@ fn out_type(nodes: &[Node], id: &str, key: &str) -> Option<String> {
     n.outs.iter().find(|o| o.key == key).map(|o| o.now.clone())
 }
 
-/// The type a Conduit lane forwards: through every Conduit back to the output that feeds it, at most 16 deep.
-fn typed_source(nodes: &[Node], g: &Graph, id: &str, key: &str, depth: u8) -> Option<String> {
-    let node = &nodes[index(nodes, id)?];
-    if let (Some(lanes), true) = (&node.lanes, depth < 16) {
-        if let Some((in_key, _)) = lanes.iter().find(|(_, out)| out == key) {
-            if let Some(feed) = g.feed(id, in_key) {
-                return typed_source(nodes, g, &feed.source, &feed.source_output, depth + 1);
-            }
-        }
-    }
-    out_type(nodes, id, key)
-}
-
 fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
     let mut changed = false;
     for i in 0..nodes.len() {
@@ -176,9 +164,18 @@ fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
             else {
                 continue;
             };
+            let is_conduit = |id: &str| index(nodes, id).is_some_and(|n| nodes[n].lanes.is_some());
             let want = g
                 .feed(&nodes[i].id, &in_key)
-                .and_then(|f| typed_source(nodes, g, &f.source, &f.source_output, 0))
+                .and_then(|f| {
+                    let (id, key) = crate::conduit::typed_source(
+                        &is_conduit,
+                        &g.wiring,
+                        &f.source,
+                        &f.source_output,
+                    );
+                    out_type(nodes, &id, &key)
+                })
                 .unwrap_or_else(|| "trueany".into());
             if nodes[i].outs[o].now != want {
                 nodes[i].outs[o].now = want;
@@ -319,7 +316,17 @@ fn adoption(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
 /// Settles every wildcard socket in `nodes` (in graph order) over `cables`: Conduit lanes and adoption alternate until
 /// both settle, at most 8 rounds.
 pub fn settle(nodes: &mut [Node], cables: &[Cable]) -> Settled {
-    let g = Graph { cables };
+    let wiring = cables
+        .iter()
+        .map(|c| crate::conduit::Cable {
+            id: String::new(),
+            source: c.source.clone(),
+            source_output: c.source_output.clone(),
+            target: c.target.clone(),
+            target_input: c.target_input.clone(),
+        })
+        .collect();
+    let g = Graph { cables, wiring };
     let mut conduit_changed = false;
     let mut adopted = BTreeSet::new();
     for _ in 0..8 {

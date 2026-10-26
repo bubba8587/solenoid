@@ -833,14 +833,12 @@ impl GraphCore {
         let cables: Vec<crate::settle::Cable> = graph
             .cables()
             .into_iter()
-            .map(
-                |(source, source_output, target, target_input)| crate::settle::Cable {
-                    source,
-                    source_output,
-                    target,
-                    target_input,
-                },
-            )
+            .map(|c| crate::settle::Cable {
+                source: c.source,
+                source_output: c.source_output,
+                target: c.target,
+                target_input: c.target_input,
+            })
             .collect();
         let settled = crate::settle::settle(&mut nodes, &cables);
         let mut changes = Vec::new();
@@ -858,6 +856,39 @@ impl GraphCore {
         }
         serde_json::json!({ "changes": changes, "conduitChanged": settled.conduit_changed, "adopted": settled.adopted })
             .to_string()
+    }
+
+    fn is_conduit(&self, id: &str) -> bool {
+        self.shared
+            .graph
+            .get_node(id)
+            .is_some_and(|n| n.object.facts.class == "ConduitNode")
+    }
+
+    /// The output an output's value comes from, through every Conduit lane: `[node, output]` (`conduit.rs`).
+    #[wasm_bindgen(js_name = typedSource)]
+    pub fn typed_source(&self, id: &str, key: &str) -> Vec<String> {
+        let cables = self.shared.graph.cables();
+        let (id, key) = crate::conduit::typed_source(&|n| self.is_conduit(n), &cables, id, key);
+        vec![id, key]
+    }
+
+    /// The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
+    /// conduits }`; `undefined` for a cable not here.
+    #[wasm_bindgen(js_name = conduitPath)]
+    pub fn conduit_path(&self, cable_id: &str) -> Option<String> {
+        let cables = self.shared.graph.cables();
+        let cable = cables.iter().find(|c| c.id == cable_id)?;
+        let p = crate::conduit::conduit_path(&|n| self.is_conduit(n), &cables, cable);
+        Some(
+            serde_json::json!({
+                "connIds": p.conn_ids,
+                "origin": [p.origin.0, p.origin.1],
+                "terminals": p.terminals.iter().map(|(a, b)| serde_json::json!([a, b])).collect::<Vec<_>>(),
+                "conduits": p.conduits,
+            })
+            .to_string(),
+        )
     }
 
     #[wasm_bindgen(js_name = connectionIds)]

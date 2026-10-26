@@ -328,18 +328,17 @@ impl<H: Host> Graph<H> {
             .collect()
     }
 
-    /// Every cable as `(source, source output, target, target input)`, in the editor's order.
-    pub fn cables(&self) -> Vec<(String, String, String, String)> {
+    /// Every cable, in the editor's order.
+    pub fn cables(&self) -> Vec<crate::conduit::Cable> {
         self.editor
             .get_connections()
             .iter()
-            .map(|c| {
-                (
-                    c.source().to_owned(),
-                    c.source_output().to_owned(),
-                    c.target().to_owned(),
-                    c.target_input().to_owned(),
-                )
+            .map(|c| crate::conduit::Cable {
+                id: c.id().to_owned(),
+                source: c.source().to_owned(),
+                source_output: c.source_output().to_owned(),
+                target: c.target().to_owned(),
+                target_input: c.target_input().to_owned(),
             })
             .collect()
     }

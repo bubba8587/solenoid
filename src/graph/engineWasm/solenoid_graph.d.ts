@@ -203,6 +203,11 @@ export class GraphCore {
   removeNode(id: string): boolean;
   removePipe(handle: number): boolean;
   /**
+   * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
+   * conduits }`; `undefined` for a cable not here.
+   */
+  conduitPath(cable_id: string): string | undefined;
+  /**
    * The node's inputs, fetching every predecessor.
    */
   fetchInputs(id: string): Promise<any>;
@@ -212,6 +217,10 @@ export class GraphCore {
    * order and cables are the graph's. Answers `{ changes: [[id, "in" | "out", key, type]], conduitChanged, adopted }`.
    */
   settleTypes(facts: string): string;
+  /**
+   * The output an output's value comes from, through every Conduit lane: `[node, output]` (`conduit.rs`).
+   */
+  typedSource(id: string, key: string): string[];
   /**
    * Puts the nodes in `order`, which must name every node once; `false` when it doesn't.
    */
@@ -335,6 +344,7 @@ export interface InitOutput {
   readonly graphcore_clear: (a: number, b: number) => void;
   readonly graphcore_compute: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_computeAll: (a: number, b: number, c: number) => number;
+  readonly graphcore_conduitPath: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_connectionIds: (a: number, b: number) => void;
   readonly graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_fetch: (a: number, b: number, c: number) => number;
@@ -364,6 +374,7 @@ export interface InitOutput {
   readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
   readonly graphcore_settleTypes: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => number;
+  readonly graphcore_typedSource: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
   readonly isLazyFrameNode: (a: number, b: number) => number;

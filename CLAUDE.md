@@ -26,7 +26,7 @@ merges, bumps and stops. Installers build path-stripped via `npm run release:des
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
 - **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
   verifies via HMR; hold pushes until told otherwise.
-- **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
+- **Vercel preview of `develop`**: keep `tsrs` + `vitest` green, push to `develop`, they eyeball.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
 **The author's live graph is readable:** with the dev server running, every autosave mirrors the

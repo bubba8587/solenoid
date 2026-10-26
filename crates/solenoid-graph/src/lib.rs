@@ -10,6 +10,7 @@ extern crate solenoid_core;
 #[cfg(target_arch = "wasm32")]
 mod boundary;
 pub mod boundary_core;
+pub mod conduit;
 #[cfg(target_arch = "wasm32")]
 mod direct;
 pub mod lattice;

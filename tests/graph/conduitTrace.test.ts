@@ -8,13 +8,18 @@ import { ConduitNode, conduitInKey, conduitOutKey } from "../../src/graph/nodes/
 import type { Schemes } from "../../src/graph/schemes";
 import { dateSocket, numberSocket } from "../../src/graph/sockets";
 
-// A tiny fake editor: just getNode + getConnections, the surface resolveTypedSource
-// reads. Real ConduitNode instances so the `instanceof` gate fires.
-function makeEditor(nodes: Record<string, GraphNode>, conns: Array<{ source: string; sourceOutput: string; target: string; targetInput: string }>) {
-  return {
-    getNode: (id: string) => nodes[id],
-    getConnections: () => conns,
-  };
+// A real editor over the nodes and cables; the walks run on the core over its graph.
+type Spec = { id?: string; source: string; sourceOutput: string; target: string; targetInput: string };
+function makeEditor(nodes: Record<string, GraphNode>, conns: Spec[]) {
+  const ed = new GraphEditor<Schemes>();
+  for (const n of Object.values(nodes)) void ed.addNode(n as never);
+  const real = new Map<string, string>();
+  for (const c of conns) {
+    const conn = new GraphConnection(nodes[c.source], c.sourceOutput, nodes[c.target], c.targetInput);
+    void ed.addConnection(conn as never);
+    if (c.id) real.set(conn.id, c.id);
+  }
+  return Object.assign(ed, { named: (id: string) => real.get(id) ?? id, real: (name: string) => [...real].find(([, v]) => v === name)![0] });
 }
 
 describe("resolveTypedSource — Conduit type tracing", () => {
@@ -72,9 +77,13 @@ describe("resolveTypedSource — Conduit type tracing", () => {
 });
 
 describe("conduitPath — the whole run a cable belongs to", () => {
-  // Same fake editor, but connections carry ids (conduitPath returns id lists).
+  // The run, its cable ids read back as the names the test gave them.
   function pathEditor(nodes: Record<string, GraphNode>, conns: PathConn[]) {
-    return { getNode: (id: string) => nodes[id], getConnections: () => conns };
+    const ed = makeEditor(nodes, conns);
+    return Object.assign(ed, { path: (c: PathConn) => {
+      const p = conduitPath(ed, { ...c, id: ed.real(c.id) });
+      return { ...p, connIds: p.connIds.map(ed.named) };
+    } });
   }
   const plainNode = (name: string) => {
     const n = new GraphNode(name);
@@ -87,7 +96,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
     const a = plainNode("A"), b = plainNode("B");
     const c: PathConn = { id: "c1", source: a.id, sourceOutput: "out", target: b.id, targetInput: "in" };
     const ed = pathEditor({ [a.id]: a, [b.id]: b }, [c]);
-    const p = conduitPath(ed, c);
+    const p = ed.path(c);
     expect(p.connIds).toEqual(["c1"]);
     expect(p.conduits).toEqual([]);
     expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
@@ -102,7 +111,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
     const ed = pathEditor({ [a.id]: a, [b.id]: b, [cond.id]: cond }, [inSeg, outSeg]);
 
     for (const seg of [inSeg, outSeg]) {
-      const p = conduitPath(ed, seg);
+      const p = ed.path(seg);
       expect(p.connIds).toEqual(["c1", "c2"]);
       expect(p.conduits).toEqual([cond.id]);
       expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
@@ -119,7 +128,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
       { id: "s3", source: c2.id, sourceOutput: conduitOutKey(1), target: b.id, targetInput: "in" },
     ];
     const ed = pathEditor({ [a.id]: a, [b.id]: b, [c1.id]: c1, [c2.id]: c2 }, conns);
-    const p = conduitPath(ed, conns[1]);
+    const p = ed.path(conns[1]);
     expect(p.connIds).toEqual(["s1", "s2", "s3"]);
     expect(p.conduits).toEqual([c1.id, c2.id]);
     expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
@@ -139,7 +148,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
     // the inspector's "is this selection one run?" check depends on it, and
     // double-clicking one branch must light its siblings too.
     for (const seg of conns) {
-      const p = conduitPath(ed, seg);
+      const p = ed.path(seg);
       expect(p.connIds).toEqual(["s1", "s2", "s3"]);
       expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
       expect(p.terminals).toEqual([{ nodeId: b.id, key: "in" }, { nodeId: c.id, key: "in" }]);
@@ -154,11 +163,11 @@ describe("conduitPath — the whole run a cable belongs to", () => {
     const into: PathConn = { id: "s2", source: b.id, sourceOutput: "out", target: cond.id, targetInput: conduitInKey(5) };
     const ed = pathEditor({ [b.id]: b, [cond.id]: cond }, [out, into]);
 
-    const up = conduitPath(ed, out);
+    const up = ed.path(out);
     expect(up.origin).toEqual({ nodeId: cond.id, key: conduitOutKey(2) });
     expect(up.conduits).toEqual([]);
 
-    const down = conduitPath(ed, into);
+    const down = ed.path(into);
     expect(down.terminals).toEqual([{ nodeId: cond.id, key: conduitInKey(5) }]);
     expect(down.conduits).toEqual([]);
   });
@@ -170,7 +179,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
       { id: "l2", source: c2.id, sourceOutput: conduitOutKey(0), target: c1.id, targetInput: conduitInKey(0) },
     ];
     const ed = pathEditor({ [c1.id]: c1, [c2.id]: c2 }, conns);
-    const p = conduitPath(ed, conns[0]);
+    const p = ed.path(conns[0]);
     expect(p.connIds.sort()).toEqual(["l1", "l2"]);
   });
 });

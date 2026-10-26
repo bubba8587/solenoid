@@ -1,7 +1,10 @@
-// [[C10]] socketLattice
-import type { GraphSocket } from "./graphModel";
-import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey } from "./nodeClasses";
+// [[C10]] socketLattice, [[D102]] graphOnCore
+// The walks through Conduits run on the core (`conduit.rs`): where an output's value comes from, and the run a cable
+// belongs to.
+import type { GraphEditor } from "./graphEditor";
+import type { GraphConnection, GraphNode, GraphSocket } from "./graphModel";
 
+type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 
 export type TypedSource = {
   socket: GraphSocket | undefined;
@@ -9,28 +12,10 @@ export type TypedSource = {
   sourceOutput: string;
 };
 
-interface TraceEditor {
-  getNode(id: string): { outputs?: Record<string, { socket?: GraphSocket } | undefined> } | undefined;
-  getConnections(): ReadonlyArray<{ source: string; sourceOutput: string; target: string; targetInput: string }>;
-}
-
-export function resolveTypedSource(
-  editor: TraceEditor | null | undefined,
-  nodeId: string,
-  outputKey: string,
-  depth = 0,
-): TypedSource {
-  const node = editor?.getNode(nodeId);
-  // The depth cap keeps a Conduit loop (a #CIRC! graph) from trapping the walk.
-  if (node instanceof ConduitNode && depth < 16) {
-    const lane = conduitLaneOf(outputKey, "out");
-    if (lane >= 0) {
-      const inKey = conduitInKey(lane);
-      const feed = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === inKey);
-      if (feed) return resolveTypedSource(editor, feed.source, feed.sourceOutput, depth + 1);
-    }
-  }
-  return { socket: node?.outputs?.[outputKey]?.socket, source: nodeId, sourceOutput: outputKey };
+/** The output the value on `nodeId.outputKey` really comes from, through every Conduit lane, and its socket. */
+export function resolveTypedSource(editor: AnyEditor | null | undefined, nodeId: string, outputKey: string): TypedSource {
+  const [source, sourceOutput] = editor ? editor.core().typedSource(nodeId, outputKey) : [nodeId, outputKey];
+  return { socket: editor?.getNode(source)?.outputs[sourceOutput]?.socket, source, sourceOutput };
 }
 
 export interface PathConn {
@@ -53,56 +38,15 @@ export interface ConduitPath {
   conduits: string[];
 }
 
-interface PathEditor {
-  getNode(id: string): unknown;
-  getConnections(): ReadonlyArray<PathConn>;
-}
-
-const MAX_HOPS = 512;
-
-export function conduitPath(editor: PathEditor | null | undefined, conn: PathConn): ConduitPath {
-  const conns = editor?.getConnections() ?? [];
-  const isConduit = (id: string) => editor?.getNode(id) instanceof ConduitNode;
-
-  const climbed = new Set<string>([conn.id]);
-  let head = conn;
-  for (let hop = 0; hop < MAX_HOPS; hop++) {
-    if (!isConduit(head.source)) break;
-    const lane = conduitLaneOf(head.sourceOutput, "out");
-    if (lane < 0) break;
-    const inKey = conduitInKey(lane);
-    const via = head.source;
-    const feed = conns.find((c) => c.target === via && c.targetInput === inKey);
-    if (!feed || climbed.has(feed.id)) break;
-    climbed.add(feed.id);
-    head = feed;
-  }
-
-  const connIds: string[] = [head.id];
-  const seen = new Set<string>([head.id]);
-  const conduits: string[] = [];
-  const terminals: ConduitPathEnd[] = [];
-  const queue: PathConn[] = [head];
-  for (let hop = 0; queue.length > 0 && hop < MAX_HOPS; hop++) {
-    const cur = queue.shift()!;
-    const lane = isConduit(cur.target) ? conduitLaneOf(cur.targetInput, "in") : -1;
-    if (lane < 0) {
-      terminals.push({ nodeId: cur.target, key: cur.targetInput });
-      continue;
-    }
-    const outKey = conduitOutKey(lane);
-    const outs = conns.filter((c) => c.source === cur.target && c.sourceOutput === outKey && !seen.has(c.id));
-    if (outs.length === 0) {
-      terminals.push({ nodeId: cur.target, key: cur.targetInput });
-      continue;
-    }
-    if (!conduits.includes(cur.target)) conduits.push(cur.target);
-    for (const o of outs) {
-      seen.add(o.id);
-      connIds.push(o.id);
-      queue.push(o);
-    }
-  }
-
-  return { connIds, origin: { nodeId: head.source, key: head.sourceOutput }, terminals, conduits };
+/** The run `conn` belongs to: its producer, every cable and Conduit it crosses, and each consumer. */
+export function conduitPath(editor: AnyEditor | null | undefined, conn: PathConn): ConduitPath {
+  const text = editor?.core().conduitPath(conn.id);
+  if (!text) return { connIds: [conn.id], origin: { nodeId: conn.source, key: conn.sourceOutput }, terminals: [{ nodeId: conn.target, key: conn.targetInput }], conduits: [] };
+  const p = JSON.parse(text) as { connIds: string[]; origin: [string, string]; terminals: [string, string][]; conduits: string[] };
+  return {
+    connIds: p.connIds,
+    origin: { nodeId: p.origin[0], key: p.origin[1] },
+    terminals: p.terminals.map(([nodeId, key]) => ({ nodeId, key })),
+    conduits: p.conduits,
+  };
 }
