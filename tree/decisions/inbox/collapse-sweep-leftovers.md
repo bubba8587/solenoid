@@ -14,7 +14,7 @@ Collapsed solver cards (TVM, Ohm's Law, Triangle Solver, Ideal Gas and kin) show
 
 ## Why
 
-`collapse-sweep.mjs` lists them; components § Collapsed says one pill, but solver cards have every variable as input and output.
+`collapse-sweep.mjs` lists them (2026-10-26: TVM, Compound Growth, Effective Rate, Triangle Solver, Ohm's Law, dBm/W, Wavelength/Frequency, Ideal Gas, Moles/Mass and pH collapse with a row per variable and no pill); components § Collapsed says one pill, but solver cards have every variable as input and output.
 
 ## What ratifying means
 

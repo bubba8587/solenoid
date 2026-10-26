@@ -17,7 +17,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Formula library
 
-- [ ] **12 pack cards collapse without their input pill** (`node scripts/collapse-sweep.mjs`: em-wavelength-frequency, th-ideal-gas, ch-moles-mass, ch-ph and others, 39 findings): a collapsed card with two or more inputs must draw one `CollapsedInputPill` ([[components]] § Collapsed). Predates the layout batching.
 
 ## Rust core (rust-port, [[D99]] rustIsSpec)
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before rust-port merges into develop: the branch commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
