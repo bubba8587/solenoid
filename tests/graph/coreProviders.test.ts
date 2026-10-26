@@ -7,8 +7,9 @@ import { frozen } from "./coreFixtures";
 import { parseWeather } from "../../src/graph/weatherProvider";
 import { holidaysOnCore } from "../../src/graph/holidaysProvider";
 import { parseFxRate, parseFxSeries } from "../../src/graph/fxProvider";
+import { parseGeocode } from "../../src/graph/geocodeProvider";
 
-type Case = { kind: "weather" | "holidays" | "fxRate" | "fxSeries"; body: string; args: unknown[]; want?: unknown };
+type Case = { kind: "weather" | "holidays" | "fxRate" | "fxSeries" | "geocode"; body: string; args: unknown[]; want?: unknown };
 
 /** NaN and the infinities as text, so a frozen answer survives JSON. */
 const plain = (v: unknown): unknown => JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === "number" && !Number.isFinite(x) ? `#${x}` : x)));
@@ -69,6 +70,22 @@ const FX_SERIES: [string, unknown[]][] = [
   [JSON.stringify({}), ["USD"]], ["null", ["USD"]], ["{x", ["USD"]],
 ];
 
+const G = (o: Record<string, unknown>) => ({ id: 1, elevation: 800, country_code: "US", ...o });
+const GEOCODE: string[] = [
+  JSON.stringify({ results: [
+    G({ name: "Boise", latitude: 43.6135, longitude: -116.2035, admin1: "Idaho", country: "United States", timezone: "America/Boise" }),
+    G({ name: "Boise City", latitude: 36.7292, longitude: -102.5132, admin1: "Oklahoma", country: "United States" }),
+    G({ name: "Nowhere", latitude: "1", longitude: 2 }),
+    G({ name: "", latitude: 0, longitude: 0, admin1: "", country: "" }),
+    G({ latitude: -33.8688, longitude: 151.2093, country: "Australia", timezone: 5 }),
+    G({ name: 7, latitude: 1.5, longitude: 2.5, admin1: "Region" }),
+  ] }),
+  JSON.stringify({ generationtime_ms: 0.5 }),
+  JSON.stringify({ results: "none" }),
+  JSON.stringify({ results: [] }),
+  "null", "[1]", "{bad", "",
+];
+
 function answer(c: Case): unknown {
   switch (c.kind) {
     case "weather": {
@@ -85,6 +102,8 @@ function answer(c: Case): unknown {
     }
     case "fxSeries":
       return plain(parseFxSeries(c.body, c.args[0] as string));
+    case "geocode":
+      return plain(parseGeocode(c.body).map((m) => [m.label, m.lat, m.lon, m.timezone]));
   }
 }
 
@@ -95,6 +114,7 @@ describe("the data providers' parses hold to their frozen answers", () => {
       ...HOLIDAYS.map(([body, args]) => ({ kind: "holidays" as const, body, args })),
       ...FX_RATE.map(([body, args]) => ({ kind: "fxRate" as const, body, args })),
       ...FX_SERIES.map(([body, args]) => ({ kind: "fxSeries" as const, body, args })),
+      ...GEOCODE.map((body) => ({ kind: "geocode" as const, body, args: [] })),
     ].map((c) => ({ ...c, want: answer(c) }));
     const cases = frozen<Case>("providers", () => fresh);
     expect(cases.length).toBe(fresh.length);

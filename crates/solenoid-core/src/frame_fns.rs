@@ -84,6 +84,14 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
             let (date, serial, rate) = crate::providers::fx_rate(&str_arg(args, 0)?, &str_arg(args, 1)?);
             Ok(FrameOut::Value(V::List(Rc::new(vec![V::str(&date), V::Num(serial), rate]))))
         }
+        ("geocode", _) => Ok(FrameOut::Value(V::List(Rc::new(
+            crate::providers::geocode(&str_arg(args, 0)?)
+                .into_iter()
+                .map(|(label, lat, lon, tz)| {
+                    V::List(Rc::new(vec![V::str(&label), V::Num(lat), V::Num(lon), V::str(&tz)]))
+                })
+                .collect(),
+        )))),
         ("fxSeries", _) => Ok(FrameOut::Frame(crate::providers::fx_series(&str_arg(args, 0)?, &str_arg(args, 1)?))),
         ("buildFrame", _) => build_frame(args, false),
         ("buildFrameTyped", _) => build_frame(args, true),

@@ -1,5 +1,6 @@
 // [[C23]] calcModes
-// Open-Meteo geocoding (keyless, CORS-open). The parse is pure; the node owns fetch and cache.
+// Open-Meteo geocoding (keyless, CORS-open). The node owns fetch and cache; the core reads the reply.
+import { frameFnOnCore } from "./frameBackend";
 
 export interface GeocodeMatch {
   /** "City, Region, Country" — stable across refreshes, so it is how a pick is stored. */
@@ -15,23 +16,11 @@ export function geocodeUrl(place: string): string {
   return `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=10&language=en&format=json`;
 }
 
-/** Best first, as the API ranks; a malformed body or no results gives []. */
+/** Best first, as the API ranks, read on the core (`providers.rs`); a malformed body or no results gives []. */
 export function parseGeocode(text: string): GeocodeMatch[] {
-  let data: unknown;
-  try { data = JSON.parse(text); } catch { return []; }
-  const results = (data as { results?: unknown } | null)?.results;
-  if (!Array.isArray(results)) return [];
-  const out: GeocodeMatch[] = [];
-  for (const r of results) {
-    const o = r as Record<string, unknown>;
-    if (typeof o.latitude !== "number" || typeof o.longitude !== "number") continue;
-    const name = typeof o.name === "string" ? o.name : "";
-    const admin1 = typeof o.admin1 === "string" ? o.admin1 : "";
-    const country = typeof o.country === "string" ? o.country : "";
-    const label = [name, admin1, country].filter(Boolean).join(", ") || name || "(unknown place)";
-    out.push({ label, lat: o.latitude, lon: o.longitude, timezone: typeof o.timezone === "string" ? o.timezone : "" });
-  }
-  return out;
+  const r = frameFnOnCore("geocode", [], [text]);
+  const rows = (r && !("frame" in r) ? r.value : []) as [string, number, number, string][];
+  return rows.map(([label, lat, lon, timezone]) => ({ label, lat, lon, timezone }));
 }
 
 /** Matched by label, since an index would swap cities when the API reorders on a refresh; else the top match. */

@@ -176,3 +176,22 @@ pub fn fx_series(text: &str, to: &str) -> FrameValue {
         ],
     }
 }
+
+/// Open-Meteo's place matches, best first as the API ranks them: each one's "City, Region, Country" label, latitude,
+/// longitude and IANA time zone ("" when absent). A match without coordinates is dropped.
+pub fn geocode(text: &str) -> Vec<(String, f64, f64, String)> {
+    let root = body(text);
+    let text_of = |v: &Json| v.as_str().unwrap_or("").to_string();
+    root["results"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|o| {
+            let (lat, lon) = (o["latitude"].as_f64()?, o["longitude"].as_f64()?);
+            let parts: Vec<String> =
+                [&o["name"], &o["admin1"], &o["country"]].into_iter().map(text_of).filter(|s| !s.is_empty()).collect();
+            let label = if parts.is_empty() { "(unknown place)".to_string() } else { parts.join(", ") };
+            Some((label, lat, lon, text_of(&o["timezone"])))
+        })
+        .collect()
+}

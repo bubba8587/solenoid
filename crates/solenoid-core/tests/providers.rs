@@ -4,7 +4,7 @@
 use serde_json::{json, Value as Json};
 use solenoid_core::excel_functions::V;
 use solenoid_core::frame::{FrameCell, FrameValue};
-use solenoid_core::providers::{fx_rate, fx_series, holidays, weather};
+use solenoid_core::providers::{fx_rate, fx_series, geocode, holidays, weather};
 use std::io::Read;
 
 fn load(name: &str) -> Vec<Json> {
@@ -92,6 +92,10 @@ fn replies_as_frozen() {
                 let (date, serial, rate) = fx_rate(text, a(0).as_str().unwrap());
                 json!([date, n(serial), v(&rate)])
             }
+            "geocode" => json!(geocode(text)
+                .into_iter()
+                .map(|(label, lat, lon, tz)| json!([label, n(lat), n(lon), tz]))
+                .collect::<Vec<_>>()),
             _ => frame(&fx_series(text, a(0).as_str().unwrap())),
         };
         if got != c["want"] {
