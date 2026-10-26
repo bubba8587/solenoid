@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { GraphEditor } from "../../src/graph/graphEditor";
+import { GraphEditor } from "../../src/graph/graphEditor";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs, getEditor } from "../../src/graph/process";
 import {
@@ -105,7 +105,8 @@ describe("a main-graph node retypes on its own surface while a drill-in is open 
     const rerendered: string[] = [];
     const mainView = { rerenderNode: async (id: string) => { rerendered.push(id); } } as unknown as View;
     const drillView = { rerenderNode: async () => { throw new Error("the drill-in view must not be touched"); } } as unknown as View;
-    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as GraphEditor<Schemes>;
+    const owner = new GraphEditor<Schemes>();
+    for (const n of [seq, expr]) await owner.addNode(n as never);
     setEditorRefs(owner, {} as never, mainView);
     setActiveGraph({ editor: sub, view: drillView });
     seq.literals.count = 2; seq.literals.cols = 2;

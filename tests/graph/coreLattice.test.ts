@@ -8,7 +8,6 @@ import {
   canConnect, adoptTypeForBase, projectTypeToBase, latticeRank, elementFamilyOf, typeAtRank, comboOfType,
   type SocketDataType,
 } from "../../src/graph/sockets";
-import { agreeTypes } from "../../src/graph/nodes/passthrough";
 
 export const SOCKET_TYPES: SocketDataType[] = [
   "number", "list", "numlist", "string", "strlist", "strcombo", "date", "datelist", "datecombo",
@@ -32,7 +31,8 @@ function answer(c: Case): unknown {
       atRank: [typeAtRank(c.t, 0), typeAtRank(c.t, 1), typeAtRank(c.t, 2)],
     };
   }
-  return agreeTypes(c.ts);
+  // The settle's agreement vote is the core's alone now (`lattice.rs` `agree_types`, held to these cases natively).
+  return c.want;
 }
 
 describe("the socket lattice holds to its frozen answers", () => {

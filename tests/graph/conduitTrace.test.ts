@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../../src/graph/graphModel";
-import { resolveTypedSource, reconcileConduitTypes, conduitPath, type PathConn } from "../../src/graph/conduitTrace";
+import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
+import { resolveTypedSource, conduitPath, type PathConn } from "../../src/graph/conduitTrace";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../../src/graph/nodes/conduit";
 import type { Schemes } from "../../src/graph/schemes";
 import { dateSocket, numberSocket } from "../../src/graph/sockets";
@@ -174,7 +175,7 @@ describe("conduitPath — the whole run a cable belongs to", () => {
   });
 });
 
-describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
+describe("the Type Settle's Conduit lanes adopt the wired-in type", () => {
   async function build() {
     const editor = new GraphEditor<Schemes>();
     const dateSrc = new GraphNode("Date") as unknown as Schemes["Node"];
@@ -191,8 +192,7 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
     await editor.addConnection(new GraphConnection(dateSrc, "result", cond, conduitInKey(2)) as Schemes["Connection"]);
     await editor.addConnection(new GraphConnection(numSrc, "value", cond, conduitInKey(0)) as Schemes["Connection"]);
 
-    const changed = reconcileConduitTypes(editor);
-    expect(changed).toBe(true);
+    expect(settleWildcardTypes(editor).conduitChanged).toBe(true);
     const dt = (k: string) => (cond.outputs[k]?.socket as { dataType?: string })?.dataType;
     expect(dt(conduitOutKey(2))).toBe("date");   // adopted from the date source
     expect(dt(conduitOutKey(0))).toBe("number");  // adopted from the number source
@@ -203,10 +203,10 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
     const { editor, dateSrc, cond } = await build();
     const conn = new GraphConnection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"];
     await editor.addConnection(conn);
-    reconcileConduitTypes(editor);
+    settleWildcardTypes(editor);
 
     await editor.removeConnection(conn.id);
-    reconcileConduitTypes(editor);
+    settleWildcardTypes(editor);
     expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("trueany");
   });
 });

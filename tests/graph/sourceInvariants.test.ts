@@ -47,7 +47,7 @@ describe("[[B11]] maximalMerge — a file that retypes sockets in place must rec
   // retypers is covered by fcReconcile.test.ts / noteFcPropagation.test.ts;
   // THIS is the completeness half — a brand-new retyping file that forgets the
   // reconciler fails here by name.
-  const RECONCILER = /retypeOutputCables|reconcileFcTypes|reconcileTrueAnyTypes/;
+  const RECONCILER = /retypeOutputCables|reconcileFcTypes|settleWildcardTypes/;
   // Files sanctioned to retype WITHOUT referencing a reconciler directly, each
   // with the reason it is safe:
   const SANCTIONED: Record<string, string> = {
@@ -56,7 +56,6 @@ describe("[[B11]] maximalMerge — a file that retypes sockets in place must rec
     "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype; ValueInputNode.setDataType likewise, its component (ValueInputNode.tsx) calls retypeOutputCables",
     "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale. GetColumn.setReadAs, SplitFrame.setColType and AddColumn.setAddAs swap sockets for frameEdit.ts, which calls retypeOutputCables / retypeInputCables",
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
-    "conduitTrace.ts": "conduit lane adoption — driven from the same central settle",
     "nodes/date.ts": "DateTimeValue and Workdays swap their result socket in setOp; their components (DateNodes.tsx) call retypeOutputCables",
     "nodes/finance.ts": "ReturnsNode.setOp returns `outputChanged`; its component (ReturnsNode.tsx) calls retypeOutputCables",
   };

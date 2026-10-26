@@ -1,9 +1,6 @@
 // [[C10]] socketLattice
-import type { GraphEditor } from "./graphEditor";
 import type { GraphSocket } from "./graphModel";
-import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./nodeClasses";
-import { SolenoidSocket, MutableSocket, type SocketDataType } from "./sockets";
-import type { Schemes } from "./schemes";
+import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey } from "./nodeClasses";
 
 
 export type TypedSource = {
@@ -35,28 +32,6 @@ export function resolveTypedSource(
   }
   return { socket: node?.outputs?.[outputKey]?.socket, source: nodeId, sourceOutput: outputKey };
 }
-
-/** Mutates each lane's MutableSocket in place and returns true if any type changed, so the caller loops to a fixpoint; the caller owns re-render, recompute and downstream re-validation. */
-function reconcileConduitTypesOnce(editor: GraphEditor<Schemes>): boolean {
-  let changed = false;
-  const conns = editor.getConnections();
-  for (const node of editor.getNodes()) {
-    if (!(node instanceof ConduitNode)) continue;
-    for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
-      const outSock = node.outputs[conduitOutKey(i)]?.socket;
-      if (!(outSock instanceof MutableSocket)) continue;
-      const feed = conns.find((c) => c.target === node.id && c.targetInput === conduitInKey(i));
-      let newType: SocketDataType = "trueany";
-      if (feed) {
-        const resolved = resolveTypedSource(editor, feed.source, feed.sourceOutput);
-        if (resolved.socket instanceof SolenoidSocket) newType = resolved.socket.dataType;
-      }
-      if (outSock.dataType !== newType) { outSock.setType(newType); changed = true; }
-    }
-  }
-  return changed;
-}
-
 
 export interface PathConn {
   id: string;
@@ -130,13 +105,4 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
   }
 
   return { connIds, origin: { nodeId: head.source, key: head.sourceOutput }, terminals, conduits };
-}
-
-export function reconcileConduitTypes(editor: GraphEditor<Schemes>): boolean {
-  let anyChanged = false;
-  for (let pass = 0; pass < 32; pass++) {
-    if (!reconcileConduitTypesOnce(editor)) break;
-    anyChanged = true;
-  }
-  return anyChanged;
 }

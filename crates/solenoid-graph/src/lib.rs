@@ -16,6 +16,7 @@ pub mod lattice;
 pub mod model;
 pub mod pass;
 pub mod session;
+pub mod settle;
 #[cfg(target_arch = "wasm32")]
 mod value;
 #[cfg(target_arch = "wasm32")]

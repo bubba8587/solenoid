@@ -5,7 +5,7 @@ import { GraphConnection, GraphInput, GraphNode } from "../../src/graph/graphMod
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { pruneFrontmatterCables } from "../../src/graph/noteFrontmatterSync";
 import { AdoptiveSocket, SolenoidSocket } from "../../src/graph/sockets";
-import { reconcileTrueAnyTypes } from "../../src/graph/trueAnyAdopt";
+import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 
 function sink(socket: SolenoidSocket) {
   const n = new GraphNode("Sink");
@@ -22,7 +22,7 @@ describe("a frontmatter retype judges each cable by the input's DECLARED rung", 
     for (const n of [note, display, typed]) await editor.addNode(n as never);
     await editor.addConnection(new GraphConnection(note as never, "x", display as never, "in") as never);
     await editor.addConnection(new GraphConnection(note as never, "x", typed as never, "in") as never);
-    reconcileTrueAnyTypes(editor as never);
+    settleWildcardTypes(editor as never);
     expect((display.inputs.in!.socket as AdoptiveSocket).dataType).toBe("number");
 
     note.body = "---\nx: hello\n---";

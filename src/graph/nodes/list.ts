@@ -1,7 +1,7 @@
 // [[B11]], [[C48]], [[C49]]
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { is2DType, numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
@@ -292,11 +292,11 @@ export class ListIndexNode extends GraphNode {
       output: "result",
       inputs: ["list"],
       combine: "single",
-      project: (t, ctx) =>
-        t === "frame" ? this.frameProjection(ctx)
-        : t === "cube" ? this.cubeProjection(ctx)
-        : this.positionsWired(ctx) && is2DType(t) ? "trueany"
-        : comboOfType(t) ?? "trueany",
+      project: (ctx) => ({
+        frame: this.frameProjection(ctx),
+        cube: this.cubeProjection(ctx),
+        tables: this.positionsWired(ctx) ? "trueany" : "combo",
+      }),
     }];
   }
 

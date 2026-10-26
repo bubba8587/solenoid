@@ -805,6 +805,61 @@ impl GraphCore {
         self.shared.graph.node_ids()
     }
 
+    /// The Type Settle over this editor (`settle.rs`): `facts` is each node's, as `settleFacts.ts` writes them, and the
+    /// order and cables are the graph's. Answers `{ changes: [[id, "in" | "out", key, type]], conduitChanged, adopted }`.
+    #[wasm_bindgen(js_name = settleTypes)]
+    pub fn settle_types(&self, facts: &str) -> String {
+        let facts: serde_json::Value = serde_json::from_str(facts).unwrap_or_default();
+        let by_id: std::collections::HashMap<&str, &serde_json::Value> = facts
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|f| f["id"].as_str().map(|id| (id, f)))
+            .collect();
+        let graph = &self.shared.graph;
+        let mut nodes: Vec<crate::settle::Node> = graph
+            .node_ids()
+            .iter()
+            .filter_map(|id| {
+                by_id
+                    .get(id.as_str())
+                    .map(|f| crate::settle::node_from_json(f))
+            })
+            .collect();
+        let before: Vec<Vec<String>> = nodes
+            .iter()
+            .map(|n| n.ins.iter().chain(&n.outs).map(|s| s.now.clone()).collect())
+            .collect();
+        let cables: Vec<crate::settle::Cable> = graph
+            .cables()
+            .into_iter()
+            .map(
+                |(source, source_output, target, target_input)| crate::settle::Cable {
+                    source,
+                    source_output,
+                    target,
+                    target_input,
+                },
+            )
+            .collect();
+        let settled = crate::settle::settle(&mut nodes, &cables);
+        let mut changes = Vec::new();
+        for (n, was) in nodes.iter().zip(&before) {
+            let sides = n
+                .ins
+                .iter()
+                .map(|s| ("in", s))
+                .chain(n.outs.iter().map(|s| ("out", s)));
+            for ((side, s), old) in sides.zip(was) {
+                if &s.now != old {
+                    changes.push(serde_json::json!([n.id, side, s.key, s.now]));
+                }
+            }
+        }
+        serde_json::json!({ "changes": changes, "conduitChanged": settled.conduit_changed, "adopted": settled.adopted })
+            .to_string()
+    }
+
     #[wasm_bindgen(js_name = connectionIds)]
     pub fn connection_ids(&self) -> Vec<String> {
         self.shared.graph.connection_ids()

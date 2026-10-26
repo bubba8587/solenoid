@@ -1,7 +1,9 @@
 // [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
-import { GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
-import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import type { Schemes } from "../../src/graph/schemes";
+import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { extractInit } from "../../src/graph/nodeInit";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
@@ -9,16 +11,14 @@ import { CableSwitchNode } from "../../src/graph/nodes/control";
 import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/nodeClasses";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "../../src/graph/sockets";
 
-// Same fake-editor surface as conduitTrace.test.ts — the pass only reads
-// getNodes/getNode/getConnections and mutates sockets in place.
+// A real editor over the nodes and cables: the settle runs on the core over its graph.
 type Conn = { source: string; sourceOutput: string; target: string; targetInput: string };
-function makeEditor(nodes: GraphNode[], conns: Conn[]): AdoptEditor {
+function makeEditor(nodes: GraphNode[], conns: Conn[]): GraphEditor<Schemes> {
+  const ed = new GraphEditor<Schemes>();
   const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  return {
-    getNodes: () => nodes as never[],
-    getNode: (id: string) => byId[id] as never,
-    getConnections: () => conns,
-  };
+  for (const n of nodes) void ed.addNode(n as never);
+  for (const c of conns) void ed.addConnection(new GraphConnection(byId[c.source], c.sourceOutput, byId[c.target], c.targetInput) as never);
+  return ed;
 }
 
 const dt = (sock: GraphSocket | undefined) =>
@@ -41,11 +41,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const disp = new DisplayNode();
     const wire: Conn = { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" };
     const ed = makeEditor([src, disp], [wire]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(disp.inputs.in?.socket)).toBe("number");
     expect(dt(disp.outputs.out?.socket)).toBe("number"); // passthrough adopts through
     // Disconnect → both revert to the hollow placeholder.
-    reconcileTrueAnyTypes(makeEditor([src, disp], []));
+    settleWildcardTypes(makeEditor([src, disp], []));
     expect(dt(disp.inputs.in?.socket)).toBe("trueany");
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
@@ -58,7 +58,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // holding the adopted type, this fails.
     const src = numSource();
     const disp = new DisplayNode();
-    reconcileTrueAnyTypes(makeEditor([src, disp], [
+    settleWildcardTypes(makeEditor([src, disp], [
       { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" },
     ]));
     const init = extractInit(disp);
@@ -76,7 +76,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: src.id, sourceOutput: "value", target: d1.id, targetInput: "in" },
       { source: d1.id, sourceOutput: "out", target: d2.id, targetInput: "in" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(d2.inputs.in?.socket)).toBe("string");
     expect(dt(d2.outputs.out?.socket)).toBe("string");
   });
@@ -90,7 +90,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: dNum.id, targetInput: "in" },
       { source: str.id, sourceOutput: "value", target: dStr.id, targetInput: "in" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(dNum.inputs.in?.socket)).toBe("number");
     expect(dt(dStr.inputs.in?.socket)).toBe("string");
   });
@@ -103,7 +103,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: agreeing.id, targetInput: "then" },
       { source: num.id, sourceOutput: "value", target: agreeing.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(agreeing.outputs.result?.socket)).toBe("number");
 
     const mixed = new IfNode();
@@ -111,7 +111,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: num.id, sourceOutput: "value", target: mixed.id, targetInput: "then" },
       { source: str.id, sourceOutput: "value", target: mixed.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(mixed.inputs.then?.socket)).toBe("number"); // inputs adopt individually
     expect(dt(mixed.inputs.else?.socket)).toBe("string");
     expect(dt(mixed.outputs.result?.socket)).toBe("trueany"); // result genuinely runtime-dependent
@@ -123,7 +123,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const ed = makeEditor([num, n], [
       { source: num.id, sourceOutput: "value", target: n.id, targetInput: "then" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(n.outputs.result?.socket)).toBe("number");
   });
 
@@ -137,10 +137,10 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: str.id, sourceOutput: "value", target: sw.id, targetInput: k1 },
     ];
     sw.activeIndex = 0;
-    reconcileTrueAnyTypes(makeEditor([num, str, sw], conns));
+    settleWildcardTypes(makeEditor([num, str, sw], conns));
     expect(dt(sw.outputs.out?.socket)).toBe("number");
     sw.activeIndex = 1;
-    reconcileTrueAnyTypes(makeEditor([num, str, sw], conns));
+    settleWildcardTypes(makeEditor([num, str, sw], conns));
     expect(dt(sw.outputs.out?.socket)).toBe("string");
   });
 
@@ -151,11 +151,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const ed = makeEditor([src, rev], [
       { source: src.id, sourceOutput: "out", target: rev.id, targetInput: "list" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(rev.inputs.list?.socket)).toBe("datelist");   // input adopts
     expect(dt(rev.outputs.result?.socket)).toBe("datelist"); // output forwards it (was neutral `anylist`)
     // Reverts to the neutral base when unwired (both dots gray again).
-    reconcileTrueAnyTypes(makeEditor([src, rev], []));
+    settleWildcardTypes(makeEditor([src, rev], []));
     expect(dt(rev.outputs.result?.socket)).toBe("anylist");
   });
 
@@ -168,12 +168,12 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const ed = makeEditor([src, idx], [
       { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("frame");
     expect(dt(idx.outputs.result?.socket)).toBe("frame");
     // Name a column and the shape is unknown, so the family is too.
     idx.literals.column = 2;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
@@ -194,21 +194,21 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     ]);
 
     idx.literals.column = 2; // the Due column
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo"); // one date, or the whole column
 
     idx.literals.column = 1;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("strcombo");
 
     idx.literals.column = 3;
     idx.literals.index = 2; // a single CELL — same family, the combo covers both ranks
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("numlist");
 
     // Blank / 0 Column = the whole row: a one-row frame.
     delete idx.literals.column;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("frame");
   });
 
@@ -225,7 +225,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: sel.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
     ]);
     idx.literals.column = 1; // Select Columns reordered — column 1 is now Due
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
   });
 
@@ -240,27 +240,27 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
     ]);
     // Both axes blank: the cube passes through whole.
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("cube");
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // Column set, Row blank: a one-column cube.
     idx.literals.column = 2;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // Row set too: a single CELL — could be anything, the placeholder stands.
     idx.literals.index = 1;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
     // Row set, Column blank: a one-row cube.
     delete idx.literals.column;
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(idx.outputs.result?.socket)).toBe("cube");
     // A WIRED axis is a runtime value — with the other axis given, a cell is
     // possible, so the placeholder returns.
     const which = numSource();
     idx.literals.column = 2;
     delete idx.literals.index;
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+    settleWildcardTypes(makeEditor([src, which, idx], [
       { source: src.id, sourceOutput: "cube", target: idx.id, targetInput: "list" },
       { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "index" },
     ]));
@@ -275,11 +275,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const idx = new ListIndexNode();
     idx.literals.column = 1;
     const wire = { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" };
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [wire]));
+    settleWildcardTypes(makeEditor([src, which, idx], [wire]));
     expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
     // Wire the Column socket: data() takes the cable over the literal, so the stale
     // literal must stop deciding the type.
-    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+    settleWildcardTypes(makeEditor([src, which, idx], [
       wire, { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "column" },
     ]));
     expect(dt(idx.outputs.result?.socket)).toBe("trueany");
@@ -297,7 +297,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const s1 = strList(), s2 = strList();
 
     const sort = new SortNode();
-    reconcileTrueAnyTypes(makeEditor([s1, sort], [
+    settleWildcardTypes(makeEditor([s1, sort], [
       { source: s1.id, sourceOutput: "out", target: sort.id, targetInput: "list" },
     ]));
     expect(dt(sort.outputs.result?.socket)).toBe("strlist");
@@ -306,7 +306,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // its Key column carries the type internally, not a trueany output socket.)
 
     const set = new SetsNode();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, set], [
+    settleWildcardTypes(makeEditor([s1, s2, set], [
       { source: s1.id, sourceOutput: "out", target: set.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: set.id, targetInput: "b" },
     ]));
@@ -314,14 +314,14 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 
     const cat = new ConcatListsNode();
     const catKeys = cat.valueInputKeys();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, cat], [
+    settleWildcardTypes(makeEditor([s1, s2, cat], [
       { source: s1.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[0] },
       { source: s2.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[1] },
     ]));
     expect(dt(cat.outputs.result?.socket)).toBe("strlist");
 
     const il = new InterleaveNode();
-    reconcileTrueAnyTypes(makeEditor([s1, s2, il], [
+    settleWildcardTypes(makeEditor([s1, s2, il], [
       { source: s1.id, sourceOutput: "out", target: il.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: il.id, targetInput: "b" },
     ]));
@@ -339,7 +339,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 
     for (const stack of [new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const [k0, k1] = stack.valueInputKeys();
-      reconcileTrueAnyTypes(makeEditor([strs, tbl, stack], [
+      settleWildcardTypes(makeEditor([strs, tbl, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
         { source: tbl.id,  sourceOutput: "out", target: stack.id, targetInput: k1 },
       ]));
@@ -347,13 +347,13 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       // A disagreeing row keeps the neutral rung — the selector rule, unchanged.
       const nums = new GraphNode("Nums");
       nums.addOutput("out", new GraphOutput(dateListSocket));
-      reconcileTrueAnyTypes(makeEditor([strs, nums, stack], [
+      settleWildcardTypes(makeEditor([strs, nums, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
         { source: nums.id, sourceOutput: "out", target: stack.id, targetInput: k1 },
       ]));
       expect(dt(stack.outputs.result?.socket)).toBe("anytable");
       // Unwired → reverts to the declared wildcard rank.
-      reconcileTrueAnyTypes(makeEditor([stack], []));
+      settleWildcardTypes(makeEditor([stack], []));
       expect(dt(stack.outputs.result?.socket)).toBe("anytable");
     }
   });
@@ -362,7 +362,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const strs = new GraphNode("Strs");
     strs.addOutput("out", new GraphOutput(strListSocket));
     const wrap = new TableReshapeNode({ op: "wraprows" });
-    reconcileTrueAnyTypes(makeEditor([strs, wrap], [
+    settleWildcardTypes(makeEditor([strs, wrap], [
       { source: strs.id, sourceOutput: "out", target: wrap.id, targetInput: "list" },
     ]));
     expect(dt(wrap.outputs.result?.socket)).toBe("strtable"); // strlist in → strtable out
@@ -371,12 +371,12 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     tbl.addOutput("out", new GraphOutput(strTableSocket));
     const flat = new TableReshapeNode({ op: "torow" });
     const flatKey = Object.keys(flat.inputs)[0];
-    reconcileTrueAnyTypes(makeEditor([tbl, flat], [
+    settleWildcardTypes(makeEditor([tbl, flat], [
       { source: tbl.id, sourceOutput: "out", target: flat.id, targetInput: flatKey },
     ]));
     expect(dt(flat.outputs.result?.socket)).toBe("strlist"); // strtable in → strlist out
     // Unwired → both revert to their declared wildcard rank.
-    reconcileTrueAnyTypes(makeEditor([tbl, flat], []));
+    settleWildcardTypes(makeEditor([tbl, flat], []));
     expect(dt(flat.outputs.result?.socket)).toBe("anylist");
   });
 });
@@ -401,7 +401,7 @@ describe("agree vote — unknowable vetoes, NA() abstains", () => {
       { source: unknowable.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
       { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(iff.outputs.result?.socket)).toBe("trueany");
   });
 
@@ -413,7 +413,7 @@ describe("agree vote — unknowable vetoes, NA() abstains", () => {
       { source: num.id, sourceOutput: "value", target: iff.id, targetInput: "then" },
       { source: na.id, sourceOutput: "result", target: iff.id, targetInput: "else" },
     ]);
-    reconcileTrueAnyTypes(ed);
+    settleWildcardTypes(ed);
     expect(dt(iff.outputs.result?.socket)).toBe("number");
   });
 });

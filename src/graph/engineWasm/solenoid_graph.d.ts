@@ -208,6 +208,11 @@ export class GraphCore {
   fetchInputs(id: string): Promise<any>;
   loopMembers(): string[];
   /**
+   * The Type Settle over this editor (`settle.rs`): `facts` is each node's, as `settleFacts.ts` writes them, and the
+   * order and cables are the graph's. Answers `{ changes: [[id, "in" | "out", key, type]], conduitChanged, adopted }`.
+   */
+  settleTypes(facts: string): string;
+  /**
    * Puts the nodes in `order`, which must name every node once; `false` when it doesn't.
    */
   reorderNodes(order: string[]): boolean;
@@ -357,6 +362,7 @@ export interface InitOutput {
   readonly graphcore_seedLoops: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_setPorts: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
   readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+  readonly graphcore_settleTypes: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly graphcore_unnest: (a: number, b: number, c: number) => void;
   readonly graphcore_useEngine: (a: number, b: number, c: number) => void;

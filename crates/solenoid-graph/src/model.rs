@@ -328,6 +328,22 @@ impl<H: Host> Graph<H> {
             .collect()
     }
 
+    /// Every cable as `(source, source output, target, target input)`, in the editor's order.
+    pub fn cables(&self) -> Vec<(String, String, String, String)> {
+        self.editor
+            .get_connections()
+            .iter()
+            .map(|c| {
+                (
+                    c.source().to_owned(),
+                    c.source_output().to_owned(),
+                    c.target().to_owned(),
+                    c.target_input().to_owned(),
+                )
+            })
+            .collect()
+    }
+
     pub fn connection_ids(&self) -> Vec<String> {
         self.editor
             .get_connections()

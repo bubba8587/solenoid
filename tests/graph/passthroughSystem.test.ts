@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput, resolvePassthroughType, type ProjectContext } from "../../src/graph/nodes/passthrough";
+import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "../../src/graph/nodes/passthrough";
 import type { Shape } from "../../src/graph/frameShape";
+import { settledOutputs } from "./settleKit";
 import { canConnect, isDateType, type SocketDataType } from "../../src/graph/sockets";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { ExpectNode } from "../../src/graph/nodes/quality";
@@ -106,8 +107,7 @@ describe("passthrough declarations", () => {
     expect(spec).toMatchObject({ output: "result", combine: "single" });
     expect(spec.inputs).toEqual(["list"]);
 
-    const resolve = (t: SocketDataType | null) =>
-      resolvePassthroughType(spec, () => t, (ts) => (ts[0] as SocketDataType) ?? "trueany");
+    const resolve = (t: SocketDataType | null) => settledOutputs(n, t ? { list: t } : {}).result;
 
     // A HOMOGENEOUS container: the family is fixed by the socket however you slice it,
     // and the combo covers both shapes the runtime arguments can produce.
@@ -142,10 +142,9 @@ describe("passthrough declarations", () => {
     const shape: Shape = {
       columns: [{ name: "Item", type: "string" }, { name: "Due", type: "date" }, { name: "Qty", type: "number" }],
     };
-    const resolve = (ctx: Partial<ProjectContext>) =>
-      resolvePassthroughType(spec, () => "frame", () => "trueany", {
-        shapeOf: () => shape, wired: () => false, ...ctx,
-      });
+    void spec;
+    const resolve = (ctx: { shape?: Shape | null; wiredColumn?: boolean }) =>
+      settledOutputs(n, { list: { type: "frame", shape: "shape" in ctx ? ctx.shape : shape }, ...(ctx.wiredColumn ? { column: "number" as const } : {}) }).result;
 
     // No Column → the whole row (or the whole frame): still a frame.
     expect(resolve({})).toBe("frame");
@@ -167,16 +166,15 @@ describe("passthrough declarations", () => {
     n.literals.column = 9;
     expect(resolve({})).toBe("trueany");
     n.literals.column = 2;
-    expect(resolve({ shapeOf: () => null })).toBe("trueany");
-    expect(resolve({ shapeOf: () => ({ ...shape, dynamic: true }) })).toBe("trueany");
-    expect(resolve({ wired: (k) => k === "column" })).toBe("trueany");
+    expect(resolve({ shape: null })).toBe("trueany");
+    expect(resolve({ shape: { ...shape, dynamic: true } })).toBe("trueany");
+    expect(resolve({ wiredColumn: true })).toBe("trueany");
   });
 
   // The point of the change: a date pulled out of a date list stays a DATE downstream.
   // `isDateType` reads the socket, so a static `trueany` output rendered a raw serial.
   it("an extracted date is still date-typed, and reaches both a scalar and a list input", () => {
-    const spec = getPassthrough(new ListIndexNode())[0];
-    const out = resolvePassthroughType(spec, () => "datelist", () => "trueany");
+    const out = settledOutputs(new ListIndexNode(), { list: "datelist" }).result;
     expect(isDateType(out)).toBe(true);
     expect(canConnect(out, "date")).toBe(true);      // one cell → a scalar date input
     expect(canConnect(out, "datelist")).toBe(true);  // a whole axis → a date list input

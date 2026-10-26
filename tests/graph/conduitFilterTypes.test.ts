@@ -2,15 +2,10 @@
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitInKey } from "../../src/graph/nodes/conduit";
 import { FilterNode } from "../../src/graph/nodes/list";
-import { canConnect, AdoptiveSocket, SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
-import { resolvePassthroughType } from "../../src/graph/nodes/passthrough";
+import { canConnect, AdoptiveSocket, SolenoidSocket } from "../../src/graph/sockets";
+import { settledOutputs } from "./settleKit";
 import { tagDim, isUnitCell } from "../../src/graph/unitValue";
 import { displayMagnitudeOf } from "../../src/graph/unitBridge";
-
-const agree = (types: (SocketDataType | null)[]): SocketDataType => {
-  const wired = types.filter((t): t is SocketDataType => t != null && t !== "trueany");
-  return wired.length && wired.every((t) => t === wired[0]) ? wired[0] : "trueany";
-};
 
 describe("Conduit lane accepts any cable (trueany, not scalar any)", () => {
   it("the lane input is trueany and accepts a 1-D anylist output (the List Filter case)", () => {
@@ -38,12 +33,9 @@ describe("List Filter output adopts the input's concrete type", () => {
 
   it("passthrough() forwards the `list` input to both outputs → adopts numlist", () => {
     const f = new FilterNode();
-    const specs = f.passthrough();
-    expect(specs.map((s) => s.output).sort()).toEqual(["dropped", "result"]);
-    for (const spec of specs) {
-      expect(resolvePassthroughType(spec, (k) => (k === "list" ? "numlist" : null), agree)).toBe("numlist");
-      expect(resolvePassthroughType(spec, () => "trueany", agree)).toBe("trueany"); // unwired → placeholder
-    }
+    expect(f.passthrough().map((s) => s.output).sort()).toEqual(["dropped", "result"]);
+    expect(settledOutputs(f, { list: "numlist" })).toMatchObject({ result: "numlist", dropped: "numlist" });
+    expect(settledOutputs(new FilterNode(), {})).toMatchObject({ result: "trueany", dropped: "trueany" }); // unwired → placeholder
   });
 });
 

@@ -213,7 +213,7 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
 // connection returning the FIRST non-wildcard type it met. That ignored `combine`
 // and didn't tell a VALUE branch from a side input, so it could answer where the
 // adoption pass had deliberately declined to. Both now run
-// resolvePassthroughType + agreeTypes, so display can never contradict the socket.
+// the core's Type Settle (`settle.rs`), so display can never contradict the socket.
 describe("displayedType — one rule with socket adoption (no first-branch guessing)", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
@@ -285,7 +285,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
 // not to be about selectors at all. `IFERROR(aDate, NA())` lost its date formatting
 // because NA() declared a `number` OUTPUT while emitting a tagged #N/A SolError — so
 // the branches were date + number, they disagreed, and the result resolved to unknown.
-// NA is type-neutral (`trueany`), which `agreeTypes` correctly ignores as non-voting.
+// NA is type-neutral (`trueany`), which the settle's agreement vote correctly ignores as non-voting.
 describe("NA() is type-neutral, so it doesn't out-vote a typed branch", () => {
   afterEach(() => setEditorRefs(null as never, null as never, null as never));
 
