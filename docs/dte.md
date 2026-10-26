@@ -93,6 +93,19 @@ docs and use the alias when browsing. `tree/decisions/DTE.base` is the tree as O
 Outbox, Unratified, Contested, Inbox, All leaves. Obsidian's `aliases`, `tags` and `cssclasses`
 are known fields to the tool.
 
+## Inbox notes: written for a quick yes or no
+
+The author decides inbox items without the code in front of them, and is not an expert in every
+area, so a note carries everything the decision needs in plain words (author 2026-10-26):
+
+- **Title:** the choice as one plain sentence about the app, the way a user would say it.
+- **Decision:** what would change, with one concrete example of what you'd see before and after.
+- **Why:** the problem in one or two sentences. No file paths, function names, leaf IDs or
+  internal terms; a term the decision can't do without is explained in passing.
+- **What ratifying means:** the recommendation first (**Lean**), then **Ratify** and **Reject**,
+  each as what the author would notice in the app afterwards. Name any real cost or risk.
+- Under about 150 words. Detail an agent needs later goes in the backlog or the spec, not here.
+
 ## Outbox: edits made in the vault
 
 The inbox is how an agent hands a decision up to the author. The outbox is the other direction:
