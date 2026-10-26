@@ -214,7 +214,5 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   wavelength, a few Timesavers). Metadata only, DESIGN.md §7 voice; pairs well with the pack-units lead below.
 
 ## From the comment lift (rest partition)
-- [ ] **Voice lint over option tables.** `uiCopy.test.ts` skips the `tsx-opt-*` records `copyCorpus.ts` already
-  collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
 
 

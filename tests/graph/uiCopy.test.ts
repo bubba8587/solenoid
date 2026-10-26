@@ -91,6 +91,8 @@ const RULES: Rule[] = [
       "(?:^|[:;,]\\s*|\\*\\*|\\b(?:then|and|or)\\s+)" + GESTURE + "|" + GESTURE + "\\s+to\\s+\\w",
       "i",
     ),
+    // An option's label is a name ("Hover fill", the palette slot), never an instruction.
+    where: (u) => !u.src.endsWith(".opt-label"),
   },
   {
     id: "imperative-opener",

@@ -215,7 +215,6 @@ function unitsFromRecords(records: CopyRecord[]): Unit[] {
       case "tsx-opt-label":
       case "tsx-opt-title":
       case "tsx-opt-desc":
-        break;
       case "tsx-tooltip":
       case "tsx-aria":
       case "tsx-placeholder": {
