@@ -15,7 +15,7 @@ const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.
 
 async function main() {
   const browser = await puppeteer.launch({
-    executablePath: EDGE, headless: true, args: ["--window-size=1600,1100"],
+    executablePath: EDGE, headless: true, args: ["--no-sandbox", "--window-size=1600,1100"],
   });
   const fail = [];
   try {
@@ -89,10 +89,8 @@ async function main() {
       await sleep(120);
     };
     const tap = async (x, y) => {
-      await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 0 }] });
-      await sleep(40);
-      await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-      await sleep(120);
+      await page.touchscreen.tap(x, y);
+      await sleep(300);
     };
 
     const pickCard = (rootSel) => page.evaluate((sel, nodeSel) => {
@@ -111,12 +109,12 @@ async function main() {
       return best;
     }, rootSel, NODE_SEL);
 
-    const mainCard = await pickCard(".solenoid-canvas");
+    const mainCard = await pickCard(".sol-rf-appcanvas");
     if (!mainCard) { fail.push("main: no draggable card found"); }
     else {
-      const before = await measure(".solenoid-canvas");
+      const before = await measure(".sol-rf-appcanvas");
       await drag(mainCard.x, mainCard.y, 120, 90);
-      const after = await measure(".solenoid-canvas");
+      const after = await measure(".sol-rf-appcanvas");
       const m = metrics(before, after);
       console.log(`MAIN CANVAS  finger-drag on a card → cam Δ(${m.camDx}, ${m.camDy})  nodesMoved=${m.nodesMoved}  (${m.count} cards)`);
       if (!(Math.hypot(m.camDx, m.camDy) > 20 && m.nodesMoved === 0)) fail.push("main: expected a pan with 0 nodes moved");
@@ -132,11 +130,11 @@ async function main() {
     });
     if (!drilled) { fail.push("could not find the composite's Edit-contents button"); }
     else {
-      await page.waitForSelector(".solenoid-composite-editor__canvas .solenoid-node", { timeout: 30000 });
+      await page.waitForSelector(".solenoid-composite-editor__host .solenoid-node", { timeout: 30000 });
       await sleep(1200);
       console.log("done");
 
-      const DRILL = ".solenoid-composite-editor__canvas";
+      const DRILL = ".solenoid-composite-editor__host";
       const card = await pickCard(DRILL);
       if (!card) { fail.push("drill-in: no draggable card found"); }
       else {
@@ -147,6 +145,8 @@ async function main() {
         console.log(`DRILL-IN     finger-drag on a card → cam Δ(${m.camDx}, ${m.camDy})  nodesMoved=${m.nodesMoved}  (${m.count} cards)`);
         if (!(Math.hypot(m.camDx, m.camDy) > 20 && m.nodesMoved === 0)) fail.push("drill-in: expected a pan with 0 nodes moved");
 
+        // The camera settles after a pan; a tap on a card still gliding is not a stationary tap.
+        await sleep(1000);
         const card2 = await pickCard(DRILL);
         if (card2) {
           const before2 = await page.evaluate((s) => document.querySelectorAll(`${s} .solenoid-node--selected`).length, DRILL);
