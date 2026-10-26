@@ -4,7 +4,7 @@
 import { ScheduleNode, type SchedulePrecision, type ScheduleProgress } from "../../src/graph/nodes/schedule";
 import { GanttNode } from "../../src/graph/nodes/gantt";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
-import type { CubeValue, FrameValue } from "../../src/graph/frame";
+import { cubeFromColumns, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import type { ScheduleOutput } from "../../src/graph/planTypes";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
@@ -81,4 +81,13 @@ export function ganttPayload(schedule: CubeValue | FrameValue, o: GanttOptions =
   if (isSolError(chart)) return chart;
   if (chart === null || chart.payload?.kind !== "gantt") throw new Error("expected a gantt payload");
   return chart.payload;
+}
+
+/** The Gantt view keys `options` sets, as the card reads them on the core (`gantt_view_options`). */
+export function ganttViewOf(options: string): Record<string, unknown> {
+  const tasks = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }]);
+  const r = scheduleTasks(tasks, { start: 46027, workingDays: true });
+  const p = ganttPayload(r.cube, { options });
+  if (isSolError(p)) throw new Error(p.message);
+  return p.view as Record<string, unknown>;
 }

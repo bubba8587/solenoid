@@ -24,7 +24,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## Rust core (rust-port, [[D99]] rustIsSpec)
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before rust-port merges into develop: the branch commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
-- [ ] **The Gantt view keys are checked against the TS `parseGanttViewOptions`** (`packages/gantt-layout/src/payload.ts`) in `chartTitles.test.ts` and `ganttBuilder.test.ts`, while the card parses them with the core's `gantt_view_options` (`nodes/sched.rs`); point the tests at the core, or freeze the TS parser's answers and port it.
 - [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.

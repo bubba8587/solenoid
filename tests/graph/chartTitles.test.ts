@@ -4,7 +4,7 @@ import { CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../..
 import { chartOptionsOf } from "./coreVerbs";
 import { chartValueOps } from "../../src/graph/chartValue";
 import { UNTITLED_FIGURES } from "../../src/graph/components/chartTitle";
-import { parseGanttViewOptions } from "@solenoid/gantt-layout";
+import { ganttViewOf } from "./scheduleOnCard";
 
 /** Figures that draw their own title inside the plot. */
 const SELF_TITLED_FIGURES: ReadonlySet<string> = new Set(["column", "bar", "line", "area", "scatter", "xyline", "pie", "radar", "radialbar", "funnel", "bubble", "overlay", "record"]);
@@ -47,7 +47,7 @@ describe("Chart Builder key lists", () => {
         const s = `${k}=${SAMPLE[k]}`;
         const read = RECORD_ONLY.has(k)
           ? id === "record"
-          : Object.keys(chartOptionsOf(s)).length > 0 || Object.keys(parseGanttViewOptions(s, () => 1)).length > 0;
+          : Object.keys(chartOptionsOf(s)).length > 0 || Object.keys(ganttViewOf(s)).length > 0;
         expect(read, `${id}:${k}`).toBe(true);
       }
     }
@@ -56,7 +56,7 @@ describe("Chart Builder key lists", () => {
   it("only the Gantt target offers the Gantt view keys", () => {
     const leaks = CHART_TARGET_LIST
       .filter((t) => t.id !== "gantt")
-      .flatMap((t) => t.keys.filter((k) => Object.keys(parseGanttViewOptions(`${k}=${SAMPLE[k]}`, () => 1)).length > 0).map((k) => `${t.id}:${k}`));
+      .flatMap((t) => t.keys.filter((k) => Object.keys(ganttViewOf(`${k}=${SAMPLE[k]}`)).length > 0).map((k) => `${t.id}:${k}`));
     expect(leaks).toEqual([]);
   });
 });

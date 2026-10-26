@@ -2,10 +2,10 @@
 import { describe, it, expect } from "vitest";
 import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, chartBuilderKeys } from "../../src/graph/nodes/chartOptions";
-import { parseGanttViewOptions } from "@solenoid/gantt-layout";
+import { ganttViewOf } from "./scheduleOnCard";
 
 // The Chart Builder's Gantt target drives the hand-rolled Gantt figure (chart op "gantt"):
-// every row writes the key the figure's own parser reads, and round-trips through it.
+// every row writes a key the card's parser (the core's `gantt_view_options`) reads, and round-trips through it.
 describe("Chart Builder › Gantt target", () => {
   it("offers every view key the figure parses and each one round-trips", () => {
     const keys = CHART_BUILDER_TARGETS.gantt.keys;
@@ -19,7 +19,7 @@ describe("Chart Builder › Gantt target", () => {
       status: "off", collapse: "1", group_by: "off", week: "us", fiscal_start: "4",
     });
     const out = b.data({}).result as string;
-    const v = parseGanttViewOptions(out, () => null);
+    const v = ganttViewOf(out);
     expect(v).toMatchObject({
       zoom: "week", tiers: 1, layout: "calendar", fit: "page", critical: false, baseline: false, arrows: false,
       today: false, weekends: false, labels: false, histogram: true, minutes: true, columns: ["name", "finish"],
