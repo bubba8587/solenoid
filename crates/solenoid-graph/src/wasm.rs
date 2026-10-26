@@ -830,17 +830,7 @@ impl GraphCore {
             .iter()
             .map(|n| n.ins.iter().chain(&n.outs).map(|s| s.now.clone()).collect())
             .collect();
-        let cables: Vec<crate::settle::Cable> = graph
-            .cables()
-            .into_iter()
-            .map(|c| crate::settle::Cable {
-                source: c.source,
-                source_output: c.source_output,
-                target: c.target,
-                target_input: c.target_input,
-            })
-            .collect();
-        let settled = crate::settle::settle(&mut nodes, &cables);
+        let settled = crate::settle::settle(&mut nodes, &graph.cables());
         let mut changes = Vec::new();
         for (n, was) in nodes.iter().zip(&before) {
             let sides = n
@@ -875,6 +865,29 @@ impl GraphCore {
 
     /// The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
     /// conduits }`; `undefined` for a cable not here.
+    /// Every port's format annotation and every node's value origin over this graph, from each node's facts
+    /// (`annotationFacts.ts`): `annotate::resolve_all`'s answer as JSON.
+    pub fn annotate(&self, facts: &str) -> String {
+        let facts: serde_json::Value = serde_json::from_str(facts).unwrap_or_default();
+        let by_id: std::collections::HashMap<&str, &serde_json::Value> = facts
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|f| f["id"].as_str().map(|id| (id, f)))
+            .collect();
+        let graph = &self.shared.graph;
+        let nodes: Vec<crate::annotate::Node> = graph
+            .node_ids()
+            .into_iter()
+            .filter_map(|id| {
+                by_id
+                    .get(id.as_str())
+                    .map(|f| crate::annotate::Node { id, facts: f })
+            })
+            .collect();
+        crate::annotate::resolve_all(&nodes, &graph.cables()).to_string()
+    }
+
     #[wasm_bindgen(js_name = conduitPath)]
     pub fn conduit_path(&self, cable_id: &str) -> Option<String> {
         let cables = self.shared.graph.cables();

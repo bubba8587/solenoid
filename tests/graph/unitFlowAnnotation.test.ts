@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
-import { makeAnnotationResolver, resolveValueOrigin } from "../../src/graph/unitFlow";
+import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 import { isUnitCell, magnitudeOf, dimOf, fromUnit, matrixUnitOf, type UnitCell } from "../../src/graph/unitValue";
 import { UNITS } from "../../src/graph/dimension";
@@ -384,7 +384,7 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
   });
 });
 
-describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => {
+describe("valueOrigin — the popup 'Go to source' upstream walk", () => {
   it("a Display chain resolves to the producer at the top", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;
     const num = node("Number");                              // producer
@@ -393,8 +393,8 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     for (const n of [num, d1, d2]) await editor.addNode(n as never);
     await connect(editor, num, d1);
     await connect(editor, d1, d2);
-    expect(resolveValueOrigin(editor, d2.id)).toBe(num.id);
-    expect(resolveValueOrigin(editor, d1.id)).toBe(num.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(d2.id)).toBe(num.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(d1.id)).toBe(num.id);
   });
 
   it("walks through an FC (format lock, value unchanged)", async () => {
@@ -405,7 +405,7 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     for (const n of [num, fc, disp]) await editor.addNode(n as never);
     await connect(editor, num, fc);
     await connect(editor, fc, disp);
-    expect(resolveValueOrigin(editor, disp.id)).toBe(num.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(disp.id)).toBe(num.id);
   });
 
   it("a selector follows its actually-chosen branch", async () => {
@@ -416,7 +416,7 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     for (const n of [a, b, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");
     await connect(editor, b, iff, "else");
-    expect(resolveValueOrigin(editor, iff.id)).toBe(b.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(iff.id)).toBe(b.id);
   });
 
   it("stops AT an indeterminate selector (list condition — no single branch)", async () => {
@@ -427,7 +427,7 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     for (const n of [a, b, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");
     await connect(editor, b, iff, "else");
-    expect(resolveValueOrigin(editor, iff.id)).toBe(iff.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(iff.id)).toBe(iff.id);
   });
 
   it("a selector without branch tracking still walks its ONE wired branch", async () => {
@@ -436,7 +436,7 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     const iff = ifNode("IF", undefined); // no data-awareness at all → combine fallback
     for (const n of [a, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");                   // else left unwired
-    expect(resolveValueOrigin(editor, iff.id)).toBe(a.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(iff.id)).toBe(a.id);
   });
 
   it("a transform and an unwired Display are their own origin", async () => {
@@ -448,9 +448,9 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     for (const n of [num, add, disp, lone]) await editor.addNode(n as never);
     await connect(editor, num, add);
     await connect(editor, add, disp);
-    expect(resolveValueOrigin(editor, disp.id)).toBe(add.id);
-    expect(resolveValueOrigin(editor, add.id)).toBe(add.id);
-    expect(resolveValueOrigin(editor, lone.id)).toBe(lone.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(disp.id)).toBe(add.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(add.id)).toBe(add.id);
+    expect(makeAnnotationResolver(editor).valueOrigin(lone.id)).toBe(lone.id);
   });
 });
 

@@ -351,8 +351,10 @@ flowchart LR
   (`GraphCore.settleTypes`) and answers each socket that changed; `settleWildcardTypes` retypes those sockets and the
   view rerenders the nodes. Frozen over every seed graph three ways (`fixtures/core/settle.json.gz`,
   `coreSettle.test.ts`, `tests/settle.rs`).
-- **D6, the reconcile** (`fcReconcile.ts`, the FC's `adaptTypeFromConnections` and `refreshAnnotation`, Convert's
-  arrows, and the annotation flow in `unitFlow.ts` and `formatAnnotationStore.ts`).
+- **D6, the annotations and the reconcile**: the annotation walk is done (`annotate.rs`, `GraphCore.annotate`, from
+  `annotationFacts.ts`; [[unit-flow]] § The resolver), frozen over every seed graph three ways
+  (`fixtures/core/annotations.json.gz`, `coreAnnotations.test.ts`, `tests/annotate.rs`). Open: the reconcile
+  (`fcReconcile.ts`, the FC's `adaptTypeFromConnections` and `refreshAnnotation`, Convert's arrows).
 
 What stays TypeScript is React: the components and what they render. Everything else that computes moves.
 
@@ -365,7 +367,7 @@ The rest of `src/graph/`'s non-component TypeScript, by group (lines as of 2026-
 | Graph model | `graphValidate`, `textForm`, `copyPaste`, `compositeLogic`, `persistence` and `persistenceCore`, `nodeInit`, `historyDigest` | about 2,800 |
 | Layout (the LayoutFx) | `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK | about 3,000 |
 | Cable geometry | `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints` | about 1,400 |
-| Values and annotations | `unitFlow`, `formatAnnotationStore`'s resolver, `fcReconcile` (D6), `dimension`, `unitValue`, `unitBridge`, `formatModel`, `numberSpec`, `frame` | about 2,400 |
+| Values and annotations | `fcReconcile` (D6), `dimension`, `unitValue`, `unitBridge`, `formatModel`, `numberSpec`, `frame` | about 2,200 |
 | Catalog and search | `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils` | about 900 |
 | Colors and drawing math | `palette`, `colormaps`, the geometry in `htmlCanvasRenderer` | about 2,000 |
 | Vault and files | `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers | about 2,800 |

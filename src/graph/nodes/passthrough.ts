@@ -31,10 +31,6 @@ export function getPassthrough(n: unknown): PassthroughSpec[] {
   return typeof f === "function" ? f.call(n) : [];
 }
 
-export function isPassthroughNode(n: unknown): boolean {
-  return getPassthrough(n).length > 0;
-}
-
 export function isPurePassthroughNode(n: unknown): boolean {
   return getPassthrough(n).some((s) => s.pure);
 }

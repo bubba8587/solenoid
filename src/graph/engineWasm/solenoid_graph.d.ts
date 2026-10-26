@@ -202,10 +202,6 @@ export class GraphCore {
    */
   removeNode(id: string): boolean;
   removePipe(handle: number): boolean;
-  /**
-   * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
-   * conduits }`; `undefined` for a cable not here.
-   */
   conduitPath(cable_id: string): string | undefined;
   /**
    * The node's inputs, fetching every predecessor.
@@ -311,6 +307,13 @@ export class GraphCore {
    * throws stops the chain and fails the edit. Returns the handle `removePipe` takes.
    */
   addPipe(pipe: Function): number;
+  /**
+   * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
+   * conduits }`; `undefined` for a cable not here.
+   * Every port's format annotation and every node's value origin over this graph, from each node's facts
+   * (`annotationFacts.ts`): `annotate::resolve_all`'s answer as JSON.
+   */
+  annotate(facts: string): string;
   nodeIds(): string[];
   /**
    * Every node's outputs in the editor's order, as a `Map`; `null` when `stop_on_cancel` and
@@ -341,6 +344,7 @@ export interface InitOutput {
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
   readonly graphcore_addPipe: (a: number, b: number) => number;
+  readonly graphcore_annotate: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_clear: (a: number, b: number) => void;
   readonly graphcore_compute: (a: number, b: number, c: number, d: number) => number;
   readonly graphcore_computeAll: (a: number, b: number, c: number) => number;

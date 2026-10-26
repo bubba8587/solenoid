@@ -77,10 +77,8 @@ The agreement vote (`agree_types`, `lattice.rs`) reads each branch as no vote wh
 **Who reads it:**
 
 - trueany type adoption: the core's Type Settle (`settle.rs`), with the agreement vote;
-- unit flow: `unitFlow` reads `selected()` first, else combines over the inputs, and `pure` drives the downstream FC-segment walk;
+- unit flow: the core's annotation walk (`annotate.rs`, from `annotationFacts.ts`) reads `selected()` first, else combines over the inputs, and `pure` drives the downstream FC-segment walk;
 - the frame-shape resolver: `frameShapeResolver` `passthroughForOutput`, which column pickers and INDEX's frame projection depend on;
-- the input boundary's keep-tags rule: `unitAware || isPassthroughNode`;
-- `ValueDisplay`'s carried-annotation branch: `isPassthroughNode`;
 - the FC's `refreshAnnotation` check for a Convert ahead: `isPurePassthroughNode`.
 
 The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstream on socket `dataType` through `isWildcardRung`. One declaration exists because separate markers for type and for units drifted: Expect, CableSwitch and IFERROR once passed type but not units.

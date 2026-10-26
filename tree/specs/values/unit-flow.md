@@ -285,7 +285,7 @@ Convert (`nodes/convert.ts`, its body `convert` in `crates/solenoid-core/src/nod
 
 ## The format annotation
 
-### Per-node rule (`makeAnnotationResolver.compute`)
+### Per-node rule (`Walk::compute`, `annotate.rs`)
 
 For one output, the first rule that applies decides:
 
@@ -306,12 +306,12 @@ flowchart TD
 
 
 1. **Convert** (duck-typed: string `fromUnit` and `toUnit`) drops the inherited format. It sets a new unit and rescales the number, so the old precision no longer fits. It is the one transform that drops.
-2. **A per-output producer** (`hasAnnotationFor`, `annotationFor(outKey)`) locks each output's own format, such as a Triangle angle's ° or an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So a Triangle side (a value-level unit, not a format) or Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
+2. **A per-output producer** (`annotationFor(outKey)`) locks each output's own format, such as a Triangle angle's ° or an inverse-trig result in degrees. When it returns none for an output, the rule falls through to the transform carry below. So a Triangle side (a value-level unit, not a format) or Element Z carries no format (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
 3. **An FC that may inherit** (`resolveAnnotation`) merges the format arriving at its `in` with its own unit ([[format-model]], "Inheriting the format"); it wins wherever it is present.
-4. **An FC or node-level producer** (`hasAnnotation`) locks its own `annotation()`.
-5. **A passthrough** (`isPassthroughNode`, from the one `passthrough()` declaration; Display and the selectors) carries its input's format. The data-aware `selectedPassInput` picks the branch the node actually computed, so `IF(true, km, mi)` follows `then`. When the pick is undetermined, `passInputKeys` names the value branches and their annotations combine: every present one must share the same unit, format and custom unit, or the result is none. A passthrough with no value keys carries its first input's annotation.
+4. **An FC or node-level producer** locks its own `annotation()`.
+5. **A passthrough** (from the one `passthrough()` declaration; Display and the selectors) carries its input's format. The data-aware `selectedPassInput` picks the branch the node actually computed, so `IF(true, km, mi)` follows `then`. When the pick is undetermined, `passInputKeys` names the value branches and their annotations combine: every present one must share the same unit, format and custom unit, or the result is none. A passthrough with no value keys carries its first input's annotation.
 6. **A Conduit lane** `out_i` inherits `in_i`, duck-typed on `cachedLane`, on purpose with no `passthrough()` declaration.
-7. **Anything else is a transform** and carries the format only where the node declares that the op keeps the value's meaning. `carriedFormat` reads `formatCarryForOutput`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. The output socket's declared element family must exist (a wildcard, a Frame or a lambda carries no format), and among the declared inputs the first one that is wired, annotated and of that same family wins; the copy has `unit: "none"` and no custom unit, because the unit is value-level ([[C25]] firstClassUnits). Two or more date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[D41]] formatFlowsDownstream). A spec marked `notDate` (a sum or a spread: SUM, STDEV, PTP, a running sum) carries a number or percent style but drops a date style; only a mean, min, max or median of dates is a date.
+7. **Anything else is a transform** and carries the format only where the node declares that the op keeps the value's meaning. The carry reads `formatCarryForOutput`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. The output socket's declared element family must exist (a wildcard, a Frame or a lambda carries no format), and among the declared inputs the first one that is wired, annotated and of that same family wins; the copy has `unit: "none"` and no custom unit, because the unit is value-level ([[C25]] firstClassUnits). Two or more date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[D41]] formatFlowsDownstream). A spec marked `notDate` (a sum or a spread: SUM, STDEV, PTP, a running sum) carries a number or percent style but drops a date style; only a mean, min, max or median of dates is a date.
 
 ### What carries the format
 
@@ -346,12 +346,14 @@ flowchart LR
 
 ### The resolver
 
-`makeAnnotationResolver(editor)` is pure and duck-typed. It indexes the connections by source and by target once, since a per-hop scan would cost boxes × cables, memoizes each output, and answers none on a cycle.
+The walk runs in the core (`annotate.rs`, [[D102]] graphOnCore) over the core's cables. Each node's facts are what the walk reads from its JavaScript object (`annotationFacts.ts`): whether it is a Convert or an FC, what `annotationFor` gives per output, its own `annotation()`, whether it resolves and inherits, its passthrough's pick and value keys, its Conduit lanes, its format carries, and each port's element family. `resolve_all` answers every port and every node at once; each output is memoized, and a cycle answers none.
 
+- `makeAnnotationResolver(editor)` (`unitFlow.ts`) runs the walk on its first lookup and serves every later one from the answer.
 - `outAnnotation(nodeId, outKey)` applies the per-node rule; `inAnnotation(nodeId, inKey)` is the `outAnnotation` of the cable's source.
-- `downstreamAnnotation(nodeId, outKey)` follows the cables forward: the first consumer that is an FC answers (its `resolveAnnotation` or `annotation()`), a pure passthrough is walked through on each of its outputs, and anything else ends the walk.
+- `downstreamAnnotation(nodeId, outKey)` follows the cables forward: the first consumer that is an FC answers (its resolved or own annotation), a pure passthrough is walked through on each of its outputs, and anything else ends the walk.
+- `valueOrigin(nodeId)` is the popup's "Go to source" walk upstream, the same rule with a different payload. It steps through an FC by `in`, through a passthrough by its selected branch, or by its one connected value branch (none or several is ambiguous and stops there), or by its first connected input when it has no value keys (Display). It stops at Convert, at an undetermined selector, and at any transform or source, which is the origin.
 - `sharedAnnotationResolver(editor)` shares one resolver per editor for the current microtask and rebuilds it on the next. It can't be cached on the connection version, because annotations change on any pass; within one commit the graph is fixed.
-- `resolveValueOrigin(editor, nodeId)` is the popup's "Go to source" walk upstream, the same rule with a different payload. It steps through an FC by `in`, through a passthrough by its selected branch, or by its one connected value branch (none or several is ambiguous and stops there), or by its first connected input when it has no value keys (Display). It stops at Convert, at an undetermined selector, and at any transform or source, which is the origin.
+- The walk's answers are frozen over every seed graph three ways (`fixtures/core/annotations.json.gz`, `coreAnnotations.test.ts`), and the Rust is held to them natively (`crates/solenoid-graph/tests/annotate.rs`).
 
 ## A Frame's per-column format rides the value
 

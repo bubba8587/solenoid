@@ -5,7 +5,8 @@
 use std::io::Read;
 
 use serde_json::{json, Value as Json};
-use solenoid_graph::settle::{node_from_json, settle, types_json, Cable};
+use solenoid_graph::conduit::Cable;
+use solenoid_graph::settle::{node_from_json, settle, types_json};
 
 fn frozen() -> Vec<Json> {
     let path =
@@ -34,6 +35,7 @@ fn every_seed_graph_settles_as_frozen() {
             .unwrap()
             .iter()
             .map(|x| Cable {
+                id: String::new(),
                 source: x[0].as_str().unwrap().into(),
                 source_output: x[1].as_str().unwrap().into(),
                 target: x[2].as_str().unwrap().into(),

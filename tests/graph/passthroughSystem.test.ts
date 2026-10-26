@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "../../src/graph/nodes/passthrough";
+import { getPassthrough, isPurePassthroughNode, passInputKeys, selectedPassInput } from "../../src/graph/nodes/passthrough";
 import type { Shape } from "../../src/graph/frameShape";
 import { settledOutputs } from "./settleKit";
 import { canConnect, isDateType, type SocketDataType } from "../../src/graph/sockets";
@@ -91,7 +91,7 @@ describe("passthrough declarations", () => {
     // A Number is a source; a Boolean op / Comparison MAKE a new logical value. None
     // of them forward an input type. (INDEX does — see the extraction test below.)
     for (const n of [new ValueInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
-      expect(isPassthroughNode(n)).toBe(false);
+      expect(getPassthrough(n)).toEqual([]);
     }
   });
 
@@ -101,7 +101,7 @@ describe("passthrough declarations", () => {
   // result "varies per row" — true only where the container is heterogeneous.
   it("INDEX forwards its container's element family at the COMBO rung", () => {
     const n = new ListIndexNode();
-    expect(isPassthroughNode(n)).toBe(true);
+    expect(getPassthrough(n).length).toBeGreaterThan(0);
     expect(isPurePassthroughNode(n)).toBe(false); // a cell is not the container
     const spec = getPassthrough(n)[0];
     expect(spec).toMatchObject({ output: "result", combine: "single" });

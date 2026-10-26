@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";
 import { getOwningEditor } from "../activeGraph";
-import { resolveValueOrigin } from "../unitFlow";
+import { makeAnnotationResolver } from "../unitFlow";
 import type { PopupMenuItem } from "./PopupOverflowMenu";
 
 /** The overflow menu's host-node items: Go to Source and Pin, or none without a host. */
@@ -18,7 +18,7 @@ export function usePopupNodeItems(nodeId: string | undefined, onClose: () => voi
       onClick: () => {
         onClose();
         const editor = getOwningEditor(nodeId);
-        flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
+        flyToNodeAndFlash(editor ? makeAnnotationResolver(editor).valueOrigin(nodeId) : nodeId);
       },
     },
     { label: pinned ? "Unpin from HUD" : "Pin to HUD", onClick: () => pinNodeValue(nodeId) },

@@ -10,6 +10,7 @@ export const graphTrap: () => void;
 export const graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
 export const graphcore_addNode: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => void;
 export const graphcore_addPipe: (a: number, b: number) => number;
+export const graphcore_annotate: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_clear: (a: number, b: number) => void;
 export const graphcore_compute: (a: number, b: number, c: number, d: number) => number;
 export const graphcore_computeAll: (a: number, b: number, c: number) => number;

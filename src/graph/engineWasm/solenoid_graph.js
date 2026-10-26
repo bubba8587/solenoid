@@ -1108,7 +1108,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_194(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_195(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1260,8 +1260,6 @@ export class GraphCore {
         return ret !== 0;
     }
     /**
-     * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
-     * conduits }`; `undefined` for a cable not here.
      * @param {string} cable_id
      * @returns {string | undefined}
      */
@@ -1698,6 +1696,32 @@ export class GraphCore {
         return ret >>> 0;
     }
     /**
+     * The run a cable belongs to (`conduit.rs`), as `{ connIds, origin: [node, output], terminals: [[node, input]],
+     * conduits }`; `undefined` for a cable not here.
+     * Every port's format annotation and every node's value origin over this graph, from each node's facts
+     * (`annotationFacts.ts`): `annotate::resolve_all`'s answer as JSON.
+     * @param {string} facts
+     * @returns {string}
+     */
+    annotate(facts) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(facts, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.graphcore_annotate(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export_4(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
      * @returns {string[]}
      */
     nodeIds() {
@@ -2033,7 +2057,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_194(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_195(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2197,8 +2221,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper722 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 139, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper752 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 143, __wbg_adapter_38);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {

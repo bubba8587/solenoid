@@ -1,6 +1,6 @@
 // [[C127]] pivotView
 import { getOwningEditor } from "./activeGraph";
-import { resolveValueOrigin } from "./unitFlow";
+import { makeAnnotationResolver } from "./unitFlow";
 import { isFrameValue, type FrameValue } from "./frame";
 import { notifyGraphChanged, processGraph } from "./process";
 import { PivotNode } from "./nodeClasses";
@@ -12,7 +12,7 @@ const outputOf = (node: PivotNode): FrameValue | null => (isFrameValue(node.cach
 
 function findPivotHost(hostId: string): PivotHost | null {
   const editor = getOwningEditor(hostId);
-  const node = editor?.getNode(resolveValueOrigin(editor, hostId));
+  const node = editor?.getNode(makeAnnotationResolver(editor).valueOrigin(hostId));
   if (!(node instanceof PivotNode)) return null;
   return {
     view: node.pivotView,

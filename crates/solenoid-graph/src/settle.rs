@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 
 use serde_json::{json, Value as Json};
 
+use crate::conduit::Cable;
 use crate::lattice::{adopt_type_for_base, agree_types, combo_of, project_type_to_base};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -53,13 +54,6 @@ pub struct Node {
     pub pass: Vec<Pass>,
     pub lanes: Option<Vec<(String, String)>>,
     pub error_only: bool,
-}
-
-pub struct Cable {
-    pub source: String,
-    pub source_output: String,
-    pub target: String,
-    pub target_input: String,
 }
 
 pub struct Settled {
@@ -130,7 +124,6 @@ pub fn node_from_json(j: &Json) -> Node {
 
 struct Graph<'a> {
     cables: &'a [Cable],
-    wiring: Vec<crate::conduit::Cable>,
 }
 
 impl Graph<'_> {
@@ -170,7 +163,7 @@ fn conduits_once(nodes: &mut [Node], g: &Graph) -> bool {
                 .and_then(|f| {
                     let (id, key) = crate::conduit::typed_source(
                         &is_conduit,
-                        &g.wiring,
+                        g.cables,
                         &f.source,
                         &f.source_output,
                     );
@@ -316,17 +309,7 @@ fn adoption(nodes: &mut [Node], g: &Graph) -> BTreeSet<String> {
 /// Settles every wildcard socket in `nodes` (in graph order) over `cables`: Conduit lanes and adoption alternate until
 /// both settle, at most 8 rounds.
 pub fn settle(nodes: &mut [Node], cables: &[Cable]) -> Settled {
-    let wiring = cables
-        .iter()
-        .map(|c| crate::conduit::Cable {
-            id: String::new(),
-            source: c.source.clone(),
-            source_output: c.source_output.clone(),
-            target: c.target.clone(),
-            target_input: c.target_input.clone(),
-        })
-        .collect();
-    let g = Graph { cables, wiring };
+    let g = Graph { cables };
     let mut conduit_changed = false;
     let mut adopted = BTreeSet::new();
     for _ in 0..8 {

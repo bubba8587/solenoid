@@ -7,6 +7,7 @@
 // Linked whole, so the core's own wasm entries (`engine_invoke` and the rest) are this module's too.
 extern crate solenoid_core;
 
+pub mod annotate;
 #[cfg(target_arch = "wasm32")]
 mod boundary;
 pub mod boundary_core;
