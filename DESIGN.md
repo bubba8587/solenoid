@@ -154,7 +154,9 @@ accent or socket hues there for visual interest. But the app is not colorless by
 decoration is real and deliberate, in named homes: **brand marks** (the wordmark, the desktop
 accent window border, the top-bar art slot), **user-authored color** (note and group tints,
 theme palettes, report palettes, chart colors), and **opt-in flourishes** (cable flow beads,
-the load reveal, the AI-apply reveal). The rule's actual content for an agent: NEW decorative
+the load reveal, the AI-apply reveal), and **card illustrations** (author 2026-10-26: Sunrise / Sunset's day arc,
+as wide as the day is long, and Weather's sky icon for the current condition; `CardArt.tsx`, drawn
+in `--art-sun` and `--art-rain`, which follow the palette's gold and sky slots). The rule's actual content for an agent: NEW decorative
 color is an author call, never a default you reach for — when unsure whether a color is meaning
 or mood, keep the chrome neutral and ask.
 

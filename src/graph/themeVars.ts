@@ -24,6 +24,8 @@ export function themeVars(accentSlot: string, mode: ThemeMode): Record<string, s
   vars["--sol-error"] = themeAccent(resolveColor("vermilion"), mode);
   vars["--sol-ok"] = themeAccent(resolveColor("green"), mode);
   vars["--sol-warn"] = themeAccent(resolveColor("gold"), mode);
+  vars["--art-sun"] = themeAccent(resolveColor("gold"), mode);
+  vars["--art-rain"] = themeAccent(resolveColor("sky"), mode);
 
   const home = paletteStore.chromeHomeHex();
   const ramp = paletteStore.chrome()[mode];

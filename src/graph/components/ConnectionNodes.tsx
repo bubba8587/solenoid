@@ -34,6 +34,7 @@ import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
+import { SkyIcon } from "./CardArt";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { nodeDisplayName } from "../catalogUtils";
@@ -510,6 +511,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           <span className="solenoid-node__output-value">{rows > 0 ? `${rows} days` : "—"}</span>
         </MeasuredSocketRow>
       )}
+      <SkyIcon condition={data.cached?.nowCondition || null} />
       <InlineOutputRows
         node={data}
         emit={emit}

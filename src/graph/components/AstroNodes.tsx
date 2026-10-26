@@ -5,6 +5,8 @@ import {
 } from "../nodeClasses";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
+import { DayArc } from "./CardArt";
+import { isSolError } from "../errorValue";
 
 export function SolarPositionComponent({ data, emit }: NodeProps<SolarPositionNodeType>) {
   return (
@@ -24,9 +26,11 @@ export function SolarPositionComponent({ data, emit }: NodeProps<SolarPositionNo
 }
 
 export function SunriseSunsetComponent({ data, emit }: NodeProps<SunriseSunsetNodeType>) {
+  const hours = data.cachedDayLength;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
+      <DayArc hours={hours === null || isSolError(hours) ? null : hours} />
       <InlineOutputRows
         node={data}
         emit={emit}
