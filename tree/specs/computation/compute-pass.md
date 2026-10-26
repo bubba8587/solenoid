@@ -23,7 +23,7 @@ This file owns what happens from "something changed" to "every card shows its ne
 The model is a `GraphEditor` (`graphEditor.ts`), a handle over the graph core's Ruggine editor; the engine is the graph core's `DataflowEngine` (`dataflowEngine.ts`) attached with `editor.use(engine)`, both [[graph-core]]. The app uses `fetch`, `reset`, `seed` and the graph walks below.
 
 - **The boundary.** Every engine runs each node's `data()` through the input boundary ([[#The per-node wrappers]]); `new DataflowEngine({ raw: true })` calls it as it is, the bare rete-engine shape the engine's own tests use. `engine.compute(id, inputs)` runs one node the same way without its cache (a composite's simulation steps), and `computeNode(node, inputs)` one node outside any editor (the tests, through `tests/graph/boundaryKit.ts`).
-- **Registration.** The engine mirrors `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`. A node's input and output key sets are read live (`Object.keys(node.inputs)`, `Object.keys(node.outputs)`) at every fetch, so a node that adds or removes sockets needs no re-registration.
+- **Registration.** The engine runs on its editor's own core graph, so nothing is mirrored: a node's input and output key sets are the core's port sets at every fetch, kept current as the node changes its sockets ([[graph-core]] § The model), and a node that adds or removes sockets needs no re-registration.
 - **Pull.** `engine.fetch(id)` returns the node's outputs. If the cache holds an entry for `id`, that entry is returned. Otherwise the engine starts a cancellable run that first fetches the inputs, then calls `node.data(inputs)`, and caches it under `id` before it resolves. Fetching inputs means: take every connection whose target is `id` and whose `targetInput` is a current input key, fetch each source concurrently, and build `inputs[targetInput]` as an array holding `sourceOutputs[sourceOutput]` for each such cable, in the order the cables were added. An input with no cable has no key in `inputs` at all.
 - **Output completeness.** After `data()` resolves, the engine checks that the returned object has every current output key and throws a plain `Error` naming the missing ones otherwise. Every path in this file that builds outputs (the error guard, loop seeding) fills every output key.
 - **Cache and cancellation.** Clearing a node's cache entry cancels its run; a cancelled fetch rejects with `Cancelled` at its next step. `engine.reset()` clears every entry; `engine.seed(id, outputs)` stores a result the node's `data()` never computes.
@@ -99,8 +99,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"] --> ts["TS: clearCollectMemo, resolveTrigModes"]
-    ts --> inv{"which pass?"}
+    ts["TS: clearCollectMemo, resolveTrigModes"] --> retarget["changed node inside a composite?<br>mark the chain, retarget to the outermost card"]
+    retarget --> inv{"which pass?"}
     inv -->|full| reset["engine.reset()"]
     inv -->|targeted| cone["drop the cone's cache entries"]
     inv -->|additive| keep["drop nothing"]
@@ -115,10 +115,10 @@ flowchart TD
 
 
 1. Returns immediately if the editor, engine or view refs are unset.
-2. **Retarget into composites** (the core). If `changedNodeId` is not a node of the main editor, the pass searches every composite's editor (recursively, through nested composites) for it; an editor knows each composite node's own editor core, registered (`nest`) when the node joins it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
-3. `clearCollectMemo()` (see Lazy Frames), in TypeScript before the core's steps.
-4. `resolveTrigModes(editor)`, likewise.
-5. **Invalidate** (the core, as are 6 and 7 and the render set of 9). Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
+2. `clearCollectMemo()` (see Lazy Frames), in TypeScript before the core's steps.
+3. `resolveTrigModes(editor)`, likewise.
+4. **Retarget into composites** (the core, as are 5 to 7 and the render set of 9). If `changedNodeId` is not a node of the main editor, the pass searches every composite's editor (recursively, through nested composites) for it; an editor knows each composite node's own editor core, registered (`nest`) when the node joins it. On a hit, every composite on the nesting chain gets `markInternalEdit()` (an internal value edit fires no editor event, so this is how a composite holding a heavy result learns its subgraph changed), and `changedNodeId` becomes the outermost owning composite card, whose cache entry is the one that must go.
+5. **Invalidate.** Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
 6. **Loop set.** A targeted pass without `topology` reuses the editor's cached loop set (computing it once if absent); every other pass recomputes and caches it. An additive pass follows a paste, and pasted nodes can carry a loop of their own, so it never reuses the set: an unseeded loop would leave the pass waiting on itself forever. Then seeding over that set (as `seedLoops` does).
 7. **Fetch** (`fetchAll` with `stopOnCancel`). For each node in `editor.getNodes()` order: skip it if it has left the editor since the list was taken (a node removed while an earlier fetch awaited), otherwise `await engine.fetch(id)`. Each landed node's outputs stay in the core, which compares them with what the node last landed (`!==` per output: a primitive by value, anything else by identity) and keeps them for the cable readouts ([[graph-core]] § Direct calls); no JavaScript runs per node. On a targeted pass the core records the node as a sink when it has no output keys, and as changed when an output differed. A `Cancelled` rejection ends the pass silently (no render, no hooks); any other rejection propagates.
 8. `cableValueStore.bump()`: cable value readouts re-read. The store reads each output as the last pass landed it in the core of the engine that ran it (`engine.landed`, converted when asked), and serves a combo socket's cable color, the fallback card's preview and the group readouts.
@@ -199,9 +199,9 @@ Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Dist
 
 `sourceInvariants.test.ts` fails when a file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
 
-Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the sampling functions in `excelFunctions.ts`) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
+Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
 
-The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now card, a node whose `expr` or `frameText` contains `TODAY(` or `NOW(` (any case), or a date Value Input holding a relative date phrase, looking inside composites too, then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
+The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now, Holidays or World Clock card, a node whose `expr`, `frameText` or `cubeText` calls `TODAY(` or `NOW(` (any case), a Knap body piping `'now' | date`, or a date input (a Value Input on its Date op, or a `date` literal) holding a relative date phrase, looking inside composites too (`hasVolatileDates`), then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
 
 ## Rebuild scopes
 
@@ -219,6 +219,7 @@ What an open scope suppresses:
 | The per-cable settle (FC reconcile, mismatch rescan, targeted pass) on `connectioncreated` and `connectionremoved`; the dirty flag is marked instead | canvas cable pipe | per-cable settles are quadratic; one settle runs at the end |
 | The per-node forget sweep on `noderemoved` | canvas pipe | a rebuild runs `forgetAllNodes()` once |
 | Absorbing a newly created node into the group under it | `FlowSurface.tsx` | only a live creation is dropped into a group |
+| A card's re-render bump (held, then applied once when the outermost scope closes, `onGraphRebuildEnd`) | `FlowSurface.tsx` | the rebuild commits once |
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
@@ -362,7 +363,7 @@ The text is parsed as one CSV line (a quoted field keeps an embedded comma), eac
 
 ## Lazy Frames and when they are collected
 
-A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the frame backend ([[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window) and the nodes that read through the cheap primitives (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to an eager `FrameValue` at arrival.
+A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the frame backend ([[C130]] rustCore). The classes in `LAZY_FRAME_NODES` (matched by constructor name) receive refs uncollected: the relational verbs (Distinct, Head, Sort, Filter, Join, Columns, GROUPBY, Unpivot, Append, Bind Columns, Rename, Fill Blanks, Replace Values, Window, Drop Blank Rows, Add Index, Split Column, Merge Columns, Computed Column) and the nodes that read through the cheap primitives (Get Column, SUMIFS, Table Info, Write File, Pivot, Slicer). `lazyChain.test.ts` pins the set. Every other node's inputs are collected to an eager `FrameValue` at arrival.
 
 `readFrame(ref)` flushes the ref's pending plan to a handle (one backend round trip, rebased on the longest prefix already flushed this pass), collects it, applies the sketch scaling and the aggregate guard, and memoizes the resulting promise by the ref object. `clearCollectMemo()` at the start of each pass (the app's and `computeAll`) empties the flush and collect memos and drops the flushed handles, so a ref fanned out to several consumers materializes once per pass and never across passes. A collect failure resolves to a `SolError` value (`materialize`) rather than throwing. The boundary then sends it out every output without running the node; a class in `SEES_ERRORS` receives it as a value instead ([[D35]] errorInErrorOut).
 

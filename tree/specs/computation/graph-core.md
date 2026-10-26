@@ -44,7 +44,8 @@ flowchart TB
 
 
 - **One WebAssembly module with the core**, `src/graph/engineWasm/`: `crates/solenoid-graph` depends on
-  `crates/solenoid-core` and is the one `cdylib`, so the engine calls a card's body in Rust (§ Direct calls) and the
+  `crates/solenoid-core` (which links the scheduler, `crates/solenoid-schedule`, [[schedule-and-gantt]]) and is the
+  one `cdylib`, so the engine calls a card's body in Rust (§ Direct calls) and the
   formula core's commands (`engine_invoke` and the rest) come out of the same instance. A trap anywhere takes the
   graph with it, which the graph survives by rebuilding from its handles (§ Traps); the author traded the separate
   instance for direct calls (2026-10-24).
@@ -278,7 +279,7 @@ flowchart LR
   `nodes::OFF_CORE` (Display, Format Controller), whose `data()` also hands on in TypeScript what the core can't hold:
   when their pass-through input holds a LAMBDA or a value the card wire doesn't carry, their `data()` runs instead. A
   class may name a field its body sets in `static coreWatch`; when a body changes it, `coreWatched()` runs in
-  TypeScript (Expression's and Series' socket retype), from `nodeOnCore` and the direct call alike. Every other card is
+  TypeScript (Expression's and Series' socket retype, Describe's dashboard tiles), from `nodeOnCore` and the direct call alike. Every other card is
   called in JavaScript as before: the cards whose body is TypeScript (Note, Report, a composite, a Conduit) and the
   shells around a body on the core (an upload, a read, a draw, an alert), whose `nodeOnCore` still crosses.
 - **Values live where they were made** (`value.rs`). A value on a cable is one shared cell holding the form its
@@ -323,8 +324,8 @@ flowchart LR
 
 ## Phase D: the graph's derived state
 
-What a graph works out from its own shape, after an edit and before a pass, moves to the core next ([[D102]]
-graphOnCore), each piece by the [[rust-core]] routine (freeze the TypeScript's answers, cover them, delete it). It is
+What a graph works out from its own shape, after an edit and before a pass, runs in the core ([[D102]]
+graphOnCore), each piece moved by the [[rust-core]] routine (freeze the TypeScript's answers, cover them, delete it). It is
 the Type Settle and the Format Controller reconcile ([[type-propagation-on-in-place-socket-retype]]), and what they
 lean on:
 
@@ -347,8 +348,8 @@ flowchart LR
 - **D3, frame shapes**: a verb's shape is the core's verb on an empty frame of its input's shape (done:
   `frameShape.ts`, frozen in `fixtures/core/shapes.json.gz`, `coreShapes.test.ts`); the settle reads shapes through
   the facts. A card's own shape is its body, its frame function or its provider's reader on the core (done:
-  `cardShapeOnCore`, `sampleShapeOnCore`, `providers.rs`; frozen in `fixtures/core/card-shapes.json.gz`). Open: Write
-  to Obsidian's and Write Tasks' preview columns, with the vault group.
+  `cardShapeOnCore`, `sampleShapeOnCore`, `providers.rs`; frozen in `fixtures/core/card-shapes.json.gz`). Write to
+  Obsidian's and Write Tasks' preview columns stay TypeScript with the vault group (§ Phase E).
 - **D4 and D5, Conduit lanes and the Type Settle** (done): `settle.rs` runs both to a joint fixpoint over the graph
   (`GraphCore.settleTypes`) and answers each socket that changed; `settleWildcardTypes` retypes those sockets and the
   view rerenders the nodes. Frozen over every seed graph three ways (`fixtures/core/settle.json.gz`,

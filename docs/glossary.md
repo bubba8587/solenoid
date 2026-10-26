@@ -13,7 +13,8 @@ cables (the author, 2026-10-25).
 ## Graph & canvas
 
 - **Node**: one computation unit; a card on the canvas. Its `data()` method is a pure
-  function of its inputs. (`nodes/*.ts`, `components/nodeKit.tsx`)
+  function of its inputs, its body on the core. (`nodes/*.ts`, the core's `nodes/`,
+  `components/nodeKit.tsx`)
 - **Cable / connection**: a wire carrying a value from one node's output socket to
   another's input. The dependency edges of the graph. (`flow/FlowCableEdge.tsx`,
   `cablePaths.ts`)
@@ -62,7 +63,7 @@ cables (the author, 2026-10-25).
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
   (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
-  (`valueKinds.ts` `kleeneAnd/Or/Not`)
+  (the core's `kleene_and`/`kleene_or`, `excel_functions.rs`; [[D38]] kleeneLogic)
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
   (`sockets.ts`, `nodes/logic.ts`)
@@ -96,7 +97,7 @@ cables (the author, 2026-10-25).
   (`nodes/formatController.ts`)
 - **Unit flow**: the machinery that carries an FC's unit and format along the value,
   downstream and upstream through passthroughs, derived on read. $ is a unit, not a format.
-  (`unitFlow.ts`, `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
+  (`unitFlow.ts` over the core's walk, `annotate.rs`; `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
 - **Reference** (chart): a reference line, point, band or box on a chart with axes, one row of the Chart's References table (`x`, `x2`, `y`, `y2`, `label`, `color`). Not an Annotation.
 - **Annotation**: the resolved unit/format metadata attached to a value for display;
   computed by walking the graph, mostly not stored. (`formatAnnotationStore.ts`)
@@ -242,7 +243,7 @@ cables (the author, 2026-10-25).
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD**: the Alert node fires on status *change* (edge-detect) → a toast + the
   HUD log. (`alertStore.ts`, `HudStack.tsx`)
-- **View**: the canvas-view seam (`view.ts`, renamed from rete's "Area" 2026-08-30):
+- **View**: the canvas-view seam (`view.ts`):
   `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)`, the camera
   (`transform`/`zoom`/`pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `measured`;
   `flow/flowView.ts` is the one implementation and `view` is its variable name

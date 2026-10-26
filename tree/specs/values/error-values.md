@@ -66,12 +66,12 @@ mindmap
 | `#VALUE!` | wrong type, or operand misuse | Excel; SQLSTATE 22018 |
 | `#TYPE!` | the wrong element type for the op | Solenoid only; Excel folds it into #VALUE! |
 | `#SHAPE!` | a list or matrix dimension mismatch | no Excel scalar equivalent; nearest is #SPILL! |
-| `#UNIT!` | incommensurable units in an op: the same element type, the wrong dimension (`dimension.ts`) | Solenoid only |
+| `#UNIT!` | incommensurable units in an op: the same element type, the wrong dimension (the core's `unit_value.rs`) | Solenoid only |
 | `#NAME?` | an unknown name | Excel; Err:525 |
 | `#REF!` | a dangling reference | Excel; Err:524 |
 | `#CIRC!` | a circular dependency | Err:522; Excel only warns |
-| `#SOLVE!` | the Equation node found no root (`equationSolve.ts`) | Solenoid only |
-| `#AMBIGUOUS!` | a date string could read as either D/M or M/D (`dateSerial.ts`) | Solenoid only |
+| `#SOLVE!` | the Equation node found no root (the core's `nodes/formula.rs`) | Solenoid only |
+| `#AMBIGUOUS!` | a date string could read as either D/M or M/D (`parse_date`, the core's `excel_criteria.rs`, through `parseDate` in `nodes/dateSerial.ts`) | Solenoid only |
 | `#ERROR!` | an unexpected internal failure; the guard's catch-all | Err:517 |
 
 IFERROR catches every code; IFNA and ISNA match only `#N/A`. The IFERROR card catches per cell in a list, a Frame and a Cube, nested cells included (author 2026-10-05). Over a Frame or Cube its fallback is one value, and in a column whose type it doesn't suit (text in a number column, say) the caught cell becomes `#TYPE!` instead, so a column never mixes families ([[B17]] typedValueModel).
@@ -130,7 +130,7 @@ Every broadcaster zips ragged lists to the longest, and a padded position is `nu
 
 The shared helper is `short_circuit` (`nodes/kit.rs`, the full rule); the Kleene logic family's `broadcast_el` checks errors only and feeds `null` to its own function. So a list cell behaves exactly like a scalar or a ragged pad: `[1, #DIV/0!, 3] + 10` keeps the error, and `[1, null, 3] + 10` gives `[11, null, 13]`. `broadcast_call` skips the null short-circuit for the predicates whose traits say `inspects_null` (ISBLANK, ISNUMBER…), which need to see the blank.
 
-**`guardFinite`** (`valueKinds.ts`) means a computation never yields a bare NaN or Infinity. Per result, and aware of its inputs:
+**`guard_finite`** (the core's `value_kinds.rs`; `guardFinite` in `valueKinds.ts` for the frame backend) means a computation never yields a bare NaN or Infinity. Per result, and aware of its inputs:
 
 - NaN becomes `#DOMAIN!`;
 - ±Infinity from all-finite inputs becomes `#OVERFLOW!` (one code, which splits out Excel's #NUM!, ERROR.TYPE 6);
@@ -208,7 +208,7 @@ flowchart LR
 
 ## Per-cell errors surface through a bounded scan
 
-The error sink behind the Problems panel (`_errorSinks`, `errorValue.ts`) and `modelFuzz.badValue` find a per-cell error inside a list, matrix or Frame, not just a top-level `SolError`, through `findCellError` (`errorValue.ts`). A full rows × cols scan of every node every pass costs too much, so the scan is capped: `sampledCellIndices(len)` checks the head (`CELL_SCAN_HEAD` = 64) plus a stride sample of the tail (`CELL_SCAN_STRIDE_SAMPLES` = 32), a constant per container, with matrix rows recursing under the same bound.
+The error sink behind the Problems panel (`_errorSinks`, `errorValue.ts`) and `modelFuzz.badValue` find a per-cell error inside a list, matrix or Frame, not just a top-level `SolError`. The node boundary finds it with `find_cell_error` (`findCellError`, the graph core's `boundary.rs`); `modelFuzz` uses `sampledCellIndices` (`errorValue.ts`), the same bound. A full rows × cols scan of every node every pass costs too much, so the scan is capped: it checks the head (`CELL_SCAN_HEAD` = 64) plus a stride sample of the tail (`CELL_SCAN_STRIDE_SAMPLES` = 32), a constant per container, with matrix rows recursing under the same bound.
 
 ```mermaid
 flowchart LR
@@ -227,8 +227,8 @@ An error on every row, the common case of a bad transform, is always caught by t
 
 An input node never rewrites what you type. Storage and computed value are separate.
 
-- **Frame Input** stores a raw `FrameSource` in `frameText`: per column `{name, type, cells: string[]}`, plus the column-source fields `unit?` and `expr?`, exactly as typed. `deriveFrame` produces the typed `FrameValue` (booleans, date serials) at compute time through `coerceFrameCell`, which shares `coerceLogical`. `parseFrameSource` and `frameSourceToText` load and store, and `frameFromInputText = deriveFrame ∘ parseFrameSource`. Old typed-`values` JSON and legacy CSV still parse, with cells kept raw.
-- **Computed columns.** A column may be computed from an inline `expr`, which calls a wired λ by its socket name ([[literal-input-editors]]). `FrameInputNode.data()` derives computed columns in dependency order, refuses cycles (`#REF!` "Circular computed columns"), caches by identity, and carries the source unit onto the derived column. The row rules (a bare name is the whole column, `@` is this row, bracket references; [[C22]] rowFormulaRefs) live on the core (`eval::column`), so this surface and the Computed Column node can't disagree. The popup edits definitions through the live-commit seam (`tablePopupStore` `SourceCommitRefresh` / `onCommitSource`): a blur or pick recomputes through the real engine and refreshes the open popup.
+- **Frame Input** stores a raw `FrameSource` in `frameText`: per column `{name, type, cells: string[]}`, plus the column-source fields `unit?` and `expr?`, exactly as typed. At compute time the card's body (the core's `frame_input`, `nodes/docs.rs`) derives the typed `FrameValue` (booleans, date serials) with `parse_frame_source` and `derive_column`, which reads each cell through `frame_cell_of`, the core's `coerceFrameCell`. In TypeScript `parseFrameSource` and `frameSourceToText` load and store for the editors, and `frameFromInputText = deriveFrame ∘ parseFrameSource` gives the card its shape. Old typed-`values` JSON and legacy CSV still parse, with cells kept raw.
+- **Computed columns.** A column may be computed from an inline `expr`, which calls a wired λ by its socket name ([[literal-input-editors]]). `frame_input` derives computed columns in dependency order, refuses cycles (`#REF!` "Circular computed columns") and carries the source unit onto the derived column; `FrameInputNode.data()` caches the result by identity of its text and wired λs. The row rules (a bare name is the whole column, `@` is this row, bracket references; [[C22]] rowFormulaRefs) live on the core (`eval::column`), so this surface and the Computed Column node can't disagree. The popup edits definitions through the live-commit seam (`tablePopupStore` `SourceCommitRefresh` / `onCommitSource`): a blur or pick recomputes through the real engine and refreshes the open popup.
 - **`FrameColumn.raw?: string[]`** carries each cell's typed text, before inference, for source Frames. `inferColumn` fills it, so every CSV, Web and Import Frame has it, and `deriveFrame` carries Frame Input's cells. **Keep `raw` row-aligned:** a transform that changes a column's rows or values drops or remaps `raw`. The Slicer and Get Row remap it to the surviving or picked rows; the relational verbs that move or rewrite cells, and Add Column's replace, drop it ([[frame-verbs]]). A stale `raw` misaligns the Source view.
 - **Table Input** uses the same model. `tableText` is raw text, and `table_raw_cells` and `table_input` (`crates/solenoid-core/src/nodes/matrix.rs`) derive the typed matrix through `frame_cell_of`, the core's `coerceFrameCell` (blank → null, a bad number or date → NaN, a bad logical → null). The grid popup edits raw cells through the lean `onSaveRaw` mode, never a parse-and-serialize round trip. One `dataType` SegToggle (number, text, date, logical) retypes the output socket in place (`retypeOutputCables`).
 

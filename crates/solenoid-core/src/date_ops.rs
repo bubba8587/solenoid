@@ -250,7 +250,7 @@ pub fn date_trunc(serial: f64, unit: TruncUnit, ceiling: bool) -> f64 {
 pub struct Weekend(u8);
 
 impl Weekend {
-    fn has(self, dow: f64) -> bool {
+    pub fn has(self, dow: f64) -> bool {
         (0.0..7.0).contains(&dow) && self.0 & (1 << dow as u8) != 0
     }
 

@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The card lives in `nodes/display.ts` (`AlertNode`) and `components/AlertNode.tsx`; the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
+The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The card lives in `nodes/display.ts` (`AlertNode`, which fires) and `components/AlertNode.tsx`, its status in its body on the core (`alert_status`, `crates/solenoid-core/src/nodes/docs.rs`, [[node-bodies]]); the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
 
 ## Modes
 

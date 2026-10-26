@@ -82,3 +82,18 @@ fn the_readers_give_the_frozen_answers() {
     }
     assert!(bad.is_empty(), "{} of {} differ:\n{}", bad.len(), cases.len(), bad[..bad.len().min(6)].join("\n"));
 }
+
+/// The scheduler's weekend codes are the core's `WORKDAY.INTL` codes.
+#[test]
+fn the_scheduler_reads_weekend_codes_as_workday_intl() {
+    use solenoid_core::date_ops::weekend_days as core_days;
+    use solenoid_schedule::calendar::weekend_days as schedule_days;
+    for code in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0] {
+        let core = core_days(code).unwrap();
+        let mut theirs: Vec<u8> = (0..7).filter(|d| core.has(f64::from(*d))).collect();
+        let mut ours: Vec<u8> = schedule_days(Some(code)).iter().map(|d| *d as u8).collect();
+        theirs.sort();
+        ours.sort();
+        assert_eq!(ours, theirs, "code {code}");
+    }
+}

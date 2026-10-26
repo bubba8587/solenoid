@@ -29,7 +29,10 @@ flowchart LR
     gone --> change["later changes: edit the Rust,<br>FREEZE_CORE re-answers its fixtures,<br>one commit"]
 ```
 
-- Gone so far: the error guard and arrival coercion (into the graph module, [[graph-core]]), the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
+- Gone so far: the graph model, the dataflow engine, the compute pass and its state, the error guard and arrival
+  coercion, the socket lattice, the Type Settle and Conduit lanes, the format-annotation walk, the Format Controller
+  reconcile and the text save form (into the graph module, [[graph-core]]), the scheduler ([[schedule-and-gantt]]),
+  display formatting, typed-text reading, the data providers' parsing, the formula evaluator, the parser, every function body and Formula.js, the computed-column row path,
   the pack functions' JavaScript, the JS frame verbs and their backend, the card bodies ([[node-bodies]]), the
   statistics kernels (`statsOps.ts`) and the table popups' footer profile. The TS keeps the editor's walkers over the
   core's tree (variables, LaTeX, steps) and the op modules the
@@ -113,6 +116,10 @@ branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as
 | Expression's unit wrapper ([[unit-flow]] § Expression) once its inputs are read: the dimension check, the one shared display unit the formula runs in, the point weight over readings, the inputs in their shown magnitudes (`displayMagnitudeOf`), the evaluation and the result's unit. Each cell's display unit crosses with its dimension beside its scale and offset (`displayDim`) | `unit_expression.rs`, called by Expression's body on the core (`nodes/formula.rs`, [[node-bodies]]) | 6k frozen Expressions over generated unit inputs (`expression-units`) |
 | REDUCE, BYROW and BYCOL's unit wrapper ([[unit-flow]] § LAMBDA hosts) over an inline formula: the cells' one dimension, the display unit they share, the fold on the stripped magnitudes, the point weight over readings and the result's re-tagging | `unit_fold.rs`, called by those cards' bodies on the core (`nodes/matrix.rs`, [[node-bodies]]) | 5k frozen folds over generated unit tables (`fold-units`), also replayed through the nodes' `data()` |
 | List bodies over values with a unit (`UNIT_READY`): the ones that move cells without reading them, the shapers SORT, SORTBY, UNIQUE, TAKE and DROP (a unit cell sorts after the logicals and ties with its kind; UNIQUE keys it by base magnitude at 15 digits and dimension), FILTER (a unit cell as a condition is `#VALUE!`), and RUNNING, which reads each cell's display unit from the wire (its scale and offset as the TS resolves them) | `V::Unit`, `unit_lists.rs`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`), 5k frozen shaper calls (`unit-shapers`), 4k frozen FILTER calls (`unit-filters`), 6k frozen RUNNING calls with and without units (`unit-running`) |
+| The graph's derived state: the socket lattice, the Type Settle with Conduit lanes, the format annotations, the Format Controller reconcile, the walks through Conduits, and the text save form | `crates/solenoid-graph` (`lattice.rs`, `settle.rs`, `annotate.rs`, `fc.rs`, `conduit.rs`, `text_form.rs`; [[graph-core]] § Phase D, § Phase E) | the frozen lattice, settle, annotation, reconcile, Conduit-walk and text-form answers (`fixtures/core/*.json.gz`) |
+| Display formatting ([[D94]] oneNumberDisplay) and typed-text reading ([[D93]] oneTextReading): a number as the General style or a format annotation shows it, a date serial in a pattern, a typed number or logical | `card_helpers.rs`, `value_kinds.rs`, through the module's `fmt_scalar`, `fmt_annotated`, `fmt_date`, `read_decimal`, `read_logical` ([[format-model]]) | the frozen number formats (`number-format`, `coreCardHelpers.test.ts`) |
+| The data providers' replies (Open-Meteo, Nager.Date, Frankfurter) read into their cards' outputs; the cards fetch and cache the text | `providers.rs` | the frozen provider readings (`providers`, `coreProviders.test.ts`) |
+| The project scheduler: CPM, calendars, the schedule file formats | `crates/solenoid-schedule`, linked by the core ([[schedule-and-gantt]]) | its own native tests |
 | CSV text, on the `csv` crate: the rows under each option, a file's typed frame (`csvToFrame`), a Frame Input's CSV text, and the Sink's CSV ([[frame-verbs]] § Reading CSV text). A 50 MB file reads into a typed frame in about 1.7 s in Node, from 4.1 s on Papa Parse and `inferColumn`; its rows alone in about 1.1 s | `csv.rs`, `engine_csv_frame` and `engine_csv_rows` (the columnar hand-off), `engine_csv_source`, `engine_csv_text` | 11k frozen row readings, 2.9k frozen frames and as many Frame Input sources, 800 frozen writes (`csv-*`, the core's own answers), over generated CSV and the repo's own files |
 
 ## Nothing falls back
@@ -231,8 +238,9 @@ Before the JS verbs went, the same ops ran 1.3 to 5 times slower on them.
   as U+FFFD where it crosses into wasm, whose strings are UTF-8 (`toWellFormed`, `coreValues.ts`;
   `coreSurrogates.test.ts`): `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b`, and Distinct merges two lone
   halves into one U+FFFD. The rule has no leaf yet.
-- **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
-  `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
+- **CI** runs each crate's own tests (`engine-test.yml`, jobs `core`, `graph`, `schedule` and `parquet`), and
+  `wasmStamp.test.ts` fails when the module's sources changed without `npm run build:wasm` (the build writes
+  `source-stamp.txt`; [[graph-core]] § The module).
 - **A card mapping a body over a list runs its loop on the core** ([[C120]] linearWork): over 50,000 items UPPER takes
   about 30 ms (develop: 23), ROUND about 36, ISEVEN about 27 (`BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts`).
   A wired LAMBDA's captures: a list of 64 or more crosses once and the core holds it by id while the JS list lives

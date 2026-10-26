@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /** The one module: the graph engine, which links the core and the crates it vendors. */
-export const MODULE = { crate: "solenoid-graph", out: "src/graph/engineWasm", roots: ["crates/solenoid-graph", "crates/solenoid-core", "crates/vendor"] };
+export const MODULE = { crate: "solenoid-graph", out: "src/graph/engineWasm", roots: ["crates/solenoid-graph", "crates/solenoid-core", "crates/solenoid-schedule", "crates/vendor"] };
 const SKIP = /(^|\/)(tests\/|README\.md$)/;
 
 export function sourceStamp(root = ".") {

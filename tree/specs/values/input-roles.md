@@ -84,17 +84,17 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ```mermaid
 flowchart TD
-    decl["ARG_ROLES (inputRoles.ts):<br>a role per formula argument"] --> f["a formula: applyArgRoles,<br>at dispatch step 6"]
+    decl["ARG_ROLES (inputRoles.ts):<br>a role per formula argument"] --> f["a formula: apply_arg_roles,<br>at dispatch step 6"]
     decl -->|"rolesFrom: a card points<br>its sockets at the arguments"| c["a card: readRole,<br>then applyRole"]
     f --> k["the kernel gets the declared blank,<br>LEFT_OUT, or the picks with blanks dropped"]
     c --> k
 ```
 
-`inputRoles.test.ts` pins the declaration: every declared function exists and every declared argument is within its arity, and every card that declares a role reads that socket through `readRole`.
+The core reads the same roles from its call table (`roles` in `crates/solenoid-core/data/call_traits.json`, with the empty-slot readings beside them as `blanks`). `inputRoles.test.ts` pins the declaration: every declared function exists, every declared argument is within its arity, the core's table holds the same roles argument by argument, and every card that declares a role reads that socket through `readRole`, or in a core body through the role readers (`read_role`, `setting`, `required`).
 
 ## Reading
 
-**A card** reads a declared input with `readRole(this, key, inputs.key)` (`nodes/shared.ts`). Unwired, the value is the typed literal; wired, the cable's value, and a blank cable overrides the typed value ([[D86]] blankRoles). The value then goes through `applyRole` with the socket's label for the error. An unwired input with no typed value (CHOOSEROWS's indices) is a blank. The card still hides its typed field while a cable is plugged in, so the override is visible.
+**A card** reads a declared input with `readRole(this, key, inputs.key)` (`nodes/shared.ts`); a body on the core reads it with the role readers under `crates/solenoid-core/src/nodes/` (`read_role`, `setting`, `required`, `role_value`). Unwired, the value is the typed literal; wired, the cable's value, and a blank cable overrides the typed value ([[D86]] blankRoles). The value then goes through `applyRole` with the socket's label for the error. An unwired input with no typed value (CHOOSEROWS's indices) is a blank. The card still hides its typed field while a cable is plugged in, so the override is visible.
 
 **A formula** reads its arguments in `apply_arg_roles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). An empty slot and a blank value take different paths: the empty slot reads as its parameter's Excel blank ([[#Empty slots]]), and a blank value reads by the role. A declared slot, and any empty slot, is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
 
@@ -166,7 +166,7 @@ Two dispositions keep their reason under the new roles:
 
 ## Where the check goes
 
-Two placement rules, both found by sweeping `finance.ts`. Neither is about which role to take; both are about a guard that takes the right one in the wrong place, which typechecks and is silently wrong.
+Two placement rules, both found by sweeping the finance cards. Neither is about which role to take; both are about a guard that takes the right one in the wrong place, which typechecks and is silently wrong.
 
 - **An error outranks a blank** ([[C24]] arraySemantics). A node that both reads its settings and inspects a list for `SolError`s runs the error check first. `#DIV/0!` reaching MIRR's cash flows while a blank reaches its `finrate` is `#DIV/0!`.
 - **Scope the read to the active op.** On a multi-op node, only the inputs the current op reads can change the answer. A guard hoisted above the `switch` that combines every op's inputs turns a blank on an input this op ignores into a wrong answer: TBILLYIELD does not read `discount`. Read and guard inside the op's branch, or read op-dependently first.

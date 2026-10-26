@@ -29,8 +29,12 @@ the two it is; the custom-logic nodes are the short list that gets the scrutiny 
 cases). A simple node that grows into several internal nodes becomes a composite
 ([[C77]] compositeIsSubgraph), never a Group.
 
-A formula pack node saves as a plain locked Expression, so a document that uses one still
-opens and computes with its pack switched off ([[C76]] formulaPackDefault). Formula nodes get
+A formula pack node saves as a plain locked Expression (or Equation), so a document that uses
+one still opens and computes with its pack switched off ([[C76]] formulaPackDefault). A
+custom-logic node is a node class whose body runs on the core
+(`crates/solenoid-core/src/nodes/packs.rs`, `../tree/specs/computation/node-bodies.md`); a pack's
+formula functions run there too (`fns_packs.rs`), and its `packs/<id>Formulas.ts` declares only
+their names, arities and hints. Formula nodes get
 units right because the formula engine already understands them; custom code is harder to
 trust from a third party and often runs only on desktop, which is why it is the short list.
 

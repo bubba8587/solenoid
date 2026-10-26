@@ -12,7 +12,7 @@ Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTE
 
 ## Inputs and coordinates
 
-The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix. `grid_axes` normalizes the inputs:
+The coordinates ride beside the table, never inside it: the card has three inputs, `z` (Table), `xs` (one X per column) and `ys` (one Y per row), and the output `result` (Filled). The formula form is `INTERPOLATE(table, xs, ys, forecast)`, chosen over the list form when the first argument is a matrix. `grid_mode` (`fns_lists.rs`) normalizes the inputs:
 
 - The table becomes a rectangle as wide as its longest row. A cell that is not a finite number (a blank, an error, text) becomes blank.
 - An empty table, or one with no columns, gives a null result.
@@ -21,7 +21,7 @@ The coordinates ride beside the table, never inside it: the card has three input
 - A wired axis must hold exactly one finite number per column (Xs) or row (Ys). A count mismatch is `#SHAPE!` ("Xs has 3 values for 4 columns"); a non-finite entry is `#VALUE!`.
 - A table that arrives as an error passes the error through.
 
-Filling keeps every cell in the input table's unit (`carryMatrixUnit`).
+Filling keeps every cell in the input table's unit (`carryMatrixUnit`, in the card's TypeScript shell).
 
 ## The two passes
 

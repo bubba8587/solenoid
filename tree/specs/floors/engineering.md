@@ -54,7 +54,7 @@ The node-to-formula coverage figure divides by the in-scope cards, never the who
 
 ### The formula path is graph-free
 
-**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `dateSerial.ts`, `convertUnits.ts` and `listOps.ts` do. `formulaPathIsGraphFree.test.ts` pins it.
+**MUST:** a module the formula path imports never pulls in the graph model (`graphModel.ts`, `graphEditor.ts`), the socket lattice or the Frame model, and this holds for every module in the [[C17]] shareImpl seam, including the next one written. A new shared module states the constraint in its header the way `nodes/dateSerial.ts` does. `formulaPathIsGraphFree.test.ts` pins it.
 
 **MUST (what to extract):** share only what both surfaces can hold. A formula holds neither Frames nor Cubes ([[formula-language#The dispatch ladder]]), so a node kernel that also handles them doesn't move whole. The Frame and Cube half stays node-side and calls the shared core, and a helper that would drag in the graph model arrives as an argument instead of an import. The pattern is the core's `index_into`, shared by INDEX and the INDEX card, which adds its Frame and Cube branch and the unit tagging around it (`nodes/list.rs`).
 
@@ -63,7 +63,7 @@ The headless formula path (`run-graph` and the evaluator) shouldn't have to load
 ```mermaid
 flowchart LR
     subgraph free["the formula path: graph-free"]
-        ev["the evaluator,<br>run-graph"] --> shared["shared kernels<br>(dateSerial.ts, convertUnits.ts,<br>listOps.ts)"]
+        ev["the evaluator,<br>run-graph"] --> shared["shared kernels<br>(the core; dateSerial.ts,<br>convertUnits.ts)"]
     end
     subgraph graph["the graph side"]
         card["a card's data()"] --> shared
@@ -73,7 +73,7 @@ flowchart LR
     shared -.->|"never imports"| gm
 ```
 
-Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `unitBridge.ts` → `formatAnnotationStore.ts` → `nodes/date.ts`).
+Two modules look like pure value code but reach the graph model, and are the usual traps: `frame.ts` (through `sockets.ts`) and `unitColumn.ts` (through `formatAnnotationStore.ts` → `formatModel.ts` → `sockets.ts`).
 
 ### Heavy libraries load lazily
 
@@ -102,7 +102,7 @@ Serves [[C120]] linearWork. Each rule names the shape that broke it, since every
 - *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compile_filter`), a formula call's name, blank slots and routing are resolved once per call site (`Site`, `eval.rs`), and a plain computed column builds its environment once.
 - *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until the range memo (`Memo`, `eval.rs`) answered repeat calls with identical arguments from the last result.
 - *Count with a sort, not a scan.* Rank normalization counted smaller values with a `filter` per row (33 s at 20k rows); it now sorts once and binary-searches.
-- *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominator` keeps one sum per row span and column span.
+- *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominators` (`frame_verbs.rs`) keeps one sum per row span and column span.
 - *Key rows on the raw cell.* A one-column group, distinct or partition keys on the cell itself (`CellKey`, which groups as SameValueZero does, exactly as `encode_cell`). Several columns may still join a JSON key.
 
 ### Sorting compares precomputed keys

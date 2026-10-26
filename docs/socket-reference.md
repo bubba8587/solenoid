@@ -11,7 +11,8 @@ derivedSocketTypes). This document has one section for each. It
 describes only what the system **does** and what it **blocks** — a rule that is
 absent is simply not listed.
 
-The machine-readable source for the connection lists below is `src/graph/sockets.ts`;
+The machine-readable source for the connection lists below is `src/graph/sockets.ts`, over the
+core's lattice tables (`crates/solenoid-graph/src/lattice.rs`);
 the arrival behavior is the engine's input boundary (`crates/solenoid-graph/src/boundary.rs`); the drawing is
 `src/graph/components/SocketComponent.tsx`. Regenerate the port counts with
 `node scripts/vite-run.mjs scripts/socket-inventory.ts`.
@@ -228,9 +229,9 @@ These apply first, at every socket:
    otherwise its box is a single number.
 5. **A few ports opt out entirely.** A node that branches on the runtime shape
    itself declares those input keys as raw, and the value reaches it exactly as it
-   flowed in. In the shipped catalog there are three: XLOOKUP's frame/cube input,
-   and the values input on Chart and on Boxplot, each of which takes either a list
-   or a frame.
+   flowed in. In the shipped catalog there are four: the values input on Chart,
+   Heatmap and Boxplot, each of which takes either a list or a frame, and Report's
+   Records input.
 
 ---
 
@@ -1071,10 +1072,11 @@ Write to Obsidian consumes one, and Report's Template takes a Note as its text.
 An adoptive port's socket **changes type to match the cable plugged into it** and
 **reverts to its base when the cable is removed**. This is derived state: it is
 recomputed after every load, paste and drill-in, and it is never saved to a file.
-On load the settle pass runs **before** Format Controllers register their docks,
-because a docked FC resolves its host socket once at dock time — an INDEX output
-that hasn't projected yet would hand it the container's raw type (the "false
-Frame type on reload" bug, pinned by `fcDockReload.test.ts`).
+On load the settle pass runs **before** the Format Controllers are typed
+(`reconcileFcTypes` settles, then the FC reconcile reads each docked FC's host
+socket): an INDEX output that hasn't projected yet would hand a docked FC the
+container's raw type (the "false Frame type on reload" bug, pinned by
+`fcDockReload.test.ts`).
 
 Five bases are in use:
 
@@ -1309,8 +1311,8 @@ and the numbers below are what that produced.
 
 ### What one row buys you
 
-Four edits, all in `sockets.ts` — the type union, `SOCKET_COLORS`,
-`SOCKET_TYPE_LABELS`, and the `FAMILIES` row — give you every accept-set, the
+Four edits (the type union, `SOCKET_COLORS` and `SOCKET_TYPE_LABELS` in `sockets.ts`, and the
+`FAMILIES` row in the core's `lattice.rs`) give you every accept-set, the
 compatibility test and the connection guard, correct in both directions against
 all 31 variants. Nothing in the engine, the coercion boundary, the adoption
 system or any of the catalog's ~650 entries (over ~310 port-declaring node
@@ -1333,11 +1335,11 @@ existing variant's blocked lists.
 ### What fails SILENTLY — the real checklist
 
 Nothing in the type system catches these — each one leaves a family that connects
-correctly but misbehaves. `socketFamilyCompleteness.test.ts` now fails on all five,
+correctly but misbehaves. `socketFamilyCompleteness.test.ts` fails on the first five,
 naming the family and the site, so this list is enforced rather than remembered:
 
 1. **`boundary.rs` — `coerce_value`.** The new strict-list and combo rungs fall
-   through to `default: return v`. The list rung then does **not** widen a scalar
+   through to the catch-all arm, which returns the value as it is. The list rung then does **not** widen a scalar
    to a singleton, and the combo rung does **not** collapse a one-element list —
    so a connection the lattice allows delivers the wrong rank. Add the new rungs
    to the existing `strlist`/`datelist`/`complexlist` and combo cases.
@@ -1355,6 +1357,10 @@ naming the family and the site, so this list is enforced rather than remembered:
 5. **`socketConnect.test.ts`.** Its `FAM` table is hardcoded on purpose, so that it
    re-derives the rules independently of `sockets.ts`. The consequence is that it
    **passes without testing the new family at all**. Add the row.
+6. **`boundary_core.rs` — `family_of`.** A closed match from rung to family; a new
+   family's rungs answer none, so a core-bodied card's table and no-widen inputs
+   leave its cells unconverted. Add the four rungs and the family. This site is not
+   yet pinned by `socketFamilyCompleteness.test.ts`.
 
 Then add the port factories in `nodes/shared.ts` (section 8's table) so nodes can
 actually declare the new rungs.

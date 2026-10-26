@@ -14,9 +14,10 @@ then the Rust held to them, then the TypeScript body deleted.
 
 - **Moves:** the body, everything `data()` computes from its inputs and saved fields, and the shared readers it leans
   on (`readInput`, the broadcasters, the non-finite guard, unit arithmetic).
-- **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), arrival
-  coercion and the error guard (the graph core's input boundary, `boundary.rs`), which run around the body as
-  before; a card whose body needs the browser (a file, the network, the vault) or the canvas.
+- **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), and a
+  card whose body needs the browser (a file, the network, the vault) or the canvas.
+- **Around the body, not in it:** arrival coercion and the error guard, the graph core's input boundary
+  (`boundary_core.rs` for a direct card, `boundary.rs` for a JavaScript one, [[compute-pass]] § The per-node wrappers).
 
 ## The call (`nodeOnCore.ts`, `engine_node`)
 
@@ -116,8 +117,8 @@ flowchart TD
 ```
 
 
-The core is required: the app's first render waits for it with no deadline (`main.tsx`), and every test file loads it
-(`tests/setup/graphEngine.ts`).
+The core is required: the app's chrome renders while it loads, the surfaces that build a graph wait for it
+(`useCoreReady`, [[graph-core]] § The module), and every test file loads it (`tests/setup/graphEngine.ts`).
 
 ## Freezing (`FREEZE_NODES`)
 

@@ -10,7 +10,7 @@ import {
 import { familyOf } from "../../src/graph/formatModel";
 import { throughBoundary } from "./boundaryKit";
 
-// Adding an element family is FOUR edits in sockets.ts — and then five more sites
+// Adding an element family is four edits (sockets.ts and the core's lattice.rs), and then more sites
 // that neither the compiler nor any other test can see, because they live in a
 // `Set<string>`, two string-keyed records, a CSS variable NAME, and a `default:`
 // branch. `docs/socket-reference.md` section 10 lists them; this file makes them

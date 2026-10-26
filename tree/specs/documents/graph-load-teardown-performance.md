@@ -8,7 +8,7 @@ tags: [spec, documents]
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Loading a document tears down the current graph and builds the new one (`rebuildGraph` in `persistence.ts`). Opening a file, switching documents, pasting a saved graph, and every undo or redo restore all go through this path, so its cost scales with graph size. Every card renders in one React tree and React Flow measures its own handles, so the costs that matter are the number of React Flow commits, the number of cards that re-render, the length of the async chain during build, and the per-node store cleanup. This spec covers each.
+Loading a document tears down the current graph and builds the new one (`rebuildGraph` in `persistence.ts`). Opening a file, switching documents, applying an AI rewrite, and every undo or redo restore all go through this path, so its cost scales with graph size. Every card renders in one React tree and React Flow measures its own handles, so the costs that matter are the number of React Flow commits, the number of cards that re-render, the length of the async chain during build, and the per-node store cleanup. This spec covers each.
 
 ## One commit per rebuild
 
@@ -26,7 +26,7 @@ The composite drill-in (`flow/FlowCompositeOverlay.tsx`) has the same pipe with 
 
 ## Survivors keep their identity
 
-`syncTopology` (`flow/FlowSurface.tsx`) rebuilds the React Flow node and edge lists from the editor, but reuses the previous object wherever nothing React Flow cares about changed, so React Flow's memo skips those cards.
+`syncTopology` (`flow/FlowSurface.tsx`) rebuilds the React Flow node and edge lists from the editor, but reuses the previous object wherever nothing React Flow cares about changed (`mergeFlowNodes`, `flow/flowModel.ts`), so React Flow's memo skips those cards.
 
 - A node keeps its old object when its position, `parentId`, `zIndex`, `className` and `draggable` are all unchanged. Otherwise it gets a new object that carries over the old `selected` flag and `data.version`.
 - An edge keeps its old object whenever one with the same id exists.
@@ -57,7 +57,7 @@ batched path.
 1. Remove every connection, then every node, one at a time.
 2. Reset every node-keyed store once with `forgetAllNodes()` (`nodeStoreRegistry.ts`).
 
-The per-node `noderemoved` handler in `FlowCanvas` skips `forgetNode` while a rebuild is running, because some stores scan their whole map on each forget, which would cost nodes × entries. The bulk reset replaces it. A store that registers a per-node forgetter must also register a bulk reset with `registerNodeForgetAll`, or the reset is incomplete ([[stores#The rules]]).
+The per-node `noderemoved` handler in `FlowCanvas` (`settleNodeRemoved`, `canvasActions.ts`) skips `forgetNodeDeep` while a rebuild is running, because some stores scan their whole map on each forget, which would cost nodes × entries. The bulk reset replaces it. A store that registers a per-node forgetter must also register a bulk reset with `registerNodeForgetAll`, or the reset is incomplete ([[stores#The rules]]).
 
 ## Build: construct, then add in batches
 

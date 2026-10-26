@@ -61,8 +61,8 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 
 - **CONCAT, CONCATENATE, TEXTJOIN** are owned so a number is written with `number_to_text` (15 significant digits) rather than Formula.js's formatting.
 - **SEARCH** is Solenoid's own: Formula.js matches `?`, `*` and `~` literally, where Excel reads them as wildcards (`wildcard_tokens` in `excel_criteria.rs`, shared with the criteria functions). Its start and empty-find rules are FIND's below.
-- **Text pass-throughs.** LEFT, RIGHT, UPPER, LOWER, TRIM, REPLACE, EXACT and FIND stay Formula.js for their semantics, but each text-position argument (REPLACE's first and fourth) first goes through `number_to_text`, so `LEFT(0.1+0.2, 3)` reads "0.3". LEFT and RIGHT with a count below 0, and FIND and SEARCH with a start below 1, are `#VALUE!` as in Excel, where Formula.js clamps them; the Text Slice and Text Find cards call the same registrations with their numbers as given.
-- **BASE, DEC2HEX, BIN2HEX, OCT2HEX** stay Formula.js with the result uppercased: Excel writes the letter digits A to Z in uppercase (`DEC2HEX(255)` is `FF`), and Formula.js in lowercase.
+- **Text pass-throughs.** LEFT, RIGHT, UPPER, LOWER, TRIM, REPLACE, EXACT and FIND keep Formula.js's semantics (its bodies as ported, `formulajs.rs`), but each text-position argument (REPLACE's first and fourth) first goes through `number_to_text`, so `LEFT(0.1+0.2, 3)` reads "0.3". LEFT and RIGHT with a count below 0, and FIND and SEARCH with a start below 1, are `#VALUE!` as in Excel, where Formula.js clamps them; the Text Slice and Text Find cards call the same registrations with their numbers as given.
+- **BASE, DEC2HEX, BIN2HEX, OCT2HEX** answer as Formula.js did, with the result uppercased: Excel writes the letter digits A to Z in uppercase (`DEC2HEX(255)` is `FF`), and Formula.js in lowercase.
 - **PROPER** runs `proper_case` (`excel_functions.rs`), which the Text Transform card calls too: a letter after any non-letter is capitalized and every other letter lowercased, Excel's rule, so `PROPER("76BudGet")` is `76Budget` and `o'neil 2nd` is `O'Neil 2Nd`. Formula.js capitalizes only after certain separators.
 - **MID** of length 0 is `""`, as in Excel; Formula.js answers an error. A start below 1 or a negative length is `#VALUE!`. The Text Slice card calls the same registration.
 - **REPT** truncates a fractional count (`REPT("ab", 2.9)` is `abab`), refuses a negative one, and refuses a result past Excel's 32,767 characters, all with `#VALUE!`. Formula.js throws a raw `RangeError` on a fractional count.
@@ -78,7 +78,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
   - `@` and `General` use `number_to_text`;
   - a code of only zeros (`000`) zero-pads the rounded magnitude;
   - a scientific code (`0.00E+00`) writes `1.23E+06`;
-  - a date-shaped code (letters from `ymdhs`, once quoted literals are removed, and no `#`, `0` or `?`) hands Formula.js the serial's UTC `Date`, because Formula.js formats through UTC getters. Building a local wall-clock `Date` instead shifts the day twice on any machine outside UTC.
+  - a date-shaped code (letters from `ymdhs`, once quoted literals are removed, and no `#`, `0` or `?`) formats the serial's UTC date, as Formula.js's formatter read it through UTC getters. Reading a local wall-clock date instead shifts the day twice on any machine outside UTC.
 
   Three kinds of code stay broken on purpose and are not chased: section codes (`pos;neg`), fractions (`# ?/?`), and time tokens (`hh:mm` renders only the date part).
 

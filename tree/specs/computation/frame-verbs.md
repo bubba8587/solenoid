@@ -12,7 +12,7 @@ A Frame is Solenoid's table: named, typed columns of cells. The relational verbs
 
 | File | Holds |
 |---|---|
-| `src/graph/frame.ts` | The Frame and Cube values, builders, type inference, Nest Join |
+| `src/graph/frame.ts` | The Frame and Cube values, builders, type inference |
 | `crates/solenoid-core/src/frame_verbs.rs`, `frame_fns.rs` | The verbs (cells, units and formats), the eager table tools and the analysis verbs |
 | `src/graph/frameOps.ts` | The verbs' vocabulary: `FrameOp` and its settings |
 | `src/graph/frameBackend.ts` | The seam, lazy refs, materialization, sketch mode |
@@ -63,7 +63,7 @@ mindmap
 
 ### Rows
 
-A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (`cellAt`), so ragged columns behave as if padded with blanks. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
+A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (the core's `cell_at`, `frame.rs`), so ragged columns behave as if padded with blanks. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
 
 A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, replace, drop blank rows, and every verb built on `reorder_rows`) drops `raw`, because a derived column has no source text that lines up with its values.
 
@@ -104,11 +104,11 @@ There are four entry paths, and they do not infer the same way.
 
 **One text reading** ([[D93]] oneTextReading). `coerceFrameCell` is the one reading wherever text becomes a value of a declared type: a Frame Input cell, a List Input item (typed or wired), an inline list field on any card, an item in a typed Cube list (`coerceListItem`), Get Column's Number or Date read, and a typed or guessed note property from the vault. So text the type can't read is `NaN` everywhere, never a silent blank, and a date the type can't settle stays its error. Following from the one reader: a bare number typed into a Date list is a day serial, as in a Frame's Date column (2024 is 16-Jul-1905); `yes` and `no` are not Booleans in a list field, as in a Frame cell; a NaN item is a number, so COUNT counts it; a date list shows a NaN item as `NaN` in its value box and popup. List Input keeps its typed text beside each value, so the list popup's Source view shows what was typed ([[literal-input-editors]]).
 
-"Reads as a number" (`cellToNumber`) accepts a finite number, a boolean (as 1 or 0), a `UnitCell` (its display magnitude), or text that `decimalFromText` (`valueKinds.ts`) reads: trimmed plain decimal or scientific text, or thousands grouped by commas (`^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$`), so the European `3,5` stays text instead of reading as 35. A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column whose non-blank cells are all JS booleans infers logical before the number test runs; a mix of booleans and numbers reads as number with 1/0 cells. A 0/1 column stays number, because inference reads only the literals `TRUE`/`FALSE` as logical.
+"Reads as a number" (`cellToNumber`) accepts a finite number, a boolean (as 1 or 0), a `UnitCell` (its display magnitude), or text that `decimalFromText` (`valueKinds.ts`; the core's `decimal_from_text`, `value_kinds.rs`) reads: trimmed plain decimal or scientific text, or thousands grouped by commas (`^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$`), so the European `3,5` stays text instead of reading as 35. A `0x`, `0b` or `0o` radix prefix and `Infinity` are text, as in Excel. A column whose non-blank cells are all JS booleans infers logical before the number test runs; a mix of booleans and numbers reads as number with 1/0 cells. A 0/1 column stays number, because inference reads only the literals `TRUE`/`FALSE` as logical.
 
 `inferColumn` also recovers units. When any cell is a `UnitCell` (a Cube column read back), `matrixCellsFromList` unwraps the cells to their display magnitudes before inference and returns the one unit they share, which tags the resulting number column; cells that disagree give no unit. So a Frame to Cube to Frame round trip keeps its units.
 
-`coerceLogical` (`valueKinds.ts`) is the one reading of a value as a logical, for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a list read as logical, a filter or lookup value on a logical column, the NAND/NOR/XNOR arguments and the logical settings of INTERPOLATE, TOROW and TOCOL). It reads a boolean as itself, a finite number or numeric text (`1`, `0`, `-2.5`) as true when non-zero, and other text only as `true` or `false` in any case; blank is null. Any other text (`yes`, `maybe`, `0x1`) is NaN ([[D93]] oneTextReading, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`). A NaN cell in a logical column matches no filter.
+`coerceLogical` (`valueKinds.ts`; the core's `coerce_logical`, `value_kinds.rs`) is the one reading of a value as a logical, for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a list read as logical, a filter or lookup value on a logical column, the NAND/NOR/XNOR arguments and the logical settings of INTERPOLATE, TOROW and TOCOL). It reads a boolean as itself, a finite number or numeric text (`1`, `0`, `-2.5`) as true when non-zero, and other text only as `true` or `false` in any case; blank is null. Any other text (`yes`, `maybe`, `0x1`) is NaN ([[D93]] oneTextReading, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`, the core's `logical_or_type_error`). A NaN cell in a logical column matches no filter.
 
 An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
 
@@ -176,10 +176,10 @@ flowchart LR
 
 ### Nest Join
 
-The card's body, `relate_frames(parent, child, key, nested_name)` (`nodes/frames.rs`), relates two tables on a shared key column into a Cube: every parent column, then one nested column (default name `items`, names through `makeHeaders`) whose cell on each parent row holds the child rows with a matching key. It returns `null` when either side lacks the key column. The parent's columns cross through `cubeCellsFromColumn`, so their units are tagged.
+The card's body, `relate_frames(parent, child, key, nested_name)` (`nodes/frames.rs`), relates two tables on a shared key column into a Cube: every parent column, then one nested column (default name `items`, names through `makeHeaders`) whose cell on each parent row holds the child rows with a matching key. It returns `null` when either side lacks the key column. Each parent cell is tagged with its column's unit (`tag_cell_unit`).
 
 - A Frame child's matching rows form a sub-frame that keeps each column's type, unit, format and `raw`; a Cube child's matching rows form a sub-cube (`select_cube_rows`), keeping its own nesting.
-- Keys compare as quantities: a logical keys as 1 or 0, a `UnitCell` keys by its dimension and base-SI magnitude (so `5 km` matches `5000 m` but not `5 kg` or a bare `5`), a currency keys by its display code as well (no exchange rates, so $5 ≠ 5€), and a dimensionless ratio keys as its bare magnitude. A number in a unit-locked column is converted to its base-SI quantity first, so it matches a `UnitCell` of the same quantity. The base-SI magnitude rounds at the 15th significant digit of the larger of its two terms (`roundAtLargerTerm`, the rounding Join's converted key uses), so `1 in` matches `2.54 cm` and `−459.67 °F` matches `−273.15 °C`.
+- Keys compare as quantities: a logical keys as 1 or 0, a `UnitCell` keys by its dimension and base-SI magnitude (so `5 km` matches `5000 m` but not `5 kg` or a bare `5`), a currency keys by its display code as well (no exchange rates, so $5 ≠ 5€), and a dimensionless ratio keys as its bare magnitude. A number in a unit-locked column is converted to its base-SI quantity first, so it matches a `UnitCell` of the same quantity. The base-SI magnitude rounds at the 15th significant digit of the larger of its two terms (`round_at_larger_term`, `unit_value.rs`, the rounding Join's converted key uses), so `1 in` matches `2.54 cm` and `−459.67 °F` matches `−273.15 °C`.
 - A blank or error key never matches, as in Join, and a nested Frame, Cube or list cell is never a key.
 
 On a Cube parent, `relate_cube(parent, child, key, nested_name)` deepens a chain by one level per call. It finds the first parent column holding a Frame or Cube cell (the first, so a hand-built Cube with several is deterministic) and relates inside each cell, recursing through nested Cubes; with no such column it returns the parent unchanged.
@@ -300,7 +300,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 
 - **Structural failures throw.** A verb throws a tagged SolError (missing column `#REF!`, type conflict `#TYPE!`, bad configuration `#VALUE!`, unknown aggregate `#NAME?`); the calling card turns the throw into its output value (`runVerb`, `materialize`, the runners).
 - **Row verbs select indices.** Sort, distinct, head and filter compute a list of row indices and rebuild every column from it (`reorder_rows`), so a column's type, unit and format ride along.
-- **Identity keys.** Distinct, GROUPBY, Window partitions and Join keys encode each cell with `encode_cell`, a type-tagged tuple serialized as JSON: `["n"]` for null, `["b", v]`, `["#", v]` for a finite number, `["#", "nan" | "inf" | "-inf"]` for a non-finite, `["s", text]`, `["e", code]` for an error. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, the three non-finites are three keys, and an error keys by its code. The non-finites need their named tokens because `JSON.stringify` writes all three as `null`; the tokens sit under the `#` tag, so a string cell spelling `inf` cannot collide. Keys compare case-sensitively ([[C45]] excelComparisons). The engine produces the identical string (integral numbers within the safe range print without a decimal point, as JavaScript prints them, so `-0` keys as `0`; other numbers use the shortest round-trip form).
+- **Identity keys.** Distinct, GROUPBY, Window partitions, Pivot's axes and Join keys read each cell through `cell_key` (`frame_verbs.rs`), its equality class: blank, a logical, a number, a string, or an error by its code. So `1` and `"1"` differ, `null` differs from `0` and `""`, two nulls are equal, `0` and `-0` are one key, every `NaN` is one key and each infinity is its own, and an error keys by its code. Keys compare case-sensitively ([[C45]] excelComparisons).
 - **Comparisons fold case; keys do not.** String `eq`/`neq` and the text predicates in Filter lowercase both sides with the plain Unicode lowercase (`toLowerCase` / Rust `to_lowercase`) unless `matchCase` is set. String ordering (`lt`, `gt`, sort) never folds.
 - **String order.** Every data sort and ordered comparison compares strings by UTF-16 code units (`compare_utf16`, JavaScript `<`) ([[C59]] byteStringOrder). The order is case- and accent-sensitive: "B" comes before "a", and "é" after "z". Lists in the app's own interface (menus, the Navigator, a table popup's column sort) keep a friendly alphabetical order; only data sorts and compares by code. Language-aware data sorting, if ever wanted, needs a language fixed per document.
 - **New names go through `makeHeaders`.** Any verb that combines or invents column names de-duplicates them left to right.
@@ -352,7 +352,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 
 ### distinct
 
-`{ kind: "distinct", columns? }`. Keeps the first occurrence of each distinct row, in input order, keyed with `encode_cell` over the listed columns or every column. The kept rows are whole rows. An unknown listed column is `#REF!`. Frame Distinct merges error cells with the same code, unlike list UNIQUE ([[C45]] excelComparisons). The card sends no `columns` (whole-row distinct).
+`{ kind: "distinct", columns? }`. Keeps the first occurrence of each distinct row, in input order, keyed with `cell_key` over the listed columns or every column. The kept rows are whole rows. An unknown listed column is `#REF!`. Frame Distinct merges error cells with the same code, unlike list UNIQUE ([[C45]] excelComparisons). The card sends no `columns` (whole-row distinct).
 
 ### head
 
@@ -385,8 +385,8 @@ A row passes `filter_rows(f, column, op, value, match_case)` (`frame_verbs.rs`) 
 4. Otherwise a blank or error cell fails, and a `null` value matches nothing.
 5. Text predicates compare the cell text with the value text, both folded unless `matchCase`.
 6. On a string column, `eq`/`neq` compare folded text unless `matchCase`; `lt`/`lte`/`gt`/`gte` compare by code-unit order without folding.
-7. On a number or date column, the cell is compared numerically with the value read by `decimalFromText`, the reading "Reads as a number" names; a value that is blank or does not parse to a finite number matches no rows (under `or`, other conditions still can). A date column compares against a serial; date text is not parsed.
-8. On a logical column, the cell is 1 or 0 and the value goes through `coerceLogical` (`TRUE`/`FALSE` in any case, or any number `decimalFromText` reads, non-zero being true), so `eq 12` matches TRUE rows.
+7. On a number or date column, the cell is compared numerically with the value read by `decimal_from_text` (`value_kinds.rs`), the reading "Reads as a number" names; a value that is blank or does not parse to a finite number matches no rows (under `or`, other conditions still can). A date column compares against a serial; date text is not parsed.
+8. On a logical column, the cell is 1 or 0 and the value goes through `logical_or_type_error` (`value_kinds.rs`: `TRUE`/`FALSE` in any case, or any number `decimal_from_text` reads, non-zero being true; other text is `#TYPE!` naming it), so `eq 12` matches TRUE rows.
 
 The Frame Filter card: each condition row is a column, an op and a value (`readFilterValue` stringifies a wired scalar, and an error value becomes its code). A wired blank column, or a wired blank value for an op that takes one, makes both outputs blank. A row whose literal column is empty, or whose literal value is empty for an op that takes one, is skipped. With no complete rows, Kept is the input and Dropped is blank. Kept and Dropped are both permanent outputs: `filterMulti` and the same op with `complement: true`. Dropped follows the same stale-pass and previous-ref lifecycle as `emitFrame` (its own `_refDropped`) but collects no preview, so it stays a lazy ref until a consumer collects it. A list-cell op on a frame input is `#SHAPE!`, telling the user to connect a Cube. A Cube input runs `filter_cube` (see Eager verbs).
 
@@ -394,7 +394,7 @@ The card's op list is `FILTER_OP_OPTIONS_WITH_ERROR` (the base `FILTER_OP_OPTION
 
 ### groupBy
 
-`{ kind: "groupBy", keys, aggs: [{ column, op, as }] }`. One output row per distinct key tuple (keyed by `encode_cell`), in first-seen order; a null key is its own group, and each non-finite key value and each error code is its own group. With no keys the whole frame is one group, and a frame with no rows has none. Output columns are the key columns (type and unit kept, format dropped), each holding the group's first-seen cell, then one column per aggregate named `as`. All output names go through `makeHeaders`, so an aggregate named after a key becomes `k2` and the key keeps its name. An unknown key or aggregate column is `#REF!`.
+`{ kind: "groupBy", keys, aggs: [{ column, op, as }] }`. One output row per distinct key tuple (keyed by `cell_key`), in first-seen order; a null key is its own group, and each non-finite key value and each error code is its own group. With no keys the whole frame is one group, and a frame with no rows has none. Output columns are the key columns (type and unit kept, format dropped), each holding the group's first-seen cell, then one column per aggregate named `as`. All output names go through `makeHeaders`, so an aggregate named after a key becomes `k2` and the key keeps its name. An unknown key or aggregate column is `#REF!`.
 
 `aggregate_group(cells, op, type?)`:
 
@@ -443,7 +443,7 @@ The PIVOTBY card forwards its input unchanged when it has no value fields, and d
 
 ### window
 
-`{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `encode_cell` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank, NaN and error keys last, stable, `desc` reversing present keys; a NaN key ranks blank, as Sort reads it) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
+`{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `cell_key` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank, NaN and error keys last, stable, `desc` reversing present keys; a NaN key ranks blank, as Sort reads it) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
 
 Values: the arithmetic functions read a numeric view of `column`: a number is present (an infinity included), a logical is 1 or 0, and NaN or text counts as blank; `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
 
@@ -477,13 +477,13 @@ The Window card always sends `orderDir: "asc"`, derives `as` from the function l
 `{ kind: "replaceValues", column, find, replaceWith, mode: "cell" | "substring" }`. Targets one column, or every column when `column` is blank. An empty `find` is the identity. An unknown column is `#REF!`. Matching is case-sensitive except for logicals.
 
 - `substring`: in string columns only, every literal occurrence of `find` inside a text cell is replaced (no regex).
-- `cell`: a whole cell matches when a number (or date serial) equals `decimalFromText(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` exactly. Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
+- `cell`: a whole cell matches when a number (or date serial) equals `decimal_from_text(find)` (a non-numeric find matches no number), a logical's `TRUE`/`FALSE` equals `find` in upper case, or a string equals `find` exactly. Blank and error cells never match. The replacement is coerced to the column type: blank text becomes `null`; a number or date column needs a finite number, and otherwise that column is left unchanged; a logical takes `true`/`1` or `false`/`0` (any case), anything else `null`; a string column takes the text verbatim. So Replace Values never writes a `NaN` into a number column, since a `NaN` cell is neither a value, a blank nor an error that anything downstream could read.
 
 The card's Find and Replace take a wired value of any type, stringified by `readFilterValue`.
 
 ### formats
 
-`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. The engine lowering keeps it out of the ops Polars receives and applies it to the schema shadow, which is where the Polars path's formats come back from.
+`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. The core applies it as any op (`with_formats`, `frame_verbs.rs`). A column it names keeps its unit; a name no column holds does nothing. A pivot followed only by `formats` ops still leaves its layout.
 
 ### join
 
@@ -491,7 +491,7 @@ The card's Find and Replace take a wired value of any type, stringified by `read
 
 Keys with units compare as quantities ([[C25]] firstClassUnits): `5 km` matches `5000 m`. When both key columns carry a unit and the units differ, the join (`join_key_transform`) reads the right key in the left key's unit as `right × scale + offset` (the offset is for temperatures). It treats each display unit as affine to base SI, `base = a·x + b`, reading `a` and `b` off the unit's own scale and offset; then `scale = a_right / a_left` and `offset = (b_right − b_left) / a_left`. The converted key rounds half up at the 15th significant digit of the larger of `right × scale` and `offset` (0 when it falls below that digit), so conversion noise cannot block a match: 68 °F matches 20 °C, 32 °F matches 0 °C and 0.3048 m matches 1 ft (`convert_key`, `convert_key` in the engine, which reads the exact decimal expansion as JS `toPrecision` does). The transform is applied to a number key only, and not at all when it is the identity. Keys that measure different things, or two different currencies, are `#UNIT!` (`Join keys measure different things (<l> and <r>). Convert one key first`). A unit on only one side converts nothing. Every output column keeps its source column's unit and format, a semi or anti join's left columns included.
 
-Matching: key cells match by `encode_cell` identity, case-sensitive. A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides. Units on key columns are not consulted.
+Matching: key cells match by `cell_key` identity, case-sensitive. A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides. Units on key columns are not consulted.
 
 Output layout for the equality and as-of joins: every left column, then every right column except the right key, names through `makeHeaders` (a colliding right column becomes `name2`). The key appears once, under the left key's name, filled from whichever side has the row. Unmatched cells are `null`. Every column keeps its unit and format; the key keeps the left key's.
 
@@ -518,7 +518,7 @@ The Join card: a blank Right key reuses the Left key; a blank Left key yields no
 
 ### bindColumns
 
-`bindColumns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`; the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing. Every column keeps its unit and format. The card passes a single frame through.
+`bind_columns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`; the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing. Every column keeps its unit and format. The card passes a single frame through.
 
 ## Eager verbs outside the seam
 
@@ -533,7 +533,7 @@ These run on the core (`frame_fns.rs`), on the collected value. They have no `Fr
 
 ### Nest and Unnest
 
-`nest_frame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `encode_cell`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-table sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
+`nest_frame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `cell_key`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-table sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
 
 `unnest_cube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). Each nested cell votes for a kind: a non-empty list votes list, a Frame votes table, a Cube votes cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the table path.
 
@@ -556,11 +556,7 @@ The Power Query column and row tools. Each returns a new Frame, and names go thr
 | `demoteHeaders(f)` | Headers | The column names become a first row, and every column becomes a string column named `Col1`, `Col2` and so on (the header row is text, so a typed column would be mixed). Cells become display text; blanks and errors pass through. |
 | `dropBlankRows(f, mode)` | Drop Blank Rows | `all` drops only rows where every cell is blank (spacer rows); `any` keeps only complete rows. An error cell is a value, not a blank. |
 
-### formats
-
-`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. A column it names keeps its unit; a name no column holds does nothing. A pivot followed only by `formats` ops still leaves its layout.
-
-`distinctColumnValues(cells, isExcluded?)` feeds a constrained-entry list: the distinct cell texts of one column in first-seen order, skipping blanks (`null` or `""`) and anything `isExcluded` rejects (the caller passes error codes).
+`distinctColumnValues(cells, isExcluded?)` (`TablePopup.tsx`) feeds a constrained-entry list: the distinct cell texts of one column in first-seen order, skipping blanks (`null` or `""`) and anything `isExcluded` rejects (the caller passes error codes).
 
 ### Lookup over a table
 
@@ -570,7 +566,7 @@ The XLookup card finds a row in a Frame or a Cube. A Frame is converted with `fr
 
 1. The key column must exist (`#REF!`). Only top-level columns are searched, never nested cells.
 2. The key type is the column's carried type, so a date column matches an ISO date lookup. A hand-built Cube column with no type falls back to `infer_cube_key_type`: all numbers is number, all booleans is logical, and anything else (text, containers, a mix of numbers and booleans, or nothing) is string. Blanks and errors are ignored, and inference never gives date, since a date and a number are the same serial.
-3. The lookup arrives as text and is parsed by the key type: logical through `coerceLogical` (unreadable is false), date as a serial when it is plain digits and otherwise through `parseDateToSerial`, number through `decimalFromText`, string as is.
+3. The lookup arrives as text and is parsed by the key type (`lookup_needle`, `frame_fns.rs`): logical through `logical_or_type_error` (unreadable text is `#TYPE!`), date as a serial when it is plain digits and otherwise through `parse_date` (an ambiguous or unreadable date is NaN, which matches nothing), number through `decimal_from_text`, string as is.
 4. A key column that carries a unit (`frameToCube` makes its cells base-SI unit cells) is read as the numbers it shows: each key in the first keyed cell's display unit, or in base SI when that cell has none, and a key of another dimension never matches (`keys_in_display_unit`). So `5` in a USD column finds $5, for exact and approximate match alike, as XLOOKUP in a formula reads a united list in its display unit ([[C25]] firstClassUnits, [[unit-flow#Expression]]).
 5. The match is delegated to the formula surface's `xmatch_index`, so the card and XLOOKUP cannot drift. A string key matches case-insensitively. A blank, error or container key cell never matches.
 
@@ -634,7 +630,7 @@ These also run on the core, on the collected value.
    - Otherwise the pick is the first option in order that the plan takes. Every open option ahead of it that its side's best plan leaves out is struck there (`struck`) and closed to that side only, so the other side of a fork works out its own; whatever clashes with the pick, ahead of it or not, is its `conflicts` instead.
    - An option whose Requires aren't taken brings the first of them in first (`required`), repeatedly.
    - A pick the plan takes only because a floor still needs it (the plan with the floors dropped leaves it) is `quota`.
-   - **A fork:** only at a pick taken on its own merits (never a `must`, `required` or `quota` one), the open, affordable option nearest the pick in place whose own Requires are already taken, when close, leaving every floor reachable, and when taking it instead ends with a different set (`sameSet`): a swap of order is no choice. The flow splits between the two in proportion to their scores (`close`). The option not taken stays open. A fork's two sides don't fork again on their next rung. A saved choice that names either option settles the fork on it (`chosen`, the later choice winning), and the side passed over stays as a `passed` rung with no share that goes nowhere; a choice whose fork never comes does nothing. At most 6 paths run at once; past that, no new fork.
+   - **A fork:** only at a pick taken on its own merits (never a `must`, `required` or `quota` one), the open, affordable option nearest the pick in place whose own Requires are already taken, when close, leaving every floor reachable, and when taking it instead ends with a different set (`same_set`): a swap of order is no choice. The flow splits between the two in proportion to their scores (`close`). The option not taken stays open. A fork's two sides don't fork again on their next rung. A saved choice that names either option settles the fork on it (`chosen`, the later choice winning), and the side passed over stays as a `passed` rung with no share that goes nowhere; a choice whose fork never comes does nothing. At most 6 paths run at once; past that, no new fork.
    - **Merging:** two paths whose futures match (the same options open, the same Requires met, the same caps left and floors owed) become one state carrying the sum of their flow, even when they took different options to get there. So an excluded pair rejoins once the rest of the ladder is the same.
    - A state with nothing left to take ends its path.
    The **main line** follows, from the top, the side with more of the flow at each fork. With no fork it is the best plan in order.
@@ -642,11 +638,11 @@ These also run on the core, on the collected value.
 
 ### Allocator
 
-`allocateFrame(f, mode, amount)` spreads an amount across categories within each one's range, through `allocate` (`allocateOps.ts`, no solver). Columns are found by trimmed, case-insensitive name: the weight column is `weight`, `weights` or `value`; the range is `min` and `max`, falling back to the first two number columns that are not the weight column. Without both it is `#VALUE!` (`Allocator needs a min and a max number column`). Every min and max cell must be a finite number (`#VALUE!`, `Allocator: every min must be a number`; an error cell is returned as itself). A weight that is not a finite number is 1, and ordered weights ride this column rather than a wired list. The category name is the first string column, else `Item 1`, `Item 2` and so on.
+`allocateFrame(f, mode, amount)` spreads an amount across categories within each one's range, through `allocate_frame` (`decision.rs`, no solver). Columns are found by trimmed, case-insensitive name: the weight column is `weight`, `weights` or `value`; the range is `min` and `max`, falling back to the first two number columns that are not the weight column. Without both it is `#VALUE!` (`Allocator needs a min and a max number column`). Every min and max cell must be a finite number (`#VALUE!`, `Allocator: every min must be a number`; an error cell is returned as itself). A weight that is not a finite number is 1, and ordered weights ride this column rather than a wired list. The category name is the first string column, else `Item 1`, `Item 2` and so on.
 
 The output is `<name column or Category>` · `Allocation` · `Share`. Allocation comes first among the numbers, so a wired chart plots it, and carries the min column's unit and format. Share is each allocation's raw fraction of the total (0 when the total is not positive), to be formatted as a percent downstream. Comparing prices against the range is left to a join or computed column downstream.
 
-The kernels (`allocate(mode, mins, maxs, weights, amount)`) are three closed-form modes, each exact. Each row's range is normalized first, so a row whose min exceeds its max uses the smaller as the floor and the larger as the ceiling. Weights are read as non-negative (a non-finite or non-positive weight is 0), and when every weight is 0 they all become 1, so dividing by Σw is safe.
+The kernels (`allocate_budget`, `allocate_min_target`, `allocate_proportional`, `decision.rs`) are three closed-form modes, each exact. Each row's range is normalized first, so a row whose min exceeds its max uses the smaller as the floor and the larger as the ceiling. Weights are read as non-negative (a non-finite or non-positive weight is 0), and when every weight is 0 they all become 1, so dividing by Σw is safe.
 
 - **`budget`** (Fit budget, a water-filling fixed point) spends `amount` in proportion to weight, each category clamped to [min, max]. A clamped category is fixed and the remaining budget redistributes among the still-free ones, pass after pass; each pass fixes at least one category or finishes. When the free categories have no weight, the remainder splits equally among them. A budget at or below Σmin gives every floor, and one at or above Σmax gives every ceiling.
 - **`minTarget`** (Min for target, a fractional knapsack) finds the least spend that reaches a weighted value Σwᵢaᵢ ≥ `amount`. Floors come first; then the extra value is bought from the highest-weight category (most value per dollar) up to its ceiling, spilling to the next. A target unreachable even at every ceiling returns every weighted category at its ceiling as a best effort.
@@ -687,7 +683,7 @@ The kernels are `earned_value_card`'s in `crates/solenoid-core/src/nodes/sched.r
 - BCWP (earned value, EV) is BAC × percent complete / 100.
 - ACWP (actual cost, AC) is the Actual cost column when present, else BCWP.
 
-The planned fraction (`planned_fraction`) is the share of the baseline span, counted in working days, elapsed by the end of the status date: 0 without a baseline or before its start day, 1 on or after its finish, and otherwise `count(start, status) / count(start, finish)`, so the start day itself is 1 / total. The card injects the engine's `Calendar.countBetween` (inclusive of both ends) as the counter, so weekends and holidays match the schedule.
+The planned fraction (`planned_fraction`) is the share of the baseline span, counted in working days, elapsed by the end of the status date: 0 without a baseline or before its start day, 1 on or after its finish, and otherwise `count(start, status) / count(start, finish)`, so the start day itself is 1 / total. The counter is the schedule engine's `count_between` (`crates/solenoid-schedule/src/calendar.rs`, inclusive of both ends), so weekends and holidays match the schedule.
 
 The metrics are SV = BCWP − BCWS, CV = BCWP − ACWP, SPI = BCWP / BCWS, CPI = BCWP / ACWP, EAC = BAC / CPI (or BAC when CPI is unknown or not positive, assuming the rest runs to budget), VAC = BAC − EAC and TCPI = (BAC − BCWP) / (BAC − ACWP). A ratio whose denominator is 0 is null and draws blank. Project totals compute each ratio from the summed components, never by averaging the tasks' ratios, the project-management convention.
 

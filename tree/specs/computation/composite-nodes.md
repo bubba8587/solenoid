@@ -101,7 +101,7 @@ An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwire
 
 ### The input value fallback order
 
-For each input port in one internal pass, the marker's `value` is the first of these that is not `undefined` (and, for the wired value and the seed, not `null` either, because the chain uses `??`):
+For each input port in one internal pass, the marker's `value` is the first of these that is present: an override that is not `undefined`, a wired input (one with a cable, so a wired blank is `null`, [[D86]] blankRoles), and then a seed and a default that are not `null` or `undefined`:
 
 ```mermaid
 flowchart LR
@@ -166,7 +166,7 @@ Markers cannot be copied (copy skips them) or deleted from the drill-in (its del
 3. The run controls (`CompositeRunControls`), shared with the drill-in:
    - the run-mode dropdown, shown only when the composite has at least one port: Single run, Manual refresh, Scenarios, Data table, Simulation, Goal seek, Monte Carlo, By row;
    - when heavy, a Solve button (a play icon; labeled Refresh with a refresh icon in `manual`) and a status dot: hollow orange "Stale", filled red "No solution" (goal-seek result is an error), filled "Up to date" otherwise. Solve calls `requestSolve(insideOnly)` and `processGraph(node.id)`;
-   - when heavy and it has solved since it was made or loaded, "last run" and the last solve's wall time beneath (`340 ms`, `1.24 s`), so the same work can be timed with Settings ▸ Rust engine on and off (the "Rust engine speed test" seed);
+   - when heavy and it has solved since it was made or loaded, "last run" and the last solve's wall time beneath (`340 ms`, `1.24 s`), so the same work can be timed as it grows (the "Rust engine speed test" seed);
    - the mode's editor (below).
 4. One output box per output port: the label, then the value in a socket row that anchors that port's output socket, with a sparkline above a numeric series of two or more. Under goal-seek these boxes are suppressed; the goal-seek editor's Solution box carries the target port's socket instead.
 5. `no ports` when the composite has no ports.
@@ -304,11 +304,11 @@ A cable cycle inside a composite is detected with the same `loopMembers` as the 
 
 **In Simulation**, `runSimulation(inputs)` resolves the cycle as bounded feedback:
 
-1. Set each input marker's value to the wired value (exposed ports) or the port default, else null. This path does not read the marker seed; the plain pass in step 2 does.
+1. Set each input marker's value by the fallback order, with no override.
 2. Reset the internal engine and clear `simLastSteps`. With no loop members, return one plain pass.
 3. For each loop member, gather its cables from non-member sources and fetch those sources once through the engine. They are upstream of the loop and do not change between rounds.
 4. Order the members as `internalEditor.getNodes()` lists them.
-5. Rounds: `steps = max(1, round(simulationSteps))`. In each round, each member in order gets its static inputs plus, for each cable from another member, that member's latest output in a shared `state` map; a member that has not produced yet contributes nothing, so that input is unwired on the first round. The member's guarded `data()` is called directly and its result replaces its entry in `state`. This is Gauss-Seidel stepping: a member later in the order sees this round's values, an earlier one the previous round's. After each round a snapshot of every member's output is appended to the series.
+5. Rounds: `steps = max(1, round(simulationSteps))`. In each round, each member in order gets its static inputs plus, for each cable from another member, that member's latest output in a shared `state` map; a member that has not produced yet contributes nothing, so that input is unwired on the first round. The member runs through `internalEngine.compute(id, inputs)` (its `data()` through the input boundary, without the cache) and its result replaces its entry in `state`. This is Gauss-Seidel stepping: a member later in the order sees this round's values, an earlier one the previous round's. After each round a snapshot of every member's output is appended to the series.
 6. Stop when: when `stopWhenPortId` names an output whose marker has an incoming cable, the condition is checked after each round, and the halting round is kept in the series. If the marker is fed straight from a member, the value is read from `state`; otherwise the internal engine is reset, every member's current output is seeded into its cache, and the feeding node is fetched. `stopConditionMet(raw, op, value)` reads a logical as 1 or 0 and any other value through `Number`; `null`, `undefined` and non-finite values never stop, so a missing or broken round never halts the run. The ops are `gt`, `ge`, `lt`, `le`, `eq`, `ne`.
 7. `simLastSteps` = rounds run. Fewer than `steps` means the condition stopped it.
 8. Seed every member's final output into the internal engine cache, so nodes downstream of the loop resolve through the normal pull.
@@ -361,7 +361,7 @@ flowchart TD
     ever -->|yes| held["the held outputs; stale<br>when the solve key changed"]
 ```
 
-`solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
+`solveKey(inputs)` is the JSON of: the inputs, where a primitive counts by value and an object by a per-composite reference token (a new Frame object reads as a change even when equal, and nothing is deep-serialized); every input marker's seed; every marker's `[uncertainty, distribution]`; `internalEditSeq`; the live-data stamp of the cards inside (`connectionStore.liveStamp`), so a landed fetch reads as a change; and `runMode`, `goalSeek`, `monteCarlo`, `scenarios`, `dataTableValues`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId`. Any change to these after a solve turns the dot stale; the held value stays until the next Solve.
 
 **Solve from inside.** `requestSolve(insideOnly)` sets `solveRequested` and sets `solveInsideOnly` to `insideOnly && runMode !== "manual"`. The drill-in's controls pass `insideOnly`, so a Solve there runs on empty inputs: every exposed port falls to its seed, and Monte Carlo means and the goal-seek start come from the seeds too. The key is still taken on the real inputs, so the card does not read stale right after.
 
@@ -376,7 +376,7 @@ flowchart TD
 3. The origin is the minimum x and y over the members' measured boxes.
 4. Classify every cable: internal (both ends members), incoming (target is a member), outgoing (source is a member).
 5. Inside the surface's edit scope (`editScopeFor`: the main canvas's rebuild gate, or an open drill-in's own): remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside. A member keeps its id, so its store entries (size, pins, comments, frame formats, and a standoff to another member) stay with it; a standoff between a member and a card left outside is removed, since a standoff binds two cards on one canvas ([[standoffs]]).
-6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it and install its guard, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
+6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
 8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
 
@@ -423,7 +423,7 @@ The constructor copies ports, scenarios, overrides, data-table lists and configs
 `hydrate(reg)` does nothing when nothing is pending. Otherwise, with `_hydrating` set:
 
 1. Find the saved nodes whose type is not in `reg`, and derive their socket keys from the saved connections (`deriveMissingNodeSockets`).
-2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable); a nested composite is hydrated right there, since it computes inside this one's pass and would otherwise read null until drilled into. Restore its size, collapse and flip onto the new id (`restoreNodeState`, shared with the main load), add it to the internal editor, install its guard, record its saved position under its new id, and remember the saved id for the new one.
+2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable); a nested composite is hydrated right there, since it computes inside this one's pass and would otherwise read null until drilled into. Restore its size, collapse and flip onto the new id (`restoreNodeState`, shared with the main load), add it to the internal editor, record its saved position under its new id, and remember the saved id for the new one.
 3. Re-add the saved connections between built nodes; a refused or dangling one is skipped.
 4. Restore the snapshot's side tables onto the new ids (`restoreSideTables`, shared with the main load; additive, and a comment whose id is taken, as on a second paste, gets a fresh one). Remap every port's `internalNodeId` from the saved id to the new id (every node gets a fresh id on construction). A port whose marker was not built keeps the stale id.
 5. Clear `_hydrating`, dock every internal Format Controller (`dockSelf`, which only registers the dock; one whose host is gone loads free, [[save-format]]), then run `settleInternalTypes()` once, whose reconcile settles the wildcards before it types the FCs. So a drill-in's open and every undo restore (both hydrate) come up with docks and FC types settled.

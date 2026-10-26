@@ -10,7 +10,7 @@ Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[D46]
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 
-A **node class** is the headless model of one card: its sockets, its saved fields and its `data()`, which computes outputs from inputs. An **op module** (`*Ops.ts`) holds the pure calculations that a class and its formula functions share.
+A **node class** is the headless model of one card: its sockets, its saved fields and its `data()`, which computes outputs from inputs. An **op module** (`*Ops.ts`) holds a family's op names, their metadata and the few pure helpers its card and components share; the calculations a class and its formula functions share are the core's ([[node-bodies]]).
 
 ```mermaid
 mindmap
@@ -31,7 +31,7 @@ mindmap
       ["noWidenInputs: takes a Cube as is"]
       ["passthrough(): which inputs it<br>hands on unchanged"]
     ["data(): outputs from inputs"]
-      ["shares its kernel with the<br>formula, in an op module"]
+      ["shares its kernel with the<br>formula, on the core"]
 ```
 
 ## A new function across the app
@@ -128,7 +128,7 @@ mindmap
 ## Formula registrations and op modules
 
 - **A formula function's contract lives in one place**, the core's call table (`data/call_traits.json`): its routing, its argument roles and its empty-slot readings; its arity is `FUNCTION_ARITY`. Routing is derived from that table, never from a hand-kept list ([[formula-language#The registry]], [[engineering#Lists of names are generated]]).
-- **An op module imports nothing from the graph model and serves both surfaces** ([[engineering#The formula path is graph-free]], [[C17]] shareImpl): the node's `data()` and the formula registration call the same function.
+- **An op module imports nothing from the graph model** ([[engineering#The formula path is graph-free]]). **A card and its formula share one kernel** ([[C17]] shareImpl): the card's body on the core calls the formula's function by name or its kernel.
 - **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct). A merge follows these mechanics, each of which was once gotten wrong:
   - An op's formula name is `fx ?? despace(label)`. When the real name is an Excel spelling or the label went bare, declare `fx` (distribution `normal` → NORM.DIST). Never dodge a [[formula-language#Derived names are unique]] collision by reclassifying the family as an argument or inventing a parallel presentation flag: the selector that names the node is the `op` field, and the accent follows.
   - Selector-driven socket swaps prune departing keys through `dropInputCables` before `removeInput` ([[input-cable-pruning#The ordering rule]]), keep the per-op shape in a spec table (the `DIST_SPECS` pattern), and carry state across a switch by meaning (PDF↔PMF, inverse variants → Inverse).

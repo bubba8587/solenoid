@@ -67,7 +67,7 @@ mindmap
 
 A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[#Link grammar stays at the border]]).
 
-The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats. So that Unnest reads the column whole, a Predecessors column the Schedule writes is one kind: name lists while every link is a plain FS with no lag, else a nested table in every row (`predecessorColumn`), its name column called Predecessor, so the unnested rows read as Task, Predecessor, Type and Lag.
+The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats. So that Unnest reads the column whole, a Predecessors column the Schedule writes is one kind: name lists while every link is a plain FS with no lag, else a nested table in every row (`predecessor_column`, `nodes/sched.rs`; an import builds its column the same way, `predecessorColumn` in `planImport.ts`), its name column called Predecessor, so the unnested rows read as Task, Predecessor, Type and Lag.
 
 ### Hierarchy
 
@@ -94,7 +94,7 @@ The Schedule node is in the Add menu's Plan category.
 |---|---|---|
 | `tasks` | cube | The tasks cube. Anything that is not a cube after coercion gives null on every output. |
 | `links` | frame | Optional flat dependencies, added to Predecessors. |
-| `start` | date | The project start. Unwired, it is today's local day (`todaySerial`). A wired value that is not a finite number gives null on every output. |
+| `start` | date | The project start. Unwired, it is today's local day (`TODAY` on the call's clock). A wired value that is not a finite number gives null on every output. |
 | `holidays` | date list | Days to skip alongside the weekend. Read only in Working days mode. The Holidays node feeds it. |
 | `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
@@ -113,7 +113,7 @@ flowchart LR
     s --> mspdi["mspdi: Microsoft Project XML"]
 ```
 
-The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, over the one working-day implementation the app shares.
+The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code, and a code outside the table reads as Saturday and Sunday in the scheduler where `WORKDAY.INTL` answers `#NUM!`.
 
 The card has four options, each persisted with the node:
 

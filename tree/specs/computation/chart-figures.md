@@ -217,7 +217,7 @@ The Gantt node computes no dates ([[C71]] noBarEditing: the figure is display-on
 - Links come from the predecessor column (`predecessors`, `predecessor`, `after`, `depends on`, `blockedby`, `blocked by`): text, a list of names, or a nested table with a task column plus optional `type` (FS, SS, FF, SF, default FS) and `lag`.
 - A baseline is a second scheduled table joined by task name (case-insensitive); one that is not a plan draws no ghost bars.
 - The shading calendar is built from `weekend_code` (Excel `WORKDAY.INTL` codes, default 1) and `holidays`, over the project span padded by 14 days. `today` is the local day; `status` is wire-only (unwired means no status line).
-- The options string is parsed twice: `parse_chart_options` (`nodes/visual.rs`) for `title` and `fontsize`, and `parseGanttViewOptions` for the view keys. `view.minutes` is also set automatically when any start or finish carries a clock fraction.
+- The options string is parsed twice: `parse_chart_options` (`nodes/visual.rs`) for `title` and `fontsize`, and `gantt_view_options` (`nodes/sched.rs`) for the view keys. `view.minutes` is also set automatically when any start or finish carries a clock fraction.
 
 ### Mermaid
 

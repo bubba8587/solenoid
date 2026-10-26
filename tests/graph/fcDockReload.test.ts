@@ -19,8 +19,8 @@ import { reconcileFcs, reconcileFcTypes } from "../../src/graph/fcReconcile";
 // projected wildcard output still reads as its upstream's raw type (frame), so
 // the docked FC adopted "frame" and nothing re-adapted it after the settle.
 // Re-docking by hand fixed it because that re-ran the adapt post-settle. The
-// fix: persistence settles wildcard types BEFORE the dock loop. This test
-// replays that exact load order.
+// fix: the dock loop only records each dock, and `reconcileFcTypes` then settles
+// the wildcard types before it types the FCs. This test replays that load order.
 
 type AnyEditor = GraphEditor<Schemes>;
 

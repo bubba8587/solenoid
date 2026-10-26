@@ -16,7 +16,7 @@ The governing convention: **a node class declares a literal map if and only if i
 
 When `persistence.ts` loads a saved node, it copies the saved `literals` and `stringLiterals` onto the new node only when the class already has that field as an object (`typeof anyNode.literals === "object"`). A field the class does not declare is dropped.
 
-A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and `EquationNode.data()` has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
+A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and its body on the core (`equation` in `crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
 
 ## Seeds are checked when they are written
 
@@ -24,7 +24,7 @@ A wire-driven card declares neither map. The Equation family (Equation, TVM, Tri
 
 ## A typeable list implies the declaration
 
-A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set in `listLiterals.ts`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, the input boundary parses that text with `parseListLiteral` and injects the list as the input's value; blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] oneTextReading). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
+A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set of the core's input boundary, `crates/solenoid-graph/src/boundary.rs`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, the input boundary parses that text with `parseListLiteral` (`listLiterals.ts`) and injects the list as the input's value (for a body on the core, `coreHeader` in `nodeOnCore.ts` sends the parsed list); blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] oneTextReading). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
 
 The `FLAT_CATALOG` sweep in `coerceInputs.test.ts` constructs every catalog entry and fails for any node with a typeable input and no `stringLiterals`, so a new node cannot silently lose the user's typed CSV on reload.
 
@@ -72,4 +72,4 @@ A node opts its wildcard rows into typed literals with `autoLiterals` (`AutoLite
 
 A node whose op reads a wildcard slot as text opts in with `textLiterals` instead (`takesTextLiteral`): its rows get the plain text field, so a space, `007` or `1.50` reaches the op exactly as typed rather than trimmed or read as a number. Replace Values' Find and Replace take this field; a wired value of any type still connects.
 
-The auto field (`InlineAutoField`) holds a number or text. An entry that reads as a number (`Number(t)`, not `parseFloat`, so "12abc" is text) commits as a number into `literals`; anything else commits as text into `stringLiterals`, and the quote marks appear to show which landed, since a SWITCH case of `12` is not a case of `"12"`. The field keeps the number field's drag-to-scrub while it holds a number. Each commit deletes the key from both maps before writing one, so a wildcard slot lives in exactly one map and a reader never has to break a tie.
+The auto field (`InlineAutoField`) holds a number or text. An entry that reads as a number (`decimalFromText`, the one text-to-number reading [[D93]] oneTextReading sets, so "12abc" and `0x1F` are text) commits as a number into `literals`; anything else commits as text into `stringLiterals`, and the quote marks appear to show which landed, since a SWITCH case of `12` is not a case of `"12"`. The field keeps the number field's drag-to-scrub while it holds a number. Each commit deletes the key from both maps before writing one, so a wildcard slot lives in exactly one map and a reader never has to break a tie.

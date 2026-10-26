@@ -18,13 +18,14 @@ editor (`dataflowEngine.ts`, [[D102]] graphOnCore, `tree/specs/computation/graph
 - `flow/SolNodeAdapter.tsx` binds a node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the
   model's camera, move and re-render verbs into React Flow state.
-- `graphCompute.ts` is the model-level compute pass, one definition shared by the app, the
-  composite engine, the CLI and the tests.
+- The pass has one definition, the engine's graph walks and loop seeding in the core.
+  `graphCompute.ts` runs it with no view (`computeAll`, for the CLI and the tests); the app
+  runs it through `engine.pass` (`process.ts`).
 - Cross-surface state lives in module-singleton stores (`storeKit.ts`, read through
   `useSyncExternalStore`). That's app-wide state, not a workaround; plain React context
   and props work everywhere too.
 
-The module singletons `_editor`, `_engine` and `_area` live in `process.ts`. A composite
+The module singletons `_editor`, `_engine` and `_view` live in `process.ts`. A composite
 drill-in doesn't open a new page. It swaps the active surface through the `activeGraph.ts`
 seam (`getActive*`, `getOwningEditor`), so the same chrome drives whichever canvas is on
 top. `getEditor()` and persistence always mean the main graph (`../tree/specs/documents/save-format.md` § Saving binds the main graph). The
@@ -82,8 +83,9 @@ and values flow up in rank. The spec is `../tree/specs/values/socket-lattice.md`
 socketLattice).
 
 On top of that, derived types resolve again after every wiring or config change.
-`settleWildcardTypes` alternates two systems until both settle: trueany adoption (a
-hollow-ring port adopts the wired type) and Conduit lane tracing. FC adaptation then runs
+The Type Settle (`settle.rs`, called through `settleWildcardTypes`) alternates two systems
+until both settle: trueany adoption (a hollow-ring port adopts the wired type) and Conduit
+lane tracing. FC adaptation (`reconcileFcTypes`, `fc.rs`) then runs
 once downstream against the settled result (`../tree/specs/documents/save-format.md` load step 10). Derived types are
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
@@ -119,7 +121,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
   ([[C25]] firstClassUnits).
 - An FC's number **format** is a display annotation, resolved by walking passthroughs in
   both directions and through transforms that keep the value's meaning
-  (`makeAnnotationResolver`, [[D41]] formatFlowsDownstream). The spec is
+  (`makeAnnotationResolver` over the core's walk, `annotate.rs`, [[D41]] formatFlowsDownstream). The spec is
   `../tree/specs/values/unit-flow.md`.
 - Errors render as the red `#CODE!` badge. A scalar null renders as a muted em dash; the
   word `null` appears only for list and Frame cells. NaN is quiet residue, never "N/A".
@@ -128,12 +130,13 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
 
 Every node has a stable, user-editable `name`. Node `id`s are random and regenerated on
 load, so never save or compare ids across loads ([[B16]] oneFormulaSurface). The text form
-(`textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
+(written and read by the core, `text_form.rs` through `textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
 writes) is the canonical projection, and the JSON save derives from it (`../tree/specs/documents/save-format.md` § Every save passes through the text form
 saveViaTextForm).
 
 Load (`rebuildGraph`) constructs the nodes, remaps ids, restores state, then runs the
-ordered tail: hydrate, settle wildcard types, dock FCs. The strict validator
+ordered tail: hydrate composites, dock FCs, then settle wildcard types and adapt FCs
+(`reconcileFcTypes`), then a full pass. The strict validator
 (`graphValidate.ts`) is a separate gate for the AI palette and the CLI; the interactive
 loader stays permissive, loading an unknown type as a lossless Placeholder.
 

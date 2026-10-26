@@ -117,7 +117,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 `extractInit(node)` builds `init` from the live instance ([[#The capture is a fixed point, and plain JSON]]). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. A Placeholder pastes as another Placeholder for the same missing type (`placeholderFor`, which the loader and composite hydration also build with), with its sockets and a name taken from that type, and the node references in its saved `init` follow the paste as a live card's do. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
 
-1. Every key in `INIT_FIELD_ORDER` that exists on the node with a value other than `undefined` is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
+1. Every key in `INIT_FIELD_ORDER` that the node carries, own or inherited, with a value that is neither `undefined` nor a method, is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
 2. Object-valued extras are deep-copied, several filtered to live keys so an orphan left behind for undo does not reach the save:
    - `funcs`, `fieldTypes`: shallow copies.
    - `filterExclude`: each array copied.
@@ -126,7 +126,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
    - `condConfig`: only rows `k` whose `value<k>` or `column<k>` input still exists.
    - `keyOrder` (List Sort): only key rows `k` whose `key<k>` input still exists; omitted when none remain.
    - `titles`, `selectedKeys`: only keys that are live inputs; omitted when none remain.
-   - `varDescriptions`: only live variables (`varNames`) with non-blank text.
+   - `varDescriptions`: only live variables (`varNames`) with non-blank text. `varUnits`: only live variables with a non-empty unit.
    - `bindings`: only live definition variables (`defVars`) with a non-empty value, sorted by key.
    - `inputPorts`, `outputPorts`: each port copied. `scenarios`: `{ id, name, overrides }` each. `dataTableValues`: each array copied. `goalSeek`, `monteCarlo`: copied when set (a `null` config is omitted).
    - `uncertainty` only when it is a positive number, with `distribution: "uniform"` only when not normal.
@@ -208,7 +208,7 @@ Reading rules (`parseNodeLine`):
 - The name is everything before the first `": "` (colon then space); a line without one is malformed. The type is the text up to the next space.
 - The rest is split into tokens at spaces that are outside a JSON string. Inside a string, a backslash escapes the next character. Runs of spaces are allowed; tabs are not separators.
 - Each token must start with a key followed by `=` or `<-`, or the line is malformed. A bare key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the regex allows it anywhere. A quoted key is taken as is: `"lit:x"=1` is an `init` field, never a literal, and a quoted key on a connection takes no prefix.
-- `key=value` parses `value` with `JSON.parse`. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
+- `key=value` parses `value` as JSON. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
 - `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. An input key off the bare pattern is JSON-quoted, like any other key.
 - Empty lines in the header are skipped. The header ends at the first line that is exactly `---`; a document without one is refused.
 - Two lines with the same name are refused.
@@ -228,7 +228,7 @@ The text form carries no `id`: on read, each node's `id` is its name.
 
 ### The sidecar
 
-`JSON.stringify(sidecar, null, 2)` followed by a newline. Keys appear in this order, each only when present or non-empty:
+Pretty JSON with a two-space indent (serde's `to_string_pretty`), followed by a newline. Keys appear in this order, each only when present or non-empty:
 
 | Key | Content |
 |---|---|
@@ -242,7 +242,7 @@ The text form carries no `id`: on read, each node's `id` is its name.
 | `palette`, `reportPalette`, `meta`, `savedAt` | As saved. `savedAt` is read back only when it is a number. |
 | `packs` | As saved. |
 
-An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON throws.
+An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON, or a sidecar of `null`, throws.
 
 ## Example
 
@@ -341,8 +341,9 @@ flowchart TD
     add --> remap["remap saved ids in<br>references to fresh ones"]
     remap --> wire["reconnect: a cable that<br>doesn't resolve is skipped"]
     wire --> side["side tables, then each<br>Composite's inside"]
-    side --> settle["settle wildcard types"]
-    settle --> fc["then dock Format Controllers,<br>sync Convert arrows"]
+    side --> dock["dock Format Controllers"]
+    dock --> settle["settle wildcard types"]
+    settle --> fc["then the FC reconcile:<br>types, annotations, Convert arrows"]
     fc --> rest["drawn cables, group membership"]
     rest --> pass["processGraph(): compute"]
     pass --> cam["fit the camera,<br>re-hide collapsed groups"]
@@ -362,14 +363,13 @@ flowchart TD
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
 7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` (a copy of the saved `init`) is remapped the same way, so its references follow a rename of the node they name to the next save. The remap never writes into the `SavedGraph` it loads from, which may be a library document or a seed that loads again.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.
-9. **Side tables, then Composites**: `restoreSideTables` adds the standoffs (skipped when either end is missing or both ends are the same node), pins, comments and frame formats to their stores, remapped through the id map and filtered to live nodes; a comment whose id is already taken gets a fresh one. Then each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, remaps its internal nodes' references (as in step 7) and its ports' `internalNodeId`s to the fresh internal ids, restores its own side tables the same way, and settles its own wildcard and Format Controller types and docks, in the order of steps 10 and 11 ([[composite-nodes]]). `snapshotInternal` maps both back to saved ids, so a Group or Format Controller inside a Composite finds its members and host after every load. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
-10. **Settle wildcard types**: `settleWildcardTypes(editor)` alternates Conduit lane typing and trueany adoption to a joint fixpoint ([[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]). This must precede step 11, and any new step that reads a settled socket type once and keeps the answer goes after it too: before the settle, a projected wildcard output (INDEX over a Frame) still reads as its upstream's raw type. A Format Controller that docked before the settle once adopted `frame`, showed no controls and kept that type after every reload, with no error anywhere. `fcDockReload.test.ts` pins the order.
-11. **Format Controllers and Convert**: every constructed Format Controller docks to its host, then `reconcileFcTypes` settles the wildcards and runs the FC reconcile (every FC's type and annotation, every Convert's arrows). A Format Controller whose saved `hostNodeId` names no node in its graph (a stale id, or a host lost from a hand-edited save) loads as a free Format Controller: `dockSelf` clears its host and socket, and its cables and settings load as saved ([[B12]] losslessSaves).
-12. **Drawn cables**, loaded as is.
-13. `rebuildGroupMembership(editor)` from the Groups' `members`.
-14. `processGraph()` computes every node.
-15. Fit the camera to the nodes (skipped for an empty graph, where `zoomAt` would produce a NaN transform), then `syncGroupCollapse` re-hides collapsed Groups' members.
-16. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled (a Decimal chip lays out a frame late).
+9. **Side tables, then Composites**: `restoreSideTables` adds the standoffs (skipped when either end is missing or both ends are the same node), pins, comments and frame formats to their stores, remapped through the id map and filtered to live nodes; a comment whose id is already taken gets a fresh one. Then each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, remaps its internal nodes' references (as in step 7) and its ports' `internalNodeId`s to the fresh internal ids, restores its own side tables the same way, and docks and settles its own Format Controllers and wildcard types as in step 10 ([[composite-nodes]]). `snapshotInternal` maps both back to saved ids, so a Group or Format Controller inside a Composite finds its members and host after every load. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
+10. **Format Controllers, types and Convert**: every constructed Format Controller docks to its host, which only records the dock. A Format Controller whose saved `hostNodeId` names no node in its graph (a stale id, or a host lost from a hand-edited save) loads as a free Format Controller: `dockSelf` clears its host and socket, and its cables and settings load as saved ([[B12]] losslessSaves). Then `reconcileFcTypes` runs the Type Settle (`settleWildcardTypes`, which has the core's `settle.rs` take Conduit lanes and trueany adoption to a joint fixpoint, [[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]) and only after it the FC reconcile (`reconcileFcs`, the core's `fc.rs`: every FC's type and annotation, every Convert's arrows). Anything that reads a settled socket type once and keeps the answer goes after the settle: before it, a projected wildcard output (INDEX over a Frame) still reads as its upstream's raw type, and a Format Controller typed then would adopt `frame`, show no controls and keep that type after every reload, with no error anywhere. `fcDockReload.test.ts` pins the order.
+11. **Drawn cables**, loaded as is.
+12. `rebuildGroupMembership(editor)` from the Groups' `members`.
+13. `processGraph()` computes every node.
+14. Fit the camera to the nodes (skipped for an empty graph, where `zoomAt` would produce a NaN transform), then `syncGroupCollapse` re-hides collapsed Groups' members.
+15. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled (a Decimal chip lays out a frame late).
 
 The saved-id to live-id map from the last load stays readable through `getLastLoadIdMap()`. `seedTune.ts` reads seed geometry back by saved id through it, and `aiReveal.ts` uses it to find the nodes an AI apply added.
 
@@ -420,13 +420,13 @@ The document library is the working store; files are exports and imports of one 
 
 **localStorage.** Each document has its own two-slot pair `solenoid.docs.doc.<id>.a` / `.b` holding `{ seq, doc }`, and the library has one index pair `solenoid.docs.index.a` / `.b` holding `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`. Every write goes to the older slot; every read takes the newer structurally valid one; `seq` is a strictly rising in-session counter and must be the first key of the payload ([[per-doc-autosave-persistence#Two slots per pair]]). A failed write raises a sticky notice until a write fully succeeds. Restore reads the index, then each document's slots through `validateDoc` (which applies `validateSavedGraph`), skipping a missing or corrupt document. The mechanics are in [[per-doc-autosave-persistence]].
 
-**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph, write it into the current document with a fresh `updatedAt`, float that document to the top, persist. A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide` and on the desktop window's close request ([[per-doc-autosave-persistence]]). In the dev server each capture is also mirrored to `.dev/current-graph.json`.
+**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph and, when it differs from the stored one, write it into the current document with a fresh `updatedAt`, float that document to the top and persist ([[per-doc-autosave-persistence#Change detection is object identity]]). A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide` and on the desktop window's close request ([[per-doc-autosave-persistence]]). In the dev server each capture is also mirrored to `.dev/current-graph.json`.
 
 **Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document, and stays on it when that capture fails ([[per-doc-autosave-persistence#Swapping documents]]). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
 
 **Save clocks.** `saveTimeStore` is the leaf module node classes read the clocks through (`autosavedAt`, the current document's `updatedAt`, and `fileSavedAt`), since a node class cannot import `documentStore`. `documentStore` registers itself as its provider at load and bumps it on every library change; in a headless run nothing registers, so both read null.
 
-**Undo.** The undo history records `JSON.stringify(serializeGraph())` after each settled mutation; undo and redo restore with `loadGraph(snapshot, { curtain: false })`, put the camera back, and schedule an autosave.
+**Undo.** The undo history records `serializeGraph()` after each settled mutation ([[react-flow-surface-contract#Undo history]] has how it is stored); undo and redo restore with `loadGraph(snapshot, { curtain: false })`, put the camera back, and schedule an autosave.
 
 **Files on disk.** A file is the `SavedGraph` JSON (not the text form), written with `JSON.stringify(g, null, 2)` and a `.json` extension.
 

@@ -8,7 +8,7 @@ tags: [spec, documents]
 
 Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that calls it. Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume.
+Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume.
 
 ## The DocumentValue
 
