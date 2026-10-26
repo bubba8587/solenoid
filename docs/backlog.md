@@ -142,6 +142,11 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
   Also on the phone: a pinch whose leftover finger lifts on a card no longer selects it (fixed by reading, untested headless).
 
 - [ ] **Hand-tidied groups then a canvas Tidy, twice, moved personal finance ~530 px** (2026-09-30). A canvas Tidy run twice from the seed is a fixed point now (`tidy-drift-probe.mjs personal-finance`, 2026-10-26); the path that tidies each group by hand first is still unchecked.
+
+## Landing pages
+
+The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
+
 - [ ] **solenoid-ngc.com follow-ups (author):** Google Search Console has the domain and its sitemap (2026-10-08).
   Left: Bing Webmaster Tools (skipped for now; Import from GSC needs no DNS). Optional: `solenoidngc.com` as a redirect.
 - [ ] **Bluesky handle `@solenoid-ngc.com` (author, later):** Bluesky Settings → Account → Handle → I have my own domain →
