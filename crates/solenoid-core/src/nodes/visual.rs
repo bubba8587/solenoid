@@ -731,6 +731,7 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
         None => groups.push((None, (0..rows).collect())),
     }
     let (mut s_vals, mut c_nums, mut c_cats) = (Vec::new(), Vec::new(), Vec::<String>::new());
+    let mut c_seen = std::collections::HashSet::<String>::new();
     let mut series: Vec<Obj> = Vec::new();
     for &y in &y_cols {
         for (key, rs) in &groups {
@@ -747,7 +748,10 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
                     }
                     if let Some(cv) = c_at(r) {
                         match &cv {
-                            Json::String(s) if !c_cats.contains(s) => c_cats.push(s.clone()),
+                            Json::String(s) if !c_seen.contains(s) => {
+                                c_seen.insert(s.clone());
+                                c_cats.push(s.clone());
+                            }
                             Json::String(_) => {}
                             n => c_nums.push(json_num(n)),
                         }
@@ -1656,21 +1660,12 @@ type Flows = (Vec<String>, Vec<String>, Vec<f64>);
 
 /// A flow that would close a loop is dropped and counted.
 fn acyclic_flows((sources, targets, values): Flows) -> (Flows, usize) {
-    let mut adj: HashMap<String, Vec<String>> = HashMap::new();
-    let reaches = |adj: &HashMap<String, Vec<String>>, from: &str, to: &str| {
-        let mut seen = std::collections::HashSet::new();
-        let mut stack = vec![from.to_string()];
-        while let Some(n) = stack.pop() {
-            if n == to {
-                return true;
-            }
-            if !seen.insert(n.clone()) {
-                continue;
-            }
-            stack.extend(adj.get(&n).into_iter().flatten().cloned());
-        }
-        false
-    };
+    // Names as indices and one stamped visit list, and no walk where nothing can reach the source ([[C120]] linearWork).
+    let mut ids: HashMap<String, usize> = HashMap::new();
+    let mut adj: Vec<Vec<usize>> = Vec::new();
+    let mut fed: Vec<bool> = Vec::new();
+    let mut edges: std::collections::HashSet<(usize, usize)> = std::collections::HashSet::new();
+    let (mut seen, mut walk): (Vec<u32>, u32) = (Vec::new(), 0);
     let (mut s, mut t, mut v, mut dropped) = (Vec::new(), Vec::new(), Vec::new(), 0);
     for ((src, tgt), val) in sources.into_iter().zip(targets).zip(values) {
         if src.is_empty() || tgt.is_empty() || src == tgt || val.is_nan() || val <= 0.0 {
@@ -1679,14 +1674,41 @@ fn acyclic_flows((sources, targets, values): Flows) -> (Flows, usize) {
             v.push(val);
             continue;
         }
-        if reaches(&adj, &tgt, &src) {
+        let mut id = |name: &str| {
+            let next = ids.len();
+            let k = *ids.entry(name.to_owned()).or_insert(next);
+            if k == adj.len() {
+                adj.push(Vec::new());
+                fed.push(false);
+                seen.push(0);
+            }
+            k
+        };
+        let (a, b) = (id(&src), id(&tgt));
+        let closes = fed[a] && !adj[b].is_empty() && !edges.contains(&(a, b)) && {
+            walk += 1;
+            let mut stack = vec![b];
+            let mut hit = false;
+            while let Some(n) = stack.pop() {
+                if n == a {
+                    hit = true;
+                    break;
+                }
+                if seen[n] != walk {
+                    seen[n] = walk;
+                    stack.extend(&adj[n]);
+                }
+            }
+            hit
+        };
+        if closes {
             dropped += 1;
             continue;
         }
-        let out = adj.entry(src.clone()).or_default();
-        if !out.contains(&tgt) {
-            out.push(tgt.clone());
+        if edges.insert((a, b)) {
+            adj[a].push(b);
         }
+        fed[b] = true;
         s.push(src);
         t.push(tgt);
         v.push(val);
@@ -2035,4 +2057,70 @@ fn chart_builder(c: &mut Call) -> Answer {
     let out = V::str(&parts.join(";"));
     c.show("cachedString", out.clone());
     Ok(vec![("result".into(), Cv::from(out))])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The walk before the indices: every flow that would close a loop, in order, from string sets.
+    fn by_names((sources, targets, values): Flows) -> (Flows, usize) {
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        let reaches = |adj: &HashMap<String, Vec<String>>, from: &str, to: &str| {
+            let mut seen = std::collections::HashSet::new();
+            let mut stack = vec![from.to_string()];
+            while let Some(n) = stack.pop() {
+                if n == to {
+                    return true;
+                }
+                if seen.insert(n.clone()) {
+                    stack.extend(adj.get(&n).into_iter().flatten().cloned());
+                }
+            }
+            false
+        };
+        let (mut s, mut t, mut v, mut dropped) = (Vec::new(), Vec::new(), Vec::new(), 0);
+        for ((src, tgt), val) in sources.into_iter().zip(targets).zip(values) {
+            let plain = src.is_empty() || tgt.is_empty() || src == tgt || val.is_nan() || val <= 0.0;
+            if !plain && reaches(&adj, &tgt, &src) {
+                dropped += 1;
+                continue;
+            }
+            if !plain {
+                let out = adj.entry(src.clone()).or_default();
+                if !out.contains(&tgt) {
+                    out.push(tgt.clone());
+                }
+            }
+            s.push(src);
+            t.push(tgt);
+            v.push(val);
+        }
+        ((s, t, v), dropped)
+    }
+
+    #[test]
+    fn acyclic_flows_drops_what_the_name_walk_dropped() {
+        let mut seed = 7u64;
+        let mut next = |m: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) % m
+        };
+        let mut drops = 0;
+        for _ in 0..300 {
+            let nodes = 2 + next(9);
+            let flows = 1 + next(40);
+            let mut f: Flows = (Vec::new(), Vec::new(), Vec::new());
+            for _ in 0..flows {
+                let name = |k: u64| if k == nodes { String::new() } else { format!("n{k}") };
+                f.0.push(name(next(nodes + 1)));
+                f.1.push(name(next(nodes + 1)));
+                f.2.push([1.0, 2.0, 0.0, -1.0, f64::NAN][next(5) as usize]);
+            }
+            let (got, want) = (acyclic_flows(f.clone()), by_names(f));
+            assert_eq!(format!("{got:?}"), format!("{want:?}"));
+            drops += got.1;
+        }
+        assert!(drops > 100, "{drops}");
+    }
 }

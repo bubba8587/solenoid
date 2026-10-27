@@ -373,3 +373,24 @@ fn the_direct_classes_are_sorted() {
         "nodes::DIRECT must stay sorted: is_direct searches it"
     );
 }
+
+#[test]
+fn many_distinct_errors_tag_in_linear_time_and_repeats_share_a_copy() {
+    let errs: Vec<V> = (0..40_000)
+        .map(|i| V::err(sol_error(ErrorCode::DivZero, format!("row {i}"))))
+        .collect();
+    let mut cells = errs.clone();
+    cells.push(errs[7].clone());
+    let t0 = std::time::Instant::now();
+    let Some(Cv::V(V::List(out))) = with_origin(&Cv::V(solenoid_core::nodes::list(cells)), &probe)
+    else {
+        panic!("a list of errors tags as a list")
+    };
+    assert!(t0.elapsed().as_secs_f64() < 1.0, "{:?}", t0.elapsed());
+    let (V::Err(first), V::Err(again), V::Err(other)) = (&out[7], &out[40_000], &out[8]) else {
+        panic!("errors stay errors")
+    };
+    assert!(Rc::ptr_eq(first, again));
+    assert!(!Rc::ptr_eq(first, other));
+    assert_eq!(first.origin.as_ref().unwrap().node_id, "probe");
+}

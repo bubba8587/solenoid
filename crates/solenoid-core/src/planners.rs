@@ -479,7 +479,11 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
 /// The amortization schedule as the Amortization card's frame; None where it has no rows.
 pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Option<FrameValue> {
     let n = nper.floor();
-    if !rate.is_finite() || !pv.is_finite() || !fv.is_finite() || n.is_nan() || n < 1.0 {
+    if !rate.is_finite()
+        || !pv.is_finite()
+        || !fv.is_finite()
+        || !(1.0..=crate::value_kinds::MAX_GENERATED).contains(&n)
+    {
         return None;
     }
     let pmt = if rate.abs() < 1e-12 {

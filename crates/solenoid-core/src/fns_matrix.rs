@@ -10,6 +10,7 @@ use crate::excel_functions::{
     js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, throw, to_num, V,
 };
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
+use crate::value_kinds::MAX_GENERATED;
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -68,8 +69,6 @@ pub const NAMES: &[&str] = &[
     "DVARP",
     "HISTOGRAM2D",
 ];
-
-use crate::value_kinds::MAX_GENERATED;
 
 type Mat = Vec<Vec<V>>;
 type NumMat = Vec<Vec<f64>>;
@@ -204,6 +203,9 @@ fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
 }
 
 fn as_numeric(m: &Mat) -> Result<NumMat, V> {
+    if m.iter().any(|row| row.len() != mat_cols(m)) {
+        return Err(err(ErrorCode::Shape, "This matrix operation needs every row the same width"));
+    }
     let mut out = Vec::with_capacity(m.len());
     for row in m {
         let mut r = Vec::with_capacity(row.len());
@@ -713,18 +715,12 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
         }
     });
     let mut counts = vec![0.0; bins.len() + 1];
+    // The first bin at or above x, by binary search ([[C120]] linearWork); -∞ and NaN fall past every bin.
     for x in xs {
-        let mut placed = false;
-        for k in 0..sorted.len() {
-            let lo = if k == 0 { f64::NEG_INFINITY } else { sorted[k - 1].0 };
-            if x > lo && x <= sorted[k].0 {
-                counts[sorted[k].1] += 1.0;
-                placed = true;
-                break;
-            }
-        }
-        if !placed {
-            counts[bins.len()] += 1.0;
+        let k = sorted.partition_point(|&(b, _)| b < x);
+        match sorted.get(k) {
+            Some(&(_, i)) if x > f64::NEG_INFINITY => counts[i] += 1.0,
+            _ => counts[bins.len()] += 1.0,
         }
     }
     nums_v(counts)

@@ -631,19 +631,26 @@ fn allocate_budget(mins: &[f64], maxs: &[f64], weights: &[f64], budget: f64) -> 
         (0..n).map(|i| if w[i] > 0.0 { clamp_range(lambda * w[i], mins[i], maxs[i]) } else { mins[i] }).collect()
     };
     // `[...new Set(…)]`: SameValueZero, first seen kept.
+    let mut seen = std::collections::HashSet::new();
     let mut breaks: Vec<f64> = Vec::new();
     for i in 0..n {
         if w[i] > 0.0 {
             for b in [mins[i] / w[i], maxs[i] / w[i]] {
-                if !breaks.iter().any(|&x| x == b || (x.is_nan() && b.is_nan())) {
+                let key = if b.is_nan() { f64::NAN.to_bits() } else { (b + 0.0).to_bits() };
+                if seen.insert(key) {
                     breaks.push(b);
                 }
             }
         }
     }
     sort_by_num(&mut breaks, |a, b| a - b);
-    let Some(k) = breaks.iter().position(|&b| sum(&at(b)) >= budget) else {
+    // The allocation only grows with λ, so the first break that meets the budget is a partition point.
+    let k = breaks.partition_point(|&b| sum(&at(b)) < budget);
+    if k == breaks.len() {
         let zero: Vec<usize> = (0..n).filter(|&i| w[i] == 0.0).collect();
+        if zero.is_empty() {
+            return at(f64::INFINITY);
+        }
         let pick = |xs: &[f64]| zero.iter().map(|&i| xs[i]).collect::<Vec<_>>();
         let rest = allocate_budget(&pick(mins), &pick(maxs), &vec![1.0; zero.len()], budget - sum(&at(f64::INFINITY)));
         let mut alloc = at(f64::INFINITY);
@@ -651,7 +658,7 @@ fn allocate_budget(mins: &[f64], maxs: &[f64], weights: &[f64], budget: f64) -> 
             alloc[i] = rest[j];
         }
         return alloc;
-    };
+    }
     let prev = if k == 0 { f64::NAN } else { breaks[k - 1] };
     let mid = (prev + breaks[k]) / 2.0;
     let (mut fixed, mut free_w) = (0.0, 0.0);
@@ -725,6 +732,9 @@ pub fn allocate_frame(f: &FrameValue, mode: &str, amount: f64) -> Option<Res<Fra
 }
 
 fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
+    if amount.is_nan() && mode != "minProportional" {
+        return Err(sol_error(ErrorCode::Value, "Allocator: the amount must be a number"));
+    }
     let rows = frame_row_count(f);
     let by_name = |names: &[&str]| f.columns.iter().position(|c| names.contains(&js_lower(js_trim(&c.name)).as_ref()));
     let nums: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == FrameColType::Number).collect();

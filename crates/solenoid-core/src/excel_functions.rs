@@ -207,16 +207,26 @@ pub fn take_raised() -> Raised {
     take_thrown().map_or(Raised::Nothing, Raised::Thrown)
 }
 
-/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row and
-/// anything raised, so no return path leaves them to the next call.
+/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row,
+/// anything raised and what was kept of long lists, so no return path leaves them to the next call.
 #[must_use]
-pub struct Calc(());
+pub struct Calc {
+    keep_lists: bool,
+}
 
 impl Calc {
     pub fn begin(clock: Option<Clock>) -> Calc {
         set_clock(clock);
         take_raised();
-        Calc(())
+        Calc { keep_lists: false }
+    }
+
+    /// `begin` for a formula over named values: the core holds its long lists across calls (`eval::HELD`), one call
+    /// per item, so what was kept of them stays for the next item until they're let go (`eval::forget_held`).
+    pub fn keeping_lists(clock: Option<Clock>) -> Calc {
+        let mut calc = Calc::begin(clock);
+        calc.keep_lists = true;
+        calc
     }
 }
 
@@ -225,7 +235,22 @@ impl Drop for Calc {
         set_clock(None);
         set_row_number(None);
         take_raised();
+        if !self.keep_lists {
+            forget_kept_lists();
+        }
     }
+}
+
+/// The lists kept for the calls that follow (`sorted_of`, `lookup_plan`, `width_of`, `forecast_fit`, the criteria
+/// facts, Z.TEST's spread, the kept formulas' readied lists) let go, so no table outlives the calls that read it in memory.
+pub(crate) fn forget_kept_lists() {
+    SORTED.with(|c| c.borrow_mut().clear());
+    LOOKUPS.with(|c| c.borrow_mut().clear());
+    WIDTH.with(|c| c.borrow_mut().take());
+    FORECAST_FIT.with(|c| c.borrow_mut().take());
+    crate::excel_criteria::forget_facts();
+    crate::formulajs::forget_spread();
+    crate::eval::forget_readied();
 }
 
 /// The computed column's current row, from 1, that ROW() reads.
@@ -803,6 +828,229 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
     Ok(best.map(|(i, _)| i))
 }
 
+/// `lookup_eq`'s classes as a hash key: text without case, a number by value (-0 as 0).
+#[derive(PartialEq, Eq, Hash)]
+enum ExactKey {
+    Str(String),
+    Num(u64),
+    Bool(bool),
+    Undef,
+}
+
+/// `Some(None)` for a value that equals nothing (NaN), `None` for one the index doesn't hold (a list, an error).
+fn exact_key(v: &V) -> Option<Option<ExactKey>> {
+    Some(match v {
+        V::Str(s) => Some(ExactKey::Str(crate::jsnum::js_lower(s).into_owned())),
+        V::Num(n) if n.is_nan() => None,
+        V::Num(n) => Some(ExactKey::Num((n + 0.0).to_bits())),
+        V::Bool(b) => Some(ExactKey::Bool(*b)),
+        V::Undef => Some(ExactKey::Undef),
+        _ => return None,
+    })
+}
+
+/// `xmatch_index` over one list of keys for many lookups: an exact match builds an index once, where a scan per
+/// lookup made a list of lookups quadratic ([[C120]] linearWork). Anything the index doesn't hold scans as before.
+pub(crate) struct Matcher<K: AsRef<[V]>> {
+    keys: K,
+    mm: MatchMode,
+    last: bool,
+    index: Option<rustc_hash::FxHashMap<ExactKey, usize>>,
+    /// For an approximate match, each distinct finite key (-0 as 0) in order, with the position the scan meets first.
+    steps: Option<Vec<(f64, usize)>>,
+}
+
+impl<K: AsRef<[V]>> Matcher<K> {
+    pub(crate) fn new(keys: K, mm: MatchMode, last: bool, lookups: usize) -> Self {
+        let index = (mm == MatchMode::Exact && lookups >= 16).then(|| {
+            let ks = keys.as_ref();
+            let n = ks.len();
+            let mut index = rustc_hash::FxHashMap::default();
+            for s in 0..n {
+                let i = if last { n - 1 - s } else { s };
+                if matches!(ks[i], V::Null | V::Err(_)) {
+                    continue;
+                }
+                match exact_key(&ks[i]) {
+                    Some(Some(k)) => {
+                        index.entry(k).or_insert(i);
+                    }
+                    Some(None) => {}
+                    None => return None,
+                }
+            }
+            Some(index)
+        });
+        let steps = (mm != MatchMode::Exact && lookups >= 16).then(|| {
+            let mut steps: Vec<(f64, usize)> = keys
+                .as_ref()
+                .iter()
+                .enumerate()
+                .filter_map(|(i, k)| match k {
+                    V::Num(x) if x.is_finite() => Some((x + 0.0, i)),
+                    _ => None,
+                })
+                .collect();
+            steps.sort_by(|a, b| a.0.total_cmp(&b.0).then(if last { b.1.cmp(&a.1) } else { a.1.cmp(&b.1) }));
+            steps.dedup_by(|later, first| later.0 == first.0);
+            steps
+        });
+        Matcher { keys, mm, last, index: index.flatten(), steps }
+    }
+
+    pub(crate) fn find(&self, lookup: &V) -> Result<Option<usize>, V> {
+        match (&self.index, &self.steps, exact_key(lookup), lookup) {
+            (Some(index), _, Some(key), _) => Ok(key.and_then(|k| index.get(&k).copied())),
+            (_, Some(steps), _, V::Num(x)) if x.is_finite() => {
+                let k = steps.partition_point(|&(v, _)| v < *x);
+                Ok(match steps.get(k) {
+                    Some(&(v, i)) if v == *x => Some(i),
+                    _ if self.mm == MatchMode::NextSmaller => k.checked_sub(1).map(|j| steps[j].1),
+                    next => next.map(|&(_, i)| i),
+                })
+            }
+            _ => xmatch_index(lookup, self.keys.as_ref(), self.mm, self.last),
+        }
+    }
+}
+
+type ForecastFit = Option<(Rc<Vec<V>>, Rc<Vec<V>>, Option<Option<(f64, f64)>>)>;
+
+thread_local! {
+    static FORECAST_FIT: std::cell::RefCell<ForecastFit> = const { std::cell::RefCell::new(None) };
+}
+
+/// FORECAST.LINEAR's line through its known lists, `None` when they hold text, kept for the last long pair: a
+/// computed column forecasts each row from the same columns ([[C120]] linearWork).
+fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
+    // A scalar's length is `undefined`, so the fit finds no spread.
+    let fit = || {
+        (!holds_text(ys) && !holds_text(xs))
+            .then(|| js_indexed(xs).zip(js_indexed(ys)).and_then(|(x, y)| js_linear_fit(&x, &y)))
+    };
+    let (V::List(yl), V::List(xl)) = (ys, xs) else { return fit() };
+    if yl.len().max(xl.len()) < 64 {
+        return fit();
+    }
+    FORECAST_FIT.with(|last| {
+        let mut last = last.borrow_mut();
+        match &*last {
+            Some((y, x, f)) if Rc::ptr_eq(y, yl) && Rc::ptr_eq(x, xl) => *f,
+            _ => {
+                let f = fit();
+                *last = Some((yl.clone(), xl.clone(), f));
+                f
+            }
+        }
+    })
+}
+
+/// XLOOKUP's and XMATCH's lookup array as one list, matched through `Matcher`, and XLOOKUP's return array beside it.
+struct LookupPlan {
+    m: Matcher<Vec<V>>,
+    vs: Option<Vec<V>>,
+}
+
+impl LookupPlan {
+    fn new(name: &str, keys: &V, values: Option<&V>, mm: MatchMode, last: bool, lookups: usize) -> Result<Self, V> {
+        let Some(ks) = as_one_dim(keys) else {
+            return Err(V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name}'s lookup array must be a single row or a single column"),
+            )));
+        };
+        let vs = match values {
+            None => None,
+            Some(values) => {
+                let Some(vs) = as_one_dim(values) else {
+                    return Err(V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must be a single row or a single column",
+                    )));
+                };
+                if matches!(values, V::List(_)) && vs.len() != ks.len() {
+                    return Err(V::err(sol_error(
+                        ErrorCode::Value,
+                        "XLOOKUP's return array must match the lookup array's length",
+                    )));
+                }
+                Some(vs)
+            }
+        };
+        Ok(LookupPlan { m: Matcher::new(ks, mm, last, lookups), vs })
+    }
+}
+
+enum Seen {
+    Once,
+    Plan(Rc<LookupPlan>),
+}
+
+struct LookupEntry {
+    keys: Rc<Vec<V>>,
+    values: Option<Rc<Vec<V>>>,
+    mm: MatchMode,
+    last: bool,
+    seen: Seen,
+}
+
+thread_local! {
+    static LOOKUPS: std::cell::RefCell<Vec<LookupEntry>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// One lookup into a long list, as a computed column makes row after row against the same column: the second call
+/// keeps the list's plan, indexed, so the rows after it don't each copy and scan the column ([[C120]] linearWork). An
+/// entry holds its lists, so their addresses can't name others.
+fn lookup_plan(
+    name: &str,
+    keys: &V,
+    values: Option<&V>,
+    mm: MatchMode,
+    last: bool,
+    lookups: usize,
+) -> Result<Rc<LookupPlan>, V> {
+    let fresh = || LookupPlan::new(name, keys, values, mm, last, lookups).map(Rc::new);
+    let V::List(kl) = keys else { return fresh() };
+    let vl = match values {
+        None => None,
+        Some(V::List(l)) => Some(l),
+        Some(_) => return fresh(),
+    };
+    if lookups != 1 || kl.len() < 64 {
+        return fresh();
+    }
+    LOOKUPS.with(|c| {
+        let mut c = c.borrow_mut();
+        let at = c.iter().position(|e| {
+            Rc::ptr_eq(&e.keys, kl)
+                && e.mm == mm
+                && e.last == last
+                && match (&e.values, vl) {
+                    (None, None) => true,
+                    (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+                    _ => false,
+                }
+        });
+        match at {
+            Some(k) => match &c[k].seen {
+                Seen::Plan(p) => Ok(p.clone()),
+                Seen::Once => {
+                    let p = Rc::new(LookupPlan::new(name, keys, values, mm, last, usize::MAX)?);
+                    c[k].seen = Seen::Plan(p.clone());
+                    Ok(p)
+                }
+            },
+            None => {
+                if c.len() >= 4 {
+                    c.remove(0);
+                }
+                c.push(LookupEntry { keys: kl.clone(), values: vl.cloned(), mm, last, seen: Seen::Once });
+                fresh()
+            }
+        }
+    })
+}
+
 pub(crate) fn mean_of(a: &[f64]) -> f64 {
     sum(a) / a.len() as f64
 }
@@ -996,22 +1244,19 @@ fn as_number_cmp(v: &V) -> f64 {
     }
 }
 
-fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
+/// Counted in the sorted list, cached by it: a computed column ranks each row in the same column ([[C120]] linearWork).
+fn excel_rank(value: f64, refs: &V, avg: bool, ascending: bool) -> V {
     if value.is_nan() {
         return value_err("RANK");
     }
-    let above = refs
-        .iter()
-        .filter(|x| {
-            let n = as_number_cmp(x);
-            if ascending {
-                n < value
-            } else {
-                n > value
-            }
-        })
-        .count() as f64;
-    let equal = refs.iter().filter(|x| matches!(x, V::Num(n) if *n == value)).count() as f64;
+    let (place, ties) = (sorted_of(refs, Reading::RankPlace), sorted_of(refs, Reading::RankTies));
+    let (place, ties) = (place.as_deref().unwrap_or_default(), ties.as_deref().unwrap_or_default());
+    let above = if ascending {
+        place.partition_point(|&n| n < value)
+    } else {
+        place.len() - place.partition_point(|&n| n <= value)
+    } as f64;
+    let equal = (ties.partition_point(|&n| n <= value) - ties.partition_point(|&n| n < value)) as f64;
     if equal == 0.0 {
         return V::err(sol_error(ErrorCode::NotAvailable, "Value not found in the list"));
     }
@@ -1118,18 +1363,8 @@ fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
     V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
 }
 
-fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
-    if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
-        return e.clone();
-    }
-    let nums: Vec<f64> = arr
-        .iter()
-        .filter_map(|v| match v {
-            V::Num(n) if n.is_finite() => Some(*n),
-            _ => None,
-        })
-        .collect();
-    let s = sorted_nums(&nums);
+/// Over the list's finite numbers, sorted (`sorted_of`, `Reading::PercentRank`).
+fn excel_percent_rank(s: &[f64], x: f64, sig: f64, exc: bool) -> V {
     let n = s.len();
     if n == 0 || x.is_nan() {
         return value_err("PERCENTRANK");
@@ -1140,7 +1375,7 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
     if n == 1 {
         return V::Num(1.0);
     }
-    let below = s.iter().filter(|&&v| v < x).count();
+    let below = s.partition_point(|&v| v < x);
     let pos = if s[below] == x {
         below as f64
     } else {
@@ -1851,6 +2086,30 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
     }
 }
 
+thread_local! {
+    static WIDTH: std::cell::RefCell<Option<(Rc<Vec<V>>, usize)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// A table's widest row, kept for the last long table: INDEX(column, @i) asks it of the same column row after row
+/// ([[C120]] linearWork). The entry holds its table, so the address can't name another.
+fn width_of(grid: &Rc<Vec<V>>) -> usize {
+    let measure = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+    if grid.len() < 64 {
+        return measure();
+    }
+    WIDTH.with(|last| {
+        let mut last = last.borrow_mut();
+        match &*last {
+            Some((g, w)) if Rc::ptr_eq(g, grid) => *w,
+            _ => {
+                let w = measure();
+                *last = Some((grid.clone(), w));
+                w
+            }
+        }
+    })
+}
+
 fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
     if matches!(v, V::Null | V::Undef) || row_null || col_null {
         return V::Null;
@@ -1877,7 +2136,7 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         if row_all && col_all {
             return v.clone();
         }
-        let width = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+        let width = || width_of(grid);
         // One position on a one-row or one-column table walks along it, as Excel's INDEX does ([[D85]] columnsStayColumns).
         if col.is_none() && !row_all {
             if grid.len() == 1 {
@@ -2338,6 +2597,92 @@ fn sorted_nums(arr: &[f64]) -> Vec<f64> {
     s
 }
 
+/// How a function reads a list into the numbers it sorts.
+#[derive(Clone, Copy, PartialEq)]
+enum Reading {
+    /// `nums_of`: numbers and logicals, one level of items.
+    Nums,
+    /// PERCENTRANK's: finite numbers through nested rows, the first error the answer.
+    PercentRank,
+    /// RANK's place: each item as `as_number_cmp` reads it, those that compare.
+    RankPlace,
+    /// RANK's ties: the numbers.
+    RankTies,
+}
+
+type Sorted = Rc<Result<Vec<f64>, V>>;
+
+/// The lists `sorted_of` keeps, each with how it was read and its sorted numbers.
+type SortedCache = std::cell::RefCell<Vec<(Rc<Vec<V>>, Reading, Sorted)>>;
+
+thread_local! {
+    static SORTED: SortedCache = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// A list's numbers sorted, kept for the list they came from (the cache holds the list, so its address can't come
+/// back as another): PERCENTILE(col, @p) and kin, called once per row with a scalar that changes each row, miss the
+/// range memo, and re-sorting the column every row was n² log n ([[C120]] linearWork).
+fn sorted_of(list: &V, reading: Reading) -> Sorted {
+    let read = || -> Result<Vec<f64>, V> {
+        Ok(sorted_nums(&match reading {
+            Reading::Nums => nums_of(std::slice::from_ref(list)),
+            Reading::PercentRank => {
+                let cells: Vec<V> = match list {
+                    V::List(items) => items
+                        .iter()
+                        .flat_map(|v| match v {
+                            V::List(inner) => inner.as_ref().clone(),
+                            other => vec![other.clone()],
+                        })
+                        .collect(),
+                    V::Null | V::Undef => Vec::new(),
+                    other => vec![other.clone()],
+                };
+                if let Some(e) = cells.iter().find(|v| v.is_sol_error()) {
+                    return Err(e.clone());
+                }
+                cells
+                    .iter()
+                    .filter_map(|v| match v {
+                        V::Num(n) if n.is_finite() => Some(*n),
+                        _ => None,
+                    })
+                    .collect()
+            }
+            Reading::RankPlace | Reading::RankTies => {
+                let items = if let V::List(items) = list { items.as_slice() } else { &[] };
+                items
+                    .iter()
+                    .map(|v| match (reading, v) {
+                        (Reading::RankTies, V::Num(n)) => *n,
+                        (Reading::RankTies, _) => f64::NAN,
+                        _ => as_number_cmp(v),
+                    })
+                    .filter(|n| !n.is_nan())
+                    .collect()
+            }
+        }))
+    };
+    let V::List(items) = list else { return Rc::new(read()) };
+    if items.len() < 64 {
+        return Rc::new(read());
+    }
+    if let Some(hit) = SORTED
+        .with(|c| c.borrow().iter().find(|(l, r, _)| Rc::ptr_eq(l, items) && *r == reading).map(|(_, _, s)| s.clone()))
+    {
+        return hit;
+    }
+    let sorted: Sorted = Rc::new(read());
+    SORTED.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() >= 4 {
+            c.remove(0);
+        }
+        c.push((items.clone(), reading, sorted.clone()));
+    });
+    sorted
+}
+
 /// A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
 /// `undefined` (None); one `undefined` end makes the blend NaN.
 pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
@@ -2365,6 +2710,7 @@ fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
     }
 }
 
+/// Over sorted numbers.
 #[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
     let n = arr.len() as f64;
@@ -2380,9 +2726,10 @@ fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
             "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)",
         ));
     }
-    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+    finite_opt(percentile_of(arr, p, exc), arr)
 }
 
+/// Over sorted numbers.
 #[allow(clippy::manual_range_contains)] // a NaN must pass these checks
 fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
     let qi = q.trunc();
@@ -2402,9 +2749,10 @@ fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
             "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)",
         ));
     }
-    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+    finite_opt(percentile_of(arr, p, exc), arr)
 }
 
+/// Over sorted numbers.
 fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
     if k.is_nan() {
         return V::err(sol_error(ErrorCode::Value, "k must be a number"));
@@ -2416,9 +2764,8 @@ fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
     if arr.is_empty() || k > n {
         return V::Null;
     }
-    let sorted = sorted_nums(arr);
     let at = (if largest { n - k + 1.0 } else { k }).floor() - 1.0;
-    V::Num(sorted[at as usize])
+    V::Num(arr[at as usize])
 }
 
 fn mode_single(arr: &[f64]) -> V {
@@ -2892,8 +3239,9 @@ const REFUSED: &[(&str, Refused)] = &[
     ("LOWESS", nums(&[1])),
     ("FINDPEAKS", nums(&[1, 2, 3])),
     ("DECOMPOSE", nums(&[1])),
-    ("FORECAST.ETS", nums(&[0, 3])),
-    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4])),
+    ("FORECAST.ETS", nums(&[0, 3, 4, 5])),
+    ("FORECAST.ETS.CONFINT", nums(&[0, 3, 4, 5, 6])),
+    ("FORECAST.ETS.SEASONALITY", nums(&[2, 3])),
     ("FIBONACCI", nums(&[0])),
     ("GEOMETRIC", nums(&[0, 1, 2])),
     // Shapers, matrices and generators.
@@ -2965,7 +3313,7 @@ const REFUSED: &[(&str, Refused)] = &[
     ("DAYS360", flags(&[], &[2])),
     ("DATETRUNC", flags(&[], &[2])),
     ("TIMEZONECONVERT", nums(&[0])),
-    ("TEXTSPLIT", flags(&[], &[3])),
+    ("TEXTSPLIT", flags(&[4], &[3])),
     ("TEXTJOIN", flags(&[], &[1])),
     ("TEXTBEFORE", nums(&[2, 3, 4])),
     ("TEXTAFTER", nums(&[2, 3, 4])),
@@ -2982,6 +3330,8 @@ const REFUSED: &[(&str, Refused)] = &[
     ("DOLLAR", nums(&[0, 1])),
     ("SLN", nums(&[0, 1, 2])),
     // The finance kernels read a NaN argument as a missing one; every argument but a list of cash flows is a number.
+    ("ACCRINT", every()),
+    ("COUPDAYS", every()),
     ("COUPDAYBS", every()),
     ("COUPDAYSNC", every()),
     ("COUPNCD", every()),
@@ -3020,6 +3370,43 @@ const REFUSED: &[(&str, Refused)] = &[
     ("ISPMT", every()),
     ("NPV", nums(&[0])),
     ("FVSCHEDULE", nums(&[0])),
+    // A number read as text answered blank, a misleading error, or was never read at all.
+    ("CAGR", nums(&[1])),
+    ("VOLATILITY", nums(&[1])),
+    ("SHARPE", nums(&[1, 2])),
+    ("SORTINO", nums(&[1, 2])),
+    ("T.TEST", nums(&[2, 3])),
+    ("HYPOTENUSE", nums(&[0, 1])),
+    ("LOG2", nums(&[0])),
+    ("PPMT", every()),
+    ("FUZZYMATCH", nums(&[2])),
+    ("CHISQ.TEST", nums(&[0, 1])),
+    ("F.TEST", nums(&[0, 1])),
+    ("WAVG", nums(&[0, 1])),
+    ("WVAR", nums(&[0, 1])),
+    ("WSTDEV", nums(&[0, 1])),
+    ("PROB", every()),
+    ("IRR", nums(&[1])),
+    ("XIRR", nums(&[1, 2])),
+    ("XNPV", nums(&[0, 2])),
+    ("GCD", every()),
+    ("LCM", every()),
+    ("MULTINOMIAL", every()),
+    ("PARALLELCOMBINE", every()),
+    // Pack functions: a number argument read as text was blank (or, for TRIANGLESOLVER, a missing part).
+    ("SUNPOSITION", nums(&[0, 1, 2])),
+    ("SUNRISE", nums(&[0, 1, 2])),
+    ("SUNSET", nums(&[0, 1, 2])),
+    ("DAYLENGTH", nums(&[0, 1, 2])),
+    ("MOONPHASE", nums(&[0])),
+    ("ESERIESVALUE", nums(&[0])),
+    ("AWGWIRE", nums(&[0])),
+    ("EMSPECTRUMBAND", nums(&[0, 1])),
+    ("COLEBROOK", nums(&[0, 1])),
+    ("HEARTRATEZONES", nums(&[0, 1])),
+    ("STANDARDATMOSPHERE", nums(&[0])),
+    ("ANTOINE", nums(&[1])),
+    ("TRIANGLESOLVER", every()),
 ];
 
 /// The `#VALUE!` a call answers for text where `REFUSED` names a number or a logical, before its body runs.
@@ -3348,14 +3735,16 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let value = to_num(arg(a, 0));
             match arg(a, 1) {
-                V::List(refs) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
-                V::Null | V::Undef => excel_rank(value, &[], arm == F::RANK_AVG, o != 0.0),
+                refs @ (V::List(_) | V::Null | V::Undef) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
                 _ if value.is_nan() => value_err("RANK"),
                 // `ref.filter` on anything but a list is a TypeError.
                 _ => throw(sol_error(ErrorCode::Value, "ref.filter is not a function")),
             }
         }
         F::TRIMMEAN => {
+            if holds_text(arg(a, 0)) {
+                return value_err("TRIMMEAN");
+            }
             let (n, items) = match arg(a, 0) {
                 V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
                 V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
@@ -3368,28 +3757,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             excel_trimmean(n, items, to_num(arg(a, 1)))
         }
         F::PERCENTRANK | F::PERCENTRANK_INC | F::PERCENTRANK_EXC => {
-            let arr: Vec<V> = match arg(a, 0) {
-                V::List(items) => items
-                    .iter()
-                    .flat_map(|v| match v {
-                        V::List(inner) => inner.as_ref().clone(),
-                        other => vec![other.clone()],
-                    })
-                    .collect(),
-                V::Null | V::Undef => Vec::new(),
-                other => vec![other.clone()],
-            };
             let sig = arg(a, 2);
             let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
-            excel_percent_rank(&arr, to_num(arg(a, 1)), sig, arm == F::PERCENTRANK_EXC)
+            match &*sorted_of(arg(a, 0), Reading::PercentRank) {
+                Ok(s) => excel_percent_rank(s, to_num(arg(a, 1)), sig, arm == F::PERCENTRANK_EXC),
+                Err(e) => e.clone(),
+            }
         }
         F::GCD | F::LCM => gcd_lcm(arm == F::GCD, &nums_of(a)),
-        F::LARGE | F::SMALL => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::LARGE),
+        F::LARGE | F::SMALL => {
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            nth_extreme(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::LARGE)
+        }
         F::PERCENTILE | F::PERCENTILE_INC | F::PERCENTILE_EXC => {
-            percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::PERCENTILE_EXC)
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            percentile(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::PERCENTILE_EXC)
         }
         F::QUARTILE | F::QUARTILE_INC | F::QUARTILE_EXC => {
-            quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::QUARTILE_EXC)
+            let s = sorted_of(arg(a, 0), Reading::Nums);
+            quartile(s.as_deref().unwrap_or_default(), to_num(arg(a, 1)), arm == F::QUARTILE_EXC)
         }
         F::MODE | F::MODE_SNGL => mode_single(&nums_of(a)),
         F::SUMIFS | F::AVERAGEIFS | F::MINIFS | F::MAXIFS => {
@@ -3917,39 +4303,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Ok(m) => m,
                 Err(e) => return e,
             };
-            let Some(ks) = as_one_dim(arg(a, 1)) else {
-                return V::err(sol_error(
-                    ErrorCode::Value,
-                    format!("{name}'s lookup array must be a single row or a single column"),
-                ));
-            };
-            let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
-                let values = arg(a, 2);
-                let Some(vs) = as_one_dim(values) else {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        "XLOOKUP's return array must be a single row or a single column",
-                    ));
-                };
-                if matches!(values, V::List(_)) && vs.len() != ks.len() {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        "XLOOKUP's return array must match the lookup array's length",
-                    ));
+            let lookups = match arg(a, 0) {
+                V::List(items) => {
+                    items.len().max(items.first().map_or(0, |r| if let V::List(r) = r { r.len() } else { 0 }))
                 }
-                let if_not_found = arg(a, 3).clone();
-                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
-                    Err(e) => e,
-                    Ok(Some(i)) if i < vs.len() => vs[i].clone(),
-                    Ok(_) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
-                    Ok(_) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
-                })
-            } else {
-                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
-                    Err(e) => e,
-                    Ok(Some(i)) => V::Num(i as f64 + 1.0),
-                    Ok(None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
-                })
+                _ => 1,
+            };
+            let values = (arm == F::XLOOKUP).then(|| arg(a, 2));
+            let plan = match lookup_plan(name, arg(a, 1), values, mm, sm_last, lookups) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
+            let if_not_found = arg(a, 3);
+            let pick = |l: &V| match (plan.m.find(l), &plan.vs) {
+                (Err(e), _) => e,
+                (Ok(Some(i)), Some(vs)) if i < vs.len() => vs[i].clone(),
+                (Ok(_), Some(_)) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
+                (Ok(_), Some(_)) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
+                (Ok(Some(i)), None) => V::Num(i as f64 + 1.0),
+                (Ok(None), None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
             };
             // A list of lookups answers one each; a table only as one row or column.
             match arg(a, 0) {
@@ -4638,10 +5010,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err("FORECAST.LINEAR");
             }
-            // A scalar's length is `undefined`, so the fit finds no spread.
-            match js_indexed(arg(a, 2)).zip(js_indexed(arg(a, 1))).and_then(|(xs, ys)| js_linear_fit(&xs, &ys)) {
-                Some((slope, intercept)) => V::Num(intercept + slope * n),
-                None => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
+            match forecast_fit(arg(a, 1), arg(a, 2)) {
+                None => value_err("FORECAST.LINEAR"),
+                Some(Some((slope, intercept))) => V::Num(intercept + slope * n),
+                Some(None) => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
             }
         }
         F::F_TEST => {
@@ -4925,8 +5297,9 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
         return V::Num(if hit { 1.0 } else { 0.0 });
     }
     let mut sum = 0.0;
-    let mut k = lo;
-    while k <= hi {
+    // An integer count: past 2^53, `k += 1.0` stops moving and the loop never ends.
+    for step in 0..=(hi - lo) as u64 {
+        let k = lo + step as f64;
         let c = combinations(n, k);
         sum += if c.is_finite() {
             c * js_pow(p, k) * js_pow(1.0 - p, n - k)
@@ -4935,7 +5308,6 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
                 crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p),
             )
         };
-        k += 1.0;
     }
     V::Num(sum)
 }
@@ -4958,13 +5330,11 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     }
     let p_obs = pmf(a);
     let mut p = 0.0;
-    let mut x = lo;
-    while x <= hi {
-        let px = pmf(x);
+    for step in 0..=(hi - lo) as u64 {
+        let px = pmf(lo + step as f64);
         if px <= p_obs * (1.0 + 1e-7) {
             p += px;
         }
-        x += 1.0;
     }
     Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
@@ -5700,15 +6070,18 @@ fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
         .map(|x| match x {
             V::Num(n) => Cell::Num(*n),
             V::Err(e) => Cell::Err(e.as_ref().clone()),
+            V::Str(_) => Cell::Text,
             _ => Cell::Other,
         })
         .collect()
 }
 
-/// A cash-flow list with its text skipped, as Excel's IRR and MIRR read a range ([[C131]] noTextGuessing).
+/// A cash-flow list with its text skipped, as Excel's IRR and MIRR read a range ([[C131]] noTextGuessing); a lone text
+/// value leaves no flows.
 fn without_text(v: &V) -> V {
     match v {
         V::List(_) => V::List(Rc::new(to_list(v).iter().filter(|x| !matches!(x, V::Str(_))).cloned().collect())),
+        V::Str(_) => V::Null,
         other => other.clone(),
     }
 }
@@ -6142,6 +6515,50 @@ mod kleene_tests {
             (n, n, n, n),
         ] {
             assert_eq!((kleene_and(a, b), kleene_or(a, b)), (and, or), "{a:?} {b:?}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod matcher_tests {
+    use super::*;
+
+    #[test]
+    fn an_indexed_matcher_finds_what_the_scan_finds() {
+        let mut seed = 11u64;
+        let mut next = |m: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) % m
+        };
+        let pick = |r: u64| match r {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::INFINITY),
+            2 => V::Num(f64::NEG_INFINITY),
+            3 => V::Num(f64::NAN),
+            4 => V::Null,
+            5 => V::str("Ab"),
+            6 => V::str("ab"),
+            7 => V::Bool(true),
+            r => V::Num((r % 7) as f64 - 3.0),
+        };
+        for _ in 0..400 {
+            let keys: Vec<V> = (0..1 + next(30)).map(|_| pick(next(16))).collect();
+            for mm in [MatchMode::Exact, MatchMode::NextLarger, MatchMode::NextSmaller] {
+                for last in [false, true] {
+                    let m = Matcher::new(keys.clone(), mm, last, usize::MAX);
+                    for r in 0..18 {
+                        let x = if r == 16 {
+                            V::Num(-3.5)
+                        } else if r == 17 {
+                            V::Num(9.0)
+                        } else {
+                            pick(r)
+                        };
+                        let want = format!("{:?}", xmatch_index(&x, &keys, mm, last));
+                        assert_eq!(format!("{:?}", m.find(&x)), want, "{keys:?} {x:?} last={last}");
+                    }
+                }
+            }
         }
     }
 }

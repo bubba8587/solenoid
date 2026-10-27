@@ -49,6 +49,15 @@ export const docMetaStore = {
     _networkAllowed = typeof m?.networkAllowed === "boolean" ? m.networkAllowed : undefined;
     notify();
   },
+  /** `meta` with this document's trust in place of its own: a rewrite (the AI edit) can change the author and tags but
+   *  never mark a foreign document as the user's or grant it the network. */
+  keepTrust(meta?: DocMeta): DocMeta {
+    const { foreign: _f, networkAllowed: _n, ...rest } = meta ?? {};
+    const out: DocMeta = { ...rest };
+    if (_foreign) out.foreign = true;
+    if (_networkAllowed !== undefined) out.networkAllowed = _networkAllowed;
+    return out;
+  },
   docMeta(): DocMeta | undefined {
     const author = _author.trim();
     const tags = _tags.map((t) => t.trim()).filter(Boolean);

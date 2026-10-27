@@ -34,10 +34,19 @@ specific item.
 - **The Vercel build passes on Node 24** (`@types/node` declared); CI's `vercel-build` job builds as Vercel does.
 - **The scheduler is a Rust crate** ([[C69]] ganttPackages, author 2026-10-26): `crates/solenoid-schedule` (MIT, ready for `cargo publish`) holds the engine and the MSPDI, GanttProject and XER readers; the core calls it, and the app reads plan files through `plan_files.rs`. The TS package is gone; the readers' answers are frozen in `fixtures/core/plan-readers.json.gz`. The predecessor grammar now keeps a name like `Build` or `Class` whole (the TS read `Buil` with a day unit).
 - **Module size**: 4.6 MB raw, 1.26 MB with brotli (what a browser downloads), at `opt-level = 2`, which runs as fast as 3 here.
+- **The review branch** (`ccr-cc6b7c24-07oftp`, merged into rust-port 2026-10-27; where both sides fixed the same thing, rust-port's version stands):
+  - Security: a Script card's syntax check never runs its source on the main thread (`checkScript`); Local File's name stays inside the data folder, in TS and in Rust (`solenoid_parquet::inside`); an AI rewrite keeps the document's foreign and network flags (`docMetaStore.keepTrust`); `UUID()` draws from `crypto.getRandomValues`.
+  - No input traps or hangs the core (`coreLimits.test.ts`): nesting past 400 doesn't parse and calls past 500 answer `#OVERFLOW!` ([[formula-language]]); MAKEARRAY's NaN side, ETS's horizon, ragged matrices, the Allocator's NaN amount, FISHEREXACT and BINOM.DIST.RANGE past 2^53, and PRICE/YIELD's far maturity are answers.
+  - [[C120]] linearWork: a list of lookups indexes its keys once (`Matcher`), error tagging uses a map on both boundaries, and Slicer, FINDPEAKS, the Allocator, nested ranks, scatter categories and the schedule's lookups are linear. A range function called per row of a computed column reads the column once: the evaluator readies each column once (`Readied`), and the sorted list (`sorted_of`), a lookup plan with an approximate-match index (`lookup_plan`, `Matcher`), a criteria tally that also names an `=` criterion's rows (`Facts`, `Tally`), FORECAST.LINEAR's fit and Z.TEST's spread are kept by the list. A formula's row-free parts are computed once per column ([[computed-columns]], `row_free`). FREQUENCY, the pivot value sort and Sankey's loop check are linear too. What's left is in the backlog.
+  - The graph fuzz run (70k random graphs, mid-pass edits, direct against JS): a cable closing a loop mid-pass re-seeds the loop set instead of hanging the pass ([[compute-pass]]); text crosses to the core well formed; a direct card answers an incoming error ahead of an unreadable call. No trap found.
+  - [[C131]]: two sweeps' worth of `REFUSED` entries, XNPV and XIRR cash flows and signals refuse text (IRR and MIRR skip it, as above), paired statistics drop a text pair as a blank one.
+  - Ruggine (its own review branch): control flow forwards along its index, the task map sweeps once it doubles, and its port spec names three divergences it lacked.
 - **Open for the author:**
   - the criteria strings' redesign (backlog § Formula library);
   - publishing `solenoid-schedule` to crates.io (the name is free);
   - the app's size;
   - which ring a top-level session works at (`docs/dte.md` § Solenoid's rings);
   - the crate audit's trade-offs and the IronCalc oracle (backlog § Rust core);
-  - TEXT answers an ISO date whatever its code (Formula.js's behavior, kept).
+  - TEXT answers an ISO date whatever its code (Formula.js's behavior, kept);
+  - the desktop hardening, IM*'s text reading, the AND/OR/XOR family's text rule and COALESCE's text fallback (backlog).
+  - a Rust GPU UI in place of React Flow: the scene on the GPU first, then Dioxus or GPUI for the cards (`rust-gpu-ui-findings.md`; would amend [[D102]] graphOnCore's "the UI stays TypeScript").

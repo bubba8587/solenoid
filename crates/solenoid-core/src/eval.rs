@@ -296,14 +296,18 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
         }
     };
     let mut out = Vec::with_capacity(rows);
+    let mut ops = Vec::with_capacity(args.len());
     for i in 0..rows {
         let mut row = Vec::with_capacity(cols);
         for j in 0..cols {
-            let ops: Option<Vec<V>> = (0..args.len()).map(|k| cell_at(k, i, j)).collect();
-            row.push(match ops {
-                Some(ops) => cell(&ops),
-                None => V::Null,
-            });
+            ops.clear();
+            for k in 0..args.len() {
+                match cell_at(k, i, j) {
+                    Some(v) => ops.push(v),
+                    None => break,
+                }
+            }
+            row.push(if ops.len() == args.len() { cell(&ops) } else { V::Null });
         }
         out.push(V::List(Rc::new(row)));
     }
@@ -590,6 +594,35 @@ fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
     }
 }
 
+/// Calls nested in one evaluation, a LAMBDA calling itself included. Past `MAX_CALL_DEPTH` the call answers an error
+/// rather than overflowing the stack, which in wasm traps the whole module.
+struct CallDepth;
+
+const MAX_CALL_DEPTH: u32 = 500;
+
+thread_local! {
+    static CALL_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+impl CallDepth {
+    fn enter() -> Option<CallDepth> {
+        CALL_DEPTH.with(|d| (d.get() < MAX_CALL_DEPTH).then(|| d.set(d.get() + 1)).map(|()| CallDepth))
+    }
+
+    fn too_deep() -> V {
+        V::err(sol_error(
+            ErrorCode::Overflow,
+            "This formula nests calls more than 500 deep, for example a LAMBDA that keeps calling itself",
+        ))
+    }
+}
+
+impl Drop for CallDepth {
+    fn drop(&mut self) {
+        CALL_DEPTH.with(|d| d.set(d.get() - 1));
+    }
+}
+
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
@@ -603,6 +636,38 @@ pub struct Eval<'a> {
     /// address, which a body cloned per call and dropped would hand to the next one. A wired LAMBDA's tree is parsed
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
+    /// A whole column readied for a range call, kept by the list it came as: the column reaches the call row after row,
+    /// and readying it there would copy and scan the whole column per row ([[C120]] linearWork).
+    readied: RefCell<Vec<Rc<Readied>>>,
+    /// A computed column's row-free subtrees (`row_free`), each with its value once a row has computed it.
+    hoisted: RefCell<FxHashMap<*const Ast, Option<V>>>,
+    hoists: Cell<bool>,
+}
+
+/// A list as a range call with `prep` reads it: flattened from a one-wide table, its first error, its blanks gone.
+struct Readied {
+    from: Rc<Vec<V>>,
+    prep: Prep,
+    flatten: bool,
+    list: V,
+    has_cx: bool,
+    err: Option<V>,
+    /// Whether the readied list still holds a blank: `Prep::Paired` drops it with its pairs after.
+    blank: bool,
+}
+
+impl Readied {
+    fn of(from: &Rc<Vec<V>>, prep: Prep, flatten: bool) -> Readied {
+        let whole = V::List(from.clone());
+        let flat = if flatten && is_matrix(&whole) { flat1(&whole) } else { whole };
+        let has_cx = contains_cx(&flat);
+        let (list, err) = match ready_list(prep, flat) {
+            Ok(list) => (list, None),
+            Err(e) => (V::Undef, Some(e)),
+        };
+        let blank = matches!(&list, V::List(l) if l.iter().any(is_missing));
+        Readied { from: from.clone(), prep, flatten, list, has_cx, err, blank }
+    }
 }
 
 /// A range call's last answer at its site.
@@ -676,6 +741,30 @@ impl Eval<'_> {
     }
 
     pub fn eval(&self, n: &Ast, env: &Rc<Env>) -> V {
+        if self.hoists.get() {
+            let key: *const Ast = n;
+            let held = self.hoisted.borrow().get(&key).cloned();
+            match held {
+                Some(Some(v)) => return v,
+                Some(None) => {
+                    // A value computed while a raise was pending stays per row: the raise is that row's answer.
+                    let raised = crate::excel_functions::thrown_pending();
+                    let v = self.eval_node(n, env);
+                    let mut hoisted = self.hoisted.borrow_mut();
+                    if raised || crate::excel_functions::thrown_pending() {
+                        hoisted.remove(&key);
+                    } else {
+                        hoisted.insert(key, Some(v.clone()));
+                    }
+                    return v;
+                }
+                None => {}
+            }
+        }
+        self.eval_node(n, env)
+    }
+
+    fn eval_node(&self, n: &Ast, env: &Rc<Env>) -> V {
         match n {
             Ast::Num(_, v) => V::Num(*v),
             Ast::Str(s) => V::Str(s.clone()),
@@ -751,6 +840,7 @@ impl Eval<'_> {
                 op2(*op, &l, &r)
             }
             Ast::Apply { func, args } => {
+                let Some(_depth) = CallDepth::enter() else { return CallDepth::too_deep() };
                 let f = self.eval(func, env);
                 if f.is_err() {
                     return f;
@@ -771,7 +861,10 @@ impl Eval<'_> {
                 }
                 self.call_lambda(&lam, &argv)
             }
-            Ast::Call { name: raw, args } => self.call(raw, args, env),
+            Ast::Call { name: raw, args } => match CallDepth::enter() {
+                Some(_depth) => self.call(raw, args, env),
+                None => CallDepth::too_deep(),
+            },
         }
     }
 
@@ -926,6 +1019,12 @@ impl Eval<'_> {
                 column = col;
             }
         }
+        if t.kind == Kind::Range && (t.prep != Prep::Positional || t.matrix_args) {
+            return match self.ready_range(name, t, argv) {
+                Ok(args) => self.range_dispatch(name, t, args),
+                Err(e) => e,
+            };
+        }
         if !t.matrix_args && argv.iter().any(is_matrix) {
             if t.prep == Prep::Positional {
                 return V::err(sol_error(
@@ -943,10 +1042,7 @@ impl Eval<'_> {
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
-            return V::err(sol_error(
-                ErrorCode::Type,
-                format!("{name} doesn't compute on complex numbers. Use the IM* family"),
-            ));
+            return cx_refusal(name);
         }
         match t.kind {
             Kind::Whole => {
@@ -962,36 +1058,89 @@ impl Eval<'_> {
                     r
                 }
             }
-            Kind::Range => {
-                let args = match prep_range_args(t.prep, argv) {
-                    Ok(a) => a,
-                    Err(e) => return e,
-                };
-                let flat_owned: Vec<V>;
-                let flat: &[V] = if args.iter().any(|a| matches!(a, V::List(_))) {
-                    flat_owned = args
-                        .iter()
-                        .flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] })
-                        .collect();
-                    &flat_owned
-                } else {
-                    &args
-                };
-                // The range bodies read their lists flat, but for those that read each list in place. A value nested
-                // past a table would reach a flat reader as a list among its numbers.
-                let in_place = t.fast.reads_lists;
-                if !in_place && flat.iter().any(is_arr) {
-                    return V::err(sol_error(
-                        ErrorCode::Value,
-                        format!("{name} reads values and tables, not lists nested inside a table"),
-                    ));
-                }
-                match self.dispatch(name, Some(t), if in_place { &args } else { flat }) {
-                    V::Num(r) if !r.is_finite() => guard(r, flat),
-                    r => r,
-                }
-            }
+            Kind::Range => match prep_range_args(t.prep, argv) {
+                Ok(args) => self.range_dispatch(name, t, args),
+                Err(e) => e,
+            },
             _ => self.broadcast_call(name, t, &argv, settled),
+        }
+    }
+
+    /// Each list through `Readied`, kept while this evaluator lives. A complex number anywhere answers first, then the
+    /// first list's error, as the steps for the other preps in `route_call` do.
+    fn ready_range(&self, name: &str, t: &Traits, argv: Vec<V>) -> Result<Vec<V>, V> {
+        let flatten = !t.matrix_args;
+        let (mut cx, mut err, mut blank) = (false, None, false);
+        let mut out = Vec::with_capacity(argv.len());
+        for a in argv {
+            let V::List(l) = &a else {
+                cx |= contains_cx(&a);
+                out.push(a);
+                continue;
+            };
+            let r = if l.len() < 64 {
+                Rc::new(Readied::of(l, t.prep, flatten))
+            } else {
+                let mut cache = self.readied.borrow_mut();
+                match cache.iter().find(|r| Rc::ptr_eq(&r.from, l) && r.prep == t.prep && r.flatten == flatten) {
+                    Some(r) => r.clone(),
+                    None => {
+                        if cache.len() >= 8 {
+                            cache.remove(0);
+                        }
+                        let r = Rc::new(Readied::of(l, t.prep, flatten));
+                        cache.push(r.clone());
+                        r
+                    }
+                }
+            };
+            cx |= r.has_cx;
+            blank |= r.blank;
+            if err.is_none() {
+                err.clone_from(&r.err);
+            }
+            out.push(r.list.clone());
+        }
+        if t.checks_cx && cx {
+            return Err(cx_refusal(name));
+        }
+        match err {
+            Some(e) => Err(e),
+            None if blank && t.prep == Prep::Paired => Ok(pair_blanks(out)),
+            None => Ok(out),
+        }
+    }
+
+    fn range_dispatch(&self, name: &str, t: &Traits, args: Vec<V>) -> V {
+        let flat_of = || -> Vec<V> {
+            args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect()
+        };
+        // The range bodies read their lists flat, but for those that read each list in place. A value nested past a
+        // table would reach a flat reader as a list among its numbers.
+        if t.fast.reads_lists {
+            return match self.dispatch(name, Some(t), &args) {
+                V::Num(r) if !r.is_finite() => guard(r, &flat_of()),
+                r => r,
+            };
+        }
+        let flat_owned: Vec<V>;
+        let flat: &[V] = match args.as_slice() {
+            [V::List(l)] => l.as_slice(),
+            _ if args.iter().any(|a| matches!(a, V::List(_))) => {
+                flat_owned = flat_of();
+                &flat_owned
+            }
+            _ => &args,
+        };
+        if flat.iter().any(is_arr) {
+            return V::err(sol_error(
+                ErrorCode::Value,
+                format!("{name} reads values and tables, not lists nested inside a table"),
+            ));
+        }
+        match self.dispatch(name, Some(t), flat) {
+            V::Num(r) if !r.is_finite() => guard(r, flat),
+            r => r,
         }
     }
 
@@ -1237,15 +1386,16 @@ impl Eval<'_> {
                 if absent(&arg(0)) || absent(&arg(1)) {
                     return V::Null;
                 }
-                // JS's Math.max: NaN stays NaN, so a NaN side passes the cap and builds nothing.
+                // JS's Math.max: NaN stays NaN, so a NaN side builds nothing along it.
                 let js_max = |a: f64, b: f64| if a.is_nan() { a } else { a.max(b) };
                 if crate::excel_functions::holds_text(&arg(0)) || crate::excel_functions::holds_text(&arg(1)) {
                     return crate::excel_functions::value_err("MAKEARRAY");
                 }
                 let side = |v: &V| js_max(js_unary(v).floor(), 0.0);
                 let (r, c) = (side(&arg(0)), side(&arg(1)));
-                // Each side counts as at least one, so a zero side can't hide a huge other one.
-                let cells = js_max(r, 1.0) * js_max(c, 1.0);
+                // Each side counts as at least one, so a zero or NaN side can't hide a huge other one.
+                let at_least_one = |x: f64| if x.is_nan() { 1.0 } else { x.max(1.0) };
+                let cells = at_least_one(r) * at_least_one(c);
                 if cells > MAX_GENERATED {
                     return V::err(sol_error(
                         ErrorCode::Overflow,
@@ -1394,54 +1544,70 @@ pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
     prep_range_args(t.prep, flat).err()
 }
 
+fn cx_refusal(name: &str) -> V {
+    V::err(sol_error(ErrorCode::Type, format!("{name} doesn't compute on complex numbers. Use the IM* family")))
+}
+
 /// A list's first error answers, then its blanks go as `prep` says.
 fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
+    match prep {
+        Prep::Raw | Prep::Positional => Ok(argv),
+        Prep::Default | Prep::Zero => argv.into_iter().map(|a| ready_list(prep, a)).collect(),
+        Prep::Paired => match argv.iter().find_map(first_error) {
+            Some(e) => Err(e),
+            None => Ok(pair_blanks(argv)),
+        },
+    }
+}
+
+/// A position blank in any list drops from every list.
+fn pair_blanks(argv: Vec<V>) -> Vec<V> {
+    let lens: Vec<usize> = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
+    let Some(&n) = lens.iter().min() else { return argv };
+    let keep: Vec<usize> =
+        (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
+    if keep.len() == n {
+        return argv;
+    }
+    argv.into_iter()
+        .map(|a| match a {
+            V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
+            other => other,
+        })
+        .collect()
+}
+
+fn first_error(a: &V) -> Option<V> {
+    let V::List(l) = a else { return None };
+    l.iter().find_map(|v| match v {
+        V::Err(_) => Some(v.clone()),
+        V::Fx(code) => Some(V::err(fx_error_to_sol(*code))),
+        _ => None,
+    })
+}
+
+/// One list as `prep` reads it, its pairs aside for `Prep::Paired`: the same list when it holds no blank.
+fn ready_list(prep: Prep, a: V) -> Result<V, V> {
     if matches!(prep, Prep::Raw | Prep::Positional) {
-        return Ok(argv);
+        return Ok(a);
     }
-    for a in &argv {
-        if let V::List(l) = a {
-            for v in l.iter() {
-                match v {
-                    V::Err(_) => return Err(v.clone()),
-                    V::Fx(code) => return Err(V::err(fx_error_to_sol(*code))),
-                    _ => {}
-                }
-            }
-        }
+    if let Some(e) = first_error(&a) {
+        return Err(e);
     }
-    Ok(match prep {
-        Prep::Zero => argv
-            .into_iter()
-            .map(|a| match a {
-                V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
-                other => other,
-            })
-            .collect(),
-        Prep::Paired => {
-            let lens: Vec<usize> =
-                argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
-            let Some(&n) = lens.iter().min() else { return Ok(argv) };
-            let keep: Vec<usize> =
-                (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
-            if keep.len() == n {
-                return Ok(argv);
-            }
-            argv.into_iter()
-                .map(|a| match a {
-                    V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
-                    other => other,
+    if prep == Prep::Paired {
+        return Ok(a);
+    }
+    Ok(match a {
+        V::List(l) if l.iter().any(is_missing) => list(
+            l.iter()
+                .filter_map(|v| match (is_missing(v), prep) {
+                    (false, _) => Some(v.clone()),
+                    (true, Prep::Zero) => Some(V::Num(0.0)),
+                    (true, _) => None,
                 })
-                .collect()
-        }
-        Prep::Default => argv
-            .into_iter()
-            .map(|a| match a {
-                V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
-                other => other,
-            })
-            .collect(),
-        Prep::Raw | Prep::Positional => argv,
+                .collect(),
+        ),
+        other => other,
     })
 }
 
@@ -1675,6 +1841,15 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
+/// The readied lists the kept formulas' evaluators hold, let go with the other kept lists.
+pub(crate) fn forget_readied() {
+    FORMULAS.with(|f| {
+        for (_, c) in f.borrow().iter() {
+            c.eval.readied.borrow_mut().clear();
+        }
+    });
+}
+
 pub fn forget_held(ids: &[u64]) {
     HELD.with(|h| {
         let mut h = h.borrow_mut();
@@ -1682,6 +1857,7 @@ pub fn forget_held(ids: &[u64]) {
             h.remove(id);
         }
     });
+    crate::excel_functions::forget_kept_lists();
 }
 
 /// Whether a `__ref` named a list the core doesn't hold since the last call; the call then goes to the TS.
@@ -1702,7 +1878,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             })
         }
         Json::Object(o) if o.contains_key("__def") => {
-            let v = decode_value(&o["v"]);
+            let v = decode_value(o.get("v").unwrap_or(&Json::Null));
             if let Some(id) = o["__def"].as_u64() {
                 HELD.with(|h| h.borrow_mut().insert(id, v.clone()));
             }
@@ -1811,10 +1987,126 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
 }
 
 /// As `column`, each row's answer tagged by `tag`: a frame's one value per row, or a Cube's row that may hold a list.
+/// Whether `n` reads no row: no `@` cell, no ROW(), no random draw, no parameter of a LAMBDA around it (`bound`,
+/// lowered) and no LAMBDA it can't see into. Such a subtree answers the same on every row, so a computed column
+/// computes it once ([[C120]] linearWork). The largest such subtrees under a row-reading one go in `free`.
+fn row_free<'a>(n: &'a Ast, bound: &[String], env: &Env, free: &mut Vec<&'a Ast>) -> bool {
+    let unseen = |name: &str| bound.contains(&name.to_lowercase()) || matches!(env.get(name), Some(V::Lambda(_)));
+    let varies = |name: &str| {
+        let up = name.to_uppercase();
+        up == "ROW" || crate::fns_random::NAMES.contains(&up.as_str())
+    };
+    // Each child's verdict; when this node reads a row, its row-free children are kept.
+    let mut kids: Vec<(&'a Ast, bool)> = Vec::new();
+    let mut visit = |c: &'a Ast, bound: &[String], kids: &mut Vec<(&'a Ast, bool)>| {
+        let f = row_free(c, bound, env, free);
+        kids.push((c, f));
+        f
+    };
+    let own = match n {
+        Ast::Num(..) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank | Ast::WholeCol(_) => true,
+        Ast::AtCol(_) => false,
+        Ast::Name(name) => !unseen(name) && !varies(name),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => visit(arg, bound, &mut kids),
+        Ast::Bin { l, r, .. } => visit(l, bound, &mut kids) & visit(r, bound, &mut kids),
+        Ast::Apply { func, args } => {
+            visit(func, bound, &mut kids);
+            for a in args {
+                visit(a, bound, &mut kids);
+            }
+            false
+        }
+        Ast::Call { name, args } => match name.to_uppercase().as_str() {
+            "LAMBDA" if !args.is_empty() => {
+                let mut params = Vec::new();
+                for p in &args[..args.len() - 1] {
+                    let Ast::Name(v) = p else { return false };
+                    params.push(v.as_str());
+                }
+                let body = &args[args.len() - 1];
+                let inner: Vec<String> = bound.iter().cloned().chain(params.iter().map(|p| p.to_lowercase())).collect();
+                visit(body, &inner, &mut kids);
+                // A parameter may hold a LAMBDA that reads the row, so a body that calls one isn't row-free.
+                !invokes(body, &inner[bound.len()..]) && reads_none(body, bound, &params, env)
+            }
+            _ => {
+                let mut ok = !unseen(name) && !varies(name);
+                for a in args {
+                    ok &= visit(a, bound, &mut kids);
+                }
+                ok
+            }
+        },
+    };
+    if !own {
+        free.extend(kids.into_iter().filter(|&(c, f)| f && hoistable(c)).map(|(c, _)| c));
+    }
+    own
+}
+
+/// Whether `n` reads no row and no name bound past the first `outer` of `bound`: a LAMBDA body's verdict for the
+/// LAMBDA.
+fn reads_none(n: &Ast, bound: &[String], params: &[&str], env: &Env) -> bool {
+    let mut scratch = Vec::new();
+    // Its own parameters read as row-free here, since the LAMBDA answers for them; a name is looked up as written.
+    let mut env = env.clone();
+    for p in params {
+        env.remove(*p);
+    }
+    row_free(n, bound, &env, &mut scratch)
+}
+
+/// Whether `n` calls one of `names` (lowered), passes one to a function that calls its LAMBDA, or applies one.
+fn invokes(n: &Ast, names: &[String]) -> bool {
+    let mentions = |a: &Ast| {
+        fn any(a: &Ast, names: &[String]) -> bool {
+            match a {
+                Ast::Name(v) => names.contains(&v.to_lowercase()),
+                Ast::Unary { arg, .. } | Ast::Percent(arg) => any(arg, names),
+                Ast::Bin { l, r, .. } => any(l, names) || any(r, names),
+                Ast::Call { args, .. } => args.iter().any(|x| any(x, names)),
+                Ast::Apply { func, args } => any(func, names) || args.iter().any(|x| any(x, names)),
+                _ => false,
+            }
+        }
+        any(a, names)
+    };
+    match n {
+        Ast::Call { name, args } => {
+            names.contains(&name.to_lowercase())
+                || (LAMBDA_HOSTS.contains(&name.to_uppercase().as_str()) && args.iter().any(mentions))
+                || args.iter().any(|a| invokes(a, names))
+        }
+        Ast::Apply { func, args } => mentions(func) || args.iter().any(mentions),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => invokes(arg, names),
+        Ast::Bin { l, r, .. } => invokes(l, names) || invokes(r, names),
+        _ => false,
+    }
+}
+
+/// A node worth keeping: a call or an operator. A LAMBDA's value holds the scope it was made in, so it isn't kept.
+fn hoistable(n: &Ast) -> bool {
+    match n {
+        Ast::Call { name, .. } => !name.eq_ignore_ascii_case("LAMBDA"),
+        Ast::Bin { .. } | Ast::Unary { .. } | Ast::Percent(_) => true,
+        _ => false,
+    }
+}
+
 pub fn column_with<C>(
     spec: ColumnSpec,
     inp: ColumnInputs,
     tag: fn(V) -> C,
+) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
+    column_hoisting(spec, inp, tag, true)
+}
+
+/// `column_with`, keeping row-free subtrees or not: the tests check that keeping them changes no answer.
+fn column_hoisting<C>(
+    spec: ColumnSpec,
+    inp: ColumnInputs,
+    tag: fn(V) -> C,
+    hoist: bool,
 ) -> Result<ColumnOutcome<C>, crate::error_value::SolError> {
     let cols: FxHashMap<&str, Col> = match &inp.table {
         Table::Frame(f) => f.columns.iter().map(|c| (c.name.as_str(), Col::Frame(c))).collect(),
@@ -1924,6 +2216,14 @@ pub fn column_with<C>(
                 })
                 .collect();
             let env = Rc::new(env);
+            if hoist && inp.rows > 1 {
+                let mut free = Vec::new();
+                if row_free(ast, &[], &env, &mut free) && hoistable(ast) {
+                    free.push(ast);
+                }
+                ev.hoisted.borrow_mut().extend(free.into_iter().map(|n| (n as *const Ast, None)));
+                ev.hoists.set(!ev.hoisted.borrow().is_empty());
+            }
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
                 rows.at(i);
@@ -1957,4 +2257,86 @@ pub fn column_with<C>(
         }
     }
     Ok(ColumnOutcome { cells, side_vars })
+}
+
+#[cfg(test)]
+mod hoist_tests {
+    use super::*;
+    use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
+
+    fn formula(next: &mut dyn FnMut(usize) -> usize, depth: usize) -> String {
+        const LEAVES: [&str; 12] = ["@a", "@b", "@t", "a", "b", "t", "2", "0.5", "\"x\"", "ROW()", "TRUE", "-1"];
+        if depth == 0 || next(4) == 0 {
+            return LEAVES[next(LEAVES.len())].to_string();
+        }
+        let mut e = || formula(next, depth - 1);
+        let (x, y, z) = (e(), e(), e());
+        match next(24) {
+            0 => format!("-({x})"),
+            1..=6 => format!("({x} {} {y})", ["+", "-", "*", "/", "&", "=", "<"][next(7)]),
+            7 => format!("SUM({x})"),
+            8 => format!("AVERAGE({x})"),
+            9 => format!("MAX({x}, {y})"),
+            10 => format!("IF({x}, {y}, {z})"),
+            11 => format!("IFERROR({x}, {y})"),
+            12 => format!("LEN({x})"),
+            13 => format!("COUNTIF(a, {x})"),
+            14 => format!("SUMIFS(b, a, {x})"),
+            15 => format!("XLOOKUP({x}, a, b, \"none\")"),
+            16 => format!("INDEX(a, {x})"),
+            17 => format!("LARGE(b, {x})"),
+            18 => format!("RANK({x}, b)"),
+            19 => format!("SUM(MAP(a, LAMBDA(v, v + {x})))"),
+            20 => format!("TEXTJOIN(\",\", TRUE, {x})"),
+            21 => format!("PERCENTRANK(b, {x})"),
+            22 => format!("ROUND({x}, 1)"),
+            _ => format!("COUNT({x})"),
+        }
+    }
+
+    #[test]
+    fn keeping_row_free_subtrees_changes_no_answer() {
+        let n = 9;
+        let num =
+            |i: usize, m: usize| if i % 4 == 3 { FrameCell::Null } else { FrameCell::Num((i * m % 7) as f64 - 2.0) };
+        let f = FrameValue {
+            columns: vec![
+                FrameColumn::new("a", FrameColType::Number, (0..n).map(|i| num(i, 3)).collect()),
+                FrameColumn::new("b", FrameColType::Number, (0..n).map(|i| num(i, 5)).collect()),
+                FrameColumn::new(
+                    "t",
+                    FrameColType::String,
+                    (0..n).map(|i| FrameCell::Str(Rc::from(["x", "y", ""][i % 3]))).collect(),
+                ),
+            ],
+        };
+        let mut seed = 5u64;
+        let mut next = |m: usize| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) as usize % m
+        };
+        let mut hoisted = 0;
+        for _ in 0..3000 {
+            let src = formula(&mut next, 4);
+            let Some(ast) = crate::excel_formula::parse_formula(&src) else { continue };
+            let run = |hoist: bool| {
+                let inp = ColumnInputs {
+                    table: Table::Frame(&f),
+                    sides: Default::default(),
+                    row_sides: Default::default(),
+                    reserved: vec![],
+                    alias: Default::default(),
+                    rows: n,
+                };
+                match column_hoisting(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp, |v| v, hoist) {
+                    Ok(o) => format!("{:?}", o.cells),
+                    Err(e) => format!("{e:?}"),
+                }
+            };
+            assert_eq!(run(true), run(false), "{src}");
+            let mut free = Vec::new();
+            hoisted += usize::from(row_free(&ast, &[], &Env::default(), &mut free) || !free.is_empty());
+        }
+        assert!(hoisted > 500, "{hoisted}");
+    }
 }

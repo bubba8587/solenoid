@@ -57,9 +57,13 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         },
         ("nestGroups", Some(f)) => nest_groups(f, args),
         ("lookupRowIndex", Some(f)) => {
-            each(args, 1, |a| lookup_row_index(f, a).map(|i| V::Num(i.map_or(-1.0, |i| i as f64))))
+            let plan = std::cell::RefCell::new(None);
+            each(args, 1, |a| lookup_row_index(f, a, &plan).map(|i| V::Num(i.map_or(-1.0, |i| i as f64))))
         }
-        ("lookupCell", Some(f)) => each(args, 2, |a| lookup_cell(f, a)),
+        ("lookupCell", Some(f)) => {
+            let plan = std::cell::RefCell::new(None);
+            each(args, 2, |a| lookup_cell(f, a, &plan))
+        }
         ("frameRowAt", Some(f)) => num_arg(args, 0).and_then(|i| frame_row_at(f, i)),
         ("getColumn", Some(f)) => str_arg(args, 0).map(|n| {
             FrameOut::Value(
@@ -802,39 +806,53 @@ fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
     })
 }
 
+/// What a frame lookup reads once for every lookup value in a list of them: the In column, its type and its keys.
+struct LookupPlan {
+    ty: FrameColType,
+    exact: bool,
+    keys: crate::excel_functions::Matcher<Vec<V>>,
+}
+
 /// Row indices over a frame (the cube its node reads, made from it): args are the In column, the lookup text,
-/// the match mode and the search mode. None where nothing matched.
-fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
-    use crate::excel_functions::MatchMode;
+/// the match mode and the search mode. None where nothing matched. `plan` holds the column's keys across the
+/// lookups of one call.
+fn lookup_row_index(f: &FrameValue, args: &[V], plan: &std::cell::RefCell<Option<LookupPlan>>) -> Res<Option<usize>> {
+    use crate::excel_functions::{MatchMode, Matcher};
     let (column, lookup) = (str_arg(args, 0)?, str_arg(args, 1)?);
-    let mm = match opt_str_arg(args, 2)?.as_deref() {
-        None | Some("exact") => MatchMode::Exact,
-        Some("nextSmaller") => MatchMode::NextSmaller,
-        Some("nextLarger") => MatchMode::NextLarger,
-        Some(_) => return Err(bad()),
-    };
-    let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
-    let key = require_column(f, &column)?;
-    if mm != MatchMode::Exact && !matches!(key.ty, FrameColType::Number | FrameColType::Date) {
-        return Err(FrameOut::Error(sol_error(
-            ErrorCode::Value,
-            "Approximate lookup requires a numeric or date column",
-        )));
+    if plan.borrow().is_none() {
+        let mm = match opt_str_arg(args, 2)?.as_deref() {
+            None | Some("exact") => MatchMode::Exact,
+            Some("nextSmaller") => MatchMode::NextSmaller,
+            Some("nextLarger") => MatchMode::NextLarger,
+            Some(_) => return Err(bad()),
+        };
+        let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
+        let key = require_column(f, &column)?;
+        if mm != MatchMode::Exact && !matches!(key.ty, FrameColType::Number | FrameColType::Date) {
+            return Err(FrameOut::Error(sol_error(
+                ErrorCode::Value,
+                "Approximate lookup requires a numeric or date column",
+            )));
+        }
+        // The column is read whole either way, so even one lookup indexes it.
+        let keys = Matcher::new(key.values.iter().map(cell_to_v).collect(), mm, last, usize::MAX);
+        *plan.borrow_mut() = Some(LookupPlan { ty: key.ty, exact: mm == MatchMode::Exact, keys });
     }
-    let needle = lookup_needle(&lookup, key.ty)?;
-    if mm != MatchMode::Exact && !matches!(needle, V::Num(n) if n.is_finite()) {
+    let plan = plan.borrow();
+    let plan = plan.as_ref().expect("planned above");
+    let needle = lookup_needle(&lookup, plan.ty)?;
+    if !plan.exact && !matches!(needle, V::Num(n) if n.is_finite()) {
         return Ok(None);
     }
-    let keys: Vec<V> = key.values.iter().map(cell_to_v).collect();
-    Ok(crate::excel_functions::xmatch_index(&needle, &keys, mm, last).unwrap_or(None))
+    Ok(plan.keys.find(&needle).unwrap_or(None))
 }
 
 /// The Return column's cell on the matched row, or `undefined` where nothing matched.
-fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
+fn lookup_cell(f: &FrameValue, args: &[V], plan: &std::cell::RefCell<Option<LookupPlan>>) -> Res<V> {
     let ret_name = str_arg(args, 1)?;
     let mut idx_args = vec![args[0].clone()];
     idx_args.extend(args.iter().skip(2).cloned());
-    let idx = lookup_row_index(f, &idx_args)?;
+    let idx = lookup_row_index(f, &idx_args, plan)?;
     let ret = require_column(f, &ret_name)?;
     Ok(idx.map_or(V::Undef, |i| cell_to_v(ret.cell_at(i))))
 }

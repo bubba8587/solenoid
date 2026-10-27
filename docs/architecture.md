@@ -403,6 +403,9 @@ CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `columnPickerHook`, `formatCarry` (the duck-typed format-carry declaration the annotation walk reads),
 `placeholder`, plus `shared.ts` (port factories,
 broadcast + `NODE_KIND_ACCENTS`), `mathUtils.ts`, and `kind.ts` (the node → kind classifier).
+The kernels are the core's (`crates/solenoid-core`); a family's `*Ops.ts` (`listOps`, `financeOps`, `textOps`,
+`matrixOps`, `fitOps`, `distributionOps`, `convertUnits`, the packs' `chemistryOps` and siblings) keeps only the op
+types and option tables its card and component read.
 Composite run modes live one level up (`src/graph/monteCarlo.ts` + `tornadoRun.ts` —
 simulation / sensitivity sweeps; only the `tornado` node class is in `nodes/`), as
 does `svgLayer.ts` (SVG Picker's DOM-agnostic layer hit-test). The bodies' answers are frozen

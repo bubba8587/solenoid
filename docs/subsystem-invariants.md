@@ -22,7 +22,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/computation/formulajs-divergences.md` | where Solenoid answers otherwise than Formula.js did, and why | `crates/solenoid-core/src/excel_functions.rs`, `fns_*.rs` |
 | `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `crates/solenoid-core/src/nodes/columns.rs`, `nodes/frame.ts` |
 | `../tree/specs/computation/graph-core.md` | the dataflow engine and the graph walks on Ruggine, in the one wasm module with the core: hosting the JS nodes, calling the cards on the core directly, errors and `Cancelled`, traps | `crates/solenoid-graph/`, `dataflowEngine.ts`, `engineWasm.ts` |
-| `../tree/specs/computation/rust-core.md` | the Rust core in wasm: the port rule, what it carries, the fallback to the TypeScript, the rebase routine | `crates/solenoid-core/`, `engineWasm.ts`, `frameBackend.ts` |
+| `../tree/specs/computation/rust-core.md` | the Rust core in wasm: the port rule, what it carries, why nothing falls back, the rebase routine | `crates/solenoid-core/`, `engineWasm.ts`, `frameBackend.ts` |
 | `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the backend seam, every relational verb | `frame.ts`, `frameOps.ts`, `frameBackend.ts`, `crates/solenoid-core/src/frame_verbs.rs` |
 | `../tree/specs/computation/composite-nodes.md` | composite nodes: ports, run modes, the heavy-mode hold, loops, save and load | `nodes/composite.ts`, `components/CompositeNode.tsx` |
 | `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |

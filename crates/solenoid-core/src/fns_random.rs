@@ -8,12 +8,11 @@ use crate::error_value::sol_error;
 use crate::error_value::{ErrorCode, FxError};
 use crate::excel_functions::{js_number_of as js_number, js_string_of, parse_number, to_num, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string};
+use crate::value_kinds::MAX_GENERATED;
 use std::rc::Rc;
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &["RAND", "RANDBETWEEN", "RANDARRAY", "RANDDIST", "SHUFFLE", "UUID"];
-
-use crate::value_kinds::MAX_GENERATED;
 
 /// `Math.random()`.
 #[cfg(target_arch = "wasm32")]

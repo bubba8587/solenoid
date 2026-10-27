@@ -157,6 +157,8 @@ A function's arity lives in the TS (`FUNCTION_ARITY`, `excelFunctions.ts`) for t
 
 The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements, the core's limit, which the cards reach through the same bodies) and answers `#OVERFLOW!` past it. The 2-D builders (EXPAND, MUNIT, DIAGONAL, OUTER) apply the same limit to their cell count inside their kernels (`fns_matrix.rs`), so the card and the formula refuse together. **One function, one limit** ([[C17]] shareImpl): a formula never generates more values than the matching node allows, rather than quietly allowing more. On a node the count is a spinner the user watches; in a formula one typo can ask for ten million values with nothing on screen to stop it.
 
+Nesting has limits too, so no formula can overflow the stack (a stack overflow in wasm traps the whole module): a formula nested more than 400 deep, in parentheses, argument lists, unary operators or the depth of its tree (a flat sum of 400 terms is 400 deep), doesn't parse (`MAX_DEPTH`, `excel_formula.rs`), and calls nested more than 500 deep in one evaluation, a LAMBDA that keeps calling itself included, answer `#OVERFLOW!` (`MAX_CALL_DEPTH`, `eval.rs`).
+
 ### Blocked and wrong-surface names
 
 Four tables name functions a formula refuses. Each refusal happens before any argument is evaluated, so a blocked name over a list answers one error, never a list of them ([[#Blocked and wrong-surface names]]).
@@ -759,7 +761,7 @@ A `Cell` is a number, `null` or a `SolError`; `first_error` returns the first `S
 | `xmatch_index(lookup, keys, matchMode, searchMode)` | The kernel behind the XMATCH node and the XMATCH and XLOOKUP formulas. Answers the 0-based index of the winning key, or −1. Null and error keys never match, so an error at a position the lookup never picks cannot decide the answer. `searchMode: "last"` scans from the end, which decides which duplicate wins. The approximate modes (`next_larger`, `next_smaller`) need a finite numeric lookup value (`#VALUE!` otherwise), skip non-numeric keys, return an exact hit at once, and otherwise take the closest key above or below, keeping the first one in scan order on a tie. This mirrors the frame kernel `lookup_row_index` (`frame_fns.rs`). |
 | `contains` (`nodes/list.rs`) | Membership by value (`set_key`, as under Sets below); blank and error cells are never members. Returns a boolean. |
 
-**Weighted statistics.** `weighted(op, values, weights)` pairs values with weights by position and skips a pair when either side is missing; an error in either list is the answer. No values, fewer weights than values, no pairs, or a zero weight sum answer null. `wavg` is `Σw·x / Σw`. `wvar` is the reliability-weight form `Σw·(x − μ)² / (Σw − Σw²/Σw)`, null when that denominator is not positive, and `wstdev` is its square root. A non-finite result is null.
+**Weighted statistics.** `weighted` (WAVG, WVAR, WSTDEV) pairs values with weights by position and skips a pair when either side is missing; an error in either list is the answer. No values, fewer weights than values, no pairs, or a zero weight sum answer null. `wavg` is `Σw·x / Σw`. `wvar` is the reliability-weight form `Σw·(x − μ)² / (Σw − Σw²/Σw)`, null when that denominator is not positive, and `wstdev` is its square root. A non-finite result is null.
 
 **Build: scalars in, list out.** These kernels are uncapped; each surface applies `MAX_GENERATED` (1,000,000) at its own boundary and answers `#OVERFLOW!` past it, rather than a kernel silently truncating.
 
@@ -958,7 +960,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 ### Text kernels (`text_ops.rs`, `nodes/text.rs`, `excel_functions.rs`)
 
-Each kernel works on one string; the text nodes and the text formulas broadcast it. `textOps.ts` must not import `text.ts`, which imports `excelFunctions` and would pull the graph model into the formula path through the cycle ([[engineering#The formula path is graph-free]]). Lengths and positions count code points, not UTF-16 units.
+Each kernel works on one string; the text nodes and the text formulas broadcast it. Lengths and positions count code points, not UTF-16 units.
 
 - `split_text` (TEXTSPLIT(text, [col_delimiter], [row_delimiter], [ignore_empty], [match_mode], [pad_with])): an empty delimiter splits into characters. Without a row delimiter the answer is a list (one row); with one it splits into rows first and answers a table, short rows padded with `pad_with` or `#N/A`. A row delimiter alone answers one column, as Excel does (`TEXTSPLIT("a;b", , ";")`); neither is `#SYNTAX!`. `ignore_empty` drops empty parts; match_mode 1 matches case-insensitively.
 - `text_after_before` (TEXTAFTER, TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])): the text after or before the `instance_num`-th occurrence of the delimiter, counted from the end when negative; 0 is `#VALUE!`. `match_end` 1 counts the end of the text (the start, from the end) as one more occurrence. An empty delimiter, or an occurrence the text does not have, answers `if_not_found` when given and otherwise null rather than Excel's `#N/A`. The formula's settings are declared roles ([[input-roles]]).

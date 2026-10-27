@@ -7,7 +7,7 @@ use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown
 use super::Cv;
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::V;
+use crate::excel_functions::{kleene_and, kleene_or, V};
 use crate::frame::FrameColType;
 use crate::unit_dims::{dim_equal, is_dimensionless};
 use crate::unit_value::unit_error;
@@ -69,8 +69,6 @@ fn tri_bool(x: &V) -> Option<bool> {
 fn tri(t: Option<bool>) -> V {
     t.map_or(V::Null, V::Bool)
 }
-
-use crate::excel_functions::{kleene_and, kleene_or};
 
 /// A value read as a condition; blank and an error pass through.
 fn if_test(v: &V) -> V {

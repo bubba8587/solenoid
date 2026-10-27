@@ -81,12 +81,13 @@ fn cells(v: &V) -> Vec<Cell> {
         .map(|x| match x {
             V::Num(n) => Cell::Num(*n),
             V::Err(e) => Cell::Err(e.as_ref().clone()),
+            V::Str(_) => Cell::Text,
             _ => Cell::Other,
         })
         .collect()
 }
 
-/// The first error, else each cell as a number, anything else 0.
+/// The first error, then `#VALUE!` for text, else each cell as a number (a blank or a logical as 0).
 fn cash_prep(v: &V) -> Result<Vec<V>, V> {
     f::cash_prep(&cells(v)).map(|ns| ns.into_iter().map(V::Num).collect()).map_err(V::err)
 }

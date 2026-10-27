@@ -81,3 +81,132 @@ fn an_at_lists_verdict_is_its_own() {
         .collect();
     assert_eq!(shown, ["@v: 1 value for 3 rows", "@v: 2 values for 3 rows", "Num(3.0)"]);
 }
+
+/// From a long range's second call on, COUNTIF's count and the IFS aggregates' rows come from the tally the range
+/// keeps; they answer as the scan does.
+#[test]
+fn a_kept_criteria_tally_answers_as_the_scan_does() {
+    use solenoid_core::error_value::{sol_error, ErrorCode};
+    use solenoid_core::eval::{formula, Env};
+    use solenoid_core::excel_functions::V;
+    use std::rc::Rc;
+    let cells: Vec<V> = (0..90)
+        .map(|i| match i % 10 {
+            0 => V::Num(-0.0),
+            1 => V::Num(f64::INFINITY),
+            2 => V::Num(f64::NAN),
+            3 => V::Bool(i % 20 == 3),
+            4 => V::Null,
+            5 => V::str(""),
+            6 => V::str(if i % 20 == 6 { "Apple" } else { "apple" }),
+            7 => V::str("5"),
+            8 => V::err(sol_error(ErrorCode::Value, "bad")),
+            _ => V::Num((i % 7) as f64),
+        })
+        .collect();
+    let numbers: Vec<V> = (0..90)
+        .map(|i| match i {
+            _ if i % 9 == 0 => V::Null,
+            _ if i % 13 == 0 => V::Bool(true),
+            _ if i % 17 == 0 => V::str(""),
+            _ if i % 19 == 0 => V::Num(f64::NAN),
+            _ if i % 23 == 0 => V::err(sol_error(ErrorCode::Value, "bad")),
+            _ if i % 29 == 0 => V::Num(f64::NEG_INFINITY),
+            _ => V::Num(((i * 37) % 11) as f64 - 5.0),
+        })
+        .collect();
+    let vals = V::List(Rc::new(
+        (0..85)
+            .map(|i| if i == 61 { V::err(sol_error(ErrorCode::Ref, "gone")) } else { V::Num(i as f64 * 0.1) })
+            .collect(),
+    ));
+    let formulas = [
+        "COUNTIF(range, crit)",
+        "SUMIFS(vals, range, crit)",
+        "AVERAGEIFS(vals, range, crit)",
+        "MAXIFS(vals, range, crit)",
+        "COUNTIFS(range, crit, vals, \">2\")",
+        "COUNTIFS(vals, \"<5\", range, crit)",
+    ];
+    for range in [cells, numbers] {
+        let shared = V::List(Rc::new(range.clone()));
+        for src in formulas {
+            for crit in [
+                V::Num(0.0),
+                V::Num(5.0),
+                V::Num(-3.0),
+                V::Num(f64::INFINITY),
+                V::str(">3"),
+                V::str(">=-2"),
+                V::str("<0"),
+                V::str("<=0"),
+                V::str("<>0"),
+                V::str("<>"),
+                V::str("="),
+                V::str("apple"),
+                V::str("<>APPLE"),
+                V::str("a*"),
+                V::str("5"),
+                V::Bool(true),
+                V::Null,
+            ] {
+                let call = |list: &V, crit: &V| {
+                    let env: Env = [
+                        ("range".to_string(), list.clone()),
+                        ("crit".to_string(), crit.clone()),
+                        ("vals".to_string(), vals.clone()),
+                    ]
+                    .into_iter()
+                    .collect();
+                    format!("{:?}", formula(src, env))
+                };
+                let scanned = call(&V::List(Rc::new(range.clone())), &crit);
+                // A first call on the range with another criterion, so the formula's own memo can't answer the next.
+                call(&shared, &V::str("warm"));
+                assert_eq!(call(&shared, &crit), scanned, "{src} {crit:?}");
+            }
+        }
+    }
+}
+
+/// A LAMBDA whose parameter holds a wired LAMBDA that reads `@a` reads the row, so the MAP around it is computed per
+/// row rather than kept from the first.
+#[test]
+fn a_lambda_calling_its_parameter_reads_the_row() {
+    use solenoid_core::eval::decode_value;
+    let f = FrameValue {
+        columns: vec![FrameColumn::new(
+            "a",
+            FrameColType::Number,
+            vec![FrameCell::Num(1.0), FrameCell::Num(2.0), FrameCell::Num(3.0)],
+        )],
+    };
+    let wired = serde_json::json!({ "__lambda": { "params": ["v"], "expr": "v + @a" } });
+    let run = |src: &str, side: &str, v: serde_json::Value, lambdas: &[String]| {
+        let ast = solenoid_core::excel_formula::parse_formula(src).expect("parses");
+        let inp = ColumnInputs {
+            table: Table::Frame(&f),
+            sides: [(side.to_string(), decode_value(&v))].into_iter().collect(),
+            row_sides: Default::default(),
+            reserved: vec![],
+            alias: Default::default(),
+            rows: 3,
+        };
+        match column(ColumnSpec::Expr { ast: &ast, lambdas }, inp) {
+            Ok(ColumnOutcome { cells, .. }) => format!("{cells:?}"),
+            Err(e) => format!("{e:?}"),
+        }
+    };
+    let rows = format!("{:?}", [FrameCell::Num(2.0), FrameCell::Num(3.0), FrameCell::Num(4.0)]);
+    let g = ["g".to_string()];
+    for src in [
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, g(G))))",
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, g(1))))",
+        "SUM(MAP(SEQUENCE(1), LAMBDA(G, MAP(SEQUENCE(1), g))))",
+    ] {
+        assert_eq!(run(src, "g", wired.clone(), &g), rows, "{src}");
+    }
+    let listed = serde_json::json!([wired.clone()]);
+    assert_eq!(run("SUM(MAP(fs, LAMBDA(f, f(1))))", "fs", listed.clone(), &[]), rows);
+    assert_eq!(run("SUM(MAP(fs, LAMBDA(f, MAP(1, f))))", "fs", listed, &[]), rows);
+}

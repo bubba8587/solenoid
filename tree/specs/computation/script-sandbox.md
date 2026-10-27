@@ -52,7 +52,7 @@ flowchart TD
     clone --> fold["folded onto the value model;<br>the result socket takes its family"]
 ```
 
-1. The card's `data()` returns null for an empty source, and `#SYNTAX!` with the compile message when the source does not compile. The main thread compiles too, for immediate syntax feedback on the card.
+1. The card's `data()` returns null for an empty source, and `#SYNTAX!` with the compile message when the source does not compile. The main thread checks the syntax too, for immediate feedback on the card: `checkScript` builds the `Function` and never calls it, because calling it evaluates the source, and a source that only opens with a function head (`x => x, (code), x => x`) would run its code on the main thread whenever a document holding the card is checked or loaded. Only the worker runs a script, so "Write a function" for a source that isn't one comes from the worker.
 2. Each parameter's argument is its cable's value, or the typed literal when unwired, converted to plain JavaScript (`scriptArgToJs`, below). A parameter is a value slot (`autoLiterals`), so an unwired one takes a typed number or text; exactly one of `literals` and `stringLiterals` holds it, because the inline field clears the other. An unwired input with nothing typed is `undefined`; a wired blank is `null`.
 3. An error anywhere in an argument, at any depth (a list cell, a row cell, a converted Frame row), becomes the result without running the script ([[D35]] errorInErrorOut at cell grain; the engine's error guard sees only whole-value errors).
 4. `executeScript(src, args)` sends `{ id, src, args }` to the worker, with a fresh request id per call, and starts the timer.
@@ -119,4 +119,4 @@ In vitest and other headless hosts, `executeScript` runs `invokeScript` inline, 
 
 ## Desktop security policy
 
-Because `new Function` runs on both the main thread and in the worker, the desktop content security policy (`src-tauri/tauri.conf.json`) must allow `'unsafe-eval'` in `script-src`. Without it, every Script card shows the policy refusal as its error.
+Because `new Function` is built on both the main thread and in the worker, the desktop content security policy (`src-tauri/tauri.conf.json`) must allow `'unsafe-eval'` in `script-src`. Without it, every Script card shows the policy refusal as its error.

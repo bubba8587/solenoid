@@ -1634,36 +1634,42 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             _ => Score::Null,
         }
     };
-    let by_key = |desc: bool| {
-        move |sx: &Score, sy: &Score| -> Ordering {
-            let d = match (sx, sy) {
+    // A mixed sort compares as text; each score is formatted once, before the sort.
+    let order = |scores: &[Score], desc: bool| -> Vec<usize> {
+        let texts: Vec<String> = if scores.iter().any(|s| matches!(s, Score::S(_))) {
+            scores
+                .iter()
+                .map(|s| match s {
+                    Score::N(n) => number_to_string(*n),
+                    Score::S(t) => t.clone(),
+                    Score::Null => String::new(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let mut perm: Vec<usize> = (0..scores.len()).collect();
+        js_sort_by(&mut perm, |&x, &y| {
+            let d = match (&scores[x], &scores[y]) {
                 (Score::Null, Score::Null) => return Ordering::Equal,
                 (Score::Null, _) => return Ordering::Greater,
                 (_, Score::Null) => return Ordering::Less,
-                (Score::N(x), Score::N(y)) => (x - y).partial_cmp(&0.0).unwrap_or(Ordering::Equal),
-                (a, b) => {
-                    let text = |s: &Score| match s {
-                        Score::N(n) => number_to_string(*n),
-                        Score::S(t) => t.clone(),
-                        Score::Null => String::new(),
-                    };
-                    compare_strings(&text(a), &text(b))
-                }
+                (Score::N(a), Score::N(b)) => (a - b).partial_cmp(&0.0).unwrap_or(Ordering::Equal),
+                _ => compare_strings(&texts[x], &texts[y]),
             };
             if desc {
                 d.reverse()
             } else {
                 d
             }
-        }
+        });
+        perm
     };
     let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
     if row_val_sort >= 0.0 && row_val_sort < v_n as f64 && row_val_sort.fract() == 0.0 && r_n > 1 {
         let vs = row_val_sort as usize;
         let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect();
-        let cmp = by_key(rs < 0.0);
-        let mut perm: Vec<usize> = (0..r_n).collect();
-        js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
+        let perm = order(&scores, rs < 0.0);
         row_leaves = perm.iter().map(|&r| row_leaves[r].clone()).collect();
         for plane in cells.iter_mut() {
             *plane = perm.iter().map(|&r| std::mem::take(&mut plane[r])).collect();
@@ -1675,9 +1681,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         let scores: Vec<Score> = (0..c_n)
             .map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs))
             .collect();
-        let cmp = by_key(cs < 0.0);
-        let mut perm: Vec<usize> = (0..c_n).collect();
-        js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
+        let perm = order(&scores, cs < 0.0);
         col_leaves = perm.iter().map(|&c| col_leaves[c].clone()).collect();
         for plane in cells.iter_mut() {
             for row in plane.iter_mut() {

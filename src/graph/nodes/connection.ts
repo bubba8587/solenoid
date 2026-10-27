@@ -322,6 +322,7 @@ export class LocalFileNode extends GraphNode {
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
     if (name === "") return fail("Pick a file", "idle");
+    if (!isInsideVault(name)) return fail("The file must be inside the data folder");
     connectionStore.setState(this.id, { status: "loading" });
     try {
       if (parquet) {

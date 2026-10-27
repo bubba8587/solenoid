@@ -2,7 +2,7 @@
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
-import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { type SolError } from "../../src/graph/errorValue";
@@ -87,6 +87,37 @@ describe("pasting a loop (additive pass)", () => {
     const settled = processGraph(undefined, new Set([a.id, b.id])).then(() => "settled");
     const timeout = new Promise((r) => setTimeout(() => r("hung"), 500));
     expect(await Promise.race([settled, timeout])).toBe("settled");
+    for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
+  });
+});
+
+// A card that answers after a moment, as a Script card in its Worker or a Web Source does.
+class Slow extends GraphNode {
+  constructor() {
+    super("slow");
+    this.addOutput("out", new GraphOutput(new GraphSocket("number")));
+  }
+  async data() {
+    await new Promise((r) => setTimeout(r, 5));
+    return { out: 1 };
+  }
+}
+
+describe("a cable that closes a loop while a pass waits", () => {
+  it("is seeded #CIRC! before the pass fetches into it, so the pass settles", async () => {
+    const { editor } = makeGraph();
+    const slow = new Slow();
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new ArithmeticNode({ op: "add" });
+    for (const n of [slow, a, b]) await editor.addNode(n as unknown as Schemes["Node"]);
+    await connect(editor, slow, "out", a, "a");
+    await connect(editor, a, "result", b, "a");
+
+    const settled = processGraph().then(() => "settled");
+    await connect(editor, b, "result", a, "b"); // closes the loop while the slow card waits
+    const timeout = new Promise((r) => setTimeout(() => r("hung"), 1000));
+    expect(await Promise.race([settled, timeout])).toBe("settled");
+    await processGraph();
     for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
   });
 });

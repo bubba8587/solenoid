@@ -977,6 +977,7 @@ dependencies = [
  "serde_json",
  "sha1",
  "sha2",
+ "solenoid-schedule",
  "wasm-bindgen",
 ]
 
@@ -990,6 +991,13 @@ dependencies = [
  "parquet",
  "serde_json",
  "solenoid-core",
+]
+
+[[package]]
+name = "solenoid-schedule"
+version = "0.1.0"
+dependencies = [
+ "ryu-js",
 ]
 
 [[package]]

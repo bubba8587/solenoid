@@ -138,3 +138,37 @@ fn a_column_that_wont_cast_is_a_value_error_naming_it() {
     assert_eq!(err.code.as_str(), "#VALUE!");
     assert!(err.message.contains("\"raw\""), "{}", err.message);
 }
+
+#[test]
+fn a_name_outside_the_folder_is_refused() {
+    let root = std::env::temp_dir().join(format!("solenoid_inside_{}", std::process::id()));
+    std::fs::create_dir_all(root.join("sub")).unwrap();
+    for name in [
+        "",
+        "../x.parquet",
+        "/etc/x.parquet",
+        "sub/../../x.parquet",
+        "./x.parquet",
+    ] {
+        let err = solenoid_parquet::inside(&root, name).unwrap_err();
+        assert_eq!(err.code.as_str(), "#REF!", "{name}");
+    }
+    assert_eq!(
+        solenoid_parquet::inside(&root, "a.parquet").unwrap(),
+        root.join("a.parquet")
+    );
+    assert_eq!(
+        solenoid_parquet::inside(&root, "sub/a.parquet").unwrap(),
+        root.join("sub/a.parquet")
+    );
+    #[cfg(unix)]
+    {
+        let away =
+            std::env::temp_dir().join(format!("solenoid_away_{}.parquet", std::process::id()));
+        std::fs::write(&away, b"x").unwrap();
+        std::os::unix::fs::symlink(&away, root.join("link.parquet")).unwrap();
+        assert!(solenoid_parquet::inside(&root, "link.parquet").is_err());
+        std::fs::remove_file(&away).ok();
+    }
+    std::fs::remove_dir_all(&root).ok();
+}

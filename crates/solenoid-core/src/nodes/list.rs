@@ -9,16 +9,15 @@ use super::Cv;
 use super::{err, list, Answer, Call, Column, Frame};
 use crate::error_value::ErrorCode;
 use crate::excel_criteria::DateReading;
-use crate::excel_functions::{js_string_of, xmatch_index, MatchMode, V};
+use crate::excel_functions::{js_string_of, MatchMode, Matcher, V};
 use crate::frame::{FrameCell, FrameColType};
 use crate::frame_verbs::FilterOp;
 use crate::jsnum::{js_trim, math_round, number_to_string};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
+use crate::value_kinds::MAX_GENERATED;
 use crate::value_kinds::{guard_finite as guard_cells, Logical};
 use std::rc::Rc;
-
-use crate::value_kinds::MAX_GENERATED;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
@@ -1063,7 +1062,9 @@ fn xmatch(c: &mut Call) -> Answer {
         _ => MatchMode::Exact,
     };
     let last = c.field_str("searchMode", "first") == "last";
-    let pick = |l: &V| match xmatch_index(l, &ks, mm, last) {
+    let lookups = if let V::List(vs) = &val { vs.len() } else { 1 };
+    let m = Matcher::new(&ks[..], mm, last, lookups);
+    let pick = |l: &V| match m.find(l) {
         Err(e) => e,
         Ok(Some(i)) => V::Num((i + 1) as f64),
         Ok(None) if wired => err(ErrorCode::NotAvailable, "No match found in the array"),
@@ -1554,7 +1555,10 @@ fn index_container(v: &Cv, row: &V, col: &V, unit: Option<&serde_json::Value>) -
     if row_all {
         let col = &frame.columns[ci as usize];
         return Cv::V(list(match &col.unit {
-            Some(u) => col.values.iter().map(|x| tag_cell_unit(x, u)).collect(),
+            Some(u) => {
+                let tag = super::frames::UnitTag::new(u);
+                col.values.iter().map(|x| tag.tag(x)).collect()
+            }
             None => col.values.clone(),
         }));
     }

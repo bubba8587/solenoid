@@ -79,7 +79,12 @@ fn width(m: &V) -> usize {
 
 /// Every cell a finite number, or the error naming the first that isn't.
 fn numeric(m: &V) -> Result<V, V> {
-    for row in rows_of(m) {
+    let rows = rows_of(m);
+    let width = rows.first().map_or(0, |r| rows_of(r).len());
+    if rows.iter().any(|r| rows_of(r).len() != width) {
+        return Err(err(ErrorCode::Shape, "This matrix operation needs every row the same width"));
+    }
+    for row in rows {
         for cell in rows_of(&row) {
             match cell {
                 V::Null | V::Undef => {
@@ -603,7 +608,9 @@ fn make_array(c: &mut Call) -> Answer {
     if rows < 1.0 || cols < 1.0 {
         return lambda_done(c, V::Null, None);
     }
-    if rows * cols > MAX_GENERATED {
+    // A side that isn't a number builds nothing along it, and counts as one, so it can't let the other past the cap.
+    let (r, k) = (if rows.is_nan() { 0.0 } else { rows }, if cols.is_nan() { 0.0 } else { cols });
+    if r.max(1.0) * k.max(1.0) > MAX_GENERATED {
         let msg = format!(
             "MAKEARRAY count {} exceeds the {} element limit",
             number_to_string(rows * cols),
@@ -612,7 +619,7 @@ fn make_array(c: &mut Call) -> Answer {
         return fn_error(c, sol_error(ErrorCode::Overflow, msg));
     }
     let ev = Eval::default();
-    let (r, k) = (if rows.is_nan() { 0 } else { rows as usize }, if cols.is_nan() { 0 } else { cols as usize });
+    let (r, k) = (r as usize, k as usize);
     let out: Vec<Vec<V>> = (1..=r)
         .map(|i| (1..=k).map(|j| result_cell(&body.call(&ev, &[V::Num(i as f64), V::Num(j as f64)]))).collect())
         .collect();

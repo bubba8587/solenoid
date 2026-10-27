@@ -476,7 +476,8 @@ fn failed() -> crate::excel_functions::V {
 pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     use crate::excel_functions::V;
     let arg_of = crate::eval::decode_value;
-    let _calc = Calc::begin(parse(args, "clock")?);
+    let clock = parse(args, "clock")?;
+    let _calc = if command == "engine_eval" { Calc::keeping_lists(clock) } else { Calc::begin(clock) };
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
         let argv: Vec<V> =

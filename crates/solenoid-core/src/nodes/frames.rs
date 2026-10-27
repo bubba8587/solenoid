@@ -10,6 +10,7 @@ use crate::excel_functions::V;
 use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{agg_unit, agg_unit_plan, aggregate_group, AggOp};
 use crate::jsnum::{js_trim, math_max, math_round};
+use crate::value_kinds::MAX_GENERATED;
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
 
@@ -177,9 +178,6 @@ pub(crate) fn card(c: &Call, key: &str) -> Cv {
     c.read_card(key)
 }
 
-/// A frame's `V8` array cap: a body that builds a longer array throws as JS does.
-const MAX_ARRAY: f64 = 134_217_725.0;
-
 fn number_or_nan(v: &V) -> f64 {
     if let V::Num(n) = v {
         *n
@@ -334,8 +332,9 @@ fn ets_forecast(c: &mut Call) -> Answer {
     let fit =
         crate::fns_lists::fit_ets(&y, m).or_else(|| if m > 1.0 { crate::fns_lists::fit_ets(&y, 1.0) } else { None });
     let Some(fit) = fit else { return blank(c, Cv::NULL) };
-    if h > MAX_ARRAY {
-        return Err(thrown("Invalid array length"));
+    if h > MAX_GENERATED {
+        let msg = format!("A horizon of {} steps exceeds the 1000000 element limit", crate::jsnum::number_to_string(h));
+        return Err(err(ErrorCode::Overflow, msg));
     }
     let steps = if h.is_nan() { 0 } else { h as usize };
     let z = crate::dists::norm_s_inv(0.5 + 0.95 / 2.0);
@@ -628,6 +627,9 @@ fn shown_frame(c: &mut Call, key: &str, v: impl Into<Cv>) -> Answer {
 fn allocator(c: &mut Call) -> Answer {
     let Some(f) = frame_in(c, "categories") else { return shown_frame(c, "frame", V::Null) };
     let amount = super::list::or(c.read_num("amount", 0.0), V::Num(0.0));
+    if amount.is_sol_error() {
+        return shown_frame(c, "frame", amount);
+    }
     let mode = c.field_str("mode", "budget").to_string();
     let out = match crate::decision::allocate_frame(&to_core(&f), &mode, super::kit::num(&amount)) {
         Some(r) => frame_or_error(r),
@@ -1361,28 +1363,52 @@ pub(crate) fn parse_column_unit_from_header(header: &str) -> (String, Option<Jso
 
 /// A finite number as a cell in the column's unit.
 pub(crate) fn tag_cell_unit(v: &V, unit: &Json) -> V {
-    let V::Num(n) = v else { return v.clone() };
-    if !n.is_finite() {
-        return v.clone();
+    UnitTag::new(unit).tag(v)
+}
+
+/// A column's unit read once for every cell it tags: the catalog unit its display names, else its dimension.
+pub(crate) enum UnitTag {
+    Catalog(crate::unit_catalog::Unit, String),
+    Dim(crate::unit_dims::Dim),
+}
+
+impl UnitTag {
+    pub(crate) fn new(unit: &Json) -> Self {
+        let display = unit.get("display").and_then(Json::as_str);
+        if let Some(u) = display.and_then(crate::unit_catalog::fc_unit_to_unit) {
+            return UnitTag::Catalog(u, display.unwrap_or_default().to_string());
+        }
+        UnitTag::Dim(
+            unit.get("dim")
+                .and_then(Json::as_object)
+                .map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect())
+                .unwrap_or_default(),
+        )
     }
-    let display = unit.get("display").and_then(Json::as_str);
-    if let Some(u) = display.and_then(crate::unit_catalog::fc_unit_to_unit) {
-        return super::units::from_unit(*n, &u, display);
+
+    pub(crate) fn tag(&self, v: &V) -> V {
+        let V::Num(n) = v else { return v.clone() };
+        if !n.is_finite() {
+            return v.clone();
+        }
+        match self {
+            UnitTag::Catalog(u, display) => super::units::from_unit(*n, u, Some(display)),
+            UnitTag::Dim(dim) => super::units::tag(*n, dim.clone(), None),
+        }
     }
-    let dim = unit
-        .get("dim")
-        .and_then(Json::as_object)
-        .map(|o| o.iter().map(|(k, v)| (k.clone(), v.as_f64().unwrap_or(0.0))).collect())
-        .unwrap_or_default();
-    super::units::tag(*n, dim, None)
+
+    /// A list item by item.
+    pub(crate) fn tag_items(&self, v: &V) -> V {
+        match v {
+            V::List(l) => list(l.iter().map(|x| self.tag_items(x)).collect()),
+            other => self.tag(other),
+        }
+    }
 }
 
 /// A list item by item.
 pub(crate) fn tag_cube_cell_unit(v: &V, unit: &Json) -> V {
-    match v {
-        V::List(l) => list(l.iter().map(|x| tag_cube_cell_unit(x, unit)).collect()),
-        other => tag_cell_unit(other, unit),
-    }
+    UnitTag::new(unit).tag_items(v)
 }
 
 // ─── Cubes ──────────────────────────────────────────────────────────────────────
@@ -1615,20 +1641,26 @@ fn infer_cube_key_type(cells: &[V]) -> FrameColType {
     }
 }
 
-/// Row indices over a Cube's key column (a frame read as a Cube): its keys as the numbers
-/// they show, matched on the core.
-fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str) -> Result<i64, V> {
+/// Row indices over a Cube's key column (a frame read as a Cube), one per lookup: its keys as the numbers
+/// they show, read once and matched on the core in one call.
+fn cube_lookup_indices(cube: &Cube, in_col: &str, lookups: &[String], mm: &str, sm: &str) -> Result<Vec<i64>, V> {
     let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else {
         return Err(err(ErrorCode::Ref, format!("column \"{in_col}\" not found")));
     };
+    if lookups.is_empty() {
+        return Ok(Vec::new());
+    }
     let rows = cube_row_count(cube);
     let key_cells = cube_values(&key.cells);
     let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key_cells));
     let cells: Vec<V> = (0..rows).map(|i| key_cells.get(i).cloned().unwrap_or(V::Undef)).collect();
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
     let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
-    match crate::frame_fns::call("lookupRowIndex", &[&f], &[V::str(in_col), V::str(lookup), V::str(mm), V::str(sm)]) {
-        crate::frame_fns::FrameOut::Value(V::Num(i)) => Ok(i as i64),
+    let wanted = list(lookups.iter().map(|l| V::str(l)).collect());
+    match crate::frame_fns::call("lookupRowIndex", &[&f], &[V::str(in_col), wanted, V::str(mm), V::str(sm)]) {
+        crate::frame_fns::FrameOut::Value(V::List(found)) => {
+            Ok(found.iter().map(|i| if let V::Num(i) = i { *i as i64 } else { -1 }).collect())
+        }
         crate::frame_fns::FrameOut::Error(e) => Err(V::err(e)),
         _ => Err(thrown("XLOOKUP got an answer it doesn't read")),
     }
@@ -1643,7 +1675,10 @@ pub fn frame_to_cube(f: &Frame) -> Cube {
             .map(|col| CubeColumn {
                 name: col.name.clone(),
                 cells: match &col.unit {
-                    Some(u) => col.values.iter().map(|v| Cv::V(tag_cell_unit(v, u))).collect(),
+                    Some(u) => {
+                        let tag = UnitTag::new(u);
+                        col.values.iter().map(|v| Cv::V(tag.tag(v))).collect()
+                    }
                     None => col.values.iter().cloned().map(Cv::V).collect(),
                 },
                 ty: Some(col.ty),
@@ -1675,7 +1710,8 @@ fn lookup_on_core(
         .map(|c| {
             let values: Vec<FrameCell> = match (&c.unit, c.name == in_col) {
                 (Some(u), true) => {
-                    keys_in_display_unit(&c.values.iter().map(|v| tag_cell_unit(v, u)).collect::<Vec<_>>())
+                    let tag = UnitTag::new(u);
+                    keys_in_display_unit(&c.values.iter().map(|v| tag.tag(v)).collect::<Vec<_>>())
                         .iter()
                         .map(core_cell)
                         .collect()
@@ -1700,7 +1736,10 @@ fn lookup_on_core(
     };
     let unit = ret.and_then(|r| src.columns.iter().find(|c| c.name == r)).and_then(|c| c.unit.clone());
     Ok(Some(match unit {
-        Some(u) => out.iter().map(|v| if matches!(v, V::Undef) { V::Undef } else { tag_cell_unit(v, &u) }).collect(),
+        Some(u) => {
+            let tag = UnitTag::new(&u);
+            out.iter().map(|v| if matches!(v, V::Undef) { V::Undef } else { tag.tag(v) }).collect()
+        }
         None => out,
     }))
 }
@@ -1782,6 +1821,8 @@ fn xlookup(c: &mut Call) -> Answer {
             Some(f) => lookup_on_core(f, &in_col, if whole_row { None } else { Some(&ret_col) }, &lookups, &mm, &sm)?,
             None => None,
         };
+        let on_cube =
+            if found.is_none() { cube_lookup_indices(&src_cube, &in_col, &lookups, &mm, &sm)? } else { Vec::new() };
         let mut k = 0;
         let mut match_one = |v: &V| -> Result<Cv, V> {
             let lookup = as_text(v);
@@ -1789,11 +1830,12 @@ fn xlookup(c: &mut Call) -> Answer {
                 return Ok(Cv::NULL);
             }
             let hit = found.as_ref().map(|f| f.get(k).cloned().unwrap_or(V::Undef));
+            let cube_idx = on_cube.get(k).copied().unwrap_or(-1);
             k += 1;
             let cell = if whole_row {
                 let idx = match hit {
                     Some(h) => super::kit::num(&h) as i64,
-                    None => cube_lookup_index(&src_cube, &in_col, &lookup, &mm, &sm)?,
+                    None => cube_idx,
                 };
                 if idx < 0 {
                     None
@@ -1808,7 +1850,7 @@ fn xlookup(c: &mut Call) -> Answer {
                     Some(V::Undef) => None,
                     Some(h) => Some(Cv::V(h)),
                     None => {
-                        let idx = cube_lookup_index(&src_cube, &in_col, &lookup, &mm, &sm)?;
+                        let idx = cube_idx;
                         let Some(ret) = src_cube.columns.iter().find(|k| k.name == ret_col) else {
                             return Err(err(ErrorCode::Ref, format!("column \"{ret_col}\" not found")));
                         };
@@ -2911,9 +2953,12 @@ fn rank_nested(
         }
     }
     let ranked = rank_any(&pooled, wf, normalize, breakdown)?;
+    let mut by_table: Vec<Vec<usize>> = vec![Vec::new(); out.len()];
+    for (k, &p) in ranked.at.iter().enumerate() {
+        by_table[group[p]].push(k);
+    }
     for (_, i) in &tables {
-        let mine: Vec<usize> = ranked.at.iter().enumerate().filter(|(_, &p)| group[p] == *i).map(|(k, _)| k).collect();
-        let sub = table_pick(&ranked.table, &mine);
+        let sub = table_pick(&ranked.table, &by_table[*i]);
         out[*i] = within_group(&sub, ranked.score_at, ranked.rank_at);
     }
     Ok((keys, Some(out)))

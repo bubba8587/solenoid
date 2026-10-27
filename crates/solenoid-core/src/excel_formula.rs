@@ -291,9 +291,17 @@ fn tokenize(src: &str) -> Option<Vec<Tok>> {
 
 // ─── Parser (Excel precedence) ──────────────────────────────────────────────────
 
+/// How deep a formula may nest, in parser recursion and in tree depth alike (a long flat sum builds a deep tree):
+/// past it the formula doesn't parse, rather than overflowing the stack in the parser, the evaluator or the drop.
+const MAX_DEPTH: usize = 400;
+
 struct Parser {
     toks: Vec<Tok>,
     p: usize,
+    /// The depth of the tree the last parse step built.
+    d: usize,
+    /// How many parens, argument lists and unary operators the parser is inside.
+    nest: usize,
 }
 
 impl Parser {
@@ -328,61 +336,56 @@ impl Parser {
         Ast::Bin { op, l: Box::new(l), r: Box::new(r) }
     }
 
-    fn comparison(&mut self) -> Option<Ast> {
-        let mut l = self.concat()?;
-        while let Some(op) = self.peek_bin(&[BinOp::Eq, BinOp::Ne, BinOp::Lt, BinOp::Gt, BinOp::Le, BinOp::Ge]) {
+    /// A node over children `child` deep, refused past `MAX_DEPTH`.
+    fn deeper(child: usize) -> Option<usize> {
+        (child < MAX_DEPTH).then_some(child + 1)
+    }
+
+    fn enter(&mut self) -> Option<()> {
+        self.nest += 1;
+        (self.nest <= MAX_DEPTH).then_some(())
+    }
+
+    /// A left-associative run of `ops` over what `next` parses.
+    fn chain(&mut self, ops: &[BinOp], next: fn(&mut Self) -> Option<Ast>) -> Option<Ast> {
+        let mut l = next(self)?;
+        let mut d = self.d;
+        while let Some(op) = self.peek_bin(ops) {
             self.eat();
-            let r = self.concat()?;
+            let r = next(self)?;
+            d = Self::deeper(d.max(self.d))?;
             l = Self::bin(op, l, r);
         }
+        self.d = d;
         Some(l)
+    }
+
+    fn comparison(&mut self) -> Option<Ast> {
+        self.chain(&[BinOp::Eq, BinOp::Ne, BinOp::Lt, BinOp::Gt, BinOp::Le, BinOp::Ge], Self::concat)
     }
 
     fn concat(&mut self) -> Option<Ast> {
-        let mut l = self.add()?;
-        while let Some(op) = self.peek_bin(&[BinOp::Concat]) {
-            self.eat();
-            let r = self.add()?;
-            l = Self::bin(op, l, r);
-        }
-        Some(l)
+        self.chain(&[BinOp::Concat], Self::add)
     }
 
     fn add(&mut self) -> Option<Ast> {
-        let mut l = self.mul()?;
-        while let Some(op) = self.peek_bin(&[BinOp::Add, BinOp::Sub]) {
-            self.eat();
-            let r = self.mul()?;
-            l = Self::bin(op, l, r);
-        }
-        Some(l)
+        self.chain(&[BinOp::Add, BinOp::Sub], Self::mul)
     }
 
     fn mul(&mut self) -> Option<Ast> {
-        let mut l = self.exp()?;
-        while let Some(op) = self.peek_bin(&[BinOp::Mul, BinOp::Div]) {
-            self.eat();
-            let r = self.exp()?;
-            l = Self::bin(op, l, r);
-        }
-        Some(l)
+        self.chain(&[BinOp::Mul, BinOp::Div], Self::exp)
     }
 
     // Left-associative, as in Excel: 2^3^2 is 64.
     fn exp(&mut self) -> Option<Ast> {
-        let mut l = self.percent()?;
-        while let Some(op) = self.peek_bin(&[BinOp::Pow]) {
-            self.eat();
-            let r = self.percent()?;
-            l = Self::bin(op, l, r);
-        }
-        Some(l)
+        self.chain(&[BinOp::Pow], Self::percent)
     }
 
     fn percent(&mut self) -> Option<Ast> {
         let mut a = self.unary()?;
         while self.is_op(&["%"]) {
             self.eat();
+            self.d = Self::deeper(self.d)?;
             a = Ast::Percent(Box::new(a));
         }
         Some(a)
@@ -391,7 +394,10 @@ impl Parser {
     fn unary(&mut self) -> Option<Ast> {
         if let Some(op) = self.peek().filter(|t| t.k == K::Op).and_then(|t| t.v.parse::<UnaryOp>().ok()) {
             self.eat();
+            self.enter()?;
             let arg = self.unary()?;
+            self.nest -= 1;
+            self.d = Self::deeper(self.d)?;
             return Some(Ast::Unary { op, arg: Box::new(arg) });
         }
         self.primary()
@@ -400,13 +406,16 @@ impl Parser {
     /// Starts at the open paren. The closing test reads only a token's text.
     fn arg_list(&mut self) -> Option<Vec<Ast>> {
         self.eat();
+        self.enter()?;
         let mut args = Vec::new();
+        let mut d = 1;
         if !self.peek_v(")") {
             loop {
                 if self.peek().is_some_and(|t| t.k == K::Comma) || self.peek_k(K::Paren, ")") {
                     args.push(Ast::Blank);
                 } else {
                     args.push(self.comparison()?);
+                    d = d.max(self.d);
                 }
                 if self.peek().is_some_and(|t| t.k == K::Comma) {
                     self.eat();
@@ -419,19 +428,25 @@ impl Parser {
             return None;
         }
         self.eat();
+        self.nest -= 1;
+        self.d = d;
         Some(args)
     }
 
     fn primary(&mut self) -> Option<Ast> {
         let mut node = self.primary_no_apply()?;
+        let mut d = self.d;
         while self.peek_k(K::Paren, "(") {
             let args = self.arg_list()?;
+            d = Self::deeper(d.max(self.d))?;
             node = Ast::Apply { func: Box::new(node), args };
         }
+        self.d = d;
         Some(node)
     }
 
     fn primary_no_apply(&mut self) -> Option<Ast> {
+        self.d = 1;
         let t = self.peek()?.clone();
         if t.k == K::Op && t.v == "@" {
             self.eat();
@@ -462,17 +477,20 @@ impl Parser {
             }
             K::Paren if t.v == "(" => {
                 self.eat();
+                self.enter()?;
                 let e = self.comparison()?;
                 if !self.peek_v(")") {
                     return None;
                 }
                 self.eat();
+                self.nest -= 1;
                 Some(e)
             }
             K::Name => {
                 self.eat();
                 if self.peek_k(K::Paren, "(") {
                     let args = self.arg_list()?;
+                    self.d = Self::deeper(self.d)?;
                     return Some(Ast::Call { name: t.v, args });
                 }
                 let up = t.v.to_uppercase();
@@ -494,7 +512,7 @@ pub fn parse_formula(expr: &str) -> Option<Ast> {
         return None;
     }
     let toks = tokenize(expr)?;
-    let mut p = Parser { toks, p: 0 };
+    let mut p = Parser { toks, p: 0, d: 0, nest: 0 };
     let node = p.comparison()?;
     if p.p != p.toks.len() {
         return None;

@@ -76,5 +76,41 @@ describe("a formula never reads a number, date or logical out of text ([[C131]] 
       expect(ev(`${fn}(L, N)`, { L, N })).toBeCloseTo(ev(`${fn}(L, N)`, blank) as number, 12);
     expect(ev("SLOPE(L, N)", { L, N })).toBeCloseTo(3 / 7, 12);
   });
+
+  it("a pack or coupon function refuses numeric text where it read blank or #DOMAIN!", () => {
+    for (const src of ['SUNRISE(45292, "51.5", 0)', 'AWGWIRE("12")', 'COLEBROOK("1e5", 0.001)', 'STANDARDATMOSPHERE("1000")',
+      'TRIANGLESOLVER(2, 2, "2")', 'ANTOINE("water", "100")', 'COUPDAYS(45292, 45658, 2, "1")',
+      'ACCRINT(45292, 45474, 45658, "0.1", 1000, 2, 0)'])
+      expect(code(ev(src))).toBe("#VALUE!");
+    expect(code(ev('ANTOINE("water", 100)'))).not.toBe("#VALUE!");
+  });
+
+  it("a dated cash flow or a signal refuses a text cell, as NPV does, where it read 0; IRR and MIRR skip it as Excel does", () => {
+    const flows = [-100, "60", 60];
+    for (const src of ["XNPV(0.1, f, d)", "XIRR(f, d)", "CONVOLVE(f, f)", "SPECTRUM(f)", "NPV(0.1, f)"])
+      expect(code(ev(src, { f: flows, d: [45292, 45658, 46023] }))).toBe("#VALUE!");
+    expect(ev("IRR(f)", { f: flows })).toBeCloseTo(-0.4, 12);
+    expect(code(ev("IRR(f)", { f: [-100, null, 120] }))).not.toBe("#VALUE!");
+  });
+
+  it("TRIMMEAN and FORECAST.LINEAR refuse text with #VALUE!, not #DOMAIN!", () => {
+    const L = [1, "2", 3, 2], N = [1, 2, 3, 4];
+    expect(code(ev("TRIMMEAN(L, 0.2)", { L: [1, "2", 3, 4, 5] }))).toBe("#VALUE!");
+    expect(code(ev('TRIMMEAN("12345", 0.2)'))).toBe("#VALUE!");
+    expect(code(ev("FORECAST.LINEAR(5, L, N)", { L, N }))).toBe("#VALUE!");
+    expect(ev("TRIMMEAN(N, 0.2)", { N })).toBe(2.5);
+  });
+
+  it("number slots the second sweep found refuse text with #VALUE!", () => {
+    const r = [0.1, -0.05, 0.2], c = [-100, 60, 60], d = [45292, 45658, 46023];
+    for (const [src, vars] of [
+      ['CAGR(r, "1")', { r }], ['SHARPE(r, "0.01")', { r }], ['T.TEST(r, r, "2", 1)', { r }], ['HYPOTENUSE("3", 4)', {}],
+      ['LOG2("8")', {}], ['PPMT(0.1, "1", 3, 100)', {}], ['FUZZYMATCH("abc", t, "0.9")', { t: ["abc"] }],
+      ["WAVG(v, w)", { v: [1, "2"], w: [1, 1] }], ['IRR(c, "0.1")', { c }], ["XIRR(c, x)", { c, x: [45292, "45658", 46023] }],
+      ['XNPV("0.1", c, d)', { c, d }], ['GCD("12", 18)', {}], ['MULTINOMIAL("2", 3)', {}], ['TEXTSPLIT("a,b", ",", , , "1")', {}],
+    ] as [string, Record<string, unknown>][])
+      expect(code(ev(src, vars)), src).toBe("#VALUE!");
+    expect(ev("GCD(12, 18)")).toBe(6);
+  });
 });
 
