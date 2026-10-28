@@ -175,6 +175,7 @@ function ChartBody({ value, fontScale, fill, sourceId }: { value: ChartValue; fo
             height={fill && h > 0 ? h : 200}
             fontScale={fontScale}
             recordNav={recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined}
+            valueFormat={sourceId && value.op === "kpi" ? resolveRefAnnotation(sourceId, "value") : undefined}
             ladderAction={ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined}
           />
         : null}

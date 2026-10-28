@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
+import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
 import { AutoCard, cardChipColors } from "./AutoCard";
@@ -13,7 +14,9 @@ function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefine
   return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
 }
 
-export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: number }) {
+/** `format` is the format on the KPI's Value input (a Format Controller there or upstream): the value and its change wear it. */
+export function KpiCard({ payload, fscale, format }: { payload: KpiPayload; fscale?: number; format?: FormatAnnotation }) {
+  const num = (n: number) => (format ? formatNumberWithAnnotation(n, format) : formatScalar(n));
   const { value, prev, unit, goodUp } = payload;
   const has = value !== null && Number.isFinite(value);
   const delta = has && prev !== null && Number.isFinite(prev) ? value! - prev : null;
@@ -24,14 +27,14 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   return (
     <div className="sol-kpi" style={fscaleStyle(fscale)}>
       <div className="sol-kpi__value">
-        {has ? formatScalar(value!) : "—"}
+        {has ? num(value!) : "—"}
         {unit ? <span className="sol-kpi__unit">{unit}</span> : null}
       </div>
       {delta !== null && (
         <div className="sol-kpi__delta" style={{ color }}>
           <span className="sol-kpi__arrow">{dir > 0 ? "▲" : dir < 0 ? "▼" : "▬"}</span>
-          {formatScalar(Math.abs(delta))}
-          {pct !== null ? ` (${formatScalar(Math.abs(pct))}%)` : ""}
+          {num(Math.abs(delta))}
+          {pct !== null ? ` (${formatScalar(Math.round(Math.abs(pct) * 10) / 10)}%)` : ""}
         </div>
       )}
     </div>

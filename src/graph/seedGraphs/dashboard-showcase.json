@@ -461,8 +461,8 @@
       "targetInput": "values"
     },
     {
-      "source": "latest",
-      "sourceOutput": "result",
+      "source": "fmt-latest",
+      "sourceOutput": "out",
       "target": "kpi",
       "targetInput": "value"
     },

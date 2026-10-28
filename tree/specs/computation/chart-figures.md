@@ -167,7 +167,7 @@ When any source carries an `xy` payload (a Scatter, XY Line or Bubble), the merg
 
 ### KPI
 
-`value` and `prev` read with `readInput`, card literals default to 0. `unit` is the card text, `goodUp` the card flag (default on). A wired blank `prev` gives null (no comparison).
+`value` and `prev` read with `readInput`, card literals default to 0. `unit` is the card text, `goodUp` the card flag (default on). A wired blank `prev` gives null (no comparison). The card draws the value and the size of the change in the format on the KPI's Value input (a Format Controller docked there or one upstream through passthroughs, `resolveRefAnnotation(kpi, "value")`), on the KPI's own card and wherever the figure is embedded (a Report, a Dashboard box: `ChartFigure`'s `valueFormat`); with none, the General style. The change's percentage shows one decimal place.
 
 ### Frame-fed payload figures
 

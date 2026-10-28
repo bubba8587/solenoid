@@ -6,6 +6,7 @@ import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
 import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
 // `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
@@ -128,6 +129,8 @@ type FigureProps = {
   /** A Choice Ladder's figure can change its node's choices when the surface knows the node. */
   ladderAction?: (a: LadderAction) => void;
   virtualize?: boolean;
+  /** A KPI card's number format, from its Value input. */
+  valueFormat?: FormatAnnotation;
 };
 
 const RESIZE_SETTLE_MS = 160;
@@ -159,7 +162,7 @@ export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
   );
 });
 
-const FigureBody = memo(function FigureBody({ value, width, height, axes = true, fontScale, recordNav, ladderAction, virtualize }: FigureProps) {
+const FigureBody = memo(function FigureBody({ value, width, height, axes = true, fontScale, recordNav, ladderAction, virtualize, valueFormat }: FigureProps) {
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
   // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
@@ -171,12 +174,12 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
         <ChartTitle text={title} fs={fscale} />
         <FigureBody
           value={{ ...value, options: { ...value.options, title: undefined } }}
-          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} virtualize={virtualize}
+          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} virtualize={virtualize} valueFormat={valueFormat}
         />
       </div>
     );
   }
-  if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
+  if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} format={valueFormat} />;
   if (value.op === "scale" && value.payload?.kind === "scale")
     return value.payload.style === "dial"
       ? <ScaleDial payload={value.payload} width={width} fscale={fscale} />
