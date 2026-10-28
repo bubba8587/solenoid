@@ -416,7 +416,7 @@ A box is a grid placement, its name as the label, its value drawn by the shared 
 
 ### Motion
 
-A box's content animates when it appears (the board opening, a box expanded): every box at once, within one window of about 650 ms, each kind in its own way (`DashboardOverlay.css` § Motion). It is the content that moves; the boxes themselves never fly in.
+A box's content animates in the board's intro window: the board opening, a box expanded or returned from, edit mode closing. Every box moves at once, within about 650 ms, each kind in its own way (`DashboardOverlay.css` § Motion), under the overlay's `dashboard-overlay--intro` class, held for 900 ms. Outside the window nothing replays: a chart rebuilt by a later recompute (a Record paged elsewhere on the board) just shows its shapes, while a number whose value changes still counts to the new one. It is the content that moves; the boxes themselves never fly in.
 
 | Content | Motion |
 |---|---|

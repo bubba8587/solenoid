@@ -257,6 +257,15 @@ export function DashboardOverlay() {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  // The content's motion plays inside this window only, so a chart rebuilt by a later recompute does not replay it.
+  const [intro, setIntro] = useState(false);
+  const editing = !!edit;
+  useEffect(() => {
+    if (!nodeId || editing) return;
+    setIntro(true);
+    const t = setTimeout(() => setIntro(false), COUNT_MS + 250);
+    return () => clearTimeout(t);
+  }, [nodeId, focus, editing]);
 
   useEffect(() => { setFocus(null); setEdit(null); setRenaming(null); }, [nodeId]);
   useEscapeLayer(!!renaming, () => setRenaming(null));
@@ -360,7 +369,7 @@ export function DashboardOverlay() {
   const shown = focus ? placed.filter((p) => p.name === focus) : placed;
 
   return (
-    <div ref={rootRef} className="dashboard-overlay" onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={rootRef} className={`dashboard-overlay${intro ? " dashboard-overlay--intro" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
       <div className="report-header">
         <span className="report-title">
           {node.label?.trim() || "Dashboard"}
