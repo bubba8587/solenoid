@@ -386,6 +386,8 @@ A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a Report without the 
 
 **Undo.** Every change made on the board (a layout, a rename, a removal, a color, a view) is one undo step: layout changes record through the recompute, colors and views through `notifyGraphChanged`. Ctrl+Z works with the board open, and the board stays open through it: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id and resolves the name again (`openNodeId`), and it does not close on the forgets a rebuild sends. `boxColors` and `boxViews` save through `extractInit`.
 
+**The showcase.** `dashboard-showcase.json` (Charts & reports, beside the Report showcase) wires one sales board through every kind a box draws: big formatted numbers, a KPI card, text, a line chart, a pie, a treemap, a gauge, a Mermaid diagram, a Note, a table and a paged Record, with Group-colored boxes.
+
 **Full screen.** Where the browser allows it, a header button puts the overlay in full screen.
 
 ## What is sanitized, and where
