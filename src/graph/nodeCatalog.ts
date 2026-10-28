@@ -51,7 +51,7 @@ import {
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode, CubeInputNode,
   WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode, VaultFolderNode,
   WriteFileNode, WriteObsidianNode, TaskNotesNode, WriteTasksNode, ImportObsidianNode,
-  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode,
+  GroupNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
@@ -449,6 +449,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
         { type: "report", label: "Report", description: "A markdown document written as a Knap template. `{{ name }}` shows a value the way the canvas does, `{% for %}` repeats over a Frame and `{% if %}` gates a section. A Note on Template supplies the text instead, and Records turns it into a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
       ]},
+      { type: "dashboard", label: "Dashboard", description: "A full-screen board of live values, charts and tables on a grid. The layout reads like Frame Input's Form Layout: a line per row, names split by `|`, `Chart*2` spans two columns, and a repeated name merges its boxes. Each name is a box.", keywords: "dashboard board panel tiles overview monitor grid layout full screen kpi summary", create: () => new DashboardNode(), parity: false },
       { type: "pair", children: [
         { type: "image", label: "Image", description: "A free-floating picture from a local file or a web URL. Annotation only, no data. Web URLs persist; local files are session-only.", create: () => new ImageNode(), parity: false },
         { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },

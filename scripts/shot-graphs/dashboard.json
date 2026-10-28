@@ -1,0 +1,10 @@
+{ "nodes": [
+  { "id": "f1", "type": "FrameInputNode", "init": { "label": "Quarterly sales" },
+    "frame": [ { "name": "Quarter", "type": "string", "cells": ["Q1", "Q2", "Q3", "Q4"] }, { "name": "Sales", "cells": [1200, 1550, 1340, 1810] } ] },
+  { "id": "c1", "type": "ChartNode", "init": { "label": "Sales by quarter", "op": "column" } },
+  { "id": "g1", "type": "GetColumnNode", "init": { "label": "Sales" }, "stringLiterals": { "name": "Sales" } },
+  { "id": "s1", "type": "AggregateNode", "init": { "label": "SUM", "op": "sum" } },
+  { "id": "a1", "type": "AggregateNode", "init": { "label": "AVERAGE", "op": "avg" } },
+  { "id": "d1", "type": "DashboardNode", "init": { "label": "Sales board", "layout": "Total | Average | Target: set a goal\nChart*2 | Table\nChart*2 | Table" } } ],
+  "cables": [ "f1.frame -> c1.values", "f1.frame -> g1.frame", "g1.values -> s1.list", "g1.values -> a1.list",
+    "s1.result -> d1.Total", "a1.result -> d1.Average", "c1.chart -> d1.Chart", "f1.frame -> d1.Table" ] }

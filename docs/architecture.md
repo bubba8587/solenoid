@@ -171,6 +171,7 @@ mindmap
 | `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `bareTags` finds a bare `{{ input }}` and `embedBareVariables` rewrites it to the ref span so it embeds by kind, `renderKnap` wraps the `knap` engine (standard filters). The only module that calls `knap`; the Obsidian plugin bundles it, so it imports no value modules |
 | `templateValue.ts` | `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type: what Knap reads for a value |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
+| `dashboardStore.ts` + `components/DashboardOverlay.tsx` | The Dashboard's open state and its full-canvas grid of boxes, each value drawn by the Report's embed renderer |
 
 ### Typing / sockets / units
 

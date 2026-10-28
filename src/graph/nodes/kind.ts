@@ -54,6 +54,7 @@ import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, Heatm
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
 import { ReportNode } from "./report";
+import { DashboardNode } from "./dashboard";
 import { QrCodeNode } from "./qr";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
@@ -87,7 +88,7 @@ export function nodeKindOf(node: GraphNode): NodeKind {
 
 export function explicitKindOf(node: GraphNode): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof ReportNode) return "document";
+  if (node instanceof ReportNode || node instanceof DashboardNode) return "document";
   if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";

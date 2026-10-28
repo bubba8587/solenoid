@@ -32,6 +32,7 @@ export const INIT_FIELD_ORDER = [
   "byCol", "exactlyOnce",
   "typedKeys",
   "choices",
+  "layout",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

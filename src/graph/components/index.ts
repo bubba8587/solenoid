@@ -145,6 +145,7 @@ export { CableSwitchComponent } from "./CableSwitchNode";
 export { NoteComponent } from "./NoteNode";
 
 export { ReportComponent } from "./ReportNode";
+export { DashboardComponent } from "./DashboardNode";
 
 export { SessionHistoryComponent } from "./SessionHistoryNode";
 

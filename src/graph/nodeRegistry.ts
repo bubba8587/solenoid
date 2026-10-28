@@ -4,7 +4,7 @@ import type { Emit } from "./components/nodeKit";
 import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -80,7 +80,7 @@ import {
   TornadoNode,
 } from "./nodeClasses";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
@@ -177,6 +177,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ImportObsidianNode, comp(ImportObsidianComponent)],
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
+  [DashboardNode,   comp(DashboardComponent)],
   [SessionHistoryNode, comp(SessionHistoryComponent)],
   [PresentationNode, comp(PresentationComponent)],
   [ImageNode,       comp(ImageComponent)],

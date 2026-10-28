@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-28: headless CLI, Dashboard node; branch rust-port; cloud session)
+- **The headless runner bundles alone**: `npm run build:cli` writes `dist-cli/` (about 9 MB, Node only) and `cli-smoke.mjs` runs it from an empty folder after each build; `vite-run.mjs` loads the engine itself, so `run-graph`, `validate-graph`, `ai-grounding` and `copy-inventory` start again.
+- **Dashboard node** ([[reports-and-notes]] § Dashboards; author's word in `out-of-scope.md` §1): the Report's card and embed renderer, laid out on a full-canvas grid by the Record layout text authored on the card; in `SEES_ERRORS`, so errors show in their box.
+
 ### SESSION DIGEST (2026-10-23/24: one engine, in Rust; branch rust-port; cloud session)
 - **The TS engine is gone** ([[D99]] rustIsSpec): Formula.js, the TS parser and evaluator, every TS function body and the JS frame verbs and backend; frozen fixtures in `fixtures/core/` hold what they answered ([[rust-core]]).
 - **Polars is gone**: desktop table verbs run on the core in wasm as the web's do; Parquet reads through `crates/solenoid-parquet` ([[rust-core]] § Where it runs).

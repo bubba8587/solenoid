@@ -368,6 +368,18 @@ The overlay's Export button writes one self-contained `.html` file (`reportExpor
 
 The file name is the label with every character other than word characters, spaces and hyphens removed, plus `.html`; `report.html` when nothing survives. A failure raises an error notice.
 
+## Dashboards
+
+A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a Report without the text: a pure sink that shows its inputs as boxes on a full-screen grid. It persists `label`, `layout` and `collapsed`, and has no outputs.
+
+**The layout** is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `Name: hint` giving the text an empty box shows. It is authored on the card in the layout field (`RecordLayoutField`), committed on blur ([[C95]] commitOnEnter).
+
+**Inputs.** Every placed name is one `trueany` input named exactly as the layout spells it, spaces included, in reading order. The constructor mints them from the saved layout, so a saved cable finds its socket at load. A layout commit (`setLayout`) drops the cables of departing names before removing their sockets ([[input-cable-pruning#The ordering rule]]), adds the new names, and recomputes. `DashboardNode` is in the graph core's `SEES_ERRORS`, so an error input reaches its box as a value. `refValue(name)` is the wired value, `null` for a wired blank, and `undefined` while the name is unwired.
+
+**The card** (`DashboardNode.tsx`) shows an Open Dashboard button, the layout field and one row per name with the Report card's preview (`ReportRefRow`). Collapsed, every input converges on one pill.
+
+**The overlay** (`DashboardOverlay.tsx`, open state in `dashboardStore.ts`) covers the canvas between `--chrome-top` and `--chrome-bottom`, opaque on the canvas color, and the whole screen on mobile. Its header is the Report window's. Each box is a grid placement with the name as its label and the value drawn by the Report's embed renderer (`InlineRefValue`) with `rich` (a Frame shows 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). An unwired box with a hint shows the hint. Rows share the overlay's height with a 140 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, and a box holding a chart is at least 300 px high. Esc and the close button close it.
+
 ## What is sanitized, and where
 
 A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each guard sits at one seam ([[C103]] untrustedContentSeams).

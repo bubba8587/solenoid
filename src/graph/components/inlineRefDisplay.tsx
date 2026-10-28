@@ -131,19 +131,21 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
   );
 }
 
-function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
+/** `fill` takes the container's whole box, as a Dashboard's does; otherwise 200 px high and at most 640 wide. */
+function ChartBody({ value, fontScale, fill }: { value: ChartValue; fontScale?: number; fill?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
+  const [h, setH] = useState(0);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setW(el.clientWidth);
+    const measure = () => { setW(el.clientWidth); setH(el.clientHeight); };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const width = Math.min(w, 640);
+  const width = fill ? w : Math.min(w, 640);
   const cardOp = value.op === "kpi" || value.op === "scale";
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
@@ -151,7 +153,7 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
         ? <ChartFigure
             value={{ ...value, title: undefined, options: value.options ? { ...value.options, title: undefined } : value.options }}
             width={width || 320}
-            height={200}
+            height={fill && h > 0 ? h : 200}
             fontScale={fontScale}
           />
         : null}
@@ -197,12 +199,13 @@ function figureFor(
   rich: boolean,
   ann?: FormatAnnotation,
   frameNodeId?: string,
+  fill?: boolean,
 ): { title: string; caption: ReactNode; body: ReactNode } | null {
   if (isChartValue(value)) {
     return {
       title: value.title || refKey,
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
-      body: <ChartBody value={value} fontScale={ann?.chartFontScale} />,
+      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} />,
     };
   }
   if (isMermaidValue(value)) {
@@ -254,7 +257,9 @@ function figureFor(
   return null;
 }
 
-function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
+/** `rich` draws a figure at full size (a Frame's 25 rows, scrolling); a collapsible figure is always rich. `fill`
+ *  sizes a chart to its container's box. */
+export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; rich?: boolean; fill?: boolean; highlight?: boolean }) {
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
@@ -262,7 +267,7 @@ function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: st
 
   const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
 
-  const fig = figureFor(value, refKey, !!collapsible, ann, srcNodeId);
+  const fig = figureFor(value, refKey, !!(collapsible || rich), ann, srcNodeId, fill);
   if (fig) {
     return collapsible
       ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>
