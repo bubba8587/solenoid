@@ -241,6 +241,15 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   opacity: 0.15;
   border-radius: 8px;
 }
+.dashboard-box--edit .dashboard-box__label svg { color: var(--text-muted); flex-shrink: 0; }
+/* Touch: the label bar is the drag handle, taller for a finger; the box's body still pans the grid; the corner handle
+   is a finger-sized target. The browser's own gestures are off where a drag starts, so it never takes the touch. */
+@media (pointer: coarse) {
+  .dashboard-edit .react-grid-item { touch-action: pan-x pan-y; }
+  .dashboard-box--edit .dashboard-box__label { min-height: 40px; touch-action: none; cursor: grab; }
+  .dashboard-edit .react-grid-item > .react-resizable-handle-se { width: 44px; height: 44px; touch-action: none; }
+  .dashboard-edit .react-grid-item > .react-resizable-handle-se::after { right: 8px; bottom: 8px; width: 12px; height: 12px; border-width: 0 3px 3px 0; }
+}
 .dashboard-edit .react-grid-item > .react-resizable-handle { background-image: none; opacity: 1; }
 .dashboard-edit .react-grid-item > .react-resizable-handle::after { border-color: var(--text-muted); }
 .dashboard-edit .react-grid-item > .react-resizable-handle-e,
@@ -285,7 +294,7 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
    clock. Reduced motion shows everything at rest. */
 @property --dash-sweep { syntax: "<angle>"; inherits: false; initial-value: 180deg; }
 .dashboard-overlay {
-  --dash-in: 650ms;
+  --dash-in: 900ms;
   --dash-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes dash-rise { from { opacity: 0; transform: translateY(8px); } }
@@ -307,7 +316,7 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   .dashboard-overlay--intro .dashboard-box .sol-kpi__value { animation: dash-rise var(--dash-in) var(--dash-ease) both; }
   .dashboard-overlay--intro .dashboard-box .sol-kpi__delta { animation: dash-rise var(--dash-in) var(--dash-ease) 120ms both; }
   .dashboard-overlay--intro .dashboard-box__value .solenoid-mermaid { animation: dash-fade var(--dash-in) var(--dash-ease) both; }
-  .dashboard-overlay--intro .dashboard-box__error { animation: dash-settle 420ms var(--dash-ease) both; }
+  .dashboard-overlay--intro .dashboard-box__error { animation: dash-settle 560ms var(--dash-ease) both; }
 
   /* Lines and areas draw from the left; bars grow from their baseline; slices and cells pop out of their centers. */
   .dashboard-overlay--intro .dashboard-box .recharts-line,
@@ -337,7 +346,7 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 
   /* Table rows and cards cascade in, the cascade held inside the window. */
   .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr,
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > * { animation: dash-rise 420ms var(--dash-ease) both; }
+  .dashboard-overlay--intro .dashboard-box__value .table-cards > * { animation: dash-rise 560ms var(--dash-ease) both; }
   .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(2),
   .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(2) { animation-delay: 20ms; }
   .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(3),

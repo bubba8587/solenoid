@@ -96,3 +96,6 @@ export const Minimize2Icon = (p: IconProps) => (
 export const TableIcon = (p: IconProps) => (
   <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M12 3v18" /></Svg>
 );
+export const GripIcon = (p: IconProps) => (
+  <Svg {...p}><circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" /></Svg>
+);

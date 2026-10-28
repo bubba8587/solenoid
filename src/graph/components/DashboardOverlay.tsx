@@ -19,6 +19,7 @@ import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
 import { InlineRefValue, refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
 import { isDateType } from "../sockets";
+import { IS_COARSE, prefersReducedMotion } from "../coarse";
 import { TableCards } from "./TableCards";
 import type { ColumnSort } from "./columnSort";
 import { isFrameValue, formatFrameCell, type FrameValue, type FrameColumn } from "../frame";
@@ -27,7 +28,7 @@ import { formatScalar } from "./format";
 import { commitDashboardLayout } from "./DashboardNode";
 import { SwatchGrid } from "./SwatchGrid";
 import { CloseIcon } from "./CloseIcon";
-import { FocusIcon, TableIcon, Maximize2Icon, Minimize2Icon, PencilIcon } from "./Icons";
+import { FocusIcon, TableIcon, GripIcon, Maximize2Icon, Minimize2Icon, PencilIcon } from "./Icons";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useEscapeLayer } from "./escapeLayers";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -110,15 +111,14 @@ function FrameCards({ frame }: { frame: FrameValue }) {
 const NO_COLS: ReadonlySet<number> = new Set();
 
 /** The board's motion window: every box's content animates within it, all at once (DashboardOverlay.css § Motion). */
-const COUNT_MS = 650;
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const COUNT_MS = 900;
 
 /** A number as the box's figure, counting up to its value when it appears and from the old value to a new one,
  *  formatted every frame as the box shows it. A date never counts: the days in between mean nothing. */
 function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; value: number }) {
   const ann = useRefAnnotation(nodeId, refKey);
   const type = refSourceType(nodeId, refKey);
-  const still = (type !== undefined && isDateType(type)) || reducedMotion();
+  const still = (type !== undefined && isDateType(type)) || prefersReducedMotion();
   const [shown, setShown] = useState(still ? value : 0);
   const from = useRef(still ? value : 0);
   useEffect(() => {
@@ -232,7 +232,10 @@ function EditGrid({ edit, setEdit, box }: {
             width={width}
             layout={edit.layout}
             gridConfig={{ cols: edit.cols, rowHeight: edit.rowHeight, margin: [GAP, GAP], containerPadding: [GAP, GAP] }}
-            resizeConfig={{ handles: ["se", "e", "s"] }}
+            // On touch a box moves by its label bar, so a swipe across its body still scrolls the grid, and resizes
+            // by one finger-sized corner ([[C93]] gestureByPointerType).
+            dragConfig={IS_COARSE ? { handle: ".dashboard-box__label", threshold: 6 } : undefined}
+            resizeConfig={{ handles: IS_COARSE ? ["se"] : ["se", "e", "s"] }}
             onLayoutChange={(layout) => setEdit((e) => e && { ...e, layout: [...layout] })}
           >
             {edit.layout.map((l) => box(l.i))}
@@ -403,7 +406,7 @@ export function DashboardOverlay() {
           setEdit={setEdit}
           box={(name) => (
             <section key={name} className={`dashboard-box dashboard-box--edit${node.boxColors[name] ? " dashboard-box--tinted" : ""}`} style={tint(name)}>
-              <div className="dashboard-box__label">{name}</div>
+              <div className="dashboard-box__label"><GripIcon size={14} />{name}</div>
               <FrozenBox snap={edit.snaps.get(name)} />
             </section>
           )}

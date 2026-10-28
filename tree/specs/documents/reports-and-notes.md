@@ -416,7 +416,7 @@ A box is a grid placement, its name as the label, its value drawn by the shared 
 
 ### Motion
 
-A box's content animates in the board's intro window: the board opening, a box expanded or returned from, edit mode closing. Every box moves at once, within about 650 ms, each kind in its own way (`DashboardOverlay.css` § Motion), under the overlay's `dashboard-overlay--intro` class, held for 900 ms. Outside the window nothing replays: a chart rebuilt by a later recompute (a Record paged elsewhere on the board) just shows its shapes, while a number whose value changes still counts to the new one. It is the content that moves; the boxes themselves never fly in.
+A box's content animates in the board's intro window: the board opening, a box expanded or returned from, edit mode closing. Every box moves at once, within about 900 ms, each kind in its own way (`DashboardOverlay.css` § Motion), under the overlay's `dashboard-overlay--intro` class, held for 1150 ms. Outside the window nothing replays: a chart rebuilt by a later recompute (a Record paged elsewhere on the board) just shows its shapes, while a number whose value changes still counts to the new one. It is the content that moves; the boxes themselves never fly in.
 
 | Content | Motion |
 |---|---|
@@ -448,7 +448,7 @@ A ⋯ menu on each label, shown on hover (always on a touch screen), rendered ou
 
 ### Edit mode
 
-Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Done writes the grid back as layout text; Cancel or Esc discards it.
+Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Each label carries a grip mark. On a touch screen ([[C93]] gestureByPointerType) a box moves only by its label bar, taller for a finger, so a swipe across its body still scrolls the grid, and it resizes by one 44 px corner handle; the browser's own gestures are off where a drag starts, so it never takes the touch mid-drag. Done writes the grid back as layout text; Cancel or Esc discards it.
 
 ### Undo
 
