@@ -1,14 +1,14 @@
 ---
-aliases: ["Reports and Notes"]
+aliases: ["Reports and Notes", "Dashboards"]
 tags: [spec, documents]
 ---
 <!-- [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath, [[C103]] untrustedContentSeams -->
 
-# Spec: Reports, Notes and the Knap template layer
+# Spec: Reports, Notes, Dashboards and the Knap template layer
 
 Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume.
+Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume. A **Dashboard** is the Report's sibling without the text: the same bones (inputs minted from what the author writes, values drawn by one shared renderer, a full-size window) laid out as a grid of boxes ([[#Dashboards]]).
 
 ## The DocumentValue
 
@@ -253,6 +253,8 @@ The card (`ReportNode.tsx`) is an anchor, not an editor. It shows the Template r
 
 `InlineRefBody` renders a Report preview. It sets the sanitized HTML imperatively, finds every `<code>` element whose text matches `^=name!?$`, replaces it with an empty `<span>`, and portals an `InlineRefValue` into each. React never owns the parsed HTML, so re-renders do not orphan the portals. Each `InlineRefValue` subscribes to the cable-value store and re-renders only when its own `refValue(name)` changes.
 
+`InlineRefValue` is the one renderer both surfaces draw values with: the Report's preview places it in the text, a Dashboard places one per box ([[#A box]]) with `rich` (a Frame's 25 scrolling rows) and `fill` (a chart sized to its container, uncapped). Either way it knows the node feeding the ref, and through it: a date-typed source previews a number as a date (`refSourceType`); a Record's pager and a Choice Ladder's actions step that node, as a Display's do; a KPI card draws in its Value input's format (`valueFormat`); and a document's own spans resolve each value through the Report that made the document (its `sourceId`), so that Report's Format Controllers apply wherever the document is shown.
+
 The formatting annotation for a span is the Format Controller docked on that Report input, else one reachable upstream through passthroughs (`resolveRefAnnotation`). A Frame embed reads per-column formats from the node feeding the input, not from the Report.
 
 | Value kind | Rendered as |
@@ -370,27 +372,72 @@ The file name is the label with every character other than word characters, spac
 
 ## Dashboards
 
-A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a Report without the text: a pure sink that shows its inputs as boxes on a full-screen grid. It persists `label`, `layout` and `collapsed`, and has no outputs.
+A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a pure sink that shows its inputs as boxes on a full-canvas grid. It persists `label`, `layout`, `collapsed`, `boxColors` and `boxViews` (the last two through `extractInit`), and has no outputs. What it shares with the Report: its card rows (`ReportRefRow`), its window header, and every value drawn through [[#On-screen rendering of the span]].
 
-**The layout** is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `Name: hint` giving the text an empty box shows. It is authored on the card in the layout field (`RecordLayoutField`), committed on blur ([[C95]] commitOnEnter).
+### The layout text
 
-**Inputs.** Every placed name is one `trueany` input named exactly as the layout spells it, spaces included, in reading order. The constructor mints them from the saved layout, so a saved cable finds its socket at load. A layout commit (`setLayout`) drops the cables of departing names before removing their sockets ([[input-cable-pruning#The ordering rule]]), adds the new names, and recomputes. `DashboardNode` is in the graph core's `SEES_ERRORS`, so an error input reaches its box as a value. `refValue(name)` is the wired value, `null` for a wired blank, and `undefined` while the name is unwired.
+The layout is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `.` a gap, `Name: hint` giving the text an empty box shows. The text is the one source of truth: the card's layout field (`RecordLayoutField`, committed on blur, [[C95]] commitOnEnter) and the board's edit mode both write it, and every change lands through `commitDashboardLayout`. A repeated name anywhere merges, so every box needs a name of its own.
 
-**The card** (`DashboardNode.tsx`) shows an Open Dashboard button, the layout field and one row per name with the Report card's preview (`ReportRefRow`). Collapsed, every input converges on one pill.
+```mermaid
+flowchart LR
+    text["the layout text"] -->|"parseRecordLayout"| placed["placements:<br>row, col, spans, hint"]
+    placed --> inputs["one trueany input<br>per name"]
+    placed --> grid["the board's grid"]
+    grid -->|"Edit Layout:<br>drag, resize"| rgl["react-grid-layout<br>over snapshots"]
+    rgl -->|"Done: writeRecordLayout"| text
+    card["the card's field"] --> text
+```
 
-**The overlay** (`DashboardOverlay.tsx`, open state in `dashboardStore.ts`) covers the canvas between `--chrome-top` and `--chrome-bottom`, opaque on the canvas color, and the whole screen on mobile. Its header is the Report window's. While it is open the canvas under it stops painting (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. Each box is a grid placement with the name as its label and the value drawn by the Report's embed renderer (`InlineRefValue`) with `rich` (a Frame shows 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The box label is the figure's title, so the figure's own caption is hidden. A lone value is the box's figure, centered and scaled to the box with container query units: a number, a KPI card's number, an error code or a date in the UI face at weight 750, between 28 and 84 px; text, a list and a hint smaller, between 18 and 40 px. Numbers take their format from a Format Controller as everywhere else; the box adds none. A chart, diagram or picture fits the box, a diagram scaled to it keeping its shape; a document, a table, a cube or a Frame's cards keep their own height and the box scrolls them, as the grid itself scrolls when the rows pass the screen. Rows share the overlay's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, and a box holding a chart other than a KPI card is at least 300 px high. Esc and the close button close it.
+`writeRecordLayout` (`recordLayout.ts`) is the parser's inverse for non-overlapping boxes: a line per row, a run as `Name*N`, gaps as `.`, a box's hint and title mark on its first cell. Tests hold that its text parses back to the same placements.
 
-**Box menu.** Each box's label carries a ⋯ menu, shown on hover (always on a touch screen): Expand shows that box alone across the board until Esc or the header's back button; Show on Canvas closes the dashboard and flies to the node feeding the box; a palette swatch tints the box (`boxColors`, name → palette slot, saved) the way a Group is colored: a solid header bar in the slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash (8% dark, 14% light) and No Color clears it; Show as Cards (on a box holding a Frame) shows it as the Table popup's Cards view laid out as a grid across the box, and Show as Table returns it (`boxViews`, saved); Rename edits the name in the label (Enter or a click away commits, Esc cancels) and is refused when blank, another box's name ignoring case, or holding the grammar's marks (`|`, `*`, `:`, a leading `#`, a lone `.`); the box keeps its place, cable, color and view. Remove writes the layout without the box. A double-click on a label expands that box or returns from it, and the header then names the box after the board's title. A box with no value shows a muted dash, or its hint. A renamed box keeps its color and view and a removed one drops them (`setLayout`). A Record figure in a box pages with its own ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box as a Display does (`ChartBody`'s `sourceId`, the Report's embeds included). In dark mode the board's ground is 65% of the way from the canvas color to the box surface, so the boxes do not stand out as hard as cards on the canvas. The menu renders inside the overlay, not in the box, so a box's clipping never cuts it and full screen still shows it.
+### Inputs
 
-**Edit mode.** Edit Layout (hidden at 640 px and under) swaps the grid for `react-grid-layout`: each box is a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, shown scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner, over dashed empty cells; Columns sets the grid width (1 to 12). Done turns the grid back into layout text (`writeRecordLayout`, `recordLayout.ts`: a line per row, runs as `Name*N`, gaps as `.`, a box's hint and title mark on its first cell; tests hold that it parses back to the same placements) and commits it through the card's path (`commitDashboardLayout`). Cancel or Esc discards it. `setLayout` takes a rename map (new name → old) that carries a cable to the renamed socket.
+Every placed name is one `trueany` input named exactly as the layout spells it, spaces included, in reading order. The constructor mints them from the saved layout, so a saved cable finds its socket at load. `setLayout` drops the cables of departing names before removing their sockets ([[input-cable-pruning#The ordering rule]]), adds the new names, carries a renamed box's cable, color and view to its new name (a rename map, new name → old), and drops a removed box's. `DashboardNode` is in the graph core's `SEES_ERRORS`, so an error reaches its box as a value. `refValue(name)` is the wired value, `null` for a wired blank, and `undefined` while unwired.
 
-**Live data and errors.** When live connection cards feed the board anywhere upstream (`boardSources`, `dashboardStore.ts`), the header shows when it last updated, from the oldest fetch among them since the board is only as current as its stalest source, "Updating…" while one fetches, and how many failed; its refresh button fetches exactly those cards again in one pass (`refreshConnections`). A box holding an error shows the code, the error's message (else its explanation) and, when the error knows its origin, a Caused by button that closes the board and flies to that node.
+### The card
 
-**Undo.** Every change made on the board (a layout, a rename, a removal, a color, a view) is one undo step: layout changes record through the recompute, colors and views through `notifyGraphChanged`. Ctrl+Z works with the board open, and the board stays open through it: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id and resolves the name again (`openNodeId`), and it does not close on the forgets a rebuild sends. `boxColors` and `boxViews` save through `extractInit`.
+`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. Collapsed, every input converges on one pill.
 
-**The showcase.** `dashboard-showcase.json` (Charts & reports, beside the Report showcase) is a live model: monthly sales, channel shares, pipeline stages and an annual target feed formulas for the total, the margin, the last two months and the share of target, and a status read from the margin. Its board shows them as formatted numbers, a KPI card, text, a line chart, a target gauge, a channel treemap, a deal funnel, the monthly table, a paged Record and a Report whose numbers are live. A document in a box resolves each value through the Report that made it, so its Format Controllers apply.
+### The board
 
-**Full screen.** Where the browser allows it, a header button puts the overlay in full screen.
+`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (the whole screen on mobile), and the canvas under it stops painting while it is open (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, Full Screen where the browser allows it, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
+
+Rows share the board's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content; a box holding a chart other than a KPI card is at least 300 px high, and Edit Layout is hidden.
+
+### A box
+
+A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The label is the figure's title, so the figure's own caption is hidden.
+
+- **A lone value** is the box's figure, centered and scaled to the box (container query units): a number, a KPI card's number, an error code or a date in the UI face at weight 750, 28 to 84 px; text, a list and a hint smaller, 18 to 40 px. Numbers take their format from a Format Controller, as everywhere; the box adds none.
+- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them.
+- **An error** shows its code, its message (else its explanation) and, when it knows its origin, a Caused by button that closes the board and flies to that node.
+- **Nothing wired** shows a muted dash, or the box's hint.
+- **Interactive figures** work as on a Display: a Record pages with its ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box; a KPI card draws in its Value input's format.
+
+### The box menu
+
+A ⋯ menu on each label, shown on hover (always on a touch screen), rendered inside the board rather than the box so a box's clipping never cuts it and full screen still shows it:
+
+| Item | Does |
+|---|---|
+| Expand | Shows the box alone across the board; Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
+| Show on Canvas | Closes the board and flies to the node feeding the box. |
+| Show as Cards / Table | On a box holding a Frame: the Table popup's Cards view, laid out as a grid across the box (`boxViews`). |
+| Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). |
+| Rename | Edits the name in the label; Enter or a click away commits, Esc cancels. Refused when blank, another box's name ignoring case, or holding the grammar's marks (`\|`, `*`, `:`, a leading `#`, a lone `.`). |
+| Remove | Writes the layout without the box. |
+
+### Edit mode
+
+Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner over dashed empty cells; Columns sets the grid's width (1 to 12). Done writes the grid back as layout text; Cancel or Esc discards it.
+
+### Undo
+
+Every change on the board is one undo step: layout changes record through the recompute, colors and views through `notifyGraphChanged`. Ctrl+Z works with the board open and the board stays open: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id, resolves the name again (`openNodeId`), and skips the closes a rebuild sends.
+
+### The showcase
+
+`dashboard-showcase.json` (Charts & reports, beside the Report showcase) is a live model: monthly sales, channel shares, pipeline stages and an annual target feed formulas for the total, the margin, the last two months, the share of target and a status read from the margin. Its board shows formatted numbers, a KPI card, text, a line chart, a target gauge, a channel treemap, a deal funnel, the monthly table, a paged Record and a live Report.
 
 ## What is sanitized, and where
 

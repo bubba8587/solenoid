@@ -129,9 +129,6 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   align-items: start;
 }
 
-.dashboard-fresh { color: var(--text-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.dashboard-fresh--failed { color: color-mix(in srgb, var(--sol-error) 70%, var(--text)); }
-.report-close:disabled { opacity: 0.4; cursor: default; }
 .dashboard-crumb { color: var(--text-dim); font-weight: 400; }
 .dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-box__rename {

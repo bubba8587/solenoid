@@ -4,8 +4,8 @@ import { createPortal } from "react-dom";
 import ReactGridLayout, { useContainerWidth, type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { dashboardStore, boardSources } from "../dashboardStore";
-import { connectionStore, refreshConnections } from "../connectionStore";
+import { dashboardStore } from "../dashboardStore";
+import { refreshAllConnections } from "../connectionStore";
 import { RefreshIcon } from "./RefreshIcon";
 import { cableValueStore } from "../cableValueStore";
 import { appThemeStore } from "../appTheme";
@@ -210,7 +210,6 @@ export function DashboardOverlay() {
   const nodeId = useSyncExternalStore(dashboardStore.subscribe, dashboardStore.openNodeId);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const found = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const node = found instanceof DashboardNode ? found : undefined;
 
@@ -321,9 +320,6 @@ export function DashboardOverlay() {
   }
 
   const shown = focus ? placed.filter((p) => p.name === focus) : placed;
-  const live = boardSources(node.id);
-  const fresh = live.loading ? "Updating…"
-    : live.fetchedAt !== null ? `Updated ${new Date(live.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "";
 
   return (
     <div ref={rootRef} className="dashboard-overlay" onPointerDown={(e) => e.stopPropagation()}>
@@ -351,20 +347,9 @@ export function DashboardOverlay() {
                   <Minimize2Icon size={16} />
                 </button>
               )}
-              {live.ids.length > 0 && (
-                <>
-                  <span className={`dashboard-fresh${live.failed ? " dashboard-fresh--failed" : ""}`}>
-                    {fresh}{live.failed ? `${fresh ? " · " : ""}${live.failed} failed` : ""}
-                  </span>
-                  <button
-                    type="button" className="report-close" disabled={live.loading}
-                    onClick={() => void refreshConnections(live.ids)}
-                    title="Fetch this board's live data again" aria-label="Refresh"
-                  >
-                    <RefreshIcon size={14} />
-                  </button>
-                </>
-              )}
+              <button type="button" className="report-close" onClick={() => void refreshAllConnections()} title="Refresh all connections" aria-label="Refresh all connections">
+                <RefreshIcon size={14} />
+              </button>
               {placed.length > 0 && !focus && (
                 <button type="button" className="report-embed-btn dashboard-edit-btn" onClick={startEdit}>
                   <PencilIcon size={12} />Edit Layout

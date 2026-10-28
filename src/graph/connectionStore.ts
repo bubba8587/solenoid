@@ -208,12 +208,6 @@ export async function refreshConnection(id: string): Promise<void> {
   await processGraph();
 }
 
-/** Several cards fetch again in one pass, as a Dashboard's refresh asks for its own sources. */
-export async function refreshConnections(ids: Iterable<string>): Promise<void> {
-  for (const id of ids) _tokens.set(id, (_tokens.get(id) ?? 0) + 1);
-  await processGraph();
-}
-
 export async function refreshAllConnections(): Promise<void> {
   _gen++;
   notify();
