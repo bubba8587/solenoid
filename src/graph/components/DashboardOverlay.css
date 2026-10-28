@@ -263,7 +263,6 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 }
 .dashboard-step:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--border-strong); }
 .dashboard-step:disabled { opacity: 0.4; cursor: default; }
-.dashboard-overlay:fullscreen { top: 0; bottom: 0; }
 
 .dashboard-empty {
   margin: auto;

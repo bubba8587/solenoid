@@ -27,7 +27,7 @@ import { formatScalar } from "./format";
 import { commitDashboardLayout } from "./DashboardNode";
 import { SwatchGrid } from "./SwatchGrid";
 import { CloseIcon } from "./CloseIcon";
-import { FocusIcon, TableIcon, Maximize2Icon, Minimize2Icon, FullscreenIcon, ExitFullscreenIcon, PencilIcon } from "./Icons";
+import { FocusIcon, TableIcon, Maximize2Icon, Minimize2Icon, PencilIcon } from "./Icons";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useEscapeLayer } from "./escapeLayers";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -197,8 +197,7 @@ function BoxMenu({ color, cards, onCards, expanded, onExpand, onLocate, onColor,
           <button type="button" className="dashboard-box__item" onClick={act(onRename)}><PencilIcon size={14} />Rename</button>
           <button type="button" className="dashboard-box__item dashboard-box__item--danger" onClick={act(onRemove)}><CloseIcon size={14} />Remove</button>
         </div>,
-        // Inside the overlay, not the body: in full screen only the overlay shows.
-        btn.current?.closest(".dashboard-overlay") ?? document.body,
+        document.body,
       )}
     </span>
   );
@@ -251,11 +250,9 @@ export function DashboardOverlay() {
   const found = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const node = found instanceof DashboardNode ? found : undefined;
 
-  const rootRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   // The content's motion plays inside this window only, so a chart rebuilt by a later recompute does not replay it.
   const [intro, setIntro] = useState(false);
@@ -278,11 +275,6 @@ export function DashboardOverlay() {
     root.classList.toggle("sol-dashboard-open", !!node);
     return () => root.classList.remove("sol-dashboard-open");
   }, [node]);
-  useEffect(() => {
-    const sync = () => setFullscreen(!!document.fullscreenElement && document.fullscreenElement === rootRef.current);
-    document.addEventListener("fullscreenchange", sync);
-    return () => document.removeEventListener("fullscreenchange", sync);
-  }, []);
   if (!node) return null;
 
   const placed = node.placements();
@@ -361,15 +353,11 @@ export function DashboardOverlay() {
     cableValueStore.bump();
   }
 
-  function toggleFullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void rootRef.current?.requestFullscreen?.();
-  }
 
   const shown = focus ? placed.filter((p) => p.name === focus) : placed;
 
   return (
-    <div ref={rootRef} className={`dashboard-overlay${intro ? " dashboard-overlay--intro" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
+    <div className={`dashboard-overlay${intro ? " dashboard-overlay--intro" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
       <div className="report-header">
         <span className="report-title">
           {node.label?.trim() || "Dashboard"}
@@ -400,11 +388,6 @@ export function DashboardOverlay() {
               {placed.length > 0 && !focus && (
                 <button type="button" className="report-embed-btn dashboard-edit-btn" onClick={startEdit}>
                   <PencilIcon size={12} />Edit Layout
-                </button>
-              )}
-              {document.fullscreenEnabled && (
-                <button type="button" className="report-close" onClick={toggleFullscreen} title={fullscreen ? "Exit full screen" : "Full screen"} aria-label={fullscreen ? "Exit full screen" : "Full screen"}>
-                  {fullscreen ? <ExitFullscreenIcon size={16} /> : <FullscreenIcon size={16} />}
                 </button>
               )}
             </>

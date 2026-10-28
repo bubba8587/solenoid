@@ -400,7 +400,7 @@ Every placed name is one `trueany` input named exactly as the layout spells it, 
 
 ### The board
 
-`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (the whole screen on mobile), and the canvas under it stops painting while it is open (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, Full Screen where the browser allows it, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
+`DashboardOverlay.tsx`, with its open state in `dashboardStore.ts`. It covers the canvas between `--chrome-top` and `--chrome-bottom` (the whole screen on mobile), and the canvas under it stops painting while it is open (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. In dark mode its ground sits 65% of the way from the canvas color to the box surface, so boxes do not stand out as hard as cards on the canvas. The header carries the board's title (and the expanded box's name after it), Refresh All Connections (`refreshAllConnections`, the top bar's command), Edit Layout, and Close. Esc closes, after first closing an open menu, rename, expanded box or edit.
 
 Rows share the board's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content; a box holding a chart other than a KPI card is at least 300 px high, and Edit Layout is hidden.
 
@@ -435,7 +435,7 @@ Under reduced motion everything shows at rest, and a number shows its value at o
 
 ### The box menu
 
-A ⋯ menu on each label, shown on hover (always on a touch screen), rendered inside the board rather than the box so a box's clipping never cuts it and full screen still shows it:
+A ⋯ menu on each label, shown on hover (always on a touch screen), rendered outside the box (on the page, above the board) so a box's clipping never cuts it:
 
 | Item | Does |
 |---|---|
