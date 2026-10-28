@@ -37,7 +37,7 @@ export const INIT_FIELD_ORDER = [
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
-  "keyOrder", "pivotView", "detailFields",
+  "keyOrder", "pivotView", "detailFields", "boxColors",
 ] as const;
 
 /** The saved fields only the canvas reads (a card's size, fold, colour, place, text styling): a card's call leaves them

@@ -6,6 +6,7 @@ import { extractInit } from "../../../src/graph/nodeInit";
 import { readTextForm, writeTextForm } from "../../../src/graph/textForm";
 import type { SavedGraph } from "../../../src/graph/persistence";
 import { throughBoundary } from "../boundaryKit";
+import { parseRecordLayout, writeRecordLayout } from "../../../src/graph/recordLayout";
 
 describe("DashboardNode: one input per layout box", () => {
   it("mints a trueany input per name, in reading order; a repeated name is one box and one input", () => {
@@ -73,5 +74,33 @@ describe("a ref preview reads its source socket's type", () => {
     expect(refPreview(46323, undefined, "date")).toBe("28-Oct-2026");
     expect(refPreview([46323, 46324], undefined, "datelist")).toBe("[28-Oct-2026, 29-Oct-2026]");
     expect(refPreview(46323, undefined, "number")).toBe("46323");
+  });
+});
+
+describe("writeRecordLayout: the layout text back from placements", () => {
+  const same = (text: string) => {
+    const placed = parseRecordLayout(text);
+    expect(parseRecordLayout(writeRecordLayout(placed))).toEqual(placed);
+  };
+  it("round-trips spans, merges, gaps, hints and the title mark through the parser", () => {
+    same("Revenue | Costs | Margin\nChart*2 | Quota\nChart*2 | Mix");
+    same("A | . | B\nC*3");
+    same("#Name: who | Owner: unassigned*2\nNotes*3");
+    same("Map | Total\nMap | Count\n. | Big*2");
+    same("Tall | X\nTall | .\nTall | Y");
+    same("A | . | . | B\nC*4");
+    expect(writeRecordLayout(parseRecordLayout("A | . | . | B\nC*4"))).toBe("A | .*2 | B\nC*4");
+  });
+  it("writes the plain forms", () => {
+    expect(writeRecordLayout(parseRecordLayout("A | B\nC*2"))).toBe("A | B\nC*2");
+    expect(writeRecordLayout(parseRecordLayout("Map | Total\nMap | Count"))).toBe("Map | Total\nMap | Count");
+  });
+});
+
+describe("box colors follow the layout", () => {
+  it("a renamed box keeps its color and a removed box drops it", async () => {
+    const n = new DashboardNode({ layout: "A | B | C", boxColors: { A: "green", B: "sky", C: "amber" } });
+    await n.setLayout("Alpha | B", new Map([["Alpha", "A"]]));
+    expect(n.boxColors).toEqual({ Alpha: "green", B: "sky" });
   });
 });
