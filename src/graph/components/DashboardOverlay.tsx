@@ -18,6 +18,7 @@ import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from 
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
 import { isChartValue } from "../chartValue";
+import { installTouchScrollChain } from "../touchScrollChain";
 import { InlineRefValue, refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
 import { isDateType } from "../sockets";
 import { IS_COARSE, prefersReducedMotion } from "../coarse";
@@ -296,6 +297,8 @@ export function DashboardOverlay() {
     root.classList.toggle("sol-dashboard-open", !!node);
     return () => root.classList.remove("sol-dashboard-open");
   }, [node]);
+  const hasGrid = !!node && !edit && !!node.layout.trim();
+  useEffect(() => (hasGrid && gridRef.current ? installTouchScrollChain(gridRef.current) : undefined), [hasGrid, node]);
   // On a phone the board opens under the app's accent bar, which stays: its height holds the notch inset, so it is measured.
   useEffect(() => {
     if (!node) return;
