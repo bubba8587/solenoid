@@ -31,6 +31,9 @@ import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
 import { renderNoteMarkdown } from "../noteMarkdown";
 import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
+import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
@@ -145,7 +148,10 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
 }
 
 /** `fill` takes the container's whole box, as a Dashboard's does; otherwise 200 px high and at most 640 wide. */
-function ChartBody({ value, fontScale, fill }: { value: ChartValue; fontScale?: number; fill?: boolean }) {
+/** `sourceId` is the node feeding the ref: a Record's pager and a Choice Ladder's actions step it, as on a Display. */
+function ChartBody({ value, fontScale, fill, sourceId }: { value: ChartValue; fontScale?: number; fill?: boolean; sourceId?: string }) {
+  const recordId = sourceId && value.op === "record" ? recordNavTarget(sourceId) : null;
+  const ladderId = sourceId && value.op === "ladder" ? ladderTarget(sourceId) : null;
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
   const [h, setH] = useState(0);
@@ -168,6 +174,8 @@ function ChartBody({ value, fontScale, fill }: { value: ChartValue; fontScale?: 
             width={width || 320}
             height={fill && h > 0 ? h : 200}
             fontScale={fontScale}
+            recordNav={recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined}
+            ladderAction={ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined}
           />
         : null}
     </span>
@@ -218,7 +226,7 @@ function figureFor(
     return {
       title: value.title || refKey,
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
-      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} />,
+      body: <ChartBody value={value} fontScale={ann?.chartFontScale} fill={fill} sourceId={frameNodeId} />,
     };
   }
   if (isMermaidValue(value)) {

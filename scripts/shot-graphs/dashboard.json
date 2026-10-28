@@ -197,7 +197,7 @@
    "type": "DashboardNode",
    "init": {
     "label": "Sales overview",
-    "layout": "Annual revenue | December | Margin | Status\nRevenue vs costs*3 | Quota\nRevenue vs costs*3 | Channel mix\nSales by channel | Pipeline*2 | Notes\nMonthly*3 | Notes",
+    "layout": "Annual revenue | December | Margin | Status\nRevenue vs costs*3 | Quota\nRevenue vs costs*3 | Channel mix\nSales by channel | Pipeline*2 | Notes\nMonthly*2 | Detail | Notes",
     "boxColors": {
      "Annual revenue": "green",
      "Status": "sky",
@@ -235,6 +235,14 @@
     "unit": "none",
     "socketDataType": "number"
    }
+  },
+  {
+   "id": "recd",
+   "type": "RecordNode",
+   "init": {
+    "label": "Month detail",
+    "op": "detail"
+   }
   }
  ],
  "cables": [
@@ -255,6 +263,8 @@
   "sum.result -> fc1.in",
   "fc1.out -> d.Annual revenue",
   "margin.value -> fc2.in",
-  "fc2.out -> d.Margin"
+  "fc2.out -> d.Margin",
+  "m.frame -> recd.frame",
+  "recd.chart -> d.Detail"
  ]
 }

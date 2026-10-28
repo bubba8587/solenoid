@@ -11,6 +11,9 @@
   background: var(--canvas-bg);
 }
 html.sol-dashboard-open .sol-rf-appcanvas { visibility: hidden; }
+/* The canvas color is a shade under every card so cards lift off it; on a board of boxes that step reads as too
+   much contrast in dark mode, so the ground sits most of the way up to the boxes' surface. */
+html[data-theme="dark"] .dashboard-overlay { background: color-mix(in srgb, var(--surface) 65%, var(--canvas-bg)); }
 html.is-mobile .dashboard-overlay { top: 0; bottom: 0; }
 html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
 
@@ -100,12 +103,20 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 
 .dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
-/* A box tint is user-authored color (DESIGN.md § The Quiet Accent Rule): a top edge, the label and a faint wash. */
+/* A box tint is user-authored color (DESIGN.md § The Quiet Accent Rule), drawn as a Group draws its own. */
 .dashboard-box--tinted {
-  border-top: 2px solid var(--box-color);
-  background: color-mix(in srgb, var(--box-color) 6%, var(--surface));
+  border: 2px solid var(--box-border);
+  background: linear-gradient(var(--box-fill), var(--box-fill)), var(--surface);
 }
-.dashboard-box--tinted .dashboard-box__label { color: color-mix(in srgb, var(--box-color) 55%, var(--text)); }
+.dashboard-box--tinted .dashboard-box__label {
+  min-height: 30px;
+  padding: 0 6px 0 12px;
+  background: var(--box-color);
+  color: var(--box-ink);
+}
+.dashboard-box--tinted .dashboard-box__dots { color: inherit; }
+.dashboard-box--tinted .dashboard-box__dots:hover { background: rgba(255, 255, 255, 0.2); border-color: transparent; color: inherit; }
+.dashboard-box--tinted .dashboard-box__value { padding-top: 10px; }
 
 /* The box's ⋯ menu shows on hover or while open; a touch screen has no hover, so it stays. */
 .dashboard-box__menu { position: relative; flex-shrink: 0; opacity: 0; transition: opacity 120ms; }
