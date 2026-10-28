@@ -279,3 +279,84 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   .dashboard-box:has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
   .dashboard-edit-btn { display: none; }
 }
+
+/* Motion. A box's content animates when it appears (the board opening, a box expanded), every box at once and within
+   one short window, each kind in its own way. CountUp (DashboardOverlay.tsx) counts a number to its value on the same
+   clock. Reduced motion shows everything at rest. */
+@property --dash-sweep { syntax: "<angle>"; inherits: false; initial-value: 180deg; }
+.dashboard-overlay {
+  --dash-in: 650ms;
+  --dash-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes dash-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes dash-fade { from { opacity: 0; } }
+@keyframes dash-grow-y { from { transform: scaleY(0); } }
+@keyframes dash-grow-x { from { transform: scaleX(0); } }
+@keyframes dash-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes dash-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes dash-sweep { from { --dash-sweep: 0deg; } to { --dash-sweep: 180deg; } }
+@keyframes dash-settle { from { opacity: 0; transform: scale(1.08); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Text, lists, hints, documents, diagrams and record cards rise into place. */
+  .dashboard-box__value > .solenoid-ref-inline--text,
+  .dashboard-box__value > .solenoid-ref-inline--list,
+  .dashboard-box__value > .dashboard-box__hint,
+  .dashboard-box__value .report-embed__body,
+  .dashboard-box__value .sol-record-card,
+  .dashboard-box .sol-kpi__value { animation: dash-rise var(--dash-in) var(--dash-ease) both; }
+  .dashboard-box .sol-kpi__delta { animation: dash-rise var(--dash-in) var(--dash-ease) 120ms both; }
+  .dashboard-box__value .solenoid-mermaid { animation: dash-fade var(--dash-in) var(--dash-ease) both; }
+  .dashboard-box__error { animation: dash-settle 420ms var(--dash-ease) both; }
+
+  /* Lines and areas draw from the left; bars grow from their baseline; slices and cells pop out of their centers. */
+  .dashboard-box .recharts-line,
+  .dashboard-box .recharts-area { animation: dash-wipe var(--dash-in) var(--dash-ease) both; }
+  .dashboard-box .recharts-bar-rectangle {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: dash-grow-y var(--dash-in) var(--dash-ease) both;
+  }
+  .dashboard-box .recharts-funnel-trapezoid {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: dash-grow-x var(--dash-in) var(--dash-ease) both;
+  }
+  .dashboard-box .recharts-pie-sector,
+  .dashboard-box .recharts-treemap-depth-1 > g {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: dash-pop var(--dash-in) var(--dash-ease) both;
+  }
+  /* The gauge's arc sweeps from its left end, revealed by a turning conic mask centered on the dial. */
+  .dashboard-box .recharts-wrapper:has(.recharts-radial-bar-sectors) {
+    -webkit-mask-image: conic-gradient(from 270deg at 50% 50%, #000 var(--dash-sweep), transparent 0);
+    mask-image: conic-gradient(from 270deg at 50% 50%, #000 var(--dash-sweep), transparent 0);
+    animation: dash-sweep var(--dash-in) var(--dash-ease) both;
+  }
+
+  /* Table rows and cards cascade in, the cascade held inside the window. */
+  .dashboard-box__value .solenoid-table-display tbody tr,
+  .dashboard-box__value .table-cards > * { animation: dash-rise 420ms var(--dash-ease) both; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(2),
+  .dashboard-box__value .table-cards > :nth-child(2) { animation-delay: 20ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(3),
+  .dashboard-box__value .table-cards > :nth-child(3) { animation-delay: 40ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(4),
+  .dashboard-box__value .table-cards > :nth-child(4) { animation-delay: 60ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(5),
+  .dashboard-box__value .table-cards > :nth-child(5) { animation-delay: 80ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(6),
+  .dashboard-box__value .table-cards > :nth-child(6) { animation-delay: 100ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(7),
+  .dashboard-box__value .table-cards > :nth-child(7) { animation-delay: 120ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(8),
+  .dashboard-box__value .table-cards > :nth-child(8) { animation-delay: 140ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(9),
+  .dashboard-box__value .table-cards > :nth-child(9) { animation-delay: 160ms; }
+  .dashboard-box__value .solenoid-table-display tbody tr:nth-child(n + 10),
+  .dashboard-box__value .table-cards > :nth-child(n + 10) { animation-delay: 180ms; }
+}
+/* Edit mode's snapshots are clones of the boxes' markup; they stay frozen rather than playing the motion again. */
+.dashboard-box--edit *,
+.dashboard-box--edit .recharts-wrapper { animation: none !important; }

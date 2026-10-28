@@ -17,7 +17,8 @@ import { notifyGraphChanged } from "../process";
 import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from "../palette";
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
-import { InlineRefValue } from "./inlineRefDisplay";
+import { InlineRefValue, refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
+import { isDateType } from "../sockets";
 import { TableCards } from "./TableCards";
 import type { ColumnSort } from "./columnSort";
 import { isFrameValue, formatFrameCell, type FrameValue, type FrameColumn } from "../frame";
@@ -107,6 +108,39 @@ function FrameCards({ frame }: { frame: FrameValue }) {
   );
 }
 const NO_COLS: ReadonlySet<number> = new Set();
+
+/** The board's motion window: every box's content animates within it, all at once (DashboardOverlay.css § Motion). */
+const COUNT_MS = 650;
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** A number as the box's figure, counting up to its value when it appears and from the old value to a new one,
+ *  formatted every frame as the box shows it. A date never counts: the days in between mean nothing. */
+function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; value: number }) {
+  const ann = useRefAnnotation(nodeId, refKey);
+  const type = refSourceType(nodeId, refKey);
+  const still = (type !== undefined && isDateType(type)) || reducedMotion();
+  const [shown, setShown] = useState(still ? value : 0);
+  const from = useRef(still ? value : 0);
+  useEffect(() => {
+    if (still) { from.current = value; setShown(value); return; }
+    const start = from.current;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / COUNT_MS);
+      const v = k < 1 ? start + (value - start) * (1 - (1 - k) ** 4) : value;
+      from.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, still]);
+  // Unformatted, a passing value would print every float digit; it keeps the decimals its final value shows.
+  const places = (formatScalar(value).split(".")[1] ?? "").replace(/\D.*/, "").length;
+  const v = shown === value || ann ? shown : Math.round(shown * 10 ** places) / 10 ** places;
+  return <span className="solenoid-ref-inline">{refPreview(v, ann, type)}</span>;
+}
 
 /** An error as the box's figure: its code, what went wrong, and a way to the node that caused it. */
 function BoxError({ err }: { err: SolError }) {
@@ -429,6 +463,8 @@ export function DashboardOverlay() {
                     ? <span className="dashboard-box__hint">{p.hint || "—"}</span>
                     : isSolError(value)
                       ? <BoxError err={value} />
+                    : typeof value === "number"
+                      ? <CountUp nodeId={node.id} refKey={p.name} value={value} />
                     : asCards && isFrameValue(value)
                       ? <FrameCards frame={value} />
                       : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill />}

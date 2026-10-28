@@ -414,6 +414,25 @@ A box is a grid placement, its name as the label, its value drawn by the shared 
 - **Nothing wired** shows a muted dash, or the box's hint.
 - **Interactive figures** work as on a Display: a Record pages with its ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box; a KPI card draws in its Value input's format.
 
+### Motion
+
+A box's content animates when it appears (the board opening, a box expanded): every box at once, within one window of about 650 ms, each kind in its own way (`DashboardOverlay.css` § Motion). It is the content that moves; the boxes themselves never fly in.
+
+| Content | Motion |
+|---|---|
+| A number | Counts up to its value (`CountUp`, ease-out), formatted every frame as the box shows it; a later change counts from the old value to the new. A date does not count. |
+| Text, a list, a hint, a document, a Record card, a KPI's value | Rises into place; a KPI's change follows a beat behind. |
+| A line or area chart | Draws from the left. |
+| Bars | Grow from their baseline. |
+| Funnel bands | Grow out from their middle. |
+| Pie slices, treemap cells | Pop out of their centers. |
+| The gauge | Its arc sweeps from the left end. |
+| Table rows, Frame cards | Cascade in, the cascade held inside the window. |
+| A diagram | Fades in. |
+| An error | Settles in. |
+
+Under reduced motion everything shows at rest, and a number shows its value at once. Edit mode's snapshots never animate.
+
 ### The box menu
 
 A ⋯ menu on each label, shown on hover (always on a touch screen), rendered inside the board rather than the box so a box's clipping never cuts it and full screen still shows it:
