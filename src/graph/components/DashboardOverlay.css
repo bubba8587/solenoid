@@ -279,10 +279,12 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 }
 
 /* Narrow screens stack the boxes in layout order, sized to their content: a phone has no room for the layout's
-   columns. The box has no fixed height there, so the figures size by width alone. */
+   columns, though two compact neighbors share a row. The box has no fixed height there, so the figures size by width alone. */
 @media (max-width: 640px) {
-  .dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: max-content; }
+  .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-rows: max-content; }
   .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
+  /* Two compact neighbors share a row (halfWidth). */
+  .dashboard-box--half { grid-column: auto / span 1 !important; min-height: 120px; }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
   /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a

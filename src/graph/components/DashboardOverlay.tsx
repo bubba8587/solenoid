@@ -17,6 +17,7 @@ import { notifyGraphChanged } from "../process";
 import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from "../palette";
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
+import { isChartValue } from "../chartValue";
 import { InlineRefValue, refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
 import { isDateType } from "../sockets";
 import { IS_COARSE, prefersReducedMotion } from "../coarse";
@@ -140,6 +141,22 @@ function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; va
   const places = (formatScalar(value).split(".")[1] ?? "").replace(/\D.*/, "").length;
   const v = shown === value || ann ? shown : Math.round(shown * 10 ** places) / 10 ** places;
   return <span className="solenoid-ref-inline">{refPreview(v, ann, type)}</span>;
+}
+
+/** A box small enough to share a phone's row: a lone value, short text or a KPI card. */
+function isCompact(value: unknown): boolean {
+  if (value === undefined || value === null || typeof value === "number" || typeof value === "boolean") return true;
+  if (typeof value === "string") return value.length <= 24;
+  return isChartValue(value) && value.op === "kpi";
+}
+
+/** The boxes that pair up two to a row on a phone: neighbors in reading order, both compact. A lone one keeps the row. */
+function halfWidth(names: string[], compact: (name: string) => boolean): Set<string> {
+  const half = new Set<string>();
+  for (let i = 0; i + 1 < names.length; i++) {
+    if (compact(names[i]) && compact(names[i + 1])) { half.add(names[i]).add(names[i + 1]); i++; }
+  }
+  return half;
 }
 
 /** An error as the box's figure: its code, what went wrong, and a way to the node that caused it. */
@@ -358,6 +375,7 @@ export function DashboardOverlay() {
 
 
   const shown = focus ? placed.filter((p) => p.name === focus) : placed;
+  const half = focus ? new Set<string>() : halfWidth(shown.map((p) => p.name), (n) => isCompact(node.refValue(n)));
 
   return (
     <div className={`dashboard-overlay${intro ? " dashboard-overlay--intro" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
@@ -425,7 +443,7 @@ export function DashboardOverlay() {
               <section
                 key={p.name}
                 data-name={p.name}
-                className={`dashboard-box${node.boxColors[p.name] ? " dashboard-box--tinted" : ""}`}
+                className={`dashboard-box${node.boxColors[p.name] ? " dashboard-box--tinted" : ""}${half.has(p.name) ? " dashboard-box--half" : ""}`}
                 style={{ ...(focus ? { gridRow: "1 / -1", gridColumn: "1" } : { gridRow: `${p.row} / span ${p.rowSpan}`, gridColumn: `${p.col} / span ${p.colSpan}` }), ...tint(p.name) }}
               >
                 <div className="dashboard-box__label" onDoubleClick={(e) => { if (!(e.target as HTMLElement).closest("button, input")) setFocus(focus ? null : p.name); }}>
