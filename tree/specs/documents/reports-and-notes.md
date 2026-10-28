@@ -384,6 +384,8 @@ A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a Report without the 
 
 **Edit mode.** Edit Layout (hidden at 640 px and under) swaps the grid for `react-grid-layout`: each box is a snapshot of its rendered contents (`snapshotOf`: the box's markup cloned, canvases as pictures, shown scaled to the box), so nothing re-renders or re-measures under a drag. Boxes drag anywhere and resize from the right, bottom or corner, over dashed empty cells; Columns sets the grid width (1 to 12). Done turns the grid back into layout text (`writeRecordLayout`, `recordLayout.ts`: a line per row, runs as `Name*N`, gaps as `.`, a box's hint and title mark on its first cell; tests hold that it parses back to the same placements) and commits it through the card's path (`commitDashboardLayout`). Cancel or Esc discards it. `setLayout` takes a rename map (new name → old) that carries a cable to the renamed socket.
 
+**Undo.** Every change made on the board (a layout, a rename, a removal, a color, a view) is one undo step: layout changes record through the recompute, colors and views through `notifyGraphChanged`. Ctrl+Z works with the board open, and the board stays open through it: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id and resolves the name again (`openNodeId`), and it does not close on the forgets a rebuild sends. `boxColors` and `boxViews` save through `extractInit`.
+
 **Full screen.** Where the browser allows it, a header button puts the overlay in full screen.
 
 ## What is sanitized, and where

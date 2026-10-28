@@ -101,6 +101,9 @@ export function extractInit(src: GraphNode): Record<string, unknown> {
     if (saved) init.pivotView = saved;
   }
   if (Array.isArray(n.detailFields) && n.detailFields.length) init.detailFields = [...(n.detailFields as string[])];
+  for (const k of ["boxColors", "boxViews"] as const) {
+    if (n[k] && typeof n[k] === "object" && Object.keys(n[k] as object).length) init[k] = { ...(n[k] as object) };
+  }
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(

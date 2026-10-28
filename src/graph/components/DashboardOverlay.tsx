@@ -9,7 +9,7 @@ import { cableValueStore } from "../cableValueStore";
 import { appThemeStore } from "../appTheme";
 import { getOwningEditor } from "../activeGraph";
 import { flyToNode } from "../flyToNode";
-import { scheduleAutosave } from "../persistence";
+import { notifyGraphChanged } from "../process";
 import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from "../palette";
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
@@ -281,7 +281,7 @@ export function DashboardOverlay() {
     if (slot) node.boxColors = { ...node.boxColors, [name]: slot };
     else { const { [name]: _gone, ...rest } = node.boxColors; node.boxColors = rest; }
     node.edited();
-    scheduleAutosave();
+    notifyGraphChanged();
     cableValueStore.bump();
   }
 
@@ -290,7 +290,7 @@ export function DashboardOverlay() {
     if (node.boxViews[name]) { const { [name]: _gone, ...rest } = node.boxViews; node.boxViews = rest; }
     else node.boxViews = { ...node.boxViews, [name]: "cards" };
     node.edited();
-    scheduleAutosave();
+    notifyGraphChanged();
     cableValueStore.bump();
   }
 

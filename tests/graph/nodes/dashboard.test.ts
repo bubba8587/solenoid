@@ -104,4 +104,12 @@ describe("box colors follow the layout", () => {
     expect(n.boxColors).toEqual({ Alpha: "green", B: "sky" });
     expect(n.boxViews).toEqual({ Alpha: "cards" });
   });
+
+  it("colors and views are saved, through the text form and back", () => {
+    const n = new DashboardNode({ layout: "A | B", boxColors: { A: "green" }, boxViews: { B: "cards" } });
+    const g = { v: 1, nodes: [{ id: "d", type: "DashboardNode", init: extractInit(n) }], connections: [] } as unknown as SavedGraph;
+    const back = new DashboardNode(readTextForm(writeTextForm(g)).nodes[0].init as never);
+    expect(back.boxColors).toEqual({ A: "green" });
+    expect(back.boxViews).toEqual({ B: "cards" });
+  });
 });
