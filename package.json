@@ -24,6 +24,8 @@
     "plugin:rig": "node scripts/obsidian-rig.mjs",
     "plugin:export": "node scripts/export-plugin-source.mjs",
     "run-graph": "node scripts/vite-run.mjs scripts/run-graph.ts",
+    "build:cli": "vite build --config scripts/run-graph.vite.config.ts",
+    "postbuild:cli": "node scripts/cli-smoke.mjs",
     "copy-inventory": "node scripts/vite-run.mjs scripts/copy-inventory.ts",
     "validate-graph": "node scripts/vite-run.mjs scripts/validate-graph.ts",
     "ai-grounding": "node scripts/vite-run.mjs scripts/ai-grounding.ts",

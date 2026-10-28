@@ -40,6 +40,7 @@ dte-rules/*
 logs
 *.log
 dist-ssr
+dist-cli
 *.local
 .vscode
 .idea

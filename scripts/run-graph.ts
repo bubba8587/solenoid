@@ -3,8 +3,9 @@
 // validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
 // on the JS oracle with no Tauri dependency.
 //   npm run run-graph -- <graph.json|graph.txt>
+// `npm run build:cli` bundles it into dist-cli/ (run-graph.mjs + the engine's wasm), which needs only Node.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
@@ -126,6 +127,8 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
 }
 
 async function main() {
+  // Before validating: the validator builds every node to learn its type, and a node needs the engine.
+  loadWasmEngineSync(readFileSync(wasmUrl));
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const flag = (name: string): string | undefined => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -157,13 +160,13 @@ async function main() {
     }
     g = graph as unknown as SavedGraph;
   }
-  loadWasmEngineSync(readFileSync(wasmUrl));
   const out = await runGraph(g, opts);
   console.log(JSON.stringify(out, null, 2));
 }
 
-// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1].
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1]; realpath, so it matches
+// when launched through a symlink, as npm's bin links do.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   await main().catch((e) => {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
