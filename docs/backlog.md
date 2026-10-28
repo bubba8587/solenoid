@@ -38,6 +38,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
 ## Tooling
+- [ ] **Headless runner as a pipeline step** (author 2026-10-28, pitch: "build the model visually, run it from a script, feed any dashboard"; `out-of-scope.md` §1/§5/§11 keep it a step, not a dashboard backend or server): `run-graph` takes no inputs (`--set name=value` by node name), prints every node (`--out name`), and runs only inside the repo (a headless flag on the desktop binary or an npm package). Then one example: a seed + a scheduled GitHub Action publishing JSON a dashboard reads. No serve or watch mode.
 
 ## Seeds (after the 2026-10-08 scalar input fold)
 - [ ] **Bring the Unit Flow example back**: restore or rebuild it from `../backups/unit-flow.seed.json` and `../backups/unitFlowSeed.test.ts` (outside the repo) with Value Inputs; the test pinned unit-flow's captioned behaviors A to J.
