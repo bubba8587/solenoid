@@ -284,6 +284,13 @@
   font-family: inherit;
   font-size: 12.5px;
 }
+/* A phone has no room beside the label: the slider takes its own line, full width. */
+@media (max-width: 520px) {
+  .solenoid-settings__row--slider { flex-wrap: wrap; }
+  .solenoid-settings__row--slider .solenoid-settings__slider { flex: 1 1 100%; }
+  .solenoid-settings__row--slider input[type="range"] { flex: 1; width: auto; height: 6px; }
+  .solenoid-settings__row--slider .solenoid-settings__slider-value { min-width: 0; }
+}
 
 /* A setting with no mobile counterpart: grayed and inert but kept in place, using the :disabled look (opacity 0.5, default cursor). */
 .solenoid-settings__row--disabled .solenoid-settings__row-label,

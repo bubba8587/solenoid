@@ -102,7 +102,7 @@ function SliderRow({ field }: { field: SettingField }) {
   const value = Number(settingsStore.get(field.key));
   const { min, max, step } = field.range ?? { min: 0, max: 10, step: 1 };
   return (
-    <label className="solenoid-settings__row">
+    <label className="solenoid-settings__row solenoid-settings__row--slider">
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}

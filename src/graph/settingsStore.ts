@@ -44,7 +44,7 @@ export interface Settings {
   /** How many decimal places a number with no format shows; a string so the segment control stores it directly. */
   numberDecimals: number;
   /** The power of ten at which an unformatted number turns scientific; "off" never does. */
-  sciAbove: "6" | "9" | "12" | "off";
+  sciAbove: "3" | "6" | "9" | "12" | "off";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -207,6 +207,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         help: "Numbers without a format this large or larger show in scientific notation.",
         type: "segment",
         options: [
+          { value: "3", label: "1K" },
           { value: "6", label: "1M" },
           { value: "9", label: "1B" },
           { value: "12", label: "1T" },
