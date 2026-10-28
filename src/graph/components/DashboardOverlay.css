@@ -288,7 +288,11 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   .dashboard-box .sol-kpi { padding: 4px 0; gap: 4px; }
   .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
   /* Two compact neighbors share a row (halfWidth). */
-  .dashboard-box--half { grid-column: auto / span 1 !important; min-height: 120px; }
+  .dashboard-box--half { grid-column: auto / span 1 !important; min-height: 96px; }
+  /* A half box's value fills its width: a glyph runs about 0.6 em, so 130cqw over the character count leaves a margin. */
+  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline,
+  .dashboard-box--half .sol-kpi__value { font-size: clamp(20px, calc(130cqw / var(--chars, 6)), 52px); }
+  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: clamp(16px, calc(140cqw / var(--chars, 8)), 34px); }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:not(.dashboard-box--half):has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
   /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a

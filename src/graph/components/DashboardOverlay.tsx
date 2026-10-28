@@ -140,7 +140,8 @@ function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; va
   // Unformatted, a passing value would print every float digit; it keeps the decimals its final value shows.
   const places = (formatScalar(value).split(".")[1] ?? "").replace(/\D.*/, "").length;
   const v = shown === value || ann ? shown : Math.round(shown * 10 ** places) / 10 ** places;
-  return <span className="solenoid-ref-inline">{refPreview(v, ann, type)}</span>;
+  // The final value's length, so a phone's half box can size the figure to fit while it counts.
+  return <span className="solenoid-ref-inline" style={{ "--chars": refPreview(value, ann, type).length } as CSSProperties}>{refPreview(v, ann, type)}</span>;
 }
 
 /** A box small enough to share a phone's row: a lone value, short text, or a widget figure (a KPI card or a gauge). */
@@ -471,7 +472,7 @@ export function DashboardOverlay() {
                     onRemove={() => void removeBox(p.name)}
                   />
                 </div>
-                <div className="dashboard-box__value sol-md">
+                <div className="dashboard-box__value sol-md" style={typeof value === "string" ? { "--chars": value.length } as CSSProperties : undefined}>
                   {value === undefined
                     ? <span className="dashboard-box__hint">{p.hint || "—"}</span>
                     : isSolError(value)

@@ -26,7 +26,7 @@ export function KpiCard({ payload, fscale, format }: { payload: KpiPayload; fsca
   const color = dir === 0 ? "var(--text-dim)" : `color-mix(in srgb, ${good ? "var(--sol-ok)" : "var(--sol-error)"} 70%, var(--text))`;
   return (
     <div className="sol-kpi" style={fscaleStyle(fscale)}>
-      <div className="sol-kpi__value">
+      <div className="sol-kpi__value" style={{ "--chars": (has ? num(value!) : "—").length + (unit?.length ?? 0) } as React.CSSProperties}>
         {has ? num(value!) : "—"}
         {unit ? <span className="sol-kpi__unit">{unit}</span> : null}
       </div>
