@@ -30,6 +30,8 @@ import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
 
@@ -52,11 +54,22 @@ export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotati
   return resolveRefAnnotation(nodeId, refKey);
 }
 
-export function refPreview(value: unknown, ann: FormatAnnotation | undefined): string {
+/** The type of the socket feeding `refKey`: a date serial previews as a date, as the card that made it shows it. */
+export function refSourceType(nodeId: string, refKey: string): SocketDataType | undefined {
+  const ed = getOwningEditor(nodeId);
+  const c = ed?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey);
+  const s = c ? ed?.getNode(c.source)?.outputs[c.sourceOutput]?.socket : undefined;
+  return s instanceof SolenoidSocket ? s.dataType : undefined;
+}
+
+export function refPreview(value: unknown, ann: FormatAnnotation | undefined, sourceType?: SocketDataType): string {
   if (value === null || value === undefined) return "—";
   if (isSolError(value)) return value.code;
   if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
-  if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
+  if (typeof value === "number") {
+    if (ann) return formatNumberWithAnnotation(value, ann);
+    return sourceType && isDateType(sourceType) ? formatDateSerial(value, DEFAULT_DATE_FORMAT) : formatScalar(value);
+  }
   if (typeof value === "string") return ann ? applyTextCase(value, ann.textCase) : value;
   if (isUnitCell(value)) {
     const a = annotationForValue(value, ann);
@@ -72,7 +85,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (isCubeValue(value)) return "cube";
   if (isDocumentValue(value)) return "document";
   if (Array.isArray(value)) {
-    const shown = value.slice(0, 4).map((v) => refPreview(v, ann));
+    const shown = value.slice(0, 4).map((v) => refPreview(v, ann, sourceType));
     return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
   }
   return String(value);
@@ -281,9 +294,10 @@ export function InlineRefValue({ nodeId, refKey, collapsible, rich, fill, highli
       </span>
     );
   }
+  const kind = typeof value === "string" ? " solenoid-ref-inline--text" : Array.isArray(value) ? " solenoid-ref-inline--list" : "";
   return (
-    <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
-      {refPreview(value, ann)}
+    <span className={`solenoid-ref-inline${kind}${highlight ? " solenoid-ref-inline--hl" : ""}`}>
+      {refPreview(value, ann, refSourceType(nodeId, refKey))}
     </span>
   );
 }

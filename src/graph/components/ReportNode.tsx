@@ -4,7 +4,7 @@ import type { ReportNode as ReportNodeType, DashboardNode as DashboardNodeType }
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { refPreview, useRefAnnotation } from "./inlineRefDisplay";
+import { refPreview, refSourceType, useRefAnnotation } from "./inlineRefDisplay";
 import { valueChipFor } from "./ValueChip";
 import { makeDocument, isDocumentValue } from "../documentValue";
 import { isSolError } from "../errorValue";
@@ -24,7 +24,7 @@ export function ReportRefRow({ data, emit, refKey, label, value }: {
   const input = data.inputs[refKey];
   const ann = useRefAnnotation(data.id, refKey);
   if (!input) return null;
-  const preview = refPreview(value, ann);
+  const preview = refPreview(value, ann, refSourceType(data.id, refKey));
   return (
     <MeasuredSocketRow side="input" socketKey={refKey} nodeId={data.id} emit={emit} payload={input.socket}>
       <span className="solenoid-node__io-label">{label}</span>

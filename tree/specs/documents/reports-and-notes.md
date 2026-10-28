@@ -257,7 +257,7 @@ The formatting annotation for a span is the Format Controller docked on that Rep
 
 | Value kind | Rendered as |
 |---|---|
-| number | `formatNumberWithAnnotation` when an annotation exists, else `formatScalar` |
+| number | `formatNumberWithAnnotation` when an annotation exists, else a date in `DD-MMM-YYYY` when the socket feeding the input is date-typed (`refSourceType`), else `formatScalar`; the card rows read the same, the webpage export does not yet |
 | text | the annotation's text case, else as is |
 | logical | the annotation's logical style |
 | complex | complex formatting, with the annotation when there is one |
@@ -378,7 +378,7 @@ A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a Report without the 
 
 **The card** (`DashboardNode.tsx`) shows an Open Dashboard button, the layout field and one row per name with the Report card's preview (`ReportRefRow`). Collapsed, every input converges on one pill.
 
-**The overlay** (`DashboardOverlay.tsx`, open state in `dashboardStore.ts`) covers the canvas between `--chrome-top` and `--chrome-bottom`, opaque on the canvas color, and the whole screen on mobile. Its header is the Report window's. Each box is a grid placement with the name as its label and the value drawn by the Report's embed renderer (`InlineRefValue`) with `rich` (a Frame shows 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). An unwired box with a hint shows the hint. Rows share the overlay's height with a 140 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, and a box holding a chart is at least 300 px high. Esc and the close button close it.
+**The overlay** (`DashboardOverlay.tsx`, open state in `dashboardStore.ts`) covers the canvas between `--chrome-top` and `--chrome-bottom`, opaque on the canvas color, and the whole screen on mobile. Its header is the Report window's. While it is open the canvas under it stops painting (`html.sol-dashboard-open`, [[html-in-canvas#The GPU texture budget]]), a drill-in's included. Each box is a grid placement with the name as its label and the value drawn by the Report's embed renderer (`InlineRefValue`) with `rich` (a Frame shows 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The box label is the figure's title, so the figure's own caption is hidden. A lone value is the box's figure, centered and scaled to the box with container query units: a number, a KPI card's number, an error code or a date in the UI face at weight 750, between 28 and 84 px; text, a list and a hint smaller, between 18 and 40 px. Numbers take their format from a Format Controller as everywhere else; the box adds none. An unwired box with a hint shows the hint. Rows share the overlay's height with a 160 px floor, and the grid scrolls past that. At 640 px wide or less the boxes stack in reading order, one per row, sized to their content, and a box holding a chart other than a KPI card is at least 300 px high. Esc and the close button close it.
 
 ## What is sanitized, and where
 

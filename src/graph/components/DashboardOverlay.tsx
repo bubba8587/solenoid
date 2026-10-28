@@ -1,5 +1,5 @@
 // [[B11]] maximalMerge
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { dashboardStore } from "../dashboardStore";
 import { cableValueStore } from "../cableValueStore";
 import { getOwningEditor } from "../activeGraph";
@@ -17,6 +17,12 @@ export function DashboardOverlay() {
   const found = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const node = found instanceof DashboardNode ? found : undefined;
   useEscapeToClose(() => dashboardStore.close(), !!node);
+  // A covered canvas stops painting ([[html-in-canvas#The GPU texture budget]]), a drill-in's included.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("sol-dashboard-open", !!node);
+    return () => root.classList.remove("sol-dashboard-open");
+  }, [node]);
   if (!node) return null;
 
   const placed = node.placements();

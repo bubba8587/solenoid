@@ -10,6 +10,7 @@
   flex-direction: column;
   background: var(--canvas-bg);
 }
+html.sol-dashboard-open .sol-rf-appcanvas { visibility: hidden; }
 html.is-mobile .dashboard-overlay { top: 0; bottom: 0; }
 html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
 
@@ -18,9 +19,9 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   min-height: 0;
   overflow: auto;
   display: grid;
-  grid-auto-rows: minmax(140px, 1fr);
-  gap: 10px;
-  padding: 10px;
+  grid-auto-rows: minmax(160px, 1fr);
+  gap: 12px;
+  padding: 12px;
 }
 
 .dashboard-box {
@@ -35,10 +36,12 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 }
 .dashboard-box__label {
   flex-shrink: 0;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-muted);
+  padding: 10px 14px 0;
+  color: var(--text-dim);
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -47,29 +50,60 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 10px;
+  padding: 8px 14px 12px;
   display: flex;
   flex-direction: column;
-  /* Over .sol-md's reading column: its auto margins would shrink the box to its content. */
+  /* Sizes the big figures to the box (cq units). Over .sol-md's reading column: its auto margins would shrink the box to its content. */
+  container-type: size;
   max-width: none;
   margin: 0;
 }
-/* Auto margins center a lone value without clipping one taller than the box, as justify-content would. */
+
+/* A lone value is the box's figure: centered by auto margins, which never clip one taller than the box as
+   justify-content would, and scaled to the box between a floor and a cap. */
 .dashboard-box__value > .solenoid-ref-inline,
-.dashboard-box__value > .dashboard-box__hint { margin: auto 0; font-size: 20px; }
-/* A figure takes the box: the chart measures what is left under its caption. */
+.dashboard-box__value > .dashboard-box__hint {
+  margin: auto;
+  text-align: center;
+  line-height: 1.05;
+}
+.dashboard-box__value > .solenoid-ref-inline,
+.dashboard-box .sol-kpi__value {
+  font-family: var(--font-sans);
+  font-size: clamp(28px, min(40cqh, 13cqw), 84px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-box__value > .solenoid-ref-inline--text,
+.dashboard-box__value > .solenoid-ref-inline--list,
+.dashboard-box__value > .dashboard-box__hint {
+  font-family: var(--font-sans);
+  font-size: clamp(18px, min(22cqh, 7cqw), 40px);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.dashboard-box__hint { color: var(--text-muted); font-weight: 400 !important; }
+.dashboard-box .sol-kpi { flex: 1 1 auto; gap: 8px; }
+.dashboard-box .sol-kpi__delta { font-size: clamp(12px, 7cqh, 18px); }
+
+/* The box's label is the figure's title, so the figure's own caption would repeat it. */
+.dashboard-box .solenoid-ref-figure__title { display: none; }
+/* A figure takes the box: the chart measures what is left. */
 .dashboard-box__value > .solenoid-ref-figure { flex: 1 1 auto; min-height: 0; margin: 0; display: flex; flex-direction: column; }
-.dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; }
-.dashboard-box__hint { color: var(--text-muted); }
+.dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
 
 .dashboard-empty {
   margin: auto;
   color: var(--text-muted);
 }
 
-/* Narrow screens stack the boxes in layout order: a phone has no room for the layout's columns. */
+/* Narrow screens stack the boxes in layout order, sized to their content: a phone has no room for the layout's
+   columns. The box has no fixed height there, so the figures size by width alone. */
 @media (max-width: 640px) {
   .dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: auto; }
   .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
-  .dashboard-box:has(.solenoid-ref-chartbody) { min-height: 300px; }
+  .dashboard-box__value { container-type: inline-size; }
+  .dashboard-box:has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
 }

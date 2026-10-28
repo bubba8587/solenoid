@@ -1,10 +1,255 @@
-{ "nodes": [
-  { "id": "f1", "type": "FrameInputNode", "init": { "label": "Quarterly sales" },
-    "frame": [ { "name": "Quarter", "type": "string", "cells": ["Q1", "Q2", "Q3", "Q4"] }, { "name": "Sales", "cells": [1200, 1550, 1340, 1810] } ] },
-  { "id": "c1", "type": "ChartNode", "init": { "label": "Sales by quarter", "op": "column" } },
-  { "id": "g1", "type": "GetColumnNode", "init": { "label": "Sales" }, "stringLiterals": { "name": "Sales" } },
-  { "id": "s1", "type": "AggregateNode", "init": { "label": "SUM", "op": "sum" } },
-  { "id": "a1", "type": "AggregateNode", "init": { "label": "AVERAGE", "op": "avg" } },
-  { "id": "d1", "type": "DashboardNode", "init": { "label": "Sales board", "layout": "Total | Average | Target: set a goal\nChart*2 | Table\nChart*2 | Table" } } ],
-  "cables": [ "f1.frame -> c1.values", "f1.frame -> g1.frame", "g1.values -> s1.list", "g1.values -> a1.list",
-    "s1.result -> d1.Total", "a1.result -> d1.Average", "c1.chart -> d1.Chart", "f1.frame -> d1.Table" ] }
+{
+ "nodes": [
+  {
+   "id": "m",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Monthly"
+   },
+   "frame": [
+    {
+     "name": "Month",
+     "type": "string",
+     "cells": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+     ]
+    },
+    {
+     "name": "Revenue",
+     "cells": [
+      42000,
+      45500,
+      43800,
+      51200,
+      54900,
+      58300,
+      61000,
+      59800,
+      63400,
+      67900,
+      71200,
+      78500
+     ]
+    },
+    {
+     "name": "Costs",
+     "cells": [
+      31000,
+      32400,
+      33100,
+      35800,
+      36200,
+      38900,
+      40100,
+      39700,
+      41500,
+      43800,
+      45200,
+      48900
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ch",
+   "type": "FrameInputNode",
+   "init": {
+    "label": "Channels"
+   },
+   "frame": [
+    {
+     "name": "Channel",
+     "type": "string",
+     "cells": [
+      "Direct",
+      "Partners",
+      "Online",
+      "Retail"
+     ]
+    },
+    {
+     "name": "Share",
+     "cells": [
+      38,
+      24,
+      27,
+      11
+     ]
+    }
+   ]
+  },
+  {
+   "id": "line",
+   "type": "ChartNode",
+   "init": {
+    "label": "Revenue vs costs",
+    "op": "line"
+   }
+  },
+  {
+   "id": "pie",
+   "type": "ChartNode",
+   "init": {
+    "label": "Sales by channel",
+    "op": "pie"
+   }
+  },
+  {
+   "id": "tree",
+   "type": "ProportionNode",
+   "init": {
+    "label": "Channel mix",
+    "op": "treemap"
+   }
+  },
+  {
+   "id": "rev",
+   "type": "GetColumnNode",
+   "init": {
+    "label": "Revenue"
+   },
+   "stringLiterals": {
+    "name": "Revenue"
+   }
+  },
+  {
+   "id": "sum",
+   "type": "AggregateNode",
+   "init": {
+    "label": "Annual revenue",
+    "op": "sum"
+   }
+  },
+  {
+   "id": "kpi",
+   "type": "KpiNode",
+   "init": {
+    "label": "December"
+   },
+   "literals": {
+    "value": 78500,
+    "prev": 71200,
+    "goodUp": 1
+   }
+  },
+  {
+   "id": "g",
+   "type": "GaugeNode",
+   "init": {
+    "label": "Quota",
+    "mode": "dial"
+   },
+   "literals": {
+    "value": 0.87,
+    "target": 0.9,
+    "max": 1
+   }
+  },
+  {
+   "id": "mer",
+   "type": "MermaidNode",
+   "init": {
+    "label": "Pipeline"
+   },
+   "stringLiterals": {
+    "source": "flowchart LR\n  Lead --> Qualified --> Proposal --> Won\n  Proposal --> Lost"
+   }
+  },
+  {
+   "id": "note",
+   "type": "NoteNode",
+   "init": {
+    "label": "Notes",
+    "body": "## Q4 summary\n\nRevenue closed the year **up 87%** on January. Costs grew slower than sales, so the margin widened every quarter.\n\n- Partners overtook Online in November\n- Retail stays flat\n- Hiring plan approved for Q1"
+   }
+  },
+  {
+   "id": "status",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Status",
+    "op": "string",
+    "value": "On track"
+   }
+  },
+  {
+   "id": "margin",
+   "type": "ValueInputNode",
+   "init": {
+    "label": "Margin",
+    "op": "number",
+    "value": "0.312"
+   }
+  },
+  {
+   "id": "d",
+   "type": "DashboardNode",
+   "init": {
+    "label": "Sales overview",
+    "layout": "Annual revenue | December | Margin | Status\nRevenue vs costs*3 | Quota\nRevenue vs costs*3 | Channel mix\nSales by channel | Pipeline*2 | Notes\nMonthly*3 | Notes"
+   }
+  },
+  {
+   "id": "fc1",
+   "type": "FormatControllerNode",
+   "init": {
+    "label": "Format",
+    "hostNodeId": "sum",
+    "socketKey": "result",
+    "side": "output",
+    "format": "decimal",
+    "decimalDigits": 0,
+    "decimalMode": "places",
+    "unit": "usd",
+    "socketDataType": "number",
+    "grouping": true
+   }
+  },
+  {
+   "id": "fc2",
+   "type": "FormatControllerNode",
+   "init": {
+    "label": "Format",
+    "hostNodeId": "margin",
+    "socketKey": "value",
+    "side": "output",
+    "format": "percent",
+    "decimalDigits": 1,
+    "decimalMode": "places",
+    "unit": "none",
+    "socketDataType": "number"
+   }
+  }
+ ],
+ "cables": [
+  "m.frame -> line.values",
+  "ch.frame -> pie.values",
+  "ch.frame -> tree.frame",
+  "m.frame -> rev.frame",
+  "rev.values -> sum.list",
+  "kpi.chart -> d.December",
+  "status.value -> d.Status",
+  "line.chart -> d.Revenue vs costs",
+  "g.chart -> d.Quota",
+  "tree.chart -> d.Channel mix",
+  "pie.chart -> d.Sales by channel",
+  "mer.diagram -> d.Pipeline",
+  "note.document -> d.Notes",
+  "m.frame -> d.Monthly",
+  "sum.result -> fc1.in",
+  "fc1.out -> d.Annual revenue",
+  "margin.value -> fc2.in",
+  "fc2.out -> d.Margin"
+ ]
+}

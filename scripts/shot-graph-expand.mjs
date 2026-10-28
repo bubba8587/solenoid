@@ -23,7 +23,7 @@ export function expand(raw) {
     return { ...rest, init };
   });
   const connections = [...(g.connections ?? []), ...(g.cables ?? []).map((s) => {
-    const m = /^\s*([^.\s]+)\.(\S+)\s*->\s*([^.\s]+)\.(\S+)\s*$/.exec(s);
+    const m = /^\s*([^.\s]+)\.(\S+)\s*->\s*([^.\s]+)\.(.+?)\s*$/.exec(s);
     if (!m) throw new Error(`bad cable "${s}", want "src.output -> dst.input"`);
     return { source: m[1], sourceOutput: m[2], target: m[3], targetInput: m[4] };
   })];

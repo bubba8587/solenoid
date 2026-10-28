@@ -66,3 +66,12 @@ describe("DashboardNode: one input per layout box", () => {
     expect(Object.keys(new DashboardNode(d.init as never).inputs)).toEqual(["Unit Price", "Sales"]);
   });
 });
+
+describe("a ref preview reads its source socket's type", () => {
+  it("a number from a date socket previews as a date, a plain number as a number", async () => {
+    const { refPreview } = await import("../../../src/graph/components/inlineRefDisplay");
+    expect(refPreview(46323, undefined, "date")).toBe("28-Oct-2026");
+    expect(refPreview([46323, 46324], undefined, "datelist")).toBe("[28-Oct-2026, 29-Oct-2026]");
+    expect(refPreview(46323, undefined, "number")).toBe("46323");
+  });
+});
