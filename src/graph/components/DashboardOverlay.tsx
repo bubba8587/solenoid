@@ -124,11 +124,13 @@ function BoxError({ err }: { err: SolError }) {
   );
 }
 
-function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRename, onRemove }: {
+function BoxMenu({ color, cards, onCards, expanded, onExpand, onLocate, onColor, onRename, onRemove }: {
   color?: string;
   /** Present only on a box holding a Frame: whether it shows as cards, and the switch. */
   cards?: boolean;
   onCards?: () => void;
+  /** The box is the one shown alone, so the item leads back to the board. */
+  expanded?: boolean;
   onExpand: () => void;
   onLocate?: () => void;
   onColor: (slot: string | null) => void;
@@ -149,7 +151,9 @@ function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRename,
       </button>
       {open && r && createPortal(
         <div ref={pop} className="dashboard-box__pop" style={{ top: r.bottom + 4, right: window.innerWidth - r.right }} onPointerDown={(e) => e.stopPropagation()}>
-          <button type="button" className="dashboard-box__item" onClick={act(onExpand)}><Maximize2Icon size={14} />Expand</button>
+          <button type="button" className="dashboard-box__item" onClick={act(onExpand)}>
+            {expanded ? <><Minimize2Icon size={14} />Back to Board</> : <><Maximize2Icon size={14} />Expand</>}
+          </button>
           {onLocate && <button type="button" className="dashboard-box__item" onClick={act(onLocate)}><FocusIcon size={14} />Show on Canvas</button>}
           {onCards && <button type="button" className="dashboard-box__item" onClick={act(onCards)}><TableIcon size={14} />{cards ? "Show as Table" : "Show as Cards"}</button>}
           <div className="dashboard-box__swatches">
@@ -412,7 +416,8 @@ export function DashboardOverlay() {
                     color={node.boxColors[p.name]}
                     cards={asCards}
                     onCards={isFrameValue(value) ? () => toggleCards(p.name) : undefined}
-                    onExpand={() => setFocus(p.name)}
+                    expanded={focus === p.name}
+                    onExpand={() => setFocus(focus === p.name ? null : p.name)}
                     onLocate={source ? () => { dashboardStore.close(); flyToNode(source); } : undefined}
                     onColor={(slot) => setColor(p.name, slot)}
                     onRename={() => setRenaming(p.name)}

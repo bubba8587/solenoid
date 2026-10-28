@@ -396,7 +396,7 @@ Every placed name is one `trueany` input named exactly as the layout spells it, 
 
 ### The card
 
-`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. Collapsed, every input converges on one pill.
+`DashboardNode.tsx`: an Open Dashboard button, the layout field, and one row per name with the Report card's preview. A row whose figure is titled like the row shows the figure's kind instead (`chart`), so no row reads its name twice; this holds on the Report card too. Collapsed, every input converges on one pill.
 
 ### The board
 
@@ -409,7 +409,7 @@ Rows share the board's height with a 160 px floor, and the grid scrolls past tha
 A box is a grid placement, its name as the label, its value drawn by the shared renderer (`InlineRefValue`) with `rich` (a Frame's 25 rows, scrolling) and `fill` (a chart measures the box's width and height, uncapped). The label is the figure's title, so the figure's own caption is hidden.
 
 - **A lone value** is the box's figure, centered and scaled to the box (container query units): a number, a KPI card's number, an error code or a date in the UI face at weight 750, 28 to 84 px; text, a list and a hint smaller, 18 to 40 px. Numbers take their format from a Format Controller, as everywhere; the box adds none.
-- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them.
+- **A chart, diagram or picture** fits the box, a diagram scaled keeping its shape. **A document, a table, a cube or a Frame's cards** keep their own height and the box scrolls them; a table or cube drops the sunken well it wears on a card, since the box is its frame.
 - **An error** shows its code, its message (else its explanation) and, when it knows its origin, a Caused by button that closes the board and flies to that node.
 - **Nothing wired** shows a muted dash, or the box's hint.
 - **Interactive figures** work as on a Display: a Record pages with its ‹ › buttons and a Choice Ladder takes its actions, both stepping the node feeding the box; a KPI card draws in its Value input's format.
@@ -420,7 +420,7 @@ A ⋯ menu on each label, shown on hover (always on a touch screen), rendered in
 
 | Item | Does |
 |---|---|
-| Expand | Shows the box alone across the board; Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
+| Expand, Back to Board | Shows the box alone across the board; Back to Board (the same item there), Esc, the header's back button or a double-click on the label returns. A double-click on a label also expands. |
 | Show on Canvas | Closes the board and flies to the node feeding the box. |
 | Show as Cards / Table | On a box holding a Frame: the Table popup's Cards view, laid out as a grid across the box (`boxViews`). |
 | Color swatches, No Color | Tints the box as a Group is colored: a solid header bar in the palette slot's color with contrast ink, a 2 px border (darkened in light mode) and the Group's body wash, 8% dark and 14% light (`boxColors`, name → slot). |

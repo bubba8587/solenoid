@@ -574,5 +574,29 @@
       "target": "board",
       "targetInput": "Summary"
     }
+  ],
+  "frameFormats": [
+    {
+      "nodeId": "monthly",
+      "column": "Revenue",
+      "ann": {
+        "format": "decimal",
+        "unit": "usd",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "grouping": true
+      }
+    },
+    {
+      "nodeId": "monthly",
+      "column": "Costs",
+      "ann": {
+        "format": "decimal",
+        "unit": "usd",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "grouping": true
+      }
+    }
   ]
 }

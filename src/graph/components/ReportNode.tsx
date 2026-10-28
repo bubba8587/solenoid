@@ -24,7 +24,9 @@ export function ReportRefRow({ data, emit, refKey, label, value }: {
   const input = data.inputs[refKey];
   const ann = useRefAnnotation(data.id, refKey);
   if (!input) return null;
-  const preview = refPreview(value, ann, refSourceType(data.id, refKey));
+  let preview = refPreview(value, ann, refSourceType(data.id, refKey));
+  // A figure titled like its row would print the name twice; its kind says more.
+  if (preview === label && value && typeof value === "object") preview = refPreview({ ...value, title: undefined }, ann);
   return (
     <MeasuredSocketRow side="input" socketKey={refKey} nodeId={data.id} emit={emit} payload={input.socket}>
       <span className="solenoid-node__io-label">{label}</span>
