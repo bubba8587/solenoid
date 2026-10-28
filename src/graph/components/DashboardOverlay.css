@@ -281,10 +281,15 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 /* Narrow screens stack the boxes in layout order, sized to their content: a phone has no room for the layout's
    columns. The box has no fixed height there, so the figures size by width alone. */
 @media (max-width: 640px) {
-  .dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: auto; }
+  .dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: max-content; }
   .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
+  /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a
+     thumb, and a short one stays short. */
+  .dashboard-box:has(.report-embed__body, .solenoid-table-display, .table-cards-wrap) .dashboard-box__value { flex: 0 0 auto; max-height: min(480px, 65vh); }
+  /* A diagram scales to the box's width, so a tall one would take the whole screen. */
+  .dashboard-box__value > .solenoid-ref-figure > .solenoid-mermaid svg { max-height: 360px; }
   .dashboard-edit-btn { display: none; }
 }
 
