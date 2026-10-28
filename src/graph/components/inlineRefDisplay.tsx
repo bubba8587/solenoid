@@ -208,7 +208,11 @@ function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
   const html = useMemo(() => {
     const html = DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
-    return substituteRefCodes(html, (name) => name in value.refs ? { html: escapeHtml(refPreview(value.refs[name], undefined)) } : null);
+    // Each value as the producing Report shows it: its Format Controller and its source socket's type.
+    const src = value.sourceId;
+    return substituteRefCodes(html, (name) => name in value.refs
+      ? { html: escapeHtml(refPreview(value.refs[name], src ? resolveRefAnnotation(src, name) : undefined, src ? refSourceType(src, name) : undefined)) }
+      : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, tex]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;

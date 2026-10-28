@@ -7,58 +7,49 @@
     {
       "id": "monthly",
       "type": "FrameInputNode",
-      "x": 24,
-      "y": 855,
+      "x": 243,
+      "y": 1611,
       "init": {
-        "label": "Monthly",
+        "label": "Monthly sales",
         "frameText": "[{\"name\":\"Month\",\"type\":\"string\",\"cells\":[\"Jan\",\"Feb\",\"Mar\",\"Apr\",\"May\",\"Jun\",\"Jul\",\"Aug\",\"Sep\",\"Oct\",\"Nov\",\"Dec\"]},{\"name\":\"Revenue\",\"type\":\"number\",\"cells\":[\"42000\",\"45500\",\"43800\",\"51200\",\"54900\",\"58300\",\"61000\",\"59800\",\"63400\",\"67900\",\"71200\",\"78500\"]},{\"name\":\"Costs\",\"type\":\"number\",\"cells\":[\"31000\",\"32400\",\"33100\",\"35800\",\"36200\",\"38900\",\"40100\",\"39700\",\"41500\",\"43800\",\"45200\",\"48900\"]}]"
       }
     },
     {
       "id": "channels",
       "type": "FrameInputNode",
-      "x": 243,
-      "y": 610,
+      "x": 24,
+      "y": 1856,
       "init": {
         "label": "Channels",
-        "frameText": "[{\"name\":\"Channel\",\"type\":\"string\",\"cells\":[\"Direct\",\"Partners\",\"Online\",\"Retail\"]},{\"name\":\"Share\",\"type\":\"number\",\"cells\":[\"38\",\"24\",\"27\",\"11\"]}]"
+        "frameText": "[{\"name\":\"Channel\",\"type\":\"string\",\"cells\":[\"Direct\",\"Partners\",\"Online\",\"Retail\"]},{\"name\":\"Share\",\"type\":\"number\",\"cells\":[\"38\",\"27\",\"24\",\"11\"]}]"
       }
     },
     {
-      "id": "trend",
-      "type": "ChartNode",
-      "x": 1973,
-      "y": 519,
+      "id": "stages",
+      "type": "FrameInputNode",
+      "x": 303,
+      "y": 1856,
       "init": {
-        "label": "Revenue vs costs",
-        "op": "line"
+        "label": "Pipeline",
+        "frameText": "[{\"name\":\"Stage\",\"type\":\"string\",\"cells\":[\"Leads\",\"Qualified\",\"Proposal\",\"Won\"]},{\"name\":\"Deals\",\"type\":\"number\",\"cells\":[\"420\",\"210\",\"96\",\"41\"]}]"
       }
     },
     {
-      "id": "pie",
-      "type": "ChartNode",
-      "x": 1679,
-      "y": 519,
+      "id": "target",
+      "type": "ValueInputNode",
+      "x": 24,
+      "y": 1611,
       "init": {
-        "label": "Sales by channel",
-        "op": "pie"
-      }
-    },
-    {
-      "id": "mix",
-      "type": "ProportionNode",
-      "x": 1211,
-      "y": 856,
-      "init": {
-        "label": "Channel mix",
-        "op": "treemap"
+        "label": "Annual target",
+        "op": "number",
+        "value": "800000"
       }
     },
     {
       "id": "revcol",
       "type": "GetColumnNode",
-      "x": 353,
-      "y": 924,
+      "x": 734,
+      "y": 794,
       "init": {
         "label": "Revenue"
       },
@@ -67,111 +58,82 @@
       }
     },
     {
+      "id": "costcol",
+      "type": "GetColumnNode",
+      "x": 734,
+      "y": 1176,
+      "init": {
+        "label": "Costs"
+      },
+      "stringLiterals": {
+        "name": "Costs"
+      }
+    },
+    {
       "id": "annual",
       "type": "AggregateNode",
-      "x": 682,
-      "y": 951,
+      "x": 1119,
+      "y": 939,
       "init": {
         "label": "Annual revenue",
         "op": "sum"
       }
     },
     {
-      "id": "december",
-      "type": "KpiNode",
-      "x": 1445,
-      "y": 519,
+      "id": "margin",
+      "type": "ExpressionNode",
+      "x": 1089,
+      "y": 1159,
       "init": {
-        "label": "December"
-      },
-      "literals": {
-        "value": 78500,
-        "prev": 71200,
-        "goodUp": 1
+        "label": "Margin",
+        "expr": "(SUM(rev) - SUM(cost)) / SUM(rev)"
       }
     },
     {
-      "id": "quota",
-      "type": "GaugeNode",
-      "x": 1211,
-      "y": 519,
+      "id": "latest",
+      "type": "ExpressionNode",
+      "x": 1089,
+      "y": 689,
       "init": {
-        "label": "Quota",
-        "mode": "dial"
-      },
-      "literals": {
-        "value": 0.87,
-        "target": 0.9,
-        "max": 1
+        "label": "Latest month",
+        "expr": "INDEX(rev, COUNT(rev))"
       }
     },
     {
-      "id": "pipeline",
-      "type": "MermaidNode",
-      "x": 1799,
-      "y": 856,
+      "id": "prior",
+      "type": "ExpressionNode",
+      "x": 1089,
+      "y": 457,
       "init": {
-        "label": "Pipeline"
-      },
-      "stringLiterals": {
-        "source": "flowchart LR\n  Lead --> Qualified --> Proposal --> Won\n  Proposal --> Lost"
+        "label": "Month before",
+        "expr": "INDEX(rev, COUNT(rev) - 1)"
       }
     },
     {
-      "id": "notes",
-      "type": "NoteNode",
-      "x": 1906,
-      "y": 1451,
+      "id": "attain",
+      "type": "ExpressionNode",
+      "x": 1591,
+      "y": 940,
       "init": {
-        "label": "Notes",
-        "body": "## Q4 summary\n\nRevenue closed the year **up 87%** on January. Costs grew slower than sales, so the margin widened every quarter.\n\n- Partners overtook Online in November\n- Retail stays flat\n- Hiring plan approved for Q1",
-        "color": "amber",
-        "width": 320,
-        "height": 170
+        "label": "Share of target",
+        "expr": "total / target"
       }
     },
     {
       "id": "status",
-      "type": "ValueInputNode",
-      "x": 24,
-      "y": 610,
+      "type": "ExpressionNode",
+      "x": 1591,
+      "y": 1218,
       "init": {
         "label": "Status",
-        "op": "string",
-        "value": "On track"
-      }
-    },
-    {
-      "id": "margin",
-      "type": "ValueInputNode",
-      "x": 522,
-      "y": 610,
-      "init": {
-        "label": "Margin",
-        "op": "number",
-        "value": "0.312"
-      }
-    },
-    {
-      "id": "board",
-      "type": "DashboardNode",
-      "x": 2376,
-      "y": 349,
-      "init": {
-        "label": "Sales board",
-        "layout": "Annual revenue | December | Margin | Status\nRevenue vs costs*3 | Quota\nRevenue vs costs*3 | Channel mix\nSales by channel | Pipeline*2 | Notes\nMonthly*2 | Detail | Notes",
-        "boxColors": {
-          "Annual revenue": "green",
-          "Status": "sky",
-          "Notes": "amber"
-        }
+        "expr": "IF(m >= 0.3, \"On track\", \"Watch costs\")"
       }
     },
     {
       "id": "fmt-annual",
       "type": "FormatControllerNode",
-      "x": 865,
-      "y": 1020,
+      "x": 1302,
+      "y": 1008,
       "init": {
         "label": "Format",
         "hostNodeId": "annual",
@@ -188,12 +150,12 @@
     {
       "id": "fmt-margin",
       "type": "FormatControllerNode",
-      "x": 705,
-      "y": 697,
+      "x": 1332,
+      "y": 1299,
       "init": {
         "label": "Format",
         "hostNodeId": "margin",
-        "socketKey": "value",
+        "socketKey": "result",
         "side": "output",
         "format": "percent",
         "decimalDigits": 1,
@@ -203,10 +165,98 @@
       }
     },
     {
+      "id": "fmt-attain",
+      "type": "FormatControllerNode",
+      "x": 1834,
+      "y": 1074,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "attain",
+        "socketKey": "result",
+        "side": "output",
+        "format": "percent",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "none",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "fmt-latest",
+      "type": "FormatControllerNode",
+      "x": 1332,
+      "y": 795,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "latest",
+        "socketKey": "result",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "usd",
+        "socketDataType": "number",
+        "grouping": true
+      }
+    },
+    {
+      "id": "trend",
+      "type": "ChartNode",
+      "x": 2941,
+      "y": 1521,
+      "init": {
+        "label": "Revenue vs costs",
+        "op": "line"
+      }
+    },
+    {
+      "id": "mix",
+      "type": "ProportionNode",
+      "x": 2179,
+      "y": 1858,
+      "init": {
+        "label": "Channel mix",
+        "op": "treemap"
+      }
+    },
+    {
+      "id": "funnel",
+      "type": "ChartNode",
+      "x": 2647,
+      "y": 1521,
+      "init": {
+        "label": "Deal funnel",
+        "op": "funnel"
+      }
+    },
+    {
+      "id": "kpi",
+      "type": "KpiNode",
+      "x": 2413,
+      "y": 1521,
+      "init": {
+        "label": "December"
+      }
+    },
+    {
+      "id": "gauge",
+      "type": "GaugeNode",
+      "x": 2179,
+      "y": 1521,
+      "init": {
+        "label": "Target",
+        "mode": "dial"
+      },
+      "literals": {
+        "target": 1,
+        "max": 1
+      }
+    },
+    {
       "id": "detail",
       "type": "RecordNode",
-      "x": 1505,
-      "y": 856,
+      "x": 2473,
+      "y": 1858,
       "init": {
         "label": "Month detail",
         "op": "detail"
@@ -216,48 +266,94 @@
       }
     },
     {
+      "id": "summary",
+      "type": "ReportNode",
+      "x": 2327,
+      "y": 182,
+      "init": {
+        "label": "Summary",
+        "body": "### The year so far\n\nRevenue reached **{{ revenue }}**, {{ attainment }} of the annual target, at a **{{ margin }}** margin. December alone brought in {{ december }}.\n\nDirect still brings the largest share of sales. Partners and Online run close behind it, and Retail holds about a tenth.\n\nThe pipeline wins about one lead in ten, so most of next year's growth has to come from qualifying more of them."
+      }
+    },
+    {
+      "id": "board",
+      "type": "DashboardNode",
+      "x": 3355,
+      "y": 1062,
+      "init": {
+        "label": "Sales board",
+        "layout": "Revenue | December | Margin | Status\nRevenue vs costs*3 | Target\nRevenue vs costs*3 | Channel mix\nPipeline | Monthly*2 | Summary\nMonth | Monthly*2 | Summary",
+        "boxColors": {
+          "Revenue": "green",
+          "Summary": "amber"
+        }
+      }
+    },
+    {
       "id": "grp-data",
       "type": "GroupNode",
       "x": 0,
-      "y": 552,
+      "y": 1553,
       "init": {
-        "label": "Sales data",
+        "label": "Data",
         "members": [
           "monthly",
           "channels",
+          "stages",
+          "target"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 571,
+        "height": 552
+      }
+    },
+    {
+      "id": "grp-model",
+      "type": "GroupNode",
+      "x": 710,
+      "y": 399,
+      "init": {
+        "label": "Model",
+        "members": [
           "revcol",
+          "costcol",
           "annual",
           "fmt-annual",
           "margin",
           "fmt-margin",
+          "latest",
+          "fmt-latest",
+          "prior",
+          "attain",
+          "fmt-attain",
           "status"
         ],
-        "color": "sky",
+        "color": "violet",
         "collapsed": false,
-        "width": 1054,
-        "height": 598
+        "width": 1313,
+        "height": 1037
       }
     },
     {
       "id": "grp-figures",
       "type": "GroupNode",
-      "x": 1187,
-      "y": 461,
+      "x": 2155,
+      "y": 1463,
       "init": {
         "label": "Figures",
         "members": [
           "trend",
-          "pie",
           "mix",
-          "december",
-          "quota",
-          "pipeline",
+          "funnel",
+          "kpi",
+          "gauge",
           "detail"
         ],
         "color": "green",
         "collapsed": false,
         "width": 1054,
-        "height": 952
+        "height": 743
       }
     }
   ],
@@ -265,25 +361,13 @@
     {
       "source": "monthly",
       "sourceOutput": "frame",
-      "target": "trend",
-      "targetInput": "values"
-    },
-    {
-      "source": "channels",
-      "sourceOutput": "frame",
-      "target": "pie",
-      "targetInput": "values"
-    },
-    {
-      "source": "channels",
-      "sourceOutput": "frame",
-      "target": "mix",
+      "target": "revcol",
       "targetInput": "frame"
     },
     {
       "source": "monthly",
       "sourceOutput": "frame",
-      "target": "revcol",
+      "target": "costcol",
       "targetInput": "frame"
     },
     {
@@ -293,14 +377,158 @@
       "targetInput": "list"
     },
     {
-      "source": "december",
+      "source": "revcol",
+      "sourceOutput": "values",
+      "target": "margin",
+      "targetInput": "rev"
+    },
+    {
+      "source": "costcol",
+      "sourceOutput": "values",
+      "target": "margin",
+      "targetInput": "cost"
+    },
+    {
+      "source": "revcol",
+      "sourceOutput": "values",
+      "target": "latest",
+      "targetInput": "rev"
+    },
+    {
+      "source": "revcol",
+      "sourceOutput": "values",
+      "target": "prior",
+      "targetInput": "rev"
+    },
+    {
+      "source": "annual",
+      "sourceOutput": "result",
+      "target": "attain",
+      "targetInput": "total"
+    },
+    {
+      "source": "target",
+      "sourceOutput": "value",
+      "target": "attain",
+      "targetInput": "target"
+    },
+    {
+      "source": "margin",
+      "sourceOutput": "result",
+      "target": "status",
+      "targetInput": "m"
+    },
+    {
+      "source": "annual",
+      "sourceOutput": "result",
+      "target": "fmt-annual",
+      "targetInput": "in"
+    },
+    {
+      "source": "margin",
+      "sourceOutput": "result",
+      "target": "fmt-margin",
+      "targetInput": "in"
+    },
+    {
+      "source": "attain",
+      "sourceOutput": "result",
+      "target": "fmt-attain",
+      "targetInput": "in"
+    },
+    {
+      "source": "latest",
+      "sourceOutput": "result",
+      "target": "fmt-latest",
+      "targetInput": "in"
+    },
+    {
+      "source": "monthly",
+      "sourceOutput": "frame",
+      "target": "trend",
+      "targetInput": "values"
+    },
+    {
+      "source": "channels",
+      "sourceOutput": "frame",
+      "target": "mix",
+      "targetInput": "frame"
+    },
+    {
+      "source": "stages",
+      "sourceOutput": "frame",
+      "target": "funnel",
+      "targetInput": "values"
+    },
+    {
+      "source": "latest",
+      "sourceOutput": "result",
+      "target": "kpi",
+      "targetInput": "value"
+    },
+    {
+      "source": "prior",
+      "sourceOutput": "result",
+      "target": "kpi",
+      "targetInput": "prev"
+    },
+    {
+      "source": "attain",
+      "sourceOutput": "result",
+      "target": "gauge",
+      "targetInput": "value"
+    },
+    {
+      "source": "monthly",
+      "sourceOutput": "frame",
+      "target": "detail",
+      "targetInput": "frame"
+    },
+    {
+      "source": "fmt-annual",
+      "sourceOutput": "out",
+      "target": "summary",
+      "targetInput": "revenue"
+    },
+    {
+      "source": "fmt-attain",
+      "sourceOutput": "out",
+      "target": "summary",
+      "targetInput": "attainment"
+    },
+    {
+      "source": "fmt-margin",
+      "sourceOutput": "out",
+      "target": "summary",
+      "targetInput": "margin"
+    },
+    {
+      "source": "fmt-latest",
+      "sourceOutput": "out",
+      "target": "summary",
+      "targetInput": "december"
+    },
+    {
+      "source": "fmt-annual",
+      "sourceOutput": "out",
+      "target": "board",
+      "targetInput": "Revenue"
+    },
+    {
+      "source": "kpi",
       "sourceOutput": "chart",
       "target": "board",
       "targetInput": "December"
     },
     {
+      "source": "fmt-margin",
+      "sourceOutput": "out",
+      "target": "board",
+      "targetInput": "Margin"
+    },
+    {
       "source": "status",
-      "sourceOutput": "value",
+      "sourceOutput": "result",
       "target": "board",
       "targetInput": "Status"
     },
@@ -311,10 +539,10 @@
       "targetInput": "Revenue vs costs"
     },
     {
-      "source": "quota",
+      "source": "gauge",
       "sourceOutput": "chart",
       "target": "board",
-      "targetInput": "Quota"
+      "targetInput": "Target"
     },
     {
       "source": "mix",
@@ -323,22 +551,10 @@
       "targetInput": "Channel mix"
     },
     {
-      "source": "pie",
+      "source": "funnel",
       "sourceOutput": "chart",
       "target": "board",
-      "targetInput": "Sales by channel"
-    },
-    {
-      "source": "pipeline",
-      "sourceOutput": "diagram",
-      "target": "board",
       "targetInput": "Pipeline"
-    },
-    {
-      "source": "notes",
-      "sourceOutput": "document",
-      "target": "board",
-      "targetInput": "Notes"
     },
     {
       "source": "monthly",
@@ -347,40 +563,16 @@
       "targetInput": "Monthly"
     },
     {
-      "source": "annual",
-      "sourceOutput": "result",
-      "target": "fmt-annual",
-      "targetInput": "in"
-    },
-    {
-      "source": "fmt-annual",
-      "sourceOutput": "out",
-      "target": "board",
-      "targetInput": "Annual revenue"
-    },
-    {
-      "source": "margin",
-      "sourceOutput": "value",
-      "target": "fmt-margin",
-      "targetInput": "in"
-    },
-    {
-      "source": "fmt-margin",
-      "sourceOutput": "out",
-      "target": "board",
-      "targetInput": "Margin"
-    },
-    {
-      "source": "monthly",
-      "sourceOutput": "frame",
-      "target": "detail",
-      "targetInput": "frame"
-    },
-    {
       "source": "detail",
       "sourceOutput": "chart",
       "target": "board",
-      "targetInput": "Detail"
+      "targetInput": "Month"
+    },
+    {
+      "source": "summary",
+      "sourceOutput": "document",
+      "target": "board",
+      "targetInput": "Summary"
     }
   ]
 }

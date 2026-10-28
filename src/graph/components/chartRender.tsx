@@ -8,7 +8,7 @@ import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import { formatDateSerial } from "../nodes/dateSerial";
 import { formatFrameCell } from "../frame";
-import { heightRampColor, resolveColor, PALETTE } from "../palette";
+import { heightRampColor, resolveColor, PALETTE, contrastInk } from "../palette";
 import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
@@ -246,6 +246,28 @@ export function ChartView({
         {SLICE_TIP}
         <Funnel dataKey="v" data={stages} isAnimationActive={false} onClick={(_e: unknown, k: number) => pickSlice(stages[k]?.i ?? -1)}>
           <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10 * fs} />
+          {/* Each stage's name inside its band, in the ink that reads on the band's color. */}
+          {labels && (
+            <LabelList
+              dataKey="i"
+              content={(p: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; index?: number }) => {
+                const d = stages[p.index ?? -1];
+                const name = d ? tickFmt(d.i) : "";
+                // A band runs from its own width down to the next band's (to a point for the last), each in proportion to
+                // its value, so a name wider than the band's middle would spill out of it.
+                const next = stages[(p.index ?? 0) + 1];
+                const mid = Number(p.width) * (1 + (next && d.v > 0 ? next.v / d.v : 0)) / 2;
+                if (!d || !name || name.length * 6.2 * fs > mid * 0.9) return null;
+                return (
+                  <text
+                    x={Number(p.x) + Number(p.width) / 2} y={Number(p.y) + Number(p.height) / 2}
+                    textAnchor="middle" dominantBaseline="central" fontSize={10 * fs} fontWeight={600}
+                    fill={contrastInk(paint(d.i))} fillOpacity={sliceDim(d.i)} pointerEvents="none"
+                  >{name}</text>
+                );
+              }}
+            />
+          )}
           {stages.map((d) => <Cell key={d.i} fill={paint(d.i)} fillOpacity={sliceDim(d.i)} className="sol-slice" />)}
         </Funnel>
       </FunnelChart>
