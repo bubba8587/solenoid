@@ -96,10 +96,21 @@ html.is-mobile .dashboard-overlay .report-header { padding: calc(8px + env(safe-
 
 /* The box's label is the figure's title, so the figure's own caption would repeat it. */
 .dashboard-box .solenoid-ref-figure__title { display: none; }
-/* A figure takes the box: the chart measures what is left. */
+/* A figure takes the box and fits what is left: a chart measures it, a diagram or picture scales into it. A document,
+   a table or a cube keeps its own height instead, so the box scrolls it. */
 .dashboard-box__value > .solenoid-ref-figure { flex: 1 1 auto; min-height: 0; margin: 0; display: flex; flex-direction: column; }
+.dashboard-box__value > .solenoid-ref-figure:has(> .report-embed__body, > .solenoid-table-display) { flex: 0 0 auto; display: block; }
 .dashboard-box__value .solenoid-ref-chartbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .dashboard-box__value .report-embed__body > :first-child { margin-top: 0; }
+/* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box. */
+.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; }
+.dashboard-box .table-cards__bar { max-width: none; background: transparent; }
+.dashboard-box .table-cards {
+  max-width: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-items: start;
+}
 
 .dashboard-box__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 

@@ -14,10 +14,15 @@ import { themeAccent, resolveColor, contrastInk, darkenAccent, hexToRgba } from 
 import { DashboardNode } from "../nodeClasses";
 import { writeRecordLayout, type RecordPlacement } from "../recordLayout";
 import { InlineRefValue } from "./inlineRefDisplay";
+import { TableCards } from "./TableCards";
+import type { ColumnSort } from "./columnSort";
+import { isFrameValue, formatFrameCell, type FrameValue, type FrameColumn } from "../frame";
+import { formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatScalar } from "./format";
 import { commitDashboardLayout } from "./DashboardNode";
 import { SwatchGrid } from "./SwatchGrid";
 import { CloseIcon } from "./CloseIcon";
-import { FocusIcon, Maximize2Icon, Minimize2Icon, FullscreenIcon, ExitFullscreenIcon, PencilIcon } from "./Icons";
+import { FocusIcon, TableIcon, Maximize2Icon, Minimize2Icon, FullscreenIcon, ExitFullscreenIcon, PencilIcon } from "./Icons";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useEscapeLayer } from "./escapeLayers";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -71,8 +76,39 @@ function FrozenBox({ snap }: { snap?: Snapshot }) {
   );
 }
 
-function BoxMenu({ color, onExpand, onLocate, onColor, onRemove }: {
+/** A Frame as the Table popup's Cards view, read-only: the box's alternative to the grid. */
+function FrameCards({ frame }: { frame: FrameValue }) {
+  const [sort, setSort] = useState<ColumnSort>([]);
+  const cols = frame.columns;
+  const rows = cols[0]?.values.length ?? 0;
+  const shown = (c: FrameColumn, r: number): string => {
+    const v = formatFrameCell(c.type, c.values[r] ?? null, c.format);
+    return typeof v === "number" ? (c.format ? formatNumberWithAnnotation(v, c.format) : formatScalar(v)) : v ?? "";
+  };
+  return (
+    <TableCards
+      names={cols.map((c) => c.name)}
+      types={cols.map((c) => c.type)}
+      computed={NO_COLS}
+      chipCols={NO_COLS}
+      rowCount={rows}
+      order={Array.from({ length: rows }, (_, r) => r)}
+      rawAt={(r, c) => cols[c].raw?.[r] ?? shown(cols[c], r)}
+      shownRow={(r) => cols.map((c) => shown(c, r))}
+      dataKey={frame}
+      sort={sort}
+      onSort={setSort}
+      query=""
+    />
+  );
+}
+const NO_COLS: ReadonlySet<number> = new Set();
+
+function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRemove }: {
   color?: string;
+  /** Present only on a box holding a Frame: whether it shows as cards, and the switch. */
+  cards?: boolean;
+  onCards?: () => void;
   onExpand: () => void;
   onLocate?: () => void;
   onColor: (slot: string | null) => void;
@@ -94,6 +130,7 @@ function BoxMenu({ color, onExpand, onLocate, onColor, onRemove }: {
         <div ref={pop} className="dashboard-box__pop" style={{ top: r.bottom + 4, right: window.innerWidth - r.right }} onPointerDown={(e) => e.stopPropagation()}>
           <button type="button" className="dashboard-box__item" onClick={act(onExpand)}><Maximize2Icon size={14} />Expand</button>
           {onLocate && <button type="button" className="dashboard-box__item" onClick={act(onLocate)}><FocusIcon size={14} />Show on Canvas</button>}
+          {onCards && <button type="button" className="dashboard-box__item" onClick={act(onCards)}><TableIcon size={14} />{cards ? "Show as Table" : "Show as Cards"}</button>}
           <div className="dashboard-box__swatches">
             <SwatchGrid value={color} onPick={(slot) => { setOpen(false); onColor(slot); }} />
             {color && <button type="button" className="dashboard-box__item" onClick={act(() => onColor(null))}>No Color</button>}
@@ -234,6 +271,15 @@ export function DashboardOverlay() {
     cableValueStore.bump();
   }
 
+  function toggleCards(name: string) {
+    if (!node) return;
+    if (node.boxViews[name]) { const { [name]: _gone, ...rest } = node.boxViews; node.boxViews = rest; }
+    else node.boxViews = { ...node.boxViews, [name]: "cards" };
+    node.edited();
+    scheduleAutosave();
+    cableValueStore.bump();
+  }
+
   function toggleFullscreen() {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void rootRef.current?.requestFullscreen?.();
@@ -300,6 +346,8 @@ export function DashboardOverlay() {
         >
           {shown.map((p) => {
             const source = sourceOf(p.name);
+            const value = node.refValue(p.name);
+            const asCards = !!node.boxViews[p.name] && isFrameValue(value);
             return (
               <section
                 key={p.name}
@@ -311,6 +359,8 @@ export function DashboardOverlay() {
                   <span className="dashboard-box__name">{p.name}</span>
                   <BoxMenu
                     color={node.boxColors[p.name]}
+                    cards={asCards}
+                    onCards={isFrameValue(value) ? () => toggleCards(p.name) : undefined}
                     onExpand={() => setFocus(p.name)}
                     onLocate={source ? () => { dashboardStore.close(); flyToNode(source); } : undefined}
                     onColor={(slot) => setColor(p.name, slot)}
@@ -318,9 +368,11 @@ export function DashboardOverlay() {
                   />
                 </div>
                 <div className="dashboard-box__value sol-md">
-                  {node.refValue(p.name) === undefined && p.hint
+                  {value === undefined && p.hint
                     ? <span className="dashboard-box__hint">{p.hint}</span>
-                    : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill />}
+                    : asCards && isFrameValue(value)
+                      ? <FrameCards frame={value} />
+                      : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill />}
                 </div>
               </section>
             );

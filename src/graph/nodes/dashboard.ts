@@ -14,14 +14,17 @@ export class DashboardNode extends GraphNode {
   collapsed: boolean;
   /** A palette slot per box name, for the box's tint. */
   boxColors: Record<string, string>;
+  /** A box holding a Frame shows it as cards when its name is here; a table otherwise. */
+  boxViews: Record<string, "cards">;
   width = 200; height = 96;
 
   private _values = new Map<string, unknown>();
 
-  constructor(init?: { label?: string; layout?: string; collapsed?: boolean; boxColors?: Record<string, string> }) {
+  constructor(init?: { label?: string; layout?: string; collapsed?: boolean; boxColors?: Record<string, string>; boxViews?: Record<string, "cards"> }) {
     super(init?.label ?? "Dashboard");
     this.layout = init?.layout ?? "";
     this.boxColors = { ...init?.boxColors };
+    this.boxViews = { ...init?.boxViews };
     this.collapsed = init?.collapsed ?? false;
     for (const key of this.refKeys()) this.addInput(key, trueAnyIn(key));
   }
@@ -52,8 +55,15 @@ export class DashboardNode extends GraphNode {
     await dropInputCables(this.id, removed);
     for (const k of removed) { this.removeInput(k); this._values.delete(k); }
     const colors: Record<string, string> = {};
-    for (const k of wanted) { const c = this.boxColors[k] ?? this.boxColors[renames.get(k) ?? ""]; if (c) colors[k] = c; }
+    const views: Record<string, "cards"> = {};
+    for (const k of wanted) {
+      const from = renames.get(k) ?? "";
+      const c = this.boxColors[k] ?? this.boxColors[from];
+      if (c) colors[k] = c;
+      if (this.boxViews[k] ?? this.boxViews[from]) views[k] = "cards";
+    }
     this.boxColors = colors;
+    this.boxViews = views;
     for (const k of wanted) if (!this.inputs[k]) this.addInput(k, trueAnyIn(k));
     for (const c of carried) {
       const source = ed?.getNode(c.source);

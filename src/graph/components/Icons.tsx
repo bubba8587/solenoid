@@ -99,3 +99,6 @@ export const FullscreenIcon = (p: IconProps) => (
 export const ExitFullscreenIcon = (p: IconProps) => (
   <Svg {...p}><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></Svg>
 );
+export const TableIcon = (p: IconProps) => (
+  <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M12 3v18" /></Svg>
+);

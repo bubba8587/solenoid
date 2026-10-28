@@ -99,8 +99,9 @@ describe("writeRecordLayout: the layout text back from placements", () => {
 
 describe("box colors follow the layout", () => {
   it("a renamed box keeps its color and a removed box drops it", async () => {
-    const n = new DashboardNode({ layout: "A | B | C", boxColors: { A: "green", B: "sky", C: "amber" } });
+    const n = new DashboardNode({ layout: "A | B | C", boxColors: { A: "green", B: "sky", C: "amber" }, boxViews: { A: "cards", C: "cards" } });
     await n.setLayout("Alpha | B", new Map([["Alpha", "A"]]));
     expect(n.boxColors).toEqual({ Alpha: "green", B: "sky" });
+    expect(n.boxViews).toEqual({ Alpha: "cards" });
   });
 });

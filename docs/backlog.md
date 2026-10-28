@@ -38,6 +38,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
 ## Tooling
+- [ ] **A Frame embedded in a Report picks its view** (author 2026-10-28): the Dashboard box's Show as Cards (`FrameCards`, `DashboardOverlay.tsx`) offered on a Report embed too, kept per ref; the static webpage export needs its own cards markup. Popups opened from a Dashboard in browser full screen don't show (they mount on the page, outside the full-screen element).
 - [ ] **Headless runner as a pipeline step** (author 2026-10-28, pitch: "build the model visually, run it from a script, feed any dashboard"; `out-of-scope.md` §1/§5/§11 keep it a step, not a dashboard backend or server). `npm run build:cli` makes dist-cli/ (about 9 MB, 3 MB gzipped, Node only). Left: publish it to npm (author's account and package name; a package.json for dist-cli/ with `bin`), `--set name=value` inputs by node name, `--out name` to print only chosen outputs, a check of Script and the file and network connections under plain Node, and one example (a seed + a scheduled GitHub Action publishing JSON a dashboard reads). No serve or watch mode.
 
 ## Seeds (after the 2026-10-08 scalar input fold)
