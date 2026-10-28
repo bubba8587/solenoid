@@ -104,7 +104,7 @@ function FrameCards({ frame }: { frame: FrameValue }) {
 }
 const NO_COLS: ReadonlySet<number> = new Set();
 
-function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRemove }: {
+function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRename, onRemove }: {
   color?: string;
   /** Present only on a box holding a Frame: whether it shows as cards, and the switch. */
   cards?: boolean;
@@ -112,6 +112,7 @@ function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRemove 
   onExpand: () => void;
   onLocate?: () => void;
   onColor: (slot: string | null) => void;
+  onRename: () => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -135,6 +136,7 @@ function BoxMenu({ color, cards, onCards, onExpand, onLocate, onColor, onRemove 
             <SwatchGrid value={color} onPick={(slot) => { setOpen(false); onColor(slot); }} />
             {color && <button type="button" className="dashboard-box__item" onClick={act(() => onColor(null))}>No Color</button>}
           </div>
+          <button type="button" className="dashboard-box__item" onClick={act(onRename)}><PencilIcon size={14} />Rename</button>
           <button type="button" className="dashboard-box__item dashboard-box__item--danger" onClick={act(onRemove)}><CloseIcon size={14} />Remove</button>
         </div>,
         // Inside the overlay, not the body: in full screen only the overlay shows.
@@ -196,8 +198,10 @@ export function DashboardOverlay() {
   const [focus, setFocus] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
 
-  useEffect(() => { setFocus(null); setEdit(null); }, [nodeId]);
+  useEffect(() => { setFocus(null); setEdit(null); setRenaming(null); }, [nodeId]);
+  useEscapeLayer(!!renaming, () => setRenaming(null));
   useEscapeLayer(!!focus, () => setFocus(null));
   useEscapeLayer(!!edit, () => setEdit(null));
   useEscapeToClose(() => dashboardStore.close(), !!node);
@@ -257,6 +261,16 @@ export function DashboardOverlay() {
     await commitDashboardLayout(node, writeRecordLayout(next));
   }
 
+  /** A new name the layout can hold: not blank, not another box's, and free of the grammar's marks. */
+  async function renameBox(from: string, raw: string) {
+    setRenaming(null);
+    const to = raw.trim();
+    if (!node || !to || to === from || to === "." || /[|*:\n]/.test(to) || to.startsWith("#")) return;
+    if (placed.some((p) => p.name !== from && p.name.toLowerCase() === to.toLowerCase())) return;
+    const next = placed.map((p) => (p.name === from ? { ...p, name: to } : p));
+    await commitDashboardLayout(node, writeRecordLayout(next), new Map([[to, from]]));
+  }
+
   async function removeBox(name: string) {
     if (!node) return;
     await commitDashboardLayout(node, writeRecordLayout(placed.filter((p) => p.name !== name)));
@@ -290,7 +304,10 @@ export function DashboardOverlay() {
   return (
     <div ref={rootRef} className="dashboard-overlay" onPointerDown={(e) => e.stopPropagation()}>
       <div className="report-header">
-        <span className="report-title">{node.label?.trim() || "Dashboard"}</span>
+        <span className="report-title">
+          {node.label?.trim() || "Dashboard"}
+          {focus && <span className="dashboard-crumb"> › {focus}</span>}
+        </span>
         <div className="report-header-actions">
           {edit ? (
             <>
@@ -355,8 +372,19 @@ export function DashboardOverlay() {
                 className={`dashboard-box${node.boxColors[p.name] ? " dashboard-box--tinted" : ""}`}
                 style={{ ...(focus ? { gridRow: "1 / -1", gridColumn: "1" } : { gridRow: `${p.row} / span ${p.rowSpan}`, gridColumn: `${p.col} / span ${p.colSpan}` }), ...tint(p.name) }}
               >
-                <div className="dashboard-box__label">
-                  <span className="dashboard-box__name">{p.name}</span>
+                <div className="dashboard-box__label" onDoubleClick={(e) => { if (!(e.target as HTMLElement).closest("button, input")) setFocus(focus ? null : p.name); }}>
+                  {renaming === p.name ? (
+                    <input
+                      className="dashboard-box__rename"
+                      defaultValue={p.name}
+                      autoFocus
+                      spellCheck={false}
+                      aria-label="Box name"
+                      onFocus={(e) => e.currentTarget.select()}
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      onBlur={(e) => { if (renaming === p.name) void renameBox(p.name, e.currentTarget.value); }}
+                    />
+                  ) : <span className="dashboard-box__name">{p.name}</span>}
                   <BoxMenu
                     color={node.boxColors[p.name]}
                     cards={asCards}
@@ -364,12 +392,13 @@ export function DashboardOverlay() {
                     onExpand={() => setFocus(p.name)}
                     onLocate={source ? () => { dashboardStore.close(); flyToNode(source); } : undefined}
                     onColor={(slot) => setColor(p.name, slot)}
+                    onRename={() => setRenaming(p.name)}
                     onRemove={() => void removeBox(p.name)}
                   />
                 </div>
                 <div className="dashboard-box__value sol-md">
-                  {value === undefined && p.hint
-                    ? <span className="dashboard-box__hint">{p.hint}</span>
+                  {value === undefined
+                    ? <span className="dashboard-box__hint">{p.hint || "—"}</span>
                     : asCards && isFrameValue(value)
                       ? <FrameCards frame={value} />
                       : <InlineRefValue nodeId={node.id} refKey={p.name} rich fill />}
