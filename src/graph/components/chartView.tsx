@@ -182,7 +182,7 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} format={valueFormat} />;
   if (value.op === "scale" && value.payload?.kind === "scale")
     return value.payload.style === "dial"
-      ? <ScaleDial payload={value.payload} width={width} fscale={fscale} />
+      ? <ScaleDial payload={value.payload} width={width} height={height} fscale={fscale} />
       : <BulletBar payload={value.payload} width={width} fscale={fscale} />;
   if (value.op === "proportion" && value.payload?.kind === "proportion")
     return value.payload.layout === "treemap"
@@ -240,15 +240,18 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
   );
 }
 
-function ScaleDial({ payload, width, size, fscale = 1 }: { payload: ScalePayload; width?: number; size?: number; fscale?: number }) {
+/** Given a height, the dial grows to fill it (a resized Display, a Dashboard box); else it stays card-sized. The scale's
+ *  ends sit on a row under the arc, where the arc's own ends would cover them. */
+function ScaleDial({ payload, width, height, size, fscale = 1 }: { payload: ScalePayload; width?: number; height?: number; size?: number; fscale?: number }) {
   const { track } = useChartColors();
   const v = typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
   const frac = v === null ? 0 : Math.min(1, Math.max(0, v));
-  const dim = size ?? Math.max(120, Math.min(width ?? 160, 200));
+  const ends = Math.round(13 * fscale);
+  const dim = size ?? Math.max(120, Math.min(width ?? 160, height ? (height - ends) / 0.55 : 200));
   return (
-    <div style={{ position: "relative", width: dim, height: Math.round(dim * 0.55), margin: "2px auto 0", overflow: "hidden" }}>
+    <div style={{ position: "relative", width: dim, height: Math.round(dim * 0.55) + ends, margin: "2px auto 0", overflow: "hidden" }}>
       <GaugeArc pct={frac * 100} track={track} size={dim} />
-      <div style={{ position: "absolute", left: 0, right: 0, top: Math.round(dim * 0.31), textAlign: "center", fontSize: 16 * fscale, fontWeight: 600, color: "var(--text)" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: Math.round(dim * 0.31), textAlign: "center", fontSize: Math.max(16, dim / 10) * fscale, fontWeight: 600, color: "var(--text)" }}>
         {v === null ? "—" : `${Math.round(v * 1000) / 10}%`}
       </div>
       <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9 * fscale, color: "var(--text-dim)" }}>0%</div>

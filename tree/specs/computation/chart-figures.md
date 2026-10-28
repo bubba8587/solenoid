@@ -165,6 +165,10 @@ When any source carries an `xy` payload (a Scatter, XY Line or Bubble), the merg
 
 `mode` is `dial` or `bar`, an argument picked with a segmented toggle ([[C26]] opArgDistinct). Dial has only `value`; Bar adds `target`, `max` and `options`, which a switch to Dial prunes and removes. Dial emits `{ style: "dial", value, target: null, min: 0, max: 1 }` with `options: {}`. Bar emits `{ style: "bar", value, target, min: 0, max }`; `max` falls back to the card literal (default 100) even when wired blank, because it is the track's scale, while `value` and `target` are data (a wired blank is null). Literal defaults: value 0, target 80, max 100.
 
+### Gauge dial
+
+The dial's 0% and 100% sit on a row under the arc, clear of its ends. Given a height (a resized Display, a Dashboard box), the dial grows to fill it, its percentage scaling with it; without one it keeps its card size.
+
 ### KPI
 
 `value` and `prev` read with `readInput`, card literals default to 0. `unit` is the card text, `goodUp` the card flag (default on). A wired blank `prev` gives null (no comparison). The card draws the value and the size of the change in the format on the KPI's Value input (a Format Controller docked there or one upstream through passthroughs, `resolveRefAnnotation(kpi, "value")`), on the KPI's own card and wherever the figure is embedded (a Report, a Dashboard box: `ChartFigure`'s `valueFormat`); with none, the General style. The change's percentage shows one decimal place.

@@ -113,3 +113,36 @@ describe("box colors follow the layout", () => {
     expect(back.boxViews).toEqual({ B: "cards" });
   });
 });
+
+describe("boardSources: the live cards a board reads from", () => {
+  it("finds connection cards anywhere upstream, ignores the rest, and dates the board by its oldest fetch", async () => {
+    const { GraphEditor } = await import("../../../src/graph/graphEditor");
+    const { DataflowEngine } = await import("../../../src/graph/dataflowEngine");
+    const { GraphConnection } = await import("../../../src/graph/graphModel");
+    const { ValueInputNode, AggregateNode } = await import("../../../src/graph/nodeClasses");
+    const { connectionStore } = await import("../../../src/graph/connectionStore");
+    const { boardSources } = await import("../../../src/graph/dashboardStore");
+    const editor = new GraphEditor();
+    editor.use(new DataflowEngine());
+    const near = new ValueInputNode({ op: "number", value: "1" });
+    const far = new ValueInputNode({ op: "number", value: "2" });
+    const aside = new ValueInputNode({ op: "number", value: "3" });
+    const sum = new AggregateNode({ op: "sum" });
+    const board = new DashboardNode({ layout: "A | B" });
+    for (const n of [near, far, aside, sum, board]) await editor.addNode(n as never);
+    const { registerOwnedGraph } = await import("../../../src/graph/activeGraph");
+    const unregister = registerOwnedGraph({ editor, view: {} } as never);
+    await editor.addConnection(new GraphConnection(far, "value", sum, "list") as never);
+    await editor.addConnection(new GraphConnection(sum, "result", board, "A") as never);
+    await editor.addConnection(new GraphConnection(near, "value", board, "B") as never);
+    connectionStore.setState(far.id, { status: "ok", fetchedAt: 2000 });
+    connectionStore.setState(near.id, { status: "ok", fetchedAt: 5000 });
+    connectionStore.setState(aside.id, { status: "error" });
+    expect(boardSources(board.id)).toEqual({ ids: expect.arrayContaining([far.id, near.id]), loading: false, failed: 0, fetchedAt: 2000 });
+    expect(boardSources(board.id).ids).toHaveLength(2);
+    connectionStore.setState(near.id, { status: "loading" });
+    expect(boardSources(board.id).loading).toBe(true);
+    for (const n of [near, far, aside]) connectionStore.forget(n.id);
+    unregister();
+  });
+});
