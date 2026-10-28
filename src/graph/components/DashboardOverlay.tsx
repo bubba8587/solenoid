@@ -143,11 +143,11 @@ function CountUp({ nodeId, refKey, value }: { nodeId: string; refKey: string; va
   return <span className="solenoid-ref-inline">{refPreview(v, ann, type)}</span>;
 }
 
-/** A box small enough to share a phone's row: a lone value, short text or a KPI card. */
+/** A box small enough to share a phone's row: a lone value, short text, or a widget figure (a KPI card or a gauge). */
 function isCompact(value: unknown): boolean {
   if (value === undefined || value === null || typeof value === "number" || typeof value === "boolean") return true;
   if (typeof value === "string") return value.length <= 24;
-  return isChartValue(value) && value.op === "kpi";
+  return isChartValue(value) && (value.op === "kpi" || value.op === "scale");
 }
 
 /** The boxes that pair up two to a row on a phone: neighbors in reading order, both compact. A lone one keeps the row. */
