@@ -124,8 +124,9 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
 /* A table or cube is the box's whole content, so it drops the sunken well a card value sits in: the box is its frame. */
 .dashboard-box__value .solenoid-table-display { background: none; border: none; padding: 0 !important; }
 .dashboard-box__value .solenoid-table-display__grid { margin-top: 0; }
-/* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box. */
-.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; }
+/* A Frame shown as cards: the popup's one 460 px column becomes a grid across the box, scrolling in the box and,
+   at its end, handing the scroll on to the board (the popup's overscroll contain would keep it). */
+.dashboard-box__value > .table-cards-wrap { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; overscroll-behavior: auto; }
 .dashboard-box .table-cards__bar { max-width: none; background: transparent; }
 .dashboard-box .table-cards {
   max-width: none;
