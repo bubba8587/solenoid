@@ -296,6 +296,15 @@ export function DashboardOverlay() {
     root.classList.toggle("sol-dashboard-open", !!node);
     return () => root.classList.remove("sol-dashboard-open");
   }, [node]);
+  // On a phone the board opens under the app's accent bar, which stays: its height holds the notch inset, so it is measured.
+  useEffect(() => {
+    if (!node) return;
+    const root = document.documentElement;
+    const place = () => root.style.setProperty("--dash-top", `${document.querySelector(".solenoid-menubar")?.getBoundingClientRect().bottom ?? 0}px`);
+    place();
+    window.addEventListener("resize", place);
+    return () => { window.removeEventListener("resize", place); root.style.removeProperty("--dash-top"); };
+  }, [node]);
   if (!node) return null;
 
   const placed = node.placements();
