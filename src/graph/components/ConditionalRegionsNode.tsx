@@ -1,9 +1,10 @@
 import { lazy, Suspense, useState, useSyncExternalStore } from "react";
-import type { ConditionalRegionsNode as ConditionalRegionsNodeType, RegionsMode, RegionsResult } from "../nodeClasses";
-import { REGIONS_MODE_META, REGIONS_RESULT_META } from "../nodes/visual";
+import type { ConditionalRegionsNode as ConditionalRegionsNodeType, RegionsMode, RegionsOp } from "../nodeClasses";
+import { REGIONS_MODE_META, REGIONS_OP_META } from "../nodes/visual";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
-import { SegToggle } from "./SegToggle";
+import { SegToggle, OpToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 import { ErrorChip } from "./ErrorChip";
 import { useSeriesColors, regionLabelColor } from "./chartCore";
 import { dropInputCables } from "./cablePrune";
@@ -18,10 +19,10 @@ const RegionsFigure = lazy(() => import("./chartRender").then((m) => ({ default:
 const W = 218;
 const H = 170;
 
-const options = <T extends string>(meta: Record<T, { label: string; description: string }>) =>
-  (Object.keys(meta) as T[]).map((value) => ({ value, label: meta[value].label, title: meta[value].description }));
-const MODE_OPTIONS = options<RegionsMode>(REGIONS_MODE_META);
-const RESULT_OPTIONS = options<RegionsResult>(REGIONS_RESULT_META);
+const MODE_OPTIONS = (Object.keys(REGIONS_MODE_META) as RegionsMode[])
+  .map((value) => ({ value, label: REGIONS_MODE_META[value].label, title: REGIONS_MODE_META[value].description }));
+const OP_OPTIONS = (["bool", "text"] as const satisfies readonly RegionsOp[])
+  .map((value) => ({ value, label: <TypeIcon type={value === "bool" ? "logical" : "text"} />, title: REGIONS_OP_META[value].label }));
 
 /** A Bool region cycles unmarked, TRUE, FALSE. */
 function nextMark(marks: Record<string, boolean>, key: string): Record<string, boolean> {
@@ -47,21 +48,21 @@ export function ConditionalRegionsComponent({ data, emit }: NodeProps<Conditiona
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
   const colors = useSeriesColors();
   const [mode, setMode] = useState<RegionsMode>(data.mode);
-  const [result, setResult] = useState<RegionsResult>(data.resultAs);
+  const [op, setOpState] = useState<RegionsOp>(data.op);
   const [marks, setMarks] = useState(data.regionMarks);
   const [labelMarks, setLabelMarks] = useState(data.regionLabels);
 
   const recompute = () => { data.edited(); void processGraph(); };
   const pickMode = (m: RegionsMode) => { data.mode = m; setMode(m); recompute(); };
-  async function pickResult(next: RegionsResult) {
-    if (next === data.resultAs) return;
+  async function pickOp(next: RegionsOp) {
+    if (next === data.op) return;
     if (next === "bool") await dropInputCables(data.id, ["labels"]);
-    data.setResultAs(next);
-    setResult(next);
+    data.setOp(next);
+    setOpState(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
     recompute();
   }
-  const text = result === "text";
+  const text = op === "text";
   const labels = text ? data.cachedLabels ?? [] : null;
   const toggle = (key: string) => {
     if (labels) {
@@ -79,11 +80,9 @@ export function ConditionalRegionsComponent({ data, emit }: NodeProps<Conditiona
   const err = data.cachedError;
   return (
     <NodeShell node={data} emit={emit}>
+      <OpToggle value={op} options={OP_OPTIONS} onChange={(o) => void pickOp(o)} />
       <InlineInputs node={data} emit={emit} keys={text ? ["chart", "points", "labels"] : ["chart", "points"]} />
-      <div className="solenoid-node__field-row">
-        <SegToggle value={result} options={RESULT_OPTIONS} onChange={(r) => void pickResult(r)} />
-        <SegToggle value={mode} options={MODE_OPTIONS} onChange={pickMode} />
-      </div>
+      <SegToggle value={mode} options={MODE_OPTIONS} onChange={pickMode} />
       <div className="solenoid-node__figure solenoid-node__regions" style={{ position: "relative", marginTop: 4, height: H }}>
         {err ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ErrorChip err={err} /></div>

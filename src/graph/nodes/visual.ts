@@ -186,11 +186,11 @@ export const REGIONS_MODE_META = {
   strict:    { label: "<", description: "A point on a line counts for no region and comes out blank." },
 } satisfies Record<RegionsMode, { label: string; description: string }>;
 
-export type RegionsResult = "bool" | "text";
-export const REGIONS_RESULT_META = {
-  bool: { label: "Bool", description: "Each region is TRUE, FALSE or unmarked." },
-  text: { label: "Text", description: "Each region takes a label from the list, or none." },
-} satisfies Record<RegionsResult, { label: string; description: string }>;
+export type RegionsOp = "bool" | "text";
+export const REGIONS_OP_META = {
+  bool: { label: "True/False", keywords: "boolean true false in inside mask" },
+  text: { label: "Labels", keywords: "text label name category zone ifs" },
+} satisfies Record<RegionsOp, { label: string; keywords: string }>;
 
 /** One plotted point: x, y, its answer (a Text card's as the label's place in the list), and whether it sits on a line. */
 export type RegionPoint = [number, number, boolean | number | null, boolean];
@@ -208,7 +208,7 @@ export class ConditionalRegionsNode extends GraphNode {
 
   label: string;
   mode: RegionsMode;
-  resultAs: RegionsResult;
+  op: RegionsOp;
   regionMarks: Record<string, boolean>;
   /** A Text card's marks: each region's label by its place in the list. */
   regionLabels: Record<string, number>;
@@ -222,24 +222,24 @@ export class ConditionalRegionsNode extends GraphNode {
   height = 280;
 
   constructor(init?: {
-    label?: string; mode?: RegionsMode; resultAs?: RegionsResult;
+    label?: string; op?: RegionsOp; mode?: RegionsMode;
     regionMarks?: Record<string, boolean>; regionLabels?: Record<string, number>;
   }) {
     super("ConditionalRegions");
     this.label = init?.label ?? "";
     this.mode = init?.mode === "strict" ? "strict" : "inclusive";
-    this.resultAs = init?.resultAs === "text" ? "text" : "bool";
+    this.op = init?.op === "text" ? "text" : "bool";
     this.regionMarks = { ...(init?.regionMarks ?? {}) };
     this.regionLabels = { ...(init?.regionLabels ?? {}) };
     this.addInput("chart", chartIn("Chart"));
     this.addInput("points", frameIn("Points"));
-    if (this.resultAs === "text") this.addInput("labels", strListIn("Labels"));
+    if (this.op === "text") this.addInput("labels", strListIn("Labels"));
     this.addOutput("result", frameOut("Points"));
   }
 
   /** Text adds the Labels input; Bool drops it, so its cables are pruned first. */
-  setResultAs(next: RegionsResult): void {
-    this.resultAs = next;
+  setOp(next: RegionsOp): void {
+    this.op = next;
     if (next === "text" && !this.inputs.labels) this.addInput("labels", strListIn("Labels"));
     if (next === "bool" && this.inputs.labels) this.removeInput("labels");
   }
@@ -248,9 +248,9 @@ export class ConditionalRegionsNode extends GraphNode {
    *  already has that name. */
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const [x, y] = ctx.inputShape("points")?.columns ?? [];
-    const third = this.resultAs === "text" ? "label" : "in";
+    const third = this.op === "text" ? "label" : "in";
     if (!x || !y || x.name === third || y.name === third) return null;
-    return { columns: [x, y, { name: third, type: this.resultAs === "text" ? "string" : "logical" }] };
+    return { columns: [x, y, { name: third, type: this.op === "text" ? "string" : "logical" }] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | SolError | null } {

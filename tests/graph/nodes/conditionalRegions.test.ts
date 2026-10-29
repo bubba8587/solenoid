@@ -60,7 +60,7 @@ describe("Conditional Regions node", () => {
   });
 
   it("in Text mode answers each point its region's label", () => {
-    const n = new ConditionalRegionsNode({ resultAs: "text", regionLabels: { "0.0.0": 1, "1.0.1": 0, "0.1.0": 7 } });
+    const n = new ConditionalRegionsNode({ op: "text", regionLabels: { "0.0.0": 1, "1.0.1": 0, "0.1.0": 7 } });
     expect(n.inputs.labels).toBeTruthy();
     const out = n.data({ chart: [chartOf("xyline")], points: [frame([0.5, 2.5, 1, 1], [2, 1, 6, 0.5])], labels: [["low", "high"]] }).result as FrameValue;
     expect(out.columns.map((c) => [c.name, c.type])).toEqual([["x", "number"], ["y", "number"], ["label", "string"]]);
@@ -70,17 +70,17 @@ describe("Conditional Regions node", () => {
   });
 
   it("gives a point on a line between two labels the one listed first", () => {
-    const n = new ConditionalRegionsNode({ resultAs: "text", regionLabels: { "0.0.0": 1, "1.0.0": 0 } });
+    const n = new ConditionalRegionsNode({ op: "text", regionLabels: { "0.0.0": 1, "1.0.0": 0 } });
     expect(inCol(n.data({ chart: [chartOf("xyline")], points: [frame([2], [4.5])], labels: [["a", "b"]] }).result)).toEqual(["a"]);
   });
 
   it("keeps each mode's marks apart, and drops the Labels input in Bool mode", () => {
     const n = new ConditionalRegionsNode({ regionMarks: { "0.0.0": true } });
     expect(n.inputs.labels).toBeUndefined();
-    n.setResultAs("text");
+    n.setOp("text");
     expect(n.inputs.labels).toBeTruthy();
     expect(inCol(n.data({ chart: [chartOf("xyline")], points: [frame([0.5], [2])], labels: [["a"]] }).result)).toEqual([null]);
-    n.setResultAs("bool");
+    n.setOp("bool");
     expect(n.inputs.labels).toBeUndefined();
     expect(inCol(run(n, chartOf("xyline"), frame([0.5], [2])))).toEqual([true]);
   });
@@ -104,9 +104,9 @@ describe("Conditional Regions node", () => {
   });
 
   it("saves its marks and modes", () => {
-    const init = extractInit(new ConditionalRegionsNode({ mode: "strict", resultAs: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } }));
-    expect(init).toMatchObject({ mode: "strict", resultAs: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } });
+    const init = extractInit(new ConditionalRegionsNode({ mode: "strict", op: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } }));
+    expect(init).toMatchObject({ mode: "strict", op: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } });
     const back = new ConditionalRegionsNode(init as ConstructorParameters<typeof ConditionalRegionsNode>[0]);
-    expect([back.mode, back.resultAs, back.regionMarks, back.regionLabels]).toEqual(["strict", "text", { "0.0.1": false }, { "0.0.0": 2 }]);
+    expect([back.mode, back.op, back.regionMarks, back.regionLabels]).toEqual(["strict", "text", { "0.0.1": false }, { "0.0.0": 2 }]);
   });
 });

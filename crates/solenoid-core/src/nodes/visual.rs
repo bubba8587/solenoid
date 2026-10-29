@@ -2259,7 +2259,7 @@ fn conditional_regions(c: &mut Call) -> Answer {
         c.show("cachedPoints", Cv::NULL);
         return Ok(vec![("result".into(), Cv::from(e))]);
     }
-    let text = c.field_str("resultAs", "bool") == "text";
+    let text = c.field_str("op", "bool") == "text";
     let labels: Vec<String> = if text {
         super::stats::items(&c.read_input("labels", list(Vec::new()))).iter().map(js_string_of).collect()
     } else {
