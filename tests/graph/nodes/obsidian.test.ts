@@ -168,17 +168,18 @@ describe("ImportObsidianNode reads the demo vault on the web ([[B2]] webTryDeskt
     forceDemoVault(true);
     const wiredNode = new ImportObsidianNode();
     wiredNode.data({ path: ["Projects/Kitchen remodel"] });
-    await whenConnectionsSettled();
+    // Scoped to this test's cards: the shared worker can hold another file's fetch that never lands.
+    await whenConnectionsSettled([wiredNode.id]);
     expect(wiredNode.fileName).toBe("Projects/Kitchen remodel.md");
     expect(wiredNode.fieldKeys()).toContain("status");
 
     const picked = new ImportObsidianNode({ fileName: "Projects/Kitchen remodel.md", body: "---\nstale: 1\n---\n" });
     picked.data({});
-    await whenConnectionsSettled();
+    await whenConnectionsSettled([picked.id]);
     expect(picked.fieldKeys()).toEqual(["stale"]);
     await refreshAllConnections();
     picked.data({});
-    await whenConnectionsSettled();
+    await whenConnectionsSettled([picked.id]);
     expect(picked.fieldKeys()).toContain("status");
   });
 });

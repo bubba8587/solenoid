@@ -1,20 +1,15 @@
 // [[D47]] noMixCurrencies, [[D35]] errorInErrorOut
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { FxNode } from "../../src/graph/nodes/connection";
 import { throughBoundary } from "./boundaryKit";
 import { magnitudeOf, isUnitCell } from "../../src/graph/unitValue";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
-const realFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = realFetch; });
-
 /** A spot card with its rate already in, wrapped as the engine wraps it. */
 function fx(from: string, to: string, rate: number): FxNode {
-  globalThis.fetch = vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
   const n = new FxNode();
   n.stringLiterals.from = from;
   n.stringLiterals.to = to;
-  n.data({});
   n.cached = { rate, serial: 46000 } as FxNode["cached"];
   throughBoundary(n as never);
   return n;

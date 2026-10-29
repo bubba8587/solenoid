@@ -9,6 +9,10 @@ import { loadWasmEngineSync, wasmUrl, whenWasmEngineLoads } from "../../src/grap
 import { auditNamedEdits, setDirectCalls, unnamedEdits } from "../../src/graph/engineWasm/solenoid_graph.js";
 
 loadWasmEngineSync(fs.readFileSync(wasmUrl));
+
+// No test reaches the network: a live card's fetch fails at once instead of hanging on a real request, which a shared
+// worker carried into later files' waits for loads in flight. A test that needs a response stubs fetch itself.
+globalThis.fetch = (() => Promise.reject(new TypeError("No network in tests: stub fetch in the test that needs one."))) as typeof fetch;
 whenWasmEngineLoads(() => {
   setDirectCalls(!process.env.FREEZE_NODES);
   auditNamedEdits(!process.env.PERF);
