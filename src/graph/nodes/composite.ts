@@ -546,12 +546,9 @@ export class CompositeNode extends GraphNode {
     );
   }
 
-  /** `whole`: a pass that stands alone (not one of a multi-run's many) also computes every card not feeding an output, as
-   *  the main canvas computes every card, so a drilled-in view shows them all, a nested composite included. */
   private async runPass(
     inputs: Record<string, unknown[]>,
     overrides?: Record<string, unknown>,
-    whole = false,
   ): Promise<Record<string, unknown>> {
     for (const port of this.inputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -574,14 +571,17 @@ export class CompositeNode extends GraphNode {
         row[port.id] = null;
       }
     }
-    if (whole) {
-      // The pass cache holds what the outputs already pulled, so this computes only the cards they left out.
-      for (const n of this.internalEditor.getNodes()) {
-        if (n instanceof CompositeInputNode || n instanceof CompositeOutputNode) continue;
-        try { await this.internalEngine.fetch(n.id); } catch { /* an error card shows its own error */ }
-      }
-    }
     return row;
+  }
+
+  /** After a run, whatever its mode, every card no output pulled computes too, as the main canvas computes every card:
+   *  a loose card, and a nested composite with nothing wired out (and so all of its own insides). It reads the last pass's
+   *  engine, whose cache already holds what the outputs pulled, so a multi-run pays for this once, not per run. */
+  private async computeTheRest(): Promise<void> {
+    for (const n of this.internalEditor.getNodes()) {
+      if (n instanceof CompositeInputNode || n instanceof CompositeOutputNode) continue;
+      try { await this.internalEngine.fetch(n.id); } catch { /* an error card shows its own error */ }
+    }
   }
 
   private async collectMultiple(
@@ -610,7 +610,7 @@ export class CompositeNode extends GraphNode {
     this.simLastSteps = null;
 
     const loop = this.internalEngine.loopMembers();
-    if (loop.size === 0) return this.runPass(inputs, undefined, true);
+    if (loop.size === 0) return this.runPass(inputs);
 
     const conns = this.internalEditor.getConnections();
     const incomingByTarget = new Map<string, typeof conns>();
@@ -878,6 +878,12 @@ export class CompositeNode extends GraphNode {
   }
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    const outputs = await this.runModePasses(inputs);
+    await this.computeTheRest();
+    return outputs;
+  }
+
+  private async runModePasses(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     if (this.runMode === "simulation") {
       return this.runSimulation(inputs);
     } else if (this.runMode === "scenarios" && this.scenarios.length > 0) {
@@ -898,7 +904,7 @@ export class CompositeNode extends GraphNode {
         });
         return this.collectMultiple(inputs, overridesList);
       }
-      return this.runPass(inputs, undefined, true);
+      return this.runPass(inputs);
     } else if (this.runMode === "goal-seek" && this.goalSeek) {
       return this.runGoalSeek(inputs, this.goalSeek);
     } else if (this.runMode === "montecarlo") {
@@ -906,16 +912,16 @@ export class CompositeNode extends GraphNode {
     } else if (this.runMode === "by-row") {
       return this.runByRow(inputs);
     }
-    return this.runPass(inputs, undefined, true);
+    return this.runPass(inputs);
   }
 
   private async runByRow(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     const port = this.inputPorts.find((p) => p.id === this.byRowPortId);
-    if (!port) return this.runPass(inputs, undefined, true);
+    if (!port) return this.runPass(inputs);
     const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
     const source = portSource(port, marker, inputs);
     let rows = byRowValues(source);
-    if (rows.length === 0) return this.runPass(inputs, undefined, true);
+    if (rows.length === 0) return this.runPass(inputs);
     if (rows.length > BY_ROW_MAX_ROWS) {
       const total = rows.length;
       if (total !== this.lastByRowCapTotal && !isGraphRebuilding()) {
@@ -937,7 +943,7 @@ export class CompositeNode extends GraphNode {
 
   private async runMonteCarlo(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     const uncertainPorts = this.uncertainInputPorts();
-    if (uncertainPorts.length === 0) return this.runPass(inputs, undefined, true);
+    if (uncertainPorts.length === 0) return this.runPass(inputs);
     const cfg = this.monteCarlo ?? { samples: DEFAULT_MC_SAMPLES, seed: DEFAULT_MC_SEED };
     const draws = Math.max(1, Math.round(cfg.samples));
     const rng = mulberry32((cfg.seed | 0) >>> 0);

@@ -142,7 +142,7 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(5); // 2 + 3, recomputed from the rebuilt internal graph
   });
 
-  it("every card inside computes, not only those feeding an output, at every depth", async () => {
+  it("every card inside computes, not only those feeding an output, at every depth (Single)", async () => {
     // A card wired to nothing still shows its value in the drill-in, as on the main canvas; a nested composite with no
     // ports yet is such a card, so its own insides compute too.
     const deep = new ArithmeticNode({ op: "add" });
@@ -410,6 +410,27 @@ describe("CompositeNode Scenarios run mode", () => {
     c.requestSolve();
     const out = await c.data({ [inAId]: [2], [inBId]: [3] });
     expect(out[outId]).toEqual([11, 102]); // 10+1, 100+2 — in scenario order
+  });
+
+  it("cards no output pulls compute too, once, after the scenarios run", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const loose = new ArithmeticNode({ op: "mul" });
+    loose.literals = { a: 3, b: 4 };
+    const deep = new ArithmeticNode({ op: "add" });
+    deep.literals = { a: 1, b: 2 };
+    const inner = new CompositeNode({ label: "Inner" });
+    await inner.internalEditor.addNode(deep as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(loose as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    const id1 = c.addScenario();
+    const id2 = c.addScenario();
+    c.setScenarioOverride(id1, inAId, 10);
+    c.setScenarioOverride(id2, inAId, 100);
+    c.requestSolve();
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toEqual([13, 103]);
+    expect(loose.cachedResult).toBe(12);
+    expect(deep.cachedResult).toBe(3);
   });
 
   it("a scenario that only overrides ONE port falls back to the wired value for the other", async () => {

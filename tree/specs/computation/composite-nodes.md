@@ -459,7 +459,7 @@ flowchart TD
 
 Because every internal pass fully resets the internal engine, the subgraph is recomputed whenever the card's `data()` computes, and a held heavy card recomputes nothing.
 
-**A pass that stands alone computes every card inside** (`runPass(…, whole)`): Single, and every mode's fallback to one plain pass, fetch the output markers and then each other internal card, so a card wired to nothing (a loose Value Input, a Display, a nested composite with no ports yet and so everything inside it) shows its value in the drill-in as it would on the main canvas. The passes of a multi-run (Scenarios, a data table, Monte Carlo, goal-seek's iterations, By row) fetch only the output markers, so the cards no output reads cost nothing per run. `composite.test.ts` pins it at two depths.
+**Every card inside computes, in every mode** (`computeTheRest`): after `runActiveMode`'s passes, whatever the mode, each internal card no output pulled is fetched from the last pass's engine, as the main canvas computes every card. So a card wired to nothing (a loose Value Input, a Display, a nested composite with no ports yet and so everything inside it, at any depth) shows its value in the drill-in. The engine's cache already holds what the outputs pulled, so this costs only the cards they left out, and a multi-run (Scenarios, a data table, Monte Carlo, goal seek, By row) pays for it once, reading its last run, not per run. A held heavy card runs no passes and computes nothing. `composite.test.ts` pins it in Single at two depths and after Scenarios.
 
 ## Packs
 
