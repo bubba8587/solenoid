@@ -347,7 +347,11 @@ export function OutlinePanel() {
 
   // Everywhere also searches the other documents in the library; workspace-tree.md § The pane.
   const [everywhere, setEverywhere] = useState(false);
-  const libVersion = useSyncExternalStore(documentStore.subscribe, documentStore.version);
+  // While the search stays in this document, only the header's name and count re-render the panel; every autosave would rebuild the whole list.
+  const libVersion = useSyncExternalStore(
+    documentStore.subscribe,
+    () => (everywhere ? `v${documentStore.version()}` : `${documentStore.currentName()}|${documentStore.list().length}`),
+  );
   const hits = useMemo(
     () => (everywhere && filters.size === 0 ? searchLibrary(documentStore.searchable(), documentStore.currentId(), query) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
