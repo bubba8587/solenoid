@@ -159,6 +159,49 @@ describe("CompositeNode shell", () => {
     expect(deep.cachedResult).toBe(3);
   });
 
+  describe("nested manual refresh", () => {
+    // Outer (manual) ▸ Inner (manual) ▸ a Value Input of 3 wired out through both.
+    async function nestManual(depth = 2) {
+      let feed: GraphNode = new ValueInputNode({ value: "3" });
+      let holder: CompositeNode | null = null;
+      const chain: CompositeNode[] = [];
+      for (let i = 0; i < depth; i++) {
+        const c = new CompositeNode({ label: `L${i}`, runMode: "manual" });
+        const out = new CompositeOutputNode({ label: "V" });
+        await c.internalEditor.addNode(feed as unknown as Schemes["Node"]);
+        await c.internalEditor.addNode(out as unknown as Schemes["Node"]);
+        const srcKey = holder ? (holder as CompositeNode).outputPorts[0].id : "value";
+        await connect(c.internalEditor, feed, srcKey, out, "value");
+        c.addOutputPort({ label: "V", tier: "basic", internalNodeId: out.id });
+        chain.push(c);
+        holder = c;
+        feed = c;
+      }
+      return chain; // chain[0] is the innermost, chain[depth - 1] the outermost
+    }
+    const portOf = (c: CompositeNode) => c.outputPorts[0].id;
+
+    it("a Refresh on the outer card runs a held manual composite inside it, at any depth", async () => {
+      const chain = await nestManual(3);
+      const outer = chain[chain.length - 1];
+      outer.requestSolve();
+      expect((await outer.data({}))[portOf(outer)]).toBe(3);
+      for (const c of chain) expect(c.cachedOutputs[portOf(c)]).toBe(3);
+    });
+
+    it("a Refresh on an inner card runs it even while the composites around it hold", async () => {
+      const chain = await nestManual(3);
+      const outer = chain[chain.length - 1];
+      const inner = chain[0];
+      inner.requestSolve();
+      await outer.data({}); // the app's pass retargets an inner Refresh to the outermost card
+      expect(inner.cachedOutputs[portOf(inner)]).toBe(3);
+      expect(inner.stale).toBe(false);
+      // The outer card was never refreshed, so it keeps holding its blank until its own Refresh.
+      expect(outer.cachedOutputs[portOf(outer)]).toBeNull();
+    });
+  });
+
   it("a nested composite computes after a reload, without being drilled into", async () => {
     const inner = new CompositeNode({ label: "Inner" });
     const num = new ValueInputNode({ value: "42" });

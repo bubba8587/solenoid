@@ -191,6 +191,10 @@ export class CompositeOutputNode extends GraphNode {
 }
 
 const SOLVE_FETCH_ROUNDS = 4;
+/** How many composites are solving right now, around the one running: a Solve or Refresh runs every composite inside it
+ *  fresh, held or not. Nested data() calls run inside the solving one's awaited passes, and the app runs one pass at a
+ *  time, so a depth count is the context. */
+let solvingDepth = 0;
 
 function nestedNodeIds(editor: GraphEditor<Schemes>, out: string[] = []): string[] {
   for (const n of editor.getNodes()) {
@@ -737,10 +741,13 @@ export class CompositeNode extends GraphNode {
     this._lastRunMode = this.runMode;
     if (heavy) {
       const key = this.solveKey(inputs);
-      if (this.solveRequested) {
-        const solveInputs = this.solveInsideOnly ? {} : inputs;
+      if (this.solveRequested || solvingDepth > 0) {
+        const solveInputs = this.solveRequested && this.solveInsideOnly ? {} : inputs;
         const started = performance.now();
-        const { outputs, settled } = await this.solveSettled(solveInputs);
+        solvingDepth++;
+        let solved: { outputs: Record<string, unknown>; settled: boolean };
+        try { solved = await this.solveSettled(solveInputs); } finally { solvingDepth--; }
+        const { outputs, settled } = solved;
         compositeStaleStore.ran(this.id, performance.now() - started);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
@@ -751,6 +758,11 @@ export class CompositeNode extends GraphNode {
         this.stale = this.unsettled;
         compositeStaleStore.set(this.id, this.stale);
         return outputs;
+      }
+      // A Refresh asked of a composite inside reaches it through one pass of this one, whose own outputs stay held.
+      if (this.innerSolvePending()) {
+        await this.runPass(inputs);
+        await this.computeTheRest();
       }
       if (this.lastSolveKey === null) {
         // Every output key, blank: the engine refuses a result missing a key.
@@ -810,6 +822,11 @@ export class CompositeNode extends GraphNode {
       );
     }
     return false;
+  }
+
+  /** Whether a composite inside this one, at any depth, has a Solve or Refresh waiting. */
+  innerSolvePending(): boolean {
+    return this.internalEditor.getNodes().some((n) => n instanceof CompositeNode && (n.solveRequested || n.innerSolvePending()));
   }
 
   requestSolve(insideOnly = false): void {
