@@ -8,12 +8,15 @@
   outline: none;
 }
 
+/* A deep path wraps onto more lines, each separator kept with the crumb after it; desktop wraps past 460px rather than
+   stretching the strip across the canvas, a phone at the strip's own width. */
 .solenoid-composite-editor__crumbs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 2px 4px;
   min-width: 0;
-  overflow: hidden;
+  max-width: 460px;
   flex: 1;
 }
 .solenoid-composite-editor__crumb {
@@ -47,6 +50,7 @@
   align-items: center;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
 }
 .solenoid-composite-editor__crumb-sep {
   color: var(--text-muted);
@@ -222,8 +226,8 @@ html.is-mobile .solenoid-composite-editor__strip {
   max-width: calc(100vw - 150px);
 }
 html.is-mobile .solenoid-composite-editor__strip-actions { display: none; }
-html.is-mobile .solenoid-composite-editor__crumbs,
-html.is-mobile .solenoid-composite-editor__crumb-wrap { flex: 0 0 auto; gap: 2px; }
+html.is-mobile .solenoid-composite-editor__crumbs { flex: 0 1 auto; gap: 1px 2px; max-width: none; }
+html.is-mobile .solenoid-composite-editor__crumb-wrap { flex: 0 1 auto; gap: 2px; }
 html.is-mobile .solenoid-composite-editor__crumb {
   font-size: 11.5px;
   padding: 1px 3px;
