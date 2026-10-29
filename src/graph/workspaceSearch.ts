@@ -1,5 +1,6 @@
 // [[C132]] workspaceTree. The Navigator's Everywhere search; workspace-tree.md § The pane.
 import { nodeTypeName } from "./nodeNamer";
+import { nodeName } from "./catalogUtils";
 
 export type SearchDoc = {
   id: string;
@@ -11,10 +12,13 @@ export type SearchHit =
   | { kind: "doc"; docId: string; label: string; detail: string }
   | { kind: "node"; docId: string; label: string; detail: string; nodeName?: string; nodeType: string; nodeLabel: string };
 
-/** The card's saved title, else its type's name: what its header shows. */
+/** What the card's header shows: its saved title, else its catalog name (by op), else its type's name, as `nodeDisplayName`. */
 export function savedNodeLabel(n: { type: string; init?: unknown }): string {
-  const label = (n.init as { label?: unknown } | undefined)?.label;
-  return (typeof label === "string" && label.trim()) || nodeTypeName({ constructor: { name: n.type } });
+  const init = n.init as { label?: unknown; op?: unknown } | undefined;
+  const label = init?.label;
+  if (typeof label === "string" && label.trim()) return label.trim();
+  const shape = { constructor: { name: n.type }, op: init?.op };
+  return nodeName(shape) ?? nodeTypeName(shape);
 }
 
 /** Documents whose name or folder matches, then cards whose title or type matches, the open document's cards left to the outline. */

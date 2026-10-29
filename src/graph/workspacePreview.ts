@@ -9,7 +9,7 @@ export type PreviewPage =
 
 export const PREVIEW_WORKSPACE: PreviewNode[] = [
   {
-    kind: "folder", name: "Finance", children: [
+    kind: "folder", name: "Household", children: [
       {
         kind: "folder", name: "2026", children: [
           {
@@ -29,7 +29,7 @@ export const PREVIEW_WORKSPACE: PreviewNode[] = [
     ],
   },
   {
-    kind: "folder", name: "Projects", children: [
+    kind: "folder", name: "Client work", children: [
       { kind: "doc", name: "House move", pages: [{ kind: "page", name: "Timeline" }, { kind: "page", name: "Costs" }] },
     ],
   },

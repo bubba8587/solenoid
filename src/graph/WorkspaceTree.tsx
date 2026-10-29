@@ -29,6 +29,10 @@ function saveExpanded(s: Set<string>) {
 
 /** The folder new rows land in: the last folder the user picked in the tree. */
 const target = { folder: "" };
+/** Keeps `target` pointing at the same folder after that folder, or one above it, is renamed or moved. */
+function retarget(from: string, to: string) {
+  if (target.folder === from || target.folder.startsWith(`${from}/`)) target.folder = to + target.folder.slice(from.length);
+}
 
 export function Glyph({ kind, open }: { kind: RowKind; open?: boolean }) {
   const common = { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
@@ -156,7 +160,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
       return;
     }
     const to = v ? documentStore.renameFolder(r.path, v) : r.path;
-    if (to !== r.path) setExpanded((prev) => rekeyExpanded(prev, r.path, to));
+    if (to !== r.path) { setExpanded((prev) => rekeyExpanded(prev, r.path, to)); retarget(r.path, to); }
     moveFocus(folderKey(to));
   };
   const cancelRename = () => {
@@ -173,9 +177,11 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     startRename({ kind: "folder", path }, path.slice(path.lastIndexOf("/") + 1));
   };
   const newDocumentIn = async (folder: string) => {
+    const before = documentStore.currentId();
     await documentStore.newBlank(folder || undefined);
     const id = documentStore.currentId();
-    if (id) startRename({ kind: "doc", id }, documentStore.currentName());
+    // newBlank stays put while a load runs or a capture fails; renaming then would land on the old document.
+    if (id && id !== before) startRename({ kind: "doc", id }, documentStore.currentName());
   };
   treeActions.newFolder = () => newFolderIn(target.folder);
   treeActions.newDocument = () => void newDocumentIn(target.folder);
@@ -297,7 +303,11 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   };
   const onDragOver = (e: DragEvent, r: TreeRow | null) => {
     const to = dropTargetOf(r);
-    if (!canDrop(to)) return;
+    if (!canDrop(to)) {
+      // A row that takes no drop still owns its space, so the tree's top-level target never lights up under it.
+      if (r) { e.stopPropagation(); setDropKey(null); }
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
@@ -307,15 +317,15 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     const to = dropTargetOf(r);
     const d = drag.current;
     const ok = canDrop(to);
+    e.stopPropagation();
     setDropKey(null);
     drag.current = null;
     if (!d || !ok || to === null) return;
     e.preventDefault();
-    e.stopPropagation();
     if (d.kind === "doc") documentStore.moveToFolder(d.id, to);
     else {
       const moved = documentStore.moveFolder(d.path, to);
-      if (moved !== d.path) setExpanded((prev) => rekeyExpanded(prev, d.path, moved));
+      if (moved !== d.path) { setExpanded((prev) => rekeyExpanded(prev, d.path, moved)); retarget(d.path, moved); }
     }
     if (to) setExpanded((prev) => new Set([...prev, ...revealKeys(to)]));
   };

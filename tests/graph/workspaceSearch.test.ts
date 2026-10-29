@@ -22,9 +22,9 @@ describe("searchLibrary", () => {
     expect(searchLibrary(docs, null, "finance").map((h) => h.label)).toEqual(["Budget"]);
   });
 
-  it("an untitled card matches by its type, and keeps its saved name for the jump", () => {
+  it("an untitled card shows its catalog name, as its header does, and keeps its saved name for the jump", () => {
     const hit = searchLibrary(docs, "b", "lambda").find((h) => h.kind === "node");
-    expect(hit).toMatchObject({ label: "Lambda", nodeName: "lam1" });
+    expect(hit).toMatchObject({ label: "LAMBDA", nodeName: "lam1" });
   });
 
   it("Format Controllers stay out, as in the outline; an empty query finds nothing", () => {
@@ -37,7 +37,8 @@ describe("searchLibrary", () => {
     expect(searchLibrary(many, null, "lambda", 3)).toHaveLength(3);
   });
 
-  it("savedNodeLabel trims and falls back to the type", () => {
-    expect(savedNodeLabel({ type: "SeriesNode", init: { label: "  " } })).toBe("Series");
+  it("savedNodeLabel trims, then falls back to the catalog name", () => {
+    expect(savedNodeLabel({ type: "SeriesNode", init: { label: "  " } })).toBe("Range");
+    expect(savedNodeLabel({ type: "NoSuchNode", init: {} })).toBe("No Such");
   });
 });

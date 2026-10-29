@@ -45,6 +45,8 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       flushDrafts();
       const { failed } = await bundleLocalImages(path);
       if (!stillCurrent()) return;
+      // The localStorage copy carries the stamped assetPaths too; captured before the file's instant, so the edit clock never reads later than the save.
+      documentStore.captureCurrent();
       const g = serializeGraph();
       if (!g) return;
       // One instant for the file bytes and the library clock, so a round trip through another machine reads the same stamp.
@@ -52,7 +54,6 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       g.savedAt = at;
       await writeTextFilePath(path, JSON.stringify(g, null, 2));
       if (fresh) documentStore.bindToPath(docId, path, fileNameFromPath(path));
-      if (documentStore.currentId() === docId) documentStore.captureCurrent(); // the localStorage copy carries assetPaths too
       documentStore.markFileSaved(docId, at);
       pushNotice(`Saved ${fileNameFromPath(path)}`, "info", 2500);
       if (failed > 0) {

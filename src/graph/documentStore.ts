@@ -472,6 +472,8 @@ export const documentStore = {
     if (typeof graph.savedAt === "number") {
       doc.fileSavedAt = graph.savedAt;
       doc.updatedAt = graph.savedAt;
+    } else if (filePath) {
+      doc.fileSavedAt = doc.updatedAt;
     }
     _lib = addDocument(_lib, doc);
     persist();

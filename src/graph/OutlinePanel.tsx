@@ -354,7 +354,8 @@ export function OutlinePanel() {
   );
   const openHit = async (h: SearchHit) => {
     await documentStore.open(h.docId);
-    if (h.kind !== "node") return;
+    // The open can stay put (a load in progress, a failed capture or load); names repeat across documents, so never look one up in the wrong one.
+    if (h.kind !== "node" || documentStore.currentId() !== h.docId) return;
     const editor = getEditor();
     if (!editor) return;
     const byName = h.nodeName ? nodeNameStore.byName(h.nodeName) : undefined;

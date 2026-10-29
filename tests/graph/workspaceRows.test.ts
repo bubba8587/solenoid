@@ -51,7 +51,7 @@ describe("expansion keys", () => {
 
 describe("previewRows", () => {
   it("a one-page document has no page rows; a multi-page one folds its pages", () => {
-    const rows = previewRows(PREVIEW_WORKSPACE, new Set(["p:Finance", "p:Finance/2026", "p:Finance/2026/Budget 2026"]));
+    const rows = previewRows(PREVIEW_WORKSPACE, new Set(["p:Household", "p:Household/2026", "p:Household/2026/Budget 2026"]));
     const budget = rows.find((r) => r.label === "Budget 2026")!;
     const forecast = rows.find((r) => r.label === "Forecast")!;
     expect(budget.expandable).toBe(true);

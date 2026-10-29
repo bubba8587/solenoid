@@ -85,7 +85,7 @@ export function previewRows(ws: PreviewNode[], expanded: ReadonlySet<string>): T
   return rows;
 }
 
-export const PREVIEW_EXPANDED = ["p:Finance", "p:Finance/2026", "p:Finance/2026/Budget 2026", "p:Finance/2026/Budget 2026/Inputs"];
+export const PREVIEW_EXPANDED = ["p:Household", "p:Household/2026", "p:Household/2026/Budget 2026", "p:Household/2026/Budget 2026/Inputs"];
 
 /** Rewrites expansion keys under a renamed or moved folder, so it stays as open as it was. */
 export function rekeyExpanded(expanded: ReadonlySet<string>, from: string, to: string): Set<string> {
