@@ -1,7 +1,7 @@
 // [[B11]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn, logicalTableOut } from "./shared";
+import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
@@ -11,6 +11,9 @@ import type {
 import type { SolError } from "../errorValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
+import type { FrameValue } from "../frame";
+import type { Shape } from "../frameShape";
+import type { FrameShapeContext } from "./frameShapeHook";
 import type { FrameHint } from "../frameHint";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
 import { displayDecimals } from "../components/format";
@@ -185,14 +188,15 @@ export const REGIONS_MODE_META = {
 
 /** One plotted point: x, y, its answer, and whether it sits on a line. */
 export type RegionPoint = [number, number, boolean | null, boolean];
-/** What cuts the plane: each series as x1, y1, x2, y2 runs, the vertical lines' x and the horizontal lines' y. */
-export interface RegionCuts { curves: number[][]; xs: number[]; ys: number[] }
+/** What cuts the plane: each series as x1, y1, x2, y2 runs, an open series' two ends carried on out of the plot as the
+ *  same runs, the vertical lines' x and the horizontal lines' y. */
+export interface RegionCuts { curves: number[][]; tails: number[][]; xs: number[]; ys: number[] }
 
 export class ConditionalRegionsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     chart: "A Scatter, XY Line or Bubble chart. Each series is a line, a scatter's points joined in order of x, and each References row with only x or only y is a straight line.",
     points: "The first column is x and the second y. A row missing either comes out blank.",
-    result: "One row per point: TRUE or FALSE by the region it falls in, blank where the region is unmarked.",
+    result: "The points with an in column: TRUE in a region marked TRUE, FALSE in one marked FALSE, blank in an unmarked one.",
   };
 
   label: string;
@@ -212,11 +216,18 @@ export class ConditionalRegionsNode extends GraphNode {
     this.regionMarks = { ...(init?.regionMarks ?? {}) };
     this.addInput("chart", chartIn("Chart"));
     this.addInput("points", frameIn("Points"));
-    this.addOutput("result", logicalTableOut("Matrix"));
+    this.addOutput("result", frameOut("Points"));
   }
 
-  data(inputs: Record<string, unknown[] | undefined>): { result: (boolean | null)[][] | SolError | null } {
-    return nodeOnCore(this, inputs) as { result: (boolean | null)[][] | SolError | null };
+  /** The points' x and y columns, then `in`; unknown until the points' shape is, or when one of them is already `in`. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const [x, y] = ctx.inputShape("points")?.columns ?? [];
+    if (!x || !y || x.name === "in" || y.name === "in") return null;
+    return { columns: [x, y, { name: "in", type: "logical" }] };
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: FrameValue | SolError | null };
   }
 }
 

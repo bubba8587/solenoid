@@ -873,10 +873,12 @@ function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number | string
 }
 
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */
-export function XYView({ payload, width, height, opts, fontScale, refs, under, over }: {
+export function XYView({ payload, width, height, opts, fontScale, refs, under, over, extent }: {
   payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
   /** Drawn in the plot, beneath the marks and above them. */
   under?: ReactNode; over?: ReactNode;
+  /** Points the axes take in without drawing them. */
+  extent?: readonly XYPoint[];
 }) {
   const { grid, axis, viz } = useChartColors();
   const colors = useSeriesColors();
@@ -887,7 +889,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
   const gradId = useId().replace(/:/g, "");
   const multi = series.length > 1;
   const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : markColor(opts?.color, viz));
-  const pts = series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null));
+  const pts = [...series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null)), ...(extent ?? [])];
   if (pts.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
   const cats = series.find((s) => s.cCats)?.cCats;
@@ -1039,6 +1041,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs, under, o
           </Scatter>
         );
       })}
+      {extent?.length ? <Scatter data={[...extent]} shape={NO_SHAPE} isAnimationActive={false} legendType="none" tooltipType="none" /> : null}
       {over}
     </ScatterChart>
   );
@@ -1160,7 +1163,7 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
 
 /** The shading's grain in screen pixels: each cell takes the region at its center. */
 const CELL = 3;
-const SHADE_ALPHA = 0.22;
+const SHADE_ALPHA = 0.36;
 
 type Cells = { x0: number; y0: number; w: number; h: number; nx: number; ny: number; keys: string[] };
 
@@ -1201,9 +1204,10 @@ function runs(cells: Cells, fill: (key: string) => string | null): { x: number; 
 }
 
 function RegionShade({ cutsText, marks, hover, curves }: {
-  cutsText: string; marks: Record<string, boolean>; hover: string | null; curves: number[][] | null;
+  cutsText: string; marks: Record<string, boolean>; hover: string | null; curves: number[][];
 }) {
   const cells = useRegionCells(cutsText);
+  const clip = useId().replace(/:/g, "");
   const xs = useXAxisScale();
   const ys = useYAxisScale();
   const { axis } = useChartColors();
@@ -1216,10 +1220,11 @@ function RegionShade({ cutsText, marks, hover, curves }: {
   if (!cells) return null;
   const px = (v: number) => Number(xs?.(v)), py = (v: number) => Number(ys?.(v));
   return (
-    <g pointerEvents="none">
+    <g pointerEvents="none" clipPath={`url(#${clip})`}>
+      <clipPath id={clip}><rect x={cells.x0} y={cells.y0} width={cells.w} height={cells.h} /></clipPath>
       {shade.map((r, k) => <rect key={k} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} fillOpacity={SHADE_ALPHA} />)}
-      {lit.map((r, k) => <rect key={`h${k}`} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} fillOpacity={0.12} />)}
-      {xs && ys && curves?.map((c, k) => {
+      {lit.map((r, k) => <rect key={`h${k}`} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} fillOpacity={0.14} />)}
+      {xs && ys && curves.map((c, k) => {
         const d: string[] = [];
         for (let i = 0; i + 3 < c.length; i += 4) d.push(`M${px(c[i])},${py(c[i + 1])}L${px(c[i + 2])},${py(c[i + 3])}`);
         return <path key={`c${k}`} d={d.join("")} stroke={axis} strokeWidth={1} strokeDasharray="3 2" fill="none" />;
@@ -1278,13 +1283,15 @@ export function RegionsFigure({ chart, cuts, points, marks, width, height, fontS
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
-  // An XY Line already draws its lines; a scatter's joined points are drawn here.
-  const curves = chart.op === "xyline" ? null : cuts.curves;
+  const extent = useMemo(() => points.map(([x, y]) => ({ x, y })), [points]);
+  // An XY Line already draws its lines; a scatter's joined points are drawn here, and every open line's ends.
+  const curves = useMemo(() => [...(chart.op === "xyline" ? [] : cuts.curves), ...cuts.tails], [chart.op, cuts]);
   return (
     <XYView
       payload={chart.payload as XYPayload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={chart.refs}
       under={<RegionShade cutsText={cutsText} marks={marks} hover={hover} curves={curves} />}
       over={<RegionPick cutsText={cutsText} points={points} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
+      extent={extent}
     />
   );
 }

@@ -2062,11 +2062,14 @@ fn chart_builder(c: &mut Call) -> Answer {
 
 // ─── Conditional Regions ────────────────────────────────────────────────────────
 
-/// What cuts a chart's plane into regions: each series as a line (x1, y1, x2, y2 runs), the x of every vertical
-/// reference line and the y of every horizontal one, sorted.
+/// What cuts a chart's plane into regions: each series as a line (x1, y1, x2, y2 runs), an open line's two ends carried
+/// straight on out of the plot (`tails`, the same runs), the x of every vertical reference line and the y of every
+/// horizontal one, sorted.
 #[derive(serde::Deserialize, Default)]
 pub(crate) struct Cuts {
     curves: Vec<Vec<f64>>,
+    #[serde(default)]
+    tails: Vec<Vec<f64>>,
     xs: Vec<f64>,
     ys: Vec<f64>,
 }
@@ -2082,7 +2085,7 @@ impl Cuts {
 fn chart_cuts(chart: &Json, by_x: bool) -> Json {
     let num = |o: &Json, k: &str| field(o, k).filter(|v| is_number(v)).map(json_num).filter(|n| n.is_finite());
     let series = field(chart, "payload").and_then(|p| field(p, "series")).and_then(Json::as_array);
-    let curves: Vec<Json> = series.map_or_else(Vec::new, |series| {
+    let curves: Vec<Vec<[f64; 4]>> = series.map_or_else(Vec::new, |series| {
         series
             .iter()
             .map(|s| {
@@ -2093,11 +2096,34 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
                     pts.retain(Option::is_some);
                     pts.sort_by(|a, b| a.map(|p| p.0).unwrap_or(0.0).total_cmp(&b.map(|p| p.0).unwrap_or(0.0)));
                 }
-                let runs = pts.windows(2).filter_map(|w| Some([w[0]?.0, w[0]?.1, w[1]?.0, w[1]?.1]));
-                Json::Array(runs.flatten().map(jn).collect())
+                pts.windows(2).filter_map(|w| Some([w[0]?.0, w[0]?.1, w[1]?.0, w[1]?.1])).collect::<Vec<_>>()
             })
             .collect()
     });
+    let reach = 1e4 * (1.0 + curves.iter().flatten().flatten().fold(0.0_f64, |m, v| m.max(v.abs())));
+    let tails: Vec<Json> = curves
+        .iter()
+        .map(|segs| {
+            let (Some(a), Some(b)) = (segs.first(), segs.last()) else { return Json::Array(Vec::new()) };
+            if a[0] == b[2] && a[1] == b[3] {
+                return Json::Array(Vec::new());
+            }
+            // Each end runs on along its own segment's direction.
+            let out = |(x, y): (f64, f64), (dx, dy): (f64, f64)| {
+                let len = dx.hypot(dy);
+                if len > 0.0 {
+                    (x + dx / len * reach, y + dy / len * reach)
+                } else {
+                    (x, y)
+                }
+            };
+            let start = out((a[0], a[1]), (a[0] - a[2], a[1] - a[3]));
+            let end = out((b[2], b[3]), (b[2] - b[0], b[3] - b[1]));
+            Json::Array([start.0, start.1, a[0], a[1], b[2], b[3], end.0, end.1].into_iter().map(jn).collect())
+        })
+        .collect();
+    let curves: Vec<Json> =
+        curves.iter().map(|segs| Json::Array(segs.iter().flatten().map(|n| jn(*n)).collect())).collect();
     let (mut xs, mut ys) = (Vec::new(), Vec::new());
     for r in field(chart, "refs").and_then(Json::as_array).into_iter().flatten() {
         let has = |k: &str| field(r, k).is_some();
@@ -2115,7 +2141,7 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
         cuts.dedup();
     }
     let nums = |v: &[f64]| Json::Array(v.iter().map(|n| jn(*n)).collect());
-    json!({ "curves": curves, "xs": nums(&xs), "ys": nums(&ys) })
+    json!({ "curves": curves, "tails": tails, "xs": nums(&xs), "ys": nums(&ys) })
 }
 
 /// The region a point is in: its band between the vertical lines, its band between the horizontal ones, then per
@@ -2123,9 +2149,10 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
 fn region_key(c: &Cuts, x: f64, y: f64) -> String {
     let band = |cuts: &[f64], v: f64| cuts.iter().take_while(|&&k| k <= v).count();
     let mut key = format!("{}.{}.", band(&c.xs, x), band(&c.ys, y));
-    for curve in &c.curves {
+    for (k, curve) in c.curves.iter().enumerate() {
         let odd = curve
             .chunks_exact(4)
+            .chain(c.tails.get(k).into_iter().flat_map(|t| t.chunks_exact(4)))
             .filter(|s| (s[0] <= x) != (s[2] <= x) && s[1] + (x - s[0]) * (s[3] - s[1]) / (s[2] - s[0]) > y)
             .count()
             % 2
@@ -2147,7 +2174,7 @@ fn touched_regions(c: &Cuts, scale: f64, x: f64, y: f64) -> Option<Vec<String>> 
     let near = 1e-9 * scale.max(x.abs()).max(y.abs());
     let on = c.xs.iter().any(|k| (k - x).abs() <= near)
         || c.ys.iter().any(|k| (k - y).abs() <= near)
-        || c.curves.iter().any(|cv| cv.chunks_exact(4).any(|s| segment_distance(s, x, y) <= near));
+        || c.curves.iter().chain(&c.tails).any(|cv| cv.chunks_exact(4).any(|s| segment_distance(s, x, y) <= near));
     if !on {
         return None;
     }
@@ -2225,19 +2252,36 @@ fn conditional_regions(c: &mut Call) -> Answer {
     let marks = c.field("regionMarks").and_then(Json::as_object).cloned().unwrap_or_default();
     let inclusive = c.field_str("mode", "inclusive") != "strict";
     let scale = cuts.scale();
-    let (mut out, mut shown) = (Vec::new(), Vec::new());
-    for r in 0..cols[0].values.len() {
+    let rows = cols[0].values.len().max(cols[1].values.len());
+    let (mut inside, mut shown) = (Vec::with_capacity(rows), Vec::new());
+    for r in 0..rows {
         let (Some(x), Some(y)) = (finite(&cell(&cols[0], r)), finite(&cell(&cols[1], r))) else {
-            out.push(list(vec![V::Null]));
+            inside.push(V::Null);
             continue;
         };
         let (mark, on_line) = point_mark(&cuts, scale, &marks, inclusive, x, y);
-        out.push(list(vec![mark.map_or(V::Null, V::Bool)]));
+        inside.push(mark.map_or(V::Null, V::Bool));
         shown.push(json!([jn(x), jn(y), mark, on_line]));
     }
+    let names = crate::frame::make_headers(&[cols[0].name.clone(), cols[1].name.clone(), "in".into()], 3);
+    let axis = |k: usize| {
+        let mut col = cols[k].clone();
+        col.name = names[k].clone();
+        col.values = (0..rows).map(|r| cell(&cols[k], r)).collect();
+        col
+    };
+    let in_col = Column {
+        name: names[2].clone(),
+        ty: FrameColType::Logical,
+        values: inside,
+        unit: None,
+        format: None,
+        raw: None,
+    };
+    let out = Cv::Frame(Rc::new(Frame { columns: vec![axis(0), axis(1), in_col], total_rows: None, approx: None }));
     c.show("cachedError", V::Null);
     c.show("cachedPoints", whole(Json::Array(shown)));
-    Ok(vec![("result".into(), Cv::from(list(out)))])
+    Ok(vec![("result".into(), out)])
 }
 
 #[cfg(test)]
@@ -2310,6 +2354,19 @@ mod tests {
         let got =
             keys(json!({ "payload": { "series": [{ "points": pts }] } }), false, &[1.0, 5.0, 9.0], &[0.0, 0.0, 0.0]);
         assert_eq!(got, ["0.0.1", "0.0.0", "0.0.1"]);
+    }
+
+    #[test]
+    fn an_open_line_carries_on_past_its_ends() {
+        // y = x from 2 to 8: past either end the line still divides above from below.
+        let pts = json!([{ "x": 2, "y": 2 }, { "x": 8, "y": 8 }]);
+        let got = keys(
+            json!({ "payload": { "series": [{ "points": pts }] } }),
+            false,
+            &[12.0, 12.0, -3.0, -3.0],
+            &[0.0, 20.0, -9.0, 0.0],
+        );
+        assert_eq!(got, ["0.0.1", "0.0.0", "0.0.1", "0.0.0"]);
     }
 
     #[test]
