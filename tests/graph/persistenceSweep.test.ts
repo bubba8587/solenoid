@@ -244,7 +244,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     goalTarget: "re-stamped from the host's persisted goalSeek",
     // ── composite runtime (the CONFIG persists via extras; these are run state) ──
     goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
-    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)", unsettled: "last Solve outran its fetches (session)",
+    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
+    aroundSolving: "solve context from the composite around (during a pass)", aroundMultiRun: "multi-run context from the composite around (during a pass)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
     lastRelative: "relative Date Input shift-alert edge-detect state: phrase and day (session)",
     lastSampleGen: "Distribution sample form's per-recalc re-roll marker (session)",

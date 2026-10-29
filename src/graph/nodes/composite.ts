@@ -191,10 +191,7 @@ export class CompositeOutputNode extends GraphNode {
 }
 
 const SOLVE_FETCH_ROUNDS = 4;
-/** How many composites are solving right now, around the one running: a Solve or Refresh runs every composite inside it
- *  fresh, held or not. Nested data() calls run inside the solving one's awaited passes, and the app runs one pass at a
- *  time, so a depth count is the context. */
-let solvingDepth = 0;
+
 
 function nestedNodeIds(editor: GraphEditor<Schemes>, out: string[] = []): string[] {
   for (const n of editor.getNodes()) {
@@ -230,6 +227,11 @@ export class CompositeNode extends GraphNode {
   simLastSteps: number | null = null;
 
   solveRequested = false;
+  /** Set by the composite directly around this one, for this one only: a sibling elsewhere, fetched concurrently by the
+   *  engine, never sees it. `aroundSolving`: it is solving, so this one solves too, held or not. `aroundMultiRun`: it is
+   *  running a multi-run's many passes, so this one skips `computeTheRest` (a loose card would run once per pass). */
+  private aroundSolving = 0;
+  private aroundMultiRun = 0;
   solveInsideOnly = false;
   lastSolveKey: string | null = null;
   stale = false;
@@ -741,14 +743,12 @@ export class CompositeNode extends GraphNode {
     this._lastRunMode = this.runMode;
     if (heavy) {
       const key = this.solveKey(inputs);
-      if (this.solveRequested || solvingDepth > 0) {
+      if (this.solveRequested || this.aroundSolving > 0) {
         const solveInputs = this.solveRequested && this.solveInsideOnly ? {} : inputs;
         const started = performance.now();
-        solvingDepth++;
-        let solved: { outputs: Record<string, unknown>; settled: boolean };
-        try { solved = await this.solveSettled(solveInputs); } finally { solvingDepth--; }
-        const { outputs, settled } = solved;
-        compositeStaleStore.ran(this.id, performance.now() - started);
+        const { outputs, settled } = await this.withInner("aroundSolving", () => this.solveSettled(solveInputs));
+        // Inside a multi-run this solves once per pass; only a solve of its own times itself, so the store doesn't churn.
+        if (this.aroundMultiRun === 0) compositeStaleStore.ran(this.id, performance.now() - started);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
@@ -763,6 +763,8 @@ export class CompositeNode extends GraphNode {
       if (this.innerSolvePending()) {
         await this.runPass(inputs);
         await this.computeTheRest();
+        // Each waiting card has had its pass; one that never ran (on a loop, unwired) must not hold this one live forever.
+        this.clearInnerSolveRequests();
       }
       if (this.lastSolveKey === null) {
         // Every output key, blank: the engine refuses a result missing a key.
@@ -781,6 +783,9 @@ export class CompositeNode extends GraphNode {
       compositeStaleStore.set(this.id, this.stale);
       return this.cachedOutputs;
     }
+    // Live: nothing to hold, so a Solve asked of it (before a switch out of a heavy mode, say) has nothing left to do.
+    this.solveRequested = false;
+    this.solveInsideOnly = false;
     const outputs = await this.runActiveMode(inputs);
     this.cachedOutputs = outputs;
     this.stale = false;
@@ -826,7 +831,26 @@ export class CompositeNode extends GraphNode {
 
   /** Whether a composite inside this one, at any depth, has a Solve or Refresh waiting. */
   innerSolvePending(): boolean {
-    return this.internalEditor.getNodes().some((n) => n instanceof CompositeNode && (n.solveRequested || n.innerSolvePending()));
+    return this.innerComposites().some((c) => c.solveRequested || c.innerSolvePending());
+  }
+
+  private clearInnerSolveRequests(): void {
+    for (const c of this.innerComposites()) {
+      c.solveRequested = false;
+      c.solveInsideOnly = false;
+      c.clearInnerSolveRequests();
+    }
+  }
+
+  private innerComposites(): CompositeNode[] {
+    return this.internalEditor.getNodes().filter((n): n is CompositeNode & Schemes["Node"] => n instanceof CompositeNode) as CompositeNode[];
+  }
+
+  /** Runs `fn` with `key` raised on each composite directly inside this one; theirs raise it on theirs in turn. */
+  private async withInner<T>(key: "aroundSolving" | "aroundMultiRun", fn: () => Promise<T>): Promise<T> {
+    const inner = this.innerComposites();
+    for (const c of inner) c[key]++;
+    try { return await fn(); } finally { for (const c of inner) c[key]--; }
   }
 
   requestSolve(insideOnly = false): void {
@@ -895,8 +919,12 @@ export class CompositeNode extends GraphNode {
   }
 
   private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
-    const outputs = await this.runModePasses(inputs);
-    await this.computeTheRest();
+    // A configured multi-run (every heavy mode but Manual refresh, which is one pass) runs its inside many times.
+    const multi = this.isHeavyMode() && this.runMode !== "manual";
+    const outputs = multi
+      ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
+      : await this.runModePasses(inputs);
+    if (this.aroundMultiRun === 0) await this.computeTheRest();
     return outputs;
   }
 

@@ -24,6 +24,7 @@ import { nodeDisplayName, nodeName } from "./catalogUtils";
 import { documentStore } from "./documentStore";
 import { WorkspaceTree, RowMenu, Glyph, filesAddMenu, type MenuItem } from "./WorkspaceTree";
 import { isNavPreview } from "./workspacePreview";
+import { useIsMobile } from "./useDeviceMode";
 import { searchLibrary, type SearchHit } from "./workspaceSearch";
 import { treeKeyStep, typeAhead, type KeyRow, type TreeKey } from "./workspaceRows";
 import { nodeNameStore } from "./nodeNameStore";
@@ -212,6 +213,12 @@ export function OutlinePanel() {
       if (!isMobile()) writeJson(SECTIONS_KEY, next);
       return next;
     });
+  // A phone shows exactly one section; rotating a tablet into the phone layout can bring both open (or none), and the switch
+  // only opens, so settle it to the Outline.
+  const phoneMode = useIsMobile();
+  useEffect(() => {
+    if (phoneMode) setSections((prev) => (prev.files !== prev.outline ? prev : { files: false, outline: true }));
+  }, [phoneMode]);
   const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);

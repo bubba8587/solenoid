@@ -189,6 +189,32 @@ describe("CompositeNode shell", () => {
       for (const c of chain) expect(c.cachedOutputs[portOf(c)]).toBe(3);
     });
 
+    it("a Refresh on one held composite leaves a held sibling holding", async () => {
+      // The engine can fetch siblings concurrently, so the "solving around you" context must reach only the solving card's
+      // own insides. The race itself doesn't reproduce here (this engine resolves the siblings in turn); this pins the rule.
+      const [a] = await nestManual(1);
+      const [b] = await nestManual(1);
+      const parent = new CompositeNode({ label: "P" });
+      const sum = new ArithmeticNode({ op: "add" });
+      for (const n of [a, b, sum]) await parent.internalEditor.addNode(n as unknown as Schemes["Node"]);
+      await connect(parent.internalEditor, a, portOf(a), sum, "a");
+      await connect(parent.internalEditor, b, portOf(b), sum, "b");
+      a.requestSolve();
+      await parent.data({});
+      expect(a.cachedOutputs[portOf(a)]).toBe(3);
+      expect(b.cachedOutputs[portOf(b)]).toBeNull();
+      expect(b.stale).toBe(true);
+    });
+
+    it("a Refresh that can no longer run does not keep the held card around it running", async () => {
+      const chain = await nestManual(2);
+      const [inner, outer] = chain;
+      inner.requestSolve();
+      inner.runMode = "single"; // switched out of a held mode before the pass reached it
+      await outer.data({});
+      expect(outer.innerSolvePending()).toBe(false);
+    });
+
     it("a Refresh on an inner card runs it even while the composites around it hold", async () => {
       const chain = await nestManual(3);
       const outer = chain[chain.length - 1];
