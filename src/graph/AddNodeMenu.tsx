@@ -1,5 +1,6 @@
 // [[B16]] oneFormulaSurface
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE, deviceModeStore } from "./coarse";
 import { addMenuRequest } from "./addMenuStore";
@@ -480,7 +481,9 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     }
   }
 
-  return (
+  // Portaled to <body>: inside a composite drill-in the surface sits in the drill-in backdrop's stacking context (z 4), which
+  // put the menu under the floating pills (z 5); out here its own z-index (200) holds against everything but the dialogs.
+  return createPortal(
     <div
       ref={ref}
       className={`solenoid-add-menu${drill ? " solenoid-add-menu--sheet" : ""}`}
@@ -527,6 +530,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
