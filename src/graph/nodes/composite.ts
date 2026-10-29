@@ -924,8 +924,19 @@ export class CompositeNode extends GraphNode {
     const outputs = multi
       ? await this.withInner("aroundMultiRun", () => this.runModePasses(inputs))
       : await this.runModePasses(inputs);
-    if (this.aroundMultiRun === 0) await this.computeTheRest();
+    if (this.aroundMultiRun === 0) {
+      await this.computeTheRest();
+      if (multi) for (const c of this.innerComposites()) await c.computeTheRestAfterMultiRun();
+    }
     return outputs;
+  }
+
+  /** A composite inside a multi-run ran in every pass but skipped its loose cards there; the run over, they compute once,
+   *  from its last pass, at every depth. One that holds and never ran has nothing to read, so it stays as it is. */
+  async computeTheRestAfterMultiRun(): Promise<void> {
+    if (this.isHeavyMode() && this.lastSolveKey === null) return;
+    await this.computeTheRest();
+    for (const c of this.innerComposites()) await c.computeTheRestAfterMultiRun();
   }
 
   private async runModePasses(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
@@ -1002,6 +1013,8 @@ export class CompositeNode extends GraphNode {
     };
     const means = uncertainPorts.map((port) => meanOf(port, this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode));
     if (means.some((m) => typeof m !== "number")) {
+      // One plain pass, so the cards inside read this run's inputs rather than whatever the engine kept from the last.
+      await this.runPass(inputs);
       const fill = means.find(isSolError) ?? null;
       const outputs: Record<string, unknown> = {};
       for (const port of this.outputPorts) {

@@ -502,6 +502,30 @@ describe("CompositeNode Scenarios run mode", () => {
     expect(deep.cachedResult).toBe(3);
   });
 
+  it("a composite inside whose output the passes pull computes its own loose cards once the run ends", async () => {
+    // It runs in every pass but skips its loose cards there (one run per pass); after the last pass it owes them one.
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const inner = new CompositeNode({ label: "Inner" });
+    const five = new ValueInputNode({ value: "5" });
+    const innerOut = new CompositeOutputNode({ label: "V" });
+    const loose = new ArithmeticNode({ op: "mul" });
+    loose.literals = { a: 3, b: 4 };
+    for (const n of [five, innerOut, loose]) await inner.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(inner.internalEditor, five, "value", innerOut, "value");
+    const innerPort = inner.addOutputPort({ label: "V", tier: "basic", internalNodeId: innerOut.id });
+    const out2 = new CompositeOutputNode({ label: "Five" });
+    for (const n of [inner, out2]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inner, innerPort, out2, "value");
+    const fiveId = c.addOutputPort({ label: "Five", tier: "basic", internalNodeId: out2.id });
+    c.setScenarioOverride(c.addScenario(), inAId, 10);
+    c.setScenarioOverride(c.addScenario(), inAId, 100);
+    c.requestSolve();
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toEqual([13, 103]);
+    expect(out[fiveId]).toEqual([5, 5]);
+    expect(loose.cachedResult).toBe(12);
+  });
+
   it("a scenario that only overrides ONE port falls back to the wired value for the other", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     const id1 = c.addScenario();
@@ -939,6 +963,27 @@ describe("CompositeNode input marker display", () => {
     c.runMode = "single";
     await c.data({ [aId]: [1] });
     expect(inA.modeNote).toBe(null);
+  });
+});
+
+describe("Monte Carlo with no number to sample around", () => {
+  it("a card inside reads this run's inputs, not a value left from an earlier run", async () => {
+    const c = new CompositeNode({ runMode: "montecarlo" });
+    const inA = new CompositeInputNode({ label: "A", uncertainty: 5, distribution: "normal" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    const loose = new ArithmeticNode({ op: "add" });
+    loose.literals = { a: 0, b: 1 };
+    for (const n of [inA, outMarker, loose]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", outMarker, "value");
+    await connect(c.internalEditor, inA, "value", loose, "a");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    c.requestSolve();
+    await c.data({ [aId]: [10] });
+    expect(typeof loose.cachedResult).toBe("number");
+    c.requestSolve();
+    await c.data({ [aId]: [solError("#VALUE!", "not a number")] });
+    expect(isSolError(loose.cachedResult)).toBe(true);
   });
 });
 
