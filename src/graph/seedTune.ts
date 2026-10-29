@@ -2,7 +2,7 @@
 // Console-only: group fit and a whole-canvas Tidy measure painted DOM, so they need the live app. scripts/tune-seeds.mjs
 // patches the returned geometry in place, not as a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
-import { getEditor, getView } from "./process";
+import { getEditor, getView, graphSettled } from "./process";
 import { autoArrange } from "./canvasCommands";
 import { GroupNode } from "./nodeClasses";
 import { autofitGroupWithHistory } from "./groupLogic";
@@ -17,11 +17,29 @@ interface TunedNodeGeometry {
   height?: number;
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const frames = (n: number) =>
   new Promise<void>((r) => {
     const step = (left: number) => (left <= 0 ? r() : requestAnimationFrame(() => step(left - 1)));
     step(n);
+  });
+
+/** Every card's painted size, as one string to compare frame to frame. */
+const cardSizes = () =>
+  [...document.querySelectorAll<HTMLElement>(".react-flow__node")].map((n) => `${n.offsetWidth}x${n.offsetHeight}`).join(",");
+
+/** Resolves once no card has changed size for `quietMs`, or at `capMs`. Fetching cards (a geocode, a vault folder, a
+ *  forecast) land in bursts after the pass, up to about 400 ms apart, so the quiet span outlasts that gap. */
+const settled = (quietMs = 600, capMs = 4000) =>
+  new Promise<void>((r) => {
+    const end = performance.now() + capMs;
+    let last = cardSizes(), since = performance.now();
+    const step = () => {
+      const now = cardSizes(), t = performance.now();
+      if (now !== last) { last = now; since = t; }
+      if (t - since >= quietMs || t > end) r();
+      else requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   });
 
 /** Collapsed groups are expanded around the pass so each box wraps REAL member
@@ -37,8 +55,8 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
 
   // Async values (CSV fetches, chart renders) grow cards, and tidy must measure
   // the settled sizes.
-  await sleep(2500);
-  await frames(2);
+  await graphSettled();
+  await settled();
 
   // Per group first, so each box wraps real painted member sizes before the whole-canvas pass moves it as a unit.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
