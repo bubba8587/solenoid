@@ -2354,7 +2354,9 @@ fn conditional_regions(c: &mut Call) -> Answer {
         });
         if let Some(pieces) = &flips {
             let d = pieces.iter().map(|s| segment_distance(s, x, y)).fold(f64::INFINITY, f64::min);
-            margins.push(if d.is_finite() { V::Num(d) } else { V::Null });
+            // As close as counts as on a line is on it: 0, not what rounding leaves.
+            let near = 1e-9 * scale.max(x.abs()).max(y.abs());
+            margins.push(if !d.is_finite() { V::Null } else { V::Num(if d <= near { 0.0 } else { d }) });
         }
         let shown_mark = match mark {
             None => Json::Null,

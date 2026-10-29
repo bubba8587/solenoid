@@ -112,6 +112,8 @@ describe("Conditional Regions node", () => {
     // From (0.5, 3) the curve's run from (1, 1) to (2, 4) is nearer than x = 2, at 1.5.
     expect(m).toBeCloseTo(3.5 / Math.sqrt(10), 9);
     expect(blank).toBeNull();
+    const onLine = run(new ConditionalRegionsNode({ margin: true, regionMarks: { "0.0.0": true } }), chartOf("xyline"), frame([2], [4.5])) as FrameValue;
+    expect(onLine.columns[3].values).toEqual([0]);
     expect(n.frameShape("result", { inputShape: () => ({ columns: [{ name: "x", type: "number" }, { name: "y", type: "number" }] }), wired: () => false } as never)!.columns.map((c) => c.name)).toEqual(["x", "y", "in", "margin"]);
   });
 
