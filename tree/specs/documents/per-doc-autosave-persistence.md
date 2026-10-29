@@ -98,7 +98,7 @@ flowchart TD
 ```
 
 
-The index is metadata only. A document's own slot is the truth wherever the two disagree.
+The index is metadata only. A document's own slot is the truth wherever the two disagree, except for its folder: a folder rename or move rewrites every document under it, and the index takes all of them in one write, so restore reads the folder from the index and a move cut off partway (storage full) reads back on one side, never split ([[workspace-tree#Where the tree comes from]]).
 
 ## Dev mirror
 

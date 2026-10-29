@@ -86,6 +86,20 @@ describe("per-doc autosave keys", () => {
     expect(documentStore.folders()).not.toContain("Finance");
   });
 
+  it("[[C132]] workspaceTree: a folder move cut off partway reads back whole, from the index", async () => {
+    documentStore.saveAs("Eta");
+    documentStore.saveAs("Theta");
+    const [eta, theta] = ["Eta", "Theta"].map((n) => documentStore.list().find((m) => m.name === n)!);
+    documentStore.moveToFolder(eta.id, "Old");
+    documentStore.moveToFolder(theta.id, "Old");
+    const thetaSlots = docKeysFor(theta.id).map((k) => [k, _mem.get(k)!] as const);
+    documentStore.renameFolder("Old", "New");
+    // Theta's slot write "failed": its storage still says Old, the index says New.
+    for (const [k, v] of thetaSlots) _mem.set(k, v);
+    await documentStore.restore();
+    expect(documentStore.list().filter((m) => m.id === eta.id || m.id === theta.id).map((m) => m.folder)).toEqual(["New", "New"]);
+  });
+
   it("restore() deletes the abandoned whole-library keys", async () => {
     _mem.set("solenoid.docs.lib.a", '{"seq":1,"lib":{}}');
     _mem.set("solenoid.docs.lib.b", '{"seq":2,"lib":{}}');

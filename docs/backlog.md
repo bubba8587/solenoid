@@ -151,7 +151,6 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] Retire the documents dropdown (`DocumentTitle.tsx`) for a top-bar breadcrumb; everything it offered has a home in the pane.
 - [ ] Row status beyond unsaved: changed on disk, a Problems count (needs problems kept per document).
 - [ ] Drag on touch (long-press to lift); today touch moves through Move to….
-- [ ] A folder move rewrites every document under it; a write refused partway (storage full) leaves them split across the old and new path after a reload. Write the index last, or make the folder a record documents point at.
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 - [ ] **Sideways phone: verify on the S25+ (2026-10-04, untestable headless):** the scale watchdog against the right-side

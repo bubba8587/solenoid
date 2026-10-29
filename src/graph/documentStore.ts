@@ -30,6 +30,7 @@ import {
   moveFolder,
   removeFolder,
   renameFolder,
+  normalizeFolder,
   type DocLibrary,
   type SolDoc,
 } from "./documentStoreCore";
@@ -196,7 +197,14 @@ function readLibraryFromStorage(): DocLibrary | null {
   for (const meta of index.docs) {
     if (typeof meta?.id !== "string") continue;
     const doc = readNewestSlot<DocSlot, SolDoc>(docSlotKey(meta.id, "a"), docSlotKey(meta.id, "b"), (o) => (o.doc ? validateDoc(o.doc) : null));
-    if (doc) documents.push(doc);
+    if (!doc) continue;
+    // The folder comes from the index, which one write keeps whole, so a folder move cut off partway reads back on one side.
+    const folder = normalizeFolder(typeof meta.folder === "string" ? meta.folder : "");
+    if ((doc.folder ?? "") === folder) documents.push(doc);
+    else {
+      const { folder: _slot, ...rest } = doc;
+      documents.push(folder ? { ...rest, folder } : rest);
+    }
   }
   if (documents.length === 0) return null;
   const currentId = documents.some((d) => d.id === index.currentId) ? index.currentId : documents[0].id;
