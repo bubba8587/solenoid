@@ -44,7 +44,7 @@ function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
 function indexCatalog(): Map<string, LeafInfo> {
   const idx = new Map<string, LeafInfo>();
   const add = (leaf: NodeCatalogEntry, path: string[]) => {
-    if (leaf.hidden) return; // deprecated — load-only, not referenced
+    if (leaf.hidden) return; // an internal card (a composite's port markers), never listed
     idx.set(leaf.type, {
       label: leaf.label,
       description: leaf.description,
