@@ -213,7 +213,8 @@ html.is-mobile .solenoid-composite-editor__strip {
   border-top: none;
   border-left: none;
   border-radius: 0 0 8px 0;
-  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.18);
+  /* Docked into the chrome, not floating over it: the border is its edge, as the top bar's is. */
+  box-shadow: none;
   max-width: calc(100vw - 150px);
 }
 html.is-mobile .solenoid-composite-editor__strip-actions { display: none; }
