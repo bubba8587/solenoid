@@ -17,18 +17,23 @@ export function recentDocs<D extends { id: string }>(list: readonly string[], do
   return list.map((id) => byId.get(id)).filter((d): d is D => !!d).slice(0, n);
 }
 
-function read(): string[] {
+function read(): string[] | null {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+    const raw = localStorage.getItem(KEY);
+    if (raw === null) return null;
+    const v = JSON.parse(raw);
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
   } catch { return []; }
 }
 
-let _ids: string[] = typeof localStorage === "undefined" ? [] : read();
+const _stored = typeof localStorage === "undefined" ? null : read();
+let _ids: string[] = _stored ?? [];
+let _seeded = _stored !== null;
 const { notify, subscribe, version } = createNotifier();
 
 function set(next: string[]) {
   _ids = next;
+  _seeded = true;
   try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* private mode */ }
   notify();
 }
@@ -37,6 +42,8 @@ export const recentDocsStore = {
   subscribe,
   version,
   ids: (): readonly string[] => _ids,
+  /** A device with no list yet starts from the library's last edited documents, newest first. */
+  seed(ids: readonly string[]) { if (!_seeded && ids.length > 0) set(ids.slice(0, KEPT)); },
   touch(id: string) { if (_ids[0] !== id) set(touchRecent(_ids, id)); },
   /** Takes it off the list only; the document stays in the library. */
   clear(id: string) { if (_ids.includes(id)) set(_ids.filter((x) => x !== id)); },

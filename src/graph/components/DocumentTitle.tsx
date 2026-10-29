@@ -13,7 +13,10 @@ export function DocumentTitle() {
   useSyncExternalStore(recentDocsStore.subscribe, recentDocsStore.version);
   const name = documentStore.currentName();
   const currentId = documentStore.currentId();
-  useEffect(() => { if (currentId) recentDocsStore.touch(currentId); }, [currentId]);
+  useEffect(() => {
+    recentDocsStore.seed([...documentStore.list()].sort((a, b) => b.updatedAt - a.updatedAt).map((d) => d.id));
+    if (currentId) recentDocsStore.touch(currentId);
+  }, [currentId]);
   // The menu keeps a handful of recents; every document lives in the Navigator's Files tree.
   const all = documentStore.list();
   const current = all.find((d) => d.current);
