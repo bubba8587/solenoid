@@ -104,7 +104,7 @@
       "id": "hist",
       "type": "HistogramNode",
       "x": -4425,
-      "y": -1788,
+      "y": -1787,
       "init": {
         "label": "Distribution"
       },
@@ -155,7 +155,7 @@
       "id": "treemap",
       "type": "ProportionNode",
       "x": -5006,
-      "y": -1870,
+      "y": -1869,
       "init": {
         "label": "Spending (treemap)"
       }
@@ -174,7 +174,7 @@
       "id": "sankey",
       "type": "SankeyNode",
       "x": -5647,
-      "y": -1850,
+      "y": -1849,
       "init": {
         "label": "Budget flow (sankey)"
       }
@@ -228,7 +228,7 @@
       "id": "spark_wave",
       "type": "SparklineNode",
       "x": -5350,
-      "y": -934,
+      "y": -933,
       "init": {
         "label": "Wave (line)",
         "op": "line"
@@ -463,7 +463,7 @@
         "color": "green",
         "collapsed": false,
         "width": 561,
-        "height": 516
+        "height": 517
       }
     },
     {
@@ -480,7 +480,7 @@
         "color": "amber",
         "collapsed": false,
         "width": 621,
-        "height": 422
+        "height": 423
       }
     },
     {
@@ -497,7 +497,7 @@
         "color": "blue",
         "collapsed": false,
         "width": 621,
-        "height": 418
+        "height": 419
       }
     },
     {

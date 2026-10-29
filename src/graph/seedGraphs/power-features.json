@@ -128,7 +128,7 @@
       "id": "note-conduit",
       "type": "NoteNode",
       "x": 659,
-      "y": 88,
+      "y": 89,
       "init": {
         "label": "Conduits & Ribbons",
         "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. The Conduit fans its lanes (its toolbar rotates or **Extends** the run); the trunk selects the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
@@ -187,7 +187,7 @@
       "id": "conduit-1",
       "type": "ConduitNode",
       "x": 674,
-      "y": -24,
+      "y": -23,
       "init": {
         "label": "Conduit",
         "angle": 0
@@ -197,7 +197,7 @@
       "id": "grp-mon",
       "type": "GroupNode",
       "x": 1192,
-      "y": -82,
+      "y": -81,
       "init": {
         "label": "Monitoring",
         "members": [
@@ -215,7 +215,7 @@
       "id": "disp-a",
       "type": "DisplayNode",
       "x": 1216,
-      "y": -24,
+      "y": -23,
       "init": {
         "label": "Sensor A",
         "unitSuffix": "none"
@@ -225,7 +225,7 @@
       "id": "disp-b",
       "type": "DisplayNode",
       "x": 1216,
-      "y": 86,
+      "y": 87,
       "init": {
         "label": "Sensor B",
         "unitSuffix": "none"
@@ -235,7 +235,7 @@
       "id": "disp-c",
       "type": "DisplayNode",
       "x": 1216,
-      "y": 196,
+      "y": 197,
       "init": {
         "label": "Sensor C",
         "unitSuffix": "none"
@@ -245,7 +245,7 @@
       "id": "note-standoff",
       "type": "NoteNode",
       "x": 1134,
-      "y": 284,
+      "y": 285,
       "init": {
         "label": "Standoffs",
         "body": "# Keep things apart\nThe pale bar links this note to the Monitoring group: a **Standoff**. Drags, tidies, and group expansion keep the two between its min and max distance; the bar slants to show slack. Make one: select exactly two items → right-click → **Link with Standoff**.",
@@ -483,7 +483,7 @@
       "id": "grp-conduit",
       "type": "GroupNode",
       "x": 635,
-      "y": -82,
+      "y": -81,
       "init": {
         "label": "Conduits and Ribbons",
         "members": [

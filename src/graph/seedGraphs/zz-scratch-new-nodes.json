@@ -1039,7 +1039,7 @@
       "id": "src_sig",
       "type": "ListInputNode",
       "x": 24,
-      "y": 3269,
+      "y": 3270,
       "init": {
         "label": "Signal (5 Hz sine + 1)",
         "valueKeys": [
@@ -2919,7 +2919,7 @@
       "id": "d_ode",
       "type": "ChartNode",
       "x": 1362,
-      "y": 2340,
+      "y": 2341,
       "init": {
         "label": "y(t): dy/dt = y",
         "op": "line"

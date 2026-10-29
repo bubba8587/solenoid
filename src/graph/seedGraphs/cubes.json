@@ -99,7 +99,7 @@
       "id": "dispRepOrders",
       "type": "DisplayNode",
       "x": -2222,
-      "y": -2996,
+      "y": -2995,
       "init": {
         "label": "Ada's orders: a Frame"
       }

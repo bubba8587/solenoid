@@ -92,6 +92,45 @@ function groupView(g: GroupNode) {
   return () => (g.collapsed ? COLLAPSED_CARD : { w: g.width, h: g.height });
 }
 
+describe("a nudge within EPS after a push is kept by the restore", () => {
+  async function setup() {
+    const editor = new GraphEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const gA = new GroupNode({ collapsed: true, width: 600, height: 300 });
+    const gB = new GroupNode({ collapsed: true, width: 600, height: 300 });
+    const n = new DisplayNode();
+    for (const node of [gA, gB, n]) await editor.addNode(node as never);
+    addView(gA.id, 100, 100, groupView(gA));
+    addView(gB.id, 100, 800, groupView(gB));
+    const nView = addView(n.id, 420, 140, () => ({ w: 180, h: 80 }));
+    return { editor, view, gA, gB, id: n.id, nView };
+  }
+
+  it("a pixel a Tidy moved the box after the push survives the collapse", async () => {
+    const { editor, view, gA, id, nView } = await setup();
+    await setGroupsCollapsed(editor, view, [gA], false);
+    await flushRafs();
+    await view.moveNode(id, { x: nView.position.x, y: nView.position.y - 1 });
+    await setGroupsCollapsed(editor, view, [gA], true);
+    await flushRafs();
+    expect(nView.position).toEqual({ x: 420, y: 139 });
+  });
+
+  it("a nudge between two merged pushes carries into where the box returns", async () => {
+    const { editor, view, gA, gB, id, nView } = await setup();
+    await setGroupsCollapsed(editor, view, [gA], false);
+    await flushRafs();
+    // B's expanded box reaches up over where A's push left the box, so B pushes it too and the records merge.
+    await view.moveNode(id, { x: nView.position.x, y: nView.position.y + 1 });
+    await view.moveNode(gB.id, { x: nView.position.x - 100, y: nView.position.y + 40 });
+    await setGroupsCollapsed(editor, view, [gB], false);
+    await flushRafs();
+    await setGroupsCollapsed(editor, view, [gA, gB], true);
+    await flushRafs();
+    expect(nView.position).toEqual({ x: 420, y: 141 });
+  });
+});
+
 describe("expand-push records survive a Tidy only with a fresh restore target", () => {
   it("a second push after a programmatic move does NOT re-arm the pre-move restore", async () => {
     const editor = new GraphEditor<Schemes>();

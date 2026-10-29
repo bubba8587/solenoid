@@ -8,7 +8,7 @@
       "id": "note-title",
       "type": "NoteNode",
       "x": -1858,
-      "y": -1361,
+      "y": -1362,
       "init": {
         "label": "Personal Finance dashboard",
         "body": "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the demo vault at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
@@ -22,7 +22,7 @@
       "id": "note-data",
       "type": "NoteNode",
       "x": 127,
-      "y": 191,
+      "y": 190,
       "init": {
         "label": "1 · Data sources",
         "body": "# From the demo vault\nEach **Local File** reads a CSV and types every column automatically. It stores the file name, not the data; **Data ▸ Refresh** re-reads. With no data folder set in Settings, it reads the demo vault's copies.",
@@ -36,7 +36,7 @@
       "id": "ws-tx",
       "type": "LocalFileNode",
       "x": 45,
-      "y": 639,
+      "y": 638,
       "init": {
         "label": "Transactions",
         "fileName": "transactions.csv"
@@ -46,7 +46,7 @@
       "id": "ws-acct",
       "type": "LocalFileNode",
       "x": 324,
-      "y": 639,
+      "y": 638,
       "init": {
         "label": "Accounts",
         "fileName": "accounts.csv"
@@ -56,7 +56,7 @@
       "id": "ws-bud",
       "type": "LocalFileNode",
       "x": 45,
-      "y": 919,
+      "y": 918,
       "init": {
         "label": "Budgets",
         "fileName": "budgets.csv"
@@ -66,7 +66,7 @@
       "id": "note-cash",
       "type": "NoteNode",
       "x": 3536,
-      "y": 5632,
+      "y": 5633,
       "init": {
         "label": "2 · Cash flow this quarter",
         "body": "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend). Criteria rows work exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
@@ -80,7 +80,7 @@
       "id": "col-amt",
       "type": "GetColumnNode",
       "x": 3618,
-      "y": 5970,
+      "y": 5971,
       "init": {
         "label": "Amount",
         "readAs": "number"
@@ -93,7 +93,7 @@
       "id": "red-net",
       "type": "AggregateNode",
       "x": 4064,
-      "y": 6003,
+      "y": 6004,
       "init": {
         "label": "Net cash flow",
         "op": "sum"
@@ -103,7 +103,7 @@
       "id": "disp-net",
       "type": "DisplayNode",
       "x": 4456,
-      "y": 6043,
+      "y": 6044,
       "init": {
         "label": "Net cash flow"
       }
@@ -112,7 +112,7 @@
       "id": "sumif-in",
       "type": "SumIfsNode",
       "x": 3618,
-      "y": 6490,
+      "y": 6491,
       "init": {
         "label": "Income (Amount > 0)",
         "op": "sumifs",
@@ -135,7 +135,7 @@
       "id": "disp-in",
       "type": "DisplayNode",
       "x": 3978,
-      "y": 6617,
+      "y": 6618,
       "init": {
         "label": "Income (3 mo)"
       }
@@ -144,7 +144,7 @@
       "id": "sumif-out",
       "type": "SumIfsNode",
       "x": 3618,
-      "y": 6833,
+      "y": 6834,
       "init": {
         "label": "Spend (Amount < 0)",
         "op": "sumifs",
@@ -167,7 +167,7 @@
       "id": "disp-out",
       "type": "DisplayNode",
       "x": 3978,
-      "y": 7129,
+      "y": 7130,
       "init": {
         "label": "Expenses (3 mo)"
       }
@@ -176,7 +176,7 @@
       "id": "expr-rate",
       "type": "ExpressionNode",
       "x": 4015,
-      "y": 6814,
+      "y": 6815,
       "init": {
         "label": "Savings rate",
         "expr": "(income + expense) / income"
@@ -186,7 +186,7 @@
       "id": "gauge-rate",
       "type": "GaugeNode",
       "x": 4456,
-      "y": 6858,
+      "y": 6859,
       "init": {
         "label": "Savings rate"
       },
@@ -198,7 +198,7 @@
       "id": "sld-savetarget",
       "type": "SliderInputNode",
       "x": 3678,
-      "y": 6238,
+      "y": 6239,
       "init": {
         "label": "Target savings rate %",
         "value": 20
@@ -213,7 +213,7 @@
       "id": "expr-savet",
       "type": "ExpressionNode",
       "x": 4034,
-      "y": 6319,
+      "y": 6320,
       "init": {
         "label": "Target (fraction)",
         "expr": "t / 100"
@@ -223,7 +223,7 @@
       "id": "alert-rate",
       "type": "AlertNode",
       "x": 4456,
-      "y": 6524,
+      "y": 6525,
       "init": {
         "label": "Low-savings watch"
       },
@@ -238,7 +238,7 @@
       "id": "cd-cash",
       "type": "ConduitNode",
       "x": 4456,
-      "y": 6391,
+      "y": 6392,
       "init": {
         "angle": 0,
         "seq": 1
@@ -248,7 +248,7 @@
       "id": "fc-net",
       "type": "FormatControllerNode",
       "x": 4639,
-      "y": 6051,
+      "y": 6052,
       "init": {
         "label": "$",
         "hostNodeId": "disp-net",
@@ -271,7 +271,7 @@
       "id": "fc-in",
       "type": "FormatControllerNode",
       "x": 4161,
-      "y": 6625,
+      "y": 6626,
       "init": {
         "label": "$",
         "hostNodeId": "disp-in",
@@ -294,7 +294,7 @@
       "id": "fc-out",
       "type": "FormatControllerNode",
       "x": 4161,
-      "y": 7137,
+      "y": 7138,
       "init": {
         "label": "$",
         "hostNodeId": "disp-out",
@@ -317,7 +317,7 @@
       "id": "note-pivot",
       "type": "NoteNode",
       "x": 5349,
-      "y": -1339,
+      "y": -1340,
       "init": {
         "label": "3 · Spending pivot",
         "body": "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
@@ -331,7 +331,7 @@
       "id": "slicer-exp",
       "type": "SlicerNode",
       "x": 5431,
-      "y": -828,
+      "y": -829,
       "init": {
         "label": "Expenses only",
         "selectedColumn": "Category",
@@ -352,7 +352,7 @@
       "id": "gbf-spend",
       "type": "GroupByFrameNode",
       "x": 5858,
-      "y": -629,
+      "y": -630,
       "init": {
         "label": "Spend by category",
         "agg": "sum"
@@ -366,7 +366,7 @@
       "id": "col-ptotal",
       "type": "GetColumnNode",
       "x": 6199,
-      "y": -630,
+      "y": -631,
       "init": {
         "label": "Category totals",
         "readAs": "number"
@@ -379,7 +379,7 @@
       "id": "abs-spend",
       "type": "MathFXNode",
       "x": 6561,
-      "y": -596,
+      "y": -597,
       "init": {
         "label": "Magnitude",
         "op": "abs"
@@ -389,7 +389,7 @@
       "id": "disp-pivot",
       "type": "DisplayNode",
       "x": 6197,
-      "y": -421,
+      "y": -422,
       "init": {
         "label": "Spend by category"
       }
@@ -398,7 +398,7 @@
       "id": "chart-cat",
       "type": "ChartNode",
       "x": 6860,
-      "y": -650,
+      "y": -651,
       "init": {
         "label": "Spending by category",
         "op": "column"
@@ -408,7 +408,7 @@
       "id": "gbf-cnt",
       "type": "GroupByFrameNode",
       "x": 5858,
-      "y": -1051,
+      "y": -1052,
       "init": {
         "label": "Count by category",
         "agg": "count"
@@ -422,7 +422,7 @@
       "id": "col-pcnt",
       "type": "GetColumnNode",
       "x": 6199,
-      "y": -912,
+      "y": -913,
       "init": {
         "label": "Counts",
         "readAs": "number"
@@ -435,7 +435,7 @@
       "id": "spark-cnt",
       "type": "SparklineNode",
       "x": 6531,
-      "y": -877,
+      "y": -878,
       "init": {
         "label": "# transactions",
         "op": "column"
@@ -445,7 +445,7 @@
       "id": "note-acct",
       "type": "NoteNode",
       "x": 1001,
-      "y": -1031,
+      "y": -1032,
       "init": {
         "label": "4 · Net worth",
         "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **GROUPBY** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
@@ -459,7 +459,7 @@
       "id": "col-bal",
       "type": "GetColumnNode",
       "x": 1456,
-      "y": -508,
+      "y": -509,
       "init": {
         "label": "Balance",
         "readAs": "number"
@@ -472,7 +472,7 @@
       "id": "red-nw",
       "type": "AggregateNode",
       "x": 1815,
-      "y": -475,
+      "y": -476,
       "init": {
         "label": "Net worth",
         "op": "sum"
@@ -482,7 +482,7 @@
       "id": "disp-nw",
       "type": "DisplayNode",
       "x": 2169,
-      "y": -435,
+      "y": -436,
       "init": {
         "label": "Net worth"
       }
@@ -491,7 +491,7 @@
       "id": "gauge-nw",
       "type": "GaugeNode",
       "x": 2611,
-      "y": -230,
+      "y": -231,
       "init": {
         "label": "Toward goal"
       },
@@ -503,7 +503,7 @@
       "id": "ratio-nw",
       "type": "ExpressionNode",
       "x": 2207,
-      "y": -283,
+      "y": -284,
       "init": {
         "label": "Progress",
         "expr": "nw / goal"
@@ -513,7 +513,7 @@
       "id": "slider-goal",
       "type": "SliderInputNode",
       "x": 1845,
-      "y": -271,
+      "y": -272,
       "init": {
         "label": "Net-worth goal",
         "value": 120000
@@ -528,7 +528,7 @@
       "id": "sumif-assets",
       "type": "SumIfsNode",
       "x": 1785,
-      "y": -32,
+      "y": -33,
       "init": {
         "label": "Assets (Balance > 0)",
         "op": "sumifs",
@@ -551,7 +551,7 @@
       "id": "sumif-liab",
       "type": "SumIfsNode",
       "x": 1456,
-      "y": 187,
+      "y": 186,
       "init": {
         "label": "Debt (Balance < 0)",
         "op": "sumifs",
@@ -574,7 +574,7 @@
       "id": "expr-debt",
       "type": "ExpressionNode",
       "x": 1785,
-      "y": 293,
+      "y": 292,
       "init": {
         "label": "Liabilities",
         "expr": "-l"
@@ -584,7 +584,7 @@
       "id": "gbf-type",
       "type": "GroupByFrameNode",
       "x": 1083,
-      "y": -178,
+      "y": -179,
       "init": {
         "label": "By asset class",
         "agg": "sum"
@@ -598,7 +598,7 @@
       "id": "col-tbal",
       "type": "GetColumnNode",
       "x": 1456,
-      "y": 555,
+      "y": 554,
       "init": {
         "label": "Class totals",
         "readAs": "number"
@@ -611,7 +611,7 @@
       "id": "chart-type",
       "type": "ChartNode",
       "x": 1785,
-      "y": 519,
+      "y": 518,
       "init": {
         "label": "Assets vs liabilities",
         "op": "column"
@@ -621,7 +621,7 @@
       "id": "disp-type",
       "type": "DisplayNode",
       "x": 1456,
-      "y": -674,
+      "y": -675,
       "init": {
         "label": "Class totals"
       }
@@ -630,7 +630,7 @@
       "id": "alert-nw",
       "type": "AlertNode",
       "x": 2169,
-      "y": -693,
+      "y": -694,
       "init": {
         "label": "Emergency-fund watch"
       },
@@ -645,7 +645,7 @@
       "id": "cd-acct",
       "type": "ConduitNode",
       "x": 2169,
-      "y": 354,
+      "y": 353,
       "init": {
         "angle": 0,
         "seq": 2
@@ -655,7 +655,7 @@
       "id": "fc-nw",
       "type": "FormatControllerNode",
       "x": 2352,
-      "y": -427,
+      "y": -428,
       "init": {
         "label": "$",
         "hostNodeId": "disp-nw",
@@ -1193,7 +1193,7 @@
       "id": "note-bud",
       "type": "NoteNode",
       "x": 3171,
-      "y": 875,
+      "y": 874,
       "init": {
         "label": "7 · Budget vs actual",
         "body": "# Spend vs. the Budgets CSV\nThe **Slicer** keeps the rows for the category you pick (try Groceries), summed into the quarter's spend. The same category's `MonthlyBudget` comes from the **Budgets CSV**, tripled for the quarter; no number is hand-typed. The **Alert** trips the moment spend passes budget.",
@@ -1207,7 +1207,7 @@
       "id": "slicer",
       "type": "SlicerNode",
       "x": 3253,
-      "y": 1437,
+      "y": 1436,
       "init": {
         "label": "Pick category",
         "selectedColumn": "Category",
@@ -1221,7 +1221,7 @@
       "id": "col-gamt",
       "type": "GetColumnNode",
       "x": 3662,
-      "y": 1491,
+      "y": 1490,
       "init": {
         "label": "Amount",
         "readAs": "number"
@@ -1234,7 +1234,7 @@
       "id": "red-g",
       "type": "AggregateNode",
       "x": 3991,
-      "y": 1524,
+      "y": 1523,
       "init": {
         "label": "Category spend",
         "op": "sum"
@@ -1244,7 +1244,7 @@
       "id": "expr-gabs",
       "type": "ExpressionNode",
       "x": 4260,
-      "y": 1527,
+      "y": 1526,
       "init": {
         "label": "Spend (positive)",
         "expr": "-spend"
@@ -1254,7 +1254,7 @@
       "id": "disp-g",
       "type": "DisplayNode",
       "x": 4611,
-      "y": 1811,
+      "y": 1810,
       "init": {
         "label": "Spent (3 mo)"
       }
@@ -1263,7 +1263,7 @@
       "id": "slicer-bud",
       "type": "SlicerNode",
       "x": 3253,
-      "y": 1176,
+      "y": 1175,
       "init": {
         "label": "Same category",
         "selectedColumn": "Category",
@@ -1277,7 +1277,7 @@
       "id": "col-bud",
       "type": "GetColumnNode",
       "x": 3662,
-      "y": 1230,
+      "y": 1229,
       "init": {
         "label": "MonthlyBudget",
         "readAs": "number"
@@ -1290,7 +1290,7 @@
       "id": "red-bud",
       "type": "AggregateNode",
       "x": 3991,
-      "y": 1263,
+      "y": 1262,
       "init": {
         "label": "Monthly budget",
         "op": "sum"
@@ -1300,7 +1300,7 @@
       "id": "expr-qbud",
       "type": "ExpressionNode",
       "x": 4260,
-      "y": 1266,
+      "y": 1265,
       "init": {
         "label": "Quarterly budget",
         "expr": "m * 3"
@@ -1310,7 +1310,7 @@
       "id": "disp-bud",
       "type": "DisplayNode",
       "x": 4611,
-      "y": 1180,
+      "y": 1179,
       "init": {
         "label": "Budget (3 mo)"
       }
@@ -1319,7 +1319,7 @@
       "id": "alert-g",
       "type": "AlertNode",
       "x": 4611,
-      "y": 1553,
+      "y": 1552,
       "init": {
         "label": "Over-budget watch"
       },
@@ -1334,7 +1334,7 @@
       "id": "cd-bud",
       "type": "ConduitNode",
       "x": 4611,
-      "y": 1332,
+      "y": 1331,
       "init": {
         "angle": 0,
         "seq": 4
@@ -1344,7 +1344,7 @@
       "id": "fc-g",
       "type": "FormatControllerNode",
       "x": 4794,
-      "y": 1819,
+      "y": 1818,
       "init": {
         "label": "$",
         "hostNodeId": "disp-g",
@@ -1367,7 +1367,7 @@
       "id": "fc-bud",
       "type": "FormatControllerNode",
       "x": 4794,
-      "y": 1188,
+      "y": 1187,
       "init": {
         "label": "$",
         "hostNodeId": "disp-bud",
@@ -1390,7 +1390,7 @@
       "id": "note-v12",
       "type": "NoteNode",
       "x": -828,
-      "y": -1361,
+      "y": -1362,
       "init": {
         "label": "9 · New in 1.2",
         "body": "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **GROUPBY** can sum it properly.",
@@ -1404,7 +1404,7 @@
       "id": "fi-bridge",
       "type": "FrameInputNode",
       "x": -611,
-      "y": -1008,
+      "y": -1009,
       "init": {
         "label": "Monthly budget bridge",
         "frameText": "[{\"name\":\"Item\",\"type\":\"string\",\"cells\":[\"Income\",\"Rent\",\"Groceries\",\"Transport\",\"Subscriptions\",\"Dining\",\"Savings transfer\"]},{\"name\":\"Delta\",\"type\":\"number\",\"cells\":[\"5200\",\"-1650\",\"-520\",\"-180\",\"-95\",\"-240\",\"-800\"]}]"
@@ -1414,7 +1414,7 @@
       "id": "wf-bridge",
       "type": "WaterfallNode",
       "x": -282,
-      "y": -970,
+      "y": -971,
       "init": {
         "label": "Where the month went"
       }
@@ -1423,7 +1423,7 @@
       "id": "fi-daily",
       "type": "FrameInputNode",
       "x": -1219,
-      "y": -1008,
+      "y": -1009,
       "init": {
         "label": "Daily spend · Jan 2026",
         "frameText": "[{\"name\":\"Date\",\"type\":\"date\",\"cells\":[\"2026-01-01\",\"2026-01-02\",\"2026-01-03\",\"2026-01-04\",\"2026-01-05\",\"2026-01-06\",\"2026-01-07\",\"2026-01-08\",\"2026-01-09\",\"2026-01-10\",\"2026-01-11\",\"2026-01-12\",\"2026-01-13\",\"2026-01-14\",\"2026-01-15\",\"2026-01-16\",\"2026-01-17\",\"2026-01-18\",\"2026-01-19\",\"2026-01-20\",\"2026-01-21\",\"2026-01-22\",\"2026-01-23\",\"2026-01-24\",\"2026-01-25\",\"2026-01-26\",\"2026-01-27\",\"2026-01-28\",\"2026-01-29\",\"2026-01-30\"]},{\"name\":\"Spend\",\"type\":\"number\",\"cells\":[\"84\",\"23\",\"61\",\"132\",\"18\",\"42\",\"55\",\"37\",\"71\",\"145\",\"96\",\"12\",\"48\",\"33\",\"27\",\"88\",\"156\",\"64\",\"21\",\"39\",\"74\",\"58\",\"92\",\"173\",\"81\",\"15\",\"44\",\"67\",\"52\",\"118\"]}]"
@@ -1433,7 +1433,7 @@
       "id": "cal-daily",
       "type": "CalendarHeatmapNode",
       "x": -890,
-      "y": -960,
+      "y": -961,
       "init": {
         "label": "Spending calendar"
       }
@@ -1442,7 +1442,7 @@
       "id": "fi-report",
       "type": "FrameInputNode",
       "x": -1219,
-      "y": -654,
+      "y": -655,
       "init": {
         "label": "Report-shaped spend",
         "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"cells\":[\"Housing\",\"\",\"\",\"Food\",\"\",\"\",\"Transport\",\"\"]},{\"name\":\"Item\",\"type\":\"string\",\"cells\":[\"Rent\",\"Insurance\",\"Repairs\",\"Groceries\",\"Dining out\",\"Coffee\",\"Fuel\",\"Transit\"]},{\"name\":\"Amount\",\"type\":\"number\",\"cells\":[\"1650\",\"120\",\"85\",\"520\",\"240\",\"60\",\"110\",\"70\"]}]"
@@ -1452,7 +1452,7 @@
       "id": "fill-cat",
       "type": "FillBlanksNode",
       "x": -890,
-      "y": -605,
+      "y": -606,
       "init": {
         "label": "Fill Down → Category"
       },
@@ -1464,7 +1464,7 @@
       "id": "gb-cat",
       "type": "GroupByFrameNode",
       "x": -561,
-      "y": -545,
+      "y": -546,
       "init": {
         "label": "Sum by category",
         "agg": "sum"
@@ -1478,7 +1478,7 @@
       "id": "note-dash",
       "type": "NoteNode",
       "x": 6019,
-      "y": 1219,
+      "y": 1218,
       "init": {
         "label": "8 · One-glance dashboard",
         "body": "# Bundled KPIs arrive as ribbons\nThe cash-flow, net-worth, mortgage and budget groups each ship their headline numbers through an in-group **Conduit**; the lanes travel together as one **Ribbon** and fan out into these readouts. A Conduit fans its lanes; a trunk grabs the whole ribbon.",
@@ -1492,7 +1492,7 @@
       "id": "d-cash-net",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 1647,
+      "y": 1646,
       "init": {
         "label": "Net cash flow"
       }
@@ -1501,7 +1501,7 @@
       "id": "d-cash-in",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 1647,
+      "y": 1646,
       "init": {
         "label": "Income"
       }
@@ -1510,7 +1510,7 @@
       "id": "d-cash-out",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 1781,
+      "y": 1780,
       "init": {
         "label": "Expenses"
       }
@@ -1519,7 +1519,7 @@
       "id": "d-cash-rate",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 1781,
+      "y": 1780,
       "init": {
         "label": "Savings rate"
       }
@@ -1528,7 +1528,7 @@
       "id": "d-proj",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 2330,
+      "y": 2329,
       "init": {
         "label": "Projected nest egg"
       }
@@ -1537,7 +1537,7 @@
       "id": "d-acct-nw",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 1915,
+      "y": 1914,
       "init": {
         "label": "Net worth"
       }
@@ -1546,7 +1546,7 @@
       "id": "d-acct-assets",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 1915,
+      "y": 1914,
       "init": {
         "label": "Assets"
       }
@@ -1555,7 +1555,7 @@
       "id": "d-acct-liab",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 2049,
+      "y": 2048,
       "init": {
         "label": "Liabilities"
       }
@@ -1564,7 +1564,7 @@
       "id": "d-mort-pmt",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 2183,
+      "y": 2182,
       "init": {
         "label": "Mortgage payment"
       }
@@ -1573,7 +1573,7 @@
       "id": "d-mort-int",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 2183,
+      "y": 2182,
       "init": {
         "label": "Lifetime interest"
       }
@@ -1582,7 +1582,7 @@
       "id": "d-bud-spent",
       "type": "DisplayNode",
       "x": 6234,
-      "y": 2049,
+      "y": 2048,
       "init": {
         "label": "Groceries spent"
       }
@@ -1591,7 +1591,7 @@
       "id": "d-bud-bud",
       "type": "DisplayNode",
       "x": 5827,
-      "y": 2330,
+      "y": 2329,
       "init": {
         "label": "Groceries budget"
       }
@@ -1600,7 +1600,7 @@
       "id": "fc-d-net",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 1655,
+      "y": 1654,
       "init": {
         "label": "$",
         "hostNodeId": "d-cash-net",
@@ -1623,7 +1623,7 @@
       "id": "fc-d-in",
       "type": "FormatControllerNode",
       "x": 6417,
-      "y": 1655,
+      "y": 1654,
       "init": {
         "label": "$",
         "hostNodeId": "d-cash-in",
@@ -1646,7 +1646,7 @@
       "id": "fc-d-out",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 1789,
+      "y": 1788,
       "init": {
         "label": "$",
         "hostNodeId": "d-cash-out",
@@ -1669,7 +1669,7 @@
       "id": "fc-d-rate",
       "type": "FormatControllerNode",
       "x": 6417,
-      "y": 1789,
+      "y": 1788,
       "init": {
         "label": "%",
         "hostNodeId": "d-cash-rate",
@@ -1692,7 +1692,7 @@
       "id": "fc-d-proj",
       "type": "FormatControllerNode",
       "x": 6426,
-      "y": 2351,
+      "y": 2350,
       "init": {
         "label": "$",
         "hostNodeId": "d-proj",
@@ -1715,7 +1715,7 @@
       "id": "fc-d-nw",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 1923,
+      "y": 1922,
       "init": {
         "label": "$",
         "hostNodeId": "d-acct-nw",
@@ -1738,7 +1738,7 @@
       "id": "fc-d-ast",
       "type": "FormatControllerNode",
       "x": 6417,
-      "y": 1923,
+      "y": 1922,
       "init": {
         "label": "$",
         "hostNodeId": "d-acct-assets",
@@ -1761,7 +1761,7 @@
       "id": "fc-d-liab",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 2057,
+      "y": 2056,
       "init": {
         "label": "$",
         "hostNodeId": "d-acct-liab",
@@ -1784,7 +1784,7 @@
       "id": "fc-d-pmt",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 2204,
+      "y": 2203,
       "init": {
         "label": "$",
         "hostNodeId": "d-mort-pmt",
@@ -1807,7 +1807,7 @@
       "id": "fc-d-int",
       "type": "FormatControllerNode",
       "x": 6417,
-      "y": 2204,
+      "y": 2203,
       "init": {
         "label": "$",
         "hostNodeId": "d-mort-int",
@@ -1830,7 +1830,7 @@
       "id": "fc-d-bspent",
       "type": "FormatControllerNode",
       "x": 6417,
-      "y": 2057,
+      "y": 2056,
       "init": {
         "label": "$",
         "hostNodeId": "d-bud-spent",
@@ -1853,7 +1853,7 @@
       "id": "fc-d-bbud",
       "type": "FormatControllerNode",
       "x": 6010,
-      "y": 2351,
+      "y": 2350,
       "init": {
         "label": "$",
         "hostNodeId": "d-bud-bud",
@@ -1876,7 +1876,7 @@
       "id": "note-advisor",
       "type": "NoteNode",
       "x": 7879,
-      "y": 790,
+      "y": 789,
       "init": {
         "label": "10 · The advisor's letter",
         "body": "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict is an inline `if` in the letter itself, comparing the raw numbers. Drag a slider and the letter changes its mind.",
@@ -1890,7 +1890,7 @@
       "id": "expr-outflow",
       "type": "ExpressionNode",
       "x": 7575,
-      "y": 1266,
+      "y": 1265,
       "init": {
         "label": "Outflows (positive)",
         "expr": "-spend"
@@ -1900,7 +1900,7 @@
       "id": "disp-outflow",
       "type": "DisplayNode",
       "x": 7904,
-      "y": 1333,
+      "y": 1332,
       "init": {
         "label": "Outflows (3 mo)"
       }
@@ -1909,7 +1909,7 @@
       "id": "cd-adv",
       "type": "ConduitNode",
       "x": 8169,
-      "y": 1495,
+      "y": 1494,
       "init": {
         "angle": 0,
         "seq": 6
@@ -1919,7 +1919,7 @@
       "id": "report-adv",
       "type": "ReportNode",
       "x": 8359,
-      "y": 1228,
+      "y": 1227,
       "init": {
         "label": "Advisor's letter",
         "width": 260,
@@ -1931,7 +1931,7 @@
       "id": "fc-adv-out",
       "type": "FormatControllerNode",
       "x": 8087,
-      "y": 1341,
+      "y": 1340,
       "init": {
         "label": "$",
         "hostNodeId": "disp-outflow",
@@ -1954,7 +1954,7 @@
       "id": "grp-data",
       "type": "GroupNode",
       "x": 21,
-      "y": 581,
+      "y": 580,
       "init": {
         "label": "Data sources",
         "members": [
@@ -1972,7 +1972,7 @@
       "id": "grp-cash",
       "type": "GroupNode",
       "x": 3594,
-      "y": 5912,
+      "y": 5913,
       "init": {
         "label": "Cash flow",
         "members": [
@@ -2003,7 +2003,7 @@
       "id": "grp-pivot",
       "type": "GroupNode",
       "x": 5407,
-      "y": -1109,
+      "y": -1110,
       "init": {
         "label": "Spending pivot",
         "members": [
@@ -2027,7 +2027,7 @@
       "id": "grp-acct",
       "type": "GroupNode",
       "x": 1059,
-      "y": -751,
+      "y": -752,
       "init": {
         "label": "Net worth",
         "members": [
@@ -2140,7 +2140,7 @@
       "id": "grp-bud",
       "type": "GroupNode",
       "x": 3229,
-      "y": 1118,
+      "y": 1117,
       "init": {
         "label": "Budget vs actual",
         "members": [
@@ -2169,7 +2169,7 @@
       "id": "grp-v12",
       "type": "GroupNode",
       "x": -1243,
-      "y": -1066,
+      "y": -1067,
       "init": {
         "label": "New in 1.2",
         "members": [
@@ -2191,7 +2191,7 @@
       "id": "grp-dash",
       "type": "GroupNode",
       "x": 5803,
-      "y": 1589,
+      "y": 1588,
       "init": {
         "label": "Dashboard",
         "members": [
@@ -2230,7 +2230,7 @@
       "id": "grp-advisor",
       "type": "GroupNode",
       "x": 7551,
-      "y": 1170,
+      "y": 1169,
       "init": {
         "label": "Advisor report",
         "members": [
