@@ -217,41 +217,38 @@ html.is-mobile {
     bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
+  /* The Settings sheet's scale: 13px text, 28px controls, rows about 31px tall. */
   .solenoid-outline__collapse,
   .solenoid-outline__collapse-all,
   .solenoid-nav-sec__btn,
-  .solenoid-files__more { width: 32px; height: 32px; }
-  .solenoid-files__more { margin: -7px -6px -7px 0; }
-  .solenoid-nav-sec__toggle { height: 36px; }
-  .solenoid-outline__layout { height: 32px; padding: 0 12px; font-size: 13px; }
-  .solenoid-nav-sec__title { font-size: 14px; }
-  .solenoid-nav-sec__crumb, .solenoid-nav-sec__count { font-size: 13px; }
-  .solenoid-nav-sec__crumb { padding: 8px 6px; }
-  .solenoid-nav-sec__btn svg { width: 16px; height: 16px; }
+  .solenoid-files__more { width: 28px; height: 28px; }
+  .solenoid-files__more { margin: -6px -6px -6px 0; }
+  .solenoid-nav-sec__toggle { height: 30px; }
+  .solenoid-outline__layout { height: 28px; padding: 0 10px; font-size: 12px; }
+  .solenoid-nav-sec__title { font-size: 13px; }
+  .solenoid-nav-sec__crumb, .solenoid-nav-sec__count { font-size: 12px; }
+  .solenoid-nav-sec__crumb { padding: 6px 4px; }
   .solenoid-nav-sec--files.solenoid-nav-sec--open { flex: 1 1 auto; }
   .solenoid-nav-sec--files.solenoid-nav-sec--open .solenoid-nav-sec__body { flex: 1 1 auto; }
-  .solenoid-files__rename { height: 28px; margin: -5px 0; font-size: 14px; }
-  .solenoid-files__menu { min-width: 200px; }
-  .solenoid-files__menu .sol-popup-menu__item { padding: 11px 12px; font-size: 14px; }
-  .solenoid-outline__collapse-all svg { width: 16px; height: 16px; }
-  .solenoid-outline__search { height: 36px; font-size: 14px; }
-  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 38px; }
-  .solenoid-outline__scope { width: 30px; height: 30px; }
-  .solenoid-outline__scope svg { width: 16px; height: 16px; }
-  .solenoid-outline__heading { font-size: 11px; }
-  .solenoid-outline__hitwhere { font-size: 12px; }
+  .solenoid-files__rename { height: 26px; margin: -4px 0; font-size: 13px; }
+  .solenoid-files__menu { min-width: 180px; }
+  .solenoid-files__menu .sol-popup-menu__item { padding: 9px 12px; font-size: 13px; }
+  .solenoid-outline__search { height: 32px; font-size: 13px; }
+  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 34px; }
+  .solenoid-outline__scope { width: 26px; height: 26px; }
+  .solenoid-outline__heading { font-size: 10.5px; }
+  .solenoid-outline__hitwhere { font-size: 11.5px; }
   .solenoid-outline__chip,
-  .solenoid-outline__sortbtn { height: 32px; font-size: 13px; }
-  .solenoid-outline__sortbtn { padding: 0 14px; }
-  .solenoid-outline__sortlabel { font-size: 13px; }
-  .solenoid-outline__row { padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
+  .solenoid-outline__sortbtn { height: 28px; font-size: 12.5px; }
+  .solenoid-outline__sortbtn { padding: 0 12px; }
+  .solenoid-outline__sortlabel { font-size: 12.5px; }
+  .solenoid-outline__row { padding-top: 7px; padding-bottom: 7px; font-size: 13px; }
   /* A finger-sized target that hangs into the row's padding rather than growing the row. */
-  .solenoid-outline__plug { min-height: 28px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
-  .solenoid-outline__plug svg { width: 14px; height: 14px; }
-  .solenoid-outline__plug-count { font-size: 12px; }
-  .solenoid-outline__conn { padding: 2px 4px; font-size: 13px; }
-  .solenoid-outline__conn-btn { width: 28px; height: 28px; }
-  .solenoid-outline__conn-btn svg { width: 14px; height: 14px; }
+  .solenoid-outline__plug { min-height: 26px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
+  .solenoid-outline__plug svg { width: 13px; height: 13px; }
+  .solenoid-outline__plug-count { font-size: 11px; }
+  .solenoid-outline__conn { padding: 1px 4px; font-size: 12.5px; }
+  .solenoid-outline__conn-btn { width: 26px; height: 26px; }
   /* As in the Add menu: a finger leaves a sticky :hover behind a tap, so only the press itself tints. */
   .solenoid-outline__row:not(.solenoid-outline__row--sel):not(.solenoid-outline__row--group):hover { background: transparent; }
   .solenoid-outline__row--sel:hover { background: var(--accent-soft); }
