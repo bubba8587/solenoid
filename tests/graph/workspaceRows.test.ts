@@ -1,6 +1,6 @@
 // [[C132]] workspaceTree
 import { describe, it, expect } from "vitest";
-import { libraryRows, previewRows, revealKeys, rekeyExpanded, folderKey, docFoldedKey, docKey } from "../../src/graph/workspaceRows";
+import { libraryRows, previewRows, revealKeys, rekeyExpanded, folderKey, docFoldedKey, docKey, treeKeyStep, typeAhead } from "../../src/graph/workspaceRows";
 import { PREVIEW_WORKSPACE } from "../../src/graph/workspacePreview";
 
 const docs = [
@@ -58,5 +58,31 @@ describe("previewRows", () => {
     expect(forecast.expandable).toBe(false);
     expect(rows.filter((r) => r.kind === "page" || r.kind === "pagefolder").map((r) => r.label)).toEqual(["Inputs", "Model", "Summary"]);
     expect(rows.every((r) => r.sample)).toBe(true);
+  });
+});
+
+describe("tree keys", () => {
+  const exp = new Set([folderKey("Finance")]);
+  const rows = libraryRows(docs, folders, exp, false);
+  const key = (label: string) => rows.find((r) => r.label === label)!.key;
+
+  it("Right opens a folded folder, then steps into it; Left steps out, then folds", () => {
+    const folded = libraryRows(docs, folders, new Set(), false);
+    expect(treeKeyStep(folded, folderKey("Finance"), "right").toggle?.key).toBe(folderKey("Finance"));
+    expect(treeKeyStep(rows, folderKey("Finance"), "right").focus).toBe(key("2026"));
+    expect(treeKeyStep(rows, key("Budget 9"), "left").focus).toBe(folderKey("Finance"));
+    expect(treeKeyStep(rows, folderKey("Finance"), "left").toggle?.key).toBe(folderKey("Finance"));
+  });
+
+  it("Up and Down walk the visible rows and stop at the ends", () => {
+    expect(treeKeyStep(rows, rows[0].key, "up")).toEqual({});
+    expect(treeKeyStep(rows, rows[0].key, "down").focus).toBe(rows[1].key);
+    expect(treeKeyStep(rows, rows[0].key, "end").focus).toBe(rows[rows.length - 1].key);
+  });
+
+  it("typing jumps to the next row with that start, wrapping round", () => {
+    expect(typeAhead(rows, key("Budget 9"), "b")).toBe(key("Budget 10"));
+    expect(typeAhead(rows, key("Budget 10"), "b")).toBe(key("Budget 9"));
+    expect(typeAhead(rows, rows[0].key, "zz")).toBeUndefined();
   });
 });

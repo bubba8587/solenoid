@@ -382,12 +382,12 @@ export const documentStore = {
     await loadGraph({ ...EMPTY_GRAPH });
   },
 
-  async newFromTemplate(seedId: SeedId): Promise<void> {
+  async newFromTemplate(seedId: SeedId, folder?: string): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
-    _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
+    _lib = addDocument(_lib, makeDoc(seed.label, seed.graph, folder));
     persist();
     notify();
     await loadGraph(seed.graph);

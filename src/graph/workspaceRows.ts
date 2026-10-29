@@ -95,3 +95,37 @@ export function rekeyExpanded(expanded: ReadonlySet<string>, from: string, to: s
   }
   return out;
 }
+
+export type TreeKey = "up" | "down" | "home" | "end" | "left" | "right";
+
+/** ARIA tree keys over the visible rows: which row takes focus, or which row folds or unfolds. */
+export function treeKeyStep(rows: TreeRow[], key: string, step: TreeKey): { focus?: string; toggle?: TreeRow } {
+  const i = rows.findIndex((r) => r.key === key);
+  if (i < 0) return rows.length ? { focus: rows[0].key } : {};
+  const r = rows[i];
+  switch (step) {
+    case "down": return i + 1 < rows.length ? { focus: rows[i + 1].key } : {};
+    case "up": return i > 0 ? { focus: rows[i - 1].key } : {};
+    case "home": return { focus: rows[0].key };
+    case "end": return { focus: rows[rows.length - 1].key };
+    case "right":
+      if (!r.expandable) return {};
+      return r.expanded ? (rows[i + 1]?.depth > r.depth ? { focus: rows[i + 1].key } : {}) : { toggle: r };
+    case "left": {
+      if (r.expandable && r.expanded) return { toggle: r };
+      for (let j = i - 1; j >= 0; j--) if (rows[j].depth < r.depth) return { focus: rows[j].key };
+      return {};
+    }
+  }
+}
+
+/** Type-to-jump: the next row after `key` whose name starts with `prefix`, wrapping, ignoring case. */
+export function typeAhead(rows: TreeRow[], key: string, prefix: string): string | undefined {
+  const p = prefix.toLowerCase();
+  const i = rows.findIndex((r) => r.key === key);
+  for (let n = 1; n <= rows.length; n++) {
+    const r = rows[(i + n + rows.length) % rows.length];
+    if (r.label.toLowerCase().startsWith(p)) return r.key;
+  }
+  return undefined;
+}

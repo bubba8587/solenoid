@@ -6,9 +6,10 @@ import { requestConfirm } from "./confirmStore";
 import { IS_COARSE } from "./coarse";
 import { useMenuClamp } from "./components/menuClamp";
 import { PREVIEW_WORKSPACE, isNavPreview } from "./workspacePreview";
+import { SEEDS, SEED_GROUPS } from "./seeds";
 import {
-  libraryRows, previewRows, revealKeys, rekeyExpanded, docFoldedKey,
-  PREVIEW_EXPANDED, type RowKind, type TreeRow,
+  libraryRows, previewRows, revealKeys, rekeyExpanded, docFoldedKey, docKey, folderKey, treeKeyStep, typeAhead,
+  PREVIEW_EXPANDED, type RowKind, type TreeRow, type TreeKey,
 } from "./workspaceRows";
 import "./components/popupChrome.css";
 import "./WorkspaceTree.css";
@@ -113,6 +114,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   const [draft, setDraft] = useState("");
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: MenuItem[] } | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const drag = useRef<Drag | null>(null);
 
   const docs = documentStore.list();
@@ -139,18 +141,29 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     ...libraryRows(docs, folders, expanded, !!outline),
   ];
 
-  const startRename = (r: Renaming, label: string) => { setRenaming(r); setDraft(label); };
+  // A ref as well as state: Escape and then the input's blur both fire, and only the first may act.
+  const renamingRef = useRef<Renaming>(null);
+  const startRename = (r: Renaming, label: string) => { renamingRef.current = r; setRenaming(r); setDraft(label); };
   const commitRename = () => {
-    const r = renaming;
+    const r = renamingRef.current;
+    renamingRef.current = null;
     setRenaming(null);
     if (!r) return;
     const v = draft.trim();
-    if (!v) return;
-    if (r.kind === "doc") documentStore.rename(r.id, v);
-    else {
-      const to = documentStore.renameFolder(r.path, v);
-      if (to !== r.path) setExpanded((prev) => rekeyExpanded(prev, r.path, to));
+    if (r.kind === "doc") {
+      if (v) documentStore.rename(r.id, v);
+      moveFocus(docKey(r.id));
+      return;
     }
+    const to = v ? documentStore.renameFolder(r.path, v) : r.path;
+    if (to !== r.path) setExpanded((prev) => rekeyExpanded(prev, r.path, to));
+    moveFocus(folderKey(to));
+  };
+  const cancelRename = () => {
+    const r = renamingRef.current;
+    renamingRef.current = null;
+    setRenaming(null);
+    if (r) moveFocus(r.kind === "doc" ? docKey(r.id) : folderKey(r.path));
   };
 
   const newFolderIn = (parent: string) => {
@@ -188,32 +201,29 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     { label: "Rename", onClick: () => startRename({ kind: "doc", id }, name) },
     { label: "Duplicate", onClick: () => void documentStore.duplicate(id) },
     { label: "Move to…", onClick: () => setTimeout(() => moveMenu(id, at), 0), disabled: folders.length === 0 },
-    {
-      label: "Delete", danger: true, divider: true,
-      onClick: async () => {
-        const ok = await requestConfirm({ message: `Delete "${name}"? Unsaved changes will be lost.`, confirmLabel: "Delete" });
-        if (ok) void documentStore.remove(id);
-      },
-    },
+    { label: "Delete", danger: true, divider: true, onClick: () => void deleteDoc(id, name) },
   ];
+
+  const deleteDoc = async (id: string, name: string) => {
+    const ok = await requestConfirm({ message: `Delete "${name}"? Unsaved changes will be lost.`, confirmLabel: "Delete" });
+    if (ok) void documentStore.remove(id);
+  };
+  const deleteFolder = async (path: string, name: string) => {
+    const n = documentStore.documentsIn(path);
+    if (n > 0) {
+      const what = n === 1 ? "its document" : `its ${n} documents`;
+      const ok = await requestConfirm({ message: `Delete "${name}" and ${what}? Unsaved changes will be lost.`, confirmLabel: "Delete" });
+      if (!ok) return;
+    }
+    if (target.folder === path || target.folder.startsWith(`${path}/`)) target.folder = "";
+    void documentStore.removeFolder(path);
+  };
 
   const folderMenu = (path: string, name: string): MenuItem[] => [
     { label: "New Document", onClick: () => void newDocumentIn(path) },
     { label: "New Folder", onClick: () => newFolderIn(path) },
     { label: "Rename", onClick: () => startRename({ kind: "folder", path }, name), divider: true },
-    {
-      label: "Delete", danger: true, divider: true,
-      onClick: async () => {
-        const n = documentStore.documentsIn(path);
-        if (n > 0) {
-          const what = n === 1 ? "its document" : `its ${n} documents`;
-          const ok = await requestConfirm({ message: `Delete "${name}" and ${what}? Unsaved changes will be lost.`, confirmLabel: "Delete" });
-          if (!ok) return;
-        }
-        if (target.folder === path || target.folder.startsWith(`${path}/`)) target.folder = "";
-        void documentStore.removeFolder(path);
-      },
-    },
+    { label: "Delete", danger: true, divider: true, onClick: () => void deleteFolder(path, name) },
   ];
 
   const menuFor = (r: TreeRow, at: { x: number; y: number }): MenuItem[] | null => {
@@ -231,6 +241,50 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     }
     if (r.kind === "folder" && r.folderPath !== undefined) target.folder = r.folderPath;
     if (r.expandable) toggle(r.key);
+  };
+
+  // The ARIA tree keys: one row in the tab order, arrows move it; workspace-tree.md § The pane.
+  const focusable = rows.some((r) => r.key === focusKey) ? focusKey : rows.find((r) => r.open)?.key ?? rows[0]?.key;
+  const rowEls = useRef(new Map<string, HTMLDivElement>());
+  const typed = useRef({ text: "", at: 0 });
+  const moveFocus = (key: string | undefined) => {
+    if (!key) return;
+    setFocusKey(key);
+    requestAnimationFrame(() => rowEls.current.get(key)?.focus());
+  };
+  const toggleRow = (r: TreeRow) => toggle(r.kind === "doc" && r.docId ? docFoldedKey(r.docId) : r.key);
+  const onTreeKey = (e: KeyboardEvent) => {
+    const el = (e.target as HTMLElement).closest(".solenoid-files__row") as HTMLElement | null;
+    if (!el || e.target !== el || renaming) return;
+    const key = el.dataset.key!;
+    const r = rows.find((x) => x.key === key);
+    if (!r) return;
+    const steps: Record<string, TreeKey> = { ArrowUp: "up", ArrowDown: "down", Home: "home", End: "end", ArrowLeft: "left", ArrowRight: "right" };
+    // Every key the tree takes stops here, or the canvas's own Delete and arrow keys act on the selected cards too.
+    const take = () => { e.preventDefault(); e.stopPropagation(); };
+    if (steps[e.key]) {
+      take();
+      const out = treeKeyStep(rows, key, steps[e.key]);
+      if (out.toggle) toggleRow(out.toggle);
+      moveFocus(out.focus);
+      return;
+    }
+    if (e.key === "Enter" || e.key === " ") { take(); onRowClick(r); return; }
+    if (r.sample) return;
+    if (e.key === "F2") { take(); startRename(r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! }, r.label); return; }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      take();
+      if (r.docId) void deleteDoc(r.docId, r.label);
+      else if (r.folderPath) void deleteFolder(r.folderPath, r.label);
+      return;
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== " ") {
+      take();
+      const now = performance.now();
+      typed.current = { text: (now - typed.current.at < 700 ? typed.current.text : "") + e.key, at: now };
+      const hit = typeAhead(rows, typed.current.text.length > 1 ? rows[rows.findIndex((x) => x.key === key) - 1]?.key ?? key : key, typed.current.text);
+      moveFocus(hit);
+    }
   };
 
   // Desktop drag and drop: a document or folder onto a folder row, or onto the tree's empty space for the top level.
@@ -274,6 +328,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
       onDragOver={(e) => onDragOver(e, null)}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDropKey(null); }}
       onDrop={(e) => onDrop(e, null)}
+      onKeyDown={(e) => onTreeKey(e.nativeEvent)}
     >
       {rows.map((r) => {
         const isRenaming = renaming !== null && (
@@ -284,6 +339,10 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
           <Fragment key={r.key}>
             <div
               role="treeitem"
+              ref={(el) => { if (el) rowEls.current.set(r.key, el); else rowEls.current.delete(r.key); }}
+              data-key={r.key}
+              tabIndex={r.key === focusable ? 0 : -1}
+              onFocus={(e) => { if (e.target === e.currentTarget) setFocusKey(r.key); }}
               aria-level={r.depth + 1}
               aria-expanded={r.expandable ? r.expanded : undefined}
               aria-selected={r.open}
@@ -334,7 +393,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-                    if (e.key === "Escape") { e.preventDefault(); setRenaming(null); }
+                    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelRename(); }
                   }}
                   onBlur={commitRename}
                 />
@@ -370,12 +429,16 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   );
 }
 
-/** The Files section's + menu; new rows land in the folder last picked in the tree. */
-export function filesAddMenu(): MenuItem[] {
+/** The Files section's + menu; new rows land in the folder last picked in the tree. `openSub` replaces the menu with a submenu. */
+export function filesAddMenu(openSub: (items: MenuItem[]) => void): MenuItem[] {
+  const seedsOf = (ids: string[]): MenuItem[] =>
+    ids.map((id) => ({ label: SEEDS[id].label, onClick: () => void documentStore.newFromTemplate(id, target.folder || undefined) }));
+  const groups: MenuItem[] = SEED_GROUPS.map((g) => ({ label: g.head, onClick: () => setTimeout(() => openSub(seedsOf(g.ids)), 0) }));
   return [
     { label: "New Document", onClick: () => treeActions.newDocument?.() },
     { label: "New Folder", onClick: () => treeActions.newFolder?.() },
     { label: "New Page", onClick: () => {}, disabled: true },
+    { label: "New from Example…", divider: true, onClick: () => setTimeout(() => openSub(groups), 0) },
   ];
 }
 

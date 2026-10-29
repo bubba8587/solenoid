@@ -158,8 +158,10 @@ Built on `rust-port` with this bundle, inside the pane only:
 - **Layout A and B side by side**: the pane header's layout toggle (preview only) switches between
   the stacked sections and the one tree.
 
-What the prototype does not do: no pages, no disk tree, no search scope, no keyboard tree
-navigation, and no drag on touch.
+- **Keyboard and examples, real**: the tree's arrow keys, F2, Delete and type-to-jump; New from
+  Example… in the + menu.
+
+What the prototype does not do: no pages, no disk tree, no search scope, and no drag on touch.
 
 ## Questions for the author
 

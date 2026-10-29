@@ -22,7 +22,7 @@ import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 import { nodeDisplayName, nodeName } from "./catalogUtils";
 import { documentStore } from "./documentStore";
-import { WorkspaceTree, RowMenu, filesAddMenu } from "./WorkspaceTree";
+import { WorkspaceTree, RowMenu, filesAddMenu, type MenuItem } from "./WorkspaceTree";
 import { isNavPreview } from "./workspacePreview";
 
 
@@ -208,7 +208,7 @@ export function OutlinePanel() {
       return next;
     });
   const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
-  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const startSplitDrag = (e: ReactPointerEvent) => {
     e.preventDefault();
@@ -650,7 +650,14 @@ export function OutlinePanel() {
           </div>
         </>
       )}
-      {addMenu && <RowMenu at={addMenu} items={filesAddMenu()} onClose={() => setAddMenu(null)} />}
+      {addMenu && (
+        <RowMenu
+          key={addMenu.sub ? "sub" : "root"}
+          at={addMenu}
+          items={addMenu.sub ?? filesAddMenu((sub) => setAddMenu({ ...addMenu, sub }))}
+          onClose={() => setAddMenu(null)}
+        />
+      )}
     </div>
   );
 }
