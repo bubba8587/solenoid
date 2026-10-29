@@ -8,7 +8,9 @@ High · Wide. **Written:** 2026-09-01, plan-only.
 
 One save file. Tabs are canvas PAGES of it. Pages reference each other's nodes. Explicitly
 NOT concurrently-loaded library documents with cross-document links — that fork was weighed
-and rejected. The library (`documentStore`, the doc switcher in `MenuBar`) stays what it is: a
+and rejected. (2026-10-29: the library becomes a folder tree and the pages a tree inside each
+document, both in the Navigator, [[C132]] workspaceTree, bundle 26; values between documents
+stay out.) The library (`documentStore`, the doc switcher in `MenuBar`) stays what it is: a
 list of separate documents; the tab strip becomes the page strip of the OPEN document.
 
 ## The decision to make first: one engine, or one per page
@@ -71,10 +73,9 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   Pins, Alerts, Comments panels list the page beside the node and fly across pages. Report and
   Presentation references are name-addressed already and work unchanged; Presentation steps
   gain the page implicitly from the node.
-- **The page strip**: a `tree/specs/canvas/layout-chrome.md` decision — recommend the strip lives in the top
-  bar's middle gap on desktop (the empty div the art slot was reserved for — the author
-  decides which wins) and as a row in the mobile menu bar; rename inline, reorder by drag,
-  add/close with the usual guards (closing a page with nodes asks; nodes move to a page, never
+- **No page strip: pages are rows in the Navigator's tree** ([[C132]] workspaceTree; the pane is
+  bundle 26, `26-navigator-tree.md`). Rename inline, reorder by drag, page folders, add and
+  delete with the usual guards (deleting a page with nodes asks; nodes move to a page, never
   vanish). Mermaid/Report/Note nodes are pages' citizens like any other.
 
 ## Text form and AI
@@ -92,7 +93,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 2. Projection filter + stubs + camera-per-page; `syncTopology` identity across switches
    (perf probe at 200 nodes).
 3. Edit-verb guards (single-page groups/standoffs/docks); paste onto the active page.
-4. The page strip (desktop + mobile), rename/reorder/add/close, `tree/specs/canvas/layout-chrome.md` row.
+4. The page rows in the Navigator's tree (bundle 26 build step 3).
 5. Page-scoped Tidy/Cleanup/fit/isolate/lasso; `flyToNode` page switch; panels show pages.
 6. Validator + grounding; a seed with two pages and a cross-page reference; What's-New.
 

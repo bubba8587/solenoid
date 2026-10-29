@@ -54,6 +54,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/documents/reports-and-notes.md` | Notes, Reports, Dashboards and Knap: the body syntax, the shared value renderer, mail merge, vault writes, export, the Dashboard's layout, board, boxes and edit mode | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts`, `nodes/dashboard.ts`, `DashboardOverlay.tsx`, `inlineRefDisplay.tsx` |
 | `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
 | `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
+| `../tree/specs/documents/workspace-tree.md` | the Navigator's tree of folders, documents and pages (planned; prototyped in the pane) | `WorkspaceTree.tsx` |
 | `../tree/specs/documents/inline-literal-maps.md` | values edited on a card, and which classes restore them | node classes, `persistence.ts` |
 | `../tree/specs/documents/literal-input-editors.md` | the table popup as the editor for literal sources | `TablePopup.tsx`, `columnHeadControls.tsx` |
 | `../tree/specs/documents/graph-load-teardown-performance.md` | building and tearing down a large graph | `persistence.ts` `rebuildGraph`, `flow/FlowCanvas.tsx` |

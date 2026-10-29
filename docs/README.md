@@ -152,6 +152,7 @@ results get retried and settled rulings relapse.
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
+| `WorkspaceTree.tsx`, `workspacePreview.ts` | [[C132]] workspaceTree; `../tree/specs/documents/workspace-tree.md` |
 | `cablePaths.ts`, `ribbonCable.ts`, `conduitTrace.ts`, `crates/solenoid-graph/src/conduit.rs` | [[A1]] visualGraphCalculator, [[C10]] socketLattice; `../tree/specs/canvas/cable-rendering-knobs.md` |
 | `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[A1]] visualGraphCalculator; `../tree/specs/canvas/group-expand-push.md` |
 | `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../tree/specs/canvas/standoffs.md` |

@@ -54,8 +54,8 @@
   --nav-slot: 18px;
   --nav-indent: 18px;
 }
-/* The list scrolls; nothing above it may shrink, or a long list squashes the search field. */
-.solenoid-outline > :not(.solenoid-outline__list) { flex-shrink: 0; }
+/* Only the lists scroll; nothing else may shrink, or a long list squashes the search field. */
+.solenoid-outline :is(.solenoid-outline__header, .solenoid-outline__search, .solenoid-outline__filters, .solenoid-outline__sortrow, .solenoid-nav-sec__head, .solenoid-nav-split) { flex-shrink: 0; }
 
 .solenoid-outline__header {
   display: flex;
@@ -214,7 +214,7 @@
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 5px var(--nav-pad) 5px calc(var(--nav-pad) + var(--depth, 0) * var(--nav-indent));
+  padding: 5px var(--nav-pad) 5px calc(var(--nav-pad) + (var(--depth, 0) + var(--depth-base, 0)) * var(--nav-indent));
   margin-top: 2px;
   border-radius: 6px;
   color: var(--text);
@@ -308,7 +308,7 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding-left: calc(var(--nav-pad) + var(--depth, 0) * var(--nav-indent) + var(--nav-slot) + 8px - 4px);
+  padding-left: calc(var(--nav-pad) + (var(--depth, 0) + var(--depth-base, 0)) * var(--nav-indent) + var(--nav-slot) + 8px - 4px);
   padding-right: calc(var(--nav-pad) - 4px);
   margin: 1px 0 3px;
 }
@@ -369,3 +369,119 @@
   .solenoid-outline__conn-btn { opacity: 0.8; }
   .solenoid-outline__plug { opacity: 1; }
 }
+
+.solenoid-outline__spacer { flex: 1 1 auto; }
+.solenoid-outline__layout {
+  height: 22px;
+  padding: 0 9px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.solenoid-outline__layout:hover { color: var(--text); border-color: var(--btn-border-hover); }
+
+/* ── Sections: Files above Outline ── */
+.solenoid-nav-sec {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.solenoid-nav-sec--files { flex-shrink: 0; }
+.solenoid-nav-sec--outline.solenoid-nav-sec--open { flex: 1 1 auto; }
+/* With the Outline folded, Files takes the rest of the panel. */
+.solenoid-nav-sec--files.solenoid-nav-sec--open:has(+ .solenoid-nav-sec--outline:not(.solenoid-nav-sec--open)) { flex: 1 1 auto; }
+.solenoid-nav-sec--outline { border-top: 1px solid var(--panel-border); }
+.solenoid-nav-split + .solenoid-nav-sec--outline { border-top: none; }
+
+.solenoid-nav-sec__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--nav-gutter);
+}
+.solenoid-nav-sec__toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 var(--nav-pad) 0 calc(var(--nav-pad) + 2px);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-nav-sec__toggle:hover { background: var(--btn-hover); }
+.solenoid-nav-sec__toggle svg { flex: 0 0 auto; display: block; color: var(--text-dim); transition: transform 90ms ease; }
+.solenoid-nav-sec__title { flex: 0 0 auto; font-size: 12px; font-weight: 600; }
+.solenoid-nav-sec__crumb {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.solenoid-nav-sec__count {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.solenoid-nav-sec__btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.solenoid-nav-sec__btn:hover { background: var(--btn-hover); color: var(--accent); }
+.solenoid-nav-sec__btn svg { display: block; }
+.solenoid-nav-sec__head .solenoid-outline__collapse-all { flex: 0 0 auto; }
+
+.solenoid-nav-sec__body {
+  min-height: 0;
+  overflow-y: auto;
+  transform: translateZ(0);
+  contain: paint;
+}
+.solenoid-nav-sec--files.solenoid-nav-sec--open .solenoid-nav-sec__body { flex: 0 0 auto; }
+.solenoid-nav-sec--files.solenoid-nav-sec--open:has(+ .solenoid-nav-sec--outline:not(.solenoid-nav-sec--open)) .solenoid-nav-sec__body { flex: 1 1 auto; }
+
+/* The split handle: a hairline with a grab band either side of it. */
+.solenoid-nav-split {
+  position: relative;
+  height: 7px;
+  margin: -3px 0;
+  z-index: 1;
+  cursor: row-resize;
+  touch-action: none;
+}
+.solenoid-nav-split::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 3px;
+  height: 1px;
+  background: var(--panel-border);
+}
+.solenoid-nav-split:hover::after { background: var(--accent); }
+.solenoid-outline__list--tree { padding: 0; }

@@ -1,0 +1,67 @@
+.solenoid-files {
+  padding: 2px var(--nav-gutter) var(--nav-gutter);
+}
+
+.solenoid-files__slot {
+  flex: 0 0 auto;
+  width: var(--nav-slot);
+}
+/* The kind glyph sits after the fold slot, so a folder's and a document's names line up whether or not either folds. */
+.solenoid-files__glyph {
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-left: -4px;
+  color: var(--text-dim);
+}
+.solenoid-files__glyph svg { display: block; }
+.solenoid-files__row--folder .solenoid-files__glyph,
+.solenoid-files__row--pagefolder .solenoid-files__glyph { color: var(--text-muted); }
+.solenoid-outline__row--sel .solenoid-files__glyph { color: inherit; }
+.solenoid-files__row--doc .solenoid-outline__label { font-weight: 600; }
+.solenoid-files__row--sample { cursor: default; }
+.solenoid-files__row--sample .solenoid-outline__label { color: var(--text-dim); }
+.solenoid-files__row--sample.solenoid-outline__row--sel .solenoid-outline__label { color: inherit; }
+
+.solenoid-files__more {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: -2px -4px -2px 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.solenoid-outline__row:hover .solenoid-files__more,
+.solenoid-files__more:focus-visible { opacity: 1; }
+.solenoid-files__more:hover { background: var(--btn-hover); color: var(--accent); }
+
+.solenoid-files__rename {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 22px;
+  margin: -2px 0;
+  padding: 0 6px;
+  background: var(--btn-bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+.solenoid-files__outline { padding-bottom: 2px; }
+
+.solenoid-files__menu { min-width: 160px; }
+.solenoid-files__menu .solenoid-files__menu-danger:hover:not(:disabled) { color: var(--sol-error); }
+
+@media (pointer: coarse) {
+  .solenoid-files__more { opacity: 1; }
+}

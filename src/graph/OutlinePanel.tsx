@@ -1,5 +1,5 @@
 // [[C88]] collapsedGroupCard, [[C85]] groupPushDeterministic
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { connectionVersionStore } from "./graphSignals";
@@ -21,6 +21,9 @@ import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 import { nodeDisplayName, nodeName } from "./catalogUtils";
+import { documentStore } from "./documentStore";
+import { WorkspaceTree, RowMenu, filesAddMenu } from "./WorkspaceTree";
+import { isNavPreview } from "./workspacePreview";
 
 
 type Cat = "group" | "input" | "display" | "other";
@@ -58,6 +61,22 @@ function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
 }
 
 type SortMode = "position" | "alpha";
+type Sections = { files: boolean; outline: boolean };
+type LayoutMode = "stacked" | "tree";
+
+const SECTIONS_KEY = "solenoid.navSections";
+const SPLIT_KEY = "solenoid.navSplit";
+const LAYOUT_KEY = "solenoid.navLayout";
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch { return fallback; }
+}
+function writeJson(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
+}
 
 function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const editor = getEditor();
@@ -175,6 +194,32 @@ export function OutlinePanel() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
   const [open, setOpen] = useState(false);
+  const preview = isNavPreview();
+  const [layout, setLayout] = useState<LayoutMode>(() => (preview && readJson<LayoutMode>(LAYOUT_KEY, "stacked") === "tree" ? "tree" : "stacked"));
+  const setLayoutMode = (m: LayoutMode) => { setLayout(m); writeJson(LAYOUT_KEY, m); };
+  // A phone shows one section at a time and opens on the Outline, where Search lands.
+  const [sections, setSections] = useState<Sections>(() =>
+    isMobile() ? { files: false, outline: true } : readJson<Sections>(SECTIONS_KEY, { files: true, outline: true }));
+  const toggleSection = (k: keyof Sections) =>
+    setSections((prev) => {
+      const opening = !prev[k];
+      const next = isMobile() ? { files: false, outline: false, [k]: opening } : { ...prev, [k]: opening };
+      if (!isMobile()) writeJson(SECTIONS_KEY, next);
+      return next;
+    });
+  const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number } | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const startSplitDrag = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const y0 = e.clientY, h0 = filesH;
+    const max = (panelRef.current?.clientHeight ?? 600) - 200;
+    let h = h0;
+    const move = (ev: PointerEvent) => { h = Math.round(Math.min(Math.max(h0 + ev.clientY - y0, 56), Math.max(56, max))); setFilesH(h); };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); writeJson(SPLIT_KEY, h); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Set<"input" | "display">>(new Set());
   const [sortMode, setSortMode] = useState<SortMode>(
@@ -218,6 +263,7 @@ export function OutlinePanel() {
   const requestSearch = useCallback(() => {
     pendingFocus.current = true;
     setOpen(true);
+    setSections((prev) => (prev.outline ? prev : isMobile() ? { files: false, outline: true } : { ...prev, outline: true }));
     setSearchSignal((s) => s + 1);
   }, []);
 
@@ -341,42 +387,10 @@ export function OutlinePanel() {
   const groupRows = state.flat.filter((r) => r.isGroup);
   const allGroupsCollapsed = groupRows.length > 0 && groupRows.every((r) => r.collapsed);
 
-  return (
-    <div className="solenoid-outline" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="solenoid-outline__header">
-        <span className="solenoid-outline__title">Navigator</span>
-        <span className="solenoid-outline__count">{state.flat.length}</span>
-        {groupRows.length > 0 && (
-          <button
-            className="solenoid-outline__collapse-all"
-            title={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
-            aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
-            onClick={toggleAllGroups}
-          >
-            {/* The glyph shows the action: converging to collapse, diverging to expand. */}
-            <svg
-              viewBox="0 0 16 16" width="14" height="14" fill="none"
-              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <path d="M2 4 H8" />
-              <path d="M2 8 H8" />
-              <path d="M2 12 H8" />
-              {allGroupsCollapsed ? (
-                <>
-                  <path d="M10 6 L12 4 L14 6" />
-                  <path d="M10 10 L12 12 L14 10" />
-                </>
-              ) : (
-                <>
-                  <path d="M10 4 L12 6 L14 4" />
-                  <path d="M10 12 L12 10 L14 12" />
-                </>
-              )}
-            </svg>
-          </button>
-        )}
-        <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
-      </div>
+  const docName = documentStore.currentName();
+  const isPhone = isMobile();
+  const controls = (
+    <>
       <input
         ref={inputRef}
         className="solenoid-outline__search"
@@ -412,7 +426,10 @@ export function OutlinePanel() {
           A–Z
         </button>
       </div>
-      <div className="solenoid-outline__list">
+    </>
+  );
+  const listBody = (
+    <>
         {view.length === 0 ? (
           <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
         ) : (
@@ -510,7 +527,124 @@ export function OutlinePanel() {
             );
           })
         )}
+    </>
+  );
+  const collapseAll = (
+    <>
+        {groupRows.length > 0 && (
+          <button
+            className="solenoid-outline__collapse-all"
+            title={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            onClick={toggleAllGroups}
+          >
+            {/* The glyph shows the action: converging to collapse, diverging to expand. */}
+            <svg
+              viewBox="0 0 16 16" width="14" height="14" fill="none"
+              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M2 4 H8" />
+              <path d="M2 8 H8" />
+              <path d="M2 12 H8" />
+              {allGroupsCollapsed ? (
+                <>
+                  <path d="M10 6 L12 4 L14 6" />
+                  <path d="M10 10 L12 12 L14 10" />
+                </>
+              ) : (
+                <>
+                  <path d="M10 4 L12 6 L14 4" />
+                  <path d="M10 12 L12 10 L14 12" />
+                </>
+              )}
+            </svg>
+          </button>
+        )}
+    </>
+  );
+
+  return (
+    <div className={`solenoid-outline solenoid-outline--${layout}`} ref={panelRef} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="solenoid-outline__header">
+        <span className="solenoid-outline__title">Navigator</span>
+        <span className="solenoid-outline__spacer" />
+        {preview && (
+          <button
+            className="solenoid-outline__layout"
+            title={layout === "stacked" ? "Show as one tree" : "Show Files and Outline apart"}
+            onClick={() => setLayoutMode(layout === "stacked" ? "tree" : "stacked")}
+          >
+            {layout === "stacked" ? "One tree" : "Stacked"}
+          </button>
+        )}
+        {layout === "tree" && collapseAll}
+        <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
       </div>
+      {layout === "tree" ? (
+        <>
+          {controls}
+          <div className="solenoid-outline__list solenoid-outline__list--tree">
+            <WorkspaceTree outline={listBody} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={`solenoid-nav-sec solenoid-nav-sec--files${sections.files ? " solenoid-nav-sec--open" : ""}`}>
+            <div className="solenoid-nav-sec__head">
+              <button className="solenoid-nav-sec__toggle" aria-expanded={sections.files} onClick={() => toggleSection("files")}>
+                <SectionChevron open={sections.files} />
+                <span className="solenoid-nav-sec__title">Files</span>
+                <span className="solenoid-nav-sec__count">{documentStore.list().length}</span>
+              </button>
+              <button
+                className="solenoid-nav-sec__btn"
+                title="New"
+                aria-label="New"
+                onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAddMenu({ x: r.left, y: r.bottom + 4 }); }}
+              >
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
+              </button>
+            </div>
+            {sections.files && (
+              <div
+                className="solenoid-nav-sec__body"
+                style={sections.outline && !isPhone ? { maxHeight: filesH } : undefined}
+              >
+                <WorkspaceTree />
+              </div>
+            )}
+          </div>
+          {sections.files && sections.outline && !isPhone && (
+            <div className="solenoid-nav-split" role="separator" aria-orientation="horizontal" onPointerDown={startSplitDrag} />
+          )}
+          <div className={`solenoid-nav-sec solenoid-nav-sec--outline${sections.outline ? " solenoid-nav-sec--open" : ""}`}>
+            <div className="solenoid-nav-sec__head">
+              <button className="solenoid-nav-sec__toggle" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
+                <SectionChevron open={sections.outline} />
+                <span className="solenoid-nav-sec__title">Outline</span>
+                <span className="solenoid-nav-sec__crumb" title={docName}>{docName}</span>
+                <span className="solenoid-nav-sec__count">{state.flat.length}</span>
+              </button>
+              {collapseAll}
+            </div>
+            {sections.outline && (
+              <>
+                {controls}
+                <div className="solenoid-outline__list">{listBody}</div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+      {addMenu && <RowMenu at={addMenu} items={filesAddMenu()} onClose={() => setAddMenu(null)} />}
     </div>
+  );
+}
+
+function SectionChevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(90deg)" : "none" }} aria-hidden="true">
+      <path d="M6 4 L10 8 L6 12" />
+    </svg>
   );
 }
