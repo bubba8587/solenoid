@@ -119,6 +119,9 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: MenuItem[] } | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [focusKey, setFocusKey] = useState<string | null>(null);
+  // A long press opens the row menu on touch, where iOS never sends contextmenu; the click it would end in is swallowed.
+  const press = useRef<{ timer: number; x: number; y: number; fired: boolean } | null>(null);
+  const cancelPress = () => { if (press.current) window.clearTimeout(press.current.timer); press.current = null; };
   const drag = useRef<Drag | null>(null);
 
   const docs = documentStore.list();
@@ -367,12 +370,33 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
               onDragEnd={() => { drag.current = null; setDropKey(null); }}
               onDragOver={(e) => onDragOver(e, r)}
               onDrop={(e) => onDrop(e, r)}
-              onClick={() => onRowClick(r)}
+              onPointerDown={(e) => {
+                if (e.pointerType !== "touch" || !real) return;
+                cancelPress();
+                const at = { x: e.clientX, y: e.clientY };
+                const p = { x: at.x, y: at.y, fired: false, timer: 0 };
+                p.timer = window.setTimeout(() => {
+                  const items = menuFor(r, at);
+                  if (items) { p.fired = true; setMenu({ at, items }); }
+                }, 500);
+                press.current = p;
+              }}
+              onPointerMove={(e) => {
+                const p = press.current;
+                if (p && !p.fired && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) cancelPress();
+              }}
+              onPointerUp={() => { if (press.current && !press.current.fired) cancelPress(); }}
+              onPointerCancel={cancelPress}
+              onClick={() => {
+                if (press.current?.fired) { press.current = null; return; }
+                onRowClick(r);
+              }}
               onDoubleClick={(e) => {
                 if (!real || !(e.target as HTMLElement).closest(".solenoid-outline__label")) return;
                 startRename(r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! }, r.label);
               }}
               onContextMenu={(e) => {
+                if (press.current) { e.preventDefault(); return; }
                 const at = { x: e.clientX, y: e.clientY };
                 const items = menuFor(r, at);
                 if (!items) return;
