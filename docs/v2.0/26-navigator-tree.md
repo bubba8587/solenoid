@@ -149,14 +149,17 @@ Built on `rust-port` with this bundle, inside the pane only:
 
 - **Files section, real**: lists the actual library, opens a document on a single click, renames
   inline and duplicates or deletes from the row menu, with the open document marked.
-- **Folders, pages and page folders, mocked**: `?navpreview=1` on the URL fills the Files section
-  with a sample workspace (folders, a multi-page document with a page folder) so the look can be
-  judged before the models exist. The sample rows are inert except for folding.
+- **Folders, real** (build step 2, done): New Folder from the + menu or a folder's row menu, rename,
+  Move to…, drag and drop with a mouse, delete with the document count; folders persist in the
+  library index, empty ones included, and the open document's folders open to show it.
+- **Pages and page folders, mocked**: `?navpreview=1` on the URL adds a sample workspace (folders,
+  a multi-page document with a page folder) above the real library, so the page rows can be judged
+  before bundle 20's model exists. The sample rows are inert except for folding.
 - **Layout A and B side by side**: the pane header's layout toggle (preview only) switches between
   the stacked sections and the one tree.
 
-What the prototype does not do: no folder or page persistence, no disk tree, no search scope, no
-drag and drop.
+What the prototype does not do: no pages, no disk tree, no search scope, no keyboard tree
+navigation, and no drag on touch.
 
 ## Questions for the author
 

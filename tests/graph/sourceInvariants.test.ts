@@ -599,6 +599,7 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
     restore: "startup — no live graph exists to capture yet; the refused-doc fallback (audit 20p) is its own guard",
     reloadCurrent: "captureCurrent() carries the rebuild guard internally; the verb's own gate is loadRevealStore.isActive()",
     remove: "DELIBERATELY no capture — the doc is going away; capturing would write the dying edits somewhere. Still guards the rebuild (21p)",
+    removeFolder: "as remove: every document under the folder is going away, the open one included. Still guards the rebuild",
   };
 
   it("swap verbs capture + guard (or are sanctioned, with a reason)", () => {

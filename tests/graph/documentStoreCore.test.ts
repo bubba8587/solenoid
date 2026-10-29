@@ -244,13 +244,18 @@ describe("[[B12]] losslessSaves — every transform returns new objects, never m
       ["adoptLoadedGraph", () => adoptLoadedGraph(lib, { ...graph(), nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }] } as SavedGraph)],
       ["removeDocument", () => removeDocument(lib, "a")],
       ["duplicateDocument", () => duplicateDocument(lib, "a", "a2", "A copy")],
+      ["addFolder", () => core.addFolder(lib, "", "F")],
+      ["moveDocument", () => core.moveDocument(core.moveDocument(lib, "a", "F/G"), "a", "")],
+      ["renameFolder", () => core.renameFolder(core.moveDocument(lib, "a", "F/G"), "F", "H")],
+      ["moveFolder", () => core.moveFolder(core.moveDocument(lib, "a", "F/G"), "F/G", "")],
+      ["removeFolder", () => core.removeFolder(core.moveDocument(lib, "a", "F"), "F")],
     ];
     for (const [name, run] of calls) {
       expect(run, `${name} mutated a frozen SolDoc/DocLibrary in place — persist() will never write the change`).not.toThrow();
     }
     // The walk stays complete: a NEW exported transform must be added above.
     const fns = Object.entries(core).filter(([, v]) => typeof v === "function").map(([k]) => k);
-    const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary"]);
+    const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary", "normalizeFolder", "parentFolder", "allFolders", "documentsIn"]);
     const missing = fns.filter((f) => !covered.has(f));
     expect(missing, `new documentStoreCore export(s) not covered by the immutableDocStore freeze walk: ${missing.join(", ")}`).toEqual([]);
   });

@@ -23,6 +23,13 @@ import {
   duplicateDocument,
   validateLibrary,
   validateDoc,
+  addFolder,
+  allFolders,
+  documentsIn,
+  moveDocument,
+  moveFolder,
+  removeFolder,
+  renameFolder,
   type DocLibrary,
   type SolDoc,
 } from "./documentStoreCore";
@@ -36,8 +43,8 @@ const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${s
 
 const EMPTY_GRAPH: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
 
-interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string }
-interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[] }
+interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string; folder?: string }
+interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[]; folders?: string[] }
 interface DocSlot { seq: number; doc: SolDoc }
 
 const { notify, subscribe, version } = createNotifier();
@@ -138,7 +145,9 @@ function persist(): void {
       name: d.name,
       updatedAt: d.updatedAt,
       ...(d.filePath ? { filePath: d.filePath } : {}),
+      ...(d.folder ? { folder: d.folder } : {}),
     })),
+    ...(_lib.folders?.length ? { folders: _lib.folders } : {}),
   };
   if (!writeToOlderSlot(INDEX_SLOT_A, INDEX_SLOT_B, index)) ok = false;
 
@@ -174,7 +183,12 @@ function persist(): void {
 function readLibraryFromStorage(): DocLibrary | null {
   const index = readNewestSlot<IndexSlot, IndexSlot>(INDEX_SLOT_A, INDEX_SLOT_B, (o) => {
     if (!Array.isArray(o.docs)) return null;
-    return { seq: typeof o.seq === "number" ? o.seq : 0, currentId: typeof o.currentId === "string" ? o.currentId : null, docs: o.docs as IndexMeta[] };
+    return {
+      seq: typeof o.seq === "number" ? o.seq : 0,
+      currentId: typeof o.currentId === "string" ? o.currentId : null,
+      docs: o.docs as IndexMeta[],
+      folders: Array.isArray(o.folders) ? (o.folders as string[]) : [],
+    };
   });
   if (!index) return null;
 
@@ -186,7 +200,7 @@ function readLibraryFromStorage(): DocLibrary | null {
   }
   if (documents.length === 0) return null;
   const currentId = documents.some((d) => d.id === index.currentId) ? index.currentId : documents[0].id;
-  const lib = validateLibrary({ documents, currentId });
+  const lib = validateLibrary({ documents, currentId, folders: index.folders });
   if (lib) {
     _lastPersisted.clear();
     for (const d of lib.documents) _lastPersisted.set(d.id, d);
@@ -195,8 +209,8 @@ function readLibraryFromStorage(): DocLibrary | null {
 }
 
 
-function makeDoc(name: string, graph: SavedGraph): SolDoc {
-  return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now() };
+function makeDoc(name: string, graph: SavedGraph, folder?: string): SolDoc {
+  return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now(), ...(folder ? { folder } : {}) };
 }
 
 /** Loads the current document and adopts the loaded form, so a load's normalizing never reads as an edit. */
@@ -228,7 +242,7 @@ async function showCurrentSafe(revertTo?: string | null): Promise<void> {
   await loadGraph({ ...EMPTY_GRAPH });
 }
 
-export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean }
+export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean; folder: string }
 
 export const documentStore = {
   subscribe,
@@ -240,7 +254,63 @@ export const documentStore = {
       name: d.name,
       updatedAt: d.updatedAt,
       current: d.id === _lib.currentId,
+      folder: d.folder ?? "",
     }));
+  },
+
+  /** Every folder path, sorted; a document's folder and its ancestors included. */
+  folders: (): string[] => allFolders(_lib),
+  documentsIn: (path: string): number => documentsIn(_lib, path).length,
+
+  newFolder(parent: string, name = "New folder"): string {
+    const r = addFolder(_lib, parent, name);
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  renameFolder(path: string, name: string): string {
+    const r = renameFolder(_lib, path, name);
+    if (r.lib === _lib) return r.path;
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  moveFolder(path: string, parent: string): string {
+    const r = moveFolder(_lib, path, parent);
+    if (r.lib === _lib) return r.path;
+    _lib = r.lib;
+    persist();
+    notify();
+    return r.path;
+  },
+
+  moveToFolder(id: string, folder: string): void {
+    const next = moveDocument(_lib, id, folder);
+    if (next === _lib) return;
+    _lib = next;
+    persist();
+    notify();
+  },
+
+  /** Deletes the folder and every document under it; the open one among them hands the screen to another document. */
+  async removeFolder(path: string): Promise<void> {
+    if (isGraphRebuilding()) return;
+    const wasCurrent = documentsIn(_lib, path).some((d) => d.id === _lib.currentId);
+    _lib = removeFolder(_lib, path);
+    if (_lib.documents.length === 0) {
+      _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
+      persist();
+      notify();
+      await loadGraph({ ...EMPTY_GRAPH });
+      return;
+    }
+    persist();
+    notify();
+    if (wasCurrent) await showCurrentSafe();
   },
 
   currentId: (): string | null => _lib.currentId,
@@ -303,10 +373,10 @@ export const documentStore = {
     await showCurrent();
   },
 
-  async newBlank(): Promise<void> {
+  async newBlank(folder?: string): Promise<void> {
     if (isGraphRebuilding()) return;
     if (!this.captureCurrent()) return;
-    _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
+    _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }, folder));
     persist();
     notify();
     await loadGraph({ ...EMPTY_GRAPH });

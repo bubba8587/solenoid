@@ -577,6 +577,16 @@ export function OutlinePanel() {
             {layout === "stacked" ? "One tree" : "Stacked"}
           </button>
         )}
+        {layout === "tree" && (
+          <button
+            className="solenoid-nav-sec__btn"
+            title="New"
+            aria-label="New"
+            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAddMenu({ x: r.left, y: r.bottom + 4 }); }}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
+          </button>
+        )}
         {layout === "tree" && collapseAll}
         <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
       </div>
@@ -600,7 +610,11 @@ export function OutlinePanel() {
                 className="solenoid-nav-sec__btn"
                 title="New"
                 aria-label="New"
-                onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAddMenu({ x: r.left, y: r.bottom + 4 }); }}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  if (!sections.files) toggleSection("files");
+                  setAddMenu({ x: r.left, y: r.bottom + 4 });
+                }}
               >
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
               </button>

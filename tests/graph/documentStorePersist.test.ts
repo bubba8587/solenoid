@@ -71,6 +71,21 @@ describe("per-doc autosave keys", () => {
     for (const name of before) expect(after).toContain(name);
   });
 
+  it("[[C132]] workspaceTree: folders, empty ones included, survive a restore", async () => {
+    documentStore.saveAs("Zeta");
+    const zeta = documentStore.list().find((m) => m.name === "Zeta")!;
+    const fin = documentStore.newFolder("", "Finance");
+    documentStore.moveToFolder(zeta.id, `${fin}/2026`);
+    documentStore.newFolder(fin, "Empty");
+    await documentStore.restore();
+    expect(documentStore.list().find((m) => m.id === zeta.id)?.folder).toBe("Finance/2026");
+    expect(documentStore.folders()).toEqual(expect.arrayContaining(["Finance", "Finance/2026", "Finance/Empty"]));
+    documentStore.renameFolder("Finance", "Money");
+    await documentStore.restore();
+    expect(documentStore.list().find((m) => m.id === zeta.id)?.folder).toBe("Money/2026");
+    expect(documentStore.folders()).not.toContain("Finance");
+  });
+
   it("restore() deletes the abandoned whole-library keys", async () => {
     _mem.set("solenoid.docs.lib.a", '{"seq":1,"lib":{}}');
     _mem.set("solenoid.docs.lib.b", '{"seq":2,"lib":{}}');

@@ -1,65 +1,35 @@
 // [[C132]] workspaceTree. The Navigator's Files tree; workspace-tree.md.
-import { Fragment, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "./documentStore";
 import { requestConfirm } from "./confirmStore";
+import { IS_COARSE } from "./coarse";
 import { useMenuClamp } from "./components/menuClamp";
-import { PREVIEW_WORKSPACE, isNavPreview, type PreviewNode, type PreviewPage } from "./workspacePreview";
+import { PREVIEW_WORKSPACE, isNavPreview } from "./workspacePreview";
+import {
+  libraryRows, previewRows, revealKeys, rekeyExpanded, docFoldedKey,
+  PREVIEW_EXPANDED, type RowKind, type TreeRow,
+} from "./workspaceRows";
 import "./components/popupChrome.css";
 import "./WorkspaceTree.css";
 
-type Kind = "folder" | "doc" | "pagefolder" | "page";
-type TreeRow = {
-  key: string;
-  kind: Kind;
-  label: string;
-  depth: number;
-  expandable: boolean;
-  expanded: boolean;
-  open: boolean;
-  docId?: string;
-};
-
 const EXPANDED_KEY = "solenoid.navExpanded";
-const nameCmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 
 function loadExpanded(): Set<string> {
   try {
     const raw = localStorage.getItem(EXPANDED_KEY);
     if (raw) return new Set(JSON.parse(raw) as string[]);
   } catch { /* private mode or a bad value */ }
-  return new Set(["p:Finance", "p:Finance/2026", "p:Finance/2026/Budget 2026", "p:Finance/2026/Budget 2026/Inputs"]);
+  return new Set(PREVIEW_EXPANDED);
+}
+function saveExpanded(s: Set<string>) {
+  try { localStorage.setItem(EXPANDED_KEY, JSON.stringify([...s])); } catch { /* private mode */ }
 }
 
-function previewRows(expanded: Set<string>): TreeRow[] {
-  const rows: TreeRow[] = [];
-  const sorted = (ns: PreviewNode[]) => [...ns].sort((a, b) => (a.kind === b.kind ? nameCmp(a.name, b.name) : a.kind === "folder" ? -1 : 1));
-  const pages = (ps: PreviewPage[], path: string, depth: number) => {
-    for (const p of ps) {
-      const key = `p:${path}/${p.name}`;
-      const isFolder = p.kind === "pagefolder";
-      const exp = isFolder && expanded.has(key);
-      rows.push({ key, kind: p.kind, label: p.name, depth, expandable: isFolder, expanded: exp, open: false });
-      if (exp) pages(p.children, `${path}/${p.name}`, depth + 1);
-    }
-  };
-  const walk = (ns: PreviewNode[], path: string, depth: number) => {
-    for (const n of sorted(ns)) {
-      const full = path ? `${path}/${n.name}` : n.name;
-      const key = `p:${full}`;
-      const kids = n.kind === "folder" ? n.children.length > 0 : (n.pages?.length ?? 0) > 1;
-      const exp = kids && expanded.has(key);
-      rows.push({ key, kind: n.kind, label: n.name, depth, expandable: kids, expanded: exp, open: false });
-      if (!exp) continue;
-      if (n.kind === "folder") walk(n.children, full, depth + 1);
-      else pages(n.pages ?? [], full, depth + 1);
-    }
-  };
-  walk(PREVIEW_WORKSPACE, "", 0);
-  return rows;
-}
+/** The folder new rows land in: the last folder the user picked in the tree. */
+const target = { folder: "" };
 
-function Glyph({ kind, open }: { kind: Kind; open?: boolean }) {
+function Glyph({ kind, open }: { kind: RowKind; open?: boolean }) {
   const common = { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   switch (kind) {
     case "folder":
@@ -75,9 +45,9 @@ function Glyph({ kind, open }: { kind: Kind; open?: boolean }) {
   }
 }
 
-type MenuItem = { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; divider?: boolean };
+export type MenuItem = { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; divider?: boolean; indent?: number };
 
-function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; items: MenuItem[]; onClose: () => void }) {
+export function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; items: MenuItem[]; onClose: () => void }) {
   const ref = useMenuClamp<HTMLDivElement>(at.x, at.y);
   useEffect(() => {
     const onDown = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
@@ -92,12 +62,13 @@ function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; items: 
   return createPortal(
     <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at solenoid-files__menu" role="menu" style={{ left: at.x, top: at.y }} onPointerDown={(e) => e.stopPropagation()}>
       {items.map((it, i) => (
-        <Fragment key={it.label}>
+        <Fragment key={`${i}:${it.label}`}>
           {it.divider && i > 0 && <div className="sol-popup-menu__sep" role="separator" />}
           <button
             type="button"
             role="menuitem"
             className={`sol-popup-menu__item${it.danger ? " solenoid-files__menu-danger" : ""}`}
+            style={it.indent ? { paddingLeft: 10 + it.indent * 14 } : undefined}
             disabled={it.disabled}
             onClick={() => { onClose(); it.onClick(); }}
           >{it.label}</button>
@@ -124,44 +95,99 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
+type Renaming = { kind: "doc"; id: string } | { kind: "folder"; path: string } | null;
+type Drag = { kind: "doc"; id: string } | { kind: "folder"; path: string };
+const DRAG_MIME = "application/x-solenoid-tree";
+
+/** Reached by the + menu, which lives in the section header outside the tree. */
+const treeActions: { newFolder?: () => void; newDocument?: () => void } = {};
+
 /** The Files tree. `outline`, when given, renders under the open document's row (the one-tree layout). */
 export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
   const preview = isNavPreview();
-  const [expanded, setExpanded] = useState<Set<string>>(loadExpanded);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [expanded, setExpandedState] = useState<Set<string>>(loadExpanded);
+  const setExpanded = (fn: (prev: Set<string>) => Set<string>) =>
+    setExpandedState((prev) => { const next = fn(prev); saveExpanded(next); return next; });
+  const [renaming, setRenaming] = useState<Renaming>(null);
   const [draft, setDraft] = useState("");
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: MenuItem[] } | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
+  const drag = useRef<Drag | null>(null);
 
-  const toggle = (key: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      try { localStorage.setItem(EXPANDED_KEY, JSON.stringify([...next])); } catch { /* private mode */ }
-      return next;
-    });
+  const docs = documentStore.list();
+  const folders = documentStore.folders();
+  const current = docs.find((d) => d.current);
 
-  const docs = [...documentStore.list()].sort((a, b) => nameCmp(a.name, b.name));
+  // Whenever the open document changes, its folders open so its row is never hidden.
+  useEffect(() => {
+    if (!current?.folder) return;
+    const keys = revealKeys(current.folder);
+    setExpanded((prev) => (keys.every((k) => prev.has(k)) ? prev : new Set([...prev, ...keys])));
+    target.folder = current.folder;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, current?.folder]);
+
+  const toggle = (key: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
   const rows: TreeRow[] = [
-    ...(preview ? previewRows(expanded) : []),
-    ...docs.map((d): TreeRow => {
-      const key = `d:${d.id}`;
-      const expandable = !!outline && d.current;
-      return { key, kind: "doc", label: d.name, depth: 0, expandable, expanded: expandable && !expanded.has(`${key}:folded`), open: d.current, docId: d.id };
-    }),
+    ...(preview ? previewRows(PREVIEW_WORKSPACE, expanded) : []),
+    ...libraryRows(docs, folders, expanded, !!outline),
   ];
 
-  const commitRename = (id: string, original: string) => {
+  const startRename = (r: Renaming, label: string) => { setRenaming(r); setDraft(label); };
+  const commitRename = () => {
+    const r = renaming;
+    setRenaming(null);
+    if (!r) return;
     const v = draft.trim();
-    if (v && v !== original) documentStore.rename(id, v);
-    setRenamingId(null);
+    if (!v) return;
+    if (r.kind === "doc") documentStore.rename(r.id, v);
+    else {
+      const to = documentStore.renameFolder(r.path, v);
+      if (to !== r.path) setExpanded((prev) => rekeyExpanded(prev, r.path, to));
+    }
   };
 
-  const docMenu = (id: string, name: string, current: boolean): MenuItem[] => [
-    { label: "Open", onClick: () => void documentStore.open(id), disabled: current },
-    { label: "Rename", onClick: () => { setRenamingId(id); setDraft(name); } },
+  const newFolderIn = (parent: string) => {
+    const path = documentStore.newFolder(parent);
+    target.folder = path;
+    setExpanded((prev) => new Set([...prev, ...revealKeys(parent)]));
+    startRename({ kind: "folder", path }, path.slice(path.lastIndexOf("/") + 1));
+  };
+  const newDocumentIn = async (folder: string) => {
+    await documentStore.newBlank(folder || undefined);
+    const id = documentStore.currentId();
+    if (id) startRename({ kind: "doc", id }, documentStore.currentName());
+  };
+  treeActions.newFolder = () => newFolderIn(target.folder);
+  treeActions.newDocument = () => void newDocumentIn(target.folder);
+
+  const moveMenu = (id: string, at: { x: number; y: number }) => {
+    const here = docs.find((d) => d.id === id)?.folder ?? "";
+    setMenu({
+      at,
+      items: [
+        { label: "Top level", onClick: () => documentStore.moveToFolder(id, ""), disabled: here === "" },
+        ...folders.map((f) => ({
+          label: f.slice(f.lastIndexOf("/") + 1),
+          indent: f.split("/").length,
+          disabled: f === here,
+          onClick: () => { documentStore.moveToFolder(id, f); setExpanded((prev) => new Set([...prev, ...revealKeys(f)])); },
+        })),
+      ],
+    });
+  };
+
+  const docMenu = (id: string, name: string, open: boolean, at: { x: number; y: number }): MenuItem[] => [
+    { label: "Open", onClick: () => void documentStore.open(id), disabled: open },
+    { label: "Rename", onClick: () => startRename({ kind: "doc", id }, name) },
     { label: "Duplicate", onClick: () => void documentStore.duplicate(id) },
-    { label: "Move to…", onClick: () => {}, disabled: true },
+    { label: "Move to…", onClick: () => setTimeout(() => moveMenu(id, at), 0), disabled: folders.length === 0 },
     {
       label: "Delete", danger: true, divider: true,
       onClick: async () => {
@@ -171,25 +197,89 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
     },
   ];
 
-  const openMenuAt = (el: HTMLElement, items: MenuItem[]) => {
-    const r = el.getBoundingClientRect();
-    setMenu({ at: { x: r.left, y: r.bottom + 4 }, items });
+  const folderMenu = (path: string, name: string): MenuItem[] => [
+    { label: "New Document", onClick: () => void newDocumentIn(path) },
+    { label: "New Folder", onClick: () => newFolderIn(path) },
+    { label: "Rename", onClick: () => startRename({ kind: "folder", path }, name), divider: true },
+    {
+      label: "Delete", danger: true, divider: true,
+      onClick: async () => {
+        const n = documentStore.documentsIn(path);
+        if (n > 0) {
+          const what = n === 1 ? "its document" : `its ${n} documents`;
+          const ok = await requestConfirm({ message: `Delete "${name}" and ${what}? Unsaved changes will be lost.`, confirmLabel: "Delete" });
+          if (!ok) return;
+        }
+        if (target.folder === path || target.folder.startsWith(`${path}/`)) target.folder = "";
+        void documentStore.removeFolder(path);
+      },
+    },
+  ];
+
+  const menuFor = (r: TreeRow, at: { x: number; y: number }): MenuItem[] | null => {
+    if (r.sample) return null;
+    if (r.kind === "doc" && r.docId) return docMenu(r.docId, r.label, r.open, at);
+    if (r.kind === "folder" && r.folderPath) return folderMenu(r.folderPath, r.label);
+    return null;
   };
 
   const onRowClick = (r: TreeRow) => {
     if (r.kind === "doc" && r.docId) {
       if (!r.open) void documentStore.open(r.docId);
-      else if (r.expandable) toggle(`${r.key}:folded`);
+      else if (r.expandable) toggle(docFoldedKey(r.docId));
       return;
     }
+    if (r.kind === "folder" && r.folderPath !== undefined) target.folder = r.folderPath;
     if (r.expandable) toggle(r.key);
   };
 
+  // Desktop drag and drop: a document or folder onto a folder row, or onto the tree's empty space for the top level.
+  const dropTargetOf = (r: TreeRow | null): string | null => (r === null ? "" : r.kind === "folder" && !r.sample ? r.folderPath ?? null : null);
+  const canDrop = (to: string | null) => {
+    const d = drag.current;
+    if (!d || to === null) return false;
+    if (d.kind === "folder") return to !== d.path && !to.startsWith(`${d.path}/`);
+    return true;
+  };
+  const onDragOver = (e: DragEvent, r: TreeRow | null) => {
+    const to = dropTargetOf(r);
+    if (!canDrop(to)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    setDropKey(r ? r.key : "root");
+  };
+  const onDrop = (e: DragEvent, r: TreeRow | null) => {
+    const to = dropTargetOf(r);
+    const d = drag.current;
+    const ok = canDrop(to);
+    setDropKey(null);
+    drag.current = null;
+    if (!d || !ok || to === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (d.kind === "doc") documentStore.moveToFolder(d.id, to);
+    else {
+      const moved = documentStore.moveFolder(d.path, to);
+      if (moved !== d.path) setExpanded((prev) => rekeyExpanded(prev, d.path, moved));
+    }
+    if (to) setExpanded((prev) => new Set([...prev, ...revealKeys(to)]));
+  };
+
   return (
-    <div className="solenoid-files" role="tree" aria-label="Files">
+    <div
+      className={`solenoid-files${dropKey === "root" ? " solenoid-files--drop" : ""}`}
+      role="tree"
+      aria-label="Files"
+      onDragOver={(e) => onDragOver(e, null)}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDropKey(null); }}
+      onDrop={(e) => onDrop(e, null)}
+    >
       {rows.map((r) => {
-        const sample = r.key.startsWith("p:");
-        const renaming = r.docId !== undefined && renamingId === r.docId;
+        const isRenaming = renaming !== null && (
+          (renaming.kind === "doc" && r.docId === renaming.id) ||
+          (renaming.kind === "folder" && r.kind === "folder" && !r.sample && r.folderPath === renaming.path));
+        const real = !r.sample && (r.docId !== undefined || r.folderPath !== undefined);
         return (
           <Fragment key={r.key}>
             <div
@@ -197,16 +287,28 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
               aria-level={r.depth + 1}
               aria-expanded={r.expandable ? r.expanded : undefined}
               aria-selected={r.open}
-              className={`solenoid-outline__row solenoid-files__row solenoid-files__row--${r.kind}${r.open ? " solenoid-outline__row--sel" : ""}${sample ? " solenoid-files__row--sample" : ""}`}
+              className={`solenoid-outline__row solenoid-files__row solenoid-files__row--${r.kind}${r.open ? " solenoid-outline__row--sel" : ""}${r.sample ? " solenoid-files__row--sample" : ""}${dropKey === r.key ? " solenoid-files__row--drop" : ""}`}
               style={{ "--depth": r.depth } as CSSProperties}
+              draggable={real && !IS_COARSE && !isRenaming}
+              onDragStart={(e) => {
+                drag.current = r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! };
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData(DRAG_MIME, r.key);
+              }}
+              onDragEnd={() => { drag.current = null; setDropKey(null); }}
+              onDragOver={(e) => onDragOver(e, r)}
+              onDrop={(e) => onDrop(e, r)}
               onClick={() => onRowClick(r)}
               onDoubleClick={(e) => {
-                if (r.docId && (e.target as HTMLElement).closest(".solenoid-outline__label")) { setRenamingId(r.docId); setDraft(r.label); }
+                if (!real || !(e.target as HTMLElement).closest(".solenoid-outline__label")) return;
+                startRename(r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! }, r.label);
               }}
               onContextMenu={(e) => {
-                if (!r.docId) return;
+                const at = { x: e.clientX, y: e.clientY };
+                const items = menuFor(r, at);
+                if (!items) return;
                 e.preventDefault();
-                setMenu({ at: { x: e.clientX, y: e.clientY }, items: docMenu(r.docId, r.label, r.open) });
+                setMenu({ at, items });
               }}
             >
               {r.expandable ? (
@@ -214,7 +316,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
                   type="button"
                   className="solenoid-outline__chevron"
                   aria-label={r.expanded ? "Collapse" : "Expand"}
-                  onClick={(e) => { e.stopPropagation(); toggle(r.kind === "doc" && r.docId ? `${r.key}:folded` : r.key); }}
+                  onClick={(e) => { e.stopPropagation(); toggle(r.kind === "doc" && r.docId ? docFoldedKey(r.docId) : r.key); }}
                 >
                   <Chevron open={r.expanded} />
                 </button>
@@ -222,7 +324,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
                 <span className="solenoid-files__slot" />
               )}
               <span className="solenoid-files__glyph"><Glyph kind={r.kind} open={r.kind === "folder" && r.expanded} /></span>
-              {renaming ? (
+              {isRenaming ? (
                 <input
                   className="solenoid-files__rename"
                   value={draft}
@@ -231,21 +333,27 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
                   onChange={(e) => setDraft(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); commitRename(r.docId!, r.label); }
-                    if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
+                    if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+                    if (e.key === "Escape") { e.preventDefault(); setRenaming(null); }
                   }}
-                  onBlur={() => commitRename(r.docId!, r.label)}
+                  onBlur={commitRename}
                 />
               ) : (
                 <span className="solenoid-outline__label">{r.label}</span>
               )}
-              {r.docId && !renaming && (
+              {real && !isRenaming && (
                 <button
                   type="button"
                   className="solenoid-files__more"
                   title="More actions"
                   aria-label={`More actions for ${r.label}`}
-                  onClick={(e) => { e.stopPropagation(); openMenuAt(e.currentTarget, docMenu(r.docId!, r.label, r.open)); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const b = e.currentTarget.getBoundingClientRect();
+                    const at = { x: b.left, y: b.bottom + 4 };
+                    const items = menuFor(r, at);
+                    if (items) setMenu({ at, items });
+                  }}
                 >
                   <MoreGlyph />
                 </button>
@@ -262,13 +370,12 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   );
 }
 
-/** The Files section's + menu: New Document is real; folders and pages wait on their models. */
+/** The Files section's + menu; new rows land in the folder last picked in the tree. */
 export function filesAddMenu(): MenuItem[] {
   return [
-    { label: "New Document", onClick: () => void documentStore.newBlank() },
-    { label: "New Folder", onClick: () => {}, disabled: true },
+    { label: "New Document", onClick: () => treeActions.newDocument?.() },
+    { label: "New Folder", onClick: () => treeActions.newFolder?.() },
     { label: "New Page", onClick: () => {}, disabled: true },
   ];
 }
 
-export { RowMenu, type MenuItem };

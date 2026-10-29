@@ -14,8 +14,10 @@ Autosave keeps the user's whole document library in the browser's `localStorage`
 
 | Key | Holds |
 |---|---|
-| `solenoid.docs.index.a` / `.b` | `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`, metadata only, no graphs |
-| `solenoid.docs.doc.<id>.a` / `.b` | `{ seq, doc }`, one full document (`id`, `name`, `graph`, `updatedAt`, `filePath?`, `fileSavedAt?`) |
+| `solenoid.docs.index.a` / `.b` | `{ seq, currentId, docs: [{ id, name, updatedAt, filePath?, folder? }], folders? }`, metadata only, no graphs |
+| `solenoid.docs.doc.<id>.a` / `.b` | `{ seq, doc }`, one full document (`id`, `name`, `graph`, `updatedAt`, `filePath?`, `fileSavedAt?`, `folder?`) |
+
+`folder` is the document's folder path and `folders` the folders the user made, so an empty one survives ([[workspace-tree#Where the tree comes from]]).
 
 `seq` is always the first key of a payload ([[#Two slots per pair]]).
 
@@ -58,10 +60,10 @@ When any write is refused (storage full or disabled), one sticky error notice sa
 
 ## Swapping documents
 
-**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document. Both failures happened, and both are pinned in `sourceInvariants.test.ts` ([[B12]] losslessSaves). Three exceptions carry their reason:
+**MUST:** every `documentStore` verb that changes which document is on screen calls `captureCurrent()` before switching and guards on `isGraphRebuilding()`. A capture that cannot serialize returns false and the verb stays on the document, since switching would drop its unsaved canvas. Without the capture, edits made within the autosave delay are discarded; without the guard, the verb can race a load and serialize a half-built canvas into the current document. Both failures happened, and both are pinned in `sourceInvariants.test.ts` ([[B12]] losslessSaves). The exceptions carry their reason:
 
 - `restore` runs at startup, when nothing is live yet;
-- `remove` skips the capture because the document is going away, and capturing would resurrect its dying edits;
+- `remove` skips the capture because the document is going away, and capturing would resurrect its dying edits; `removeFolder` skips it for the same reason, since every document under the folder goes;
 - `reloadCurrent` needs no guard of its own, because the guard lives inside `captureCurrent`; its own gate is the reveal lock.
 
 ## Open drafts
