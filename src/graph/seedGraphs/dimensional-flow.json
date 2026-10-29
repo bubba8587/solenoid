@@ -8,7 +8,7 @@
       "id": "hdr",
       "type": "NoteNode",
       "x": -373,
-      "y": 1435,
+      "y": 1166,
       "init": {
         "label": "Dimensional Flow & the Type Wall",
         "body": "The lattice enforces **type separation** (date/number/complex/string never auto-cross without a Cast) but allows **dimensional flow**: a value widens freely scalar → list → matrix → **frame**. A–D show widening; E shows the wall.",
@@ -21,7 +21,7 @@
       "id": "nA",
       "type": "NoteNode",
       "x": 451,
-      "y": 1318,
+      "y": 1049,
       "init": {
         "label": "A · a list widens into a frame as one ROW",
         "body": "A 1-D list `[10,20,30]` into a `frame` input lands as a **single row**: a **1 × 3** frame.",
@@ -34,7 +34,7 @@
       "id": "llA",
       "type": "ListInputNode",
       "x": 466,
-      "y": 1488,
+      "y": 1219,
       "init": {
         "label": "[10, 20, 30]",
         "valueKeys": [
@@ -53,7 +53,7 @@
       "id": "tiA",
       "type": "TableInfoNode",
       "x": 735,
-      "y": 1584,
+      "y": 1315,
       "init": {
         "label": "Table Info"
       }
@@ -62,7 +62,7 @@
       "id": "dArows",
       "type": "DisplayNode",
       "x": 1068,
-      "y": 1548,
+      "y": 1279,
       "init": {
         "label": "ROWS → 1"
       }
@@ -71,7 +71,7 @@
       "id": "dAcols",
       "type": "DisplayNode",
       "x": 1068,
-      "y": 1676,
+      "y": 1407,
       "init": {
         "label": "COLS → 3"
       }
@@ -80,7 +80,7 @@
       "id": "nB",
       "type": "NoteNode",
       "x": -349,
-      "y": 600,
+      "y": 332,
       "init": {
         "label": "B · a scalar widens into a 1×1 frame",
         "body": "A bare number `42` widens to a **1×1** frame.",
@@ -93,7 +93,7 @@
       "id": "scB",
       "type": "ValueInputNode",
       "x": -349,
-      "y": 750,
+      "y": 482,
       "init": {
         "label": "42",
         "op": "number",
@@ -108,7 +108,7 @@
       "id": "tiB",
       "type": "TableInfoNode",
       "x": -80,
-      "y": 808,
+      "y": 534,
       "init": {
         "label": "Table Info"
       }
@@ -117,7 +117,7 @@
       "id": "dBrows",
       "type": "DisplayNode",
       "x": 253,
-      "y": 772,
+      "y": 498,
       "init": {
         "label": "ROWS → 1"
       }
@@ -126,7 +126,7 @@
       "id": "dBcols",
       "type": "DisplayNode",
       "x": 253,
-      "y": 900,
+      "y": 626,
       "init": {
         "label": "COLS → 1"
       }
@@ -135,7 +135,7 @@
       "id": "nC",
       "type": "NoteNode",
       "x": 1370,
-      "y": 600,
+      "y": 332,
       "init": {
         "label": "C · a matrix widens into a frame, no Build Frame",
         "body": "The 3×2 Table Input drops straight into Table Info **and** Get Column, read as a default-header frame with no Build Frame. Get \"Col1\" → `10, 30, 50`.",
@@ -148,7 +148,7 @@
       "id": "tC",
       "type": "TableInputNode",
       "x": 1370,
-      "y": 870,
+      "y": 602,
       "init": {
         "label": "3×2 Table",
         "tableText": "10, 20\n30, 40\n50, 60"
@@ -158,7 +158,7 @@
       "id": "tinfoC",
       "type": "TableInfoNode",
       "x": 1709,
-      "y": 1033,
+      "y": 765,
       "init": {
         "label": "Table Info"
       }
@@ -167,7 +167,7 @@
       "id": "dCrows",
       "type": "DisplayNode",
       "x": 2042,
-      "y": 997,
+      "y": 729,
       "init": {
         "label": "ROWS → 3"
       }
@@ -176,7 +176,7 @@
       "id": "dCcols",
       "type": "DisplayNode",
       "x": 2042,
-      "y": 1125,
+      "y": 857,
       "init": {
         "label": "COLS → 2"
       }
@@ -185,7 +185,7 @@
       "id": "gcC",
       "type": "GetColumnNode",
       "x": 1709,
-      "y": 790,
+      "y": 522,
       "init": {
         "label": "Get \"Col1\"",
         "readAs": "number"
@@ -198,7 +198,7 @@
       "id": "dCcol",
       "type": "DisplayNode",
       "x": 2042,
-      "y": 853,
+      "y": 585,
       "init": {
         "label": "→ 10, 30, 50"
       }
@@ -207,7 +207,7 @@
       "id": "nD",
       "type": "NoteNode",
       "x": 505,
-      "y": 600,
+      "y": 332,
       "init": {
         "label": "D · TRANSPOSE of a list → a column",
         "body": "A list widens into the 2-D `anytable` input; TRANSPOSE of the row `[1,2,3]` is the column `[[1],[2],[3]]`.",
@@ -220,7 +220,7 @@
       "id": "llD",
       "type": "ListInputNode",
       "x": 520,
-      "y": 780,
+      "y": 512,
       "init": {
         "label": "[1, 2, 3]",
         "valueKeys": [
@@ -239,7 +239,7 @@
       "id": "trD",
       "type": "TableTransposeNode",
       "x": 789,
-      "y": 868,
+      "y": 600,
       "init": {
         "label": "TRANSPOSE"
       }
@@ -248,7 +248,7 @@
       "id": "dD",
       "type": "DisplayNode",
       "x": 1118,
-      "y": 893,
+      "y": 625,
       "init": {
         "label": "→ column 3×1"
       }
@@ -256,8 +256,8 @@
     {
       "id": "nE",
       "type": "NoteNode",
-      "x": 1335,
-      "y": 1317,
+      "x": -349,
+      "y": 1599,
       "init": {
         "label": "E · the TYPE wall: elements don't auto-cross",
         "body": "A **text** or **date** won't wire straight into a number socket. Drag one to the `× 10` input and the cable is **refused**. The top two rows cross explicitly with **Cast**. The ONE auto-bridge is **logical → number** (bottom): a comparison feeds a math node directly, coercing TRUE→1.",
@@ -269,8 +269,8 @@
     {
       "id": "siE",
       "type": "ValueInputNode",
-      "x": 1930,
-      "y": 1317,
+      "x": 246,
+      "y": 1599,
       "init": {
         "label": "Text \"42\"",
         "op": "string",
@@ -284,8 +284,8 @@
     {
       "id": "castTxt",
       "type": "CastNode",
-      "x": 2199,
-      "y": 1366,
+      "x": 515,
+      "y": 1642,
       "init": {
         "label": "Cast → Number",
         "target": "number"
@@ -294,8 +294,8 @@
     {
       "id": "dTxt",
       "type": "DisplayNode",
-      "x": 2468,
-      "y": 1426,
+      "x": 784,
+      "y": 1702,
       "init": {
         "label": "→ 42"
       }
@@ -303,8 +303,8 @@
     {
       "id": "dpE",
       "type": "ValueInputNode",
-      "x": 1335,
-      "y": 1557,
+      "x": -349,
+      "y": 1833,
       "init": {
         "label": "Date",
         "op": "date",
@@ -318,8 +318,8 @@
     {
       "id": "castDt",
       "type": "CastNode",
-      "x": 1634,
-      "y": 1603,
+      "x": -50,
+      "y": 1873,
       "init": {
         "label": "Cast → Number",
         "target": "number"
@@ -328,8 +328,8 @@
     {
       "id": "dDt",
       "type": "DisplayNode",
-      "x": 1903,
-      "y": 1664,
+      "x": 219,
+      "y": 1934,
       "init": {
         "label": "→ serial 45658"
       }
@@ -337,8 +337,8 @@
     {
       "id": "e5",
       "type": "ValueInputNode",
-      "x": 1335,
-      "y": 1794,
+      "x": -349,
+      "y": 2064,
       "init": {
         "label": "5",
         "op": "number",
@@ -352,8 +352,8 @@
     {
       "id": "e3",
       "type": "ValueInputNode",
-      "x": 1335,
-      "y": 2009,
+      "x": -349,
+      "y": 2271,
       "init": {
         "label": "3",
         "op": "number",
@@ -367,8 +367,8 @@
     {
       "id": "cmpE",
       "type": "ComparisonNode",
-      "x": 1611,
-      "y": 1925,
+      "x": -73,
+      "y": 2185,
       "init": {
         "label": "5 > 3 → TRUE",
         "op": "gt"
@@ -377,8 +377,8 @@
     {
       "id": "mulE",
       "type": "ArithmeticNode",
-      "x": 1880,
-      "y": 1950,
+      "x": 196,
+      "y": 2210,
       "init": {
         "label": "× 10  (TRUE→1, auto-bridge)",
         "op": "mul"
@@ -391,8 +391,8 @@
     {
       "id": "dLog",
       "type": "DisplayNode",
-      "x": 2149,
-      "y": 2027,
+      "x": 465,
+      "y": 2287,
       "init": {
         "label": "→ 10"
       }
@@ -401,7 +401,7 @@
       "id": "grp-a",
       "type": "GroupNode",
       "x": 427,
-      "y": 1260,
+      "y": 991,
       "init": {
         "label": "A · List widens to a row",
         "members": [
@@ -421,7 +421,7 @@
       "id": "grp-b",
       "type": "GroupNode",
       "x": -373,
-      "y": 542,
+      "y": 274,
       "init": {
         "label": "B · Scalar widens to 1×1",
         "members": [
@@ -434,14 +434,14 @@
         "color": "blue",
         "collapsed": false,
         "width": 834,
-        "height": 472
+        "height": 466
       }
     },
     {
       "id": "grp-c",
       "type": "GroupNode",
       "x": 1346,
-      "y": 542,
+      "y": 274,
       "init": {
         "label": "C · Matrix reads as a frame",
         "members": [
@@ -463,7 +463,7 @@
       "id": "grp-d",
       "type": "GroupNode",
       "x": 481,
-      "y": 542,
+      "y": 274,
       "init": {
         "label": "D · Transpose to a column",
         "members": [
@@ -481,8 +481,8 @@
     {
       "id": "grp-e",
       "type": "GroupNode",
-      "x": 1311,
-      "y": 1259,
+      "x": -373,
+      "y": 1541,
       "init": {
         "label": "E · The type wall",
         "members": [
@@ -502,7 +502,7 @@
         "color": "lime",
         "collapsed": false,
         "width": 1365,
-        "height": 951
+        "height": 923
       }
     }
   ],

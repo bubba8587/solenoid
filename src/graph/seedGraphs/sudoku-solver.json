@@ -69,7 +69,7 @@
       "id": "solver",
       "type": "CompositeNode",
       "x": -588,
-      "y": 317,
+      "y": 318,
       "init": {
         "label": "Sudoku solver: drill in!",
         "runMode": "simulation",
@@ -575,8 +575,8 @@
     {
       "id": "solDisp",
       "type": "DisplayNode",
-      "x": -256,
-      "y": 416,
+      "x": -257,
+      "y": 420,
       "init": {
         "label": "Solution"
       }
@@ -584,8 +584,8 @@
     {
       "id": "okDisp",
       "type": "DisplayNode",
-      "x": -256,
-      "y": 546,
+      "x": -257,
+      "y": 547,
       "init": {
         "label": "Solved"
       }

@@ -7,8 +7,8 @@
     {
       "id": "cats",
       "type": "ListInputNode",
-      "x": -5100,
-      "y": -550,
+      "x": -5038,
+      "y": -584,
       "init": {
         "label": "Categories",
         "valueKeys": [
@@ -30,8 +30,8 @@
     {
       "id": "pie",
       "type": "ChartNode",
-      "x": -4791,
-      "y": -325,
+      "x": -4733,
+      "y": -370,
       "init": {
         "label": "Share (pie)",
         "op": "pie"
@@ -40,8 +40,8 @@
     {
       "id": "radar",
       "type": "ChartNode",
-      "x": -4791,
-      "y": 46,
+      "x": -4733,
+      "y": -43,
       "init": {
         "label": "Profile (radar)",
         "op": "radar"
@@ -50,8 +50,8 @@
     {
       "id": "radial",
       "type": "ChartNode",
-      "x": -4791,
-      "y": -1067,
+      "x": -4733,
+      "y": -1024,
       "init": {
         "label": "Levels (radial)",
         "op": "radialbar"
@@ -60,8 +60,8 @@
     {
       "id": "funnel",
       "type": "ChartNode",
-      "x": -4791,
-      "y": -696,
+      "x": -4733,
+      "y": -697,
       "init": {
         "label": "Stages (funnel)",
         "op": "funnel"
@@ -71,7 +71,7 @@
       "id": "scores",
       "type": "ListInputNode",
       "x": -4694,
-      "y": -1902,
+      "y": -1886,
       "init": {
         "label": "Samples",
         "valueKeys": [
@@ -104,7 +104,7 @@
       "id": "hist",
       "type": "HistogramNode",
       "x": -4425,
-      "y": -1814,
+      "y": -1788,
       "init": {
         "label": "Distribution"
       },
@@ -116,7 +116,7 @@
       "id": "kpi",
       "type": "KpiNode",
       "x": -5985,
-      "y": -2409,
+      "y": -2363,
       "init": {
         "label": "Revenue"
       },
@@ -130,7 +130,7 @@
       "id": "bullet",
       "type": "GaugeNode",
       "x": -5753,
-      "y": -2409,
+      "y": -2363,
       "init": {
         "label": "To target",
         "mode": "bar"
@@ -145,7 +145,7 @@
       "id": "tm_frame",
       "type": "FrameInputNode",
       "x": -5335,
-      "y": -1902,
+      "y": -1886,
       "init": {
         "label": "Spending table",
         "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Rent\",\"Food\",\"Travel\",\"Fun\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[1200,650,400,300]}]"
@@ -155,7 +155,7 @@
       "id": "treemap",
       "type": "ProportionNode",
       "x": -5006,
-      "y": -1896,
+      "y": -1870,
       "init": {
         "label": "Spending (treemap)"
       }
@@ -164,7 +164,7 @@
       "id": "sk_frame",
       "type": "FrameInputNode",
       "x": -5976,
-      "y": -1902,
+      "y": -1886,
       "init": {
         "label": "Budget flows",
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"values\":[\"Salary\",\"Salary\",\"Salary\",\"Bonus\"]},{\"name\":\"To\",\"type\":\"string\",\"values\":[\"Housing\",\"Food\",\"Savings\",\"Savings\"]},{\"name\":\"Value\",\"type\":\"number\",\"values\":[2000,800,700,500]}]"
@@ -174,7 +174,7 @@
       "id": "sankey",
       "type": "SankeyNode",
       "x": -5647,
-      "y": -1876,
+      "y": -1850,
       "init": {
         "label": "Budget flow (sankey)"
       }
@@ -182,8 +182,8 @@
     {
       "id": "matrix",
       "type": "FrameInputNode",
-      "x": -4991,
-      "y": -2327,
+      "x": -4350,
+      "y": -2289,
       "init": {
         "label": "Series frame",
         "frameText": "[{\"name\": \"Step\", \"type\": \"string\", \"values\": [\"1\", \"2\", \"3\", \"4\", \"5\"]}, {\"name\": \"A\", \"type\": \"number\", \"values\": [12, 19, 7, 23, 15]}, {\"name\": \"B\", \"type\": \"number\", \"values\": [8, 11, 5, 14, 9]}]"
@@ -192,8 +192,8 @@
     {
       "id": "bubble",
       "type": "ChartNode",
-      "x": -4662,
-      "y": -2351,
+      "x": -4021,
+      "y": -2305,
       "init": {
         "label": "Points (bubble)",
         "op": "bubble"
@@ -202,8 +202,8 @@
     {
       "id": "ls_x",
       "type": "SeriesNode",
-      "x": -4113,
-      "y": -1902,
+      "x": -5976,
+      "y": -1024,
       "init": {
         "label": "Angles 0–2π",
         "op": "linspace"
@@ -217,8 +217,8 @@
     {
       "id": "sin",
       "type": "MathFXNode",
-      "x": -3844,
-      "y": -1850,
+      "x": -5677,
+      "y": -972,
       "init": {
         "label": "sin",
         "op": "sin"
@@ -227,8 +227,8 @@
     {
       "id": "spark_wave",
       "type": "SparklineNode",
-      "x": -3548,
-      "y": -1811,
+      "x": -5350,
+      "y": -934,
       "init": {
         "label": "Wave (line)",
         "op": "line"
@@ -237,8 +237,8 @@
     {
       "id": "data",
       "type": "ListInputNode",
-      "x": -5707,
-      "y": -1067,
+      "x": -3784,
+      "y": -1886,
       "init": {
         "label": "Weekly sales",
         "valueKeys": [
@@ -264,8 +264,8 @@
     {
       "id": "spark_data",
       "type": "SparklineNode",
-      "x": -5412,
-      "y": -906,
+      "x": -3491,
+      "y": -1725,
       "init": {
         "label": "Sales (column)",
         "op": "column"
@@ -275,7 +275,7 @@
       "id": "slider",
       "type": "SliderInputNode",
       "x": -5512,
-      "y": -2351,
+      "y": -2305,
       "init": {
         "label": "Reading",
         "value": 0.72
@@ -290,7 +290,7 @@
       "id": "gauge",
       "type": "GaugeNode",
       "x": -5243,
-      "y": -2334,
+      "y": -2291,
       "init": {},
       "literals": {
         "value": 0
@@ -299,8 +299,8 @@
     {
       "id": "grid",
       "type": "TableInputNode",
-      "x": -3709,
-      "y": -2351,
+      "x": -4991,
+      "y": -2305,
       "init": {
         "label": "Correlation-ish grid",
         "tableText": "1, 4, 9, 16\n2, 6, 12, 20\n4, 9, 15, 22\n8, 13, 19, 25"
@@ -309,8 +309,8 @@
     {
       "id": "heat",
       "type": "HeatmapNode",
-      "x": -3380,
-      "y": -2324,
+      "x": -4662,
+      "y": -2266,
       "init": {
         "label": "Heatmap"
       }
@@ -318,8 +318,8 @@
     {
       "id": "color_a",
       "type": "ColorPickerNode",
-      "x": -4113,
-      "y": -1607,
+      "x": -5976,
+      "y": -690,
       "init": {
         "label": "Line color",
         "mode": "hsv",
@@ -334,8 +334,8 @@
     {
       "id": "cb_a",
       "type": "ChartBuilderNode",
-      "x": -3844,
-      "y": -1636,
+      "x": -5707,
+      "y": -758,
       "init": {
         "label": "Style: sine",
         "target": "line"
@@ -355,8 +355,8 @@
     {
       "id": "chart_a",
       "type": "ChartNode",
-      "x": -3548,
-      "y": -1518,
+      "x": -5350,
+      "y": -617,
       "init": {
         "label": "Sine (styled line)",
         "op": "line"
@@ -365,8 +365,8 @@
     {
       "id": "color_b",
       "type": "ColorPickerNode",
-      "x": -5976,
-      "y": -669,
+      "x": -4113,
+      "y": -1488,
       "init": {
         "label": "Bar color",
         "mode": "rgb",
@@ -381,8 +381,8 @@
     {
       "id": "cb_b",
       "type": "ChartBuilderNode",
-      "x": -5707,
-      "y": -690,
+      "x": -3844,
+      "y": -1509,
       "init": {
         "label": "Style: sales"
       },
@@ -399,8 +399,8 @@
     {
       "id": "chart_b",
       "type": "ChartNode",
-      "x": -5412,
-      "y": -634,
+      "x": -3491,
+      "y": -1467,
       "init": {
         "label": "Sales (styled column)",
         "op": "column"
@@ -409,8 +409,8 @@
     {
       "id": "xy_frame",
       "type": "FrameInputNode",
-      "x": -4350,
-      "y": -2327,
+      "x": -3709,
+      "y": -2289,
       "init": {
         "label": "Curve points (t, x, y)",
         "frameText": "[{\"name\": \"t\", \"type\": \"number\", \"values\": [0.0, 0.1571, 0.3142, 0.4712, 0.6283, 0.7854, 0.9425, 1.0996, 1.2566, 1.4137, 1.5708, 1.7279, 1.885, 2.042, 2.1991, 2.3562, 2.5133, 2.6704, 2.8274, 2.9845, 3.1416, 3.2987, 3.4558, 3.6128, 3.7699, 3.927, 4.0841, 4.2412, 4.3982, 4.5553, 4.7124, 4.8695, 5.0265, 5.1836, 5.3407, 5.4978, 5.6549, 5.8119, 5.969, 6.1261, 6.2832]}, {\"name\": \"x\", \"type\": \"number\", \"values\": [0.0, 0.454, 0.8091, 0.9877, 0.9511, 0.7071, 0.309, -0.1566, -0.5877, -0.891, -1.0, -0.891, -0.5877, -0.1565, 0.309, 0.7071, 0.9511, 0.9877, 0.8091, 0.454, -0.0, -0.4541, -0.8091, -0.9877, -0.9511, -0.7071, -0.3089, 0.1566, 0.5877, 0.891, 1.0, 0.891, 0.5879, 0.1565, -0.309, -0.7071, -0.9511, -0.9877, -0.8091, -0.454, 0.0]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [0.0, 0.3091, 0.5879, 0.809, 0.951, 1.0, 0.951, 0.809, 0.5878, 0.309, -0.0, -0.3091, -0.5879, -0.809, -0.951, -1.0, -0.951, -0.809, -0.5878, -0.309, 0.0, 0.3091, 0.5879, 0.809, 0.951, 1.0, 0.951, 0.809, 0.5878, 0.309, -0.0, -0.3091, -0.5877, -0.809, -0.9511, -1.0, -0.951, -0.8091, -0.5878, -0.309, 0.0]}]"
@@ -419,8 +419,8 @@
     {
       "id": "xyline",
       "type": "ChartNode",
-      "x": -4021,
-      "y": -2351,
+      "x": -3380,
+      "y": -2305,
       "init": {
         "label": "Lissajous (XY line)",
         "op": "xyline"
@@ -432,8 +432,8 @@
     {
       "id": "grp-shares",
       "type": "GroupNode",
-      "x": -5124,
-      "y": -1125,
+      "x": -5062,
+      "y": -1082,
       "init": {
         "label": "Shares & profiles",
         "members": [
@@ -445,15 +445,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 601,
-        "height": 1528
+        "width": 597,
+        "height": 1352
       }
     },
     {
       "id": "grp-dist",
       "type": "GroupNode",
       "x": -4718,
-      "y": -1960,
+      "y": -1944,
       "init": {
         "label": "Distribution",
         "members": [
@@ -463,14 +463,14 @@
         "color": "green",
         "collapsed": false,
         "width": 561,
-        "height": 550
+        "height": 516
       }
     },
     {
       "id": "grp-treemap",
       "type": "GroupNode",
       "x": -5359,
-      "y": -1960,
+      "y": -1944,
       "init": {
         "label": "Treemap",
         "members": [
@@ -480,14 +480,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 621,
-        "height": 456
+        "height": 422
       }
     },
     {
       "id": "grp-sankey",
       "type": "GroupNode",
       "x": -6000,
-      "y": -1960,
+      "y": -1944,
       "init": {
         "label": "Sankey",
         "members": [
@@ -497,14 +497,14 @@
         "color": "blue",
         "collapsed": false,
         "width": 621,
-        "height": 452
+        "height": 418
       }
     },
     {
       "id": "grp-series",
       "type": "GroupNode",
-      "x": -5015,
-      "y": -2409,
+      "x": -4374,
+      "y": -2363,
       "init": {
         "label": "Series frame",
         "members": [
@@ -514,14 +514,14 @@
         "color": "lime",
         "collapsed": false,
         "width": 621,
-        "height": 415
+        "height": 399
       }
     },
     {
       "id": "grp-gauge",
       "type": "GroupNode",
       "x": -5536,
-      "y": -2409,
+      "y": -2363,
       "init": {
         "label": "Gauge",
         "members": [
@@ -531,14 +531,14 @@
         "color": "purple",
         "collapsed": false,
         "width": 501,
-        "height": 300
+        "height": 310
       }
     },
     {
       "id": "grp-heat",
       "type": "GroupNode",
-      "x": -3733,
-      "y": -2409,
+      "x": -5015,
+      "y": -2363,
       "init": {
         "label": "Heatmap",
         "members": [
@@ -548,14 +548,14 @@
         "color": "vermilion",
         "collapsed": false,
         "width": 621,
-        "height": 429
+        "height": 397
       }
     },
     {
       "id": "grp-sine",
       "type": "GroupNode",
-      "x": -4137,
-      "y": -1960,
+      "x": -6000,
+      "y": -1082,
       "init": {
         "label": "Sine wave",
         "members": [
@@ -568,15 +568,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 857,
-        "height": 815
+        "width": 918,
+        "height": 864
       }
     },
     {
       "id": "grp-sales",
       "type": "GroupNode",
-      "x": -6000,
-      "y": -1125,
+      "x": -4137,
+      "y": -1944,
       "init": {
         "label": "Weekly sales",
         "members": [
@@ -588,15 +588,15 @@
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 856,
-        "height": 848
+        "width": 914,
+        "height": 842
       }
     },
     {
       "id": "grp-xy",
       "type": "GroupNode",
-      "x": -4374,
-      "y": -2409,
+      "x": -3733,
+      "y": -2363,
       "init": {
         "label": "XY line",
         "members": [
@@ -606,7 +606,7 @@
         "color": "pink",
         "collapsed": false,
         "width": 621,
-        "height": 415
+        "height": 399
       }
     }
   ],

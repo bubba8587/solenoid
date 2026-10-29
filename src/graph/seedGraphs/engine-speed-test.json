@@ -5,7 +5,10 @@
   "group": "Modeling",
   "nodes": [
     {
-      "id": "note-head", "type": "NoteNode", "x": 0, "y": 0,
+      "id": "note-head",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 23,
       "init": {
         "label": "How fast is the engine?",
         "color": "amber",
@@ -14,42 +17,201 @@
       }
     },
     {
-      "id": "in-rows", "type": "ValueInputNode", "x": 0, "y": 230,
-      "init": { "label": "Rows", "op": "number", "value": "200000", "width": 180 },
-      "sections": { "Format": false }
+      "id": "in-rows",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 193,
+      "init": {
+        "label": "Rows",
+        "op": "number",
+        "value": "200000",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
+      }
     },
     {
-      "id": "crunch", "type": "CompositeNode", "x": 280, "y": 230,
+      "id": "crunch",
+      "type": "CompositeNode",
+      "x": 267,
+      "y": 207,
       "init": {
         "label": "Build, group, sort",
         "runMode": "manual",
-        "inputPorts": [{ "id": "p_rows", "label": "Rows", "exposure": "exposed", "tier": "basic", "internalNodeId": "m_rows" }],
-        "outputPorts": [{ "id": "p_totals", "label": "Sales by region", "tier": "basic", "internalNodeId": "m_totals" }],
+        "inputPorts": [
+          {
+            "id": "p_rows",
+            "label": "Rows",
+            "exposure": "exposed",
+            "tier": "basic",
+            "internalNodeId": "m_rows"
+          }
+        ],
+        "outputPorts": [
+          {
+            "id": "p_totals",
+            "label": "Sales by region",
+            "tier": "basic",
+            "internalNodeId": "m_totals"
+          }
+        ],
         "internal": {
           "nodes": [
-            { "id": "m_rows", "type": "CompositeInputNode", "init": { "label": "Rows" }, "x": 0, "y": 0 },
-            { "id": "seq", "type": "SeriesNode", "init": { "label": "1 to Rows", "op": "sequence" }, "x": 240, "y": 0 },
-            { "id": "build", "type": "FrameFromListsNode", "init": { "label": "One row each", "valueKeys": ["name0"] }, "stringLiterals": { "name0": "n" }, "x": 480, "y": 0 },
-            { "id": "region", "type": "ComputedColumnNode", "init": { "label": "Region", "expr": "CHOOSE(MOD(@n, 5) + 1, \"North\", \"South\", \"East\", \"West\", \"Central\")", "addAs": "text" }, "stringLiterals": { "name": "Region" }, "x": 760, "y": 0 },
-            { "id": "sales", "type": "ComputedColumnNode", "init": { "label": "Sales", "expr": "ROUND(ABS(SIN(@n)) * 1000 * (1 + MOD(@n, 5) / 4), 2)", "addAs": "number" }, "stringLiterals": { "name": "Sales" }, "x": 1040, "y": 0 },
-            { "id": "group", "type": "GroupByFrameNode", "init": { "label": "Total by region", "agg": "sum", "totalDepth": 0 }, "stringLiterals": { "keys": "Region", "column": "Sales" }, "x": 1320, "y": 0 },
-            { "id": "sort", "type": "SortFrameNode", "init": { "label": "Biggest first", "dir": "desc" }, "stringLiterals": { "column": "Sales" }, "x": 1580, "y": 0 },
-            { "id": "m_totals", "type": "CompositeOutputNode", "init": { "label": "Sales by region" }, "x": 1840, "y": 0 }
+            {
+              "id": "m_rows",
+              "type": "CompositeInputNode",
+              "init": {
+                "label": "Rows"
+              },
+              "x": 0,
+              "y": 0
+            },
+            {
+              "id": "seq",
+              "type": "SeriesNode",
+              "init": {
+                "label": "1 to Rows",
+                "op": "sequence"
+              },
+              "x": 240,
+              "y": 0
+            },
+            {
+              "id": "build",
+              "type": "FrameFromListsNode",
+              "init": {
+                "label": "One row each",
+                "valueKeys": [
+                  "name0"
+                ]
+              },
+              "stringLiterals": {
+                "name0": "n"
+              },
+              "x": 480,
+              "y": 0
+            },
+            {
+              "id": "region",
+              "type": "ComputedColumnNode",
+              "init": {
+                "label": "Region",
+                "expr": "CHOOSE(MOD(@n, 5) + 1, \"North\", \"South\", \"East\", \"West\", \"Central\")",
+                "addAs": "text"
+              },
+              "stringLiterals": {
+                "name": "Region"
+              },
+              "x": 760,
+              "y": 0
+            },
+            {
+              "id": "sales",
+              "type": "ComputedColumnNode",
+              "init": {
+                "label": "Sales",
+                "expr": "ROUND(ABS(SIN(@n)) * 1000 * (1 + MOD(@n, 5) / 4), 2)",
+                "addAs": "number"
+              },
+              "stringLiterals": {
+                "name": "Sales"
+              },
+              "x": 1040,
+              "y": 0
+            },
+            {
+              "id": "group",
+              "type": "GroupByFrameNode",
+              "init": {
+                "label": "Total by region",
+                "agg": "sum",
+                "totalDepth": 0
+              },
+              "stringLiterals": {
+                "keys": "Region",
+                "column": "Sales"
+              },
+              "x": 1320,
+              "y": 0
+            },
+            {
+              "id": "sort",
+              "type": "SortFrameNode",
+              "init": {
+                "label": "Biggest first",
+                "dir": "desc"
+              },
+              "stringLiterals": {
+                "column": "Sales"
+              },
+              "x": 1580,
+              "y": 0
+            },
+            {
+              "id": "m_totals",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Sales by region"
+              },
+              "x": 1840,
+              "y": 0
+            }
           ],
           "connections": [
-            { "source": "m_rows", "sourceOutput": "value", "target": "seq", "targetInput": "count" },
-            { "source": "seq", "sourceOutput": "list", "target": "build", "targetInput": "vals0" },
-            { "source": "build", "sourceOutput": "frame", "target": "region", "targetInput": "frame" },
-            { "source": "region", "sourceOutput": "frame", "target": "sales", "targetInput": "frame" },
-            { "source": "sales", "sourceOutput": "frame", "target": "group", "targetInput": "frame" },
-            { "source": "group", "sourceOutput": "frame", "target": "sort", "targetInput": "frame" },
-            { "source": "sort", "sourceOutput": "frame", "target": "m_totals", "targetInput": "value" }
+            {
+              "source": "m_rows",
+              "sourceOutput": "value",
+              "target": "seq",
+              "targetInput": "count"
+            },
+            {
+              "source": "seq",
+              "sourceOutput": "list",
+              "target": "build",
+              "targetInput": "vals0"
+            },
+            {
+              "source": "build",
+              "sourceOutput": "frame",
+              "target": "region",
+              "targetInput": "frame"
+            },
+            {
+              "source": "region",
+              "sourceOutput": "frame",
+              "target": "sales",
+              "targetInput": "frame"
+            },
+            {
+              "source": "sales",
+              "sourceOutput": "frame",
+              "target": "group",
+              "targetInput": "frame"
+            },
+            {
+              "source": "group",
+              "sourceOutput": "frame",
+              "target": "sort",
+              "targetInput": "frame"
+            },
+            {
+              "source": "sort",
+              "sourceOutput": "frame",
+              "target": "m_totals",
+              "targetInput": "value"
+            }
           ]
         }
       }
     }
   ],
   "connections": [
-    { "source": "in-rows", "sourceOutput": "value", "target": "crunch", "targetInput": "p_rows" }
+    {
+      "source": "in-rows",
+      "sourceOutput": "value",
+      "target": "crunch",
+      "targetInput": "p_rows"
+    }
   ]
 }

@@ -281,7 +281,7 @@
       "id": "quotes",
       "type": "FrameInputNode",
       "x": 500,
-      "y": -20,
+      "y": -22,
       "init": {
         "label": "Quotes",
         "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[0,2,4,8,12]},{\"name\":\"price\",\"type\":\"number\",\"values\":[100,101,102.5,103,104.5]}]"
@@ -291,7 +291,7 @@
       "id": "trades",
       "type": "FrameInputNode",
       "x": 500,
-      "y": -283,
+      "y": -285,
       "init": {
         "label": "Trades",
         "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[-1,1,5,10,20]},{\"name\":\"qty\",\"type\":\"number\",\"values\":[5,10,15,20,25]}]"
@@ -311,7 +311,7 @@
       "id": "asofjoin",
       "type": "JoinNode",
       "x": 838,
-      "y": -147,
+      "y": -149,
       "init": {
         "label": "As-of Join: trade price at execution time (≤)",
         "how": "asof",
@@ -326,7 +326,7 @@
       "id": "lookup",
       "type": "XLookupNode",
       "x": 1284,
-      "y": -630,
+      "y": -629,
       "init": {
         "label": "XLOOKUP: next-smaller volume tier (≤)",
         "matchMode": "nextSmaller"
@@ -356,7 +356,7 @@
         "color": "teal",
         "collapsed": false,
         "width": 1076,
-        "height": 1008
+        "height": 1006
       }
     },
     {

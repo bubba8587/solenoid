@@ -8,7 +8,7 @@
       "id": "note-head",
       "type": "NoteNode",
       "x": -130,
-      "y": 815,
+      "y": 814,
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
@@ -20,7 +20,7 @@
       "id": "in-samples",
       "type": "ValueInputNode",
       "x": 494,
-      "y": 820,
+      "y": 826,
       "init": {
         "label": "Samples",
         "op": "number",
@@ -35,7 +35,7 @@
       "id": "sc-pi",
       "type": "ScriptNode",
       "x": 763,
-      "y": 749,
+      "y": 748,
       "init": {
         "label": "Monte Carlo π",
         "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
@@ -54,7 +54,7 @@
       "id": "in-n",
       "type": "ValueInputNode",
       "x": 1359,
-      "y": 810,
+      "y": 817,
       "init": {
         "label": "27",
         "op": "number",
@@ -107,7 +107,7 @@
       "id": "in-principal",
       "type": "ValueInputNode",
       "x": -106,
-      "y": 1455,
+      "y": 1461,
       "init": {
         "label": "Principal",
         "op": "number",
@@ -164,7 +164,7 @@
       "id": "in-year",
       "type": "ValueInputNode",
       "x": -106,
-      "y": 291,
+      "y": 297,
       "init": {
         "label": "Year",
         "op": "number",
@@ -198,7 +198,7 @@
       "id": "in-growth",
       "type": "ValueInputNode",
       "x": 774,
-      "y": 315,
+      "y": 321,
       "init": {
         "label": "Growth",
         "op": "number",
@@ -247,7 +247,7 @@
       "id": "grp-pi",
       "type": "GroupNode",
       "x": 470,
-      "y": 691,
+      "y": 690,
       "init": {
         "label": "Monte Carlo π",
         "members": [

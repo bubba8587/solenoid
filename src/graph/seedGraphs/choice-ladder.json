@@ -7,8 +7,8 @@
     {
       "id": "noteIntro",
       "type": "NoteNode",
-      "x": -520,
-      "y": 0,
+      "x": -65,
+      "y": 153,
       "init": {
         "label": "Choice Ladder",
         "body": "# Choosing several options at once\nA **Decision Matrix** ranks options. When you can only do some of them, the **Choice Ladder** orders them. The band is the value you get, and each card takes its share. Where two scores are close it forks; pick either side and the plan follows.",
@@ -20,8 +20,8 @@
     {
       "id": "rOpts",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 0,
+      "x": 390,
+      "y": 153,
       "init": {
         "label": "Restaurants",
         "frameText": "[{\"name\":\"Restaurant\",\"type\":\"string\",\"values\":[\"Hearth & Ember\",\"Kato omakase\",\"Lune bistro\",\"Taqueria Sol\",\"Ichi noodle bar\",\"Brass Oyster\",\"Marrow\",\"Corner Deli\",\"Saffron Court\",\"Rooftop Tiki\",\"Bao House\",\"Fennel\"]},{\"name\":\"Food\",\"type\":\"number\",\"values\":[10,9,8,8,7,8,9,6,8,5,7,8]},{\"name\":\"Uniqueness\",\"type\":\"number\",\"values\":[8,9,5,6,5,7,8,4,8,5,6,9]},{\"name\":\"Vibe\",\"type\":\"number\",\"values\":[9,7,9,5,6,8,6,4,7,10,6,8]},{\"name\":\"Buzz\",\"type\":\"number\",\"values\":[9,8,7,7,8,6,7,6,5,8,7,6]},{\"name\":\"Ease\",\"type\":\"number\",\"values\":[3,4,7,9,9,6,5,10,6,6,8,5]},{\"name\":\"Dollars\",\"type\":\"number\",\"values\":[220,160,75,18,22,90,110,15,45,60,30,140]},{\"name\":\"Meals\",\"type\":\"number\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1]},{\"name\":\"Vegetarian\",\"type\":\"logical\",\"values\":[false,false,false,false,false,false,false,false,true,false,true,true]}]"
@@ -30,8 +30,8 @@
     {
       "id": "rWeights",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 420,
+      "x": 390,
+      "y": 415,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Food\",\"Uniqueness\",\"Vibe\",\"Buzz\",\"Ease\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[5,4,3,2,1]}]"
@@ -40,8 +40,8 @@
     {
       "id": "rLimits",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 700,
+      "x": 390,
+      "y": 677,
       "init": {
         "label": "Limits",
         "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Dollars\",\"Meals\",\"Vegetarian\"]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[450,6,null]},{\"name\":\"At least\",\"type\":\"number\",\"values\":[null,null,2]}]"
@@ -50,8 +50,8 @@
     {
       "id": "rLadder",
       "type": "ChoiceLadderNode",
-      "x": 360,
-      "y": 300,
+      "x": 737,
+      "y": 378,
       "init": {
         "label": "Restaurant ladder",
         "normalize": "max"
@@ -63,8 +63,8 @@
     {
       "id": "rDisplay",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 0,
+      "x": 1064,
+      "y": 203,
       "size": {
         "w": 1340,
         "h": 820
@@ -74,7 +74,7 @@
       "id": "notePolicy",
       "type": "NoteNode",
       "x": -520,
-      "y": 1250,
+      "y": 153,
       "init": {
         "label": "Policy agenda",
         "body": "### Policy agenda\nCapital has no total, so the ladder is the order to spend it in. Small business relief earns capital back. The child tax credit was promised, so it's a Must; the oversight board is off the table. Fuel levy and Fuel tax holiday exclude each other; Transit expansion requires Zoning reform.",
@@ -86,8 +86,8 @@
     {
       "id": "pOpts",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 1250,
+      "x": -520,
+      "y": 1176,
       "init": {
         "label": "Policies",
         "frameText": "[{\"name\":\"Policy\",\"type\":\"string\",\"values\":[\"Transit expansion\",\"Zoning reform\",\"Fuel levy\",\"Fuel tax holiday\",\"Child tax credit\",\"School meals\",\"Broadband grants\",\"Oversight board\",\"Small business relief\",\"Water mains\"]},{\"name\":\"Impact\",\"type\":\"number\",\"values\":[9,7,9,5,8,6,7,6,5,7]},{\"name\":\"Urgency\",\"type\":\"number\",\"values\":[6,7,8,6,7,6,6,7,6,9]},{\"name\":\"Support\",\"type\":\"number\",\"values\":[6,4,3,9,8,9,8,5,8,7]},{\"name\":\"Equity\",\"type\":\"number\",\"values\":[8,6,5,5,10,8,7,8,4,7]},{\"name\":\"Feasibility\",\"type\":\"number\",\"values\":[4,6,5,9,6,8,8,5,8,6]},{\"name\":\"Capital\",\"type\":\"number\",\"values\":[4,5,2,2,3,1,2,4,-1,2]},{\"name\":\"Requires\",\"type\":\"string\",\"values\":[\"Zoning reform\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]},{\"name\":\"Excludes\",\"type\":\"string\",\"values\":[\"\",\"\",\"Fuel tax holiday\",\"Fuel levy\",\"\",\"\",\"\",\"\",\"\",\"\"]},{\"name\":\"Must\",\"type\":\"logical\",\"values\":[false,false,false,false,true,false,false,false,false,false]},{\"name\":\"Never\",\"type\":\"logical\",\"values\":[false,false,false,false,false,false,false,true,false,false]}]"
@@ -96,8 +96,8 @@
     {
       "id": "pWeights",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 1670,
+      "x": -520,
+      "y": 1438,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Impact\",\"Urgency\",\"Support\",\"Equity\",\"Feasibility\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[5,4,3,3,2]}]"
@@ -106,8 +106,8 @@
     {
       "id": "pLimits",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 1950,
+      "x": -520,
+      "y": 1700,
       "init": {
         "label": "Limits",
         "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Capital\"]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[null]}]"
@@ -116,8 +116,8 @@
     {
       "id": "pLadder",
       "type": "ChoiceLadderNode",
-      "x": 360,
-      "y": 1550,
+      "x": -176,
+      "y": 1442,
       "init": {
         "label": "Policy ladder",
         "normalize": "max"
@@ -129,8 +129,8 @@
     {
       "id": "pDisplay",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 1250,
+      "x": 151,
+      "y": 1097,
       "size": {
         "w": 1340,
         "h": 1160

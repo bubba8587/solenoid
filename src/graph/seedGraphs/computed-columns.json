@@ -21,7 +21,7 @@
       "id": "rule",
       "type": "LambdaNode",
       "x": -182,
-      "y": 2559,
+      "y": 2560,
       "init": {
         "label": "Margin rule: its param names the column",
         "expr": "revenue * 0.25",

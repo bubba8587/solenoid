@@ -8,7 +8,7 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -560,
-      "y": 0,
+      "y": -98,
       "init": {
         "label": "Hiring a team",
         "body": "# Four seats, one budget\nThe **Choice Ladder** picks a team from the shortlist: salaries within $560k, four seats, at least one senior and at most one contractor.\n\nPriya was promised a seat, so she is a **Must**; Sam withdrew, so he is a **Never**. Marcus and Lena won't work together (**Excludes**), and Tomás needs Aiko to mentor him (**Requires**). Where two candidates score close, the ladder forks; pick a side and the plan follows.",
@@ -20,8 +20,8 @@
     {
       "id": "cands",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 0,
+      "x": -560,
+      "y": 222,
       "init": {
         "label": "Candidates",
         "frameText": "[{\"name\":\"Candidate\",\"type\":\"string\",\"values\":[\"Priya (internal)\",\"Marcus\",\"Elena\",\"Sam\",\"Jordan\",\"Aiko\",\"Ravi\",\"Lena\",\"Tomás\",\"Bea\"]},{\"name\":\"Skill\",\"type\":\"number\",\"values\":[7,9,8,9,6,8,7,9,5,6]},{\"name\":\"Experience\",\"type\":\"number\",\"values\":[4,12,6,10,2,8,3,15,1,5]},{\"name\":\"Teamwork\",\"type\":\"number\",\"values\":[9,6,8,7,8,9,7,5,9,8]},{\"name\":\"Growth\",\"type\":\"number\",\"values\":[8,5,8,6,9,7,9,4,10,7]},{\"name\":\"Salary\",\"type\":\"number\",\"values\":[120,185,140,175,95,160,105,210,85,110]},{\"name\":\"Seats\",\"type\":\"number\",\"values\":[1,1,1,1,1,1,1,1,1,1]},{\"name\":\"Senior\",\"type\":\"logical\",\"values\":[false,true,false,true,false,true,false,true,false,false]},{\"name\":\"Contractor\",\"type\":\"logical\",\"values\":[false,false,false,false,true,false,true,true,true,false]},{\"name\":\"Requires\",\"type\":\"string\",\"values\":[\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"Aiko\",\"\"]},{\"name\":\"Excludes\",\"type\":\"string\",\"values\":[\"\",\"Lena\",\"\",\"\",\"\",\"\",\"\",\"Marcus\",\"\",\"\"]},{\"name\":\"Must\",\"type\":\"logical\",\"values\":[true,false,false,false,false,false,false,false,false,false]},{\"name\":\"Never\",\"type\":\"logical\",\"values\":[false,false,false,true,false,false,false,false,false,false]}]"
@@ -30,8 +30,8 @@
     {
       "id": "weights",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 420,
+      "x": -560,
+      "y": 484,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Skill\",\"Experience\",\"Teamwork\",\"Growth\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[3,1,2,1]}]"
@@ -40,8 +40,8 @@
     {
       "id": "limits",
       "type": "FrameInputNode",
-      "x": -60,
-      "y": 700,
+      "x": -560,
+      "y": 746,
       "init": {
         "label": "Limits",
         "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Salary\",\"Seats\",\"Senior\",\"Contractor\"]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[560,4,null,1]},{\"name\":\"At least\",\"type\":\"number\",\"values\":[null,null,1,null]}]"
@@ -50,8 +50,8 @@
     {
       "id": "ladder",
       "type": "ChoiceLadderNode",
-      "x": 360,
-      "y": 300,
+      "x": -213,
+      "y": 454,
       "init": {
         "label": "Team ladder",
         "normalize": "max"
@@ -63,8 +63,8 @@
     {
       "id": "display",
       "type": "DisplayNode",
-      "x": 740,
-      "y": 0,
+      "x": 114,
+      "y": 409,
       "init": {},
       "size": {
         "w": 1000,
