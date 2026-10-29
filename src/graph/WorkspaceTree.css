@@ -40,7 +40,7 @@
 }
 .solenoid-outline__row:hover .solenoid-files__more,
 .solenoid-files__more:focus-visible { opacity: 1; }
-.solenoid-files__more:hover { background: var(--btn-hover); color: var(--accent); }
+.solenoid-files__more:hover { background: var(--btn-hover); color: var(--nav-ink, var(--accent)); }
 
 .solenoid-files__rename {
   flex: 1 1 auto;
@@ -81,4 +81,4 @@
   background: currentColor;
   opacity: 0.7;
 }
-.solenoid-files__check { display: inline-block; width: 16px; color: var(--accent); }
+.solenoid-files__check { display: inline-block; width: 16px; color: var(--nav-ink, var(--accent)); }

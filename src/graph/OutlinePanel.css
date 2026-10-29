@@ -25,7 +25,7 @@
   user-select: none;
 }
 .solenoid-outline__open-btn:hover {
-  color: var(--accent);
+  color: var(--nav-ink, var(--accent));
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 /* An inset shadow, not a border: a layout border would shrink the button's content box and shift its centered icon half a pixel. */
@@ -54,6 +54,10 @@
   --nav-slot: 18px;
   --nav-indent: 18px;
 }
+/* The panel's accent ink: the bare accent reads on the dark panel, but gold on the pale accent-soft fill of a light theme is
+   too faint, so there the ink is the accent drawn toward the text. */
+:root[data-theme="light"] .solenoid-outline,
+:root[data-theme="light"] .solenoid-files__menu { --nav-ink: color-mix(in srgb, var(--accent) 55%, var(--text)); }
 /* Only the lists scroll; nothing else may shrink, or a long list squashes the search field. */
 .solenoid-outline :is(.solenoid-outline__header, .solenoid-outline__search, .solenoid-nav-sec__head, .solenoid-nav-split) { flex-shrink: 0; }
 
@@ -96,7 +100,7 @@
 }
 .solenoid-outline__collapse:hover {
   background: var(--btn-hover);
-  color: var(--accent);
+  color: var(--nav-ink, var(--accent));
 }
 
 .solenoid-outline__collapse-all {
@@ -113,7 +117,7 @@
 }
 .solenoid-outline__collapse-all:hover {
   background: var(--btn-hover);
-  color: var(--accent);
+  color: var(--nav-ink, var(--accent));
 }
 .solenoid-outline__collapse-all svg { display: block; }
 
@@ -172,12 +176,12 @@
 }
 .solenoid-outline__row--sel {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--nav-ink, var(--accent));
 }
 /* Keep the selected highlight on hover, or the plain :hover outranks --sel and a just-selected row looks unselected. */
 .solenoid-outline__row--sel:hover {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
+  color: var(--nav-ink, var(--accent));
 }
 /* The group's edge is an inset shadow, not a border, so a group row is exactly as tall as a node row. */
 .solenoid-outline__row--group {
@@ -239,8 +243,8 @@
   opacity: 0.65;
 }
 .solenoid-outline__row:hover .solenoid-outline__plug { opacity: 1; }
-.solenoid-outline__plug:hover { background: var(--btn-hover); color: var(--accent); }
-.solenoid-outline__plug--on { color: var(--accent); opacity: 1; }
+.solenoid-outline__plug:hover { background: var(--btn-hover); color: var(--nav-ink, var(--accent)); }
+.solenoid-outline__plug--on { color: var(--nav-ink, var(--accent)); opacity: 1; }
 .solenoid-outline__plug svg { display: block; }
 .solenoid-outline__plug-count {
   font-size: 10px;
@@ -306,7 +310,7 @@
   opacity: 0;
 }
 .solenoid-outline__conn:hover .solenoid-outline__conn-btn { opacity: 0.8; }
-.solenoid-outline__conn-btn:hover { background: var(--btn-hover); color: var(--accent); opacity: 1; }
+.solenoid-outline__conn-btn:hover { background: var(--btn-hover); color: var(--nav-ink, var(--accent)); opacity: 1; }
 .solenoid-outline__conn-btn--del:hover { color: var(--sol-error); }
 .solenoid-outline__conn-btn svg { display: block; }
 
@@ -419,7 +423,7 @@
   color: var(--text-dim);
   cursor: pointer;
 }
-.solenoid-nav-sec__btn:hover { background: var(--btn-hover); color: var(--accent); }
+.solenoid-nav-sec__btn:hover { background: var(--btn-hover); color: var(--nav-ink, var(--accent)); }
 .solenoid-nav-sec__btn svg { display: block; }
 .solenoid-nav-sec__head .solenoid-outline__collapse-all { flex: 0 0 auto; }
 
@@ -488,7 +492,7 @@
 }
 .solenoid-outline__scope:hover { color: var(--text); background: var(--btn-hover); }
 .solenoid-outline__scope--on,
-.solenoid-outline__scope--on:hover { color: var(--accent); background: var(--accent-soft); }
+.solenoid-outline__scope--on:hover { color: var(--nav-ink, var(--accent)); background: var(--accent-soft); }
 .solenoid-outline__hitglyph {
   flex: 0 0 auto;
   display: inline-flex;
@@ -548,6 +552,6 @@
   font-size: 13px;
   cursor: pointer;
 }
-.solenoid-outline__switchbtn--on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.solenoid-outline__switchbtn--on { background: var(--accent-soft); color: var(--nav-ink, var(--accent)); font-weight: 600; }
 .solenoid-outline__switchcount { font-size: 11px; font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .solenoid-outline__switchbtn--on .solenoid-outline__switchcount { color: inherit; opacity: 0.75; }
