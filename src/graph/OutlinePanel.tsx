@@ -213,6 +213,7 @@ export function OutlinePanel() {
       return next;
     });
   const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
+  const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
   const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [navW, setNavW] = useState<number>(() => clampWidth(readJson<number>(WIDTH_KEY, 248)));
@@ -499,10 +500,22 @@ export function OutlinePanel() {
         <input
           ref={inputRef}
           className="solenoid-outline__search"
-          placeholder={everywhere ? "Search every document…" : "Search name or type…"}
+          placeholder={everywhere ? "Search every document…" : filters.size === 1 ? `Search ${filters.has("input") ? "inputs" : "displays"}…` : filters.size === 2 ? "Search inputs and displays…" : "Search name or type…"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <span className="solenoid-outline__fieldtools">
+        <button
+          className={`solenoid-outline__scope${filters.size > 0 ? " solenoid-outline__scope--on" : ""}`}
+          title="Filter and sort"
+          aria-label="Filter and sort"
+          aria-haspopup="menu"
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setViewMenu({ x: r.left, y: r.bottom + 4 }); }}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2.5 3.5 H13.5 L9.5 8.5 V12.5 L6.5 11 V8.5 Z" />
+          </svg>
+        </button>
         <button
           className={`solenoid-outline__scope${everywhere ? " solenoid-outline__scope--on" : ""}`}
           title={everywhere ? "Search this document" : "Search every document"}
@@ -515,35 +528,19 @@ export function OutlinePanel() {
             <path d="M2 8 H14 M8 2 C5.6 4.6 5.6 11.4 8 14 M8 2 C10.4 4.6 10.4 11.4 8 14" />
           </svg>
         </button>
+        </span>
       </div>
-      <div className="solenoid-outline__filters">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            className={`solenoid-outline__chip${filters.has(f.key) ? " solenoid-outline__chip--on" : ""}`}
-            onClick={() => toggleFilter(f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      <div className="solenoid-outline__sortrow">
-        <span className="solenoid-outline__sortlabel">Sort</span>
-        <button
-          className={`solenoid-outline__sortbtn${sortMode === "position" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort by canvas position: top→bottom, then left→right"
-          onClick={() => setSort("position")}
-        >
-          Position
-        </button>
-        <button
-          className={`solenoid-outline__sortbtn${sortMode === "alpha" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort alphabetically"
-          onClick={() => setSort("alpha")}
-        >
-          A–Z
-        </button>
-      </div>
+      {viewMenu && (
+        <RowMenu
+          at={viewMenu}
+          onClose={() => setViewMenu(null)}
+          items={[
+            ...FILTERS.map((f) => ({ label: f.label, checked: filters.has(f.key), onClick: () => toggleFilter(f.key) })),
+            { label: "Sort by Position", checked: sortMode === "position", divider: true, onClick: () => setSort("position") },
+            { label: "Sort A–Z", checked: sortMode === "alpha", onClick: () => setSort("alpha") },
+          ]}
+        />
+      )}
     </>
   );
   const listBody = (
@@ -685,6 +682,21 @@ export function OutlinePanel() {
         )}
     </div>
   );
+  const phoneSwitch = isPhone && layout === "stacked";
+  const addButton = (
+    <button
+      className="solenoid-nav-sec__btn"
+      title="New"
+      aria-label="New"
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        if (!sections.files) toggleSection("files");
+        setAddMenu({ x: r.left, y: r.bottom + 4 });
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
+    </button>
+  );
   const collapseAll = (
     <>
         {groupRows.length > 0 && (
@@ -728,8 +740,28 @@ export function OutlinePanel() {
     >
       {!isPhone && <div className="solenoid-outline__resize" role="separator" aria-orientation="vertical" aria-label="Resize navigator" onPointerDown={startWidthDrag} />}
       <div className="solenoid-outline__header">
-        <span className="solenoid-outline__title">Navigator</span>
+        {phoneSwitch ? (
+          // A phone shows one section at a time, so the header is the switch between them and the section heads go.
+          <div className="solenoid-outline__switch" role="tablist" aria-label="Navigator">
+            {(["files", "outline"] as const).map((k) => (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={sections[k]}
+                className={`solenoid-outline__switchbtn${sections[k] ? " solenoid-outline__switchbtn--on" : ""}`}
+                onClick={() => { if (!sections[k]) toggleSection(k); }}
+              >
+                {k === "files" ? "Files" : "Outline"}
+                <span className="solenoid-outline__switchcount">{k === "files" ? documentStore.list().length : state.flat.length}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="solenoid-outline__title">Navigator</span>
+        )}
         <span className="solenoid-outline__spacer" />
+        {phoneSwitch && sections.files && addButton}
+        {phoneSwitch && sections.outline && collapseAll}
         {preview && (
           <button
             className="solenoid-outline__layout"
@@ -739,16 +771,7 @@ export function OutlinePanel() {
             {layout === "stacked" ? "One tree" : "Stacked"}
           </button>
         )}
-        {layout === "tree" && (
-          <button
-            className="solenoid-nav-sec__btn"
-            title="New"
-            aria-label="New"
-            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAddMenu({ x: r.left, y: r.bottom + 4 }); }}
-          >
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
-          </button>
-        )}
+        {layout === "tree" && addButton}
         {layout === "tree" && collapseAll}
         <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
       </div>
@@ -762,25 +785,14 @@ export function OutlinePanel() {
       ) : (
         <>
           <div className={`solenoid-nav-sec solenoid-nav-sec--files${sections.files ? " solenoid-nav-sec--open" : ""}`}>
-            <div className="solenoid-nav-sec__head">
+            {!phoneSwitch && <div className="solenoid-nav-sec__head">
               <button className="solenoid-nav-sec__toggle" aria-expanded={sections.files} onClick={() => toggleSection("files")}>
                 <SectionChevron open={sections.files} />
                 <span className="solenoid-nav-sec__title">Files</span>
                 <span className="solenoid-nav-sec__count">{documentStore.list().length}</span>
               </button>
-              <button
-                className="solenoid-nav-sec__btn"
-                title="New"
-                aria-label="New"
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  if (!sections.files) toggleSection("files");
-                  setAddMenu({ x: r.left, y: r.bottom + 4 });
-                }}
-              >
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M8 3 V13 M3 8 H13" /></svg>
-              </button>
-            </div>
+              {addButton}
+            </div>}
             {sections.files && (
               <div
                 className="solenoid-nav-sec__body"
@@ -794,7 +806,7 @@ export function OutlinePanel() {
             <div className="solenoid-nav-split" role="separator" aria-orientation="horizontal" onPointerDown={startSplitDrag} />
           )}
           <div className={`solenoid-nav-sec solenoid-nav-sec--outline${sections.outline ? " solenoid-nav-sec--open" : ""}`}>
-            <div className="solenoid-nav-sec__head">
+            {!phoneSwitch && <div className="solenoid-nav-sec__head">
               <button className="solenoid-nav-sec__toggle solenoid-nav-sec__toggle--short" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
                 <SectionChevron open={sections.outline} />
                 <span className="solenoid-nav-sec__title">Outline</span>
@@ -802,7 +814,7 @@ export function OutlinePanel() {
               <button className="solenoid-nav-sec__crumb" title="Show in Files" onClick={revealOpenDoc}>{docName}</button>
               <span className="solenoid-nav-sec__count">{state.flat.length}</span>
               {collapseAll}
-            </div>
+            </div>}
             {sections.outline && (
               <>
                 {controls}

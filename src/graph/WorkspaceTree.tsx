@@ -50,7 +50,8 @@ export function Glyph({ kind, open }: { kind: RowKind; open?: boolean }) {
   }
 }
 
-export type MenuItem = { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; divider?: boolean; indent?: number };
+/** `checked` (true or false) gives the item a check column, for a menu of toggles. */
+export type MenuItem = { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; divider?: boolean; indent?: number; checked?: boolean };
 
 export function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; items: MenuItem[]; onClose: () => void }) {
   const ref = useMenuClamp<HTMLDivElement>(at.x, at.y);
@@ -71,12 +72,16 @@ export function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; 
           {it.divider && i > 0 && <div className="sol-popup-menu__sep" role="separator" />}
           <button
             type="button"
-            role="menuitem"
             className={`sol-popup-menu__item${it.danger ? " solenoid-files__menu-danger" : ""}`}
             style={it.indent ? { paddingLeft: 10 + it.indent * 14 } : undefined}
             disabled={it.disabled}
             onClick={() => { onClose(); it.onClick(); }}
-          >{it.label}</button>
+            role={it.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+            aria-checked={it.checked}
+          >
+            {it.checked !== undefined && <span className="solenoid-files__check" aria-hidden="true">{it.checked ? "✓" : ""}</span>}
+            {it.label}
+          </button>
         </Fragment>
       ))}
     </div>,

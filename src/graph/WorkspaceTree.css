@@ -81,3 +81,4 @@
   background: currentColor;
   opacity: 0.7;
 }
+.solenoid-files__check { display: inline-block; width: 16px; color: var(--accent); }

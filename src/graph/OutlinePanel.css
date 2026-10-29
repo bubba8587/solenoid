@@ -55,7 +55,7 @@
   --nav-indent: 18px;
 }
 /* Only the lists scroll; nothing else may shrink, or a long list squashes the search field. */
-.solenoid-outline :is(.solenoid-outline__header, .solenoid-outline__search, .solenoid-outline__filters, .solenoid-outline__sortrow, .solenoid-nav-sec__head, .solenoid-nav-split) { flex-shrink: 0; }
+.solenoid-outline :is(.solenoid-outline__header, .solenoid-outline__search, .solenoid-nav-sec__head, .solenoid-nav-split) { flex-shrink: 0; }
 
 .solenoid-outline__header {
   display: flex;
@@ -132,63 +132,6 @@
 }
 .solenoid-outline__search:focus {
   border-color: var(--accent);
-}
-
-.solenoid-outline__filters {
-  display: flex;
-  gap: 6px;
-  padding: 0 var(--nav-gutter) 8px;
-}
-
-.solenoid-outline__sortrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 var(--nav-gutter) 8px;
-}
-.solenoid-outline__sortlabel {
-  font-size: 11px;
-  color: var(--text-dim);
-  padding-left: var(--nav-pad);
-  margin-right: auto;
-}
-.solenoid-outline__sortbtn {
-  height: 24px;
-  padding: 0 10px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 999px;
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 11.5px;
-  cursor: pointer;
-}
-.solenoid-outline__sortbtn:hover { color: var(--text); border-color: var(--btn-border-hover); }
-.solenoid-outline__sortbtn--on {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.solenoid-outline__chip {
-  flex: 1 1 auto;
-  height: 24px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 999px;
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 11.5px;
-  cursor: pointer;
-}
-.solenoid-outline__chip:hover {
-  color: var(--text);
-  border-color: var(--btn-border-hover);
-}
-.solenoid-outline__chip--on {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .solenoid-outline__list {
@@ -517,14 +460,19 @@
 .solenoid-outline__searchwrap .solenoid-outline__search {
   flex: 1 1 auto;
   min-width: 0;
-  padding-right: 30px;
+  padding-right: 52px;
 }
-.solenoid-outline__scope {
+/* The field's own tools, filter and scope, sit inside its right end. */
+.solenoid-outline__fieldtools {
   position: absolute;
   top: 50%;
   right: calc(var(--nav-gutter) + 3px);
   margin-top: -1px;
   transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+}
+.solenoid-outline__scope {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -575,3 +523,30 @@
 .solenoid-outline__row[data-node]:focus { outline: none; }
 .solenoid-outline__row[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .solenoid-outline__row--group[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08); }
+
+/* ── The phone's section switch, in the header ── */
+.solenoid-outline__switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.solenoid-outline__switchbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.solenoid-outline__switchbtn--on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.solenoid-outline__switchcount { font-size: 11px; font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.solenoid-outline__switchbtn--on .solenoid-outline__switchcount { color: inherit; opacity: 0.75; }

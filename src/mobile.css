@@ -217,7 +217,7 @@ html.is-mobile {
     bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
-  /* The Settings sheet's scale: 13px text, 28px controls, rows about 31px tall. */
+  /* The Settings sheet's scale: 13px text, 28px controls, rows about 29px tall. */
   .solenoid-outline__collapse,
   .solenoid-outline__collapse-all,
   .solenoid-nav-sec__btn,
@@ -233,16 +233,14 @@ html.is-mobile {
   .solenoid-files__rename { height: 26px; margin: -4px 0; font-size: 13px; }
   .solenoid-files__menu { min-width: 180px; }
   .solenoid-files__menu .sol-popup-menu__item { padding: 9px 12px; font-size: 13px; }
-  .solenoid-outline__search { height: 32px; font-size: 13px; }
-  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 34px; }
+  .solenoid-outline__search { font-size: 13px; }
+  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 60px; }
   .solenoid-outline__scope { width: 26px; height: 26px; }
   .solenoid-outline__heading { font-size: 10.5px; }
   .solenoid-outline__hitwhere { font-size: 11.5px; }
-  .solenoid-outline__chip,
-  .solenoid-outline__sortbtn { height: 28px; font-size: 12.5px; }
-  .solenoid-outline__sortbtn { padding: 0 12px; }
-  .solenoid-outline__sortlabel { font-size: 12.5px; }
-  .solenoid-outline__row { padding-top: 7px; padding-bottom: 7px; font-size: 13px; }
+  .solenoid-outline__row { padding-top: 6px; padding-bottom: 6px; font-size: 13px; }
+  .solenoid-outline__header { padding: 6px var(--nav-gutter); }
+  .solenoid-outline__search { margin: 6px var(--nav-gutter); height: 30px; }
   /* A finger-sized target that hangs into the row's padding rather than growing the row. */
   .solenoid-outline__plug { min-height: 26px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
   .solenoid-outline__plug svg { width: 13px; height: 13px; }
@@ -255,8 +253,6 @@ html.is-mobile {
   .solenoid-outline__row--group:hover { box-shadow: inset 0 0 0 1px var(--group-edge); }
   .solenoid-outline__row--group.solenoid-outline__row--sel:hover { box-shadow: inset 0 0 0 2px var(--accent); }
   .solenoid-outline__row:not(.solenoid-outline__row--group):active { background: var(--accent-soft); }
-  .solenoid-outline__chip:not(.solenoid-outline__chip--on):hover,
-  .solenoid-outline__sortbtn:not(.solenoid-outline__sortbtn--on):hover { color: var(--text-dim); border-color: var(--btn-border); }
   .solenoid-outline__plug:hover,
   .solenoid-outline__conn:hover,
   .solenoid-outline__conn-btn:hover { background: transparent; }
