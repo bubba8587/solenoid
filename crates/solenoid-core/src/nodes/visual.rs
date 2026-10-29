@@ -2072,12 +2072,18 @@ pub(crate) struct Cuts {
     tails: Vec<Vec<f64>>,
     xs: Vec<f64>,
     ys: Vec<f64>,
+    #[serde(skip)]
+    index: std::cell::OnceCell<SegIndex>,
 }
 
 impl Cuts {
     /// The largest coordinate any cut has, which sets how close to a line counts as on it.
     fn scale(&self) -> f64 {
         self.curves.iter().flatten().chain(&self.xs).chain(&self.ys).fold(0.0, |m, v| m.max(v.abs()))
+    }
+
+    fn index(&self) -> &SegIndex {
+        self.index.get_or_init(|| SegIndex::build(self))
     }
 }
 
@@ -2144,21 +2150,93 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
     json!({ "curves": curves, "tails": tails, "xs": nums(&xs), "ys": nums(&ys) })
 }
 
+/// The curves' segments, and their carried-on ends, bucketed by the stretch of x each spans, so a point looks only at
+/// the segments above or near it ([[C120]] linearWork). A segment too wide to bucket (an end running out of the plot)
+/// is looked at always.
+#[derive(Default)]
+struct SegIndex {
+    /// Each segment with the curve it belongs to.
+    segs: Vec<(usize, [f64; 4])>,
+    x0: f64,
+    width: f64,
+    buckets: Vec<Vec<u32>>,
+    wide: Vec<u32>,
+}
+
+/// A segment spanning more buckets than this is looked at always.
+const WIDE_SPAN: usize = 16;
+
+impl SegIndex {
+    fn build(c: &Cuts) -> SegIndex {
+        let runs = |cvs: &[Vec<f64>]| -> Vec<(usize, [f64; 4])> {
+            cvs.iter()
+                .enumerate()
+                .flat_map(|(k, cv)| cv.chunks_exact(4).map(move |s| (k, [s[0], s[1], s[2], s[3]])))
+                .collect()
+        };
+        let mut segs = runs(&c.curves);
+        segs.extend(runs(&c.tails));
+        let (lo, hi) = c
+            .curves
+            .iter()
+            .flat_map(|cv| cv.chunks_exact(4))
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), s| (lo.min(s[0].min(s[2])), hi.max(s[0].max(s[2]))));
+        let mut index = SegIndex { x0: lo, width: 1.0, ..SegIndex::default() };
+        if !(hi > lo) {
+            index.wide = (0..segs.len() as u32).collect();
+            index.segs = segs;
+            return index;
+        }
+        let k = (segs.len() / 2).clamp(1, 1 << 16);
+        index.width = (hi - lo) / k as f64;
+        index.buckets = vec![Vec::new(); k];
+        for (i, (_, s)) in segs.iter().enumerate() {
+            let (a, b) = (s[0].min(s[2]), s[0].max(s[2]));
+            if a < lo || b > hi || index.bucket(b) - index.bucket(a) > WIDE_SPAN {
+                index.wide.push(i as u32);
+            } else {
+                for j in index.bucket(a)..=index.bucket(b) {
+                    index.buckets[j].push(i as u32);
+                }
+            }
+        }
+        index.segs = segs;
+        index
+    }
+
+    fn bucket(&self, x: f64) -> usize {
+        (((x - self.x0) / self.width).floor().max(0.0) as usize).min(self.buckets.len().saturating_sub(1))
+    }
+
+    /// Each segment whose stretch of x may reach into `xa..=xb`, some more than once.
+    fn each_near(&self, xa: f64, xb: f64, mut f: impl FnMut(usize, &(usize, [f64; 4]))) {
+        for &i in &self.wide {
+            f(i as usize, &self.segs[i as usize]);
+        }
+        let end = self.x0 + self.width * self.buckets.len() as f64;
+        if self.buckets.is_empty() || xb < self.x0 || xa > end {
+            return;
+        }
+        for j in self.bucket(xa)..=self.bucket(xb) {
+            for &i in &self.buckets[j] {
+                f(i as usize, &self.segs[i as usize]);
+            }
+        }
+    }
+}
+
 /// The region a point is in: its band between the vertical lines, its band between the horizontal ones, then per
 /// curve whether a ray straight up from it crosses that curve an odd number of times (below it, or inside a loop).
 fn region_key(c: &Cuts, x: f64, y: f64) -> String {
-    let band = |cuts: &[f64], v: f64| cuts.iter().take_while(|&&k| k <= v).count();
+    let band = |cuts: &[f64], v: f64| cuts.partition_point(|&k| k <= v);
+    let mut odd = vec![false; c.curves.len()];
+    c.index().each_near(x, x, |_, (k, s)| {
+        if (s[0] <= x) != (s[2] <= x) && s[1] + (x - s[0]) * (s[3] - s[1]) / (s[2] - s[0]) > y {
+            odd[*k] = !odd[*k];
+        }
+    });
     let mut key = format!("{}.{}.", band(&c.xs, x), band(&c.ys, y));
-    for (k, curve) in c.curves.iter().enumerate() {
-        let odd = curve
-            .chunks_exact(4)
-            .chain(c.tails.get(k).into_iter().flat_map(|t| t.chunks_exact(4)))
-            .filter(|s| (s[0] <= x) != (s[2] <= x) && s[1] + (x - s[0]) * (s[3] - s[1]) / (s[2] - s[0]) > y)
-            .count()
-            % 2
-            == 1;
-        key.push(if odd { '1' } else { '0' });
-    }
+    key.extend(odd.iter().map(|&o| if o { '1' } else { '0' }));
     key
 }
 
@@ -2172,9 +2250,13 @@ fn segment_distance(s: &[f64], x: f64, y: f64) -> f64 {
 /// The keys of the regions a point on a line touches, found a hair away from it on every side; none off the lines.
 fn touched_regions(c: &Cuts, scale: f64, x: f64, y: f64) -> Option<Vec<String>> {
     let near = 1e-9 * scale.max(x.abs()).max(y.abs());
-    let on = c.xs.iter().any(|k| (k - x).abs() <= near)
-        || c.ys.iter().any(|k| (k - y).abs() <= near)
-        || c.curves.iter().chain(&c.tails).any(|cv| cv.chunks_exact(4).any(|s| segment_distance(s, x, y) <= near));
+    let mut on = c.xs.iter().any(|k| (k - x).abs() <= near) || c.ys.iter().any(|k| (k - y).abs() <= near);
+    if !on {
+        c.index().each_near(x - near, x + near, |_, (_, s)| {
+            on = on
+                || ((s[1].min(s[3]) - near..=s[1].max(s[3]) + near).contains(&y) && segment_distance(s, x, y) <= near);
+        });
+    }
     if !on {
         return None;
     }
@@ -2187,15 +2269,6 @@ fn touched_regions(c: &Cuts, scale: f64, x: f64, y: f64) -> Option<Vec<String>> 
     keys.sort();
     keys.dedup();
     Some(keys)
-}
-
-/// Every line in the plane as segments: the curves and their carried-on ends, and each reference line out to `reach`.
-fn all_segments(c: &Cuts, reach: f64) -> Vec<[f64; 4]> {
-    let mut segs: Vec<[f64; 4]> =
-        c.curves.iter().chain(&c.tails).flat_map(|cv| cv.chunks_exact(4).map(|s| [s[0], s[1], s[2], s[3]])).collect();
-    segs.extend(c.xs.iter().map(|&k| [k, -reach, k, reach]));
-    segs.extend(c.ys.iter().map(|&k| [-reach, k, reach, k]));
-    segs
 }
 
 /// Where segment `a` meets segment `b`, as a fraction of the way along `a`.
@@ -2211,19 +2284,29 @@ fn crossing(a: &[f64; 4], b: &[f64; 4]) -> Option<f64> {
     ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then_some(t)
 }
 
+/// A stretch of line with a different answer on each side; `long` for one on a reference line or a carried-on end,
+/// which can run far out of the plot.
+struct Piece {
+    seg: [f64; 4],
+    long: bool,
+}
+
 /// The stretches of line with a different answer on each side: every line cut where another crosses it, and a piece
-/// kept when a hair to one side reads differently from a hair to the other.
-fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<[f64; 4]> {
-    let segs = all_segments(c, reach);
+/// kept when a hair to one side reads differently from a hair to the other. A curve's segment meets only the
+/// segments its stretch of x reaches, and every reference line.
+fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<Piece> {
+    let index = c.index();
+    let tail_from = index.segs.len() - c.tails.iter().map(|t| t.len() / 4).sum::<usize>();
+    let refs: Vec<[f64; 4]> =
+        c.xs.iter().map(|&k| [k, -reach, k, reach]).chain(c.ys.iter().map(|&k| [-reach, k, reach, k])).collect();
     let mut out = Vec::new();
-    for (i, a) in segs.iter().enumerate() {
+    let mut ts: Vec<f64> = Vec::new();
+    let mut cut = |a: &[f64; 4], long: bool, ts: &mut Vec<f64>| {
         let (dx, dy) = (a[2] - a[0], a[3] - a[1]);
         let len = dx.hypot(dy);
         if len == 0.0 {
-            continue;
+            return;
         }
-        let mut ts: Vec<f64> =
-            segs.iter().enumerate().filter(|(j, _)| *j != i).filter_map(|(_, b)| crossing(a, b)).collect();
         ts.extend([0.0, 1.0]);
         ts.sort_by(f64::total_cmp);
         ts.dedup();
@@ -2232,11 +2315,114 @@ fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<[f64; 4]>
             let m = (w[0] + w[1]) / 2.0;
             let (mx, my) = (a[0] + dx * m, a[1] + dy * m);
             if read(&region_key(c, mx + nx, my + ny)) != read(&region_key(c, mx - nx, my - ny)) {
-                out.push([a[0] + dx * w[0], a[1] + dy * w[0], a[0] + dx * w[1], a[1] + dy * w[1]]);
+                out.push(Piece { seg: [a[0] + dx * w[0], a[1] + dy * w[0], a[0] + dx * w[1], a[1] + dy * w[1]], long });
             }
         }
+    };
+    for (i, (_, a)) in index.segs.iter().enumerate() {
+        ts.clear();
+        index.each_near(a[0].min(a[2]), a[0].max(a[2]), |j, (_, b)| {
+            if j != i {
+                ts.extend(crossing(a, b));
+            }
+        });
+        ts.extend(refs.iter().filter_map(|b| crossing(a, b)));
+        cut(a, i >= tail_from, &mut ts);
+    }
+    for (i, a) in refs.iter().enumerate() {
+        ts.clear();
+        // A vertical line meets only the segments at its x; a horizontal one may meet any.
+        if a[0] == a[2] {
+            index.each_near(a[0], a[0], |_, (_, b)| ts.extend(crossing(a, b)));
+        } else {
+            ts.extend(index.segs.iter().filter_map(|(_, b)| crossing(a, b)));
+        }
+        ts.extend(refs.iter().enumerate().filter(|(j, _)| *j != i).filter_map(|(_, b)| crossing(a, b)));
+        cut(a, true, &mut ts);
     }
     out
+}
+
+/// The flipping pieces in a grid over the points and the curves, so each point searches outward only until no
+/// farther cell could hold a nearer piece; the long pieces are measured from every point.
+struct PieceGrid<'a> {
+    pieces: &'a [Piece],
+    long: Vec<usize>,
+    x0: f64,
+    y0: f64,
+    cell: f64,
+    nx: usize,
+    ny: usize,
+    cells: Vec<Vec<u32>>,
+}
+
+impl<'a> PieceGrid<'a> {
+    fn build(pieces: &'a [Piece], points: &[(f64, f64)]) -> PieceGrid<'a> {
+        let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+        let mut grow = |x: f64, y: f64| {
+            x0 = x0.min(x);
+            y0 = y0.min(y);
+            x1 = x1.max(x);
+            y1 = y1.max(y);
+        };
+        points.iter().for_each(|&(x, y)| grow(x, y));
+        for p in pieces.iter().filter(|p| !p.long) {
+            grow(p.seg[0], p.seg[1]);
+            grow(p.seg[2], p.seg[3]);
+        }
+        let short = pieces.iter().filter(|p| !p.long).count();
+        let span = (x1 - x0).max(y1 - y0).max(f64::MIN_POSITIVE);
+        let cells_wanted = short.clamp(16, 1 << 18) as f64;
+        let cell = (((x1 - x0).max(span * 1e-3) * (y1 - y0).max(span * 1e-3)) / cells_wanted).sqrt().max(span * 1e-6);
+        let (nx, ny) = (((x1 - x0) / cell).floor() as usize + 1, ((y1 - y0) / cell).floor() as usize + 1);
+        let mut grid = PieceGrid { pieces, long: Vec::new(), x0, y0, cell, nx, ny, cells: vec![Vec::new(); nx * ny] };
+        for (i, p) in pieces.iter().enumerate() {
+            if p.long {
+                grid.long.push(i);
+                continue;
+            }
+            let (ia, ja) = grid.at(p.seg[0].min(p.seg[2]), p.seg[1].min(p.seg[3]));
+            let (ib, jb) = grid.at(p.seg[0].max(p.seg[2]), p.seg[1].max(p.seg[3]));
+            for j in ja..=jb {
+                for ic in ia..=ib {
+                    grid.cells[j * nx + ic].push(i as u32);
+                }
+            }
+        }
+        grid
+    }
+
+    fn at(&self, x: f64, y: f64) -> (usize, usize) {
+        let i = (((x - self.x0) / self.cell).floor().max(0.0) as usize).min(self.nx - 1);
+        let j = (((y - self.y0) / self.cell).floor().max(0.0) as usize).min(self.ny - 1);
+        (i, j)
+    }
+
+    /// The distance from a point to the nearest piece; infinite with none.
+    fn nearest(&self, x: f64, y: f64) -> f64 {
+        let mut best =
+            self.long.iter().map(|&i| segment_distance(&self.pieces[i].seg, x, y)).fold(f64::INFINITY, f64::min);
+        let (ci, cj) = self.at(x, y);
+        for r in 0..=self.nx.max(self.ny) {
+            // Every cell on ring r lies at least r - 1 cells away.
+            if r >= 1 && best <= (r - 1) as f64 * self.cell {
+                break;
+            }
+            let (ia, ib) = (ci.saturating_sub(r), (ci + r).min(self.nx - 1));
+            let (ja, jb) = (cj.saturating_sub(r), (cj + r).min(self.ny - 1));
+            for j in ja..=jb {
+                for i in ia..=ib {
+                    if i.abs_diff(ci) != r && j.abs_diff(cj) != r {
+                        continue;
+                    }
+                    for &p in &self.cells[j * self.nx + i] {
+                        best = best.min(segment_distance(&self.pieces[p as usize].seg, x, y));
+                    }
+                }
+            }
+        }
+        best
+    }
 }
 
 /// Each point's region by the cuts a Conditional Regions card shows, one key per line.
@@ -2338,9 +2524,13 @@ fn conditional_regions(c: &mut Call) -> Answer {
         flip_pieces(&cuts, &read, reach, 1e-6 * if scale > 0.0 { scale } else { 1.0 })
     });
     let rows = cols[0].values.len().max(cols[1].values.len());
+    let at: Vec<Option<(f64, f64)>> =
+        (0..rows).map(|r| Some((finite(&cell(&cols[0], r))?, finite(&cell(&cols[1], r))?))).collect();
+    let present: Vec<(f64, f64)> = at.iter().flatten().copied().collect();
+    let grid = flips.as_deref().map(|pieces| PieceGrid::build(pieces, &present));
     let (mut answers, mut margins, mut shown) = (Vec::with_capacity(rows), Vec::with_capacity(rows), Vec::new());
-    for r in 0..rows {
-        let (Some(x), Some(y)) = (finite(&cell(&cols[0], r)), finite(&cell(&cols[1], r))) else {
+    for &point in &at {
+        let Some((x, y)) = point else {
             answers.push(V::Null);
             margins.push(V::Null);
             continue;
@@ -2352,8 +2542,8 @@ fn conditional_regions(c: &mut Call) -> Answer {
             Some(i) if listed => V::str(&js_string_of(&items[i as usize])),
             Some(i) => V::Bool(i == 1),
         });
-        if let Some(pieces) = &flips {
-            let d = pieces.iter().map(|s| segment_distance(s, x, y)).fold(f64::INFINITY, f64::min);
+        if let Some(grid) = &grid {
+            let d = grid.nearest(x, y);
             // As close as counts as on a line is on it: 0, not what rounding leaves.
             let near = 1e-9 * scale.max(x.abs()).max(y.abs());
             margins.push(if !d.is_finite() { V::Null } else { V::Num(if d <= near { 0.0 } else { d }) });
@@ -2492,12 +2682,67 @@ mod tests {
         let marks = [("0.0.", 1), ("0.1.", 1), ("1.0.", 0), ("1.1.", 1)];
         let read = |k: &str| marks.iter().find(|(m, _)| *m == k).map(|(_, v)| *v);
         let pieces = flip_pieces(&cuts, &read, 1e4, 1e-6);
-        let margin = |x: f64, y: f64| pieces.iter().map(|s| segment_distance(s, x, y)).fold(f64::INFINITY, f64::min);
+        let grid = PieceGrid::build(&pieces, &[(2.0, 1.0), (2.0, 8.0)]);
+        let margin = |x: f64, y: f64| grid.nearest(x, y);
         assert!((margin(2.0, 1.0) - 3.0).abs() < 1e-9);
         // Above y = 5 the line x = 5 has TRUE on both sides, so the nearest flip is the corner.
         assert!((margin(2.0, 8.0) - 18f64.sqrt()).abs() < 1e-9);
         let all_true = |_: &str| Some(1);
         assert!(flip_pieces(&cuts, &all_true, 1e4, 1e-6).is_empty());
+    }
+
+    #[test]
+    fn the_index_answers_as_checking_every_segment_does() {
+        // A wiggly open line, a closed loop and reference lines, against the plain all-segments reading.
+        let wave: Vec<Json> = (0..400)
+            .map(|i| {
+                let t = f64::from(i) / 399.0 * 10.0;
+                json!({ "x": t, "y": 5.0 + 3.0 * (3.0 * t).sin() })
+            })
+            .collect();
+        let ring: Vec<Json> = (0..=60)
+            .map(|i| {
+                let a = f64::from(i) / 60.0 * std::f64::consts::TAU;
+                json!({ "x": 5.0 + 2.0 * a.cos(), "y": 5.0 + 2.0 * a.sin() })
+            })
+            .collect();
+        let chart = json!({ "payload": { "series": [{ "points": wave }, { "points": ring }] }, "refs": [{ "x": 3 }, { "x": 7.5 }, { "y": 4 }] });
+        let cuts: Cuts = serde_json::from_value(chart_cuts(&chart, false)).unwrap();
+        let plain_key = |x: f64, y: f64| {
+            let mut key = format!(
+                "{}.{}.",
+                cuts.xs.iter().filter(|&&k| k <= x).count(),
+                cuts.ys.iter().filter(|&&k| k <= y).count()
+            );
+            for (k, curve) in cuts.curves.iter().enumerate() {
+                let n = curve
+                    .chunks_exact(4)
+                    .chain(cuts.tails.get(k).into_iter().flat_map(|t| t.chunks_exact(4)))
+                    .filter(|s| (s[0] <= x) != (s[2] <= x) && s[1] + (x - s[0]) * (s[3] - s[1]) / (s[2] - s[0]) > y)
+                    .count();
+                key.push(if n % 2 == 1 { '1' } else { '0' });
+            }
+            key
+        };
+        let mut seed = 11u64;
+        let mut r = || {
+            seed = seed * 48271 % 2147483647;
+            seed as f64 / 2147483647.0 * 14.0 - 2.0
+        };
+        let pts: Vec<(f64, f64)> = (0..3000).map(|_| (r(), r())).collect();
+        for &(x, y) in &pts {
+            assert_eq!(region_key(&cuts, x, y), plain_key(x, y), "at ({x}, {y})");
+        }
+        // Points on the lines are found on them.
+        assert!(touched_regions(&cuts, cuts.scale(), 3.0, 1.0).is_some());
+        assert!(touched_regions(&cuts, cuts.scale(), 7.0, 5.0).is_some());
+        let read = |k: &str| Some(i64::from(k.as_bytes()[k.len() - 2] == b'1') + 2 * i64::from(k.ends_with('1')));
+        let pieces = flip_pieces(&cuts, &read, 1e4 * (1.0 + cuts.scale()), 1e-6 * cuts.scale());
+        let grid = PieceGrid::build(&pieces, &pts);
+        for &(x, y) in &pts {
+            let plain = pieces.iter().map(|p| segment_distance(&p.seg, x, y)).fold(f64::INFINITY, f64::min);
+            assert!((grid.nearest(x, y) - plain).abs() < 1e-12, "at ({x}, {y})");
+        }
     }
 
     #[test]

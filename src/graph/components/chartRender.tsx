@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
-import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
+import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
@@ -1206,10 +1206,29 @@ function runs(cells: Cells, fill: (key: string) => string | null): { x: number; 
 /** A region's color by its mark: a Bool card's TRUE and FALSE, a Text card's label by its place in the list. */
 type MarkPaint = (mark: boolean | number | null | undefined) => string | null;
 
-function RegionShade({ cutsText, marks, paint, hover, curves }: {
-  cutsText: string; marks: Record<string, boolean | number>; paint: MarkPaint; hover: string | null; curves: number[][];
+/** The cell grid the shading drew, which the click target reads for the region under a hovering pointer. */
+type CellsRef = { current: Cells | null };
+
+/** The hovered region, which only the shading listens to, so a pointer move redraws the tint and nothing else. */
+type HoverStore = { get: () => string | null; set: (k: string | null) => void; subscribe: (fn: () => void) => () => void };
+
+function hoverStore(): HoverStore {
+  let key: string | null = null;
+  const fns = new Set<() => void>();
+  return {
+    get: () => key,
+    set: (k) => { if (k !== key) { key = k; fns.forEach((fn) => fn()); } },
+    subscribe: (fn) => { fns.add(fn); return () => fns.delete(fn); },
+  };
+}
+
+function RegionShade({ cutsText, marks, paint, hoverAt, curves, cellsRef }: {
+  cutsText: string; marks: Record<string, boolean | number>; paint: MarkPaint; hoverAt: HoverStore; curves: number[][];
+  cellsRef: CellsRef;
 }) {
+  const hover = useSyncExternalStore(hoverAt.subscribe, hoverAt.get);
   const cells = useRegionCells(cutsText);
+  cellsRef.current = cells;
   const clip = useId().replace(/:/g, "");
   const xs = useXAxisScale();
   const ys = useYAxisScale();
@@ -1232,14 +1251,33 @@ function RegionShade({ cutsText, marks, paint, hover, curves }: {
   );
 }
 
-function RegionPick({ cutsText, points, paint, onHover, onToggle }: {
+/** The dots' grain in screen pixels: one dot per spot and color, however many points land there ([[C120]] linearWork). */
+const DOT_GRAIN = 2;
+
+function RegionPick({ cutsText, points, paint, onHover, onToggle, cellsRef }: {
   cutsText: string; points: readonly RegionPoint[]; paint: MarkPaint;
-  onHover: (key: string | null) => void; onToggle: (key: string) => void;
+  onHover: (key: string | null) => void; onToggle: (key: string) => void; cellsRef: CellsRef;
 }) {
   const area = usePlotArea();
   const xs = useXAxisScale(), ys = useYAxisScale();
   const xInv = useXAxisInverseScale(), yInv = useYAxisInverseScale();
   const { axis } = useChartColors();
+  const dots = useMemo(() => {
+    if (!area || !xs || !ys) return [];
+    const inside = (cx: number, cy: number) => cx >= area.x && cx <= area.x + area.width && cy >= area.y && cy <= area.y + area.height;
+    const seen = new Set<string>();
+    const out: ReactElement[] = [];
+    for (const [x, y, mark, onLine] of points) {
+      const cx = Number(xs(x)), cy = Number(ys(y));
+      if (!inside(cx, cy)) continue;
+      const fill = paint(mark) ?? axis;
+      const spot = `${Math.round(cx / DOT_GRAIN)},${Math.round(cy / DOT_GRAIN)},${fill},${onLine}`;
+      if (seen.has(spot)) continue;
+      seen.add(spot);
+      out.push(<circle key={spot} cx={cx} cy={cy} r={onLine ? 3 : 2.5} fill={onLine ? "none" : fill} stroke={onLine ? fill : "none"} strokeWidth={1.25} pointerEvents="none" />);
+    }
+    return out;
+  }, [area, xs, ys, points, paint, axis]);
   if (!area || !xs || !ys || !xInv || !yInv) return null;
   // The card may be zoomed: the plot's drawn size against its own units scales the pointer back.
   const keyAt = (e: PointerEvent<SVGRectElement> | MouseEvent<SVGRectElement>): string | null => {
@@ -1249,22 +1287,25 @@ function RegionPick({ cutsText, points, paint, onHover, onToggle }: {
     const y = Number(yInv(area.y + ((e.clientY - r.top) * area.height) / r.height));
     return Number.isFinite(x) && Number.isFinite(y) ? coreRegionKeys(cutsText, [x], [y])[0] ?? null : null;
   };
-  const inside = (cx: number, cy: number) => cx >= area.x && cx <= area.x + area.width && cy >= area.y && cy <= area.y + area.height;
+  // Hovering reads the shading's grid; only a click asks the core for the exact region.
+  const hoverKey = (e: PointerEvent<SVGRectElement>): string | null => {
+    const cells = cellsRef.current;
+    const r = e.currentTarget.getBoundingClientRect();
+    if (!cells || r.width <= 0 || r.height <= 0) return null;
+    const i = Math.floor(((e.clientX - r.left) * cells.w) / r.width / CELL);
+    const j = Math.floor(((e.clientY - r.top) * cells.h) / r.height / CELL);
+    return i >= 0 && j >= 0 && i < cells.nx && j < cells.ny ? cells.keys[j * cells.nx + i] : null;
+  };
   return (
     <g>
-      {points.map(([x, y, mark, onLine], k) => {
-        const cx = Number(xs(x)), cy = Number(ys(y));
-        if (!inside(cx, cy)) return null;
-        const fill = paint(mark) ?? axis;
-        return <circle key={k} cx={cx} cy={cy} r={onLine ? 3 : 2.5} fill={onLine ? "none" : fill} stroke={onLine ? fill : "none"} strokeWidth={1.25} pointerEvents="none" />;
-      })}
+      {dots}
       <rect
         className="nodrag nopan solenoid-node__regions-pick"
         x={area.x} y={area.y} width={area.width} height={area.height}
         fill="transparent" style={{ cursor: "pointer" }}
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
-        onPointerMove={(e) => onHover(keyAt(e))}
+        onPointerMove={(e) => onHover(hoverKey(e))}
         onPointerLeave={() => onHover(null)}
         onClick={(e) => {
           e.stopPropagation();
@@ -1282,7 +1323,8 @@ export function RegionsFigure({ chart, cuts, points, marks, labels, width, heigh
   labels: readonly string[] | null;
   width: number; height: number; fontScale?: number; onToggle: (key: string) => void;
 }) {
-  const [hover, setHover] = useState<string | null>(null);
+  const [hoverAt] = useState(hoverStore);
+  const [cellsRef] = useState<CellsRef>(() => ({ current: null }));
   useChartColors();
   const colors = useSeriesColors();
   const yes = resolveColor("green"), no = resolveColor("vermilion");
@@ -1293,7 +1335,13 @@ export function RegionsFigure({ chart, cuts, points, marks, labels, width, heigh
   // A Text card's region colors come from the palette, so its lines draw in the neutral ink.
   const ink = count === null ? null : getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#e6e6e6";
   const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
-  const extent = useMemo(() => points.map(([x, y]) => ({ x, y })), [points]);
+  // The points' corners are all the axes need to take them in.
+  const extent = useMemo(() => {
+    if (!points.length) return [];
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of points) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    return [{ x: x0, y: y0 }, { x: x1, y: y1 }];
+  }, [points]);
   // The chart's own markers go: the only dots on the card are the points being sorted.
   const payload = useMemo(() => {
     const p = chart.payload as XYPayload;
@@ -1305,8 +1353,8 @@ export function RegionsFigure({ chart, cuts, points, marks, labels, width, heigh
   return (
     <XYView
       payload={payload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={refs}
-      under={<RegionShade cutsText={cutsText} marks={marks} paint={paint} hover={hover} curves={curves} />}
-      over={<RegionPick cutsText={cutsText} points={points} paint={paint} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
+      under={<RegionShade cutsText={cutsText} marks={marks} paint={paint} hoverAt={hoverAt} curves={curves} cellsRef={cellsRef} />}
+      over={<RegionPick cutsText={cutsText} points={points} paint={paint} onHover={hoverAt.set} onToggle={onToggle} cellsRef={cellsRef} />}
       extent={extent}
     />
   );
