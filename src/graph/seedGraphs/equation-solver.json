@@ -8,7 +8,7 @@
       "id": "note-head",
       "type": "NoteNode",
       "x": -316,
-      "y": 3477,
+      "y": 3475,
       "init": {
         "label": "One equation, any direction",
         "body": "An **Equation** node has no fixed output: every variable is an input *and* an output. Leave exactly one unwired and it solves for it; wire them all and **Check** answers TRUE/FALSE. Edit any equation below or unwire a different variable to change what gets solved.",
@@ -20,7 +20,7 @@
       "id": "n-dist",
       "type": "ValueInputNode",
       "x": 468,
-      "y": 3554,
+      "y": 3551,
       "init": {
         "label": "Distance km",
         "op": "number",
@@ -35,7 +35,7 @@
       "id": "n-time",
       "type": "ValueInputNode",
       "x": 468,
-      "y": 3761,
+      "y": 3758,
       "init": {
         "label": "Time h",
         "op": "number",
@@ -50,7 +50,7 @@
       "id": "eq-speed",
       "type": "EquationNode",
       "x": 742,
-      "y": 3586,
+      "y": 3583,
       "init": {
         "label": "d = s·t (find speed)",
         "expr": "d = s * t"
@@ -60,7 +60,7 @@
       "id": "disp-speed",
       "type": "DisplayNode",
       "x": 1071,
-      "y": 3721,
+      "y": 3718,
       "init": {
         "label": "Speed km/h"
       }
@@ -69,7 +69,7 @@
       "id": "n-speed2",
       "type": "ValueInputNode",
       "x": 903,
-      "y": 3158,
+      "y": 3155,
       "init": {
         "label": "Speed km/h",
         "op": "number",
@@ -84,7 +84,7 @@
       "id": "n-time2",
       "type": "ValueInputNode",
       "x": 903,
-      "y": 3365,
+      "y": 3362,
       "init": {
         "label": "Time h",
         "op": "number",
@@ -99,7 +99,7 @@
       "id": "eq-dist",
       "type": "EquationNode",
       "x": 1178,
-      "y": 3170,
+      "y": 3167,
       "init": {
         "label": "d = s·t (find distance)",
         "expr": "d = s * t"
@@ -109,7 +109,7 @@
       "id": "disp-dist",
       "type": "DisplayNode",
       "x": 1507,
-      "y": 3263,
+      "y": 3260,
       "init": {
         "label": "Distance km"
       }
@@ -118,7 +118,7 @@
       "id": "note-directions",
       "type": "NoteNode",
       "x": 468,
-      "y": 3158,
+      "y": 3155,
       "init": {
         "label": "Same equation, twice",
         "body": "Both cards hold the identical `d = s * t`. The top one gets distance and time, so **s** comes out; the bottom one gets speed and time, so **d** does. No rearranging.",
@@ -130,7 +130,7 @@
       "id": "n-hyp",
       "type": "ValueInputNode",
       "x": 1154,
-      "y": 1325,
+      "y": 1329,
       "init": {
         "label": "Hypotenuse c",
         "op": "number",
@@ -145,7 +145,7 @@
       "id": "n-lega",
       "type": "ValueInputNode",
       "x": 1154,
-      "y": 1532,
+      "y": 1536,
       "init": {
         "label": "Leg a",
         "op": "number",
@@ -160,7 +160,7 @@
       "id": "eq-pyth",
       "type": "EquationNode",
       "x": 1429,
-      "y": 1378,
+      "y": 1382,
       "init": {
         "label": "Pythagoras, backwards",
         "expr": "c = SQRT(a^2 + b^2)"
@@ -170,7 +170,7 @@
       "id": "disp-legb",
       "type": "DisplayNode",
       "x": 1758,
-      "y": 1554,
+      "y": 1558,
       "init": {
         "label": "Leg b"
       }
@@ -179,7 +179,7 @@
       "id": "note-invert",
       "type": "NoteNode",
       "x": 1154,
-      "y": 1165,
+      "y": 1169,
       "init": {
         "label": "Functions invert too",
         "body": "The solver peels the algebra step by step. Here it squares away the SQRT, then subtracts a². EXP/LN, LOG, trig and % invert the same way. Roots take the principal branch: b = 12, not −12.",
@@ -191,7 +191,7 @@
       "id": "n-pv",
       "type": "ValueInputNode",
       "x": -292,
-      "y": 2230,
+      "y": 2234,
       "init": {
         "label": "Start value",
         "op": "number",
@@ -206,7 +206,7 @@
       "id": "n-fv",
       "type": "ValueInputNode",
       "x": -292,
-      "y": 2023,
+      "y": 2027,
       "init": {
         "label": "Target value",
         "op": "number",
@@ -221,7 +221,7 @@
       "id": "n-years",
       "type": "ValueInputNode",
       "x": -292,
-      "y": 2437,
+      "y": 2441,
       "init": {
         "label": "Years",
         "op": "number",
@@ -236,7 +236,7 @@
       "id": "eq-growth",
       "type": "EquationNode",
       "x": -11,
-      "y": 2146,
+      "y": 2150,
       "init": {
         "label": "Compound growth",
         "expr": "fv = pv * (1 + r) ^ n"
@@ -246,7 +246,7 @@
       "id": "disp-rate",
       "type": "DisplayNode",
       "x": 318,
-      "y": 2334,
+      "y": 2338,
       "init": {
         "label": "Rate to double"
       }
@@ -255,7 +255,7 @@
       "id": "note-growth",
       "type": "NoteNode",
       "x": -292,
-      "y": 1863,
+      "y": 1867,
       "init": {
         "label": "The rule of 72, exactly",
         "body": "\"What growth rate doubles my money in 10 years?\" is a solve-for-the-exponent-base question. Excel needs RATE() or Goal Seek for this. The answer, ≈ 0.0718, is where the rule of 72 comes from.",
@@ -267,7 +267,7 @@
       "id": "n-cubic",
       "type": "ValueInputNode",
       "x": 304,
-      "y": 1374,
+      "y": 1378,
       "init": {
         "label": "Right side",
         "op": "number",
@@ -282,7 +282,7 @@
       "id": "eq-cubic",
       "type": "EquationNode",
       "x": 573,
-      "y": 1315,
+      "y": 1319,
       "init": {
         "label": "x³ + x = 10",
         "expr": "x^3 + x = c"
@@ -292,7 +292,7 @@
       "id": "disp-root",
       "type": "DisplayNode",
       "x": 902,
-      "y": 1396,
+      "y": 1400,
       "init": {
         "label": "Root x"
       }
@@ -301,7 +301,7 @@
       "id": "note-numeric",
       "type": "NoteNode",
       "x": 304,
-      "y": 1165,
+      "y": 1169,
       "init": {
         "label": "When algebra can't",
         "body": "x appears twice, so no rearrangement isolates it. The node switches to root-finding on LHS − RHS and returns x = 2. If no real root exists, it says so with **#SOLVE!**.",
@@ -313,7 +313,7 @@
       "id": "eq-quad",
       "type": "EquationNode",
       "x": -277,
-      "y": 1335,
+      "y": 1339,
       "init": {
         "label": "x² − 36 = 0",
         "expr": "x^2 - 36 = 0"
@@ -323,7 +323,7 @@
       "id": "disp-quad",
       "type": "DisplayNode",
       "x": 52,
-      "y": 1404,
+      "y": 1408,
       "init": {
         "label": "Both roots"
       }
@@ -332,7 +332,7 @@
       "id": "note-quad",
       "type": "NoteNode",
       "x": -292,
-      "y": 1165,
+      "y": 1169,
       "init": {
         "label": "Quadratics keep both roots",
         "body": "A relation that is quadratic in the unknown, however it's arranged, solves with the quadratic formula and outputs **every real root** as a list: [−6, 6] here, never just the positive branch. A repeated root comes out as one value; no real root is **#SOLVE!**.",
@@ -344,7 +344,7 @@
       "id": "n-ta",
       "type": "ValueInputNode",
       "x": 1005,
-      "y": 1863,
+      "y": 1867,
       "init": {
         "label": "Side a",
         "op": "number",
@@ -359,7 +359,7 @@
       "id": "n-tb",
       "type": "ValueInputNode",
       "x": 1005,
-      "y": 2070,
+      "y": 2074,
       "init": {
         "label": "Side b",
         "op": "number",
@@ -374,7 +374,7 @@
       "id": "n-tc",
       "type": "ValueInputNode",
       "x": 1005,
-      "y": 2277,
+      "y": 2281,
       "init": {
         "label": "Hypotenuse c",
         "op": "number",
@@ -389,7 +389,7 @@
       "id": "eq-check-true",
       "type": "EquationNode",
       "x": 1286,
-      "y": 1999,
+      "y": 2003,
       "init": {
         "label": "3-4-5 triangle?",
         "expr": "a^2 + b^2 = c^2"
@@ -399,7 +399,7 @@
       "id": "disp-true",
       "type": "DisplayNode",
       "x": 1615,
-      "y": 2183,
+      "y": 2187,
       "init": {
         "label": "Right-angled?"
       }
@@ -408,7 +408,7 @@
       "id": "n-fa",
       "type": "ValueInputNode",
       "x": 570,
-      "y": 2466,
+      "y": 2470,
       "init": {
         "label": "Side a",
         "op": "number",
@@ -423,7 +423,7 @@
       "id": "n-fb",
       "type": "ValueInputNode",
       "x": 570,
-      "y": 2673,
+      "y": 2677,
       "init": {
         "label": "Side b",
         "op": "number",
@@ -438,7 +438,7 @@
       "id": "n-fc",
       "type": "ValueInputNode",
       "x": 570,
-      "y": 2880,
+      "y": 2884,
       "init": {
         "label": "Hypotenuse c",
         "op": "number",
@@ -453,7 +453,7 @@
       "id": "eq-check-false",
       "type": "EquationNode",
       "x": 851,
-      "y": 2602,
+      "y": 2606,
       "init": {
         "label": "7-8-11 triangle?",
         "expr": "a^2 + b^2 = c^2"
@@ -463,7 +463,7 @@
       "id": "disp-false",
       "type": "DisplayNode",
       "x": 1180,
-      "y": 2786,
+      "y": 2790,
       "init": {
         "label": "Right-angled?"
       }
@@ -472,7 +472,7 @@
       "id": "note-check",
       "type": "NoteNode",
       "x": 570,
-      "y": 1863,
+      "y": 1867,
       "init": {
         "label": "All knowns → a check",
         "body": "With every variable wired, there is nothing left to solve, so **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
@@ -484,7 +484,7 @@
       "id": "list-dist",
       "type": "ListInputNode",
       "x": 2025,
-      "y": 1325,
+      "y": 1329,
       "init": {
         "label": "Distances km",
         "valueKeys": [
@@ -503,7 +503,7 @@
       "id": "n-time3",
       "type": "ValueInputNode",
       "x": 2025,
-      "y": 1590,
+      "y": 1594,
       "init": {
         "label": "Time h",
         "op": "number",
@@ -518,7 +518,7 @@
       "id": "eq-broadcast",
       "type": "EquationNode",
       "x": 2299,
-      "y": 1412,
+      "y": 1416,
       "init": {
         "label": "Solve a whole column",
         "expr": "d = s * t"
@@ -528,7 +528,7 @@
       "id": "disp-speeds",
       "type": "DisplayNode",
       "x": 2628,
-      "y": 1544,
+      "y": 1548,
       "init": {
         "label": "Speeds km/h"
       }
@@ -537,7 +537,7 @@
       "id": "note-broadcast",
       "type": "NoteNode",
       "x": 2010,
-      "y": 1165,
+      "y": 1169,
       "init": {
         "label": "Solving broadcasts",
         "body": "Wire a list into a known and the solved variable comes out as a list: three distances over the same 2 h give three speeds. The rearranged form is an ordinary formula underneath, so it maps like one.",
@@ -549,7 +549,7 @@
       "id": "grp-directions",
       "type": "GroupNode",
       "x": 444,
-      "y": 3100,
+      "y": 3097,
       "init": {
         "label": "Same equation, twice",
         "members": [
@@ -573,7 +573,7 @@
       "id": "grp-invert",
       "type": "GroupNode",
       "x": 1130,
-      "y": 1107,
+      "y": 1111,
       "init": {
         "label": "Functions invert",
         "members": [
@@ -593,7 +593,7 @@
       "id": "grp-growth",
       "type": "GroupNode",
       "x": -316,
-      "y": 1805,
+      "y": 1809,
       "init": {
         "label": "Rule of 72",
         "members": [
@@ -614,7 +614,7 @@
       "id": "grp-numeric",
       "type": "GroupNode",
       "x": 280,
-      "y": 1107,
+      "y": 1111,
       "init": {
         "label": "When algebra can't",
         "members": [
@@ -633,7 +633,7 @@
       "id": "grp-quad",
       "type": "GroupNode",
       "x": -316,
-      "y": 1107,
+      "y": 1111,
       "init": {
         "label": "Both roots",
         "members": [
@@ -651,7 +651,7 @@
       "id": "grp-check",
       "type": "GroupNode",
       "x": 546,
-      "y": 1805,
+      "y": 1809,
       "init": {
         "label": "All knowns make a check",
         "members": [
@@ -677,7 +677,7 @@
       "id": "grp-broadcast",
       "type": "GroupNode",
       "x": 1986,
-      "y": 1107,
+      "y": 1111,
       "init": {
         "label": "Solving broadcasts",
         "members": [
