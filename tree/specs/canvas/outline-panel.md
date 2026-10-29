@@ -30,6 +30,7 @@ While open, the panel polls the graph every 300 ms and re-renders only when an o
 - Ctrl or Cmd click and Shift click add to the selection or select a range without recentering; on a touch device in select mode a tap accumulates too.
 - On mobile a plain tap selects and jumps, since there is no double click.
 - Ctrl or Cmd+F, without Shift, opens the panel and focuses its search, except under a modal (`keyUnderModal`), where the search would open behind it and take its focus.
+- **Keyboard**: the list is an ARIA tree with one row in the tab order, on the Files tree's keys ([[workspace-tree#The pane]]): Up, Down, Home and End move; Right opens a folded group or steps into it, Left folds it or steps out to its group (folding only in the unfiltered tree); Enter selects and centers, as a double click does; Space adds the row to the selection or takes it out; typed letters jump. Keys the list takes stop there, so an arrow never also nudges the selected cards.
 - The header's collapse-all button toggles every group through `setGroupsCollapsed`, so the neighbor push and expand sweep apply. Its glyph shows the action: converging to collapse, diverging to expand.
 
 ## Layout

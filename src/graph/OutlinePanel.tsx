@@ -25,6 +25,7 @@ import { documentStore } from "./documentStore";
 import { WorkspaceTree, RowMenu, Glyph, filesAddMenu, type MenuItem } from "./WorkspaceTree";
 import { isNavPreview } from "./workspacePreview";
 import { searchLibrary, type SearchHit } from "./workspaceSearch";
+import { treeKeyStep, typeAhead, type KeyRow, type TreeKey } from "./workspaceRows";
 import { nodeNameStore } from "./nodeNameStore";
 
 
@@ -364,6 +365,52 @@ export function OutlinePanel() {
   };
 
   const lastClicked = useRef<string | null>(null);
+  // The Outline is an ARIA tree too, with the Files tree's keys; workspace-tree.md § The pane.
+  const [rowFocus, setRowFocus] = useState<string | null>(null);
+  const rowEls = useRef(new Map<string, HTMLDivElement>());
+  const typedRef = useRef({ text: "", at: 0 });
+  const keyRows: KeyRow[] = view.map((r) => ({ key: r.id, depth: r.depth, expandable: r.isGroup && !query.trim() && filters.size === 0, expanded: !r.collapsed, label: r.label }));
+  const focusable = keyRows.some((r) => r.key === rowFocus) ? rowFocus : view.find((r) => r.selected)?.id ?? view[0]?.id;
+  const moveRowFocus = (id: string | undefined) => {
+    if (!id) return;
+    setRowFocus(id);
+    requestAnimationFrame(() => rowEls.current.get(id)?.focus());
+  };
+  const onListKey = (e: KeyboardEvent) => {
+    const el = (e.target as HTMLElement).closest(".solenoid-outline__row[data-node]") as HTMLElement | null;
+    if (!el || e.target !== el) return;
+    const id = el.dataset.node!;
+    // Keys the tree takes stop here, or the canvas would nudge the selected cards on the same arrow.
+    const take = () => { e.preventDefault(); e.stopPropagation(); };
+    const steps: Record<string, TreeKey> = { ArrowUp: "up", ArrowDown: "down", Home: "home", End: "end", ArrowLeft: "left", ArrowRight: "right" };
+    if (steps[e.key]) {
+      take();
+      const out = treeKeyStep(keyRows, id, steps[e.key]);
+      if (out.toggle) toggleGroup(out.toggle.key);
+      moveRowFocus(out.focus);
+      return;
+    }
+    if (e.key === "Enter") { take(); handleRowDoubleClick(id); return; }
+    if (e.key === " ") {
+      take();
+      const editor = getEditor();
+      if (!editor) return;
+      const sel = new Set(editor.getNodes().filter((n) => (n as { selected?: boolean }).selected).map((n) => n.id));
+      sel.has(id) ? sel.delete(id) : sel.add(id);
+      lastClicked.current = id;
+      unselectAllNodes();
+      for (const s of sel) selectNode(s, true);
+      return;
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      take();
+      const now = performance.now();
+      typedRef.current = { text: (now - typedRef.current.at < 700 ? typedRef.current.text : "") + e.key, at: now };
+      const i = keyRows.findIndex((r) => r.key === id);
+      moveRowFocus(typeAhead(keyRows, typedRef.current.text.length > 1 ? keyRows[i - 1]?.key ?? id : id, typedRef.current.text));
+    }
+  };
+
   const handleRowDoubleClick = (id: string) => {
     lastClicked.current = id;
     void focusNode(id);
@@ -490,7 +537,7 @@ export function OutlinePanel() {
     </>
   );
   const listBody = (
-    <>
+    <div className="solenoid-outline__tree" role="tree" aria-label="Outline" onKeyDown={(e) => onListKey(e.nativeEvent)}>
         {hits.length > 0 && view.length > 0 && <div className="solenoid-outline__heading">This document</div>}
         {view.length === 0 ? (
           hits.length === 0 && <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
@@ -511,6 +558,14 @@ export function OutlinePanel() {
                     }
                   : null),
               } as CSSProperties}
+              role="treeitem"
+              aria-level={r.depth + 1}
+              aria-expanded={r.isGroup ? !r.collapsed : undefined}
+              aria-selected={r.selected}
+              data-node={r.id}
+              tabIndex={r.id === focusable ? 0 : -1}
+              ref={(el) => { if (el) rowEls.current.set(r.id, el); else rowEls.current.delete(r.id); }}
+              onFocus={(e) => { if (e.target === e.currentTarget) setRowFocus(r.id); }}
               onClick={(e) => handleRowClick(e, r.id)}
               onDoubleClick={() => handleRowDoubleClick(r.id)}
             >
@@ -608,7 +663,7 @@ export function OutlinePanel() {
             ))}
           </>
         )}
-    </>
+    </div>
   );
   const collapseAll = (
     <>

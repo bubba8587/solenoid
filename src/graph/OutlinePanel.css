@@ -572,3 +572,6 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+.solenoid-outline__row[data-node]:focus { outline: none; }
+.solenoid-outline__row[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.solenoid-outline__row--group[data-node]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08); }

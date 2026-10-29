@@ -98,9 +98,11 @@ export function rekeyExpanded(expanded: ReadonlySet<string>, from: string, to: s
 }
 
 export type TreeKey = "up" | "down" | "home" | "end" | "left" | "right";
+/** What the tree keys read off a row; the Files rows and the Outline's rows both have it. */
+export type KeyRow = { key: string; depth: number; expandable: boolean; expanded: boolean; label: string };
 
 /** ARIA tree keys over the visible rows: which row takes focus, or which row folds or unfolds. */
-export function treeKeyStep(rows: TreeRow[], key: string, step: TreeKey): { focus?: string; toggle?: TreeRow } {
+export function treeKeyStep<R extends KeyRow>(rows: R[], key: string, step: TreeKey): { focus?: string; toggle?: R } {
   const i = rows.findIndex((r) => r.key === key);
   if (i < 0) return rows.length ? { focus: rows[0].key } : {};
   const r = rows[i];
@@ -121,7 +123,7 @@ export function treeKeyStep(rows: TreeRow[], key: string, step: TreeKey): { focu
 }
 
 /** Type-to-jump: the next row after `key` whose name starts with `prefix`, wrapping, ignoring case. */
-export function typeAhead(rows: TreeRow[], key: string, prefix: string): string | undefined {
+export function typeAhead(rows: KeyRow[], key: string, prefix: string): string | undefined {
   const p = prefix.toLowerCase();
   const i = rows.findIndex((r) => r.key === key);
   for (let n = 1; n <= rows.length; n++) {
