@@ -319,6 +319,8 @@ export function OutlinePanel() {
     }
   }, [searchSignal, open]);
 
+  // The rows rebuild on a 300 ms poll; a keyboard fold rebuilds them at once, so the next key reads the fold it just made.
+  const tickRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!open) return;
     let prev = "";
@@ -330,8 +332,9 @@ export function OutlinePanel() {
       if (sig !== prev) { prev = sig; setState(next); }
     };
     tick();
+    tickRef.current = tick;
     const id = window.setInterval(tick, 300);
-    return () => window.clearInterval(id);
+    return () => { window.clearInterval(id); tickRef.current = null; };
   }, [mode, open, sortMode]);
 
   const view = useMemo(() => {
@@ -382,7 +385,9 @@ export function OutlinePanel() {
   };
   const onListKey = (e: KeyboardEvent) => {
     const el = (e.target as HTMLElement).closest(".solenoid-outline__row[data-node]") as HTMLElement | null;
-    if (!el || e.target !== el) return;
+    if (!el) return;
+    // On a row's own button (chevron, connections) the arrows still walk the list; Enter, Space and letters stay the button's.
+    const onChild = e.target !== el;
     const id = el.dataset.node!;
     // Keys the tree takes stop here, or the canvas would nudge the selected cards on the same arrow.
     const take = () => { e.preventDefault(); e.stopPropagation(); };
@@ -390,10 +395,11 @@ export function OutlinePanel() {
     if (steps[e.key]) {
       take();
       const out = treeKeyStep(keyRows, id, steps[e.key]);
-      if (out.toggle) toggleGroup(out.toggle.key);
+      if (out.toggle) { toggleGroup(out.toggle.key); tickRef.current?.(); }
       moveRowFocus(out.focus);
       return;
     }
+    if (onChild) return;
     if (e.key === "Enter") { take(); handleRowDoubleClick(id); return; }
     if (e.key === " ") {
       take();
@@ -568,7 +574,17 @@ export function OutlinePanel() {
               aria-selected={r.selected}
               data-node={r.id}
               tabIndex={r.id === focusable ? 0 : -1}
-              ref={(el) => { if (el) rowEls.current.set(r.id, el); else rowEls.current.delete(r.id); }}
+              ref={(el) => {
+                if (el) { rowEls.current.set(r.id, el); return; }
+                const had = rowEls.current.get(r.id) === document.activeElement || document.activeElement === document.body;
+                rowEls.current.delete(r.id);
+                // A fold can unmount the focused row; focus falls back inside the list rather than to the page, where arrows would nudge cards.
+                if (had && rowFocus === r.id) requestAnimationFrame(() => {
+                  if (document.activeElement && document.activeElement !== document.body) return;
+                  const back = [...rowEls.current.values()].find((x) => x.isConnected);
+                  back?.focus();
+                });
+              }}
               onFocus={(e) => { if (e.target === e.currentTarget) setRowFocus(r.id); }}
               onClick={(e) => handleRowClick(e, r.id)}
               onDoubleClick={() => handleRowDoubleClick(r.id)}

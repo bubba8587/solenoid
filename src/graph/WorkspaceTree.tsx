@@ -120,6 +120,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
   const [dropKey, setDropKey] = useState<string | null>(null);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   // A long press opens the row menu on touch, where iOS never sends contextmenu; the click it would end in is swallowed.
+  // Any next pointerdown clears a fired press, so one that ended with no click (Android often sends none) can't swallow a later click or right-click.
   const press = useRef<{ timer: number; x: number; y: number; fired: boolean } | null>(null);
   const cancelPress = () => { if (press.current) window.clearTimeout(press.current.timer); press.current = null; };
   const drag = useRef<Drag | null>(null);
@@ -264,7 +265,8 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
   const toggleRow = (r: TreeRow) => toggle(r.kind === "doc" && r.docId ? docFoldedKey(r.docId) : r.key);
   const onTreeKey = (e: KeyboardEvent) => {
     const el = (e.target as HTMLElement).closest(".solenoid-files__row") as HTMLElement | null;
-    if (!el || e.target !== el || renaming) return;
+    if (!el || renaming || (e.target as HTMLElement).closest(".solenoid-files__rename")) return;
+    const onChild = e.target !== el;
     const key = el.dataset.key!;
     const r = rows.find((x) => x.key === key);
     if (!r) return;
@@ -278,6 +280,7 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
       moveFocus(out.focus);
       return;
     }
+    if (onChild) return;
     if (e.key === "Enter" || e.key === " ") { take(); onRowClick(r); return; }
     if (r.sample) return;
     if (e.key === "F2") { take(); startRename(r.kind === "doc" ? { kind: "doc", id: r.docId! } : { kind: "folder", path: r.folderPath! }, r.label); return; }
@@ -371,8 +374,8 @@ export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?
               onDragOver={(e) => onDragOver(e, r)}
               onDrop={(e) => onDrop(e, r)}
               onPointerDown={(e) => {
-                if (e.pointerType !== "touch" || !real) return;
                 cancelPress();
+                if (e.pointerType !== "touch" || !real || (e.target as HTMLElement).closest(".solenoid-files__more")) return;
                 const at = { x: e.clientX, y: e.clientY };
                 const p = { x: at.x, y: at.y, fired: false, timer: 0 };
                 p.timer = window.setTimeout(() => {
