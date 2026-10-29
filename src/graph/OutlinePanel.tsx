@@ -1,5 +1,5 @@
 // [[C88]] collapsedGroupCard, [[C85]] groupPushDeterministic
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { connectionVersionStore } from "./graphSignals";
@@ -344,7 +344,7 @@ export function OutlinePanel() {
   return (
     <div className="solenoid-outline" onPointerDown={(e) => e.stopPropagation()}>
       <div className="solenoid-outline__header">
-        <span className="solenoid-outline__title">Outline</span>
+        <span className="solenoid-outline__title">Navigator</span>
         <span className="solenoid-outline__count">{state.flat.length}</span>
         {groupRows.length > 0 && (
           <button
@@ -375,7 +375,7 @@ export function OutlinePanel() {
             </svg>
           </button>
         )}
-        <button className="solenoid-outline__collapse" title="Hide outline" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
+        <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
       </div>
       <input
         ref={inputRef}
@@ -424,15 +424,14 @@ export function OutlinePanel() {
             <div
               className={`solenoid-outline__row${r.selected ? " solenoid-outline__row--sel" : ""}${r.isGroup ? " solenoid-outline__row--group" : ""}`}
               style={{
-                paddingLeft: 8 + r.depth * 14,
+                "--depth": r.depth,
                 ...(r.isGroup
                   ? {
                       background: hexToRgba(r.color, 0.24),
-                      border: `1px solid ${hexToRgba(r.color, 0.55)}`,
-                      boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined,
+                      "--group-edge": hexToRgba(r.color, 0.55),
                     }
                   : null),
-              }}
+              } as CSSProperties}
               onClick={(e) => handleRowClick(e, r.id)}
               onDoubleClick={() => handleRowDoubleClick(r.id)}
             >
@@ -471,7 +470,7 @@ export function OutlinePanel() {
               )}
             </div>
             {showConns && (
-              <div className="solenoid-outline__conns" style={{ paddingLeft: 8 + r.depth * 14 + 18 }}>
+              <div className="solenoid-outline__conns" style={{ "--depth": r.depth } as CSSProperties}>
                 {nodeConnections(r.id).map((row) => (
                   <div className="solenoid-outline__conn" key={row.id}>
                     <span className="solenoid-outline__conn-text" title={

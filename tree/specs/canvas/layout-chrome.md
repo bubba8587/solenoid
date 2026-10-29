@@ -136,7 +136,7 @@ The top chrome becomes two rows.
 | --- | --- | --- |
 | Menu hamburger sheet | `82px + safe-area` (right at the edge) | `mobile.css` |
 | Nav pill | `92px + safe-area` (the edge plus a 10 gap) | `mobile.css` |
-| Navigator panel | `88px + safe-area` (its bottom derives: `chrome-bottom + 27px`) | `mobile.css` |
+| Navigator panel | `92px + safe-area`, level with the nav pill (its bottom derives: `chrome-bottom + 27px`) | `mobile.css` |
 | Align pill (`.solenoid-selbar`) | `92px + safe-area`, level with the nav pill | `selectionActions.css` |
 | Command palette (top-anchored on mobile) | `92px + safe-area`, level with the nav pill | `CommandPalette.css` |
 | Web-demo notice | `48px + safe-area` | `mobile.css` |
@@ -156,7 +156,7 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`), 
 
 - **The hamburger sheet** sits below both rows (`82px + safe-area`), sized to its widest content up to `min(280px, 86vw)`. Its height is cropped (`100dvh − 150px` minus both insets) so it never runs under the bottom-left undo and redo pill, whose top sits about 86px plus the inset above the bottom. Keyboard-shortcut hints are hidden, since a phone has no keyboard and they stretch every row. Its cables section re-renders the top bar's `CableShapeSelector` (hidden up there on touch) with finger-sized segments on one centered row.
 - **The nav pill** keeps only the canvas controls, Fit and Lock: zoom in and out are dropped (the pinch does it), and the cable-flourish button is desktop-only. Its buttons are 30px, scoped to the pill so Row B's layout buttons keep their own size.
-- **The navigator** loses its collapsed open-pill, because Search lives in the bottom bar and opens the navigator focused on its search field. The panel is `min(248px, 84vw)` wide.
+- **The navigator** loses its collapsed open-pill, because Search lives in the bottom bar and opens the navigator focused on its search field. The panel is `min(248px, 84vw)` wide. Its controls take the finger sizes the other mobile sheets use: 32px pills (the filter chips and the sort toggle alike), 32px header buttons, 28px connection targets that hang into the row's padding rather than growing it, and the Add menu's press-only tint in place of a sticky hover.
 - **The web-demo notice** is narrow and centered between the corner controls (`max-width: calc(100vw − 120px)`), wraps its text, and drops the desktop download button.
 - **The command palette** anchors to the top with the input first and the results below, because the on-screen keyboard owns the bottom half; desktop keeps the input at the bottom. Rows get touch-sized padding, and shortcut hints are hidden.
 - **The Add menu** is compact enough that a standard 12-item menu renders without scrolling (rows of about 30px), capped at `92vw` and `min(86dvh, 448px)` so an open from the ➕ never runs off the screen.

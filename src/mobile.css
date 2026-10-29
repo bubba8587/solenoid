@@ -213,14 +213,38 @@ html.is-mobile {
   /* ── Navigator ── */
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
-    top: calc(88px + env(safe-area-inset-top));
+    top: calc(92px + env(safe-area-inset-top));
     bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px);
     width: min(248px, 84vw);
   }
-  .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
-  .solenoid-outline__chip { height: 32px; font-size: 13px; }
-  .solenoid-outline__row { padding: 9px 8px; font-size: 14px; }
-  .solenoid-outline__search { height: 34px; font-size: 14px; }
+  .solenoid-outline__collapse,
+  .solenoid-outline__collapse-all { width: 32px; height: 32px; }
+  .solenoid-outline__collapse-all svg { width: 16px; height: 16px; }
+  .solenoid-outline__search { height: 36px; font-size: 14px; }
+  .solenoid-outline__chip,
+  .solenoid-outline__sortbtn { height: 32px; font-size: 13px; }
+  .solenoid-outline__sortbtn { padding: 0 14px; }
+  .solenoid-outline__sortlabel { font-size: 13px; }
+  .solenoid-outline__row { padding-top: 9px; padding-bottom: 9px; font-size: 14px; }
+  /* A finger-sized target that hangs into the row's padding rather than growing the row. */
+  .solenoid-outline__plug { min-height: 28px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
+  .solenoid-outline__plug svg { width: 14px; height: 14px; }
+  .solenoid-outline__plug-count { font-size: 12px; }
+  .solenoid-outline__conn { padding: 2px 4px; font-size: 13px; }
+  .solenoid-outline__conn-btn { width: 28px; height: 28px; }
+  .solenoid-outline__conn-btn svg { width: 14px; height: 14px; }
+  /* As in the Add menu: a finger leaves a sticky :hover behind a tap, so only the press itself tints. */
+  .solenoid-outline__row:not(.solenoid-outline__row--sel):not(.solenoid-outline__row--group):hover { background: transparent; }
+  .solenoid-outline__row--sel:hover { background: var(--accent-soft); }
+  .solenoid-outline__row--group:hover { box-shadow: inset 0 0 0 1px var(--group-edge); }
+  .solenoid-outline__row--group.solenoid-outline__row--sel:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+  .solenoid-outline__row:not(.solenoid-outline__row--group):active { background: var(--accent-soft); }
+  .solenoid-outline__chip:not(.solenoid-outline__chip--on):hover,
+  .solenoid-outline__sortbtn:not(.solenoid-outline__sortbtn--on):hover { color: var(--text-dim); border-color: var(--btn-border); }
+  .solenoid-outline__plug:hover,
+  .solenoid-outline__conn:hover,
+  .solenoid-outline__conn-btn:hover { background: transparent; }
+  .solenoid-outline__plug:not(.solenoid-outline__plug--on):hover { color: var(--text-muted); }
 
   /* ── Node chrome ── */
   .solenoid-segbtn { height: 30px; font-size: 11px; }

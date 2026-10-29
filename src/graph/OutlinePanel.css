@@ -49,13 +49,19 @@
   box-shadow: var(--shadow-pop);
   user-select: none;
   overflow: hidden;
+  --nav-gutter: 8px;
+  --nav-pad: 8px;
+  --nav-slot: 18px;
+  --nav-indent: 18px;
 }
+/* The list scrolls; nothing above it may shrink, or a long list squashes the search field. */
+.solenoid-outline > :not(.solenoid-outline__list) { flex-shrink: 0; }
 
 .solenoid-outline__header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px 8px 12px;
+  padding: 8px var(--nav-gutter) 8px calc(var(--nav-gutter) + var(--nav-pad));
   border-bottom: 1px solid var(--panel-border);
 }
 
@@ -112,9 +118,10 @@
 .solenoid-outline__collapse-all svg { display: block; }
 
 .solenoid-outline__search {
-  margin: 8px 8px 6px;
-  height: 26px;
-  padding: 0 8px;
+  margin: 8px var(--nav-gutter) 6px;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 calc(var(--nav-pad) - 1px);
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: 6px;
@@ -130,28 +137,30 @@
 .solenoid-outline__filters {
   display: flex;
   gap: 6px;
-  padding: 0 8px 8px;
+  padding: 0 var(--nav-gutter) 8px;
 }
 
 .solenoid-outline__sortrow {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 8px 8px;
+  padding: 0 var(--nav-gutter) 8px;
 }
 .solenoid-outline__sortlabel {
   font-size: 11px;
   color: var(--text-dim);
+  padding-left: var(--nav-pad);
   margin-right: auto;
 }
 .solenoid-outline__sortbtn {
-  height: 22px;
+  height: 24px;
   padding: 0 10px;
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: 999px;
   color: var(--text-dim);
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 11.5px;
   cursor: pointer;
 }
 .solenoid-outline__sortbtn:hover { color: var(--text); border-color: var(--btn-border-hover); }
@@ -184,8 +193,9 @@
 
 .solenoid-outline__list {
   flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 0 6px 6px;
+  padding: 0 var(--nav-gutter) var(--nav-gutter);
   /* Own layer and paint containment, so scrolling the list repaints only the list. */
   transform: translateZ(0);
   contain: paint;
@@ -204,7 +214,7 @@
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 5px 8px;
+  padding: 5px var(--nav-pad) 5px calc(var(--nav-pad) + var(--depth, 0) * var(--nav-indent));
   margin-top: 2px;
   border-radius: 6px;
   color: var(--text);
@@ -224,19 +234,25 @@
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
 }
+/* The group's edge is an inset shadow, not a border, so a group row is exactly as tall as a node row. */
 .solenoid-outline__row--group {
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--group-edge);
 }
+.solenoid-outline__row--group.solenoid-outline__row--sel { box-shadow: inset 0 0 0 2px var(--accent); }
 .solenoid-outline__row--group:hover {
   background: inherit;
   /* An inset overlay, not `filter: brightness()`: filter promotes the hovered row to a layer, and that churn lags a scroll. */
-  box-shadow: inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--group-edge), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
+}
+.solenoid-outline__row--group.solenoid-outline__row--sel:hover {
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
 
 .solenoid-outline__chevron {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: var(--nav-slot);
+  height: var(--nav-slot);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -248,10 +264,12 @@
 }
 .solenoid-outline__chevron svg { display: block; transition: transform 90ms ease; }
 
+/* Centered in the chevron's slot, so node labels and group labels share one column. */
 .solenoid-outline__dot {
   flex: 0 0 auto;
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
+  margin: 0 calc((var(--nav-slot) - 10px) / 2);
   border-radius: 2px;
 }
 
@@ -285,11 +303,13 @@
   line-height: 1;
 }
 
+/* Indented to the row's label column, less the connection row's own 4px pad. */
 .solenoid-outline__conns {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding-right: 6px;
+  padding-left: calc(var(--nav-pad) + var(--depth, 0) * var(--nav-indent) + var(--nav-slot) + 8px - 4px);
+  padding-right: calc(var(--nav-pad) - 4px);
   margin: 1px 0 3px;
 }
 
