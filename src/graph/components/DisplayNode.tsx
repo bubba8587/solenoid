@@ -108,7 +108,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     : undefined;
 
   return (
-    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={figure} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={figure} cappedBody={grow} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (

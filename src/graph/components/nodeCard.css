@@ -80,6 +80,21 @@
   width: max-content;
   min-width: 180px;
 }
+/* Content sizes a Display up to this and no further; a hand resize goes past it. */
+.solenoid-node.solenoid-node--display-grow:not(.solenoid-node--sized) {
+  max-width: 560px;
+}
+/* As a hand-sized body does: the content box scrolls inside its own border. */
+.solenoid-node__body--capped {
+  max-height: 480px;
+}
+.solenoid-node__body--capped > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+}
 
 .solenoid-node.solenoid-node--display-grow-scalar {
   width: max-content;

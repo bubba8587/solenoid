@@ -259,6 +259,7 @@ export function NodeShell({
   className,
   accentOverride,
   nonScrollingBody = false,
+  cappedBody = false,
 }: {
   node: ShellNode;
   emit: Emit;
@@ -273,6 +274,9 @@ export function NodeShell({
   accentOverride?: string;
   /** A figure body scales rather than scrolls, so a sized card must not trap the wheel (`nowheel`). */
   nonScrollingBody?: boolean;
+  /** A card sized by its content stops at the content cap until resized by hand; past it the body scrolls, and takes
+   *  the wheel only while it has something to scroll. */
+  cappedBody?: boolean;
 }) {
   const labelField = useDraftCommit<string>(
     node.label ?? "",
@@ -292,6 +296,23 @@ export function NodeShell({
   // The setting, not the zoom state: the zoom crossing is pure CSS on the root class, so nodes never subscribe to zoom.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
   const sized = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(node.id) !== undefined);
+  const capped = cappedBody && !sized;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  // The content box is what scrolls past the cap. Read after every render too, since new content can overflow a box
+  // whose own size stays put.
+  const checkOverflow = useCallback(() => {
+    const box = bodyRef.current?.lastElementChild;
+    setOverflowing(!!box && (box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1));
+  }, []);
+  useLayoutEffect(() => { if (capped) checkOverflow(); });
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!capped || !el) { setOverflowing(false); return; }
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [capped, checkOverflow]);
 
   // useLayoutEffect: the height must settle before paint, in the frame NodeCard measures --out-socket-top.
   useLayoutEffect(() => {
@@ -358,7 +379,14 @@ export function NodeShell({
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
-          <div className={sized && !nonScrollingBody ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
+          <div
+            ref={bodyRef}
+            className={[
+              "solenoid-node__body",
+              capped && "solenoid-node__body--capped",
+              ((sized && !nonScrollingBody) || (capped && overflowing)) && "nowheel",
+            ].filter(Boolean).join(" ")}
+          >{children}</div>
           {nodeResizable(node as unknown as GraphNode) && <ResizeHandle nodeId={node.id} />}
         </div>
         {semanticZoomSetting && (
