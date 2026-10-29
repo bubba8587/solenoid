@@ -24,6 +24,7 @@ import { rebuildGroupMembership } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
 import { isMobile } from "../coarse";
+import { useIsMobile } from "../useDeviceMode";
 import "../components/compositeEditor.css";
 
 const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n instanceof CompositeOutputNode;
@@ -262,6 +263,36 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     onEscape: () => void drillTo(compositeEditorStore.stack().length - 2),
   };
 
+  // On a phone the run controls fold into the strip under the crumbs; on desktop they are their own panel under it.
+  const phone = useIsMobile();
+  const runControls = (comp.inputPorts.length > 0 || comp.outputPorts.length > 0) && (
+    <div
+      className={`solenoid-composite-editor__controls${controlsOpen ? "" : " solenoid-composite-editor__controls--collapsed"}`}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="solenoid-composite-editor__controls-head"
+        onClick={() => setControlsOpen((v) => !v)}
+        title={controlsOpen ? "Hide run controls" : "Show run controls"}
+        aria-expanded={controlsOpen}
+      >
+        <span className="solenoid-composite-editor__controls-title">
+          {RUN_MODE_OPTIONS.find((o) => o.value === comp.runMode)?.label ?? "Run"}
+        </span>
+        <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"
+             style={{ display: "block", flexShrink: 0, transform: controlsOpen ? "rotate(180deg)" : undefined }}>
+          <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {controlsOpen && (
+        <div className="solenoid-composite-editor__controls-body">
+          <CompositeRunControls node={comp} insideOnly />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="solenoid-composite-editor__backdrop" ref={wrapperRef}>
       <FlowSurface stack={s} hooks={hooks}>
@@ -297,7 +328,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
             </span>
           ))}
         </div>
-        {/* On a phone the bottom bar's I and O beside the ➕ add ports, so the strip holds only the crumbs. */}
+        {/* On a phone the bottom bar's I and O beside the ➕ add ports; the strip holds the crumbs and the run controls. */}
         <div className="solenoid-composite-editor__strip-actions">
           <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("input")}>
             + Input
@@ -306,34 +337,9 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
             + Output
           </button>
         </div>
+        {phone && runControls}
       </div>
-      {(comp.inputPorts.length > 0 || comp.outputPorts.length > 0) && (
-        <div
-          className={`solenoid-composite-editor__controls${controlsOpen ? "" : " solenoid-composite-editor__controls--collapsed"}`}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="solenoid-composite-editor__controls-head"
-            onClick={() => setControlsOpen((v) => !v)}
-            title={controlsOpen ? "Hide run controls" : "Show run controls"}
-            aria-expanded={controlsOpen}
-          >
-            <span className="solenoid-composite-editor__controls-title">
-              {RUN_MODE_OPTIONS.find((o) => o.value === comp.runMode)?.label ?? "Run"}
-            </span>
-            <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"
-                 style={{ display: "block", flexShrink: 0, transform: controlsOpen ? "rotate(180deg)" : undefined }}>
-              <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {controlsOpen && (
-            <div className="solenoid-composite-editor__controls-body">
-              <CompositeRunControls node={comp} insideOnly />
-            </div>
-          )}
-        </div>
-      )}
+      {!phone && runControls}
     </div>
   );
 }

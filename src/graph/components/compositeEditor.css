@@ -215,6 +215,10 @@ html.is-mobile .solenoid-composite-editor__strip {
   border-radius: 0 0 8px 0;
   /* Docked into the chrome, not floating over it: the border is its edge, as the top bar's is. */
   box-shadow: none;
+  /* The crumbs, then the run controls under a hairline. */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   max-width: calc(100vw - 150px);
 }
 html.is-mobile .solenoid-composite-editor__strip-actions { display: none; }
@@ -231,15 +235,37 @@ html.is-mobile .solenoid-composite-editor__btn {
   padding: 7px 14px;
   font-size: 13px;
 }
-/* The backdrop sits below the app bars (z 4), so the panel rides just above the bottom pill or it hides behind it. */
-html.is-mobile .solenoid-composite-editor__controls {
-  top: auto;
-  bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
-  left: 8px;
-  width: min(280px, calc(100vw - 16px));
+/* On a phone the run controls are the strip's second row (FlowCompositeOverlay renders them inside it): no panel of their
+   own, a hairline above, a header the crumbs' size, the controls unfolding under it. */
+html.is-mobile .solenoid-composite-editor__strip .solenoid-composite-editor__controls {
+  position: static;
+  width: auto;
+  margin-top: 2px;
+  font-size: 11.5px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
 }
-html.is-mobile .solenoid-composite-editor__controls-head { min-height: 40px; }
-html.is-mobile .solenoid-composite-editor__controls-body { max-height: 40vh; max-height: 40dvh; }
+html.is-mobile .solenoid-composite-editor__controls-head {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 3px 3px 1px;
+  font-size: 11.5px;
+  border-radius: 4px;
+}
+html.is-mobile .solenoid-composite-editor__strip .solenoid-node__select {
+  height: 24px;
+  padding: 2px 22px 2px 6px;
+  font-size: 12px;
+}
+html.is-mobile .solenoid-composite-editor__controls-body {
+  gap: 3px;
+  padding: 2px 3px 2px;
+  max-height: 40vh;
+  max-height: 40dvh;
+}
 
 /* Off on mobile; this must come after the desktop re-show rule to win. */
 html.is-mobile .solenoid-composite-editor__host .solenoid-minimap { display: none; }
