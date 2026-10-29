@@ -12,11 +12,12 @@ The Outline, called the Navigator on screen, is the left-docked list of every no
 
 ## The list
 
-- **Unfiltered, it is a tree:** top-level nodes, and under each expanded group its members, indented 14 px per level.
+- **Unfiltered, it is a tree:** top-level nodes, and under each expanded group its members, indented 18 px per level, one icon slot, so a member's dot sits under its group's label.
 - **A search query or a filter chip switches to a flat list.** A query matches the display name and the catalog name (`nodeName`, the same string the card's hover hint shows).
 - **The filter chips are Inputs and Displays.** A node is an input when it is a source by either measure: it has no input sockets but has an output, so it counts before it is wired; or nothing is wired into it while its output is wired onward, which stops being true the moment an input is wired.
 - **Sorting** is Position (the default) or Alphabetical, remembered under `solenoid.navSort`. Position reads top to bottom in row bands of 120 world units, then left to right; the band is deliberately generous so the order doesn't react to small vertical jitter. Alphabetical compares display names numerically and ignoring case.
-- **A group row reads as a container:** its own color as a 24% tint fill inside a full 1 px border at 55%, never an accent stripe.
+- **A group row reads as a container:** its own color as a 24% tint fill inside a full 1 px edge at 55%, never an accent stripe. The edge is an inset shadow, so a group row is exactly as tall as a node row.
+- **Two columns.** Every control's box sits one gutter in from the panel edge and every text or icon one pad inside its box; a node's dot is centered in the chevron's slot, so group and node labels share one column.
 
 ## Keeping current
 
