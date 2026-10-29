@@ -311,7 +311,9 @@ idle is always the real DOM. There is no third renderer; do not build one.
 `TopBar`, `MenuBar`, `NavMenu` (seeds, export/import, tidy, fit), `StatusBar`,
 `Header`, `AppToolbar` (accent + light/dark via `appTheme.ts`), `OutlinePanel` (the Navigator:
 its Files section is `WorkspaceTree` over `workspaceRows.ts`, the pure row, fold and key logic, with
-`workspaceSearch.ts` for the every-document search and `workspacePreview.ts` the `?navpreview=1` sample),
+`workspaceSearch.ts` for the every-document search and `workspacePreview.ts` the `?navpreview=1` sample;
+it lists the open drill-in level and folds composites open), `DocumentTitle` (the documents menu: recents from
+`recentDocsStore`, New Blank, the examples),
 `Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap.tsx` (the minimap
 accent policy `minimapFillForNode` shared by both RF `<MiniMap>`s + the
 collapse-aware `collapsedAwareNodesRect` behind NavMenu's fit-all; the

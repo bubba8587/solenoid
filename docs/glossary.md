@@ -256,12 +256,13 @@ cables (the author, 2026-10-25).
 Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; this is term → handle.
 
 - **File / menu bar**: top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
+  - **Documents menu**: the caret beside the doc name: recents, New Blank, the examples. `DocumentTitle.tsx` · `.solenoid-doctitle__menu`.
 - **Top bar**: toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
   On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
 - **Navigator**: left panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
   `body.solenoid-nav-open`; its width is `--nav-w` on `body`). Two sections:
   - **Files**: the **workspace tree** of folders, documents and (planned) pages. `WorkspaceTree.tsx` · `.solenoid-files`.
-  - **Outline**: the open document's groups and cards. `.solenoid-outline__list`.
+  - **Outline**: the open level's groups and cards (the drilled-into composite's while drilled in). `.solenoid-outline__list`.
 - **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
   A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
   both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).

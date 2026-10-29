@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { connectionVersionStore } from "./graphSignals";
-import { outlineSearch } from "./outlineStore";
+import { outlineSearch, navigatorFiles } from "./outlineStore";
 import { keyUnderModal } from "./modalGuard";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
@@ -300,14 +300,17 @@ export function OutlinePanel() {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
-  const revealOpenDoc = () => {
-    if (!sections.files) toggleSection("files");
+  const focusOpenDocRow = () => {
     const id = documentStore.currentId();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const el = panelRef.current?.querySelector<HTMLElement>(`[data-key="d:${CSS.escape(id ?? "")}"]`);
       el?.scrollIntoView({ block: "nearest" });
       el?.focus();
     }));
+  };
+  const revealOpenDoc = () => {
+    if (!sections.files) toggleSection("files");
+    focusOpenDocRow();
   };
   const startSplitDrag = (e: ReactPointerEvent) => {
     e.preventDefault();
@@ -369,6 +372,11 @@ export function OutlinePanel() {
   }, []);
 
   useEffect(() => outlineSearch.register(requestSearch), [requestSearch]);
+  useEffect(() => navigatorFiles.register(() => {
+    setOpen(true);
+    setSections((prev) => (prev.files ? prev : isMobile() ? { files: true, outline: false } : { ...prev, files: true }));
+    focusOpenDocRow();
+  }), []);
   // Re-registers on `open` change so the isOpen getter stays current.
   useEffect(() => registerChrome("navigator", { isOpen: () => open, setOpen }), [open]);
   useEffect(() => {

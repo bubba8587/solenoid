@@ -148,7 +148,6 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] The author's five calls in bundle 26 § Questions gate the rest.
 - [ ] Desktop: the tree reads the Documents folder ([[D103]] folderOnDisk), rename and move on disk, the watcher with bundle 21 Stage 0, Reveal in file manager and Copy path in the row menu, a graph file extension.
 - [ ] Pages and page folders as rows once bundle 20's model lands; drop outline rows on a page row; This page search scope; drop the `?navpreview=1` mock (`workspacePreview.ts`).
-- [ ] Retire the documents dropdown (`DocumentTitle.tsx`) for a top-bar breadcrumb; everything it offered has a home in the pane.
 - [ ] Row status beyond unsaved: changed on disk, a Problems count (needs problems kept per document).
 - [ ] Drag on touch (long-press to lift); today touch moves through Move to….
 

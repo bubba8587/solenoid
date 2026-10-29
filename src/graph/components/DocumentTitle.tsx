@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
-import { requestConfirm } from "../confirmStore";
+import { recentDocsStore, recentDocs } from "../recentDocsStore";
+import { navigatorFiles } from "../outlineStore";
 import { isMobile } from "../coarse";
 import { chromeZoomStore } from "../chromeZoom";
 import { SEEDS, SEED_GROUPS } from "../seeds";
@@ -9,8 +10,15 @@ import "./documentTitle.css";
 
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
+  useSyncExternalStore(recentDocsStore.subscribe, recentDocsStore.version);
   const name = documentStore.currentName();
-  const docs = documentStore.list();
+  const currentId = documentStore.currentId();
+  useEffect(() => { if (currentId) recentDocsStore.touch(currentId); }, [currentId]);
+  // The menu keeps a handful of recents; every document lives in the Navigator's Files tree.
+  const all = documentStore.list();
+  const current = all.find((d) => d.current);
+  const recents = recentDocs(recentDocsStore.ids(), all);
+  const docs = current && !recents.includes(current) ? [current, ...recents.slice(0, -1)] : recents;
 
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -59,14 +67,6 @@ export function DocumentTitle() {
     const v = rowDraft.trim();
     if (v && v !== original) documentStore.rename(id, v);
     setRenamingId(null);
-  }
-
-  async function removeDoc(id: string, docName: string) {
-    const ok = await requestConfirm({
-      message: `Remove "${docName}"? Unsaved changes will be lost.`,
-      confirmLabel: "Remove",
-    });
-    if (ok) void documentStore.remove(id);
   }
 
   return (
@@ -166,12 +166,14 @@ export function DocumentTitle() {
                     <rect x="5.5" y="5.5" width="8" height="8" rx="1" /><path d="M10.5 5.5 V3.5 a1 1 0 0 0 -1 -1 H3.5 a1 1 0 0 0 -1 1 V9.5 a1 1 0 0 0 1 1 h2" />
                   </svg>
                 </button>
+                {/* The open document would come straight back, so only the others clear. */}
                 <button
                   type="button"
-                  className="solenoid-doctitle__doc-action solenoid-doctitle__doc-action--danger"
-                  title="Remove from documents"
-                  aria-label={`Remove ${d.name}`}
-                  onClick={(e) => { e.stopPropagation(); void removeDoc(d.id, d.name); }}
+                  className="solenoid-doctitle__doc-action"
+                  title="Clear from recents"
+                  aria-label={`Clear ${d.name} from recents`}
+                  disabled={d.current}
+                  onClick={(e) => { e.stopPropagation(); recentDocsStore.clear(d.id); }}
                 >
                   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 4 L12 12 M12 4 L4 12" />
@@ -181,6 +183,11 @@ export function DocumentTitle() {
             ))}
           </div>
 
+          {all.length > docs.length && (
+            <button type="button" className="solenoid-doctitle__action solenoid-doctitle__all" onClick={() => { setMenuOpen(false); navigatorFiles.open(); }}>
+              All Documents ({all.length})…
+            </button>
+          )}
           <div className="solenoid-doctitle__sep" />
           <button type="button" className="solenoid-doctitle__action" onClick={() => { setMenuOpen(false); void documentStore.newBlank(); }}>
             New Blank Document

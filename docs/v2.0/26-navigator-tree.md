@@ -109,9 +109,10 @@ Each line says what the user gets. The spec carries the mechanics.
 6. **Row menu**: a ⋯ button on hover (always shown on touch) and right-click or long-press: Open,
    Rename, Duplicate, Move to…, Delete, and on desktop Reveal in file manager and Copy path.
    Rename is also F2 and a double click on the name.
-7. **The documents menu retires** once the pane does its job: the document name in the top bar
-   becomes a breadcrumb (Finance › Budget 2026 › Q3) whose segments open the Navigator at that row.
-   One home per action.
+7. **The documents menu slims to recents** (the author, 2026-10-29, in place of retiring it for a
+   top-bar breadcrumb): this device's last five opened documents, New Blank Document and New from
+   example stay; its × clears a document from the recents and never deletes it; All Documents…
+   opens the Navigator on Files, where every document and the Delete live. *(built)*
 
 ### Strong second wave
 
@@ -193,12 +194,12 @@ What the prototype does not do: no pages, no disk tree, and no drag on touch.
 4. The desktop disk tree and the watcher (with bundle 21 Stage 0), the extension call, Reveal and
    Copy path.
 5. Search scope and the name index; drag and drop; row status; remembered state; resizing.
-6. The documents menu retires and the top-bar name becomes the breadcrumb.
+6. The documents menu slims to recents and examples (built).
 
 ## Exit criteria
 
 A library of nested folders, each document with nested pages, reads as one tree in the Navigator
 on desktop, web and phone; the desktop tree and the Documents folder on disk agree after any
 rename, move or outside edit; the open document and page are always visible in the tree; the
-outline of the open page stays one tap away; and every action the documents menu offered has a
-home in the pane before that menu goes.
+outline of the open page stays one tap away; and the documents menu holds only recents and
+examples, every other action on a document living in the pane.

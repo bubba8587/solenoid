@@ -744,6 +744,7 @@ describe("[[A1]] visualGraphCalculator — every node-keyed store registers with
     "addMenuStore.ts": "Add-menu UI state",
     "paletteStore.ts": "command-palette UI state",
     "outlineStore.ts": "Navigator open/closed UI state",
+    "recentDocsStore.ts": "this device's recent document ids (a pref)",
     "mobileMenuStore.ts": "mobile sheet UI state",
     "helpDialogStore.ts": "dialog open/closed",
     "confirmStore.ts": "dialog open/closed",
