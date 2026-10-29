@@ -156,6 +156,11 @@
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
+/* The open Navigator follows the drill-in, so the strip and its run controls step out to its right. */
+html:not(.is-mobile) body.solenoid-nav-open .solenoid-composite-editor__strip,
+html:not(.is-mobile) body.solenoid-nav-open .solenoid-composite-editor__controls { left: calc(24px + var(--nav-w, 248px)); }
+/* A phone's Navigator sheet covers the strip, and its own level row stands in for the crumbs. */
+html.is-mobile body.solenoid-nav-open .solenoid-composite-editor__strip { visibility: hidden; }
 .solenoid-composite-editor__controls--collapsed { width: auto; }
 .solenoid-composite-editor__controls-head {
   display: flex;
@@ -191,10 +196,6 @@
 /* Both minimaps carry .solenoid-minimap, so the re-show is scoped to the one inside the drill-in host. */
 html.sol-drilled-in .solenoid-minimap { display: none; }
 html.sol-drilled-in .solenoid-composite-editor__host .solenoid-minimap { display: block; }
-
-/* The navigator still reads and acts on the main graph, so it stays folded while drilled in. */
-html.sol-drilled-in .solenoid-outline,
-html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 
 /* The drill-in host also carries .sol-rf-appcanvas, hence the :not(). */
 html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden; }

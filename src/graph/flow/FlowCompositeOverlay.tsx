@@ -167,6 +167,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const addPortRef = useRef(addPort);
   addPortRef.current = addPort;
   useEffect(() => compositeEditorStore.registerAddPort((k) => void addPortRef.current(k)), []);
+  useEffect(() => compositeEditorStore.registerDrillTo(drillTo), [drillTo]);
 
   async function addPort(kind: "input" | "output") {
     const rect = wrapperRef.current?.getBoundingClientRect();

@@ -555,3 +555,51 @@
 .solenoid-outline__switchbtn--on { background: var(--accent-soft); color: var(--nav-ink, var(--accent)); font-weight: 600; }
 .solenoid-outline__switchcount { font-size: 11px; font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .solenoid-outline__switchbtn--on .solenoid-outline__switchcount { color: inherit; opacity: 0.75; }
+
+/* A held composite waiting on Refresh wears the card's hollow ring; one with a waiting composite inside, a smaller dot. */
+.solenoid-outline__stale {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px solid var(--sol-warn);
+}
+.solenoid-outline__stale[data-inside] {
+  width: 6px;
+  height: 6px;
+  border: none;
+  background: var(--sol-warn);
+  opacity: 0.75;
+}
+
+/* Which composite the outline shows while drilled in: Canvas › Outer › Inner. */
+.solenoid-outline__level {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 2px;
+  flex-shrink: 0;
+  /* The first crumb's text lines up with the search field's. */
+  margin: 2px var(--nav-gutter) 0 calc(var(--nav-gutter) + 4px);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+.solenoid-outline__levelbtn {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.solenoid-outline__levelbtn:hover { color: var(--text); background: var(--btn-hover); }
+.solenoid-outline__levelbtn--current { color: var(--nav-ink, var(--accent)); font-weight: 600; cursor: default; }
+.solenoid-outline__levelbtn--current:hover { color: var(--nav-ink, var(--accent)); background: transparent; }
+.solenoid-outline__levelsep { color: var(--text-dim); }
