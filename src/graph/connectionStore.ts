@@ -191,8 +191,9 @@ export async function whenConnectionsSettled(ids?: Iterable<string>): Promise<vo
   }
 }
 
-export function hasInflightConnections(): boolean {
-  return _inflight.size > 0;
+/** With `ids`, only the loads of those cards. */
+export function hasInflightConnections(ids?: Iterable<string>): boolean {
+  return ids ? pendingFor(ids).length > 0 : _inflight.size > 0;
 }
 
 /** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. */

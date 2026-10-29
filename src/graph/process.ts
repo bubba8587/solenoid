@@ -123,6 +123,11 @@ let _pgCount = 0;
 
 let _settleWaiters: Array<() => void> = [];
 
+/** Whether a pass is running or a rerun is queued: `graphSettled` for a caller that polls. */
+export function graphBusy(): boolean {
+  return session().passActive;
+}
+
 /** Resolves once no pass is running and no rerun is queued, so a caller that just asked for a pass reads its result. */
 export function graphSettled(): Promise<void> {
   if (!session().passActive) return Promise.resolve();
