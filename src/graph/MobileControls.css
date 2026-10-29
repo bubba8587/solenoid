@@ -89,26 +89,29 @@
   stroke: var(--panel-border);
   stroke-width: 1px;
 }
-/* Centered on the bar's top edge, in the tab's shoulders either side of the ➕. */
+/* In the tab's shoulders either side of the ➕, 4px under the tab's top edge (-18px) and just over the bar's (-6px). */
 .solenoid-mobile-bar__port {
   position: absolute;
-  top: -17px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
+  top: -14px;
+  display: block;
+  width: 20px;
+  height: 20px;
   padding: 0;
-  background: transparent;
+  background: none;
   border: none;
-  border-radius: 6px;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 50%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.solenoid-mobile-bar__port--in { right: calc(100% + 4px); }
-.solenoid-mobile-bar__port--out { left: calc(100% + 4px); }
-.solenoid-mobile-bar__port:active { background: var(--btn-hover); }
+.solenoid-mobile-bar__port svg { display: block; }
+/* A faded echo of the ➕: its accent as a soft disc and ring, the letter mostly the text color warmed by the accent, so it
+   reads near white on the dark disc and near black on the light one. */
+.solenoid-mobile-bar__port-disc {
+  fill: color-mix(in srgb, var(--accent) 18%, var(--panel-bg));
+  stroke: color-mix(in srgb, var(--accent) 50%, transparent);
+  stroke-width: 1px;
+}
+.solenoid-mobile-bar__port-glyph { fill: color-mix(in srgb, var(--accent) 35%, var(--text)); }
+.solenoid-mobile-bar__port:active .solenoid-mobile-bar__port-disc { fill: color-mix(in srgb, var(--accent) 38%, var(--panel-bg)); }
+.solenoid-mobile-bar__port--in { right: calc(100% + 3px); }
+.solenoid-mobile-bar__port--out { left: calc(100% + 3px); }

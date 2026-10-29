@@ -7,7 +7,7 @@ import { paletteStore } from "./paletteStore";
 import { useBottomChrome } from "./chromeBottom";
 import {
   fireUndo, fireGroup, useHasSelection,
-  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, PortsTabShape,
+  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, PortsTabShape, PortGlyph,
 } from "./touchActions";
 import { compositeEditorStore } from "./compositeEditorStore";
 import "./MobileControls.css";
@@ -52,9 +52,9 @@ export function MobileControls() {
         // Drilled into a composite: a tab hugging the ➕ adds an input port (I) or an output port (O).
         <div className="solenoid-mobile-bar__ports">
           <PortsTabShape />
-          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--in" aria-label="Add input" onClick={() => compositeEditorStore.addPort("input")}>I</button>
+          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--in" aria-label="Add input" onClick={() => compositeEditorStore.addPort("input")}><PortGlyph side="in" /></button>
           {addButton}
-          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--out" aria-label="Add output" onClick={() => compositeEditorStore.addPort("output")}>O</button>
+          <button className="solenoid-mobile-bar__port solenoid-mobile-bar__port--out" aria-label="Add output" onClick={() => compositeEditorStore.addPort("output")}><PortGlyph side="out" /></button>
         </div>
       ) : addButton}
       <button

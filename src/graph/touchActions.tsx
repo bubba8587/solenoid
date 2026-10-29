@@ -104,3 +104,16 @@ export function PortsTabShape() {
     </svg>
   );
 }
+
+/** The drill-in port buttons' faces: a faded accent disc with the app face's own bold I or O (Atkinson Hyperlegible Next at
+ *  700, 8px cap height), drawn as outlines so the letter centers on the disc exactly. */
+const GLYPH_I = "M-1.99 4V2.71H-0.87V-2.71H-1.99V-4H1.99V-2.71H0.87V2.71H1.99V4Z";
+const GLYPH_O = "M0 4.14Q-1.21 4.14 -2.13 3.63Q-3.05 3.11 -3.56 2.17Q-4.08 1.24 -4.08 0Q-4.08 -1.24 -3.56 -2.17Q-3.05 -3.11 -2.13 -3.63Q-1.21 -4.14 0 -4.14Q1.21 -4.14 2.12 -3.63Q3.04 -3.11 3.56 -2.17Q4.08 -1.24 4.08 0Q4.08 1.24 3.56 2.17Q3.04 3.11 2.12 3.63Q1.21 4.14 0 4.14ZM0 2.7Q0.61 2.7 1.12 2.39Q1.62 2.09 1.93 1.49Q2.23 0.89 2.23 0Q2.23 -0.89 1.93 -1.49Q1.62 -2.09 1.12 -2.39Q0.61 -2.7 0 -2.7Q-0.6 -2.7 -1.11 -2.39Q-1.62 -2.09 -1.93 -1.49Q-2.23 -0.89 -2.23 0Q-2.23 0.89 -1.93 1.49Q-1.62 2.09 -1.11 2.39Q-0.6 2.7 0 2.7Z";
+export function PortGlyph({ side }: { side: "in" | "out" }) {
+  return (
+    <svg viewBox="-10 -10 20 20" width="20" height="20" aria-hidden="true">
+      <circle className="solenoid-mobile-bar__port-disc" r="9.5" />
+      <path className="solenoid-mobile-bar__port-glyph" d={side === "in" ? GLYPH_I : GLYPH_O} />
+    </svg>
+  );
+}
