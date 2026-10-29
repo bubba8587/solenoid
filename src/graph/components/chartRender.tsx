@@ -1284,11 +1284,16 @@ export function RegionsFigure({ chart, cuts, points, marks, width, height, fontS
   const [hover, setHover] = useState<string | null>(null);
   const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
   const extent = useMemo(() => points.map(([x, y]) => ({ x, y })), [points]);
+  // The chart's own markers go: the only dots on the card are the points being sorted.
+  const payload = useMemo(() => {
+    const p = chart.payload as XYPayload;
+    return { ...p, series: p.series.map((s) => ({ ...s, marker: false })) };
+  }, [chart.payload]);
   // An XY Line already draws its lines; a scatter's joined points are drawn here, and every open line's ends.
   const curves = useMemo(() => [...(chart.op === "xyline" ? [] : cuts.curves), ...cuts.tails], [chart.op, cuts]);
   return (
     <XYView
-      payload={chart.payload as XYPayload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={chart.refs}
+      payload={payload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={chart.refs}
       under={<RegionShade cutsText={cutsText} marks={marks} hover={hover} curves={curves} />}
       over={<RegionPick cutsText={cutsText} points={points} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
       extent={extent}
