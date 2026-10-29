@@ -1,5 +1,5 @@
 // [[C132]] workspaceTree. The Navigator's Files tree; workspace-tree.md.
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "./documentStore";
 import { requestConfirm } from "./confirmStore";
@@ -107,8 +107,8 @@ const DRAG_MIME = "application/x-solenoid-tree";
 /** Reached by the + menu, which lives in the section header outside the tree. */
 const treeActions: { newFolder?: () => void; newDocument?: () => void } = {};
 
-/** The Files tree. `outline`, when given, renders under the open document's row (the one-tree layout). */
-export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
+/** The Files tree. `outline`, when given, renders under the open document's row (the one-tree layout). Memoized: the panel re-renders on every search keystroke, and the tree reads the library itself. */
+export const WorkspaceTree = memo(function WorkspaceTree({ outline }: { outline?: ReactNode }) {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
   const preview = isNavPreview();
   const [expanded, setExpandedState] = useState<Set<string>>(loadExpanded);
@@ -462,7 +462,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
       {menu && <RowMenu at={menu.at} items={menu.items} onClose={() => setMenu(null)} />}
     </div>
   );
-}
+});
 
 /** The Files section's + menu; new rows land in the folder last picked in the tree. `openSub` replaces the menu with a submenu. */
 export function filesAddMenu(openSub: (items: MenuItem[]) => void): MenuItem[] {
