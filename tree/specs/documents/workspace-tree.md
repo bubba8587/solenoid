@@ -70,7 +70,7 @@ flowchart LR
 
 ## The pane
 
-- **Two sections, Files above Outline** *(built)*. Each has a header with a fold chevron; on desktop both can be open and a drag handle between them sets the most Files may take, remembered per device (a short list takes only its own height). The Outline header names the open page's place, Document › Page *(built: the document name)*, and a click on it opens Files, scrolls to that row and focuses it *(built)*.
+- **Two sections, Files above Outline** *(built)*. Each has a header with a fold chevron, and the Files header carries the panel's close button, so on desktop no title row sits above them; on desktop both can be open and a drag handle between them sets the most Files may take, remembered per device (a short list takes only its own height). The Outline header names the open page's place, Document › Page *(built: the document name)*, and a click on it opens Files, scrolls to that row and focuses it *(built)*.
 - **Width** *(built)*: on desktop the panel's right edge drags its width between 200 and 480px, remembered per device; the toolbars the open panel shoves right (the docked Conduit toolbar, the cable inspector) read the width from `--nav-w` on `body`. A phone keeps `min(248px, 84vw)`.
 - **Row status** *(built: unsaved)*: a document bound to a file and edited since its last file save shows a dot after its name. Changed on disk (with the watcher) and a Problems count (once problems are kept per document) join it.
 - **Ctrl+F and the phone's Search** open the Outline section when it is folded, then focus its field *(built)*.

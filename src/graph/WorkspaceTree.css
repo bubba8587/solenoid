@@ -67,7 +67,7 @@
 }
 
 /* Drop targets while a row is dragged: a folder row rings, the empty space below the rows tints for the top level. */
-.solenoid-files { min-height: 24px; padding-bottom: 12px; }
+.solenoid-files { min-height: 24px; padding-bottom: 8px; }
 .solenoid-files__row--drop { box-shadow: inset 0 0 0 2px var(--accent); }
 .solenoid-files--drop { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .solenoid-files__menu { max-height: min(420px, 70vh); overflow-y: auto; }

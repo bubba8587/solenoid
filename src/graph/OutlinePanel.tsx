@@ -683,6 +683,9 @@ export function OutlinePanel() {
     </div>
   );
   const phoneSwitch = isPhone && layout === "stacked";
+  const closeButton = (
+    <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
+  );
   const addButton = (
     <button
       className="solenoid-nav-sec__btn"
@@ -739,7 +742,8 @@ export function OutlinePanel() {
       onPointerDown={(e) => e.stopPropagation()}
     >
       {!isPhone && <div className="solenoid-outline__resize" role="separator" aria-orientation="vertical" aria-label="Resize navigator" onPointerDown={startWidthDrag} />}
-      <div className="solenoid-outline__header">
+      {/* On desktop the stacked sections' own heads carry the panel, so the title row goes (the preview keeps it for its toggle). */}
+      {!(layout === "stacked" && !isPhone && !preview) && <div className="solenoid-outline__header">
         {phoneSwitch ? (
           // A phone shows one section at a time, so the header is the switch between them and the section heads go.
           <div className="solenoid-outline__switch" role="tablist" aria-label="Navigator">
@@ -773,8 +777,8 @@ export function OutlinePanel() {
         )}
         {layout === "tree" && addButton}
         {layout === "tree" && collapseAll}
-        <button className="solenoid-outline__collapse" title="Hide navigator" aria-label="Hide navigator" onClick={() => setOpen(false)}><CloseIcon size={14} /></button>
-      </div>
+        {closeButton}
+      </div>}
       {layout === "tree" ? (
         <>
           {controls}
@@ -792,6 +796,7 @@ export function OutlinePanel() {
                 <span className="solenoid-nav-sec__count">{documentStore.list().length}</span>
               </button>
               {addButton}
+              {!preview && closeButton}
             </div>}
             {sections.files && (
               <div

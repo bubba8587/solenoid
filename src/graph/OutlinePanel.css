@@ -158,7 +158,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 5px var(--nav-pad) 5px calc(var(--nav-pad) + (var(--depth, 0) + var(--depth-base, 0)) * var(--nav-indent));
-  margin-top: 2px;
+  margin-top: 1px;
   border-radius: 6px;
   color: var(--text);
   font-size: 12.5px;
