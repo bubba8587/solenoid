@@ -160,8 +160,10 @@ Built on `rust-port` with this bundle, inside the pane only:
 
 - **Keyboard and examples, real**: the tree's arrow keys, F2, Delete and type-to-jump; New from
   Example… in the + menu.
+- **Search every document, real**: a globe toggle in the search field adds matching documents and
+  the matching cards of the other documents; a card hit opens its document on that card.
 
-What the prototype does not do: no pages, no disk tree, no search scope, and no drag on touch.
+What the prototype does not do: no pages, no disk tree, and no drag on touch.
 
 ## Questions for the author
 

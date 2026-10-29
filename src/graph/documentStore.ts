@@ -258,6 +258,9 @@ export const documentStore = {
     }));
   },
 
+  /** Each document's name, folder and last captured graph, for the Navigator's Everywhere search; read, never kept. */
+  searchable: () => _lib.documents.map((d) => ({ id: d.id, name: d.name, folder: d.folder ?? "", graph: d.graph })),
+
   /** Every folder path, sorted; a document's folder and its ancestors included. */
   folders: (): string[] => allFolders(_lib),
   documentsIn: (path: string): number => documentsIn(_lib, path).length,

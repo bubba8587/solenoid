@@ -22,8 +22,10 @@ import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 import { nodeDisplayName, nodeName } from "./catalogUtils";
 import { documentStore } from "./documentStore";
-import { WorkspaceTree, RowMenu, filesAddMenu, type MenuItem } from "./WorkspaceTree";
+import { WorkspaceTree, RowMenu, Glyph, filesAddMenu, type MenuItem } from "./WorkspaceTree";
 import { isNavPreview } from "./workspacePreview";
+import { searchLibrary, type SearchHit } from "./workspaceSearch";
+import { nodeNameStore } from "./nodeNameStore";
 
 
 type Cat = "group" | "input" | "display" | "other";
@@ -316,6 +318,24 @@ export function OutlinePanel() {
     );
   }, [state, query, filters]);
 
+  // Everywhere also searches the other documents in the library; workspace-tree.md § The pane.
+  const [everywhere, setEverywhere] = useState(false);
+  const libVersion = useSyncExternalStore(documentStore.subscribe, documentStore.version);
+  const hits = useMemo(
+    () => (everywhere && filters.size === 0 ? searchLibrary(documentStore.searchable(), documentStore.currentId(), query) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [everywhere, filters, query, libVersion],
+  );
+  const openHit = async (h: SearchHit) => {
+    await documentStore.open(h.docId);
+    if (h.kind !== "node") return;
+    const editor = getEditor();
+    if (!editor) return;
+    const byName = h.nodeName ? nodeNameStore.byName(h.nodeName) : undefined;
+    const id = byName ?? editor.getNodes().find((n) => n.constructor.name === h.nodeType && nodeDisplayName(n) === h.nodeLabel)?.id;
+    if (id) requestAnimationFrame(() => void focusNode(id));
+  };
+
   const lastClicked = useRef<string | null>(null);
   const handleRowDoubleClick = (id: string) => {
     lastClicked.current = id;
@@ -391,13 +411,27 @@ export function OutlinePanel() {
   const isPhone = isMobile();
   const controls = (
     <>
-      <input
-        ref={inputRef}
-        className="solenoid-outline__search"
-        placeholder="Search name or type…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <div className="solenoid-outline__searchwrap">
+        <input
+          ref={inputRef}
+          className="solenoid-outline__search"
+          placeholder={everywhere ? "Search every document…" : "Search name or type…"}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button
+          className={`solenoid-outline__scope${everywhere ? " solenoid-outline__scope--on" : ""}`}
+          title={everywhere ? "Search this document" : "Search every document"}
+          aria-label="Search every document"
+          aria-pressed={everywhere}
+          onClick={() => { setEverywhere((v) => !v); inputRef.current?.focus(); }}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+            <circle cx="8" cy="8" r="6" />
+            <path d="M2 8 H14 M8 2 C5.6 4.6 5.6 11.4 8 14 M8 2 C10.4 4.6 10.4 11.4 8 14" />
+          </svg>
+        </button>
+      </div>
       <div className="solenoid-outline__filters">
         {FILTERS.map((f) => (
           <button
@@ -430,8 +464,9 @@ export function OutlinePanel() {
   );
   const listBody = (
     <>
+        {hits.length > 0 && view.length > 0 && <div className="solenoid-outline__heading">This document</div>}
         {view.length === 0 ? (
-          <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
+          hits.length === 0 && <div className="solenoid-outline__empty">{state.flat.length === 0 ? "No nodes" : "No matches"}</div>
         ) : (
           view.map((r) => {
             const connCount = r.isGroup ? 0 : connCounts.get(r.id) ?? 0;
@@ -526,6 +561,25 @@ export function OutlinePanel() {
             </Fragment>
             );
           })
+        )}
+        {hits.length > 0 && (
+          <>
+            <div className="solenoid-outline__heading">Other documents</div>
+            {hits.map((h, i) => (
+              <div
+                key={`${h.kind}:${h.docId}:${i}`}
+                className={`solenoid-outline__row solenoid-outline__hit solenoid-outline__hit--${h.kind}`}
+                title={h.detail}
+                onClick={() => void openHit(h)}
+              >
+                {h.kind === "doc"
+                  ? <span className="solenoid-outline__hitglyph"><Glyph kind="doc" /></span>
+                  : <span className="solenoid-outline__dot solenoid-outline__dot--hit" />}
+                <span className="solenoid-outline__label">{h.label}</span>
+                {h.detail && <span className="solenoid-outline__hitwhere">{h.detail}</span>}
+              </div>
+            ))}
+          </>
         )}
     </>
   );

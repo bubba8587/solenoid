@@ -232,6 +232,11 @@ html.is-mobile {
   .solenoid-files__rename { height: 28px; margin: -5px 0; font-size: 14px; }
   .solenoid-outline__collapse-all svg { width: 16px; height: 16px; }
   .solenoid-outline__search { height: 36px; font-size: 14px; }
+  .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 38px; }
+  .solenoid-outline__scope { width: 30px; height: 30px; }
+  .solenoid-outline__scope svg { width: 16px; height: 16px; }
+  .solenoid-outline__heading { font-size: 11px; }
+  .solenoid-outline__hitwhere { font-size: 12px; }
   .solenoid-outline__chip,
   .solenoid-outline__sortbtn { height: 32px; font-size: 13px; }
   .solenoid-outline__sortbtn { padding: 0 14px; }

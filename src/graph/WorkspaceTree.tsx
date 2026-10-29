@@ -30,7 +30,7 @@ function saveExpanded(s: Set<string>) {
 /** The folder new rows land in: the last folder the user picked in the tree. */
 const target = { folder: "" };
 
-function Glyph({ kind, open }: { kind: RowKind; open?: boolean }) {
+export function Glyph({ kind, open }: { kind: RowKind; open?: boolean }) {
   const common = { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   switch (kind) {
     case "folder":
