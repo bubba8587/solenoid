@@ -269,3 +269,6 @@ html.is-mobile .solenoid-composite-editor__controls-body {
 
 /* Off on mobile; this must come after the desktop re-show rule to win. */
 html.is-mobile .solenoid-composite-editor__host .solenoid-minimap { display: none; }
+
+/* Gold text on a white strip is too faint to read; on a light theme the current crumb takes the accent drawn toward the text. */
+:root[data-theme="light"] .solenoid-composite-editor__crumb--current { color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
