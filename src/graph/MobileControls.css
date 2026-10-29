@@ -63,23 +63,23 @@
   filter: brightness(0.92);
 }
 
-/* Drilled into a composite: a tab rising out of the bar's top edge, hugging the ➕, with I and O on its shoulders.
-   The tab is drawn as an SVG over the bar's border, its fill hiding the border where the two meet. */
+/* Drilled into a composite: a tab rising out of the bar's top edge, hugging the ➕, with I and O up on its shoulders.
+   The cluster takes only the ➕'s own width in the bar, so no other button moves; the tab and the letters hang outside it.
+   The tab is an SVG over the bar's border, its fill hiding the border where the two meet. */
 .solenoid-mobile-bar__ports {
   position: relative;
   display: inline-flex;
-  align-items: center;
   flex: 0 0 auto;
-  gap: 2px;
 }
-.solenoid-mobile-bar__ports > button { position: relative; z-index: 1; }
+.solenoid-mobile-bar__ports > .solenoid-mobile-bar__add { position: relative; z-index: 1; }
+.solenoid-mobile-bar__ports > .solenoid-mobile-bar__port { z-index: 1; }
 .solenoid-mobile-bar__ports-tab {
   position: absolute;
-  /* The bar's top edge is 6px above the row (5px padding, 1px border); the tab rises 7px past it, 4px clear of the ➕'s top. */
-  top: -13px;
-  left: -10px;
-  width: calc(100% + 20px);
-  height: 8px;
+  /* The bar's top edge is 6px above the row (5px padding, 1px border); the tab rises 12px past it, 4px clear of the ➕'s top. */
+  top: -18px;
+  left: -40px;
+  width: 126px;
+  height: 13px;
   overflow: visible;
   pointer-events: none;
 }
@@ -88,25 +88,27 @@
   fill: none;
   stroke: var(--panel-border);
   stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
 }
+/* Centered on the bar's top edge, in the tab's shoulders either side of the ➕. */
 .solenoid-mobile-bar__port {
+  position: absolute;
+  top: -17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 38px;
-  /* Level with the ➕, which rides 8px proud of the bar. */
-  transform: translateY(-8px);
+  width: 22px;
+  height: 22px;
   padding: 0;
   background: transparent;
   border: none;
   border-radius: 6px;
   color: var(--text);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+.solenoid-mobile-bar__port--in { right: calc(100% + 4px); }
+.solenoid-mobile-bar__port--out { left: calc(100% + 4px); }
 .solenoid-mobile-bar__port:active { background: var(--btn-hover); }

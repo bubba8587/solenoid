@@ -128,7 +128,7 @@ The top chrome becomes two rows.
 | --- | --- | --- | --- |
 | Row A, the accent menu bar | `.solenoid-menubar` | `padding-top: safe-area`, about 30px of content, z-index **8** | The document name and caret only, beside the wordmark; carries the notch inset. |
 | Row B, the neutral tools bar | `.solenoid-topbar` | **52px** | Menu, navigator, layout tools, then accent, Reference and Settings. |
-| Bottom action bar | `.solenoid-mobile-bar` | `bottom: 0`, full width, about 57px plus `safe-area-inset-bottom`, z-index 100 | Undo, Redo, the ➕ FAB, Select, Delete. `display: flex` only on mobile (`MobileControls.css`, shown by `mobile.css`). Drilled into a composite, a tab rises 7px out of the bar's top edge around the ➕, sloped at its shoulders, with I (add an input port) left of the ➕ and O (add an output port) right of it. |
+| Bottom action bar | `.solenoid-mobile-bar` | `bottom: 0`, full width, about 57px plus `safe-area-inset-bottom`, z-index 100 | Undo, Redo, the ➕ FAB, Select, Delete. `display: flex` only on mobile (`MobileControls.css`, shown by `mobile.css`). Drilled into a composite, a tab rises 12px out of the bar's top edge around the ➕, sloped at its shoulders, with I (add an input port) and O (add an output port) up on the shoulders either side of the ➕. The cluster takes only the ➕'s width in the bar, so no other button moves. |
 
 **The mobile top-chrome edge is `safe-area-inset-top + 82px`** (30 for Row A plus 52 for Row B). Every top-anchored mobile overlay clears this number, and it is written literally in several places, so keep them in sync:
 
