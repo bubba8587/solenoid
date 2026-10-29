@@ -5,7 +5,7 @@ import { GraphNode } from "./graphModel";
 import type { JSXElementConstructor } from "react";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, DashboardNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
-  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
@@ -81,7 +81,7 @@ import {
 } from "./nodeClasses";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, DashboardComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
-  SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, MergePlotsComponent, ConditionalRegionsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
@@ -187,6 +187,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [SparklineNode,   comp(SparklineComponent)],
   [ChartNode,       comp(ChartComponent)],
   [MergePlotsNode,  comp(MergePlotsComponent)],
+  [ConditionalRegionsNode, comp(ConditionalRegionsComponent)],
   [HistogramNode,   comp(HistogramComponent)],
   [KpiNode,         comp(KpiComponent)],
   [ProportionNode,  comp(ProportionComponent)],

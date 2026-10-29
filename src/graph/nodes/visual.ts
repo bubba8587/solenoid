@@ -1,7 +1,7 @@
 // [[B11]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn, logicalTableOut } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
@@ -172,6 +172,51 @@ export class MergePlotsNode extends GraphNode {
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
     return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
+  }
+}
+
+// ─── Conditional Regions ──────────────────────────────────────────────────────
+
+export type RegionsMode = "inclusive" | "strict";
+export const REGIONS_MODE_META = {
+  inclusive: { label: "≤", description: "A point on a line counts: it takes the regions it touches, TRUE where they disagree." },
+  strict:    { label: "<", description: "A point on a line counts for no region and comes out blank." },
+} satisfies Record<RegionsMode, { label: string; description: string }>;
+
+/** One plotted point: x, y, its answer, and whether it sits on a line. */
+export type RegionPoint = [number, number, boolean | null, boolean];
+/** What cuts the plane: each series as x1, y1, x2, y2 runs, the vertical lines' x and the horizontal lines' y. */
+export interface RegionCuts { curves: number[][]; xs: number[]; ys: number[] }
+
+export class ConditionalRegionsNode extends GraphNode {
+  static socketDocs: Record<string, string> = {
+    chart: "A Scatter, XY Line or Bubble chart. Each series is a line, a scatter's points joined in order of x, and each References row with only x or only y is a straight line.",
+    points: "The first column is x and the second y. A row missing either comes out blank.",
+    result: "One row per point: TRUE or FALSE by the region it falls in, blank where the region is unmarked.",
+  };
+
+  label: string;
+  mode: RegionsMode;
+  regionMarks: Record<string, boolean>;
+  cachedChart: ChartValue | null = null;
+  cachedCuts: RegionCuts | null = null;
+  cachedPoints: RegionPoint[] | null = null;
+  cachedError: SolError | null = null;
+  width = 240;
+  height = 280;
+
+  constructor(init?: { label?: string; mode?: RegionsMode; regionMarks?: Record<string, boolean> }) {
+    super("ConditionalRegions");
+    this.label = init?.label ?? "";
+    this.mode = init?.mode === "strict" ? "strict" : "inclusive";
+    this.regionMarks = { ...(init?.regionMarks ?? {}) };
+    this.addInput("chart", chartIn("Chart"));
+    this.addInput("points", frameIn("Points"));
+    this.addOutput("result", logicalTableOut("Matrix"));
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: (boolean | null)[][] | SolError | null } {
+    return nodeOnCore(this, inputs) as { result: (boolean | null)[][] | SolError | null };
   }
 }
 

@@ -1,11 +1,14 @@
 // [[C100]] chartIsAValue
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea, ReferenceDot } from "recharts";
-import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea, ReferenceDot, usePlotArea, useXAxisScale, useYAxisScale, useXAxisInverseScale, useYAxisInverseScale } from "recharts";
+import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
-import type { OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
+import type { ChartValue, OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
+import type { RegionCuts, RegionPoint } from "../nodes/visual";
+import { coreRegionKeys } from "../engineWasm";
+import { stopDragStart } from "../coarse";
 import { formatDateSerial } from "../nodes/dateSerial";
 import { formatFrameCell } from "../frame";
 import { heightRampColor, resolveColor, PALETTE, contrastInk } from "../palette";
@@ -870,8 +873,10 @@ function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number | string
 }
 
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */
-export function XYView({ payload, width, height, opts, fontScale, refs }: {
+export function XYView({ payload, width, height, opts, fontScale, refs, under, over }: {
   payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
+  /** Drawn in the plot, beneath the marks and above them. */
+  under?: ReactNode; over?: ReactNode;
 }) {
   const { grid, axis, viz } = useChartColors();
   const colors = useSeriesColors();
@@ -1004,6 +1009,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
         label={xLabel} height={xAxisH} />
       <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={valueTickFormat(yVals, yTicks)} width={yAxisW}
         scale={logY ? "log" : undefined} domain={yDomain} ticks={yTicks} allowDataOverflow={opts?.ymin !== undefined || opts?.ymax !== undefined} label={yLabel} />
+      {under}
       {refEls}
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }}
         content={<XYTooltip names={names} xcats={xcats} xDate={xDate} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
@@ -1033,6 +1039,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
           </Scatter>
         );
       })}
+      {over}
     </ScatterChart>
   );
 
@@ -1146,5 +1153,138 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
         {data.map((d, i) => <Cell key={i} fill={d.diverged ? DIVERGED : d.rising ? RISING : falling} fillOpacity={d.diverged ? 0.4 : 1} />)}
       </Bar>
     </BarChart>
+  );
+}
+
+// ─── Conditional Regions ──────────────────────────────────────────────────────
+
+/** The shading's grain in screen pixels: each cell takes the region at its center. */
+const CELL = 3;
+const SHADE_ALPHA = 0.22;
+
+type Cells = { x0: number; y0: number; w: number; h: number; nx: number; ny: number; keys: string[] };
+
+function useRegionCells(cutsText: string): Cells | null {
+  const area = usePlotArea();
+  const xInv = useXAxisInverseScale();
+  const yInv = useYAxisInverseScale();
+  return useMemo(() => {
+    if (!area || !xInv || !yInv || area.width <= 0 || area.height <= 0) return null;
+    const nx = Math.ceil(area.width / CELL), ny = Math.ceil(area.height / CELL);
+    const xs: number[] = [], ys: number[] = [];
+    for (let j = 0; j < ny; j++) {
+      const y = Number(yInv(area.y + Math.min(area.height, (j + 0.5) * CELL)));
+      for (let i = 0; i < nx; i++) {
+        xs.push(Number(xInv(area.x + Math.min(area.width, (i + 0.5) * CELL))));
+        ys.push(y);
+      }
+    }
+    return { x0: area.x, y0: area.y, w: area.width, h: area.height, nx, ny, keys: coreRegionKeys(cutsText, xs, ys) };
+  }, [area, xInv, yInv, cutsText]);
+}
+
+/** One rect per run of same-colored cells along a row. */
+function runs(cells: Cells, fill: (key: string) => string | null): { x: number; y: number; w: number; h: number; fill: string }[] {
+  const out = [];
+  for (let j = 0; j < cells.ny; j++) {
+    const y = j * CELL, h = Math.min(CELL, cells.h - y);
+    let i = 0;
+    while (i < cells.nx) {
+      const f = fill(cells.keys[j * cells.nx + i]);
+      let k = i + 1;
+      while (k < cells.nx && fill(cells.keys[j * cells.nx + k]) === f) k++;
+      if (f) out.push({ x: cells.x0 + i * CELL, y: cells.y0 + y, w: Math.min(k * CELL, cells.w) - i * CELL, h, fill: f });
+      i = k;
+    }
+  }
+  return out;
+}
+
+function RegionShade({ cutsText, marks, hover, curves }: {
+  cutsText: string; marks: Record<string, boolean>; hover: string | null; curves: number[][] | null;
+}) {
+  const cells = useRegionCells(cutsText);
+  const xs = useXAxisScale();
+  const ys = useYAxisScale();
+  const { axis } = useChartColors();
+  const yes = resolveColor("green"), no = resolveColor("vermilion");
+  const shade = useMemo(
+    () => (cells ? runs(cells, (k) => (marks[k] === true ? yes : marks[k] === false ? no : null)) : []),
+    [cells, marks, yes, no],
+  );
+  const lit = useMemo(() => (cells && hover ? runs(cells, (k) => (k === hover ? axis : null)) : []), [cells, hover, axis]);
+  if (!cells) return null;
+  const px = (v: number) => Number(xs?.(v)), py = (v: number) => Number(ys?.(v));
+  return (
+    <g pointerEvents="none">
+      {shade.map((r, k) => <rect key={k} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} fillOpacity={SHADE_ALPHA} />)}
+      {lit.map((r, k) => <rect key={`h${k}`} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} fillOpacity={0.12} />)}
+      {xs && ys && curves?.map((c, k) => {
+        const d: string[] = [];
+        for (let i = 0; i + 3 < c.length; i += 4) d.push(`M${px(c[i])},${py(c[i + 1])}L${px(c[i + 2])},${py(c[i + 3])}`);
+        return <path key={`c${k}`} d={d.join("")} stroke={axis} strokeWidth={1} strokeDasharray="3 2" fill="none" />;
+      })}
+    </g>
+  );
+}
+
+function RegionPick({ cutsText, points, onHover, onToggle }: {
+  cutsText: string; points: readonly RegionPoint[]; onHover: (key: string | null) => void; onToggle: (key: string) => void;
+}) {
+  const area = usePlotArea();
+  const xs = useXAxisScale(), ys = useYAxisScale();
+  const xInv = useXAxisInverseScale(), yInv = useYAxisInverseScale();
+  const { axis } = useChartColors();
+  const yes = resolveColor("green"), no = resolveColor("vermilion");
+  if (!area || !xs || !ys || !xInv || !yInv) return null;
+  // The card may be zoomed: the plot's drawn size against its own units scales the pointer back.
+  const keyAt = (e: PointerEvent<SVGRectElement> | MouseEvent<SVGRectElement>): string | null => {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return null;
+    const x = Number(xInv(area.x + ((e.clientX - r.left) * area.width) / r.width));
+    const y = Number(yInv(area.y + ((e.clientY - r.top) * area.height) / r.height));
+    return Number.isFinite(x) && Number.isFinite(y) ? coreRegionKeys(cutsText, [x], [y])[0] ?? null : null;
+  };
+  const inside = (cx: number, cy: number) => cx >= area.x && cx <= area.x + area.width && cy >= area.y && cy <= area.y + area.height;
+  return (
+    <g>
+      {points.map(([x, y, mark, onLine], k) => {
+        const cx = Number(xs(x)), cy = Number(ys(y));
+        if (!inside(cx, cy)) return null;
+        const fill = mark === true ? yes : mark === false ? no : axis;
+        return <circle key={k} cx={cx} cy={cy} r={onLine ? 3 : 2.5} fill={onLine ? "none" : fill} stroke={onLine ? fill : "none"} strokeWidth={1.25} pointerEvents="none" />;
+      })}
+      <rect
+        className="nodrag nopan"
+        x={area.x} y={area.y} width={area.width} height={area.height}
+        fill="transparent" style={{ cursor: "pointer" }}
+        onPointerDown={stopDragStart}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerMove={(e) => onHover(keyAt(e))}
+        onPointerLeave={() => onHover(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          const key = keyAt(e);
+          if (key !== null) onToggle(key);
+        }}
+      />
+    </g>
+  );
+}
+
+export function RegionsFigure({ chart, cuts, points, marks, width, height, fontScale, onToggle }: {
+  chart: ChartValue; cuts: RegionCuts; points: readonly RegionPoint[]; marks: Record<string, boolean>;
+  width: number; height: number; fontScale?: number; onToggle: (key: string) => void;
+}) {
+  const [hover, setHover] = useState<string | null>(null);
+  const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
+  // An XY Line already draws its lines; a scatter's joined points are drawn here.
+  const curves = chart.op === "xyline" ? null : cuts.curves;
+  return (
+    <XYView
+      payload={chart.payload as XYPayload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={chart.refs}
+      under={<RegionShade cutsText={cutsText} marks={marks} hover={hover} curves={curves} />}
+      over={<RegionPick cutsText={cutsText} points={points} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
+    />
   );
 }

@@ -126,6 +126,10 @@ export function findCellError(v: any): any;
  * `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
  */
 export function engine_invoke(command: string, args: string): string;
+/**
+ * Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+ */
+export function read_logical(text: string): number | undefined;
 export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
 /**
  * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
@@ -170,9 +174,9 @@ export function card_image_src(text: string): string | undefined;
  */
 export function read_decimal(text: string): number;
 /**
- * Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+ * Each point's Conditional Regions key, by the cuts its card shows, one per line.
  */
-export function read_logical(text: string): number | undefined;
+export function region_keys(cuts: string, xs: Float64Array, ys: Float64Array): string;
 /**
  * Stages `inferColumn`'s reading of each column of a frame's cells for the `take_*` calls and answers its schema
  * (`nodes::infer_cells`). A text column comes back empty: its cells are the trimmed text the caller sent. The schema
@@ -460,6 +464,7 @@ export interface InitOutput {
   readonly fmt_scalar: (a: number, b: number) => void;
   readonly read_decimal: (a: number, b: number) => number;
   readonly read_logical: (a: number, b: number, c: number) => void;
+  readonly region_keys: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
   readonly take_lens: (a: number) => void;
   readonly take_nums: (a: number) => void;
   readonly take_strs: (a: number) => void;

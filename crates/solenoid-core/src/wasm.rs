@@ -231,6 +231,12 @@ pub fn read_decimal(text: &str) -> f64 {
     crate::value_kinds::decimal_from_text(text)
 }
 
+/// Each point's Conditional Regions key, by the cuts its card shows, one per line.
+#[wasm_bindgen]
+pub fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
+    crate::nodes::region_keys(cuts, xs, ys)
+}
+
 /// Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
 #[wasm_bindgen]
 pub fn read_logical(text: &str) -> Option<f64> {

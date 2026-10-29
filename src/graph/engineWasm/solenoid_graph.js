@@ -778,6 +778,25 @@ export function engine_invoke(command, args) {
     }
 }
 
+/**
+ * Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
+ * @param {string} text
+ * @returns {number | undefined}
+ */
+export function read_logical(text) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.read_logical(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r2 = getDataViewMemory0().getFloat64(retptr + 8 * 1, true);
+        return r0 === 0 ? undefined : r2;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
@@ -1061,21 +1080,32 @@ export function read_decimal(text) {
 }
 
 /**
- * Text as a logical: 1 for TRUE, 0 for FALSE, NaN when it doesn't read as one, and `undefined` for blank.
- * @param {string} text
- * @returns {number | undefined}
+ * Each point's Conditional Regions key, by the cuts its card shows, one per line.
+ * @param {string} cuts
+ * @param {Float64Array} xs
+ * @param {Float64Array} ys
+ * @returns {string}
  */
-export function read_logical(text) {
+export function region_keys(cuts, xs, ys) {
+    let deferred4_0;
+    let deferred4_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const ptr0 = passStringToWasm0(cuts, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
-        wasm.read_logical(retptr, ptr0, len0);
+        const ptr1 = passArrayF64ToWasm0(xs, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayF64ToWasm0(ys, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        wasm.region_keys(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r2 = getDataViewMemory0().getFloat64(retptr + 8 * 1, true);
-        return r0 === 0 ? undefined : r2;
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred4_0 = r0;
+        deferred4_1 = r1;
+        return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_4(deferred4_0, deferred4_1, 1);
     }
 }
 
@@ -1289,7 +1319,7 @@ function __wbg_adapter_38(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_203(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_204(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -2262,7 +2292,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_203(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_204(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }

@@ -44,6 +44,8 @@ pub(crate) use list::infer_cells;
 pub use values::{
     decode, decode_card, serialize_cube, serialize_frame, serialize_lambda, Column, Cube, CubeColumn, Cv, CvCell, Frame,
 };
+#[cfg(target_arch = "wasm32")]
+pub(crate) use visual::region_keys;
 
 /// A field the body leaves on the card for its component: a value (plain data as `Cv::Json`), or `undefined`.
 pub enum Shown {
@@ -382,6 +384,7 @@ pub const DIRECT: &[&str] = &[
     "ComplexUnpackNode",
     "ConcatListsNode",
     "ConcatNode",
+    "ConditionalRegionsNode",
     "ConfidenceNode",
     "ConstantNode",
     "ContainsNode",

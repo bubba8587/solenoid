@@ -50,7 +50,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
-import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, KpiNode } from "./visual";
+import { SparklineNode, ChartNode, MergePlotsNode, ConditionalRegionsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
 import { ReportNode } from "./report";
@@ -90,7 +90,7 @@ export function explicitKindOf(node: GraphNode): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof ReportNode || node instanceof DashboardNode) return "document";
   if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
   if (node instanceof QrCodeNode || node instanceof KpiNode || node instanceof GanttNode || node instanceof ChartBuilderNode || node instanceof MermaidNode || node instanceof RecordNode) return "chart";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
@@ -284,7 +284,7 @@ export function nodeDomWeight(node: GraphNode): number {
   // An idle SVG Picker is one <img>; its inline SVG mounts only on hover, never during a pan or zoom.
   if (node instanceof SvgPickerNode) return 2;
   if (
-    node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof HistogramNode ||
+    node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof HistogramNode ||
     node instanceof ProportionNode || node instanceof SankeyNode ||
     node instanceof MermaidNode || node instanceof RecordNode || node instanceof HeatmapNode
   ) return 10;
@@ -308,7 +308,7 @@ export function nodeResizable(node: GraphNode): boolean {
 export function nodeWide(node: GraphNode): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof ConditionalRegionsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
