@@ -178,9 +178,10 @@ What the prototype does not do: no pages, no disk tree, and no drag on touch.
    folder at once, named Untitled, and autosave writes the file.
 3. **Overlay or push** when the pane is open on desktop: it overlays the canvas today, which suits a
    glance; a tree you work from all day suits a dock that pushes the canvas like the docked Report.
+   The lean: push while it is pinned open, overlay otherwise.
 4. **The graph file extension.** Files are `.json` today, so a folder reader can't tell a graph from
    any other JSON. A distinct extension (`.solenoid`, or `.sol.json` to keep editors' JSON
-   highlighting) lets the tree list only graphs.
+   highlighting) lets the tree list only graphs. The lean: `.sol.json`.
 5. **Page folders, or flat pages?** The recommendation allows page folders, since the same tree draws
    them for free; flat pages are simpler if documents stay small.
 
