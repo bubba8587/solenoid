@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, useMemo, useState, type ReactElement, type ReactNode, type PointerEvent, type MouseEvent } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, regionLabelColor, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { ChartValue, OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import type { RegionCuts, RegionPoint } from "../nodes/visual";
@@ -1203,19 +1203,18 @@ function runs(cells: Cells, fill: (key: string) => string | null): { x: number; 
   return out;
 }
 
-function RegionShade({ cutsText, marks, hover, curves }: {
-  cutsText: string; marks: Record<string, boolean>; hover: string | null; curves: number[][];
+/** A region's color by its mark: a Bool card's TRUE and FALSE, a Text card's label by its place in the list. */
+type MarkPaint = (mark: boolean | number | null | undefined) => string | null;
+
+function RegionShade({ cutsText, marks, paint, hover, curves }: {
+  cutsText: string; marks: Record<string, boolean | number>; paint: MarkPaint; hover: string | null; curves: number[][];
 }) {
   const cells = useRegionCells(cutsText);
   const clip = useId().replace(/:/g, "");
   const xs = useXAxisScale();
   const ys = useYAxisScale();
   const { axis } = useChartColors();
-  const yes = resolveColor("green"), no = resolveColor("vermilion");
-  const shade = useMemo(
-    () => (cells ? runs(cells, (k) => (marks[k] === true ? yes : marks[k] === false ? no : null)) : []),
-    [cells, marks, yes, no],
-  );
+  const shade = useMemo(() => (cells ? runs(cells, (k) => paint(marks[k])) : []), [cells, marks, paint]);
   const lit = useMemo(() => (cells && hover ? runs(cells, (k) => (k === hover ? axis : null)) : []), [cells, hover, axis]);
   if (!cells) return null;
   const px = (v: number) => Number(xs?.(v)), py = (v: number) => Number(ys?.(v));
@@ -1233,14 +1232,14 @@ function RegionShade({ cutsText, marks, hover, curves }: {
   );
 }
 
-function RegionPick({ cutsText, points, onHover, onToggle }: {
-  cutsText: string; points: readonly RegionPoint[]; onHover: (key: string | null) => void; onToggle: (key: string) => void;
+function RegionPick({ cutsText, points, paint, onHover, onToggle }: {
+  cutsText: string; points: readonly RegionPoint[]; paint: MarkPaint;
+  onHover: (key: string | null) => void; onToggle: (key: string) => void;
 }) {
   const area = usePlotArea();
   const xs = useXAxisScale(), ys = useYAxisScale();
   const xInv = useXAxisInverseScale(), yInv = useYAxisInverseScale();
   const { axis } = useChartColors();
-  const yes = resolveColor("green"), no = resolveColor("vermilion");
   if (!area || !xs || !ys || !xInv || !yInv) return null;
   // The card may be zoomed: the plot's drawn size against its own units scales the pointer back.
   const keyAt = (e: PointerEvent<SVGRectElement> | MouseEvent<SVGRectElement>): string | null => {
@@ -1256,11 +1255,11 @@ function RegionPick({ cutsText, points, onHover, onToggle }: {
       {points.map(([x, y, mark, onLine], k) => {
         const cx = Number(xs(x)), cy = Number(ys(y));
         if (!inside(cx, cy)) return null;
-        const fill = mark === true ? yes : mark === false ? no : axis;
+        const fill = paint(mark) ?? axis;
         return <circle key={k} cx={cx} cy={cy} r={onLine ? 3 : 2.5} fill={onLine ? "none" : fill} stroke={onLine ? fill : "none"} strokeWidth={1.25} pointerEvents="none" />;
       })}
       <rect
-        className="nodrag nopan"
+        className="nodrag nopan solenoid-node__regions-pick"
         x={area.x} y={area.y} width={area.width} height={area.height}
         fill="transparent" style={{ cursor: "pointer" }}
         onPointerDown={stopDragStart}
@@ -1277,25 +1276,37 @@ function RegionPick({ cutsText, points, onHover, onToggle }: {
   );
 }
 
-export function RegionsFigure({ chart, cuts, points, marks, width, height, fontScale, onToggle }: {
-  chart: ChartValue; cuts: RegionCuts; points: readonly RegionPoint[]; marks: Record<string, boolean>;
+export function RegionsFigure({ chart, cuts, points, marks, labels, width, height, fontScale, onToggle }: {
+  chart: ChartValue; cuts: RegionCuts; points: readonly RegionPoint[]; marks: Record<string, boolean | number>;
+  /** A Text card's labels; null on a Bool card. */
+  labels: readonly string[] | null;
   width: number; height: number; fontScale?: number; onToggle: (key: string) => void;
 }) {
   const [hover, setHover] = useState<string | null>(null);
+  useChartColors();
+  const colors = useSeriesColors();
+  const yes = resolveColor("green"), no = resolveColor("vermilion");
+  const count = labels?.length ?? null;
+  const paint: MarkPaint = useMemo(() => (count === null
+    ? (m) => (m === true ? yes : m === false ? no : null)
+    : (m) => (typeof m === "number" && m >= 0 && m < count ? regionLabelColor(colors, m) : null)), [count, colors, yes, no]);
+  // A Text card's region colors come from the palette, so its lines draw in the neutral ink.
+  const ink = count === null ? null : getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#e6e6e6";
   const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
   const extent = useMemo(() => points.map(([x, y]) => ({ x, y })), [points]);
   // The chart's own markers go: the only dots on the card are the points being sorted.
   const payload = useMemo(() => {
     const p = chart.payload as XYPayload;
-    return { ...p, series: p.series.map((s) => ({ ...s, marker: false })) };
-  }, [chart.payload]);
+    return { ...p, series: p.series.map((s) => ({ ...s, marker: false, ...(ink ? { color: ink, cRange: undefined } : {}) })) };
+  }, [chart.payload, ink]);
+  const refs = useMemo(() => (ink ? chart.refs?.map((r) => ({ ...r, color: ink })) : chart.refs), [chart.refs, ink]);
   // An XY Line already draws its lines; a scatter's joined points are drawn here, and every open line's ends.
   const curves = useMemo(() => [...(chart.op === "xyline" ? [] : cuts.curves), ...cuts.tails], [chart.op, cuts]);
   return (
     <XYView
-      payload={payload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={chart.refs}
-      under={<RegionShade cutsText={cutsText} marks={marks} hover={hover} curves={curves} />}
-      over={<RegionPick cutsText={cutsText} points={points} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
+      payload={payload} width={width} height={height} opts={chart.options} fontScale={fontScale} refs={refs}
+      under={<RegionShade cutsText={cutsText} marks={marks} paint={paint} hover={hover} curves={curves} />}
+      over={<RegionPick cutsText={cutsText} points={points} paint={paint} onHover={(k) => setHover((h) => (h === k ? h : k))} onToggle={onToggle} />}
       extent={extent}
     />
   );

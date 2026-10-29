@@ -1,7 +1,7 @@
 // [[B11]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn } from "./shared";
+import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn, strListIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp } from "./mathUtils";
@@ -182,12 +182,18 @@ export class MergePlotsNode extends GraphNode {
 
 export type RegionsMode = "inclusive" | "strict";
 export const REGIONS_MODE_META = {
-  inclusive: { label: "≤", description: "A point on a line counts: it takes the regions it touches, TRUE where they disagree." },
+  inclusive: { label: "≤", description: "A point on a line counts: it takes the regions it touches, TRUE or the label listed first where they disagree." },
   strict:    { label: "<", description: "A point on a line counts for no region and comes out blank." },
 } satisfies Record<RegionsMode, { label: string; description: string }>;
 
-/** One plotted point: x, y, its answer, and whether it sits on a line. */
-export type RegionPoint = [number, number, boolean | null, boolean];
+export type RegionsResult = "bool" | "text";
+export const REGIONS_RESULT_META = {
+  bool: { label: "Bool", description: "Each region is TRUE, FALSE or unmarked." },
+  text: { label: "Text", description: "Each region takes a label from the list, or none." },
+} satisfies Record<RegionsResult, { label: string; description: string }>;
+
+/** One plotted point: x, y, its answer (a Text card's as the label's place in the list), and whether it sits on a line. */
+export type RegionPoint = [number, number, boolean | number | null, boolean];
 /** What cuts the plane: each series as x1, y1, x2, y2 runs, an open series' two ends carried on out of the plot as the
  *  same runs, the vertical lines' x and the horizontal lines' y. */
 export interface RegionCuts { curves: number[][]; tails: number[][]; xs: number[]; ys: number[] }
@@ -196,34 +202,55 @@ export class ConditionalRegionsNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     chart: "A Scatter, XY Line or Bubble chart. Each series is a line, a scatter's points joined in order of x, and each References row with only x or only y is a straight line.",
     points: "The first column is x and the second y. A row missing either comes out blank.",
-    result: "The points with an in column: TRUE in a region marked TRUE, FALSE in one marked FALSE, blank in an unmarked one.",
+    labels: "The names a region can take, in order. Where regions with different labels meet, a point on the line takes the one listed first.",
+    result: "The points with an in column of TRUE, FALSE or blank, or in Text mode a label column holding each region's label or a blank.",
   };
 
   label: string;
   mode: RegionsMode;
+  resultAs: RegionsResult;
   regionMarks: Record<string, boolean>;
+  /** A Text card's marks: each region's label by its place in the list. */
+  regionLabels: Record<string, number>;
+  stringLiterals: Record<string, string> = {};
   cachedChart: ChartValue | null = null;
+  cachedLabels: string[] | null = null;
   cachedCuts: RegionCuts | null = null;
   cachedPoints: RegionPoint[] | null = null;
   cachedError: SolError | null = null;
   width = 240;
   height = 280;
 
-  constructor(init?: { label?: string; mode?: RegionsMode; regionMarks?: Record<string, boolean> }) {
+  constructor(init?: {
+    label?: string; mode?: RegionsMode; resultAs?: RegionsResult;
+    regionMarks?: Record<string, boolean>; regionLabels?: Record<string, number>;
+  }) {
     super("ConditionalRegions");
     this.label = init?.label ?? "";
     this.mode = init?.mode === "strict" ? "strict" : "inclusive";
+    this.resultAs = init?.resultAs === "text" ? "text" : "bool";
     this.regionMarks = { ...(init?.regionMarks ?? {}) };
+    this.regionLabels = { ...(init?.regionLabels ?? {}) };
     this.addInput("chart", chartIn("Chart"));
     this.addInput("points", frameIn("Points"));
+    if (this.resultAs === "text") this.addInput("labels", strListIn("Labels"));
     this.addOutput("result", frameOut("Points"));
   }
 
-  /** The points' x and y columns, then `in`; unknown until the points' shape is, or when one of them is already `in`. */
+  /** Text adds the Labels input; Bool drops it, so its cables are pruned first. */
+  setResultAs(next: RegionsResult): void {
+    this.resultAs = next;
+    if (next === "text" && !this.inputs.labels) this.addInput("labels", strListIn("Labels"));
+    if (next === "bool" && this.inputs.labels) this.removeInput("labels");
+  }
+
+  /** The points' x and y columns, then `in` or `label`; unknown until the points' shape is, or when a points column
+   *  already has that name. */
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const [x, y] = ctx.inputShape("points")?.columns ?? [];
-    if (!x || !y || x.name === "in" || y.name === "in") return null;
-    return { columns: [x, y, { name: "in", type: "logical" }] };
+    const third = this.resultAs === "text" ? "label" : "in";
+    if (!x || !y || x.name === third || y.name === third) return null;
+    return { columns: [x, y, { name: third, type: this.resultAs === "text" ? "string" : "logical" }] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | SolError | null } {

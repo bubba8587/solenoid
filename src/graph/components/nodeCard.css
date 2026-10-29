@@ -956,6 +956,38 @@ body.solenoid-scrubbing * {
   margin: 4px 0;
 }
 
+/* The chart's own marks sit above the click target, so only the target takes the pointer. */
+.solenoid-node__regions svg * {
+  pointer-events: none;
+}
+
+.solenoid-node__regions svg .solenoid-node__regions-pick {
+  pointer-events: all;
+}
+
+/* Conditional Regions in Text mode: each label beside its region color. */
+.solenoid-node__region-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.solenoid-node__region-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.solenoid-node__region-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
 .solenoid-node__output-value {
   flex: 1 1 auto;
   text-align: right;

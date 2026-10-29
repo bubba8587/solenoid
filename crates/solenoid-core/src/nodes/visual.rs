@@ -2196,17 +2196,27 @@ pub(crate) fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
     xs.iter().zip(ys).map(|(&x, &y)| region_key(&cuts, x, y)).collect::<Vec<_>>().join("\n")
 }
 
-/// A point on a line counts under ≤, taking what the regions it touches say (TRUE where they disagree), and
+/// A region's answer by its key: a Bool card's TRUE as 1 and FALSE as 0, a Text card's label by its place in the list.
+type ReadMark<'a> = &'a dyn Fn(&str) -> Option<i64>;
+
+/// A point on a line counts under ≤, taking what the regions it touches say (`tie` settles a disagreement), and
 /// doesn't under <, so it is blank.
-fn point_mark(c: &Cuts, scale: f64, marks: &Obj, inclusive: bool, x: f64, y: f64) -> (Option<bool>, bool) {
+fn point_mark(
+    c: &Cuts,
+    scale: f64,
+    read: ReadMark,
+    tie: fn(i64, i64) -> i64,
+    inclusive: bool,
+    x: f64,
+    y: f64,
+) -> (Option<i64>, bool) {
     let Some(touched) = touched_regions(c, scale, x, y) else {
-        return (marks.get(&region_key(c, x, y)).and_then(Json::as_bool), false);
+        return (read(&region_key(c, x, y)), false);
     };
     if !inclusive {
         return (None, true);
     }
-    let said: Vec<bool> = touched.iter().filter_map(|k| marks.get(k).and_then(Json::as_bool)).collect();
-    (said.first().map(|_| said.contains(&true)), true)
+    (touched.iter().filter_map(|k| read(k)).reduce(tie), true)
 }
 
 fn conditional_regions(c: &mut Call) -> Answer {
@@ -2249,21 +2259,52 @@ fn conditional_regions(c: &mut Call) -> Answer {
         c.show("cachedPoints", Cv::NULL);
         return Ok(vec![("result".into(), Cv::from(e))]);
     }
-    let marks = c.field("regionMarks").and_then(Json::as_object).cloned().unwrap_or_default();
+    let text = c.field_str("resultAs", "bool") == "text";
+    let labels: Vec<String> = if text {
+        super::stats::items(&c.read_input("labels", list(Vec::new()))).iter().map(js_string_of).collect()
+    } else {
+        Vec::new()
+    };
+    c.show("cachedLabels", list(labels.iter().map(|l| V::str(l)).collect()));
+    let marks = c
+        .field(if text { "regionLabels" } else { "regionMarks" })
+        .and_then(Json::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let read = |k: &str| -> Option<i64> {
+        let m = marks.get(k)?;
+        if text {
+            m.as_f64().filter(|i| *i >= 0.0 && (*i as usize) < labels.len()).map(|i| i as i64)
+        } else {
+            m.as_bool().map(i64::from)
+        }
+    };
+    // A disagreement on a line goes to TRUE, or to the label earliest in the list.
+    let tie: fn(i64, i64) -> i64 = if text { i64::min } else { i64::max };
     let inclusive = c.field_str("mode", "inclusive") != "strict";
     let scale = cuts.scale();
     let rows = cols[0].values.len().max(cols[1].values.len());
-    let (mut inside, mut shown) = (Vec::with_capacity(rows), Vec::new());
+    let (mut answers, mut shown) = (Vec::with_capacity(rows), Vec::new());
     for r in 0..rows {
         let (Some(x), Some(y)) = (finite(&cell(&cols[0], r)), finite(&cell(&cols[1], r))) else {
-            inside.push(V::Null);
+            answers.push(V::Null);
             continue;
         };
-        let (mark, on_line) = point_mark(&cuts, scale, &marks, inclusive, x, y);
-        inside.push(mark.map_or(V::Null, V::Bool));
-        shown.push(json!([jn(x), jn(y), mark, on_line]));
+        let (mark, on_line) = point_mark(&cuts, scale, &read, tie, inclusive, x, y);
+        answers.push(match mark {
+            None => V::Null,
+            Some(i) if text => V::str(&labels[i as usize]),
+            Some(i) => V::Bool(i == 1),
+        });
+        let shown_mark = match mark {
+            None => Json::Null,
+            Some(i) if text => jn(i as f64),
+            Some(i) => Json::Bool(i == 1),
+        };
+        shown.push(json!([jn(x), jn(y), shown_mark, on_line]));
     }
-    let names = crate::frame::make_headers(&[cols[0].name.clone(), cols[1].name.clone(), "in".into()], 3);
+    let third = if text { "label" } else { "in" };
+    let names = crate::frame::make_headers(&[cols[0].name.clone(), cols[1].name.clone(), third.into()], 3);
     let axis = |k: usize| {
         let mut col = cols[k].clone();
         col.name = names[k].clone();
@@ -2272,8 +2313,8 @@ fn conditional_regions(c: &mut Call) -> Answer {
     };
     let in_col = Column {
         name: names[2].clone(),
-        ty: FrameColType::Logical,
-        values: inside,
+        ty: if text { FrameColType::String } else { FrameColType::Logical },
+        values: answers,
         unit: None,
         format: None,
         raw: None,
@@ -2382,18 +2423,19 @@ mod tests {
     fn a_point_on_a_line_counts_only_under_le() {
         let chart = json!({ "payload": { "series": [] }, "refs": [{ "x": 5 }] });
         let cuts: Cuts = serde_json::from_value(chart_cuts(&chart, false)).unwrap();
-        let marks =
-            |pairs: &[(&str, bool)]| pairs.iter().map(|(k, v)| (k.to_string(), Json::Bool(*v))).collect::<Obj>();
-        let left_true = marks(&[("0.0.", true)]);
-        let split = marks(&[("0.0.", false), ("1.0.", true)]);
-        let both_false = marks(&[("0.0.", false), ("1.0.", false)]);
-        let at = |m: &Obj, inclusive: bool, x: f64| point_mark(&cuts, cuts.scale(), m, inclusive, x, 3.0);
-        assert_eq!(at(&left_true, true, 5.0), (Some(true), true));
-        assert_eq!(at(&left_true, false, 5.0), (None, true));
-        assert_eq!(at(&split, true, 5.0), (Some(true), true));
-        assert_eq!(at(&both_false, true, 5.0), (Some(false), true));
-        assert_eq!(at(&Obj::new(), true, 5.0), (None, true));
-        assert_eq!(at(&left_true, false, 4.0), (Some(true), false));
+        let at = |marks: &[(&str, i64)], tie: fn(i64, i64) -> i64, inclusive: bool, x: f64| {
+            let read = |k: &str| marks.iter().find(|(m, _)| *m == k).map(|(_, v)| *v);
+            point_mark(&cuts, cuts.scale(), &read, tie, inclusive, x, 3.0)
+        };
+        // Bool: TRUE is 1 and wins a disagreement.
+        assert_eq!(at(&[("0.0.", 1)], i64::max, true, 5.0), (Some(1), true));
+        assert_eq!(at(&[("0.0.", 1)], i64::max, false, 5.0), (None, true));
+        assert_eq!(at(&[("0.0.", 0), ("1.0.", 1)], i64::max, true, 5.0), (Some(1), true));
+        assert_eq!(at(&[("0.0.", 0), ("1.0.", 0)], i64::max, true, 5.0), (Some(0), true));
+        assert_eq!(at(&[], i64::max, true, 5.0), (None, true));
+        assert_eq!(at(&[("0.0.", 1)], i64::max, false, 4.0), (Some(1), false));
+        // Text: the label earliest in the list wins.
+        assert_eq!(at(&[("0.0.", 2), ("1.0.", 1)], i64::min, true, 5.0), (Some(1), true));
     }
 
     #[test]

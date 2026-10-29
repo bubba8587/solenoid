@@ -35,6 +35,11 @@ export function useSeriesColors(): string[] {
   return SERIES_SLOTS.map((slot) => resolveColor(slot));
 }
 
+/** The color of a Conditional Regions label at `i`, the categorical palette in turn. */
+export function regionLabelColor(colors: readonly string[], i: number): string {
+  return colors[i % colors.length];
+}
+
 export type SeriesSpotlight = { index: number; name: string } | null;
 
 /** The series a legend spotlight picks out now: the picked slot while it still holds the picked name, else the one
