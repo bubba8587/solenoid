@@ -142,6 +142,23 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(5); // 2 + 3, recomputed from the rebuilt internal graph
   });
 
+  it("every card inside computes, not only those feeding an output, at every depth", async () => {
+    // A card wired to nothing still shows its value in the drill-in, as on the main canvas; a nested composite with no
+    // ports yet is such a card, so its own insides compute too.
+    const deep = new ArithmeticNode({ op: "add" });
+    deep.literals = { a: 1, b: 2 };
+    const inner = new CompositeNode({ label: "Inner" });
+    await inner.internalEditor.addNode(deep as unknown as Schemes["Node"]);
+    const loose = new ArithmeticNode({ op: "mul" });
+    loose.literals = { a: 3, b: 4 };
+    const outer = new CompositeNode({ label: "Outer" });
+    await outer.internalEditor.addNode(loose as unknown as Schemes["Node"]);
+    await outer.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    await outer.data({});
+    expect(loose.cachedResult).toBe(12);
+    expect(deep.cachedResult).toBe(3);
+  });
+
   it("a nested composite computes after a reload, without being drilled into", async () => {
     const inner = new CompositeNode({ label: "Inner" });
     const num = new ValueInputNode({ value: "42" });

@@ -459,6 +459,8 @@ flowchart TD
 
 Because every internal pass fully resets the internal engine, the subgraph is recomputed whenever the card's `data()` computes, and a held heavy card recomputes nothing.
 
+**A pass that stands alone computes every card inside** (`runPass(…, whole)`): Single, and every mode's fallback to one plain pass, fetch the output markers and then each other internal card, so a card wired to nothing (a loose Value Input, a Display, a nested composite with no ports yet and so everything inside it) shows its value in the drill-in as it would on the main canvas. The passes of a multi-run (Scenarios, a data table, Monte Carlo, goal-seek's iterations, By row) fetch only the output markers, so the cards no output reads cost nothing per run. `composite.test.ts` pins it at two depths.
+
 ## Packs
 
 A pack node that grows past one formula becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Two pieces of that shape exist as data only: `exposure: "hidden"` and `tier: "advanced"` are honored where noted above (a hidden port gets no card socket and skips the wired value; the tier is saved), but nothing in the app creates a hidden port, reads the tier, or lets a pack declare a composite. Every port the app creates is exposed and basic. Locked is the silent default and only promotable ports earn chrome ([[C78]] packLegibility); a composite card today has no lock state of its own. A simple pack node never hides extra nodes inside to enforce an input's limit; a limit is a setting on the input. A one-formula pack node is treated as a one-node composite, so growing it into a composite changes nothing about how it appears, how input limits attach, or how errors show.
