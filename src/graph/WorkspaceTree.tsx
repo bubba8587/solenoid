@@ -400,6 +400,7 @@ export function WorkspaceTree({ outline }: { outline?: ReactNode }) {
               ) : (
                 <span className="solenoid-outline__label">{r.label}</span>
               )}
+              {r.unsaved && !isRenaming && <span className="solenoid-files__unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
               {real && !isRenaming && (
                 <button
                   type="button"

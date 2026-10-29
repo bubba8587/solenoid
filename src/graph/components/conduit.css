@@ -114,7 +114,7 @@
 }
 /* Desktop only: slide past the open Navigator; on mobile it is a near-full-width overlay and the toolbar keeps its own spot (mobile.css). */
 html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
-  left: 272px; /* 12 (panel left) + 248 (panel width) + 12 (gap) */
+  left: calc(24px + var(--nav-w, 248px)); /* 12 (panel left) + the panel's width + 12 (gap) */
 }
 
 .solenoid-conduit-toolbar__section {

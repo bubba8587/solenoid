@@ -242,7 +242,8 @@ async function showCurrentSafe(revertTo?: string | null): Promise<void> {
   await loadGraph({ ...EMPTY_GRAPH });
 }
 
-export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean; folder: string }
+/** `unsaved`: bound to a file and edited since its last file save. */
+export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean; folder: string; unsaved: boolean }
 
 export const documentStore = {
   subscribe,
@@ -255,6 +256,7 @@ export const documentStore = {
       updatedAt: d.updatedAt,
       current: d.id === _lib.currentId,
       folder: d.folder ?? "",
+      unsaved: !!d.filePath && d.updatedAt > (d.fileSavedAt ?? 0),
     }));
   },
 

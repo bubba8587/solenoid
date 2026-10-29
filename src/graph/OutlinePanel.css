@@ -422,15 +422,37 @@
 .solenoid-nav-sec__toggle:hover { background: var(--btn-hover); }
 .solenoid-nav-sec__toggle svg { flex: 0 0 auto; display: block; color: var(--text-dim); transition: transform 90ms ease; }
 .solenoid-nav-sec__title { flex: 0 0 auto; font-size: 12px; font-weight: 600; }
+.solenoid-nav-sec__toggle--short { flex: 0 0 auto; }
 .solenoid-nav-sec__crumb {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
   font-size: 11px;
   color: var(--text-muted);
+  cursor: pointer;
 }
+.solenoid-nav-sec__crumb:hover { color: var(--text); background: var(--btn-hover); }
+.solenoid-nav-sec__count { padding-right: 2px; }
+
+/* The right edge drags the panel's width on desktop. */
+.solenoid-outline__resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+.solenoid-outline__resize:hover { box-shadow: inset -2px 0 0 var(--accent); }
 .solenoid-nav-sec__count {
   margin-left: auto;
   flex: 0 0 auto;

@@ -69,6 +69,8 @@ type LayoutMode = "stacked" | "tree";
 const SECTIONS_KEY = "solenoid.navSections";
 const SPLIT_KEY = "solenoid.navSplit";
 const LAYOUT_KEY = "solenoid.navLayout";
+const WIDTH_KEY = "solenoid.navWidth";
+const clampWidth = (w: number) => Math.round(Math.min(Math.max(w, 200), 480));
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -212,6 +214,30 @@ export function OutlinePanel() {
   const [filesH, setFilesH] = useState<number>(() => readJson<number>(SPLIT_KEY, 180));
   const [addMenu, setAddMenu] = useState<{ x: number; y: number; sub?: MenuItem[] } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [navW, setNavW] = useState<number>(() => clampWidth(readJson<number>(WIDTH_KEY, 248)));
+  useEffect(() => {
+    if (!open || isMobile()) return;
+    document.body.style.setProperty("--nav-w", `${navW}px`);
+    return () => { document.body.style.removeProperty("--nav-w"); };
+  }, [open, navW]);
+  const startWidthDrag = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = navW;
+    let w = w0;
+    const move = (ev: PointerEvent) => { w = clampWidth(w0 + ev.clientX - x0); setNavW(w); };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); writeJson(WIDTH_KEY, w); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const revealOpenDoc = () => {
+    if (!sections.files) toggleSection("files");
+    const id = documentStore.currentId();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = panelRef.current?.querySelector<HTMLElement>(`[data-key="d:${CSS.escape(id ?? "")}"]`);
+      el?.scrollIntoView({ block: "nearest" });
+      el?.focus();
+    }));
+  };
   const startSplitDrag = (e: ReactPointerEvent) => {
     e.preventDefault();
     const y0 = e.clientY, h0 = filesH;
@@ -618,7 +644,13 @@ export function OutlinePanel() {
   );
 
   return (
-    <div className={`solenoid-outline solenoid-outline--${layout}`} ref={panelRef} onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className={`solenoid-outline solenoid-outline--${layout}`}
+      ref={panelRef}
+      style={isPhone ? undefined : { width: navW }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {!isPhone && <div className="solenoid-outline__resize" role="separator" aria-orientation="vertical" aria-label="Resize navigator" onPointerDown={startWidthDrag} />}
       <div className="solenoid-outline__header">
         <span className="solenoid-outline__title">Navigator</span>
         <span className="solenoid-outline__spacer" />
@@ -687,12 +719,12 @@ export function OutlinePanel() {
           )}
           <div className={`solenoid-nav-sec solenoid-nav-sec--outline${sections.outline ? " solenoid-nav-sec--open" : ""}`}>
             <div className="solenoid-nav-sec__head">
-              <button className="solenoid-nav-sec__toggle" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
+              <button className="solenoid-nav-sec__toggle solenoid-nav-sec__toggle--short" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
                 <SectionChevron open={sections.outline} />
                 <span className="solenoid-nav-sec__title">Outline</span>
-                <span className="solenoid-nav-sec__crumb" title={docName}>{docName}</span>
-                <span className="solenoid-nav-sec__count">{state.flat.length}</span>
               </button>
+              <button className="solenoid-nav-sec__crumb" title="Show in Files" onClick={revealOpenDoc}>{docName}</button>
+              <span className="solenoid-nav-sec__count">{state.flat.length}</span>
               {collapseAll}
             </div>
             {sections.outline && (

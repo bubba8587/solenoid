@@ -13,8 +13,9 @@ export type TreeRow = {
   docId?: string;
   folderPath?: string;
   sample?: boolean;
+  unsaved?: boolean;
 };
-export type RowDoc = { id: string; name: string; current: boolean; folder: string };
+export type RowDoc = { id: string; name: string; current: boolean; folder: string; unsaved?: boolean };
 
 export const nameCmp = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 export const folderKey = (path: string) => `f:${path}`;
@@ -39,7 +40,7 @@ export function libraryRows(docs: RowDoc[], folders: string[], expanded: Readonl
     for (const d of docs.filter((x) => x.folder === parent).sort((a, b) => nameCmp(a.name, b.name))) {
       const expandable = outlineUnderOpen && d.current;
       rows.push({
-        key: docKey(d.id), kind: "doc", label: d.name, depth, open: d.current, docId: d.id,
+        key: docKey(d.id), kind: "doc", label: d.name, depth, open: d.current, docId: d.id, unsaved: !!d.unsaved,
         expandable, expanded: expandable && !expanded.has(docFoldedKey(d.id)),
       });
     }

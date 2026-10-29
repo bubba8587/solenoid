@@ -226,10 +226,13 @@ html.is-mobile {
   .solenoid-outline__layout { height: 32px; padding: 0 12px; font-size: 13px; }
   .solenoid-nav-sec__title { font-size: 14px; }
   .solenoid-nav-sec__crumb, .solenoid-nav-sec__count { font-size: 13px; }
+  .solenoid-nav-sec__crumb { padding: 8px 6px; }
   .solenoid-nav-sec__btn svg { width: 16px; height: 16px; }
   .solenoid-nav-sec--files.solenoid-nav-sec--open { flex: 1 1 auto; }
   .solenoid-nav-sec--files.solenoid-nav-sec--open .solenoid-nav-sec__body { flex: 1 1 auto; }
   .solenoid-files__rename { height: 28px; margin: -5px 0; font-size: 14px; }
+  .solenoid-files__menu { min-width: 200px; }
+  .solenoid-files__menu .sol-popup-menu__item { padding: 11px 12px; font-size: 14px; }
   .solenoid-outline__collapse-all svg { width: 16px; height: 16px; }
   .solenoid-outline__search { height: 36px; font-size: 14px; }
   .solenoid-outline__searchwrap .solenoid-outline__search { padding-right: 38px; }

@@ -21,7 +21,7 @@
 
 /* Desktop only: slide past the open Navigator, as the docked Conduit and standoff toolbars do. */
 html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
-  left: 272px; /* 12 (panel left) + 248 (panel width) + 12 (gap) */
+  left: calc(24px + var(--nav-w, 248px)); /* 12 (panel left) + the panel's width + 12 (gap) */
 }
 
 @keyframes solenoid-cable-inspector-in {
