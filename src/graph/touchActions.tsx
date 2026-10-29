@@ -94,3 +94,13 @@ export function GroupGlyph({ size = 20 }: IconProps) {
     </svg>
   );
 }
+
+/** The drill-in ports tab's outline, sloped at its shoulders; stretched to the tab's width, its stroke kept 1px. */
+export function PortsTabShape() {
+  return (
+    <svg className="solenoid-mobile-bar__ports-tab" viewBox="0 0 124 8" preserveAspectRatio="none" aria-hidden="true">
+      <path className="solenoid-mobile-bar__ports-fill" d="M0 8 L8 1.5 Q9 0.5 11 0.5 H113 Q115 0.5 116 1.5 L124 8 Z" />
+      <path className="solenoid-mobile-bar__ports-edge" d="M0 7.5 L8 1.5 Q9 0.5 11 0.5 H113 Q115 0.5 116 1.5 L124 7.5" />
+    </svg>
+  );
+}

@@ -6,6 +6,8 @@ import type { CompositeNode } from "./nodes/composite";
 
 let _stack: CompositeNode[] = [];
 const { notify, subscribe, version } = createNotifier();
+// The open drill-in's port adder, for chrome outside it (the phone's bottom bar); set while a drill-in is mounted.
+let _addPort: ((kind: "input" | "output") => void) | null = null;
 
 export const compositeEditorStore = {
   version,
@@ -35,6 +37,12 @@ export const compositeEditorStore = {
     _stack = [];
     notify();
   },
+  /** Returns the unregister, which clears the slot only while it still holds this adder. */
+  registerAddPort(fn: (kind: "input" | "output") => void): () => void {
+    _addPort = fn;
+    return () => { if (_addPort === fn) _addPort = null; };
+  },
+  addPort(kind: "input" | "output") { _addPort?.(kind); },
 };
 
 // process.ts ticks this after every pass: the drill-in overlay re-renders its inner views on it, and config-derived readouts (column pickers) re-resolve.

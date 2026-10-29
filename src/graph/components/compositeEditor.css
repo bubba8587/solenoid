@@ -201,17 +201,20 @@ html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { vi
   background: var(--canvas-bg);
 }
 
-/* Mobile: the strip clears both top rows (about 82px plus the notch) and stops before the right-anchored Fit and Lock pill. */
+/* Mobile: the strip hangs in the corner under the top rows, flush with the bar's accent line and the screen's left edge, so it
+   has only a bottom and a right edge; it stops before the right-anchored Fit and Lock pill. The port buttons live in the
+   bottom bar on a phone (I and O beside the ➕, MobileControls), so the strip is the crumbs alone. */
 html.is-mobile .solenoid-composite-editor__strip {
-  top: calc(88px + env(safe-area-inset-top));
-  left: 8px;
-  /* Crumbs on one row and the port buttons below; one row squeezed the crumbs to nothing on a narrow phone. */
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  padding: 4px 6px;
+  top: var(--chrome-top, calc(82px + env(safe-area-inset-top)));
+  left: 0;
+  padding: 6px 10px 6px max(10px, env(safe-area-inset-left));
+  border-top: none;
+  border-left: none;
+  border-radius: 0 0 8px 0;
+  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.18);
   max-width: calc(100vw - 150px);
 }
+html.is-mobile .solenoid-composite-editor__strip-actions { display: none; }
 html.is-mobile .solenoid-composite-editor__crumbs { flex: 0 0 auto; }
 html.is-mobile .solenoid-composite-editor__crumb {
   font-size: 11.5px;

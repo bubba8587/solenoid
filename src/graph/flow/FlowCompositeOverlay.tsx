@@ -163,6 +163,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     [leaveLevels, settleAfterLeave],
   );
 
+  const addPortRef = useRef(addPort);
+  addPortRef.current = addPort;
+  useEffect(() => compositeEditorStore.registerAddPort((k) => void addPortRef.current(k)), []);
+
   async function addPort(kind: "input" | "output") {
     const rect = wrapperRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -293,6 +297,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
             </span>
           ))}
         </div>
+        {/* On a phone the bottom bar's I and O beside the ➕ add ports, so the strip holds only the crumbs. */}
         <div className="solenoid-composite-editor__strip-actions">
           <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("input")}>
             + Input

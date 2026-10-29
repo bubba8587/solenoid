@@ -62,3 +62,51 @@
   background: var(--accent);
   filter: brightness(0.92);
 }
+
+/* Drilled into a composite: a tab rising out of the bar's top edge, hugging the ➕, with I and O on its shoulders.
+   The tab is drawn as an SVG over the bar's border, its fill hiding the border where the two meet. */
+.solenoid-mobile-bar__ports {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+.solenoid-mobile-bar__ports > button { position: relative; z-index: 1; }
+.solenoid-mobile-bar__ports-tab {
+  position: absolute;
+  /* The bar's top edge is 6px above the row (5px padding, 1px border); the tab rises 7px past it, 4px clear of the ➕'s top. */
+  top: -13px;
+  left: -10px;
+  width: calc(100% + 20px);
+  height: 8px;
+  overflow: visible;
+  pointer-events: none;
+}
+.solenoid-mobile-bar__ports-fill { fill: var(--panel-bg); }
+.solenoid-mobile-bar__ports-edge {
+  fill: none;
+  stroke: var(--panel-border);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.solenoid-mobile-bar__port {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 38px;
+  /* Level with the ➕, which rides 8px proud of the bar. */
+  transform: translateY(-8px);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.solenoid-mobile-bar__port:active { background: var(--btn-hover); }
