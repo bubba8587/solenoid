@@ -815,9 +815,9 @@ export function OutlinePanel() {
               <button className="solenoid-nav-sec__toggle solenoid-nav-sec__toggle--short" aria-expanded={sections.outline} onClick={() => toggleSection("outline")}>
                 <SectionChevron open={sections.outline} />
                 <span className="solenoid-nav-sec__title">Outline</span>
+                <span className="solenoid-nav-sec__count">{state.flat.length}</span>
               </button>
               <button className="solenoid-nav-sec__crumb" title="Show in Files" onClick={revealOpenDoc}>{docName}</button>
-              <span className="solenoid-nav-sec__count">{state.flat.length}</span>
               {collapseAll}
             </div>}
             {sections.outline && (

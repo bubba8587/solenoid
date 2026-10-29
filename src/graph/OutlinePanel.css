@@ -118,7 +118,7 @@
 .solenoid-outline__collapse-all svg { display: block; }
 
 .solenoid-outline__search {
-  margin: 8px var(--nav-gutter) 6px;
+  margin: 6px var(--nav-gutter);
   box-sizing: border-box;
   height: 28px;
   padding: 0 calc(var(--nav-pad) - 1px);
@@ -162,6 +162,8 @@
   border-radius: 6px;
   color: var(--text);
   font-size: 12.5px;
+  /* The fold slot's height, so a row with a chevron is exactly as tall as one with a dot. */
+  line-height: var(--nav-slot);
   text-align: left;
   cursor: pointer;
 }
@@ -351,7 +353,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   height: 28px;
   padding: 0 var(--nav-pad) 0 calc(var(--nav-pad) + 2px);
   background: transparent;
@@ -369,6 +371,7 @@
 .solenoid-nav-sec__crumb {
   flex: 0 1 auto;
   min-width: 0;
+  margin-right: auto;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -397,7 +400,6 @@
 }
 .solenoid-outline__resize:hover { box-shadow: inset -2px 0 0 var(--accent); }
 .solenoid-nav-sec__count {
-  margin-left: auto;
   flex: 0 0 auto;
   font-size: 11px;
   color: var(--text-muted);
@@ -467,7 +469,6 @@
   position: absolute;
   top: 50%;
   right: calc(var(--nav-gutter) + 3px);
-  margin-top: -1px;
   transform: translateY(-50%);
   display: flex;
   gap: 2px;

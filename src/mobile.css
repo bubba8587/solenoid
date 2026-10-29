@@ -222,7 +222,7 @@ html.is-mobile {
   .solenoid-outline__collapse-all,
   .solenoid-nav-sec__btn,
   .solenoid-files__more { width: 28px; height: 28px; }
-  .solenoid-files__more { margin: -6px -6px -6px 0; }
+  .solenoid-files__more { margin: -5px 0; }
   .solenoid-nav-sec__toggle { height: 30px; }
   .solenoid-outline__layout { height: 28px; padding: 0 10px; font-size: 12px; }
   .solenoid-nav-sec__title { font-size: 13px; }
@@ -239,7 +239,10 @@ html.is-mobile {
   .solenoid-outline__heading { font-size: 10.5px; }
   .solenoid-outline__hitwhere { font-size: 11.5px; }
   .solenoid-outline__row { padding-top: 6px; padding-bottom: 6px; font-size: 13px; }
-  .solenoid-outline__header { padding: 6px var(--nav-gutter); }
+  /* Four things share the header's 228px: the switch, two 28px buttons and the gaps between, so the gaps stay small. */
+  .solenoid-outline__header { padding: 6px var(--nav-gutter); gap: 4px; }
+  .solenoid-outline__switchbtn { padding: 0 10px; }
+  .solenoid-outline__header > button { flex-shrink: 0; }
   .solenoid-outline__search { margin: 6px var(--nav-gutter); height: 30px; }
   /* A finger-sized target that hangs into the row's padding rather than growing the row. */
   .solenoid-outline__plug { min-height: 26px; margin: -5px 0; padding: 0 6px 0 4px; gap: 4px; }
