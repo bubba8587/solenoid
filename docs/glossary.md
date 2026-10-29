@@ -258,8 +258,10 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
 - **File / menu bar**: top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
 - **Top bar**: toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
   On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
-- **Navigator**: left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
-  `body.solenoid-nav-open`).
+- **Navigator**: left panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
+  `body.solenoid-nav-open`; its width is `--nav-w` on `body`). Two sections:
+  - **Files**: the **workspace tree** of folders, documents and (planned) pages. `WorkspaceTree.tsx` · `.solenoid-files`.
+  - **Outline**: the open document's groups and cards. `.solenoid-outline__list`.
 - **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
   A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
   both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
