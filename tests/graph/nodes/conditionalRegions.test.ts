@@ -85,6 +85,36 @@ describe("Conditional Regions node", () => {
     expect(inCol(run(n, chartOf("xyline"), frame([0.5], [2])))).toEqual([true]);
   });
 
+  it("in Values mode answers each point its region's number", () => {
+    const n = new ConditionalRegionsNode({ op: "num", regionValues: { "0.0.0": 1, "1.0.1": 0 } });
+    expect(n.inputs.values).toBeTruthy();
+    expect(n.inputs.labels).toBeUndefined();
+    const out = n.data({ chart: [chartOf("xyline")], points: [frame([0.5, 2.5, 1], [2, 1, 6])], values: [[0.05, 0.12]] }).result as FrameValue;
+    expect(out.columns.map((c) => [c.name, c.type])).toEqual([["x", "number"], ["y", "number"], ["value", "number"]]);
+    expect(out.columns[2].values).toEqual([0.12, 0.05, null]);
+  });
+
+  it("swaps Labels for Values as the op changes, keeping each op's marks", () => {
+    const n = new ConditionalRegionsNode({ op: "text", regionLabels: { "0.0.0": 0 }, regionValues: { "0.0.0": 1 } });
+    n.setOp("num");
+    expect([!!n.inputs.labels, !!n.inputs.values]).toEqual([false, true]);
+    expect(inCol(n.data({ chart: [chartOf("xyline")], points: [frame([0.5], [2])], values: [[1, 2]] }).result)).toEqual([2]);
+    n.setOp("text");
+    expect([!!n.inputs.labels, !!n.inputs.values]).toEqual([true, false]);
+  });
+
+  it("with Margin adds each point's distance to the nearest line where its answer changes", () => {
+    // TRUE left of x = 2 above the curve, so the curve there and x = 2 above it flip; y = 5 does not.
+    const n = new ConditionalRegionsNode({ margin: true, regionMarks: { "0.0.0": true, "0.1.0": true } });
+    const out = run(n, chartOf("xyline"), frame([0.5, null], [3, 1])) as FrameValue;
+    expect(out.columns.map((c) => c.name)).toEqual(["x", "y", "in", "margin"]);
+    const [m, blank] = out.columns[3].values as (number | null)[];
+    // From (0.5, 3) the curve's run from (1, 1) to (2, 4) is nearer than x = 2, at 1.5.
+    expect(m).toBeCloseTo(3.5 / Math.sqrt(10), 9);
+    expect(blank).toBeNull();
+    expect(n.frameShape("result", { inputShape: () => ({ columns: [{ name: "x", type: "number" }, { name: "y", type: "number" }] }), wired: () => false } as never)!.columns.map((c) => c.name)).toEqual(["x", "y", "in", "margin"]);
+  });
+
   it("refuses a chart without an x/y plane", () => {
     const out = run(new ConditionalRegionsNode(), chartOf("column"), frame([1], [1])) as SolError;
     expect(isSolError(out) && out.code).toBe("#TYPE!");
@@ -104,9 +134,10 @@ describe("Conditional Regions node", () => {
   });
 
   it("saves its marks and modes", () => {
-    const init = extractInit(new ConditionalRegionsNode({ mode: "strict", op: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } }));
-    expect(init).toMatchObject({ mode: "strict", op: "text", regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 } });
+    const init = extractInit(new ConditionalRegionsNode({ mode: "strict", op: "num", margin: true, regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 }, regionValues: { "0.0.0": 1 } }));
+    expect(init).toMatchObject({ mode: "strict", op: "num", margin: true, regionMarks: { "0.0.1": false }, regionLabels: { "0.0.0": 2 }, regionValues: { "0.0.0": 1 } });
     const back = new ConditionalRegionsNode(init as ConstructorParameters<typeof ConditionalRegionsNode>[0]);
-    expect([back.mode, back.op, back.regionMarks, back.regionLabels]).toEqual(["strict", "text", { "0.0.1": false }, { "0.0.0": 2 }]);
+    expect([back.mode, back.op, back.margin, back.regionMarks, back.regionLabels, back.regionValues])
+      .toEqual(["strict", "num", true, { "0.0.1": false }, { "0.0.0": 2 }, { "0.0.0": 1 }]);
   });
 });

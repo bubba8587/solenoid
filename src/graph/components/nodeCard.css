@@ -965,7 +965,18 @@ body.solenoid-scrubbing * {
   pointer-events: all;
 }
 
-/* Conditional Regions in Text mode: each label beside its region color. */
+/* Conditional Regions' Margin checkbox, beside the ≤ / < toggle. */
+.solenoid-node__regions-margin {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Conditional Regions on a list op: each item beside its region color. */
 .solenoid-node__region-legend {
   display: flex;
   flex-wrap: wrap;

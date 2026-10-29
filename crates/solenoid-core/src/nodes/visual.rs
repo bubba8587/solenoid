@@ -2189,6 +2189,56 @@ fn touched_regions(c: &Cuts, scale: f64, x: f64, y: f64) -> Option<Vec<String>> 
     Some(keys)
 }
 
+/// Every line in the plane as segments: the curves and their carried-on ends, and each reference line out to `reach`.
+fn all_segments(c: &Cuts, reach: f64) -> Vec<[f64; 4]> {
+    let mut segs: Vec<[f64; 4]> =
+        c.curves.iter().chain(&c.tails).flat_map(|cv| cv.chunks_exact(4).map(|s| [s[0], s[1], s[2], s[3]])).collect();
+    segs.extend(c.xs.iter().map(|&k| [k, -reach, k, reach]));
+    segs.extend(c.ys.iter().map(|&k| [-reach, k, reach, k]));
+    segs
+}
+
+/// Where segment `a` meets segment `b`, as a fraction of the way along `a`.
+fn crossing(a: &[f64; 4], b: &[f64; 4]) -> Option<f64> {
+    let (dx, dy, ex, ey) = (a[2] - a[0], a[3] - a[1], b[2] - b[0], b[3] - b[1]);
+    let den = dx * ey - dy * ex;
+    if den == 0.0 {
+        return None;
+    }
+    let (fx, fy) = (b[0] - a[0], b[1] - a[1]);
+    let t = (fx * ey - fy * ex) / den;
+    let u = (fx * dy - fy * dx) / den;
+    ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then_some(t)
+}
+
+/// The stretches of line with a different answer on each side: every line cut where another crosses it, and a piece
+/// kept when a hair to one side reads differently from a hair to the other.
+fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<[f64; 4]> {
+    let segs = all_segments(c, reach);
+    let mut out = Vec::new();
+    for (i, a) in segs.iter().enumerate() {
+        let (dx, dy) = (a[2] - a[0], a[3] - a[1]);
+        let len = dx.hypot(dy);
+        if len == 0.0 {
+            continue;
+        }
+        let mut ts: Vec<f64> =
+            segs.iter().enumerate().filter(|(j, _)| *j != i).filter_map(|(_, b)| crossing(a, b)).collect();
+        ts.extend([0.0, 1.0]);
+        ts.sort_by(f64::total_cmp);
+        ts.dedup();
+        let (nx, ny) = (-dy / len * hair, dx / len * hair);
+        for w in ts.windows(2) {
+            let m = (w[0] + w[1]) / 2.0;
+            let (mx, my) = (a[0] + dx * m, a[1] + dy * m);
+            if read(&region_key(c, mx + nx, my + ny)) != read(&region_key(c, mx - nx, my - ny)) {
+                out.push([a[0] + dx * w[0], a[1] + dy * w[0], a[0] + dx * w[1], a[1] + dy * w[1]]);
+            }
+        }
+    }
+    out
+}
+
 /// Each point's region by the cuts a Conditional Regions card shows, one key per line.
 #[cfg(any(target_arch = "wasm32", test))]
 pub(crate) fn region_keys(cuts: &str, xs: &[f64], ys: &[f64]) -> String {
@@ -2259,67 +2309,89 @@ fn conditional_regions(c: &mut Call) -> Answer {
         c.show("cachedPoints", Cv::NULL);
         return Ok(vec![("result".into(), Cv::from(e))]);
     }
-    let text = c.field_str("op", "bool") == "text";
-    let labels: Vec<String> = if text {
-        super::stats::items(&c.read_input("labels", list(Vec::new()))).iter().map(js_string_of).collect()
-    } else {
-        Vec::new()
+    // A Labels or Values card answers an item of its list, by the item's place in it.
+    let op = c.field_str("op", "bool").to_string();
+    let (list_key, marks_key, third) = match op.as_str() {
+        "text" => (Some("labels"), "regionLabels", "label"),
+        "num" => (Some("values"), "regionValues", "value"),
+        _ => (None, "regionMarks", "in"),
     };
-    c.show("cachedLabels", list(labels.iter().map(|l| V::str(l)).collect()));
-    let marks = c
-        .field(if text { "regionLabels" } else { "regionMarks" })
-        .and_then(Json::as_object)
-        .cloned()
-        .unwrap_or_default();
+    let items: Vec<V> =
+        list_key.map_or_else(Vec::new, |k| super::stats::items(&c.read_input(k, list(Vec::new()))).to_vec());
+    c.show("cachedLabels", list(items.iter().map(|v| V::str(&js_string_of(v))).collect()));
+    let marks = c.field(marks_key).and_then(Json::as_object).cloned().unwrap_or_default();
+    let listed = list_key.is_some();
     let read = |k: &str| -> Option<i64> {
         let m = marks.get(k)?;
-        if text {
-            m.as_f64().filter(|i| *i >= 0.0 && (*i as usize) < labels.len()).map(|i| i as i64)
+        if listed {
+            m.as_f64().filter(|i| *i >= 0.0 && (*i as usize) < items.len()).map(|i| i as i64)
         } else {
             m.as_bool().map(i64::from)
         }
     };
-    // A disagreement on a line goes to TRUE, or to the label earliest in the list.
-    let tie: fn(i64, i64) -> i64 = if text { i64::min } else { i64::max };
+    // A disagreement on a line goes to TRUE, or to the item earliest in the list.
+    let tie: fn(i64, i64) -> i64 = if listed { i64::min } else { i64::max };
     let inclusive = c.field_str("mode", "inclusive") != "strict";
     let scale = cuts.scale();
+    let flips = c.field("margin").and_then(Json::as_bool).unwrap_or(false).then(|| {
+        let reach = 1e4 * (1.0 + scale);
+        flip_pieces(&cuts, &read, reach, 1e-6 * if scale > 0.0 { scale } else { 1.0 })
+    });
     let rows = cols[0].values.len().max(cols[1].values.len());
-    let (mut answers, mut shown) = (Vec::with_capacity(rows), Vec::new());
+    let (mut answers, mut margins, mut shown) = (Vec::with_capacity(rows), Vec::with_capacity(rows), Vec::new());
     for r in 0..rows {
         let (Some(x), Some(y)) = (finite(&cell(&cols[0], r)), finite(&cell(&cols[1], r))) else {
             answers.push(V::Null);
+            margins.push(V::Null);
             continue;
         };
         let (mark, on_line) = point_mark(&cuts, scale, &read, tie, inclusive, x, y);
         answers.push(match mark {
             None => V::Null,
-            Some(i) if text => V::str(&labels[i as usize]),
+            Some(i) if op == "num" => V::Num(super::kit::num(&items[i as usize])),
+            Some(i) if listed => V::str(&js_string_of(&items[i as usize])),
             Some(i) => V::Bool(i == 1),
         });
+        if let Some(pieces) = &flips {
+            let d = pieces.iter().map(|s| segment_distance(s, x, y)).fold(f64::INFINITY, f64::min);
+            margins.push(if d.is_finite() { V::Num(d) } else { V::Null });
+        }
         let shown_mark = match mark {
             None => Json::Null,
-            Some(i) if text => jn(i as f64),
+            Some(i) if listed => jn(i as f64),
             Some(i) => Json::Bool(i == 1),
         };
         shown.push(json!([jn(x), jn(y), shown_mark, on_line]));
     }
-    let third = if text { "label" } else { "in" };
-    let names = crate::frame::make_headers(&[cols[0].name.clone(), cols[1].name.clone(), third.into()], 3);
+    let mut proposed = vec![cols[0].name.clone(), cols[1].name.clone(), third.to_string()];
+    if flips.is_some() {
+        proposed.push("margin".into());
+    }
+    let names = crate::frame::make_headers(&proposed, proposed.len());
     let axis = |k: usize| {
         let mut col = cols[k].clone();
         col.name = names[k].clone();
         col.values = (0..rows).map(|r| cell(&cols[k], r)).collect();
         col
     };
-    let in_col = Column {
-        name: names[2].clone(),
-        ty: if text { FrameColType::String } else { FrameColType::Logical },
-        values: answers,
+    let plain = |name: &str, ty: FrameColType, values: Vec<V>| Column {
+        name: name.to_string(),
+        ty,
+        values,
         unit: None,
         format: None,
         raw: None,
     };
-    let out = Cv::Frame(Rc::new(Frame { columns: vec![axis(0), axis(1), in_col], total_rows: None, approx: None }));
+    let ty = match op.as_str() {
+        "text" => FrameColType::String,
+        "num" => FrameColType::Number,
+        _ => FrameColType::Logical,
+    };
+    let mut columns = vec![axis(0), axis(1), plain(&names[2], ty, answers)];
+    if flips.is_some() {
+        columns.push(plain(&names[3], FrameColType::Number, margins));
+    }
+    let out = Cv::Frame(Rc::new(Frame { columns, total_rows: None, approx: None }));
     c.show("cachedError", V::Null);
     c.show("cachedPoints", whole(Json::Array(shown)));
     Ok(vec![("result".into(), out)])
@@ -2408,6 +2480,22 @@ mod tests {
             &[0.0, 20.0, -9.0, 0.0],
         );
         assert_eq!(got, ["0.0.1", "0.0.0", "0.0.1", "0.0.0"]);
+    }
+
+    #[test]
+    fn margin_is_the_distance_to_where_the_answer_flips() {
+        // x = 5 and y = 5; every quarter TRUE but the lower right, so only two half-lines flip.
+        let chart = json!({ "payload": { "series": [] }, "refs": [{ "x": 5 }, { "y": 5 }] });
+        let cuts: Cuts = serde_json::from_value(chart_cuts(&chart, false)).unwrap();
+        let marks = [("0.0.", 1), ("0.1.", 1), ("1.0.", 0), ("1.1.", 1)];
+        let read = |k: &str| marks.iter().find(|(m, _)| *m == k).map(|(_, v)| *v);
+        let pieces = flip_pieces(&cuts, &read, 1e4, 1e-6);
+        let margin = |x: f64, y: f64| pieces.iter().map(|s| segment_distance(s, x, y)).fold(f64::INFINITY, f64::min);
+        assert!((margin(2.0, 1.0) - 3.0).abs() < 1e-9);
+        // Above y = 5 the line x = 5 has TRUE on both sides, so the nearest flip is the corner.
+        assert!((margin(2.0, 8.0) - 18f64.sqrt()).abs() < 1e-9);
+        let all_true = |_: &str| Some(1);
+        assert!(flip_pieces(&cuts, &all_true, 1e4, 1e-6).is_empty());
     }
 
     #[test]

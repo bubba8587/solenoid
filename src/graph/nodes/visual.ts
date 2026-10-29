@@ -186,10 +186,11 @@ export const REGIONS_MODE_META = {
   strict:    { label: "<", description: "A point on a line counts for no region and comes out blank." },
 } satisfies Record<RegionsMode, { label: string; description: string }>;
 
-export type RegionsOp = "bool" | "text";
+export type RegionsOp = "bool" | "text" | "num";
 export const REGIONS_OP_META = {
   bool: { label: "True/False", keywords: "boolean true false in inside mask" },
   text: { label: "Labels", keywords: "text label name category zone ifs" },
+  num:  { label: "Values", keywords: "number value rate score lookup tier" },
 } satisfies Record<RegionsOp, { label: string; keywords: string }>;
 
 /** One plotted point: x, y, its answer (a Text card's as the label's place in the list), and whether it sits on a line. */
@@ -203,15 +204,20 @@ export class ConditionalRegionsNode extends GraphNode {
     chart: "A Scatter, XY Line or Bubble chart. Each series is a line, a scatter's points joined in order of x, and each References row with only x or only y is a straight line.",
     points: "The first column is x and the second y. A row missing either comes out blank.",
     labels: "The names a region can take, in order. Where regions with different labels meet, a point on the line takes the one listed first.",
-    result: "The points with an in column of TRUE, FALSE or blank, or in Text mode a label column holding each region's label or a blank.",
+    values: "The numbers a region can take, in order. Where regions with different values meet, a point on the line takes the one listed first.",
+    result: "The points with an in column of TRUE, FALSE or blank, a label or value column of each region's item or a blank, and with Margin a margin column.",
   };
 
   label: string;
   mode: RegionsMode;
   op: RegionsOp;
   regionMarks: Record<string, boolean>;
-  /** A Text card's marks: each region's label by its place in the list. */
+  /** A Labels card's marks: each region's label by its place in the list. */
   regionLabels: Record<string, number>;
+  /** A Values card's marks, the same way. */
+  regionValues: Record<string, number>;
+  /** Adds a margin column: each point's distance to the nearest line where the answer changes. */
+  margin: boolean;
   stringLiterals: Record<string, string> = {};
   cachedChart: ChartValue | null = null;
   cachedLabels: string[] | null = null;
@@ -223,34 +229,54 @@ export class ConditionalRegionsNode extends GraphNode {
 
   constructor(init?: {
     label?: string; op?: RegionsOp; mode?: RegionsMode;
-    regionMarks?: Record<string, boolean>; regionLabels?: Record<string, number>;
+    regionMarks?: Record<string, boolean>; regionLabels?: Record<string, number>; regionValues?: Record<string, number>;
+    margin?: boolean;
   }) {
     super("ConditionalRegions");
     this.label = init?.label ?? "";
     this.mode = init?.mode === "strict" ? "strict" : "inclusive";
-    this.op = init?.op === "text" ? "text" : "bool";
+    this.op = init?.op === "text" || init?.op === "num" ? init.op : "bool";
     this.regionMarks = { ...(init?.regionMarks ?? {}) };
     this.regionLabels = { ...(init?.regionLabels ?? {}) };
+    this.regionValues = { ...(init?.regionValues ?? {}) };
+    this.margin = init?.margin === true;
     this.addInput("chart", chartIn("Chart"));
     this.addInput("points", frameIn("Points"));
-    if (this.op === "text") this.addInput("labels", strListIn("Labels"));
+    this.addListInput();
     this.addOutput("result", frameOut("Points"));
   }
 
-  /** Text adds the Labels input; Bool drops it, so its cables are pruned first. */
+  /** The list input the op answers from: Labels for Labels, Values for Values, none for True/False. */
+  listKey(op: RegionsOp = this.op): "labels" | "values" | null {
+    return op === "text" ? "labels" : op === "num" ? "values" : null;
+  }
+
+  private addListInput(): void {
+    const key = this.listKey();
+    if (key === "labels" && !this.inputs.labels) this.addInput("labels", strListIn("Labels"));
+    if (key === "values" && !this.inputs.values) {
+      this.stringLiterals.values ??= "";
+      this.addInput("values", numListIn("Values"));
+    }
+  }
+
+  /** Swaps the list input for the op's own, so the one leaving has its cables pruned first. */
   setOp(next: RegionsOp): void {
+    const leaving = this.listKey();
     this.op = next;
-    if (next === "text" && !this.inputs.labels) this.addInput("labels", strListIn("Labels"));
-    if (next === "bool" && this.inputs.labels) this.removeInput("labels");
+    if (leaving && leaving !== this.listKey()) this.removeInput(leaving);
+    this.addListInput();
   }
 
   /** The points' x and y columns, then `in` or `label`; unknown until the points' shape is, or when a points column
    *  already has that name. */
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const [x, y] = ctx.inputShape("points")?.columns ?? [];
-    const third = this.op === "text" ? "label" : "in";
-    if (!x || !y || x.name === third || y.name === third) return null;
-    return { columns: [x, y, { name: third, type: this.op === "text" ? "string" : "logical" }] };
+    const third = this.op === "text" ? "label" : this.op === "num" ? "value" : "in";
+    const names = [third, ...(this.margin ? ["margin"] : [])];
+    if (!x || !y || names.includes(x.name) || names.includes(y.name)) return null;
+    const type = this.op === "text" ? "string" : this.op === "num" ? "number" : "logical";
+    return { columns: [x, y, { name: third, type }, ...(this.margin ? [{ name: "margin", type: "number" as const }] : [])] };
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | SolError | null } {
