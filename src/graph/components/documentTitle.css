@@ -96,6 +96,11 @@
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
   padding: 6px;
 }
+/* An engine without anchor positioning (an older WebKitGTK in the Linux app) centers the menu in the window. */
+@supports not (anchor-name: --a) {
+  .solenoid-doctitle__menu { inset: 0; margin: auto; translate: none; height: fit-content; }
+}
+
 :root[data-theme="light"] .solenoid-doctitle__menu { box-shadow: 0 12px 36px rgba(20, 30, 50, 0.1); }
 
 .solenoid-doctitle__section-head {
