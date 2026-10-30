@@ -45,7 +45,7 @@
     "@tauri-apps/api": "^2.12.2",
     "@tauri-apps/plugin-dialog": "^2.8.1",
     "@tauri-apps/plugin-fs": "^2.6.0",
-    "@tauri-apps/plugin-http": "2.8.1",
+    "@tauri-apps/plugin-http": "2.8.3",
     "@tauri-apps/plugin-opener": "^2.7.0",
     "@types/katex": "^0.16.8",
     "@xyflow/react": "^12.12.0",
@@ -79,11 +79,11 @@
     "magic-string": "0.30.21",
     "obsidian": "^1.14.4",
     "papaparse": "^5.7.0",
-    "postcss": "8.5.29",
+    "postcss": "8.5.32",
     "puppeteer-core": "^25.13.0",
     "rollup-plugin-license": "^3.7.1",
     "three": "0.186.1",
-    "tsrs": "0.20.0-ts7.1.0-beta",
+    "tsrs": "0.20.1-ts7.1.0-beta",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
   }
