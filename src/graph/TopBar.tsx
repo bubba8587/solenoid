@@ -37,9 +37,9 @@ const TidyIcon = () => (
   </svg>
 );
 
-/** Lucide "brush" (ISC). */
+/** Lucide "brush" (ISC), its stroke scaled from the bar's 1.2 on a 16 grid to its own 24. */
 const CleanupIcon = () => (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="m11 10 3 3" />
     <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
     <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
