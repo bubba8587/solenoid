@@ -9,9 +9,11 @@ protocol, overview, adoption guide and a render of DTE's own tree live in `dte-r
 `dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
 `dte-rules/DECISIONS.md`, written by
 `python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
-`tools/dte.py` itself (the local copy carries patches ahead of upstream until the author lands them: the
-`.dtecoverage` store below, which feedback 14 holds, a `decisions` key in `dte.cfg` so the
-tree can live at `tree/decisions`, and the block-list field write of feedback 28; a re-vendor must keep them). Read them before
+`tools/dte.py` itself. Solenoid's copy is the forward line, not a fork waiting on upstream: the vendored
+upstream is DTE's first usable version, and the next one (0.2) is built from what proves good here. So a change
+the tool needs is made in `tools/dte.py` directly, marked `local patch` (the `.dtecoverage` store below, the
+`decisions` key in `dte.cfg` so the tree can live at `tree/decisions`, the block-list field write, the lean
+frontmatter, the leaf `uuid`), and the copy is never re-vendored over from upstream. Read them before
 creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
 leaves in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
 `.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
@@ -212,6 +214,7 @@ that a whole class of files needs no decision: say why in the `why:` line, and i
 
 ## Feedback
 
-DTE is unfinished. Difficulties met while using it here go to `docs/dte-feedback.md`, one
-numbered item each with the command, what happened and what would have helped; the author
-carries them to the DTE repo and deletes the item once it is processed upstream.
+DTE is unfinished, and Solenoid's copy is where its next version takes shape. `docs/dte-feedback.md` is that
+change list: one numbered item each with the command, what happened, and what the tool does now or should. A fix
+that can be made is made in `tools/dte.py` as a local patch and its item says so; the list is what DTE 0.2 takes
+from this copy.
