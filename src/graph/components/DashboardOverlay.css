@@ -292,10 +292,10 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
   .dashboard-box { grid-row: auto !important; grid-column: 1 / -1 !important; min-height: 140px; }
   /* Two compact neighbors share a row (halfWidth). */
   .dashboard-box--half { grid-column: auto / span 1 !important; min-height: 96px; }
-  /* A half box's value fills its width: a glyph runs about 0.6 em, so 130cqw over the character count leaves a margin. */
+  /* A half box's value fills its width: set at its largest size, shrunk to the box's width by the text's own measure. */
   .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline,
-  .dashboard-box--half .sol-kpi__value { font-size: clamp(20px, calc(130cqw / var(--chars, 6)), 52px); }
-  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: clamp(16px, calc(140cqw / var(--chars, 8)), 34px); }
+  .dashboard-box--half .sol-kpi__value { display: block; inline-size: 86%; margin-inline: auto; text-align: center; font-size: 52px; white-space: nowrap; text-fit: shrink 38%; }
+  .dashboard-box--half .dashboard-box__value > .solenoid-ref-inline--text { font-size: 34px; text-fit: shrink 47%; }
   .dashboard-box__value { container-type: inline-size; }
   .dashboard-box:not(.dashboard-box--half):has(.solenoid-ref-chartbody):not(:has(.sol-kpi)) { min-height: 300px; }
   /* A document, table or cards grow with their content up to a tall cap, so one that still scrolls has room for a
