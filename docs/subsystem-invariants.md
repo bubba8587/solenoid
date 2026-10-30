@@ -2,6 +2,10 @@
 
 The index of `../tree/specs/`, grouped by the folders the specs live in. Each spec states what its subsystem does, in enough detail to rebuild it, and names the decision leaves it serves on its first line. Read the whole spec before changing its subsystem. This page only points; it never holds mechanics.
 
+## Start here
+
+`../tree/specs/user-surfaces.md` maps the four places a person works (the main canvas, a composite's inner canvas, the Report overlay and Dashboard board, the object popups), how they connect, and which spec below owns each piece.
+
 ## Floors
 
 Three specs govern whole classes of files through a `covers:` glob in their header. A file the glob matches is built to that spec and cites nothing class-wide itself.
