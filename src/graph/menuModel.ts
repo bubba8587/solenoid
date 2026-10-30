@@ -169,6 +169,7 @@ export function buildMenus(): Menu[] {
         { sep: true, label: "Mode" },
         {
           label: "Automatic",
+          short: "Auto",
           checked: calcMode === "auto",
           // Catches up on everything suppressed while manual.
           onClick: () => { if (calcModeStore.setMode("auto")) void requestRecalc(); },

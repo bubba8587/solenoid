@@ -83,7 +83,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
         <div key={key} className="sol-msheet__tiles">
           {g.items.map((it) => (
             <button key={it.label} type="button" className="sol-msheet__tile" aria-label={it.label} disabled={it.disabled} onClick={() => press(it)}>
-              {ICONS[it.icon!](18)}
+              {ICONS[it.icon!](15)}
               <span>{it.short}</span>
             </button>
           ))}
@@ -97,7 +97,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
           <div className="sol-msheet__seg" role="radiogroup" aria-label={g.label}>
             {g.items.map((it) => (
               <button key={it.label} type="button" role="radio" aria-checked={!!it.checked} className={`sol-msheet__segbtn${it.checked ? " sol-msheet__segbtn--on" : ""}`} disabled={it.disabled} onClick={() => press(it)}>
-                {it.label}
+                {it.short ?? it.label}
               </button>
             ))}
           </div>
