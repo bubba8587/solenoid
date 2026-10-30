@@ -2169,17 +2169,14 @@ const WIDE_SPAN: usize = 16;
 impl SegIndex {
     fn build(c: &Cuts) -> SegIndex {
         let runs = |cvs: &[Vec<f64>]| -> Vec<(usize, [f64; 4])> {
-            cvs.iter()
-                .enumerate()
-                .flat_map(|(k, cv)| cv.chunks_exact(4).map(move |s| (k, [s[0], s[1], s[2], s[3]])))
-                .collect()
+            cvs.iter().enumerate().flat_map(|(k, cv)| cv.as_chunks::<4>().0.iter().map(move |&s| (k, s))).collect()
         };
         let mut segs = runs(&c.curves);
         segs.extend(runs(&c.tails));
         let (lo, hi) = c
             .curves
             .iter()
-            .flat_map(|cv| cv.chunks_exact(4))
+            .flat_map(|cv| cv.as_chunks::<4>().0)
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), s| (lo.min(s[0].min(s[2])), hi.max(s[0].max(s[2]))));
         let mut index = SegIndex { x0: lo, width: 1.0, ..SegIndex::default() };
         if !(hi > lo) {
@@ -2716,8 +2713,10 @@ mod tests {
             );
             for (k, curve) in cuts.curves.iter().enumerate() {
                 let n = curve
-                    .chunks_exact(4)
-                    .chain(cuts.tails.get(k).into_iter().flat_map(|t| t.chunks_exact(4)))
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .chain(cuts.tails.get(k).into_iter().flat_map(|t| t.as_chunks::<4>().0))
                     .filter(|s| (s[0] <= x) != (s[2] <= x) && s[1] + (x - s[0]) * (s[3] - s[1]) / (s[2] - s[0]) > y)
                     .count();
                 key.push(if n % 2 == 1 { '1' } else { '0' });
