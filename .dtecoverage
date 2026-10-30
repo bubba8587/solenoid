@@ -36,6 +36,9 @@ packages/*/package.json
 obsidian-plugin/manifest.json
 public/manifest.webmanifest
 
+why: the house rules for writing spec prose govern how a spec reads, not what the system does
+tree/specs/floors/spec-prose.md
+
 why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
 LICENSE
 THIRD-PARTY-NOTICES.md
@@ -67,6 +70,7 @@ tests/fixtures
 why: dev tooling serves the workflow; the decision, if any, is cited by the file it generates or drives
 scripts
 tools/string-editor
+tools/renumber_tree.py
 src/devCopyEdit.ts
 src/graph/census.ts
 src/graph/devHarness.ts
