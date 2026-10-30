@@ -16,10 +16,10 @@ branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFree
 commit and push here, not on `develop`; `git checkout rust-port` at session start overrides the
 harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
 
-**`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks** ([[A7]] bleedingEdgeSolenoid):
-every dependency at its newest and the newest web-platform features put to use, where breaking a browser is fine. Work
-there acts without asking ([[B24]] edgeAgentsAct); how the branch is kept and worked is `tree/specs/bleeding-edge/branch.md`.
-Never merge it into a work branch: a change that proves itself moves over as its own commit.
+**`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks.** Its leaves and specs live only
+on that branch (its own A-ring leaf and the B leaves under it, and the specs in its tree under bleeding-edge): check the
+branch out to work on it. Its generator, which keeps it rebased onto the newest work, is `.github/bleeding-edge/bleeding-edge.mjs`.
+Never merge it into a work branch: a change it finds ready moves over as its own commit.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
