@@ -61,7 +61,6 @@ html.is-mobile {
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
-  .solenoid-apptools__btn svg { stroke-width: 2; }
 
   /* ── Row A: the menu bar as the accent strip ── */
   .solenoid-menubar {

@@ -8,6 +8,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* The chrome's icon line weight on screen, whatever an icon's grid or drawn size (the author's baseline: Tidy's). */
+  --icon-stroke: 0.96px;
+
   --accent: #56b4e9;
   --accent-soft: rgba(86, 180, 233, 0.14);
   --accent-mid: rgba(86, 180, 233, 0.4);

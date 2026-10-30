@@ -12,11 +12,11 @@
 :root[data-theme="light"] .sol-mpanel { --mpanel-ink: color-mix(in srgb, var(--accent) 55%, var(--text)); }
 .sol-mpanel button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sol-mpanel button:disabled { opacity: 0.45; cursor: default; }
-/* One line weight for every icon, whatever its grid or drawn size: Tidy's, about 0.96px (the author's baseline). The
-   cable shape picker is cable art, not an icon (its flow beads are thick round-capped strokes), so it keeps its own. */
+/* Every icon at the chrome's line weight. The cable shape picker is cable art, not an icon (its flow beads are thick
+   round-capped strokes), so it keeps its own. */
 .sol-mpanel svg:not(.solenoid-toolbar svg) :is(path, rect, circle, ellipse, line, polyline, polygon) {
   vector-effect: non-scaling-stroke;
-  stroke-width: 0.96px;
+  stroke-width: var(--icon-stroke);
 }
 
 .sol-mpanel__heading {
