@@ -27,7 +27,7 @@ function useClickaway(open: boolean, ref: React.RefObject<HTMLElement | null>, c
 }
 
 const TidyIcon = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
     <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
     <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
     <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
@@ -37,9 +37,9 @@ const TidyIcon = () => (
   </svg>
 );
 
-/** Lucide "brush" (ISC), its stroke scaled from the bar's 1.2 on a 16 grid to its own 24. */
+/** Lucide "brush" (ISC), its stroke scaled from Tidy's 1.1 on a 16 grid to its own 24. */
 const CleanupIcon = () => (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
     <path d="m11 10 3 3" />
     <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
     <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
