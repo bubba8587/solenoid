@@ -73,9 +73,12 @@ if (!exists) {
   must(`git checkout --quiet -B ${BRANCH} origin/${BRANCH}`);
   // The report commit is rewritten every run, so the old one never travels.
   if (subjectOf("HEAD").startsWith(REPORT_SUBJECT)) must("git reset --quiet --hard HEAD~1");
-  // Rebase from the exact base commit the branch was built on, so a change of base branch carries only this branch's commits.
-  fromSha = prev?.baseSha && sh(`git merge-base --is-ancestor ${prev.baseSha} HEAD`, { quiet: true }).ok
-    ? prev.baseSha : must(`git merge-base HEAD origin/${base}`);
+  // Rebase from the newest base commit the branch already holds: the merge-base with the base, unless the base branch
+  // changed since the last report (the recorded base commit isn't under the merge-base), when the recorded one marks
+  // where this branch's own commits start, so it carries only those.
+  const mergeBase = must(`git merge-base HEAD origin/${base}`);
+  const recorded = prev?.baseSha && sh(`git merge-base --is-ancestor ${prev.baseSha} HEAD`, { quiet: true }).ok ? prev.baseSha : null;
+  fromSha = !recorded || sh(`git merge-base --is-ancestor ${recorded} ${mergeBase}`, { quiet: true }).ok ? mergeBase : recorded;
   const inProgress = () => ["rebase-merge", "rebase-apply"].some((d) => existsSync(must(`git rev-parse --git-path ${d}`)));
   let r = sh(`GIT_EDITOR=true git ${BOT} rebase --empty=drop --onto origin/${base} ${fromSha}`);
   while (!r.ok && inProgress()) {
