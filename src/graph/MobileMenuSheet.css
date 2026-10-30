@@ -93,21 +93,28 @@
 }
 .sol-msheet__tile:active:not(:disabled) { background: var(--btn-hover); }
 
-/* Bare icon buttons, so the row reads as a row with tools, not a toolbar. */
-.sol-msheet__icons { display: flex; gap: 2px; }
+/* A pill of icon buttons, the Cables row's shape picker beside it. */
+.sol-msheet__icons {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
 .sol-msheet__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 28px;
+  width: 36px;
+  height: 26px;
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: 6px;
-  color: var(--text-dim);
+  border-radius: 999px;
+  color: var(--text);
 }
-.sol-msheet__icon:active:not(:disabled) { background: var(--btn-hover); color: var(--text); }
+.sol-msheet__icon:active:not(:disabled) { background: var(--btn-hover); }
 
 /* The Navigator's Files and Outline switch. */
 .sol-msheet__seg {

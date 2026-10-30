@@ -83,7 +83,7 @@ The armed tool is modal. `DrawnCableCapture` is a screen-space sheet over the pa
 
 ## How to reach it
 
-Insert ▸ Draw a cable in the menu bar is the only entry point, and it also appears in the Command Palette from the same `menuModel.ts` entry. There is no toolbar button and no hotkey: the tool is too minor to spend chrome or a key on.
+Insert ▸ Draw an arrow in the menu bar (Draw Arrow in the heading of the phone menu's Insert section) is the only entry point; the menu says arrow because a person reads "cable" as wiring, which this never is, and it also appears in the Command Palette from the same `menuModel.ts` entry. There is no toolbar button and no hotkey: the tool is too minor to spend chrome or a key on.
 
 ## Selection and editing
 

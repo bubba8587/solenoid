@@ -132,9 +132,9 @@ export function buildMenus(): Menu[] {
         { label: "Add connection…", onClick: () => connectionDialog.open() },
         { sep: true },
         {
-          label: "Draw a cable",
+          label: "Draw an arrow",
           icon: "draw",
-          short: "Draw Cable",
+          short: "Draw Arrow",
           inHeading: true,
           checked: drawArmed,
           onClick: () => drawModeStore.toggle(),

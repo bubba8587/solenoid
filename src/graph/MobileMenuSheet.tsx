@@ -111,7 +111,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
           <div className="sol-msheet__icons">
             {g.items.map((it) => (
               <button key={it.label} type="button" className="sol-msheet__icon" aria-label={it.label} title={it.label} disabled={it.disabled} onClick={() => press(it)}>
-                {ICONS[it.icon!](18)}
+                {ICONS[it.icon!](16)}
               </button>
             ))}
           </div>
