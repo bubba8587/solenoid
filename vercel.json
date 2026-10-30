@@ -9,7 +9,8 @@
       "claude/*": false,
       "ccr-*": false,
       "worktree-*": false,
-      "bleeding-edge": false
+      "bleeding-edge": false,
+      "bleeding-edge-prev": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':!.github'",

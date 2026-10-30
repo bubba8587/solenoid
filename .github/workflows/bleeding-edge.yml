@@ -1,7 +1,8 @@
 name: Bleeding edge
 
-# Daily: the most recently pushed branch with every dependency at its newest, checked, reported and force-pushed
-# to `bleeding-edge` (.github/bleeding-edge/bleeding-edge.mjs). It never fails on a broken check: the report is the result.
+# Daily: rebases the persistent `bleeding-edge` branch (its dependency bumps, fixes and platform experiments) onto the
+# most recently pushed work branch, bumps whatever is newer still, runs every check and replaces the report commit
+# (.github/bleeding-edge/bleeding-edge.mjs). It never fails on a broken check: the report is the result.
 # GitHub runs a schedule only from the default branch, so this starts once it is on main.
 on:
   schedule:

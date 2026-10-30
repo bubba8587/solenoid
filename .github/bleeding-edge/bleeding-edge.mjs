@@ -1,9 +1,14 @@
-// Builds the `bleeding-edge` branch: the most recently pushed branch with every dependency at its newest version,
-// majors included, and a report of what moved and what broke (.github/bleeding-edge/REPORT.md and REPORT.json).
-// The branch is regenerated from its base on every run, never rebased, so it is always one commit on top of current
-// work. ANALYSIS.md, the weekly reading of the release notes, carries over from the previous run.
+// Keeps the `bleeding-edge` branch: the most recently pushed work branch with every dependency at its newest version,
+// majors included, the newest web-platform features tried out, and a report of what broke (.github/bleeding-edge/
+// REPORT.md and REPORT.json). The branch is persistent. Each run rebases its own commits (earlier dependency bumps,
+// fixes, experiments, the weekly ANALYSIS.md) from the base commit it was last built on onto the newest base, so no
+// bump is ever redone, then bumps only what is newer still, runs the checks and replaces the report commit on top.
+// A carried commit that conflicts with new work anywhere but a manifest or lockfile is dropped and named in the
+// report; the pre-rebase tip is kept on `bleeding-edge-prev`, so a dropped experiment can be redone from it.
 //
-//   node .github/bleeding-edge/bleeding-edge.mjs [--push] [--base <branch>]
+//   node .github/bleeding-edge/bleeding-edge.mjs [--push] [--base <branch>] [--rebase-only]
+//
+// --rebase-only stops after the rebase and prints what was carried and dropped (no installs, checks or push).
 //
 // Self-contained (no repo imports), so the workflow can run it from a copy while the base branch is checked out.
 // Needs on PATH: node/npm, cargo with clippy and the wasm32 target, cargo-upgrade (cargo-edit). Optional:
@@ -14,10 +19,18 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 const args = process.argv.slice(2);
 const PUSH = args.includes("--push");
 const BRANCH = "bleeding-edge";
+const BACKUP = "bleeding-edge-prev";
+const REBASE_ONLY = args.includes("--rebase-only");
+const BOT = "-c user.name='solenoid-bleeding-edge' -c user.email='bleeding-edge@users.noreply.github.com'";
+const REPORT_SUBJECT = "Bleeding edge report";
+// Files a dependency bump touches. On a rebase conflict in these alone, package.json merges (the base's file, each
+// dependency both sides list at the newer of the two versions); the others take the base's copy, which the install and
+// `cargo upgrade` below bring forward again.
+const DEP_FILE = /(^|\/)(package\.json|package-lock\.json|Cargo\.toml|Cargo\.lock)$/;
 const OUT = ".github/bleeding-edge";
 const ALL_CRATES = ["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-parquet", "crates/solenoid-schedule", "src-tauri"];
 // Branches that aren't where work happens: production (it only takes releases), this one, session and bot branches.
-const NOT_WORK = /^(main$|master$|bleeding-edge$|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
+const NOT_WORK = /^(main$|master$|bleeding-edge$|bleeding-edge-prev$|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
 
 function sh(cmd, { quiet = false, timeout = 30 * 60_000 } = {}) {
   const t = Date.now();
@@ -30,14 +43,64 @@ const must = (cmd) => { const r = sh(cmd, { quiet: true }); if (!r.ok) throw new
 const tail = (s, n) => s.trimEnd().split("\n").slice(-n).join("\n");
 const has = (cmd) => sh(`${cmd} --version`, { quiet: true }).ok;
 
-// ── pick the base and start the branch from it ──────────────────────────────────────────────────────────────
+// ── pick the base and rebase the branch onto it ─────────────────────────────────────────────────────────────
 must("git fetch --quiet origin '+refs/heads/*:refs/remotes/origin/*'");
 const base = args.includes("--base") ? args[args.indexOf("--base") + 1]
   : must("git for-each-ref --sort=-committerdate --format='%(refname:lstrip=3)' refs/remotes/origin").split("\n").find((b) => b !== "HEAD" && !NOT_WORK.test(b));
 const baseSha = must(`git rev-parse origin/${base}`);
-const prevAnalysis = sh(`git show origin/${BRANCH}:${OUT}/ANALYSIS.md`, { quiet: true });
-must(`git checkout --quiet -B ${BRANCH} origin/${base}`);
-console.log(`base: ${base} @ ${baseSha.slice(0, 9)}`);
+const subjectOf = (rev) => must(`git log -1 --format=%s ${rev}`);
+const versionKey = (range) => (String(range).match(/\d+(\.\d+){0,2}/)?.[0] ?? "0").split(".").map(Number);
+const newer = (a, b) => { const [x, y] = [versionKey(a), versionKey(b)]; for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0) ? a : b; return a; };
+function mergePackageJson(file) {
+  const ours = JSON.parse(must(`git show :2:'${file}'`));
+  const theirs = JSON.parse(must(`git show :3:'${file}'`));
+  for (const key of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+    for (const [name, v] of Object.entries(ours[key] ?? {})) if (theirs[key]?.[name]) ours[key][name] = newer(theirs[key][name], v);
+  }
+  writeFileSync(file, JSON.stringify(ours, null, 2) + "\n");
+}
+const exists = sh(`git rev-parse --verify --quiet origin/${BRANCH}`, { quiet: true }).ok;
+const oldTip = exists ? must(`git rev-parse origin/${BRANCH}`) : null;
+let prev = null;
+try { prev = JSON.parse(must(`git show origin/${BRANCH}:${OUT}/REPORT.json`)); } catch { /* first run, or a branch without a report */ }
+
+const carried = [];
+const dropped = [];
+let fromSha = null;
+if (!exists) {
+  must(`git checkout --quiet -B ${BRANCH} origin/${base}`);
+} else {
+  must(`git checkout --quiet -B ${BRANCH} origin/${BRANCH}`);
+  // The report commit is rewritten every run, so the old one never travels.
+  if (subjectOf("HEAD").startsWith(REPORT_SUBJECT)) must("git reset --quiet --hard HEAD~1");
+  // Rebase from the exact base commit the branch was built on, so a change of base branch carries only this branch's commits.
+  fromSha = prev?.baseSha && sh(`git merge-base --is-ancestor ${prev.baseSha} HEAD`, { quiet: true }).ok
+    ? prev.baseSha : must(`git merge-base HEAD origin/${base}`);
+  const inProgress = () => ["rebase-merge", "rebase-apply"].some((d) => existsSync(must(`git rev-parse --git-path ${d}`)));
+  let r = sh(`GIT_EDITOR=true git ${BOT} rebase --empty=drop --onto origin/${base} ${fromSha}`);
+  while (!r.ok && inProgress()) {
+    const sha = must("git rev-parse REBASE_HEAD");
+    const files = must("git diff --name-only --diff-filter=U").split("\n").filter(Boolean);
+    if (files.length && files.every((f) => DEP_FILE.test(f))) {
+      for (const f of files) {
+        if (/(^|\/)package\.json$/.test(f)) mergePackageJson(f);
+        else must(`git checkout --ours -- '${f}'`);
+      }
+      must(`git add -- ${files.map((f) => `'${f}'`).join(" ")}`);
+      r = sh(`GIT_EDITOR=true git ${BOT} rebase --continue`);
+      if (!r.ok && /No changes|nothing to commit/i.test(r.out)) r = sh(`GIT_EDITOR=true git ${BOT} rebase --skip`);
+    } else {
+      dropped.push({ sha, subject: subjectOf(sha), files });
+      r = sh(`GIT_EDITOR=true git ${BOT} rebase --skip`);
+    }
+  }
+  if (!r.ok) throw new Error(`rebase failed outside a conflict:\n${r.out}`);
+  // What landed, read back from the result: a commit the conflict resolution emptied is gone and isn't counted.
+  for (const sha of must(`git rev-list --reverse origin/${base}..HEAD`).split("\n").filter(Boolean)) carried.push({ sha, subject: subjectOf(sha) });
+}
+console.log(`base: ${base} @ ${baseSha.slice(0, 9)}${fromSha ? `, rebased from ${fromSha.slice(0, 9)}` : ", new branch"}; ${carried.length} commits carried, ${dropped.length} dropped`);
+for (const d of dropped) console.log(`  dropped ${d.sha.slice(0, 9)} ${d.subject} (${d.files.join(", ")})`);
+if (REBASE_ONLY) process.exit(0);
 const CRATES = ALL_CRATES.filter((d) => existsSync(`${d}/Cargo.toml`));
 
 // ── snapshot, upgrade, diff ─────────────────────────────────────────────────────────────────────────────────
@@ -70,6 +133,9 @@ function cargoDirect(dir) {
 const semverMajor = (v) => { const [a, b] = String(v).replace(/^[^\d]*/, "").split("."); return a === "0" ? `0.${b}` : a; };
 
 const before = { npm: npmLock(), npmDirect: npmDirect(), cargo: Object.fromEntries(CRATES.map((d) => [d, cargoLock(d)])) };
+// The base's own direct versions, for how far the branch now sits ahead of it.
+const atBase = (path) => { const r = sh(`git show origin/${base}:${path}`, { quiet: true }); return r.ok ? r.out : null; };
+const baseNpmDirect = (() => { const t = atBase("package.json"); if (!t) return new Map(); const pkg = JSON.parse(t); return new Map(Object.entries({ ...pkg.dependencies, ...pkg.devDependencies })); })();
 
 const setup = [];
 const step = (name, cmd) => { const r = sh(cmd); setup.push({ name, cmd, ok: r.ok, secs: r.secs, log: r.ok ? "" : tail(r.out, 60) }); return r.ok; };
@@ -88,6 +154,11 @@ for (const d of CRATES) {
 }
 
 const after = { npm: npmLock(), npmDirect: npmDirect(), cargo: Object.fromEntries(CRATES.map((d) => [d, cargoLock(d)])) };
+const date = new Date().toISOString().slice(0, 10);
+// Only what moved today becomes a commit; an unchanged day adds none.
+sh(`git add -- package.json package-lock.json ${CRATES.map((d) => `${d}/Cargo.toml ${d}/Cargo.lock`).join(" ")}`, { quiet: true });
+const bumped = !sh("git diff --cached --quiet", { quiet: true }).ok;
+if (bumped) must(`git ${BOT} commit --quiet -m 'Bleeding edge ${date}: dependencies to their newest'`);
 
 const changes = [];
 for (const name of new Set([...before.npm.keys(), ...after.npm.keys()])) {
@@ -155,7 +226,6 @@ if (has("cargo audit")) {
 
 // ── report ─────────────────────────────────────────────────────────────────────────────────────────────────
 const toolchain = { node: must("node --version"), npm: must("npm --version"), rust: must("rustc --version") };
-const date = new Date().toISOString().slice(0, 10);
 const icon = (ok) => (ok === null ? "⏭️" : ok ? "✅" : "❌");
 const failed = checks.filter((c) => c.ok === false);
 const direct = changes.filter((c) => c.direct).sort((a, b) => Number(b.major) - Number(a.major) || a.name.localeCompare(b.name));
@@ -163,14 +233,25 @@ const transitive = changes.filter((c) => !c.direct);
 const where = (c) => (c.eco === "npm" ? "npm" : c.where.replace("crates/", ""));
 const md = [];
 md.push(`# Bleeding edge, ${date}`, "");
-md.push(`Every dependency at its newest release, on top of \`${base}\` @ \`${baseSha.slice(0, 9)}\`. Regenerated daily by \`.github/workflows/bleeding-edge.yml\`; never work on this branch. The weekly reading of the release notes (what breaks, what's new, what's worth using) is in [ANALYSIS.md](ANALYSIS.md).`, "");
-md.push(`**${failed.length ? `${failed.length} of ${checks.filter((c) => c.ok !== null).length} checks fail` : "Every check passes"}.** ${direct.length} direct dependencies moved (${direct.filter((c) => c.major).length} across a major), ${transitive.length} transitive. ${toolchain.rust}, Node ${toolchain.node}.`, "");
+md.push(`Every dependency at its newest release and the newest platform features tried out, rebased onto \`${base}\` @ \`${baseSha.slice(0, 9)}\` by \`.github/workflows/bleeding-edge.yml\`. The branch keeps its own commits across runs: dependency bumps, fixes and experiments made here ride along on every rebase. The weekly reading of the release notes (what breaks, what's new, what's worth using) is in [ANALYSIS.md](ANALYSIS.md).`, "");
+md.push(`**${failed.length ? `${failed.length} of ${checks.filter((c) => c.ok !== null).length} checks fail` : "Every check passes"}.** Today ${direct.length} direct dependencies moved (${direct.filter((c) => c.major).length} across a major), ${transitive.length} transitive. ${toolchain.rust}, Node ${toolchain.node}.`, "");
+md.push("## This branch on its base", "");
+md.push(fromSha ? `Rebased from \`${fromSha.slice(0, 9)}\` onto \`${base}\` @ \`${baseSha.slice(0, 9)}\`: ${carried.length} commits carried${bumped ? ", one bump added" : ", no new bump"}.` : `A new branch on \`${base}\` @ \`${baseSha.slice(0, 9)}\`.`, "");
+for (const c of carried) md.push(`- \`${c.sha.slice(0, 9)}\` ${c.subject}`);
+if (dropped.length) {
+  md.push("", `**Dropped: ${dropped.length} commits conflicted with new work** outside the dependency files. Each is still on \`${BACKUP}\`; redo it on top of this branch if it's still wanted.`, "");
+  for (const d of dropped) md.push(`- ❌ \`${d.sha.slice(0, 9)}\` ${d.subject} (conflicts in ${d.files.map((f) => `\`${f}\``).join(", ")})`);
+}
+const ahead = [...after.npmDirect].filter(([name, v]) => baseNpmDirect.get(name) !== v);
+md.push("", `<details><summary>${ahead.length} npm direct dependencies ahead of ${base}</summary>`, "", "| Package | On base | Here |", "|---|---|---|");
+for (const [name, v] of ahead.sort(([a], [b]) => a.localeCompare(b))) md.push(`| \`${name}\` | ${baseNpmDirect.get(name) ?? "(none)"} | ${v} |`);
+md.push("", "</details>", "");
 if (peerNote) md.push(`> ${peerNote}`, "");
 md.push("## Checks", "", "| | Check | Time |", "|---|---|---|");
 for (const c of checks) md.push(`| ${icon(c.ok)} | ${c.name}${c.ok === null ? ` (${c.log})` : ""} | ${c.secs}s |`);
 const badSetup = setup.filter((s) => !s.ok);
 if (badSetup.length) { md.push("", "Setup steps that failed:", ""); for (const s of badSetup) md.push(`- ❌ ${s.name}`); }
-md.push("", "## Direct dependencies that moved", "", "| | Package | Where | From | To | Notes |", "|---|---|---|---|---|---|");
+md.push("", "## Direct dependencies that moved today", "", "| | Package | Where | From | To | Notes |", "|---|---|---|---|---|---|");
 for (const c of direct) md.push(`| ${c.major ? "⚠️ major" : ""} | \`${c.name}\` | ${where(c)} | ${c.from ?? "(new)"} | ${c.to ?? "(gone)"} | ${c.notes ? `[releases](${c.notes})` : ""} |`);
 md.push("", `<details><summary>${transitive.length} transitive changes</summary>`, "", "| Package | Where | From | To |", "|---|---|---|---|");
 for (const c of transitive.sort((a, b) => a.name.localeCompare(b.name))) md.push(`| \`${c.name}\`${c.major ? " ⚠️" : ""} | ${where(c)} | ${c.from ?? "(new)"} | ${c.to ?? "(gone)"} |`);
@@ -184,13 +265,14 @@ if (failed.length || badSetup.length) {
 }
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}/REPORT.md`, md.join("\n") + "\n");
-writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
-if (prevAnalysis.ok) writeFileSync(`${OUT}/ANALYSIS.md`, prevAnalysis.out);
+writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, fromSha, carried, dropped, bumped, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
 console.log(`\n${OUT}/REPORT.md written: ${failed.length} failing checks, ${changes.length} changes`);
 
+must(`git add -- ${OUT}/REPORT.md ${OUT}/REPORT.json`);
+must(`git ${BOT} commit --quiet -m '${REPORT_SUBJECT} ${date}: ${failed.length} failing checks, on ${base}' -m 'See ${OUT}/REPORT.md.'`);
 if (PUSH) {
-  must("git add -A");
-  must(`git -c user.name='solenoid-bleeding-edge' -c user.email='bleeding-edge@users.noreply.github.com' commit --quiet -m 'Bleeding edge ${date}: every dependency at its newest, on ${base}' -m '${failed.length} failing checks; see ${OUT}/REPORT.md.'`);
-  must(`git push --force origin ${BRANCH}`);
+  // A rebase rewrites the branch, so the push forces; the lease refuses if someone pushed to it during the run.
+  if (dropped.length && oldTip) must(`git push --force origin ${oldTip}:refs/heads/${BACKUP}`);
+  must(`git push ${oldTip ? `--force-with-lease=${BRANCH}:${oldTip}` : ""} origin ${BRANCH}`);
   console.log(`pushed ${BRANCH}`);
 }

@@ -16,9 +16,13 @@ branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFree
 commit and push here, not on `develop`; `git checkout rust-port` at session start overrides the
 harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
 
-**`bleeding-edge` is machine-made:** the most recently pushed branch with every dependency at its newest, regenerated
-daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) and force-pushed. Never work or commit
-there, except the weekly analysis beside its daily report in `.github/bleeding-edge/` on that branch.
+**`bleeding-edge` tries the newest of everything and reports what breaks:** the most recently pushed work branch with
+every dependency at its newest and the newest web-platform features put to use, where breaking a browser is fine. It is
+persistent: daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) it rebases its own
+commits onto the newest base, bumps only what moved, runs every check and replaces its report commit.
+Commit there freely: fixes for what a bump broke, platform experiments, the weekly analysis of the release notes. A commit that later
+conflicts with new work is dropped, named in the report and kept on `bleeding-edge-prev`. Never merge the branch into a
+work branch: a change that proves itself there moves over as its own commit.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
