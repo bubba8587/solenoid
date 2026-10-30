@@ -15,6 +15,8 @@
 // cargo-binstall (fast wasm-bindgen-cli install), cargo-audit, WebKitGTK dev libraries (the desktop check).
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const args = process.argv.slice(2);
 const PUSH = args.includes("--push");
@@ -66,6 +68,11 @@ try { prev = JSON.parse(must(`git show origin/${BRANCH}:${OUT}/REPORT.json`)); }
 
 const carried = [];
 const dropped = [];
+const renumbered = [];
+const DECISIONS = "tree/decisions";
+const LEAF = /^tree\/decisions\/([A-Z])\/\1(\d+)\.md$/;
+const uuidOf = (text) => text?.match(/^uuid:\s*(\S+)/m)?.[1] ?? null;
+const atRev = (rev, path) => { const r = sh(`git show '${rev}:${path}'`, { quiet: true }); return r.ok ? r.out : null; };
 let fromSha = null;
 if (!exists) {
   must(`git checkout --quiet -B ${BRANCH} origin/${base}`);
@@ -80,6 +87,58 @@ if (!exists) {
   const recorded = prev?.baseSha && sh(`git merge-base --is-ancestor ${prev.baseSha} HEAD`, { quiet: true }).ok ? prev.baseSha : null;
   fromSha = !recorded || sh(`git merge-base --is-ancestor ${recorded} ${mergeBase}`, { quiet: true }).ok ? mergeBase : recorded;
   const inProgress = () => ["rebase-merge", "rebase-apply"].some((d) => existsSync(must(`git rev-parse --git-path ${d}`)));
+  // A leaf this branch added whose id the new base also uses for a different leaf (another uuid, or none) would
+  // collide. On the branch's old base that id doesn't exist yet, so every mention of it on the branch means the
+  // branch's leaf: replay the branch onto its old base with each such leaf moved to a free id and its citations
+  // rewritten, and the rebase below meets no collision.
+  const usedIds = new Set();
+  for (const rev of ["HEAD", `origin/${base}`]) {
+    for (const f of must(`git ls-tree -r --name-only ${rev} -- ${DECISIONS}`).split("\n")) { const m = f.match(LEAF); if (m) usedIds.add(m[1] + m[2]); }
+    for (const line of (atRev(rev, `${DECISIONS}/RETIRED`) ?? "").split("\n")) { const id = line.split("\t")[0]; if (/^[A-Z]\d+$/.test(id)) usedIds.add(id); }
+  }
+  const nextFree = (ring) => { let n = 1; for (const id of usedIds) if (id[0] === ring) n = Math.max(n, Number(id.slice(1)) + 1); usedIds.add(ring + n); return ring + n; };
+  const mapping = [];
+  for (const f of must(`git diff --name-only --diff-filter=A ${fromSha} HEAD -- ${DECISIONS}`).split("\n")) {
+    const m = f.match(LEAF);
+    if (!m) continue;
+    const theirs = atRev(`origin/${base}`, f);
+    if (theirs === null) continue;
+    const mine = atRev("HEAD", f);
+    if (uuidOf(theirs) && uuidOf(theirs) === uuidOf(mine)) continue;   // the same leaf: an ordinary conflict, if any
+    const from = m[1] + m[2];
+    const to = nextFree(m[1]);
+    const name = mine.match(/^aliases:\s*\[?\s*-?\s*([A-Za-z][A-Za-z0-9]*)/m)?.[1] ?? mine.match(/^aliases:\s*\n\s*-\s*(\S+)/m)?.[1] ?? null;
+    mapping.push({ from, to, ring: m[1], uuid: uuidOf(mine), name });
+    renumbered.push({ from, to, name, because: uuidOf(theirs) ? "the base's has another uuid" : "the base's has no uuid" });
+  }
+  if (mapping.length) {
+    const script = join(tmpdir(), `bleeding-edge-renumber-${process.pid}.mjs`);
+    writeFileSync(script, `import { execSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+const mapping = ${JSON.stringify(mapping)};
+const run = (c) => execSync(c, { encoding: "utf8" });
+for (const { from, to, ring, uuid, name } of mapping) {
+  const oldPath = "${DECISIONS}/" + ring + "/" + from + ".md", newPath = "${DECISIONS}/" + ring + "/" + to + ".md";
+  if (existsSync(oldPath) && (readFileSync(oldPath, "utf8").match(/^uuid:\\s*(\\S+)/m)?.[1] ?? null) === uuid) {
+    run("git mv '" + oldPath + "' '" + newPath + "'");
+    writeFileSync(newPath, readFileSync(newPath, "utf8").replace(new RegExp("^id: " + from + "$", "m"), "id: " + to));
+  }
+  const files = run("git grep -lwE '" + from + "' || true").split("\\n").filter(Boolean);
+  for (const f of files) {
+    const t = readFileSync(f, "utf8");
+    let u = t.split("[[" + from + "]]").join("[[" + to + "]]").split("[[" + from + "|").join("[[" + to + "|")
+      .replace(/dte:[A-Z0-9,]+/g, (m) => m.replace(new RegExp("\\\\b" + from + "\\\\b", "g"), to));
+    if (name) u = u.split(from + " " + name).join(to + " " + name);
+    if (u !== t) writeFileSync(f, u);
+  }
+}
+run("git add -A");
+if (run("git status --porcelain").trim()) run("git ${BOT} commit --quiet --amend --no-edit");
+`);
+    const r0 = sh(`GIT_EDITOR=true git ${BOT} rebase --force-rebase --exec 'node ${script}' ${fromSha}`);
+    rmSync(script, { force: true });
+    if (!r0.ok) throw new Error(`renumbering the branch's colliding leaves failed:\n${r0.out}`);
+  }
   let r = sh(`GIT_EDITOR=true git ${BOT} rebase --empty=drop --onto origin/${base} ${fromSha}`);
   while (!r.ok && inProgress()) {
     const sha = must("git rev-parse REBASE_HEAD");
@@ -101,7 +160,8 @@ if (!exists) {
   // What landed, read back from the result: a commit the conflict resolution emptied is gone and isn't counted.
   for (const sha of must(`git rev-list --reverse origin/${base}..HEAD`).split("\n").filter(Boolean)) carried.push({ sha, subject: subjectOf(sha) });
 }
-console.log(`base: ${base} @ ${baseSha.slice(0, 9)}${fromSha ? `, rebased from ${fromSha.slice(0, 9)}` : ", new branch"}; ${carried.length} commits carried, ${dropped.length} dropped`);
+console.log(`base: ${base} @ ${baseSha.slice(0, 9)}${fromSha ? `, rebased from ${fromSha.slice(0, 9)}` : ", new branch"}; ${carried.length} commits carried, ${dropped.length} dropped, ${renumbered.length} leaves renumbered`);
+for (const r of renumbered) console.log(`  renumbered ${r.from} -> ${r.to}${r.name ? ` ${r.name}` : ""} (${r.because})`);
 for (const d of dropped) console.log(`  dropped ${d.sha.slice(0, 9)} ${d.subject} (${d.files.join(", ")})`);
 if (REBASE_ONLY) process.exit(0);
 const CRATES = ALL_CRATES.filter((d) => existsSync(`${d}/Cargo.toml`));
@@ -241,6 +301,10 @@ md.push(`**${failed.length ? `${failed.length} of ${checks.filter((c) => c.ok !=
 md.push("## This branch on its base", "");
 md.push(fromSha ? `Rebased from \`${fromSha.slice(0, 9)}\` onto \`${base}\` @ \`${baseSha.slice(0, 9)}\`: ${carried.length} commits carried${bumped ? ", one bump added" : ", no new bump"}.` : `A new branch on \`${base}\` @ \`${baseSha.slice(0, 9)}\`.`, "");
 for (const c of carried) md.push(`- \`${c.sha.slice(0, 9)}\` ${c.subject}`);
+if (renumbered.length) {
+  md.push("", `**Renumbered: ${renumbered.length} of this branch's leaves** took ids the base had given to other leaves (told apart by their uuids); each moved to a free id, its citations with it.`, "");
+  for (const r of renumbered) md.push(`- ${r.from} → ${r.to}${r.name ? ` ${r.name}` : ""} (${r.because})`);
+}
 if (dropped.length) {
   md.push("", `**Dropped: ${dropped.length} commits conflicted with new work** outside the dependency files. Each is still on \`${BACKUP}\`; redo it on top of this branch if it's still wanted.`, "");
   for (const d of dropped) md.push(`- ❌ \`${d.sha.slice(0, 9)}\` ${d.subject} (conflicts in ${d.files.map((f) => `\`${f}\``).join(", ")})`);
@@ -268,7 +332,7 @@ if (failed.length || badSetup.length) {
 }
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}/REPORT.md`, md.join("\n") + "\n");
-writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, fromSha, carried, dropped, bumped, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
+writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, fromSha, carried, dropped, renumbered, bumped, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
 console.log(`\n${OUT}/REPORT.md written: ${failed.length} failing checks, ${changes.length} changes`);
 
 must(`git add -- ${OUT}/REPORT.md ${OUT}/REPORT.json`);

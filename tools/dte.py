@@ -40,11 +40,13 @@ Config:  ROOT/dte.cfg, key = value lines (summaries, protect_human, authority,
 import argparse
 import datetime
 import fnmatch
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from collections import defaultdict
 
 ID_RE = re.compile(r"^([A-Z])(\d+)$")   # dte:B32
@@ -112,6 +114,7 @@ OBSIDIAN_FIELDS = {"aliases", "tags", "cssclasses"}   # Obsidian's own keys. ali
 KNOWN_FIELDS = LIST_FIELDS | OBSIDIAN_FIELDS | {
     "id", "name", "title", "status", "superseded_by", "made_by", "by", "date",
     "ratified_by", "confidence", "authorized_by", "contested_by",
+    "uuid",   # local patch: a node's identity across branches, so two that mint the same id can be told apart
 }
 INBOX_FIELDS = {"name", "title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence", "kind", "spec"} | OBSIDIAN_FIELDS
 # The outbox: what a human changes in the vault and an agent must process. A note dropped in
@@ -554,8 +557,16 @@ class Tree:
         self._validated = True
         E, W = self.errors, self.warnings
         names = {}   # handle -> id
+        uuids = {}   # uuid -> id  (local patch)
         for node in self.ordered_nodes():
             i = node.id
+            u = str(node.raw.get("uuid") or "")
+            if not u:
+                E.append("%s: no uuid; dte uuids gives it one" % i)
+            elif u in uuids:
+                E.append("%s: uuid %s is already %s's" % (i, u, uuids[u]))
+            else:
+                uuids[u] = i
             expected = os.path.join(self.decisions_dir, node.ring, i + ".md")
             if os.path.abspath(node.path) != os.path.abspath(expected):
                 E.append("%s: file should be at %s" % (i, self.rel(expected)))
@@ -1546,6 +1557,7 @@ def cmd_place(tree, args):
     fm = [
         "---",
         "id: %s" % new_id,
+        "uuid: %s" % new_uuid(),   # local patch
         "title: %s" % fm_str(item.title),
         "parents: %s" % fm_ids(parents),   # local patch: no status, supersedes, superseded_by or confidence
         "conflicts_with: []",
@@ -1866,6 +1878,45 @@ __pycache__
 """
 
 
+def new_uuid(ms=None, seed=None):
+    """A UUIDv7: 48 bits of Unix milliseconds, then random bits (from seed's hash when given).  local patch"""
+    ms = int(time.time() * 1000) if ms is None else int(ms)
+    rand = hashlib.sha256(seed.encode("utf-8")).digest()[:10] if seed is not None else os.urandom(10)
+    b = ms.to_bytes(6, "big") + bytes([0x70 | (rand[0] & 0x0F), rand[1], 0x80 | (rand[2] & 0x3F)]) + rand[3:10]
+    h = b.hex()
+    return "%s-%s-%s-%s-%s" % (h[0:8], h[8:12], h[12:16], h[16:20], h[20:32])
+
+
+def with_uuid(text, value):
+    """Insert a uuid line right after the frontmatter's id line.  local patch"""
+    lines = text.split("\n")
+    for k, line in enumerate(lines[1:], 1):
+        if line == "---":
+            break
+        if line.startswith("id:"):
+            lines.insert(k + 1, "uuid: %s" % value)
+            return "\n".join(lines)
+    return set_field(text, "uuid", value)
+
+
+def cmd_uuids(tree, args):
+    """Give every node without one a uuid (local patch). A backfilled one takes its time from the node's date and its
+    random bits from its id and title, so it is stable; a node made by new or place gets a fresh one."""
+    added = 0
+    for node in tree.ordered_nodes():
+        if node.raw.get("uuid"):
+            continue
+        try:
+            day = datetime.datetime.strptime(str(node.raw.get("date") or ""), "%Y-%m-%d")
+            ms = int(day.replace(tzinfo=datetime.timezone.utc).timestamp() * 1000) + node.number
+        except ValueError:
+            ms = None
+        write_text(node.path, with_uuid(read_text(node.path), new_uuid(ms, "%s|%s" % (node.id, node.title))))
+        added += 1
+    print("uuids: %d added" % added)
+    return 0
+
+
 def build_frontmatter(fields):
     lines = ["---"]
     for k, v in fields:
@@ -1937,14 +1988,14 @@ def cmd_new(tree, args):
         return 2
     new_id = next_id(tree, ring)
     fields = [
-        ("id", new_id), ("title", fm_str(args.title)), ("parents", parents),   # local patch: status only when proposed
+        ("id", new_id), ("uuid", new_uuid()), ("title", fm_str(args.title)), ("parents", parents),   # local patch: status only when proposed; a uuid
         ("conflicts_with", []),
         ("date", datetime.date.today().isoformat()), ("ratified_by", ""),
     ]
     if args.authorized_by:
         fields.append(("authorized_by", args.authorized_by))
     if args.status != "active":
-        fields.insert(2, ("status", args.status))
+        fields.insert(3, ("status", args.status))
     if args.name:
         if not NAME_RE.match(args.name):
             print("a name is a camelCase identifier like shareImpl")
@@ -3124,6 +3175,7 @@ def main(argv=None):
     gp.add_argument("--by", required=True)
     gp.add_argument("--note", default=None)
     sub.add_parser("hook")
+    sub.add_parser("uuids")   # local patch
     args = ap.parse_args(argv)
     CONFIG.clear()
     CONFIG.update(load_config(args.root))
@@ -3138,6 +3190,7 @@ def main(argv=None):
         "unratified": cmd_unratified, "import": cmd_import, "authorize": cmd_authorize,
         "conflict": cmd_conflict, "reparent": cmd_reparent, "set": cmd_set, "contest": cmd_contest, "retired": cmd_retired, "export": cmd_export,
         "init": cmd_init, "vendor": cmd_vendor, "spec": cmd_spec, "gap": cmd_gap, "cite": cmd_cite, "brief": cmd_brief, "hook": cmd_hook,
+        "uuids": cmd_uuids,
     }[args.cmd](tree, args)
 
 
