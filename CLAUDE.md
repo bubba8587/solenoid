@@ -20,7 +20,8 @@ harness branch the same way. When rust-port merges into `develop`, this paragrap
 every dependency at its newest and the newest web-platform features put to use, where breaking a browser is fine. It is
 persistent: daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) it rebases its own
 commits onto the newest base, bumps only what moved, runs every check and replaces its report commit.
-Commit there freely: fixes for what a bump broke, platform experiments, the weekly analysis of the release notes. A commit that later
+Work there acts, never asks: `.github/bleeding-edge/GUIDELINES.md` is the standing order (implement every newest feature within
+reason, one commit each, keep the ledger). Fixes for what a bump broke and the weekly analysis go there too. A commit that later
 conflicts with new work is dropped, named in the report and kept on `bleeding-edge-prev`. Never merge the branch into a
 work branch: a change that proves itself there moves over as its own commit.
 
