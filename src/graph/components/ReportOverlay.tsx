@@ -253,7 +253,7 @@ export function ReportOverlay() {
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
             {docked && (
-              <div className="report-viewtoggle" role="tablist">
+              <div className="report-viewtoggle" role="tablist" focusgroup="tablist inline">
                 <button
                   type="button" role="tab" aria-selected={mobileTab === "draft"}
                   className={`report-viewtoggle__seg${mobileTab === "draft" ? " report-viewtoggle__seg--active" : ""}`}
@@ -347,7 +347,7 @@ export function ReportOverlay() {
           </div>
         </div>
 
-        <div className="report-tabs" role="tablist">
+        <div className="report-tabs" role="tablist" focusgroup="tablist inline">
           <button
             type="button"
             role="tab"

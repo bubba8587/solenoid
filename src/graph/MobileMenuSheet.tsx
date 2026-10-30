@@ -95,7 +95,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
       return (
         <div key={key} className="sol-mpanel__ctlrow">
           <span>{g.label}</span>
-          <div className="sol-mpanel__seg" role="radiogroup" aria-label={g.label}>
+          <div className="sol-mpanel__seg" role="radiogroup" focusgroup="radiogroup inline" aria-label={g.label}>
             {g.items.map((it) => (
               <button key={it.label} type="button" role="radio" aria-checked={!!it.checked} className={`sol-mpanel__segbtn${it.checked ? " sol-mpanel__segbtn--on" : ""}`} disabled={it.disabled} onClick={() => press(it)}>
                 {it.short ?? it.label}

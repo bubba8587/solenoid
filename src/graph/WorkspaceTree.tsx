@@ -66,7 +66,7 @@ export function RowMenu({ at, items, onClose }: { at: { x: number; y: number }; 
     };
   }, [onClose, ref]);
   return createPortal(
-    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at solenoid-files__menu" role="menu" style={{ left: at.x, top: at.y }} onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at solenoid-files__menu" role="menu" focusgroup="menu block" style={{ left: at.x, top: at.y }} onPointerDown={(e) => e.stopPropagation()}>
       {items.map((it, i) => (
         <Fragment key={`${i}:${it.label}`}>
           {it.divider && i > 0 && <div className="sol-popup-menu__sep" role="separator" />}

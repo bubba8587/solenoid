@@ -80,7 +80,7 @@ export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, f
     </label>
   );
   return (
-    <div ref={barRef} className={sheet ? "pivot-sheet__body" : "pivot-view__bar"} role="toolbar" aria-label="Pivot table layout">
+    <div ref={barRef} className={sheet ? "pivot-sheet__body" : "pivot-view__bar"} role="toolbar" focusgroup="toolbar inline" aria-label="Pivot table layout">
       <PopupChoice
         className="pivot-view__layout"
         label="Report layout"

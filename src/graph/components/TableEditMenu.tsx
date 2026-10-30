@@ -102,7 +102,7 @@ function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>
 
 function MenuList({ items, className, style, heading }: { items: MenuItem[]; className: string; style?: React.CSSProperties; heading?: ReactNode }) {
   return (
-    <div className={className} role="menu" style={style}>
+    <div className={className} role="menu" focusgroup="menu block" style={style}>
       {heading}
       {items.map((it, i) => (
         <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}</button>
@@ -174,7 +174,7 @@ export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y
   const { insert, remove } = editMenuItems(row, col);
   const wrap = (it: MenuItem): MenuItem => ({ ...it, onClick: () => { onClose(); it.onClick(); } });
   return (
-    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
+    <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" focusgroup="menu block" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
       <div className="sol-popup-menu__heading">Insert</div>
       {insert.map((it, i) => <button key={`i${i}`} type="button" role="menuitem" className="sol-popup-menu__item" onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
       <div className="sol-popup-menu__sep" />

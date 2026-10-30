@@ -79,7 +79,7 @@ function SegmentRow({ field }: { field: SettingField }) {
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
         {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
       </span>
-      <span className="solenoid-settings__segment" role="radiogroup">
+      <span className="solenoid-settings__segment" role="radiogroup" focusgroup="radiogroup inline">
         {(field.options ?? []).map((o) => (
           <button
             key={o.value}

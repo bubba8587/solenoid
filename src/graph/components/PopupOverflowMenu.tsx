@@ -37,7 +37,7 @@ export function PopupOverflowMenu({ items, label = "More actions" }: { items: Po
         </svg>
       </button>
       {open && (
-        <div className="sol-popup-menu__list" role="menu">
+        <div className="sol-popup-menu__list" role="menu" focusgroup="menu block">
           {items.map((it, i) => [
             it.divider && i > 0 ? <div key={`sep${i}`} className="sol-popup-menu__sep" role="separator" /> : null,
             <button
