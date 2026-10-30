@@ -15,9 +15,9 @@ const args = process.argv.slice(2);
 const PUSH = args.includes("--push");
 const BRANCH = "bleeding-edge";
 const OUT = ".github/bleeding-edge";
-const CRATES = ["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-parquet", "crates/solenoid-schedule", "src-tauri"];
-// Branches a person never works on: this one, session and bot branches.
-const NOT_WORK = /^(bleeding-edge$|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
+const ALL_CRATES = ["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-parquet", "crates/solenoid-schedule", "src-tauri"];
+// Branches that aren't where work happens: production (it only takes releases), this one, session and bot branches.
+const NOT_WORK = /^(main$|master$|bleeding-edge$|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
 
 function sh(cmd, { quiet = false, timeout = 30 * 60_000 } = {}) {
   const t = Date.now();
@@ -38,6 +38,7 @@ const baseSha = must(`git rev-parse origin/${base}`);
 const prevAnalysis = sh(`git show origin/${BRANCH}:${OUT}/ANALYSIS.md`, { quiet: true });
 must(`git checkout --quiet -B ${BRANCH} origin/${base}`);
 console.log(`base: ${base} @ ${baseSha.slice(0, 9)}`);
+const CRATES = ALL_CRATES.filter((d) => existsSync(`${d}/Cargo.toml`));
 
 // ── snapshot, upgrade, diff ─────────────────────────────────────────────────────────────────────────────────
 function npmLock() {
