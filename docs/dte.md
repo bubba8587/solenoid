@@ -55,7 +55,7 @@ leaf, because none is a product call.
   its Consequences carry an `*Unenforced:*` line saying why it can't be checked; a bug fix ships
   with the check that would have caught it. The leaf never names its tests. `rules.test.ts` pins
   the labeling; whether a citing test truly enforces its MUST is a reader's job. DTE has no such
-  rule yet (`docs/dte-feedback.md` item 24).
+  rule yet (`docs/dte-feedback.md` item 27).
 - **Exceptions live under their rule** (DTE B35 refinementsAreChildren), each naming the
   condition that would remove it. An exception no condition could remove means the rule was
   written wrong.

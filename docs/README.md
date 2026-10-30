@@ -65,8 +65,8 @@ is parked there.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision leaf;
   `python tools/dte.py validate` must print `OK` before you finish.
-- **`dte-feedback.md`** — difficulties met with the DTE tool itself, numbered, for the author to
-  carry upstream; delete an item once it is processed there.
+- **`dte-feedback.md`** — the DTE 0.2 change list built from Solenoid's patched copy: what ships,
+  what is still open, rule text to add, and what stays Solenoid's.
 
 - **`google-style/`** — fetched text of the Google developer style guide (2026-08-18),
   the ARBITER for the UI-copy register experiment; overrides DESIGN.md §7 for that

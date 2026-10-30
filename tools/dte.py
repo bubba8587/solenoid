@@ -1851,7 +1851,7 @@ broad_min = 5
 
 COVERAGE_FILE = ".dtecoverage"
 COVERAGE_TEMPLATE = """# Coverage exclusions (dte coverage). An artifact that cites no decision BECAUSE no decision
-# governs it goes here, under the reason it needs none, so 100%% coverage is reachable and
+# governs it goes here, under the reason it needs none, so 100% coverage is reachable and
 # means something. A "why:" line opens a group; the globs under it (the .dteignore syntax)
 # belong to that group. Excluded files are still scanned: a citation inside one still
 # counts, and a glob that matches nothing is reported as stale. Everything not listed
