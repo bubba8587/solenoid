@@ -18,7 +18,7 @@ harness branch the same way. When rust-port merges into `develop`, this paragrap
 
 **`bleeding-edge` is machine-made:** the most recently pushed branch with every dependency at its newest, regenerated
 daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) and force-pushed. Never work or commit
-there, except the weekly `.github/bleeding-edge/ANALYSIS.md`. Its `REPORT.md` says what moved and what breaks.
+there, except the weekly analysis beside its daily report in `.github/bleeding-edge/` on that branch.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
