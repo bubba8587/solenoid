@@ -1,6 +1,7 @@
 /* The phone's top-bar menus (the ⋮ sheet, the Tidy dropdown) at the Settings sheet's scale: 13px text, rows 30px tall,
    every control in a row 28px, a heading's pills 24px. Each menu places itself; this is how it looks. */
 .sol-mpanel {
+  --icon-size: 16px;
   background: var(--surface);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
@@ -12,11 +13,11 @@
 :root[data-theme="light"] .sol-mpanel { --mpanel-ink: color-mix(in srgb, var(--accent) 55%, var(--text)); }
 .sol-mpanel button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sol-mpanel button:disabled { opacity: 0.45; cursor: default; }
-/* Every icon at the chrome's line weight. The cable shape picker is cable art, not an icon (its flow beads are thick
+/* Every icon at the chrome's line weight for its size: 16px, a heading pill's 14. The cable shape picker is cable art, not an icon (its flow beads are thick
    round-capped strokes), so it keeps its own. */
 .sol-mpanel svg:not(.solenoid-toolbar svg) :is(path, rect, circle, ellipse, line, polyline, polygon) {
   vector-effect: non-scaling-stroke;
-  stroke-width: var(--icon-stroke);
+  stroke-width: calc(var(--icon-size) * var(--icon-stroke-per-px));
 }
 
 .sol-mpanel__heading {
@@ -44,6 +45,7 @@
   border-radius: 999px;
   color: var(--text);
   font-size: 12px;
+  --icon-size: 14px;
   font-weight: 500;
   letter-spacing: normal;
   text-transform: none;

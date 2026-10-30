@@ -27,6 +27,7 @@ html.is-mobile {
   .solenoid-topbar .solenoid-nav__btn.solenoid-topbar__tidymenu-btn { width: auto; padding: 0 9px 0 11px; border-radius: 999px; }
   .solenoid-topbar__tidymenu-btn svg { flex: 0 0 auto; }
   .solenoid-topbar .solenoid-topbar__tidymenu-btn .solenoid-topbar__chev { width: 11px; height: 11px; }
+  .solenoid-topbar { --icon-size: 16px; }
   .solenoid-topbar .solenoid-nav__btn { width: 32px; height: 32px; }
   /* Every Row B icon is half its 32px button, desktop's ratio (14 in 28), and both even, so the glyph centers on whole pixels. */
   .solenoid-topbar :is(.solenoid-nav__btn, .solenoid-topbar__icon, .solenoid-topbar__nav, .solenoid-apptools__btn) svg { width: 16px; height: 16px; }

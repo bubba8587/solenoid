@@ -74,7 +74,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
   const row = (it: Option) => (
     <button key={it.label} type="button" className="sol-mpanel__row" aria-pressed={it.checked} disabled={it.disabled} onClick={() => press(it)}>
       {it.label}
-      {it.icon && <span className="sol-mpanel__rowicon">{ICONS[it.icon](15)}</span>}
+      {it.icon && <span className="sol-mpanel__rowicon">{ICONS[it.icon](16)}</span>}
     </button>
   );
 
@@ -84,7 +84,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
         <div key={key} className="sol-msheet__tiles">
           {g.items.map((it) => (
             <button key={it.label} type="button" className="sol-msheet__tile" aria-label={it.label} disabled={it.disabled} onClick={() => press(it)}>
-              {ICONS[it.icon!](15)}
+              {ICONS[it.icon!](16)}
               <span>{it.short}</span>
             </button>
           ))}
@@ -139,7 +139,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
                   disabled={it.disabled}
                   onClick={() => run(it)}
                 >
-                  {it.icon && ICONS[it.icon](13)}
+                  {it.icon && ICONS[it.icon](14)}
                   {it.short ?? it.label}
                 </button>
               ),

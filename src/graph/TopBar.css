@@ -183,9 +183,9 @@ html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn::after {
   inset: -8px -2px;
 }
 
-/* Every icon in the bar at the chrome's line weight, on desktop and the phone alike. The cable shape picker is cable art,
-   not an icon, so it keeps its own. */
+/* Every icon in the bar at the chrome's line weight for its size, on desktop and the phone alike. The cable shape picker
+   is cable art, not an icon, so it keeps its own. */
 .solenoid-topbar svg:not(.solenoid-toolbar svg) :is(path, rect, circle, ellipse, line, polyline, polygon) {
   vector-effect: non-scaling-stroke;
-  stroke-width: var(--icon-stroke);
+  stroke-width: calc(var(--icon-size) * var(--icon-stroke-per-px));
 }
