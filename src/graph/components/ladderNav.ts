@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder
+// [[C100]] chartIsAValue
 import { getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";

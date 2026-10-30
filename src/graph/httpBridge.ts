@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[C38]] sinkRunButtonOnly
+// [[C23]] calcModes, [[B18]] safeToShare
 // Desktop fetches go through the Tauri http plugin (no same-origin policy); the browser build stays CORS-limited.
 import { isDesktop } from "./fileBridge";
 

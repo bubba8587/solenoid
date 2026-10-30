@@ -63,7 +63,7 @@ describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a mi
       for (const n of [-Infinity, -1, -1e12]) {
         expect(call(name, 1, n)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order of 0 or more` });
       }
-      // Text is never an order, numeric or not ([[C131]] noTextGuessing); Formula.js would read both as numbers.
+      // Text is never an order, numeric or not ([[C10]] socketLattice); Formula.js would read both as numbers.
       for (const n of ["-1e12", "-Infinity"]) expect(call(name, 1, n)).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });
     }
     expect(performance.now() - t).toBeLessThan(500);
@@ -89,7 +89,7 @@ describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per p
 });
 
 describe("IFS reads its tests as IF does (FX is wrong)", () => {
-  it("a text test is #VALUE!, even \"FALSE\" ([[C131]] noTextGuessing)", () => {
+  it("a text test is #VALUE!, even \"FALSE\" ([[C10]] socketLattice)", () => {
     for (const t of ["FALSE", "text"]) {
       const r = call("IFS", t, 1, true, 2);
       expect(isSolError(r) && r.code).toBe("#VALUE!");

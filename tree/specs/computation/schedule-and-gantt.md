@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[B18]] safeToShare -->
 
 # Spec: Schedule and Gantt
 
@@ -202,7 +202,7 @@ The checks are the DCMA assessment's that fit a plan of tasks, under plain names
 - A baseline is a second scheduled plan (a pasted Frame or Cube Input, or a pinned value) wired into the Gantt's `baseline`, not a node that stamps a clock inside `data()`.
 - A work calendar is `weekend_code` and `holidays`, not a socket kind.
 - There is no Predecessors node; the cell is the predecessor list.
-- Reading a plan file is a format on Local File, not an Import Project node. Writing one is the `mspdi` output into a writer, which acts only from its Run button ([[C38]] sinkRunButtonOnly).
+- Reading a plan file is a format on Local File, not an Import Project node. Writing one is the `mspdi` output into a writer, which acts only from its Run button ([[B18]] safeToShare).
 
 ## Import at the border
 

@@ -1,4 +1,4 @@
-// [[C129]] describeDashboard
+// [[C127]] pivotView
 import { describe, it, expect } from "vitest";
 import { describeTilesOf } from "../../src/graph/describeProfile";
 import { carryFrameSidecars } from "../../src/graph/frameSidecar";

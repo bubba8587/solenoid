@@ -183,7 +183,7 @@ comments-in-prose, no pagination beyond print CSS. If it needs a toolbar with fo
 it's out.
 
 ### 14. Decision science beyond weighted choices — decision trees with chance, schedulers, solvers
-The decision nodes ([[C122]] choiceLadder, [[C126]] chainedDecisions) choose among known options: weighted scores,
+The decision nodes choose among known options: weighted scores,
 deal-breakers, limits, picks and chains whose later steps are known. Out: choices under chance (probability-weighted
 trees, expected value of information), planning across time periods (which quarter each project lands in, which
 semester each course), and nested ladders (several picks inside each pick of another ladder). Each needs a model

@@ -201,7 +201,7 @@ Source, Data Feed, CSV, the 1.4 widget nodes — with the desktop's CORS-free cu
 Script runs on compute in a worker whose sandbox is **containment, not a security boundary**
 (the I/O globals are deleted but `import()` is syntax and stays: a dynamic import of a URL
 from the worker is a network door), and Write sinks already load disarmed
-([[C38]] sinkRunButtonOnly — the precedent).
+([[B18]] safeToShare — the precedent).
 **Do.** (1) A document you did not author opens **restricted**: sources quiet (1.4's C2),
 Script nodes inert (they show their source and an "allow scripts" control; their outputs are
 a `#RESTRICTED!`-class SolError so nothing downstream is silently right), sinks disarmed as

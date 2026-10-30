@@ -1,4 +1,4 @@
-// [[C51]] formulaNaming, [[C14]] currentExcelParity
+// [[C51]] formulaNaming, [[B16]] oneFormulaSurface
 // Derived from NODE_EXCEL, never hand-edited: declare an equivalence there and both maps follow.
 
 import { NODE_EXCEL } from "./nodeExcel";

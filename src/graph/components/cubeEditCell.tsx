@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth
+// [[C28]] literalsIffEditable, [[B19]] spreadsheetHabits, [[D90]] cubeTypesAtDepth
 import { useEffect, useState, type ReactNode } from "react";
 import type * as React from "react";
 import { cubePopup, type CubeEditBinding, type DrillView, type CellRef } from "../cubePopupStore";

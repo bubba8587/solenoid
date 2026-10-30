@@ -76,7 +76,7 @@ describe("the decision tree (tree/decisions/)", () => {
   const nodes = readTree();
 
   it("reads a real tree", () => {
-    expect(nodes.length).toBeGreaterThan(100);
+    expect(nodes.length).toBeGreaterThan(50);
   });
 
   it("every MUST is enforced by a citing test or labelled Unenforced", () => {

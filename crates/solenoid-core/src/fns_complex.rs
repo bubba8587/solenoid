@@ -50,7 +50,7 @@ fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
 }
 
-/// `Number(v)`, which never reads text ([[C131]] noTextGuessing).
+/// `Number(v)`, which never reads text ([[C10]] socketLattice).
 fn js_number(v: &V) -> f64 {
     crate::excel_functions::to_f64_js(v)
 }

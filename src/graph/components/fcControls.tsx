@@ -243,7 +243,7 @@ export function UnitSelect({ value, onChange, className, title, disabled }: {
   );
 }
 
-/** A Custom style's pattern, committed on Enter or blur ([[C95]] commitOnEnter); a blank entry keeps the pattern shown. */
+/** A Custom style's pattern, committed on Enter or blur ([[B19]] spreadsheetHabits); a blank entry keeps the pattern shown. */
 export function CustomPatternField({ value, date, onCommit, className }: {
   value: string;
   date: boolean;

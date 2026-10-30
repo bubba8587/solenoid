@@ -2,7 +2,7 @@
 aliases: ["Conduit lane faces"]
 tags: [spec, canvas]
 ---
-<!-- [[C10]] socketLattice, [[C95]] commitOnEnter -->
+<!-- [[C10]] socketLattice, [[B19]] spreadsheetHabits -->
 
 # Spec: Conduit lane faces
 
@@ -63,6 +63,6 @@ The block is drawn as an IDC connector: a gray shell around the grid of lane squ
 
 The toolbar shows while the Conduit is selected, in the viewport-fixed dock ([[resizable-content-nodes]]).
 
-- Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[D22]] oneNamePerCard's Conduit exception): a blank or bare "Conduit" label, on placement or on load, takes it. The number commits on Enter or blur ([[C95]] commitOnEnter), and a number another Conduit in the same graph holds is refused (`conduitSeqTaken`) and the field reverts, since two would read the same "Conduit N"; a new number also renames a default "Conduit N" label, so the graph recomputes to refresh anything showing it.
+- Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. A Conduit's default label is `Conduit N` after that number ([[D22]] oneNamePerCard's Conduit exception): a blank or bare "Conduit" label, on placement or on load, takes it. The number commits on Enter or blur ([[B19]] spreadsheetHabits), and a number another Conduit in the same graph holds is refused (`conduitSeqTaken`) and the field reverts, since two would read the same "Conduit N"; a new number also renames a default "Conduit N" label, so the graph recomputes to refresh anything showing it.
 - **Extend** adds a new Conduit in the same graph, with the same angle, 130 px further along the angle, and wires each used lane `out_i` to the new block's `in_i` (at least one lane).
 - An angle dial sets the angle in 45° steps.

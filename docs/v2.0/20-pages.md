@@ -81,7 +81,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 ## Text form and AI
 
 - Line grammar unchanged (a page is not a node); the sidecar gains `page` per node and the
-  `pages` list. The AI palette's whole-document rewrite (aiWholeDocRewrite) carries pages
+  `pages` list. The AI palette's whole-document rewrite (B13 aiInScope) carries pages
   through the sidecar untouched; the grounding spec (`aiGrounding.ts`) states the page field.
 - The strict validator (`graphValidate.ts`): unknown page id → repair-grade issue (assign to
   the first page), duplicate page names → issue.

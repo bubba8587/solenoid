@@ -51,7 +51,7 @@ export function ReportOverlay() {
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
-  // The draft lives here until a commit writes node.body ([[C95]] commitOnEnter); a ref, so any close path can commit it.
+  // The draft lives here until a commit writes node.body ([[B19]] spreadsheetHabits); a ref, so any close path can commit it.
   const draftRef = useRef(node?.body ?? "");
   const lastSyncRef = useRef(node?.body ?? "");
   // Debounced: re-parsing per keystroke remounted the whole preview (the scroll jumped, embeds re-mounted).

@@ -394,7 +394,7 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[C14]] currentExcelParity blocks
+    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[B16]] oneFormulaSurface blocks
     // them, so a blocked spelling answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS"]) {
@@ -559,7 +559,7 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
   });
 });
 
-describe("classic lookups redirect to their current-Excel replacements ([[C14]] currentExcelParity)", () => {
+describe("classic lookups redirect to their current-Excel replacements ([[B16]] oneFormulaSurface)", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);

@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter
+// [[B19]] spreadsheetHabits
 import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../nodeClasses";
 import { scheduleAutosave } from "../persistence";

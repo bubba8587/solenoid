@@ -1,4 +1,4 @@
-// [[C128]] pivotDetails, [[C129]] describeDashboard
+// [[C127]] pivotView
 import { isSolError } from "./errorValue";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import type { FrameCell, FrameColType } from "./frame";

@@ -122,7 +122,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
    - `funcs`, `fieldTypes`: shallow copies.
    - `filterExclude`: each array copied.
    - `pivotView` (Pivot): only the options that differ from the defaults (`savedPivotView`, `pivotLayout.ts`); omitted when none do, and read back with every missing or unknown option at its default (`readPivotView`).
-   - `detailFields` (Pivot): the Details columns ([[C128]] pivotDetails), a copied array; omitted when empty.
+   - `detailFields` (Pivot): the Details columns ([[C127]] pivotView), a copied array; omitted when empty.
    - `condConfig`: only rows `k` whose `value<k>` or `column<k>` input still exists.
    - `keyOrder` (List Sort): only key rows `k` whose `key<k>` input still exists; omitted when none remain.
    - `titles`, `selectedKeys`: only keys that are live inputs; omitted when none remain.
@@ -143,7 +143,7 @@ Why: a field that is captured but not re-applied drops on reload, and nothing ca
 
 ### Every field is persisted or deliberately transient
 
-Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
+Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[B18]] safeToShare). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
 
 Why: the round-trip sweep above proves that captured fields survive, but it can't see a field the whitelist never captured: both sides omit it identically, so the test passes while the user's setting silently resets on every reload. The first triage found exactly that: `asofDirection`, the direction dropdown of an as-of Join, reset to "backward" on every save, reload and paste.
 

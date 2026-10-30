@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[C95]], [[B2]] webTryDesktopFull
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[B18]] safeToShare, [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[B19]] spreadsheetHabits, [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -455,11 +455,11 @@ describe("[[C23]] calcModes — a volatile data() freezes its roll on getRecalcG
   });
 });
 
-describe("[[C38]] sinkRunButtonOnly — data() never touches disk", () => {
+describe("[[B18]] safeToShare — data() never touches disk", () => {
   // A sink's data() caches for preview ONLY; the write lives in run(), fired by
   // the node's Run button. The two existing sink families are pinned by their
   // own suites, but a NEW sink whose data() writes was uncaught until its own
-  // test existed ([[C38]] sinkRunButtonOnly's closed gap): this brace-matches
+  // test existed ([[B18]] safeToShare's closed gap): this brace-matches
   // every data() body in nodes/ + packs/ and refuses the write APIs — and
   // `this.run(`, the indirect spelling of the same mistake.
   const WRITE_APIS = ["writeTextFilePath", "pickSaveFilePath", "writeDocumentToVault", "obsidianWrite"];
@@ -549,7 +549,7 @@ describe("[[C38]] sinkRunButtonOnly — data() never touches disk", () => {
     expect(bodies).toBeGreaterThan(250);
     expect(
       offenders,
-      `These data() bodies touch a write API ([[C38]] sinkRunButtonOnly): data() caches for ` +
+      `These data() bodies touch a write API ([[B18]] safeToShare): data() caches for ` +
       `preview only — the effect belongs in run(), behind the Run button:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -940,7 +940,7 @@ describe("[[A1]] visualGraphCalculator — the movement stack reads sizes throug
   });
 });
 
-describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", () => {
+describe("[[B19]] spreadsheetHabits — no raw text field commits per keystroke", () => {
   // A raw <input>/<textarea> whose onChange recomputes the graph commits every
   // character. Discrete controls (checkbox, radio, range, color, <select>) apply
   // immediately by the same rule, and the draft-commit fields expose onChange as the

@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder, [[C123]] decisionBlanks, [[C124]] dealBreakers, [[C125]] flipPoints, [[C126]] chainedDecisions
+// [[B17]] typedValueModel
 // Realistic scenarios, each with the answer a careful person would expect, written apart from the engine. A scenario the
 // engine answers differently is either a fix or a recorded reason (`ruling`) why the math is right to differ.
 import { describe, it, expect } from "vitest";

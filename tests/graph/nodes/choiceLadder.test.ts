@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder
+// [[B17]] typedValueModel
 import { describe, it, expect } from "vitest";
 import { ChoiceLadderNode } from "../../../src/graph/nodes/frame";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
@@ -109,7 +109,7 @@ describe("ChoiceLadderNode", () => {
   });
 });
 
-describe("Choice Ladder deal-breakers, Must and Never ([[C124]] dealBreakers)", () => {
+describe("Choice Ladder deal-breakers, Must and Never", () => {
   const policies = frame(seedFrame("pOpts").columns.filter((c) => c.name !== "Must" && c.name !== "Never"));
   const names = col(policies, "Policy") as string[];
   const flag = (name: string, on: string[]): FrameColumn => ({ name, type: "logical", values: names.map((n) => on.includes(n)) });

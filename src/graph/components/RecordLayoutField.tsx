@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[C95]] commitOnEnter
+// [[B11]] maximalMerge, [[B19]] spreadsheetHabits
 import { useLayoutEffect, useRef, useState } from "react";
 import { usePendingDraft } from "../draftFlush";
 import { FieldResizeGrip } from "./FieldResizeGrip";

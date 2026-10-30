@@ -137,7 +137,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     data.edited(); await processGraph();
   }
 
-  // The body stays a local draft while typing and reaches the node here ([[C95]] commitOnEnter).
+  // The body stays a local draft while typing and reaches the node here ([[B19]] spreadsheetHabits).
   async function commitBody() {
     if (body !== data.body) { data.body = body; scheduleAutosave(); }
     await commitFields();

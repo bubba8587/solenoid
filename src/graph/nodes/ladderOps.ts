@@ -1,4 +1,3 @@
-// [[C122]] choiceLadder
 /** What a viewer can do to a Choice Ladder's choices: take an option at a fork (`instead` of the one taken there), undo
  *  one, or clear them all. */
 export type LadderAction = { add: string; instead?: string } | { remove: string } | { reset: true };

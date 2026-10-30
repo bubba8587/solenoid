@@ -88,7 +88,7 @@ let pivotHostAction: PivotHostAction | null = null;
 export function setPivotHostAction(action: PivotHostAction | null): void { pivotHostAction = action; }
 export function getPivotHostAction(): PivotHostAction | null { return pivotHostAction; }
 
-/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[C129]] describeDashboard). */
+/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[C127]] pivotView). */
 export type DashboardView = ComponentType<{ tiles: readonly DescribeTile[]; query: string }>;
 let dashboardView: DashboardView | null = null;
 export function setDashboardView(view: DashboardView | null): void { dashboardView = view; }

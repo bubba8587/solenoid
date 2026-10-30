@@ -907,7 +907,7 @@ fn js_add(acc: Acc, v: &V) -> Acc {
 fn acc_number(acc: Acc) -> f64 {
     match acc {
         Acc::Num(n) => n,
-        // Text joined into the sum is never read back as a number ([[C131]] noTextGuessing).
+        // Text joined into the sum is never read back as a number ([[C10]] socketLattice).
         Acc::Str(_) => f64::NAN,
     }
 }
@@ -993,7 +993,7 @@ fn slope_through_origin(xs: &[V], ys: &[f64]) -> Option<f64> {
     (!xs.is_empty() && sxx > 0.0).then(|| sxy / sxx)
 }
 
-/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C10]] socketLattice).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -1002,7 +1002,7 @@ fn is_true(v: &V) -> bool {
     }
 }
 
-/// `#VALUE!` where a regression's list holds text, which is never read as a number ([[C131]] noTextGuessing).
+/// `#VALUE!` where a regression's list holds text, which is never read as a number ([[C10]] socketLattice).
 fn no_text(l: &[V], what: &str) -> Result<(), V> {
     if l.iter().any(crate::excel_functions::holds_text) {
         Err(err(ErrorCode::Value, format!("{what} need numbers")))
@@ -1251,7 +1251,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "DIAGONAL" => {
             let v = arg(a, 0);
-            // A text cell is refused, never read as a number ([[C131]] noTextGuessing).
+            // A text cell is refused, never read as a number ([[C10]] socketLattice).
             let read: Vec<V> = match v {
                 V::List(items) if matches!(items.first(), Some(V::List(_))) => items
                     .iter()

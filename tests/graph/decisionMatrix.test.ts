@@ -114,7 +114,7 @@ describe("decisionMatrix", () => {
     expect(out.columns[0].values).toContain("Option 2");
   });
 
-  it("scores a cell with no number as the column's median and a logical as 1 or 0 ([[C123]] decisionBlanks)", () => {
+  it("scores a cell with no number as the column's median and a logical as 1 or 0", () => {
     const g: FrameValue = {
       __frame: true,
       columns: [
@@ -466,7 +466,7 @@ describe("decisionSensitivity (weight scenarios → cube)", () => {
   });
 });
 
-describe("deal-breakers ([[C124]] dealBreakers)", () => {
+describe("deal-breakers", () => {
   const apartments: FrameValue = { __frame: true, columns: [
     { name: "Place", type: "string", values: ["Loft", "Studio", "Garden", "Tower"] },
     { name: "Rent", type: "number", values: [2400, 1500, 1800, null] },
@@ -529,7 +529,7 @@ describe("deal-breakers ([[C124]] dealBreakers)", () => {
   });
 });
 
-describe("flip points ([[C125]] flipPoints)", () => {
+describe("flip points", () => {
   const cars: FrameValue = { __frame: true, columns: [
     { name: "Car", type: "string", values: ["Civic", "Model 3", "RAV4", "Miata", "Outback"] },
     { name: "Price", type: "number", values: [26, 42, 31, 30, 29] },
@@ -619,7 +619,7 @@ describe("Range normalize", () => {
   });
 });
 
-describe("chained decisions ([[C126]] chainedDecisions)", () => {
+describe("chained decisions", () => {
   const hoods: FrameValue = { __frame: true, columns: [
     { name: "Neighborhood", type: "string", values: ["Hillside", "Riverside", "Old Town"] },
     { name: "Safety", type: "number", values: [9, 7, 6] },
@@ -711,7 +711,7 @@ describe("chained decisions ([[C126]] chainedDecisions)", () => {
   });
 });
 
-describe("a guessed value is said ([[C123]] decisionBlanks)", () => {
+describe("a guessed value is said", () => {
   it("Filled in names the criteria whose blank took the median, and only when there is one", () => {
     const g: FrameValue = { __frame: true, columns: [
       { name: "Bid", type: "string", values: ["North", "South", "East"] },

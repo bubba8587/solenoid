@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder
+// [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { layoutLadder, metricsFor, type Layout, type Box } from "../../../src/graph/components/ladderLayout";
 import { choiceLadder } from "../coreVerbs";

@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
+// [[B19]] spreadsheetHabits (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
 import { FieldResizeGrip } from "./FieldResizeGrip";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
@@ -61,7 +61,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
 /** `parse` result for a draft that can't become a value (commit reverts). */
 export const INVALID_DRAFT = Symbol("invalid-draft");
 
-/** [[C95]] commitOnEnter. `apply` owns the mirror + processGraph, never onChange. */
+/** [[B19]] spreadsheetHabits. `apply` owns the mirror + processGraph, never onChange. */
 export function useDraftCommit<T>(
   committed: T,
   toText: (v: T) => string,

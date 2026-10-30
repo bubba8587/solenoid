@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[C28]] literalsIffEditable
+// [[B19]] spreadsheetHabits, [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { GraphSocket } from "../graphModel";

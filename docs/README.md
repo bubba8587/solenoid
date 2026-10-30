@@ -187,7 +187,7 @@ results get retried and settled rulings relapse.
 | `frameOps.ts`, `frameBackend.ts`, `binaryCells.ts`, `frame.ts`, `frameShape.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-core/src/frame_verbs.rs`, `frame_backend.rs`, `binary.rs`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
-| `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
+| `nodeCatalog.ts` | `node-coverage.md`; [[B16]] oneFormulaSurface (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |

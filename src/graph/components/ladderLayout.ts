@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder
+// [[C100]] chartIsAValue
 import type { LadderPayload } from "../chartValue";
 
 /** A card: `source` (the criteria and limits), or `e<i>` (the rung edge i takes). */

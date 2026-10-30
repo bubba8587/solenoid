@@ -1388,7 +1388,7 @@ pub struct PivotSpec {
     pub relative_to: Option<f64>,
     #[serde(default)]
     pub filter: Option<Vec<Option<bool>>>,
-    /// The columns the Pivot view lists under each row group ([[C128]] pivotDetails): the layout's leaf rows carry
+    /// The columns the Pivot view lists under each row group ([[C127]] pivotView): the layout's leaf rows carry
     /// their source rows; the output never changes with them.
     #[serde(default)]
     pub details: Option<Vec<String>>,

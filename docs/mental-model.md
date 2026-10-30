@@ -151,7 +151,7 @@ the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` Â
   minimap, lasso, snapshot undo, copy and paste, single-key shortcuts (F9 calculates), the
   command palette, presenter mode, per-doc autosave with multiple documents, the Navigator,
   the HUD stack, semantic zoom, the HTML-in-Canvas gesture layer (a Setting; DOM is the
-  permanent default), and the AI palette ([[B13]] aiInScope, [[C55]] aiWholeDocRewrite).
+  permanent default), and the AI palette ([[B13]] aiInScope).
 - **Value model:** Frames, Cubes (recursive), matrices, lists and scalars; first-class
   null, logicals and `SolError`s; units by dimension with `#UNIT!` algebra; the FC, which
   sets units and display formats.

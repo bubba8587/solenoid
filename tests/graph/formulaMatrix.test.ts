@@ -287,7 +287,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
 
   it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
     const x = [1, 5, 2, 9];
-    // Text is not a condition, even "TRUE" ([[C131]] noTextGuessing): #VALUE!, not a silent FALSE.
+    // Text is not a condition, even "TRUE" ([[C10]] socketLattice): #VALUE!, not a silent FALSE.
     expect(code(ev("FILTER(x, m)", { x, m: [true, "yes", true, false] }))).toBe("#VALUE!");
     expect(code(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] }))).toBe("#VALUE!");
     expect(ev("FILTER(x, m)", { x, m: [true, false, 1, 0] })).toEqual([1, 2]);

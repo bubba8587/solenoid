@@ -75,9 +75,9 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   1.3 ms, under the TS's 4.9. What blocks phase C is [[graph-core]] § What blocks phase C.
 - **Develop merged at `c7da52b`** (2026-10-24, [[rust-core]] § Tracking develop): every formula, card and verb fix
   it carried was mirrored already. Pele draws Mermaid in place of mermaid.js (about 4 MB of lazy chunks gone), and
-  Describe's Dashboard ([[C129]] describeDashboard) runs its tiles in Describe's body on the core, `DescribeNode`
+  Describe's Dashboard ([[C127]] describeDashboard) runs its tiles in Describe's body on the core, `DescribeNode`
   refrozen with them. Earlier mirrors: the finance functions' currency ([[C25]] financeCarriesMoney,
-  `finance_units.rs`) and Pivot details ([[C128]]), whose layout gives each leaf row its source rows on the core.
+  `finance_units.rs`) and Pivot details ([[C127]]), whose layout gives each leaf row its source rows on the core.
 - **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
   unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
   frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.
@@ -123,15 +123,15 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **A Pivot's output opens on a Pivot view** ([[C127]] pivotView, unratified; mechanics [[table-popup#The Pivot view]]): Compact, Outline and Tabular forms, Repeat Labels, Blank Rows and Headers (checkboxes), Bands, folding by subtotal, empty-cell text, one Number format per value field (the paintbrush), a label filter, a 1,000-row render cap, and Subtotals, Grand Totals and Fields, which change the node as Configure Fields does. The frame stays a plain Frame: PIVOTBY's layout lives beside it in a table keyed by the frame (`pivotLayout.ts`), carried through format stamps, so a Display wired to the Pivot opens the view too. Options save on the node (`pivotView`).
 - **Popup chrome, one way for every view** ([[table-popup]] § The view switch, § The popup shell): one pill family (segments for a choice, pill dropdowns with the app chevron sized to their choice, checkboxes for on-off, separate buttons for actions); a choice shows segments while its row has room, else a dropdown (`PopupChoice`, `useFreeWidth`); a view's body is the scroll region or a `sol-popup__view`, so resizing needs no per-view rule; on a phone the Table and Cube popups fit the screen (`fitNarrow`) and the Pivot ribbon moves to a footer sheet; narrow layouts follow the popup's width (a `table-popup` container query); the footer's actions stay pinned right while its tools wrap; the header title wraps then ellipsizes, and Go to Source, Pin and Copy SVG live in the ⋯ menu.
 - **Saves:** an edit made in manual calculation now autosaves and records history at once (the gate in `processGraph` signals the change; a reordered Rows set was lost on reload). Pivot field lists are list literals (`listLiteralText` beside the reader in `coerceInputs.ts`), so names with commas survive.
-- **Pivot Details** ([[C128]] pivotDetails, unratified; [[table-popup#The Pivot view]]): a fifth zone in Configure Fields; each leaf row gets a chevron that lists its source rows (the Details columns, at most 100) under it. View only: the output is unchanged, the layout records each leaf's source rows, open groups are never saved.
-- **Describe opens on a Dashboard** ([[C129]] describeDashboard, unratified; [[table-popup#The Dashboard view]]): a tile per source column with its fill, a histogram and row-order line (numbers), a histogram (dates) or top five values (text, logical, and numbers with six or fewer values), drawn by `ChartView` with the chart popup's expand. Views' side info now shares one keyed table (`frameSidecar.ts`), carried through format stamps.
+- **Pivot Details** ([[C127]] pivotDetails, unratified; [[table-popup#The Pivot view]]): a fifth zone in Configure Fields; each leaf row gets a chevron that lists its source rows (the Details columns, at most 100) under it. View only: the output is unchanged, the layout records each leaf's source rows, open groups are never saved.
+- **Describe opens on a Dashboard** ([[C127]] describeDashboard, unratified; [[table-popup#The Dashboard view]]): a tile per source column with its fill, a histogram and row-order line (numbers), a histogram (dates) or top five values (text, logical, and numbers with six or fewer values), drawn by `ChartView` with the chart popup's expand. Views' side info now shares one keyed table (`frameSidecar.ts`), carried through format stamps.
 - **Dawn and Dusk** grounds are a step more neutral (chroma 0.03).
 - Checked on desktop, resized popups and 320 to 390-pixel phones, dark and light, with 160 to 3,000-row sales frames.
 
 ### SESSION DIGEST (2026-10-16: the Choice Ladder and the decision domain; cloud session)
-- **Choice Ladder node** ([[C122]] choiceLadder, unratified; mechanics [[frame-verbs#Choice Ladder]], figure [[chart-figures]] § The ladder figure): orders a Decision Matrix's options into the sequence to take them in when you can't do everything. Limits take an At most, an At least (a floor, such as two vegetarian places) or neither (a rough cost such as political capital, ordered by value for what it costs). Requires, Excludes, Must and Never columns link and force options. Close places fork, the flow splitting by score; a pick at a fork is saved on the node (`choices`) and the passed side stays dimmed and clickable. The Plan carries running totals.
+- **Choice Ladder node** (C122 choiceLadder (retired 2026-10-30, now in frame-verbs.md), unratified; mechanics [[frame-verbs#Choice Ladder]], figure [[chart-figures]] § The ladder figure): orders a Decision Matrix's options into the sequence to take them in when you can't do everything. Limits take an At most, an At least (a floor, such as two vegetarian places) or neither (a rough cost such as political capital, ordered by value for what it costs). Requires, Excludes, Must and Never columns link and force options. Close places fork, the flow splitting by score; a pick at a fork is saved on the node (`choices`) and the passed side stays dimmed and clickable. The Plan carries running totals.
 - **The figure is a Sankey of the value served**: cards take their slice, stroked ribbons keep their thickness sideways, a merge that forks again meets in one knot, lanes never cross (`ladderLayout.test.ts`).
-- **The Decision Matrix family grew** (the author's "chained decisions and choice multi-select" loop): a blank scores as the criterion's median and every guess is named in Filled in ([[C123]] decisionBlanks); At least / At most deal-breakers rule options out before weighing, a limit-only row being a screen ([[C124]] dealBreakers); Range normalize; Sensitivity's Flip points mode ([[C125]] flipPoints); a Cube from Nest Join ranks as a chain of choices ([[C126]] chainedDecisions); the ladder gained floors, Must / Never / One of and running totals. Seeds: `apartment-hunt.json`, `hiring-team.json`.
+- **The Decision Matrix family grew** (the author's "chained decisions and choice multi-select" loop): a blank scores as the criterion's median and every guess is named in Filled in (C123 decisionBlanks (retired 2026-10-30, now in frame-verbs.md)); At least / At most deal-breakers rule options out before weighing, a limit-only row being a screen (C124 dealBreakers (retired 2026-10-30, now in frame-verbs.md)); Range normalize; Sensitivity's Flip points mode (C125 flipPoints (retired 2026-10-30, now in frame-verbs.md)); a Cube from Nest Join ranks as a chain of choices (C126 chainedDecisions (retired 2026-10-30, now in frame-verbs.md)); the ladder gained floors, Must / Never / One of and running totals. Seeds: `apartment-hunt.json`, `hiring-team.json`.
 - **How it was checked:** seven critic-agent review rounds until one returned END STATE; a 64-scenario intuition battery written apart from the engine (`decisionIntuition.test.ts`, misses the math is right about carry a `ruling`), which also chose the default scale (÷Max missed 3, Range 9, Rank 10); and property tests holding the ladder's plans and forks to exhaustive search on random problems (`ladder.rs`'s unit tests).
 - **Ruled out:** sequencing by period (C122's reopen condition), pairwise (AHP) weights, Monte Carlo weight jiggling (flip points answer the same question).
 - **dev-up.mjs** stops and restarts the dev server by PID (`--stop`, `--restart`); `pkill -f` matched the caller's own shell.
@@ -350,7 +350,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - Two security holes closed: the SVG Picker scrubs markup in its class (`source` getter), so a loaded or pasted file can't inline script through an `SvgFigure` ([[C103]] untrustedContentSeams); the string editor's save endpoint binds 127.0.0.1, takes only scanned `src/` files and refuses a foreign Origin.
 - One complex operand reading for card and formula (`cxValue.ts` `toCx`: a real is z + 0i, text parses, else #TYPE!); Polynomial Roots keeps every coefficient in its slot (an error propagates, a blank leaves the roots unknown).
 - `graphSettled()` (`process.ts`, compute-pass spec § Single flight): a caller outside a pass awaits it after `processGraph` before reading results; Tornado and model fuzz do.
-- Every hand-rolled draft field found now runs on `useDraftCommit` (Document Properties, Angle Dial, Date Range, Color Picker hex): Escape cancels, a pending draft flushes ([[C95]] commitOnEnter).
+- Every hand-rolled draft field found now runs on `useDraftCommit` (Document Properties, Angle Dial, Date Range, Color Picker hex): Escape cancels, a pending draft flushes ([[B19]] commitOnEnter).
 - `makeOpNodeComponent` (`standardNode.tsx`) is the op-picker card; 32 cards moved onto the standard factories. Pass-through cards (IF, IFS, CHOOSE, SWITCH, IFERROR, Expect) show tables through `ResultDisplay`.
 - The readInput sweep also scans `scripts/new-node.mjs`, whose template now reads through `readInput` ([[D86]] blankRoles).
 - Deleted as dead: `highlightUtils`, `hicColors`, `flow/flowSeeds`, `RandNode`, FormulaField's unreachable inline editor, cssColor's `toCss`/`mixSrgb`/`flowTint`, `parseFredObservations`, `snapCoord` and a dozen unused store members and exports.
@@ -391,7 +391,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 ### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons, card sections and the liquid fold; cloud session)
 
 - **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
-  ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
+  ([[C22]] rowFormulaRefs, [[B16]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
   `ROWS(price)` is the row count, and a column may be named `row`. COLUMN stays blocked (`POSITION_NAMES`,
   `blockedNameMessage`).
 - **One shape model, D85 columnsStayColumns** (E17 folded in and retired): a List is one CSV row, a Frame column a
@@ -502,7 +502,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   js-yaml does (CRLF, control characters, ambiguous keys, indented blocks), a vault Write subfolder can't climb out on
   Windows, °F reads back as typed, a wired plain number beside °C readings is a reading, live cards drop a reply for a
   URL they moved past, a locked canvas drops keyboard focus in cards, and the midnight rollover sees Cube Input and
-  Knap `'now'`. New leaf: [[C117]] usNumberText (US number text only, the author's rule). Inbox:
+  Knap `'now'`. New leaf: [[C58]] usNumberText (US number text only, the author's rule). Inbox:
   `temperature-difference-converts-by-scale`. For 1.6 in the backlog: Equation outputs vs the formula surface.
 - **Cloud sessions can run `cargo test`** once WebKitGTK's dev packages are installed (`libwebkit2gtk-4.1-dev
   libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev`); the first build takes about six minutes.
@@ -694,7 +694,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   MIN and MAX are owned (Formula.js spread the list into `Math.min`) on the card's kernel; PERCENTRANK.INC and .EXC run
   the card's kernel (Formula.js said 0 below the data).
 - **Retired on the author's suggestion:** AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA and VARPA redirect to their plain
-  forms ([[C14]] currentExcelParity, a new consequence line); lists are typed, so only the logical reading was left.
+  forms ([[B16]] currentExcelParity, a new consequence line); lists are typed, so only the logical reading was left.
 - **Excel parity at the edges, card and formula alike:** YEARFRAC basis 1 is Excel's actual/actual (211/366 for Excel's
   own example), truncates its dates, takes them in either order and refuses a basis outside 0 to 4; GCD and LCM share
   one kernel (`gcdLcm`) that truncates each value and refuses a negative or one at 2^53 or more; LEFT, RIGHT, FIND
@@ -1210,7 +1210,7 @@ On `develop`, pushed.
   C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with D63 lockedGroupIsObstacle (retired) and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers (C94 formatFamilyGates (retired)
-  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
+  formatFamilyGates, [[B19]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
   [[C98]] paletteMirrorsMenubar, C99 chromeEnvelopeVars (retired), [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
   replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
   source sweeps now; the four sanctioned size reads carry their reason in place.
@@ -1223,7 +1223,7 @@ On `develop`, pushed.
 - **Five agents made the thin citations specific** (206 files with only class-wide citations: components, node
   ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
   lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C103]]
-  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
+  foreignDocNetworkGate (the stale "C2 gate" comments), [[B18]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
   serialsNeverDate, [[C70]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, D69 convertBadPickIsNA (retired)
   convertBadPickIsNA, [[C24]] nullNotEnoughData, D71 zoomLatticeDiscreteOnly (retired); the rest were spec content or
   consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that

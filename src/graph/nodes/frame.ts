@@ -669,7 +669,7 @@ export class PivotNode extends GraphNode {
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
-  /** Columns the Pivot view lists under each row group; display only ([[C128]] pivotDetails). */
+  /** Columns the Pivot view lists under each row group; display only ([[C127]] pivotView). */
   detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -1320,7 +1320,7 @@ export class DecisionMatrixNode extends GraphNode {
   }
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  // [[C126]] chainedDecisions: a Cube in ranks its nested choices too, so a Cube comes out.
+  // A Cube in ranks its nested choices too, so a Cube comes out.
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
@@ -1363,7 +1363,7 @@ export class DecisionSensitivityNode extends GraphNode {
     ] },
   };
 
-  // [[C125]] flipPoints: the mode swaps the output between a Cube of scenarios and a Frame of flip points.
+  // The mode swaps the output between a Cube of scenarios and a Frame of flip points.
   static outputFor(mode: SensitivityMode) { return mode === "flips" ? frameOut("Flip points") : cubeOut("By scenario"); }
   static inputLabel(mode: SensitivityMode) { return mode === "flips" ? "Weights" : "Scenarios"; }
 
@@ -1399,7 +1399,6 @@ export class DecisionSensitivityNode extends GraphNode {
 
 // ─── CHOICE LADDER ──────────────────────────────────────────────────────────────
 
-// [[C122]] choiceLadder
 export class ChoiceLadderNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name; optional Must and Never logical columns force an option in or out; options sharing a One of value exclude each other.",
@@ -2211,7 +2210,7 @@ export class DescribeNode extends GraphNode {
     return ctx.wired("frame") ? shapeOnCore("describeFrame", [{ columns: [] }]) : null;
   }
 
-  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[C129]] describeDashboard). */
+  /** The Dashboard view's tiles, which the body shows beside its summary; they ride beside the frame ([[C127]] pivotView). */
   describeTiles?: DescribeTile[];
   static coreWatch = "describeTiles";
   coreWatched(): void {

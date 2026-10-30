@@ -83,7 +83,7 @@ function formulaHostOf(node: GraphNode | undefined): FormulaHost | null {
   return null;
 }
 
-// Notes, not formula: kept out of the formula string and editable while it is locked, so they commit per keystroke ([[C95]] commitOnEnter).
+// Notes, not formula: kept out of the formula string and editable while it is locked, so they commit per keystroke ([[B19]] spreadsheetHabits).
 function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHost }) {
   const [local, setLocal] = useState<Record<string, string>>(() => ({ ...host.varDescriptions }));
   const set = (v: string, desc: string) => {
@@ -144,7 +144,7 @@ export function FormulaPopup() {
   const [text, setText] = useState("");
   const initedFor = useRef<string | null>(null);
   const renderRef = useRef<HTMLDivElement>(null);
-  // Written once on exit, never per keystroke ([[C95]] commitOnEnter); `textRef` because the Escape listener closes over a stale `text`.
+  // Written once on exit, never per keystroke ([[B19]] spreadsheetHabits); `textRef` because the Escape listener closes over a stale `text`.
   const textRef = useRef("");
   const committedRef = useRef("");
 

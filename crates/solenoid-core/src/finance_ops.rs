@@ -25,7 +25,7 @@ pub enum Fin {
 pub enum Cell {
     Num(f64),
     Err(SolError),
-    /// Text, which a cash flow never reads as a number ([[C131]] noTextGuessing).
+    /// Text, which a cash flow never reads as a number ([[C10]] socketLattice).
     Text,
     /// Anything else: null, a logical.
     Other,

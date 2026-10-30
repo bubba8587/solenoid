@@ -172,3 +172,17 @@ D102	2026-10-30	superseded	C130	Claude Opus 5.5	-	graphOnCore: Everything headle
 D104	2026-10-30	superseded	C100	Claude Opus 5.5	-	displayKeepsControls: A chart keeps its controls in a Display: paging, rotating and the rest
 D105	2026-10-30	superseded	C25	Claude Opus 5.5	-	mixedTempUnitsRefused: Mixing temperature units in one calculation is #UNIT! for now; convert first
 D107	2026-10-30	superseded	C25	Claude Opus 5.5	-	tempDifferenceKeepsDelta: A temperature difference stays a difference, in Δ°C or Δ°F, never K
+C95	2026-10-30	superseded	B19	Claude Opus 5.5	-	commitOnEnter: A typed edit takes effect on Enter or clicking away, never on each keystroke
+C14	2026-10-30	superseded	B16	Claude Opus 5.5	-	currentExcelParity: Functions current Excel has replaced, like VLOOKUP, are gone
+C55	2026-10-30	superseded	B13	Claude Opus 5.5	-	aiWholeDocRewrite: An AI edit rewrites the whole document, shown as a diff to approve
+C38	2026-10-30	superseded	B18	Claude Opus 5.5	-	sinkRunButtonOnly: A node that writes outside the app acts only on its Run button
+C105	2026-10-30	superseded	B18	Claude Opus 5.5	-	apiKeysStayLocal: A provider API key stays on this device; it never enters a document
+C128	2026-10-30	superseded	C127	Claude Opus 5.5	-	pivotDetails: A Pivot's Details field lists each row group's source rows under it, in the view only
+C129	2026-10-30	superseded	C127	Claude Opus 5.5	-	describeDashboard: Describe's popup opens on a dashboard of its source's columns, a view of its unchanged summary
+C131	2026-10-30	superseded	C10	Claude Opus 5.5	-	noTextGuessing: Formulas never guess a type from text; only typed inputs read it
+C117	2026-10-30	superseded	C58	Claude Opus 5.5	-	usNumberText: Number text is read the US way, and European forms are refused
+C122	2026-10-30	reverted	-	Claude Opus 5.5	-	choiceLadder: Options under limits, even rough ones, become a priority ladder that forks where scores are close
+C123	2026-10-30	reverted	-	Claude Opus 5.5	-	decisionBlanks: A missing score counts as the typical option's score on that criterion, not as zero
+C124	2026-10-30	reverted	-	Claude Opus 5.5	-	dealBreakers: Deal-breakers rule options out before weighing; Must and Never force a ladder's hand
+C125	2026-10-30	reverted	-	Claude Opus 5.5	-	flipPoints: How close a call is shows as the weight at which another option would win
+C126	2026-10-30	reverted	-	Claude Opus 5.5	-	chainedDecisions: A choice that opens a further choice is scored with the best option it opens

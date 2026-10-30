@@ -2,7 +2,7 @@
 aliases: ["VaultBridge"]
 tags: [spec, integrations]
 ---
-<!-- [[B1]] obsidianBet, [[C101]] onePatchPath, [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution -->
+<!-- [[B1]] obsidianBet, [[C101]] onePatchPath, [[B18]] safeToShare, [[D62]] demoVaultResolution -->
 
 # Spec: VaultBridge
 
@@ -65,6 +65,6 @@ A Note and a Report are documents, not VaultBridge Nodes: they reach a vault thr
 
 ## What every VaultBridgeFx holds to
 
-- **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own ([[C38]] sinkRunButtonOnly); a write refuses against the demo vault.
+- **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own ([[B18]] safeToShare); a write refuses against the demo vault.
 - **Nothing leaves the vault.** A write drops empty, `.` and `..` path segments, and Vault Folder refuses a folder outside the vault.
 - **A write changes only what it targets** ([[C101]] onePatchPath).

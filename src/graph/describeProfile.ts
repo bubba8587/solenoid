@@ -1,4 +1,4 @@
-// [[C129]] describeDashboard
+// [[C127]] pivotView
 import { frameRowCount, type FrameColType } from "./frame";
 import { frameSidecar } from "./frameSidecar";
 import type { FormatAnnotation } from "./formatAnnotationStore";

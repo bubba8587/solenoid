@@ -1,4 +1,4 @@
-// [[B11]] maximalMerge, [[C95]] commitOnEnter
+// [[B11]] maximalMerge, [[B19]] spreadsheetHabits
 import { useSyncExternalStore } from "react";
 import type { DashboardNode as DashboardNodeType } from "../nodeClasses";
 import { NodeShell, type NodeProps } from "./nodeKit";

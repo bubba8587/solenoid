@@ -1,4 +1,4 @@
-// [[C14]] currentExcelParity, [[B16]] oneFormulaSurface, [[C51]] formulaNaming, [[D99]] rustIsSpec
+// [[B16]] oneFormulaSurface, [[C51]] formulaNaming, [[D99]] rustIsSpec
 // The formula language's names as data, for the editor, the Add menu and the Function Reference. The bodies and their
 // dispatch facts are the core's (crates/solenoid-core: `excel_functions.rs`, `data/call_traits.json`).
 import { wasmInvokeSync } from "./engineWasm";

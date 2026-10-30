@@ -36,7 +36,7 @@ wired by `FlowCanvas` and exposed to the rest of the app via `setAutoArrange(fn)
 invoked as `await arrangeFn({skipConfirm: true})`. **The transpiler's layout step should
 call the same accessor** (`process.ts`'s slot), not reimplement layout invocation.
 
-**currentExcelParity enforcement mechanism:** the redirect rule (eliminated functions like VLOOKUP
+**B16 oneFormulaSurface enforcement mechanism:** the redirect rule (eliminated functions like VLOOKUP
 never come back, they redirect to Frame Lookup/XLOOKUP) is enforced by simply NOT
 adding an entry back to `NODE_EXCEL`/the catalog for an eliminated function — `EXCEL_GAP`
 already tracks what's deliberately unimplemented. The transpiler's redirect table is a

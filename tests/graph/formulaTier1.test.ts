@@ -1,4 +1,4 @@
-// [[C17]], [[C14]] currentExcelParity
+// [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import { isFunctionName, formulaFunctionNames, LEGACY_ALIASES, POSITION_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
@@ -234,7 +234,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface", () => {
+describe("the [[B16]] oneFormulaSurface gate covers the WHOLE blocklist, on every surface", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);
@@ -293,7 +293,7 @@ describe("one-function Excel parity, each checked against Excel", () => {
     expect(ev("YEARFRAC(DATE(2012,12,15),DATE(2013,3,1),1)")).toBeCloseTo(76 / 365, 12);
     expect(ev("YEARFRAC(DATE(2011,2,28),DATE(2012,2,29),1)")).toBeCloseTo(366 / 365.5, 12);
   });
-  it("VALUE takes a comma before the decimal point and none after it ([[C117]] usNumberText)", () => {
+  it("VALUE takes a comma before the decimal point and none after it ([[C58]] tableInputRawText)", () => {
     expect(ev('VALUE("1,5")')).toBe(15);
     expect(ev('VALUE("-$1,234.50")')).toBe(-1234.5);
     expect(ev('VALUE("(5)")')).toBe(-5);

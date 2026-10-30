@@ -76,7 +76,7 @@ fn if_test(v: &V) -> V {
         V::Null | V::Err(_) | V::Bool(_) => v.clone(),
         V::Num(n) if n.is_nan() => err(ErrorCode::Value, "A condition is not a number"),
         V::Num(n) => V::Bool(*n != 0.0),
-        // Text is text, even "TRUE", as a formula's condition reads it ([[C131]] noTextGuessing).
+        // Text is text, even "TRUE", as a formula's condition reads it ([[C10]] socketLattice).
         V::Str(_) => err(ErrorCode::Value, "A condition needs a logical. Compare text with = to get one"),
         _ => err(ErrorCode::Value, "A condition needs a logical"),
     }

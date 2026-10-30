@@ -397,12 +397,12 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
     apply_op(op, a, b)
 }
 
-/// `-x`, `+x`: JavaScript's unary coercion, which never reads text ([[C131]] noTextGuessing).
+/// `-x`, `+x`: JavaScript's unary coercion, which never reads text ([[C10]] socketLattice).
 fn js_unary(v: &V) -> f64 {
     crate::excel_functions::to_f64_js(if matches!(v, V::Null) { &V::Undef } else { v })
 }
 
-/// The answer an operator gives text ([[C131]] noTextGuessing).
+/// The answer an operator gives text ([[C10]] socketLattice).
 fn text_operand() -> V {
     V::err(sol_error(
         ErrorCode::Value,

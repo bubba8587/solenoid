@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder, [[D99]] rustIsSpec
+// [[D99]] rustIsSpec
 //! The Choice Ladder's branch and bound and the card's reading of its tables.
 
 use std::collections::{HashMap, HashSet};

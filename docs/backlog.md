@@ -16,7 +16,7 @@ Each line is a leaf whose rule the code doesn't keep yet. The leaf carries an `*
 - [ ] **C25 firstClassUnits** (two temperature units never mix): mixing K with °C, or °C with °F, should be `#UNIT!` asking for a conversion. The Arithmetic card reads K as a change today (`20 °C + 300 K` is 320 °C), and formulas have no rule (`../tree/specs/values/unit-flow.md`, the rule for two absolute temperatures).
 - [ ] **C112 noOverlapsEver**: Align and opening a collapsed card don't end with the No-Overlap Pass, so Align can stack two cards and an opened card can cover the one below. Both should end with the same small cleanup Tidy, nudge and distribute do (`../tree/specs/canvas/group-expand-push.md` § LayoutFx).
 - [ ] **B18 safeToShare** (security): a foreign document's Script nodes run without asking, and its web images load before the network gate. The fixes are in § Desktop hardening below.
-- [ ] **C131 noTextGuessing**: COUNTIFS, SUMIFS and the other criterion functions still read a date out of criterion text, the way Excel's criteria syntax does (`COUNTIFS(dates, ">1-Jan-2026")`). The fix is replacing that syntax with an operator plus a typed value, as the List Filter card already takes; how that is written in a formula is still to be designed.
+- [ ] **C10 socketLattice** (formulas never guess a type from text): COUNTIFS, SUMIFS and the other criterion functions still read a date out of criterion text, the way Excel's criteria syntax does (`COUNTIFS(dates, ">1-Jan-2026")`). The fix is replacing that syntax with an operator plus a typed value, as the List Filter card already takes; how that is written in a formula is still to be designed.
 
 ## Dependency updates (walking them one at a time)
 
@@ -57,7 +57,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Quadratic work the C120 sweep left** ([[C120]] linearWork, 2026-10-24; the small ones landed):
   - INTERPOLATE's grid fill (`fill_grid`, `fns_lists.rs`) scans every known point per candidate corner; needs a spatial index.
   - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
-- [ ] **Text-reading calls the C131 sweep left for the author** ([[C131]] noTextGuessing): AND, OR and XOR skip a text argument (`OR(FALSE, "TRUE")` is FALSE) while NAND, NOR and XNOR answer #TYPE! and NOT #VALUE!: one rule for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
+- [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): AND, OR and XOR skip a text argument (`OR(FALSE, "TRUE")` is FALSE) while NAND, NOR and XNOR answer #TYPE! and NOT #VALUE!: one rule for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 - [ ] **Decimal places slider and the 0-decimal format fix** are on rust-port only; develop still has the 2/3/4/6 segments.
 - [ ] **A JS throw is a thread-local flag, not a type**: `throw()` sets `THROWN` and answers `V::Undef`, so a body that throws reads like one that answered undefined, and each caller asks `take_raised()` after (`Calc` scopes it per call). `call_function` answering `Result<V, Raised>` would let the compiler carry it; it can move module by module.
 - [ ] **Strip Group Cost Settle's ghost check** (author 2026-10-29): it's the one node that reads `cableGhostStore` (`inGhosted`, `nodes/frame.ts`) to go blank instead of showing `#VALUE!` when a mode switch leaves its input cable ghosted. Delete `inGhosted` and the `data()` override so `data()` is `nodeOnCore` alone, add `SettleNode` to `nodes::DIRECT` (`directBodies.test.ts` requires it), rebuild the wasm, and drop the sentence in `../tree/specs/canvas/react-flow-surface-contract.md` § Ghost cables that describes it. Needs a Rust build.
@@ -162,7 +162,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   to the Decision Matrix node's card or popup, under [[B17]] typedValueModel and DESIGN.md; ask which dev
   environment verifies it before starting.
 
-## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
+## Choice Ladder (built 2026-10-16)
 - [ ] **Author review of the Choice Ladder** (author 2026-10-29): it was built with little author attention and needs a pass through its node, figure and spec (the ladder figure bullets in `../tree/specs/computation/chart-figures.md`, and `../tree/specs/computation/frame-verbs.md` § Choice Ladder) to sort out what stays. The spec prose there hasn't had the readability pass ([[spec-prose]]). Open idea from the inbox: an option that earns back a rough cost (political capital) could enable options that need it, so order in time matters; wait until a real plan needs it.
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)

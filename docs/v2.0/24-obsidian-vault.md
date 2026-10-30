@@ -34,7 +34,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
   Obsidian** (`obsidianMarkdown.ts` + `obsidianWrite.ts`): a Document → one overwritten `.md`
   (pipe tables, mermaid fences, `$$` math, rasterized chart PNGs, `![[asset]]` embeds),
-  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections and
+  Run-button only ([[B18]] safeToShare). Spec homes: `../node-coverage.md` § Connections and
   sinks / § Annotation, `../socket-reference.md` § `document`.
 - **Note frontmatter** → sockets (`noteFrontmatter.ts`, `FIELD_SOCKETS` in `annotation.ts`). A
   deliberate YAML subset: scalars, flow arrays, block lists, rows-of-inline-objects → a frame.
@@ -284,7 +284,7 @@ and a per-node `vault` like A's.
 they emit nothing. The pure cores take files / responses as data; the runner supplies a
 provider: `run-graph <graph> --vault <path>` (Node `fs` → Vault Folder / Import Note),
 `--tasknotes <url>` (Node `fetch`), and `--run <node name>` arms and runs ONE named sink — the
-Run button's headless equivalent (`sinkRunButtonOnly` gains that clause). Makes an
+Run button's headless equivalent (B18 safeToShare's Run-button clause gains it). Makes an
 Obsidian-triggered recompute real without a listener (a `tasknotes-workflows` step or a Shell
 Commands hotkey), and lets `vaultCube.test.ts` run the real node over `fixtures/vault/`.
 
@@ -359,7 +359,7 @@ step.
 
 ## Rules touched (cite in commits)
 
-`sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
+B18 safeToShare's Run button (every writer; J adds "or the CLI's explicit `--run <name>`"),
 components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
 untouched, the relative-date opt-in untouched (R), a new **[[C101]] onePatchPath**

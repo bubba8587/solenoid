@@ -32,7 +32,7 @@ const BAND_OPTIONS: { value: Banding; label: string }[] = [
 ];
 
 const MAX_ROWS = 1000;
-/** A group's source rows draw at most this many under it ([[C128]] pivotDetails). */
+/** A group's source rows draw at most this many under it ([[C127]] pivotView). */
 const MAX_DETAIL_ROWS = 100;
 
 export interface PivotTotalsControl {

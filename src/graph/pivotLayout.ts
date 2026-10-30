@@ -13,7 +13,7 @@ export interface PivotAxisItem {
   kind: PivotItemKind;
   tuple: FrameCell[];
   fill: number;
-  /** A row leaf's source rows, in source order, kept only when the Pivot has Details ([[C128]] pivotDetails). */
+  /** A row leaf's source rows, in source order, kept only when the Pivot has Details ([[C127]] pivotView). */
   sources?: number[];
 }
 

@@ -73,7 +73,7 @@ describe("a per-column format rides the frame downstream", () => {
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("9.877");
   });
 
-  it("Describe's stamped summary keeps its Dashboard tiles ([[C129]] describeDashboard)", async () => {
+  it("Describe's stamped summary keeps its Dashboard tiles ([[C127]] pivotView)", async () => {
     const input = new FrameInputNode({ frameText: source([{ name: "A", type: "number", cells: ["1", "2", "4"] }]) });
     const desc = new DescribeNode();
     frameFormatStore.set(desc.id, "mean", DEC3);

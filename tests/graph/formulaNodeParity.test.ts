@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C14]] currentExcelParity
+// [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
@@ -75,7 +75,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These names dispatch in a formula with no node and no recorded decision:${fmt(added)}\n` +
           `Curate each one: block it (LEGACY_ALIASES in excelFunctions.ts) if it is a legacy or\n` +
           `superseded spelling, give it a node, or record it as a deliberate gap in EXCEL_GAP\n` +
-          `(nodeExcel.ts). [[C14]] currentExcelParity applies to the formula surface too — see [[C51]] formulaNaming.`,
+          `(nodeExcel.ts). [[B16]] oneFormulaSurface applies to the formula surface too — see [[C51]] formulaNaming.`,
       ).toEqual([]);
     });
   });

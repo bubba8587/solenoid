@@ -1004,7 +1004,7 @@ fn serial_to_date(mut serial: f64) -> f64 {
     zone::new_local(info.year as f64, month, days, hours, minutes, seconds, 0.0)
 }
 
-/// Formula.js `parseDate`, without its reading of date text: text is never a date ([[C131]] noTextGuessing).
+/// Formula.js `parseDate`, without its reading of date text: text is never a date ([[C10]] socketLattice).
 pub(crate) fn parse_date(v: &V) -> FxDate {
     if !to_f64_js(v).is_nan() {
         let d = js_parse_float(&js_string_of(v));
@@ -1028,7 +1028,7 @@ fn valid_frequency(v: &V) -> Option<f64> {
     one_of(v, &[1.0, 2.0, 4.0])
 }
 
-/// A day-count basis, 0 to 4. Text is never one: the callers answer it #VALUE! ([[C131]] noTextGuessing).
+/// A day-count basis, 0 to 4. Text is never one: the callers answer it #VALUE! ([[C10]] socketLattice).
 fn valid_basis(v: &V) -> Option<f64> {
     one_of(v, &[0.0, 1.0, 2.0, 3.0, 4.0])
 }

@@ -279,9 +279,9 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Decision support
 
-- **Decision Matrix** (`DecisionMatrixNode`, frame kind, in the Table verbs menu): a port of the author's Decision Matrix Bases View Obsidian plugin. It scores and ranks options (rows) by weighted criteria from a criterion-keyed Weights frame (`Criterion · Weight · Norm · At least · At most`), with deal-breakers ([[C124]] dealBreakers), blanks as the median ([[C123]] decisionBlanks) and Raw / ÷Max / Range / Rank scaling. A Cube in (a Nest Join's) is a chain of choices: each nested table is ranked and its best option counts toward its row ([[C126]] chainedDecisions), and the ports adopt, so a Cube comes out. Mechanics: `../tree/specs/computation/frame-verbs.md` § Decision Matrix and Decision Sensitivity. **Seeds** `decision-matrix.json` (laptops) and `apartment-hunt.json` (neighborhoods with their apartments).
-- **Decision Sensitivity** (`DecisionSensitivityNode`) is the companion, in two modes: Scenarios (a Cube of Winner · Margin · Ranking per weight scenario) and Flip points (per criterion, the weight at which another option wins, [[C125]] flipPoints; the output swaps to a Frame).
-- **Choice Ladder** (`ChoiceLadderNode`, its kernels the core's `ladder.rs`, a viewer's next choices `nodes/ladderOps.ts`, figure `components/ladderView.tsx` on `ladderLayout.ts`) orders options into the sequence to take them in under limits (caps, floors or rough costs), with optional Requires, Excludes, Must and Never columns ([[C122]] choiceLadder). Outputs: `Plan` (the main line with running totals, following the forks the user settled, saved as `choices`) and `Ladder` (the figure). Mechanics: `../tree/specs/computation/frame-verbs.md` § Choice Ladder. **Seeds** `choice-ladder.json` (a restaurant trip and a policy agenda) and `hiring-team.json`.
+- **Decision Matrix** (`DecisionMatrixNode`, frame kind, in the Table verbs menu): a port of the author's Decision Matrix Bases View Obsidian plugin. It scores and ranks options (rows) by weighted criteria from a criterion-keyed Weights frame (`Criterion · Weight · Norm · At least · At most`), with deal-breakers, blanks as the median and Raw / ÷Max / Range / Rank scaling. A Cube in (a Nest Join's) is a chain of choices: each nested table is ranked and its best option counts toward its row, and the ports adopt, so a Cube comes out. Mechanics: `../tree/specs/computation/frame-verbs.md` § Decision Matrix and Decision Sensitivity. **Seeds** `decision-matrix.json` (laptops) and `apartment-hunt.json` (neighborhoods with their apartments).
+- **Decision Sensitivity** (`DecisionSensitivityNode`) is the companion, in two modes: Scenarios (a Cube of Winner · Margin · Ranking per weight scenario) and Flip points (per criterion, the weight at which another option wins; the output swaps to a Frame).
+- **Choice Ladder** (`ChoiceLadderNode`, its kernels the core's `ladder.rs`, a viewer's next choices `nodes/ladderOps.ts`, figure `components/ladderView.tsx` on `ladderLayout.ts`) orders options into the sequence to take them in under limits (caps, floors or rough costs), with optional Requires, Excludes, Must and Never columns. Outputs: `Plan` (the main line with running totals, following the forks the user settled, saved as `choices`) and `Ladder` (the figure). Mechanics: `../tree/specs/computation/frame-verbs.md` § Choice Ladder. **Seeds** `choice-ladder.json` (a restaurant trip and a policy agenda) and `hiring-team.json`.
 - Verbs: the decision matrix, its cube form, sensitivity, flip points and the Choice Ladder in the core's `decision.rs` and `ladder.rs` (`decisionMatrix.test.ts`, `choiceLadder.test.ts`).
 - **Seed** `decision-matrix.json`, held to the engine by `decisionSeed.test.ts` (winner order, the flip, the exact tie, the report wiring):
   - One criterion comes from a Note's frontmatter frame (rows-of-objects: prose is the judgment, rows are the data), left-joined by name.
@@ -402,7 +402,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
 
 - **Web Source**: a URL fetched to a Frame. It reads JSON when the content type says so, else when the URL ends in `.json`, else when the text starts with `[` or `{`; otherwise CSV. CSV takes the first row as headers and infers each column's type, so text columns stay text. JSON may be an array of records (the keys, in first-appearance order, are the columns), an array of arrays (positional Col1, Col2…), an array of scalars (one column) or a columnar object (`{a: [1, 2], b: ["x"]}`); any other shape is an error. On desktop the request is native, with no cross-origin block.
 - **Import HTML**: the Nth `<table>` on a page (1-based) as a Frame. The first row becomes headers only when the page marks it as a header row (a `<thead>` or all `<th>` cells). **Import XML**: an XPath query over a page, giving each matched node's trimmed text as a list.
-- **Data Feed** (`nodes/dataFeed.ts`): one node for every market and economic data provider (the presets in `dataProviders.ts`): a series id or ticker, an optional Start / End (ISO; End before Start is refused) and frequency, and the provider's API key from `apiKeyStore` when it needs one ([[C105]] apiKeysStayLocal). Switching the provider clears the frequency and date refinements, since they are provider-specific and a stale one would build a bad URL, and fetches again.
+- **Data Feed** (`nodes/dataFeed.ts`): one node for every market and economic data provider (the presets in `dataProviders.ts`): a series id or ticker, an optional Start / End (ISO; End before Start is refused) and frequency, and the provider's API key from `apiKeyStore` when it needs one ([[B18]] safeToShare). Switching the provider clears the frequency and date refinements, since they are provider-specific and a stale one would build a bad URL, and fetches again.
 - **Local File**: a file named relative to the target folder in Settings. The extension picks the reader (`.parquet` through the desktop's `read_parquet` command, anything else as CSV), so the card has no format control.
   - It is desktop only, except for the bundled demo vault, which the web app reads (CSV only) through the in-memory file provider ([[C1]] demoVault).
   - Parquet is desktop only. It is read in Rust (`read_parquet`, `crates/solenoid-parquet`), so typed columns arrive intact, and comes out a plain frame; a failed Parquet read flows downstream as an error (`#REF!` unless the reader names its own). A CSV is read as text (`readFileText`) and parsed by the core in wasm (`csvToFrame`) on both platforms; a failed CSV read is blank.
@@ -428,7 +428,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
   - There is no per-node vault: the vault nodes use the app-wide `obsidianVault` setting.
   - It is a desktop-only local read (no network gate). On web it shows "Reading a vault is available in the desktop app only", except for the demo vault. `statVaultFile` backs created / modified.
 - **Import Obsidian Note**: see *Obsidian* below.
-- **Write File** (CSV / JSON / Text): disk writes fire only from the node's Run button ([[C38]] sinkRunButtonOnly). The format is an argument ([[C26]] opArgDistinct).
+- **Write File** (CSV / JSON / Text): disk writes fire only from the node's Run button ([[B18]] safeToShare). The format is an argument ([[C26]] opArgDistinct).
   - CSV is written by the `csv` crate on the core (`unparseCsv`, `csv.rs`), each cell formatted as displayed, text cells neutralized against spreadsheet formula injection ([[C103]] untrustedContentSeams).
   - JSON is an array of row records, the shape Web Source reads back; only dates (ISO, a time kept) and error cells become strings.
   - Text writes a wired string verbatim (Schedule's `mspdi` Project XML), so the input becomes a string socket in that mode; switching across that boundary retypes it and prunes the cable.
@@ -445,7 +445,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
 - `scripts/run-graph.ts` flags:
   - `--vault <path>` installs the Node provider and points the Obsidian nodes at it.
   - `--tasknotes <url>` lets Node's fetch reach the plugin.
-  - `--run <sink name>` arms and runs one named sink after the compute. It is the Run button's headless equivalent ([[C38]] sinkRunButtonOnly).
+  - `--run <sink name>` arms and runs one named sink after the compute. It is the Run button's headless equivalent ([[B18]] safeToShare).
 - With a vault or url, the runner awaits every background load (`connectionStore.trackInflight` / `whenConnectionsSettled`) and computes again, so the printed values include what was read.
 - Test: `scripts/run-graph-vault.test.ts` over `demo-vault/` (a read, and a `--run` write into a temp copy).
 - Dialogs and the OS opener stay desktop-only.
@@ -464,7 +464,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
 
 **Open in Obsidian.** `obsidianLinks.ts` builds `obsidian://open?vault=<vault folder base name>&file=<vault-relative, no .md>`, and `openExternal` launches it (the opener capability is widened to `obsidian://**`). It appears on the Import Obsidian Note header (when a file is picked), on Write to Obsidian after a successful Run (`lastWritten`, transient) and on the Vault Folder card.
 
-**Write to Obsidian** (`WriteObsidianNode`, `nodes/obsidian.ts`) is one vault sink with a Target dropdown: Auto (a wired Document writes a note, wired rows write properties), Note or Properties. `data()` only plans; the write fires only from Run ([[C38]] sinkRunButtonOnly), which is refused while disarmed, on the read-only demo vault, off desktop, or with no vault set.
+**Write to Obsidian** (`WriteObsidianNode`, `nodes/obsidian.ts`) is one vault sink with a Target dropdown: Auto (a wired Document writes a note, wired rows write properties), Note or Properties. `data()` only plans; the write fires only from Run ([[B18]] safeToShare), which is refused while disarmed, on the read-only demo vault, off desktop, or with no vault set.
 
 - **Note target.**
   - **Modes.** `mode` is overwrite | append | block on the card (SegToggle; persisted). A missing note is created in every mode. `mergeNoteText` (`obsidianWrite.ts`) is the pure merge.
@@ -517,7 +517,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
   - Read-only columns (trackedMinutes, nested tables) never send.
 - `data()` caches and emits the **`plan`** frame (path · title · action · fields).
 - **Preview** reads each update row's task and marks `unchanged` / `unreadable`; new rows clear it.
-- **Run** (armed only, [[C38]] sinkRunButtonOnly; `enabled` never persists) sends the rest and reports created / updated / failed, naming the first failures.
+- **Run** (armed only, [[B18]] safeToShare; `enabled` never persists) sends the rest and reports created / updated / failed, naming the first failures.
 - The pure half is in `taskNotesApi.ts`; `fetchJson` (POST / PUT) is in `httpBridge.ts`. Tests: `taskNotesWrite.test.ts`.
 - Not yet: `/api/nlp/create` for a single text column; a `stamp` toggle (the Link to graph stamp stays off for task notes anyway).
 

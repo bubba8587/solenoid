@@ -213,7 +213,7 @@ fn geo(a: &[V]) -> Result<(f64, f64, f64), V> {
     }
 }
 
-/// Each function's number arguments: text there is #VALUE!, never read as a blank ([[C131]] noTextGuessing).
+/// Each function's number arguments: text there is #VALUE!, never read as a blank ([[C10]] socketLattice).
 const NUMBER_ARGS: &[(&str, &[usize])] = &[
     ("SUNPOSITION", &[0, 1, 2]),
     ("SUNRISE", &[0, 1, 2]),

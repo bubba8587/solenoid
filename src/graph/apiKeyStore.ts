@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[B13]] aiInScope, [[C105]] apiKeysStayLocal
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[B13]] aiInScope, [[B18]] safeToShare
 import { createNotifier } from "./storeKit";
 
 const LS_KEY = "solenoid.apiKeys";

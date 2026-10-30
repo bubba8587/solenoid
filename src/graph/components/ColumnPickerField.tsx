@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter
+// [[B19]] spreadsheetHabits
 import { useMemo, useSyncExternalStore } from "react";
 import { useDraftCommit } from "./inlineInput";
 import { connectionVersionStore } from "../graphSignals";

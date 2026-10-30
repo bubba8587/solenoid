@@ -1,4 +1,4 @@
-// [[C127]] pivotView, [[C128]] pivotDetails
+// [[C127]] pivotView
 import type { FrameValue } from "./frame";
 
 const tables: WeakMap<FrameValue, unknown>[] = [];

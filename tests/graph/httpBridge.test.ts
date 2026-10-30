@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[C38]] sinkRunButtonOnly
+// [[C23]] calcModes, [[B18]] safeToShare
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fetchText, CorsLikelyError, MAX_FETCH_BYTES } from "../../src/graph/httpBridge";
 

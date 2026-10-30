@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter
+// [[B19]] spreadsheetHabits
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CurveNode as CurveNodeType } from "../nodeClasses";
 import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";

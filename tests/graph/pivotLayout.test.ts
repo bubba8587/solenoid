@@ -185,7 +185,7 @@ describe("saved folds", () => {
   });
 });
 
-describe("Details ([[C128]] pivotDetails)", () => {
+describe("Details ([[C127]] pivotView)", () => {
   const withDetails = { ...(spec(2) as object), details: ["Rep", "Amt"] } as never;
 
   it("records each leaf's source rows and leaves the output as it was", () => {

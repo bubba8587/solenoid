@@ -881,7 +881,7 @@ fn describe(c: &mut Call) -> Answer {
     shown_frame(c, "frame", out)
 }
 
-/// How many most common values a tile lists ([[C129]] describeDashboard).
+/// How many most common values a tile lists ([[C127]] pivotView).
 const TOP_VALUES: usize = 5;
 /// A number column with this few distinct values lists them, as a text column does: a histogram of two years is two
 /// bars and a gap.
@@ -2997,7 +2997,7 @@ fn key_label(mut f: FrameValue, keys: &std::collections::HashSet<String>, c: &Cu
     f
 }
 
-/// [[C126]] chainedDecisions: the nested tables under each column ranked together, each row counting its
+/// The nested tables under each column ranked together, each row counting its
 /// best acceptable one as a criterion named after the column, a row with nothing acceptable inside ruled out by it.
 fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown: bool) -> Result<Ranked, SolError> {
     let rows = cube_row_count(c);

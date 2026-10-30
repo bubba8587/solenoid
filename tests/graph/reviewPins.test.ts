@@ -405,7 +405,7 @@ describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
   const ev = async (src: string) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!({});
   const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
-  it("IF refuses a text test, even TRUE or FALSE, on both surfaces ([[C131]] noTextGuessing)", async () => {
+  it("IF refuses a text test, even TRUE or FALSE, on both surfaces ([[C10]] socketLattice)", async () => {
     for (const t of ['"TRUE"', '"false"', '"text"', '""', '"1"']) expect(code(await ev(`IF(${t}, 1, 2)`))).toBe("#VALUE!");
     expect(await ev("IF(TRUE, 1, 2)")).toBe(1);
     const { IfNode } = await import("../../src/graph/nodes/logic");

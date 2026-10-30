@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder, [[C100]] chartIsAValue
+// [[C100]] chartIsAValue
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { LadderPayload, LadderEdge } from "../chartValue";
 import type { LadderAction } from "../nodes/ladderOps";

@@ -1,4 +1,4 @@
-// [[B13]] aiInScope, [[C55]] aiWholeDocRewrite, [[C105]] apiKeysStayLocal
+// [[B13]] aiInScope, [[B18]] safeToShare
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAiKey } from "./aiKey";

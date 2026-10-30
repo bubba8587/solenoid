@@ -648,7 +648,7 @@ Where: `TablePopup.tsx` (24 commits then 17 more), `columnHeadControls.tsx`, `cs
       leading `=`/`+`/`-`/`@` (CSV injection into Excel), a cell that is only whitespace,
       a formatted number with a locale comma. Read-back through the CSV EDIT path
       (89dcf042 "edit in Formatted mode") must round-trip each.
-- [x] Checked 2026-09-28: a focused cell edits the raw text and `decimalFromText("1,235")` is 1235; the locale is fixed en-US ([[C117]] usNumberText); unquoted `1,235` in the CSV block is two fields, as CSV is. Was: Editing in Formatted mode: the user edits "1,234.50" and types "1,235"; parsed as
+- [x] Checked 2026-09-28: a focused cell edits the raw text and `decimalFromText("1,235")` is 1235; the locale is fixed en-US ([[C58]] tableInputRawText); unquoted `1,235` in the CSV block is two fields, as CSV is. Was: Editing in Formatted mode: the user edits "1,234.50" and types "1,235"; parsed as
       1235 or as 1 and 235 (two fields)? Depends on the format's thousands separator.
 - [x] Fixed 2026-09-28: Escape reverts and blurs without committing; Tab with nothing highlighted commits the typed text. The list rescanned every text column on every keystroke (18 ms at 10k rows, 170 ms at 250k); it scans only the edited column now, once per grid (looked at live). Nothing checked `isComposing`, so an Enter that confirms an IME candidate could commit the cell; the cell editors skip keys while composing (not verifiable headless). Was: In-app suggestions replaced the native datalist (44ee5b41): keyboard nav, Escape
       closes without committing, Tab commits the highlighted vs the typed, IME composition

@@ -165,7 +165,7 @@ flowchart TD
 
 `syncFields()` reconciles the output sockets to the parsed fields and returns `{ removed, retyped }`. A vanished key's output is removed; a key whose socket type changed has its output removed and re-added under the same key; new keys are added. The `document` output (and a subclass's reserved outputs) is never touched. The node has no editor handle, so the caller cleans up cables: `dropStrandedFrontmatterCables` removes every cable from a removed key, and keeps a retyped key's cable only when `canConnect(newType, targetInputType)` still holds. After a retype the caller re-adapts downstream Format Controllers (`reconcileFcTypes`), because a pure retype fires no connection event.
 
-The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
+The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[B19]] spreadsheetHabits). A blur whose body equals the last reconciled body does nothing.
 
 ### Knap in a Note
 
@@ -302,7 +302,7 @@ Opened on a **Note**, the panel is read-only: the title, the dock and close butt
 
 Opened on a **Report**:
 
-- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[C95]] commitOnEnter). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
+- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[B19]] spreadsheetHabits). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
 - **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. It renders from a debounced copy of the draft because re-parsing on every keystroke would remount the whole pane, jumping the scroll and remounting embeds. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
 - **Embed Note.** Lists every Note in the graph. Picking one inserts `{{ <name> }}` as its own paragraph at the caret (the Note's addressable name, minted if missing), mints the input, and wires the Note's `document` output to it.
 - **Filters.** A searchable list of every standard filter with its example; a click inserts ` | <example>` at the caret.
@@ -315,7 +315,7 @@ Embed Note and Filters are disabled while a template is wired. With records wire
 
 ## Write to Obsidian
 
-Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdown that Obsidian renders natively, never HTML. It acts only from its Run button and loads disarmed ([[C38]] sinkRunButtonOnly). Run refuses, with a status message, when the node is disarmed, the vault is the read-only demo vault, the app has no filesystem (web), no vault folder is set, the note has no name, the input is an error (the message is its code) or the input is not a document. The Properties target (rows to frontmatter) is a separate behavior of the same sink and is not covered here.
+Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdown that Obsidian renders natively, never HTML. It acts only from its Run button and loads disarmed ([[B18]] safeToShare). Run refuses, with a status message, when the node is disarmed, the vault is the read-only demo vault, the app has no filesystem (web), no vault folder is set, the note has no name, the input is an error (the message is its code) or the input is not a document. The Properties target (rows to frontmatter) is a separate behavior of the same sink and is not covered here.
 
 **Target.** The `path` input or literal names the note; a leading `folder/` prepends to the node's subfolder and a trailing `.md` is dropped. A blank name falls back to the node's label, then `note`. Path segments that are empty, `.` or `..` are dropped, so a write cannot leave the vault. File names pass through `sanitizeName` (the last path segment, with `<>:"|?*` and control characters removed). Preview reports the action it would take (Create, Overwrite, Append to, Rewrite the block in) with a character count.
 
@@ -376,7 +376,7 @@ A **Dashboard** (`DashboardNode`, `nodes/dashboard.ts`) is a pure sink that show
 
 ### The layout text
 
-The layout is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `.` a gap, `Name: hint` giving the text an empty box shows. The text is the one source of truth: the card's layout field (`RecordLayoutField`, committed on blur, [[C95]] commitOnEnter) and the board's edit mode both write it, and every change lands through `commitDashboardLayout`. A repeated name anywhere merges, so every box needs a name of its own.
+The layout is the Record figure's grammar (`parseRecordLayout`, [[chart-figures#The Record figure]]), the same text Frame Input's Form view reads: a line per grid row, names split by `|`, `Name*N` spanning N columns, a repeated name merging its cells into one box, `.` a gap, `Name: hint` giving the text an empty box shows. The text is the one source of truth: the card's layout field (`RecordLayoutField`, committed on blur, [[B19]] spreadsheetHabits) and the board's edit mode both write it, and every change lands through `commitDashboardLayout`. A repeated name anywhere merges, so every box needs a name of its own.
 
 ```mermaid
 flowchart LR

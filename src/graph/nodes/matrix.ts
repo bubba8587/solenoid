@@ -1,4 +1,4 @@
-// [[C58]], [[C48]], [[B11]]
+// [[C58]] tableInputRawText, [[C48]], [[B11]]
 import { GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { SKIP_BY_CODE, type SkipCells } from "./matrixOps";

@@ -71,7 +71,7 @@ git diff c7da52b..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 
 A Formula.js bump on `develop` changes nothing here: its bodies were ported once and the Rust is their spec.
 
-The last merge (`c7da52b`, 2026-10-24) found every formula, card and verb fix already mirrored; most began on this branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as is), and Describe's Dashboard tiles ([[C129]] describeDashboard), a TS profile on develop (`describeProfile.ts`) that here is Describe's body on the core (`describe_tiles`, `nodes/frames.rs`): shown as `describeTiles` and kept beside the summary frame by the class's `coreWatched`.
+The last merge (`c7da52b`, 2026-10-24) found every formula, card and verb fix already mirrored; most began on this branch. What it brought: Pele draws Mermaid in place of mermaid.js (UI, taken as is), and Describe's Dashboard tiles ([[C127]] pivotView), a TS profile on develop (`describeProfile.ts`) that here is Describe's body on the core (`describe_tiles`, `nodes/frames.rs`): shown as `describeTiles` and kept beside the summary frame by the class's `coreWatched`.
 
 ## What runs on the core
 

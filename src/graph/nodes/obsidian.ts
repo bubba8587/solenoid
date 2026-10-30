@@ -1,4 +1,4 @@
-// [[C101]] onePatchPath, [[C38]] sinkRunButtonOnly
+// [[C101]] onePatchPath, [[B18]] safeToShare
 import { GraphNode } from "../graphModel";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";

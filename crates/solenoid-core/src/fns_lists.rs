@@ -140,7 +140,7 @@ fn value(msg: &str) -> V {
     V::err(sol_error(ErrorCode::Value, msg))
 }
 
-/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C10]] socketLattice).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -154,7 +154,7 @@ fn lower_key(v: &V) -> String {
     js_lower(js_trim(&js_string_of(v))).into_owned()
 }
 
-/// Numbers and logicals, one level of lists spread; text is skipped ([[C131]] noTextGuessing).
+/// Numbers and logicals, one level of lists spread; text is skipped ([[C10]] socketLattice).
 fn nums_of(v: &V) -> Vec<f64> {
     let items = match v {
         V::List(items) => items.as_ref().clone(),
@@ -1633,8 +1633,8 @@ fn hypot(x: f64, y: f64) -> f64 {
     sum.sqrt() * max
 }
 
-/// A signal is numbers by position, so text in one is #VALUE!, never a 0 that shifts what follows ([[C131]]
-/// noTextGuessing).
+/// A signal is numbers by position, so text in one is #VALUE!, never a 0 that shifts what follows ([[C10]]
+/// socketLattice).
 fn text_signal(name: &str) -> V {
     V::err(sol_error(ErrorCode::Value, format!("{name} reads a signal of numbers, not text")))
 }
@@ -2378,7 +2378,7 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
     if let Some(e) = first_error(&lx).or_else(|| first_error(&ly)) {
         return e;
     }
-    // Text is never read as a number ([[C131]] noTextGuessing).
+    // Text is never read as a number ([[C10]] socketLattice).
     let q_raw = to_list(new_xs);
     for (l, what) in [(&ly, "known_ys"), (&lx, "known_xs"), (&q_raw, "new_xs")] {
         if l.iter().any(crate::excel_functions::holds_text) {

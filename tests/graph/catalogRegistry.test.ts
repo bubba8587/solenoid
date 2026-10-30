@@ -1,4 +1,4 @@
-// [[C28]], [[B12]] losslessSaves, [[C38]], [[C10]] socketLattice
+// [[C28]], [[B12]] losslessSaves, [[B18]] safeToShare, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -80,13 +80,13 @@ describe("catalog ↔ registry consistency", () => {
     expect([...new Set(bad)], `class names that look mangled or malformed: ${[...new Set(bad)].join(", ")}`).toEqual([]);
   });
 
-  // [[C38]] sinkRunButtonOnly's persistence half: an external-effect arm flag must never
+  // [[B18]] safeToShare's persistence half: an external-effect arm flag must never
   // round-trip — every load (save reopen, paste, placeholder restore) starts
   // disarmed, so opening a shared file can never write to YOUR disk. The two
   // sink families pin this per-class (sink.test.ts / obsidian.test.ts); this is
   // the catalog-wide quantifier, so a FUTURE sink whose author whitelists the
   // flag (or names it `enabled` on a new node) fails here by name.
-  it("no catalog class persists an `enabled` arm flag, and none constructs armed ([[C38]] sinkRunButtonOnly)", () => {
+  it("no catalog class persists an `enabled` arm flag, and none constructs armed ([[B18]] safeToShare)", () => {
     const offenders: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let inst: Record<string, unknown> & object;

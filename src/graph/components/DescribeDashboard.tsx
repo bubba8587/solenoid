@@ -1,4 +1,4 @@
-// [[C129]] describeDashboard, [[C120]] linearWork
+// [[C127]] pivotView, [[C120]] linearWork
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DescribeTile } from "../describeProfile";
 import { defaultCellText } from "../cellText";

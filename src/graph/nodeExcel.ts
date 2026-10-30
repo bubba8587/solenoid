@@ -1,4 +1,4 @@
-// [[C51]] formulaNaming, [[C14]] currentExcelParity
+// [[C51]] formulaNaming, [[B16]] oneFormulaSurface
 import type { ExcelEquiv } from "./AddNodeMenu";
 
 export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {

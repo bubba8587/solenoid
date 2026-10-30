@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[C14]] currentExcelParity
+// [[C130]] rustCore, [[B16]] oneFormulaSurface
 //! The function bodies the row-formula evaluator runs, Solenoid's own and Formula.js 4.6.1's. A value is a JS
 //! value: `Fx` is a Formula.js `Error` object, which flows until `nodes::kit::normalize` turns it into a SolError.
 
@@ -269,7 +269,7 @@ pub fn js_pow(x: f64, y: f64) -> f64 {
 }
 
 /// A JS number operand as arithmetic reads it (`undefined` is NaN), except that text, and a list holding text, is
-/// never read as a number ([[C131]] noTextGuessing).
+/// never read as a number ([[C10]] socketLattice).
 pub fn to_f64_js(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
@@ -281,8 +281,8 @@ pub fn to_f64_js(v: &V) -> f64 {
     }
 }
 
-/// Whether a value is text or a list with text in it: what a formula never reads as a number ([[C131]]
-/// noTextGuessing).
+/// Whether a value is text or a list with text in it: what a formula never reads as a number ([[C10]]
+/// socketLattice).
 pub(crate) fn holds_text(v: &V) -> bool {
     match v {
         V::Str(_) => true,
@@ -325,7 +325,7 @@ pub fn js_string_of(v: &V) -> String {
     }
 }
 
-/// A number, or a logical as 1 or 0. Text is NaN ([[C131]] noTextGuessing).
+/// A number, or a logical as 1 or 0. Text is NaN ([[C10]] socketLattice).
 pub(crate) fn to_num(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
@@ -443,7 +443,7 @@ pub(crate) fn parse_number(v: &V) -> V {
                 V::Num(*n + 0.0)
             }
         }
-        // Text is never read as a number ([[C131]] noTextGuessing).
+        // Text is never read as a number ([[C10]] socketLattice).
         V::Str(_) => V::Fx(FxError::Value),
         V::List(_) if holds_text(v) => V::Fx(FxError::Value),
         // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
@@ -1234,7 +1234,7 @@ fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
     finite_of(r, xs, ys)
 }
 
-/// JS `a > b` with a number on the right: the left reads as a number, text never ([[C131]] noTextGuessing).
+/// JS `a > b` with a number on the right: the left reads as a number, text never ([[C10]] socketLattice).
 fn as_number_cmp(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
@@ -1283,7 +1283,7 @@ impl JsSum {
     pub(crate) fn number(&self) -> f64 {
         match self {
             JsSum::Num(x) => *x,
-            // Text joined into the sum is never read back as a number ([[C131]] noTextGuessing).
+            // Text joined into the sum is never read back as a number ([[C10]] socketLattice).
             JsSum::Str(_) => f64::NAN,
         }
     }
@@ -1594,8 +1594,8 @@ pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
     sum.sqrt() * max
 }
 
-/// A formula argument read as a logical: None for blank. Text is never read as one, even "TRUE" ([[C131]]
-/// noTextGuessing); a typed input reads text through `value_kinds::logical_or_type_error`.
+/// A formula argument read as a logical: None for blank. Text is never read as one, even "TRUE" ([[C10]]
+/// socketLattice); a typed input reads text through `value_kinds::logical_or_type_error`.
 pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, V> {
     match v {
         V::Null | V::Undef => Ok(None),
@@ -2423,7 +2423,7 @@ fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     V::Num(interest * rate)
 }
 
-/// True or 1; text is never TRUE ([[C131]] noTextGuessing).
+/// True or 1; text is never TRUE ([[C10]] socketLattice).
 fn is_true(v: &V) -> bool {
     match v {
         V::Bool(b) => *b,
@@ -2548,7 +2548,7 @@ fn parse_value_text(text: &str) -> f64 {
     (if neg { -n } else { n }) / js_pow(100.0, f64::from(pct))
 }
 
-/// Numbers and logicals, lists flattened; text is skipped ([[C131]] noTextGuessing).
+/// Numbers and logicals, lists flattened; text is skipped ([[C10]] socketLattice).
 pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
         .flat_map(|v| match v {
@@ -2842,7 +2842,7 @@ pub(crate) fn if_test(v: &V) -> Cond {
         V::Bool(b) => Cond::Bool(*b),
         V::Num(n) if n.is_nan() => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition is not a number"))),
         V::Num(n) => Cond::Bool(*n != 0.0),
-        // Text is text, even "TRUE" ([[C131]] noTextGuessing).
+        // Text is text, even "TRUE" ([[C10]] socketLattice).
         V::Str(_) => Cond::Err(V::err(sol_error(
             ErrorCode::Value,
             "A condition needs a logical. Compare text with = to get one",
@@ -3198,7 +3198,7 @@ pub enum Route {
 }
 
 /// The one-value arguments a function reads as a number or as TRUE or FALSE, where its body would read text with
-/// JavaScript's coercion: text there is `#VALUE!`, never read as a number or a logical ([[C131]] noTextGuessing).
+/// JavaScript's coercion: text there is `#VALUE!`, never read as a number or a logical ([[C10]] socketLattice).
 /// `from` is the first of a run of positions that goes on to the last argument.
 struct Refused {
     numbers: &'static [usize],
@@ -5885,7 +5885,7 @@ fn sum_like_fx(a: &[V]) -> V {
         match v {
             V::Fx(_) => return v.clone(),
             V::Num(n) => result += n,
-            // Text is skipped, never read as a number ([[C131]] noTextGuessing).
+            // Text is skipped, never read as a number ([[C10]] socketLattice).
             V::List(items) => match sum_like_fx(items) {
                 V::Num(n) => result += n,
                 e => return e,
@@ -6076,7 +6076,7 @@ fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
         .collect()
 }
 
-/// A cash-flow list with its text skipped, as Excel's IRR and MIRR read a range ([[C131]] noTextGuessing); a lone text
+/// A cash-flow list with its text skipped, as Excel's IRR and MIRR read a range ([[C10]] socketLattice); a lone text
 /// value leaves no flows.
 fn without_text(v: &V) -> V {
     match v {
@@ -6087,7 +6087,7 @@ fn without_text(v: &V) -> V {
 }
 
 /// The values' first error, then the dates', then null for a blank date. Text among the values or dates is #VALUE!,
-/// as Excel's XNPV and XIRR answer ([[C131]] noTextGuessing).
+/// as Excel's XNPV and XIRR answer ([[C10]] socketLattice).
 fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
     if holds_text(values) || holds_text(dates) {
         return Err(V::err(sol_error(ErrorCode::Value, "Cash flows and dates are numbers, not text")));
@@ -6463,7 +6463,7 @@ mod tests {
     }
 
     /// A name `REFUSED` lists that no body answers would refuse nothing, and one listed twice keeps only one entry
-    /// ([[C131]] noTextGuessing).
+    /// ([[C10]] socketLattice).
     #[test]
     fn every_refused_name_has_a_body() {
         let unknown: Vec<_> = REFUSED.iter().map(|(n, _)| *n).filter(|n| matches!(route(n), Route::None)).collect();
@@ -6473,7 +6473,7 @@ mod tests {
         assert!(twice.is_empty(), "listed twice: {twice:?}");
     }
 
-    /// Text where a function reads a number or a logical is `#VALUE!`, never read ([[C131]] noTextGuessing).
+    /// Text where a function reads a number or a logical is `#VALUE!`, never read ([[C10]] socketLattice).
     #[test]
     fn text_is_never_a_number_or_a_logical() {
         let s = V::str;

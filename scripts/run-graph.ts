@@ -107,7 +107,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
       (GraphNode & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
     if (!sink || typeof sink.run !== "function") throw new Error(`--run: no sink named "${opts.run}" in the graph.`);
-    sink.enabled = true; // [[C38]] sinkRunButtonOnly: this explicit flag is the Run button
+    sink.enabled = true; // [[B18]] safeToShare: this explicit flag is the Run button
     await sink.run();
     if (sink.status === "error") throw new Error(`--run ${opts.run}: ${sink.statusMessage ?? "failed"}`);
     console.error(`${opts.run}: ${sink.statusMessage ?? sink.status ?? "ran"}`);

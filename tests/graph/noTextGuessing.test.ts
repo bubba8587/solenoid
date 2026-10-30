@@ -1,4 +1,4 @@
-// [[C131]] noTextGuessing, [[B17]] typedValueModel
+// [[C10]] socketLattice, [[B17]] typedValueModel
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
@@ -7,7 +7,7 @@ const ev = (src: string, vars: Record<string, unknown> = {}) => compileEvaluator
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
 const x = [1, "5", 3];
 
-describe("a formula never reads a number, date or logical out of text ([[C131]] noTextGuessing)", () => {
+describe("a formula never reads a number, date or logical out of text ([[C10]] socketLattice)", () => {
   it("an operator on text is #VALUE!", () => {
     for (const src of ['-"5"', '+"5"', '"5"%', '"5" + 1']) expect(code(ev(src))).toBe("#VALUE!");
     expect(ev('5 = "5"')).toBe(false);

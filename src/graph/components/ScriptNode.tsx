@@ -1,4 +1,4 @@
-// [[C66]] scriptNode, [[C95]] commitOnEnter
+// [[C66]] scriptNode, [[B19]] spreadsheetHabits
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ScriptNode as ScriptNodeType } from "../nodeClasses";
 import type { SolError } from "../errorValue";

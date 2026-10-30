@@ -28,7 +28,7 @@ parser/evaluator, card text formatting, packs).
 Already on crates where they fit: serde, ryu-js, csv, qrcodegen, regress (vendored).
 
 Test oracle idea: ironcalc_base 0.9.1 (MIT/Apache, wasm-capable, Excel-faithful) as a dev-dependency to check
-[[C14]] currentExcelParity for PRICE, YIELD, COUP*, WORKDAY without Excel. Not as a runtime dependency (it follows
+[[B16]] oneFormulaSurface for PRICE, YIELD, COUP*, WORKDAY without Excel. Not as a runtime dependency (it follows
 Excel, not Formula.js, and pulls chrono, chrono-tz, regex, statrs).
 
 IronCalc health (checked 2026-10-23): ~4.2k stars, 230 open issues, releases every 2 to 6 months (0.9.1 on 2026-10-21),

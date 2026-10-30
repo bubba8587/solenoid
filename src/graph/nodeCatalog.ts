@@ -1,4 +1,4 @@
-// [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset, [[C14]] currentExcelParity
+// [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,

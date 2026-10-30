@@ -1,4 +1,4 @@
-// [[C38]]
+// [[B18]]
 import { describe, it, expect, afterEach } from "vitest";
 import { forceDemoVault } from "../../../src/graph/demoVault";
 import { refreshAllConnections, whenConnectionsSettled } from "../../../src/graph/connectionStore";

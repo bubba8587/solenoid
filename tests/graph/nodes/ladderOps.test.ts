@@ -1,4 +1,4 @@
-// [[C122]] choiceLadder
+// [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { nextChoices } from "../../../src/graph/nodes/ladderOps";
 
