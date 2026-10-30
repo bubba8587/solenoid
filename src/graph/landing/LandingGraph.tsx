@@ -247,7 +247,7 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
       {scenes && (
-        <div className="sol-landing__stage-scenes" role="tablist" aria-label="Example graphs">
+        <div className="sol-landing__stage-scenes" role="tablist" focusgroup="tablist inline" aria-label="Example graphs">
           {scenes.map((sc, i) => (
             <button
               key={sc.label}

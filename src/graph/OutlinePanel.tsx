@@ -872,7 +872,7 @@ export function OutlinePanel() {
       {!(layout === "stacked" && !isPhone && !preview) && <div className="solenoid-outline__header">
         {phoneSwitch ? (
           // A phone shows one section at a time, so the header is the switch between them and the section heads go.
-          <div className="solenoid-outline__switch" role="tablist" aria-label="Navigator">
+          <div className="solenoid-outline__switch" role="tablist" focusgroup="tablist inline" aria-label="Navigator">
             {(["files", "outline"] as const).map((k) => (
               <button
                 key={k}

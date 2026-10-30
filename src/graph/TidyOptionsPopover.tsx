@@ -42,7 +42,7 @@ export function TidyOptionsPopover({ onClose, actions }: { onClose: () => void; 
           return (
             <div key={row.key} className="sol-mpanel__ctlrow">
               <span>{row.label}</span>
-              <span className="sol-mpanel__seg" role="radiogroup" aria-label={row.label}>
+              <span className="sol-mpanel__seg" role="radiogroup" focusgroup="radiogroup inline" aria-label={row.label}>
                 {row.options.map(([v, lbl]) => (
                   <button
                     key={v}
@@ -69,7 +69,7 @@ export function TidyOptionsPopover({ onClose, actions }: { onClose: () => void; 
         return (
           <div key={row.key} className="solenoid-tidy-options__row">
             <span className="solenoid-tidy-options__label">{row.label}</span>
-            <span className="solenoid-settings__segment" role="radiogroup" aria-label={row.label}>
+            <span className="solenoid-settings__segment" role="radiogroup" focusgroup="radiogroup inline" aria-label={row.label}>
               {row.options.map(([v, lbl]) => (
                 <button
                   key={v}
