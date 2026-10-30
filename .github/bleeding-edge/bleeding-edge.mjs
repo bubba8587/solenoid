@@ -32,7 +32,7 @@ const DEP_FILE = /(^|\/)(package\.json|package-lock\.json|Cargo\.toml|Cargo\.loc
 const OUT = ".github/bleeding-edge";
 const ALL_CRATES = ["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-parquet", "crates/solenoid-schedule", "src-tauri"];
 // Branches that aren't where work happens: production (it only takes releases), this one, session and bot branches.
-const NOT_WORK = /^(main$|master$|bleeding-edge$|bleeding-edge-prev$|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
+const NOT_WORK = /^(main$|master$|bleeding-edge|ccr-|claude\/|vercel\/|dependabot\/|renovate\/)/;
 
 function sh(cmd, { quiet = false, timeout = 30 * 60_000 } = {}) {
   const t = Date.now();
