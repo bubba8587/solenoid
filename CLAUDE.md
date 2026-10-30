@@ -17,7 +17,7 @@ commit and push here, not on `develop`; `git checkout rust-port` at session star
 harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
 
 **`bleeding-edge` is machine-made:** the most recently pushed branch with every dependency at its newest, regenerated
-daily (`.github/workflows/bleeding-edge.yml` → `scripts/bleeding-edge.mjs`) and force-pushed. Never work or commit
+daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) and force-pushed. Never work or commit
 there, except the weekly `.github/bleeding-edge/ANALYSIS.md`. Its `REPORT.md` says what moved and what breaks.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /

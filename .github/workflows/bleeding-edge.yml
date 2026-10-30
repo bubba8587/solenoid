@@ -1,7 +1,7 @@
 name: Bleeding edge
 
 # Daily: the most recently pushed branch with every dependency at its newest, checked, reported and force-pushed
-# to `bleeding-edge` (scripts/bleeding-edge.mjs). It never fails on a broken check: the report is the result.
+# to `bleeding-edge` (.github/bleeding-edge/bleeding-edge.mjs). It never fails on a broken check: the report is the result.
 # GitHub runs a schedule only from the default branch, so this starts once it is on main.
 on:
   schedule:
@@ -52,7 +52,7 @@ jobs:
         env:
           BASE: ${{ inputs.base }}
         run: |
-          cp scripts/bleeding-edge.mjs "$RUNNER_TEMP/bleeding-edge.mjs"
+          cp .github/bleeding-edge/bleeding-edge.mjs "$RUNNER_TEMP/bleeding-edge.mjs"
           node "$RUNNER_TEMP/bleeding-edge.mjs" --push ${BASE:+--base "$BASE"}
 
       - name: Job summary

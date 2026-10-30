@@ -3,7 +3,7 @@
 // The branch is regenerated from its base on every run, never rebased, so it is always one commit on top of current
 // work. ANALYSIS.md, the weekly reading of the release notes, carries over from the previous run.
 //
-//   node scripts/bleeding-edge.mjs [--push] [--base <branch>]
+//   node .github/bleeding-edge/bleeding-edge.mjs [--push] [--base <branch>]
 //
 // Self-contained (no repo imports), so the workflow can run it from a copy while the base branch is checked out.
 // Needs on PATH: node/npm, cargo with clippy and the wasm32 target, cargo-upgrade (cargo-edit). Optional:

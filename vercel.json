@@ -8,9 +8,11 @@
       "port-*": false,
       "claude/*": false,
       "ccr-*": false,
-      "worktree-*": false
+      "worktree-*": false,
+      "bleeding-edge": false
     }
   },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':!.github'",
   "redirects": [
     {
       "source": "/:path*",
