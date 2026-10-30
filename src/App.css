@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   /* The " Variable"-suffixed family is the bundled @fontsource webfont and must come first, or phones fall back to system-ui. */
   font-family: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -18,18 +19,17 @@
   --accent-mid: rgba(86, 180, 233, 0.4);
   --accent-ink: #1a1a1a;
 
-  --surface: #1e1e1e;
-  --surface-sunken: #141414;
-  --surface-raised: #262626;
-  --border: #2d2d2d;
-  --border-strong: #3a3a3a;
-  --border-subtle: #2a2a2a;
-  --gauge-track: #4d5157;
-  --text: #e8e8e8;
-  --text-bright: #f3f4f5;
-  --text-dim: #9aa0a6;
-  --text-muted: #80868e;
-
+  --surface: light-dark(#fbfcfd, #1e1e1e);
+  --surface-sunken: light-dark(#ffffff, #141414);
+  --surface-raised: light-dark(#eef1f5, #262626);
+  --border: light-dark(#ccd2da, #2d2d2d);
+  --border-strong: light-dark(#b2bac4, #3a3a3a);
+  --border-subtle: light-dark(#dfe3e9, #2a2a2a);
+  --gauge-track: light-dark(#a8b0bb, #4d5157);
+  --text: light-dark(#1b1e23, #e8e8e8);
+  --text-bright: light-dark(#0d0f12, #f3f4f5);
+  --text-dim: light-dark(#5b636b, #9aa0a6);
+  --text-muted: light-dark(#6a717b, #80868e);
   --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4);
   --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.2);
 
@@ -41,42 +41,29 @@
   --mix-ink: 55%;
   --mix-glow: 28%;
   --mix-ring: 70%;
-  --ring-into: #fff;
-
-  --socket-ring: rgba(0, 0, 0, 0.3);
-
-  --cable-selected: #ffffff;
-
-  --app-bg: #141414;
-  --canvas-bg: #0b0b0b;
-  --canvas-dot: #3b3b3b;
+  --ring-into: light-dark(#000, #fff);
+  --socket-ring: light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3));
+  --cable-selected: light-dark(#2a2f37, #ffffff);
+  --app-bg: light-dark(#f4f5f7, #141414);
+  --canvas-bg: light-dark(#eef1f5, #0b0b0b);
+  --canvas-dot: light-dark(#c3cad4, #3b3b3b);
   --panel-bg: var(--surface);
   --panel-border: var(--border);
   --overlay-bg: var(--surface);
-  --overlay-border: #474c54;
+  --overlay-border: light-dark(#aeb6c1, #474c54);
   --overlay-border-width: 2px;
   --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
   --dock-shadow: -4px 0 12px rgba(0, 0, 0, 0.25);
   --btn-bg: var(--surface-sunken);
-  --btn-hover: #1f1f1f;
+  --btn-hover: light-dark(#e9ecf0, #1f1f1f);
   --btn-border: var(--border);
   --btn-border-hover: var(--border-strong);
 
-  --wordmark-color: var(--accent);
+  --wordmark-color: light-dark(#1b1e23, var(--accent));
 }
 
 :root[data-theme="light"] {
-  --surface: #fbfcfd;
-  --surface-sunken: #ffffff;
-  --surface-raised: #eef1f5;
-  --border: #ccd2da;
-  --border-strong: #b2bac4;
-  --border-subtle: #dfe3e9;
-  --gauge-track: #a8b0bb;
-  --text: #1b1e23;
-  --text-bright: #0d0f12;
-  --text-dim: #5b636b;
-  --text-muted: #6a717b;
+  color-scheme: light;
 
   --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.08);
   --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.06);
@@ -84,19 +71,9 @@
   --header-tint: 52%;
 
   --mix-ring: 80%;
-  --ring-into: #000;
 
-  --socket-ring: rgba(0, 0, 0, 0.2);
-  --cable-selected: #2a2f37;
-
-  --app-bg: #f4f5f7;
-  --canvas-bg: #eef1f5;
-  --canvas-dot: #c3cad4;
-  --overlay-border: #aeb6c1;
   --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
   --dock-shadow: -4px 0 12px rgba(20, 30, 50, 0.1);
-  --btn-hover: #e9ecf0;
-  --wordmark-color: #1b1e23;
 }
 
 html,

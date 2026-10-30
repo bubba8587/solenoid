@@ -69,7 +69,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, o: ChartOptio
   const proj = (a: number, b: number, c: number): [number, number] => { const [x, y] = model(a, b, c); return [ox + s * x, oy + s * y]; };
   const screen = (ix: number, iy: number, c: number) => proj(gx(ix), gy(iy), c);
 
-  const frameCol = getComputedStyle(canvas).getPropertyValue("--text").trim() || "#888";
+  const frameCol = getComputedStyle(document.body).color || "#888";
   const gridPlane = (o: V3, u: V3, v: V3, div = 4) => {
     const at = (sd: number, td: number) => proj(o[0] + u[0] * sd + v[0] * td, o[1] + u[1] * sd + v[1] * td, o[2] + u[2] * sd + v[2] * td);
     const line = (p: [number, number], q: [number, number]) => { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); };
