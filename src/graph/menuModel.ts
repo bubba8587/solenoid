@@ -32,13 +32,15 @@ function openWebsite(): void {
   void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}${SITE_PAGES.about.path}` : `${window.location.origin}${SITE_PAGES.about.path}`);
 }
 
-/** Read only by the phone sheet (`MobileMenuSheet.tsx`): `icon` and `short`, a separator's `label` captioning the group
- *  after it, and `hideOnPhone` for a command the phone's own chrome already carries on screen. */
+/** Read only by the phone sheet (`MobileMenuSheet.tsx`): `icon` and `short`, `inHeading` for a command that rides in its
+ *  section's heading as a button, a separator's `label` captioning the group after it, and `hideOnPhone` for a command
+ *  the phone's own chrome already carries on screen. */
 export type MenuIcon =
-  | "new" | "open" | "save" | "saveAs" | "copy" | "paste" | "toFront" | "forward" | "backward" | "toBack";
+  | "new" | "open" | "save" | "saveAs" | "copy" | "paste" | "toFront" | "forward" | "backward" | "toBack"
+  | "refresh" | "recalc" | "draw" | "find" | "inspector" | "problems" | "reference" | "external";
 export type MenuItem =
   | { sep: true; label?: string }
-  | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean; icon?: MenuIcon; short?: string; hideOnPhone?: true };
+  | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean; icon?: MenuIcon; short?: string; inHeading?: true; hideOnPhone?: true };
 export type Menu = { label: string; items: MenuItem[] };
 
 /** Presses a canvas key as a real keyboard would: down on the document, where React Flow's Delete listens (the event
@@ -69,7 +71,7 @@ export function buildMenus(): Menu[] {
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
-        { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
+        { label: "Reload document", icon: "refresh", short: "Reload", inHeading: true, shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
         ...(isDesktop() ? ([{ sep: true }, {
           label: "Open documents folder",
           onClick: () => void (async () => {
@@ -105,7 +107,7 @@ export function buildMenus(): Menu[] {
         { label: "Send backward", icon: "backward", shortcut: "Ctrl+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true }) },
         { label: "Send to back", icon: "toBack", shortcut: "Ctrl+Shift+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true, shift: true }) },
         { sep: true },
-        { label: "Find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
+        { label: "Find", icon: "find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
       ],
     },
     {
@@ -119,7 +121,7 @@ export function buildMenus(): Menu[] {
         { label: "Snap to grid", hideOnPhone: true, checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", hideOnPhone: true, shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
-        { label: "Inspector", onClick: () => inspectorStore.toggle() },
+        { label: "Inspector", icon: "inspector", onClick: () => inspectorStore.toggle() },
         { label: "Settings…", hideOnPhone: true, shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],
     },
@@ -131,6 +133,9 @@ export function buildMenus(): Menu[] {
         { sep: true },
         {
           label: "Draw a cable",
+          icon: "draw",
+          short: "Draw Cable",
+          inHeading: true,
           checked: drawArmed,
           onClick: () => drawModeStore.toggle(),
         },
@@ -139,10 +144,11 @@ export function buildMenus(): Menu[] {
     {
       label: "Data",
       items: [
-        { label: "Refresh all connections", onClick: () => void refreshAllConnections() },
+        { label: "Refresh all connections", icon: "refresh", short: "Refresh", inHeading: true, onClick: () => void refreshAllConnections() },
         { sep: true },
         {
           label: "Run model check",
+          icon: "problems",
           onClick: () => void (async () => {
             const r = await runModelFuzz();
             problemsPanelUi.setOpen(true);
@@ -159,7 +165,7 @@ export function buildMenus(): Menu[] {
     {
       label: "Calculate",
       items: [
-        { label: "Calculate now", shortcut: "F9", onClick: () => void requestRecalc() },
+        { label: "Calculate now", icon: "recalc", short: "Recalculate", inHeading: true, shortcut: "F9", onClick: () => void requestRecalc() },
         { sep: true, label: "Mode" },
         {
           label: "Automatic",
@@ -183,13 +189,13 @@ export function buildMenus(): Menu[] {
     {
       label: "Help",
       items: [
-        { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
+        { label: "Function reference", icon: "reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
         { label: "Help", onClick: () => frStore.open("help") },
         { label: "Notes", onClick: () => frStore.open("notes") },
         { sep: true },
         { label: "Keyboard shortcuts…", hideOnPhone: true, onClick: () => shortcutsStore.toggle() },
         { sep: true },
-        { label: "Solenoid website", onClick: openWebsite },
+        { label: "Solenoid website", icon: "external", onClick: openWebsite },
         { label: "What's new…", onClick: () => helpDialogStore.openWhatsNew() },
         { label: "About Solenoid", onClick: () => helpDialogStore.openAbout() },
       ],

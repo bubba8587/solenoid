@@ -3,44 +3,56 @@ import type { ReactNode } from "react";
 import { CableShapeSelector } from "./CableShapeSelector";
 import type { Menu, MenuIcon, MenuItem } from "./menuModel";
 import { SaveIcon } from "./components/SaveIcon";
+import { RefreshIcon } from "./components/RefreshIcon";
+import { RecalcGlyph } from "./components/RecalcButton";
+import { InfoIcon, SearchIcon, TriangleAlertIcon } from "./components/Icons";
 import "./MobileMenuSheet.css";
 
 type Option = Exclude<MenuItem, { sep: true }>;
 type Group = { label?: string; items: Option[] };
 
-const Lucide = ({ children }: { children: ReactNode }) => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const Lucide = ({ size, children }: { size: number; children: ReactNode }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {children}
   </svg>
 );
-const Line16 = ({ d }: { d: string[] }) => (
-  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const Line16 = ({ size, d }: { size: number; d: string[] }) => (
+  <svg viewBox="0 0 16 16" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {d.map((p) => <path key={p} d={p} />)}
   </svg>
 );
 
-/** Open, Save and Save As wear the top bar's file-group glyphs. */
-const ICONS: Record<MenuIcon, ReactNode> = {
-  new: <Lucide><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M9 15h6" /><path d="M12 18v-6" /></Lucide>,
-  open: <Line16 d={["M8 10.5 V3", "M5 6 8 3 11 6", "M3 12.5 h10"]} />,
-  save: <SaveIcon size={18} />,
-  saveAs: <Line16 d={["M8 2.5 V10", "M5 7 8 10 11 7", "M3 12.5 h10"]} />,
-  copy: <Lucide><rect x="8" y="8" width="14" height="14" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></Lucide>,
-  paste: <Lucide><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></Lucide>,
-  toFront: <Lucide><path d="M5 3h14" /><path d="m18 13-6-6-6 6" /><path d="M12 7v14" /></Lucide>,
-  forward: <Lucide><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></Lucide>,
-  backward: <Lucide><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></Lucide>,
-  toBack: <Lucide><path d="M19 21H5" /><path d="m18 11-6 6-6-6" /><path d="M12 17V3" /></Lucide>,
+/** Each wears the glyph its command already has elsewhere: Open, Save and Save As the top bar's file group,
+ *  Recalculate the card button's, Inspector and the reference Row B's, the model check the Problems panel's. */
+const ICONS: Record<MenuIcon, (size: number) => ReactNode> = {
+  new: (n) => <Lucide size={n}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M9 15h6" /><path d="M12 18v-6" /></Lucide>,
+  open: (n) => <Line16 size={n} d={["M8 10.5 V3", "M5 6 8 3 11 6", "M3 12.5 h10"]} />,
+  save: (n) => <SaveIcon size={n} />,
+  saveAs: (n) => <Line16 size={n} d={["M8 2.5 V10", "M5 7 8 10 11 7", "M3 12.5 h10"]} />,
+  copy: (n) => <Lucide size={n}><rect x="8" y="8" width="14" height="14" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></Lucide>,
+  paste: (n) => <Lucide size={n}><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></Lucide>,
+  toFront: (n) => <Lucide size={n}><path d="M5 3h14" /><path d="m18 13-6-6-6 6" /><path d="M12 7v14" /></Lucide>,
+  forward: (n) => <Lucide size={n}><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></Lucide>,
+  backward: (n) => <Lucide size={n}><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></Lucide>,
+  toBack: (n) => <Lucide size={n}><path d="M19 21H5" /><path d="m18 11-6 6-6-6" /><path d="M12 17V3" /></Lucide>,
+  refresh: (n) => <RefreshIcon size={n} />,
+  recalc: (n) => <RecalcGlyph size={n} />,
+  draw: (n) => <Lucide size={n}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /></Lucide>,
+  find: (n) => <SearchIcon size={n} strokeWidth={1.8} />,
+  inspector: (n) => <InfoIcon size={n} strokeWidth={1.8} />,
+  problems: (n) => <TriangleAlertIcon size={n} strokeWidth={1.8} />,
+  reference: (n) => <Lucide size={n}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></Lucide>,
+  external: (n) => <Lucide size={n}><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></Lucide>,
 };
 
 const isTile = (it: Option) => !!(it.icon && it.short);
 
-/** Separator-bounded groups, minus what the phone hides; neighbouring tile groups join into one strip. */
+/** Separator-bounded groups, minus what the phone hides or the heading carries; neighbouring tile groups join into one strip. */
 function groupsOf(items: MenuItem[]): Group[] {
   const groups: Group[] = [{ items: [] }];
   for (const it of items) {
     if ("sep" in it) groups.push({ label: it.label, items: [] });
-    else if (!it.hideOnPhone) groups[groups.length - 1].items.push(it);
+    else if (!it.hideOnPhone && !it.inHeading) groups[groups.length - 1].items.push(it);
   }
   const out: Group[] = [];
   for (const g of groups) {
@@ -52,23 +64,18 @@ function groupsOf(items: MenuItem[]): Group[] {
   return out;
 }
 
-/** The phone's ⋮ menu: one section per menu, its commands as rows. A group whose items
- *  all carry an icon and a short name is tiles; a captioned icon group, or a choice
- *  between checked items, is one row with its controls at the right; a lone checked
- *  item is a switch row. */
+/** The phone's ⋮ menu: one section per menu, its commands as rows. A section's one-tap
+ *  actions are pill buttons in its heading; a group whose items all carry an icon and a
+ *  short name is tiles; a captioned icon group, or a choice between checked items, is one
+ *  row with its controls at the right. */
 export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Option, keepOpen?: boolean) => void }) {
   const press = (it: Option) => run(it, it.checked !== undefined);
-  const row = (it: Option) =>
-    it.checked !== undefined ? (
-      <button key={it.label} type="button" role="switch" aria-checked={it.checked} className="sol-msheet__row" disabled={it.disabled} onClick={() => press(it)}>
-        {it.label}
-        <span className={`sol-msheet__switch${it.checked ? " sol-msheet__switch--on" : ""}`}><span className="sol-msheet__knob" /></span>
-      </button>
-    ) : (
-      <button key={it.label} type="button" className="sol-msheet__row" disabled={it.disabled} onClick={() => press(it)}>
-        {it.label}
-      </button>
-    );
+  const row = (it: Option) => (
+    <button key={it.label} type="button" className="sol-msheet__row" aria-pressed={it.checked} disabled={it.disabled} onClick={() => press(it)}>
+      {it.label}
+      {it.icon && <span className="sol-msheet__rowicon">{ICONS[it.icon](15)}</span>}
+    </button>
+  );
 
   const group = (g: Group, key: number) => {
     if (g.items.every(isTile)) {
@@ -76,7 +83,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
         <div key={key} className="sol-msheet__tiles">
           {g.items.map((it) => (
             <button key={it.label} type="button" className="sol-msheet__tile" aria-label={it.label} disabled={it.disabled} onClick={() => press(it)}>
-              {ICONS[it.icon!]}
+              {ICONS[it.icon!](18)}
               <span>{it.short}</span>
             </button>
           ))}
@@ -104,7 +111,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
           <div className="sol-msheet__icons">
             {g.items.map((it) => (
               <button key={it.label} type="button" className="sol-msheet__icon" aria-label={it.label} title={it.label} disabled={it.disabled} onClick={() => press(it)}>
-                {ICONS[it.icon!]}
+                {ICONS[it.icon!](18)}
               </button>
             ))}
           </div>
@@ -118,7 +125,25 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
     <div className="sol-msheet">
       {menus.map((menu) => (
         <section key={menu.label} className="sol-msheet__section">
-          <div className="sol-msheet__heading">{menu.label}</div>
+          <div className="sol-msheet__heading">
+            {menu.label}
+            {menu.items.map((it) =>
+              "sep" in it || !it.inHeading || it.hideOnPhone ? null : (
+                <button
+                  key={it.label}
+                  type="button"
+                  className={`sol-msheet__pill${it.checked ? " sol-msheet__pill--on" : ""}`}
+                  aria-label={it.label}
+                  aria-pressed={it.checked}
+                  disabled={it.disabled}
+                  onClick={() => run(it)}
+                >
+                  {it.icon && ICONS[it.icon](13)}
+                  {it.short ?? it.label}
+                </button>
+              ),
+            )}
+          </div>
           {/* The top bar's cable controls are hidden on touch, so View carries them here. */}
           {menu.label === "View" && (
             <div className="sol-msheet__ctlrow">

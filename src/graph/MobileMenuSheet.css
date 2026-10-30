@@ -1,4 +1,4 @@
-/* The phone's ⋮ menu, at the Settings sheet's scale: 13px text, rows 30px tall, 28px controls. */
+/* The phone's ⋮ menu, at the Settings sheet's scale: 13px text, rows 30px tall, 24 to 28px controls. */
 .sol-msheet {
   position: absolute;
   top: calc(82px + env(safe-area-inset-top));
@@ -21,13 +21,37 @@
 .sol-msheet__section { display: flex; flex-direction: column; padding-bottom: 4px; }
 .sol-msheet__section + .sol-msheet__section { border-top: 1px solid var(--panel-border); }
 .sol-msheet__heading {
-  padding: 8px 10px 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 8px 4px 3px 10px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* A section's one-tap actions: DESIGN.md's pill button, riding in the heading as the Navigator's + rides beside its switch. */
+.sol-msheet__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.sol-msheet__pill:first-of-type { margin-left: auto; }
+.sol-msheet__pill:active:not(:disabled) { background: var(--btn-hover); border-color: var(--btn-border-hover); }
+.sol-msheet__pill--on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
 .sol-msheet__row,
 .sol-msheet__ctlrow {
@@ -50,6 +74,7 @@
 /* A finger leaves a sticky :hover on whatever lands under it after a tap, so only the press tints. */
 .sol-msheet__row:active:not(:disabled) { background: var(--accent-soft); }
 .sol-msheet__ctlrow { padding-right: 4px; }
+.sol-msheet__rowicon { display: flex; padding-right: 4px; color: var(--text-muted); }
 
 .sol-msheet__tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 2px 4px 6px; }
 .sol-msheet__tile {
@@ -103,30 +128,6 @@
   font-size: 12.5px;
 }
 .sol-msheet__segbtn--on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-
-/* The Settings switch, a size down. */
-.sol-msheet__switch {
-  flex: 0 0 auto;
-  position: relative;
-  width: 34px;
-  height: 20px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 999px;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-.sol-msheet__switch--on { background: var(--accent); border-color: var(--accent); }
-.sol-msheet__knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  background: var(--text-bright);
-  border-radius: 50%;
-  transition: transform 120ms ease;
-}
-.sol-msheet__switch--on .sol-msheet__knob { transform: translateX(14px); background: var(--accent-ink); }
 
 .sol-msheet .solenoid-toolbar { gap: 6px; }
 .sol-msheet .solenoid-toolbar__label { display: none; }
