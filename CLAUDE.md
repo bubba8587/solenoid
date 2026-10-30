@@ -16,6 +16,10 @@ branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFree
 commit and push here, not on `develop`; `git checkout rust-port` at session start overrides the
 harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
 
+**`bleeding-edge` is machine-made:** the most recently pushed branch with every dependency at its newest, regenerated
+daily (`.github/workflows/bleeding-edge.yml` → `scripts/bleeding-edge.mjs`) and force-pushed. Never work or commit
+there, except the weekly `.github/bleeding-edge/ANALYSIS.md`. Its `REPORT.md` says what moved and what breaks.
+
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
 Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. On the
