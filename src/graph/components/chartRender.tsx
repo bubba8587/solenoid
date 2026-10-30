@@ -1333,7 +1333,7 @@ export function RegionsFigure({ chart, cuts, points, marks, labels, width, heigh
     ? (m) => (m === true ? yes : m === false ? no : null)
     : (m) => (typeof m === "number" && m >= 0 && m < count ? regionLabelColor(colors, m) : null)), [count, colors, yes, no]);
   // A Text card's region colors come from the palette, so its lines draw in the neutral ink.
-  const ink = count === null ? null : getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#e6e6e6";
+  const ink = count === null ? null : getComputedStyle(document.body).color || "#e6e6e6";
   const cutsText = useMemo(() => JSON.stringify(cuts), [cuts]);
   // The points' corners are all the axes need to take them in.
   const extent = useMemo(() => {
