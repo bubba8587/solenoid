@@ -88,6 +88,12 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/canvas/command-palette.md` | the Command Palette: what it lists, search, and AI mode | `CommandPalette.tsx` |
 | `../tree/specs/canvas/outline-panel.md` | the Navigator list: tree, filters, sorting, focusing | `OutlinePanel.tsx` |
 
+## Bleeding edge
+
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/bleeding-edge/branch.md` | the bleeding-edge branch: the generator, its dependencies, its checks, and how an agent works there | `.github/bleeding-edge/bleeding-edge.mjs`, `.github/workflows/bleeding-edge.yml` |
+
 ## Integrations
 
 | Spec | Subsystem | Main code |

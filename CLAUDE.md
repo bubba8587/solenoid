@@ -16,14 +16,10 @@ branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFree
 commit and push here, not on `develop`; `git checkout rust-port` at session start overrides the
 harness branch the same way. When rust-port merges into `develop`, this paragraph goes.
 
-**`bleeding-edge` tries the newest of everything and reports what breaks:** the most recently pushed work branch with
-every dependency at its newest and the newest web-platform features put to use, where breaking a browser is fine. It is
-persistent: daily (`.github/workflows/bleeding-edge.yml` → `.github/bleeding-edge/bleeding-edge.mjs`) it rebases its own
-commits onto the newest base, bumps only what moved, runs every check and replaces its report commit.
-Work there acts, never asks: `.github/bleeding-edge/GUIDELINES.md` is the standing order (implement every newest feature within
-reason, one commit each, keep the ledger). Fixes for what a bump broke and the weekly analysis go there too. A commit that later
-conflicts with new work is dropped, named in the report and kept on `bleeding-edge-prev`. Never merge the branch into a
-work branch: a change that proves itself there moves over as its own commit.
+**`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks** ([[A7]] bleedingEdgeSolenoid):
+every dependency at its newest and the newest web-platform features put to use, where breaking a browser is fine. Work
+there acts without asking ([[B24]] edgeAgentsAct); how the branch is kept and worked is `tree/specs/bleeding-edge/branch.md`.
+Never merge it into a work branch: a change that proves itself moves over as its own commit.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub

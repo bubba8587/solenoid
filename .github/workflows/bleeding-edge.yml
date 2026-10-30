@@ -1,3 +1,4 @@
+# [[A7]] bleedingEdgeSolenoid, [[B21]] edgeRebasesNotRebuilds
 name: Bleeding edge
 
 # Daily: rebases the persistent `bleeding-edge` branch (its dependency bumps, fixes and platform experiments) onto the

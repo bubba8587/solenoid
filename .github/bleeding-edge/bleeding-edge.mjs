@@ -1,3 +1,4 @@
+// [[B21]] edgeRebasesNotRebuilds, [[B22]] edgeNewestDependencies
 // Keeps the `bleeding-edge` branch: the most recently pushed work branch with every dependency at its newest version,
 // majors included, the newest web-platform features tried out, and a report of what broke (.github/bleeding-edge/
 // REPORT.md and REPORT.json). The branch is persistent. Each run rebases its own commits (earlier dependency bumps,
