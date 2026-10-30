@@ -114,13 +114,11 @@ function repoOf(c) {
 }
 for (const c of changes) if (c.direct && c.to) c.notes = repoOf(c);
 
-// ── the engine module: rebuilt for the new crates (never optimized; CLAUDE.md) ─────────────────────────────
+// The engine module is rebuilt for the new crates below, never optimized (CLAUDE.md).
 const bindgen = (cargoLock("crates/solenoid-graph").get("wasm-bindgen") ?? [])[0];
 if (bindgen && !sh("wasm-bindgen --version", { quiet: true }).out.includes(bindgen)) {
   step(`wasm-bindgen-cli ${bindgen}`, has("cargo binstall") ? `cargo binstall -y --force wasm-bindgen-cli@${bindgen}` : `cargo install --force --locked wasm-bindgen-cli --version ${bindgen}`);
 }
-step("engine module (npm run build:wasm)", "npm run build:wasm");
-
 // ── checks: what CI runs, plus the desktop shell and audits ────────────────────────────────────────────────
 const checks = [];
 const check = (name, cmd, skip) => {
@@ -128,6 +126,7 @@ const check = (name, cmd, skip) => {
   const r = sh(cmd);
   checks.push({ name, cmd, ok: r.ok, secs: r.secs, log: r.ok ? "" : tail(r.out, 80) });
 };
+check("Engine module builds (npm run build:wasm)", "npm run build:wasm");
 rmSync("node_modules/.vitest-cache", { recursive: true, force: true });
 check("Typecheck", "npx tsrs --noEmit");
 check("Unit tests", "npx vitest run");
