@@ -70,10 +70,21 @@
   background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
 }
 
+/* The menu is a popover in the top layer, anchored under its own title (each instance names its anchor in --doc-anchor). */
+.solenoid-doctitle { anchor-name: var(--doc-anchor); }
 .solenoid-doctitle__menu {
-  /* Portaled to <body> (DocumentTitle.tsx) to escape the app bar's stacking context; top and left come from the trigger's rect. */
   position: fixed;
-  z-index: 200;
+  position-anchor: var(--doc-anchor);
+  inset: auto;
+  top: calc(anchor(bottom) + 5px);
+  left: anchor(center);
+  translate: -50% 0;
+  margin: 0;
+  /* Inside the title's subtree, so it sets the body's text back rather than inheriting the title's. */
+  color: var(--text);
+  font: 400 1rem var(--font-sans);
+  text-transform: none;
+  letter-spacing: normal;
   min-width: 240px;
   max-width: 320px;
   max-height: 70vh;
