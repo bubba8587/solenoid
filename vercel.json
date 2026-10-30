@@ -3,6 +3,16 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": {
+      "port-*": false,
+      "claude/*": false,
+      "ccr-*": false,
+      "worktree-*": false,
+      "bleeding-edge": false
+    }
+  },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ':!.github'",
   "redirects": [
     {
       "source": "/:path*",
