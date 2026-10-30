@@ -14,7 +14,7 @@ Serves [[A7]] bleedingEdgeSolenoid, [[B21]] edgeRebasesNotRebuilds, [[B22]] edge
 
 ```mermaid
 flowchart TD
-    fetch["fetch every branch"] --> base["pick the base: the most recently pushed work branch<br>(not main, bleeding-edge, bleeding-edge-prev, session or bot branches)"]
+    fetch["fetch every branch"] --> base["pick the base: the most recently pushed work branch<br>(not main, any bleeding-edge branch, session or bot branches)"]
     base --> drop["check out bleeding-edge;<br>drop the old report commit on top"]
     drop --> from["pick where its own commits start"]
     from --> rebase["rebase them onto the base"]
@@ -48,7 +48,9 @@ An agent on the branch works without asking ([[B24]] edgeAgentsAct):
 
 1. **Start** by rebasing onto the newest work (`node .github/bleeding-edge/bleeding-edge.mjs --rebase-only`, then push), reading the branch's platform-features spec, then working down the newest release notes (Chrome's release notes and its "What's new in web UI" round-ups, web.dev's monthly "New to the web platform", the Interop dashboard) for anything that spec doesn't list yet.
 2. **Pick what's within reason** ([[B23]] edgePlatformFeatures): the look and behavior stay the same or get clearly better (more accessible, crisper, faster, fewer lines, a bug class gone), and the feature replaces something the app already does by hand. A feature that would change the look goes in the platform-features spec's candidates, with what it would change, for the author.
-3. **Use it for real.** Delete what it replaces. No `@supports` fallback, JS fallback or polyfill.
+3. **Use it for real.** Delete what it replaces. No `@supports` fallback, JS fallback or polyfill, except the one [[B23]] edgePlatformFeatures allows: the smallest fallback that makes an otherwise ready feature port as it stands.
 4. **One feature, one commit**, named `Edge: <feature>: <what it replaces>`, small enough to port on its own; a fix for a bump's breakage is `Fix: <what broke>`. The author ports a commit by cherry-picking it; the branch is never merged into a work branch.
 5. **Check it.** The typecheck and the unit tests pass, and the push is chained after the test run, so a red run never leaves the machine. A visible change is screenshotted in Chromium in both themes on a phone and a desktop, beside the same view of the base.
-6. **Record it** in [[platform-features]] (or [[dependency-fixes]] for a `Fix:`): the feature, what it replaced, whether the look changed, which engines lack it, and whether it's ready to port, with what it waits for when it isn't ([[B25]] edgeReadyToPort).
+6. **Check it without the feature.** For each engine that lacks it ([[platform-features#Engines]], the Linux desktop's WebKitGTK floor included), run the change in Chromium with the feature taken away: strip its declarations or attribute with an injected style or script, or force the `@supports not` branch, and screenshot what's left. If that engine would break where the work branches don't (a menu off-screen, colors gone, text overflowing), either add the smallest fallback that keeps today's behavior inside the same commit, or mark the finding not ready with what it waits for.
+7. **Port it once, on a scratch copy of the base.** Cherry-pick the finding's commits onto the current base in a throwaway worktree and run the typecheck and the unit tests there. A dependency fix is ported as one commit carrying the upgrade (the manifest pins and the lockfile entries of exactly the packages it needs, and any rebuilt engine module) and the fix together, pushed as `bleeding-edge-port/<name>`, made from the base, so a work branch cherry-picks that one commit. A finding whose port needed anything more is not ready until its commits carry it.
+8. **Record it** in [[platform-features]] (or [[dependency-fixes]] for a `Fix:`): the feature, what it replaced, whether the look changed, which engines lack it, and what happens without it, and whether it's ready to port: the commits to take and the base commit the port was checked on, or what it waits for ([[B25]] edgeReadyToPort).
