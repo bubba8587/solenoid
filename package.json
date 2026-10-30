@@ -36,7 +36,7 @@
     "test:core": "cargo test --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.133.0",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@lezer/common": "^1.5.3",
