@@ -50,9 +50,11 @@ html.is-mobile {
   .solenoid-topbar__nav:active { background: var(--btn-hover); }
 
   .solenoid-doctitle__menu {
+    top: calc(anchor(bottom) + 4px);
     left: 10px;
     right: 10px;
-    transform: none;
+    width: auto;
+    translate: none;
     min-width: 0;
     max-width: none;
   }
