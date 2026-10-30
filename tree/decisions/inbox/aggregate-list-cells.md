@@ -1,8 +1,8 @@
 ---
-title: "SUM, MIN, MAX and COUNT count TRUE as 1 and FALSE as 0 inside a formula's list, as AVERAGE already does"
+title: "Every aggregate counts TRUE as 1 and FALSE as 0 inside a list, so SUM(x > 5) counts the matches"
 proposed_ring: D
 ask: human
-date: 2026-09-25
+date: 2026-10-29
 parents:
   - "[[C10]]"
   - "[[D51]]"
@@ -10,14 +10,14 @@ parents:
 ---
 ## Decision
 
-Every aggregate formula (SUM, AVERAGE, MIN, MAX, COUNT, MEDIAN, STDEV and the rest) reads TRUE and FALSE inside a list as 1 and 0, as the cards already do. With `x = 1, 6, 7`, today `SUM(x > 5)` is 0. After, it is 2, the number of matches.
+Checked against the code on 2026-10-29. With `x = 1, 6, 7`, the aggregates disagree today: `SUM(x > 5)`, `MIN`, `MAX` and `COUNT` give 0, skipping TRUE and FALSE, while `AVERAGE(x > 5)` gives 0.67, `MEDIAN` 1 and `STDEV` 0.58, counting them as 1 and 0. The choice is which way they all go. Counting: `SUM(x > 5)` is 2, the number of matches. Skipping, as Excel does inside a list: `SUM(x > 5)` stays 0, and `AVERAGE(x > 5)` becomes blank.
 
 ## Why
 
-The formulas disagree today: AVERAGE and the other statistics count TRUE as 1, but SUM, MIN, MAX and COUNT skip it, so `AVERAGE(x > 5)` is 0.67 while `SUM(x > 5)` is 0. Excel skips them all, hence its `SUM(--(x > 5))`.
+Half the aggregates count and half skip, so the same list gives answers that don't fit together.
 
 ## What ratifying means
 
-- **Lean:** Ratify. TRUE and FALSE are numbers everywhere else in the graph.
-- **Ratify:** `SUM(x > 5)` counts the matches and `MAX(x > 5)` says whether any matched. SUM also stops failing on lists longer than about 125,000 values.
-- **Reject:** Every aggregate skips TRUE and FALSE in a list, as Excel does: `SUM(x > 5)` stays 0 and needs COUNTIF, and AVERAGE of such a list goes blank.
+- **Lean:** Ratify. TRUE and FALSE already act as 1 and 0 elsewhere in the graph, and counting matches with SUM is the common need.
+- **Ratify:** Every aggregate counts them; `SUM(x > 5)` counts matches.
+- **Reject:** Every aggregate skips them, as Excel does; counting matches needs COUNTIF.

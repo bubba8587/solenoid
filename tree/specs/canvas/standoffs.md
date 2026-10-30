@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Standoffs
 
-Serves [[C89]] standoffsSolveLast; the layer's stacking is [[react-flow-surface-contract#Stacking]]. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C89]] standoffsSolveLast; the layer's stacking is [[react-flow-surface-contract#Stacking]]. It covers what the system does and blocks, and the decision each behavior serves.
 
 A standoff is an arrangement constraint the user declares between two items on the canvas: "keep these two between this distance and that distance, in this direction." It draws as a pale, thick bar between the two items. Standoffs are a main-canvas feature; the composite drill-in has none. Wrap as Composite removes a standoff it would split across the boundary, and one with both ends wrapped rides in the composite's snapshot, unshown, until Unpack brings it back ([[composite-nodes]]).
 
@@ -99,7 +99,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## In seeds
 
-This is the author's rule for seed graphs: groups liberally, standoffs sparingly.
+Seed graphs use groups liberally and standoffs sparingly.
 
 - A seed standoff only pins an unwired explanatory Note to what it explains.
 - A Note wired through its frontmatter exports gets no standoff.

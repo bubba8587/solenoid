@@ -6,7 +6,7 @@ tags: [spec, computation]
 
 # Spec: Bordered-grid fill
 
-Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves.
 
 Grid fill is the Interpolate card's `grid` mode and the matrix form of the `INTERPOLATE` formula. It takes a table of Z values with some cells blank and returns the same table with the blanks filled. Each column has an X coordinate and each row a Y coordinate, and a cell's value is treated as a height at that (X, Y) point. The code is `fill_grid` and `fit_surface` in `crates/solenoid-core/src/fns_lists.rs`, with the card's axes read by `grid_axis` in `nodes/stats.rs`; the frozen fixtures and `stats.test.ts` pin the behavior.
 
@@ -47,7 +47,7 @@ A box is **contested** when some known point other than its four corners sits in
 - **A full box** (two different rows and two different columns) is contested by any known point inside it or exactly on its edge.
 - **A degenerate box** is a segment on one row (when the query row is itself a coarse row) or on one column. It is contested only by a known point on that same row or column strictly between its two ends. Known data on other rows or columns does not contest a segment.
 
-The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents: on a sine-shaped diagonal, the only box with four known corners was the grid's four zero corners, so every blank filled a flat zero with the whole diagonal inside that box. The contested rule is the author's ruling.
+The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents: on a sine-shaped diagonal, the only box with four known corners was the grid's four zero corners, so every blank filled a flat zero with the whole diagonal inside that box.
 
 ## The forecast surface
 

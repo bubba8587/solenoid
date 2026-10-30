@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: React Flow surface contract
 
-Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves.
 
 The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraphCalculator): a `GraphEditor` (`graphEditor.ts`), the handle on a Ruggine editor in the Rust graph core ([[D102]] graphOnCore, [[graph-core]]). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
@@ -130,7 +130,7 @@ The full rules are in [[group-expand-push]].
 The inside of an expanded group behaves like empty canvas, not like a handle for dragging the group.
 
 - `flowModel.nodeClassName` gives an expanded group's wrapper the class `sol-group-open`, and flow.css makes that wrapper `pointer-events: none !important`. The `!important` is needed because RF stamps `pointer-events: all` inline on every selectable wrapper.
-- The parts that should take presses claim their own pointers in GroupNode.css: the header, the grip, and three `solenoid-group__band` strips along the dashed side and bottom edges. The header is the top edge, so no strip reaches into the group under it (author 2026-10-05). Each strip is 10px wide and straddles the edge, 4px outside and 4px inside the 2px dashed line.
+- The parts that should take presses claim their own pointers in GroupNode.css: the header, the grip, and three `solenoid-group__band` strips along the dashed side and bottom edges. The header is the top edge, so no strip reaches into the group under it. Each strip is 10px wide and straddles the edge, 4px outside and 4px inside the 2px dashed line.
 - While the group is selected, its whole body takes pointers again, so a selected group drags by its face.
 - Every other press inside the group falls through to the pane: pan, lasso, cable hits and the canvas context menu.
 - A collapsed group gets no such class and stays draggable everywhere.
@@ -381,7 +381,7 @@ A ghost cable is a cable drawn dashed to show it is not yet valid or not yet rea
 
 - **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, so the connection stays the model's plain record of its two ends, which saves and copies read. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target.
   - A ghost is a real connection to the engine, so it feeds its value like any cable: a splice ghost carries the spliced-out node's input straight through, and a retype ghost feeds whatever its source now holds, which the input's coercion guard turns into an error value when it doesn't fit. A node that must treat a ghosted input as unwired asks the store itself (Group Cost Settle's `inGhosted`).
-  - The ghost mark is view state and is not saved: a reload draws every surviving connection solid. Whether it should survive a save is open with the author (inbox `ghost-cables-feed-and-save`).
+  - The ghost mark is view state and is not saved: a reload draws every surviving connection solid. Whether it should survive a save is still open (inbox `ghost-cables-feed-and-save`).
 - **Option B: the connection is dropped** (the Input Switch pending reconnect: `cablePendingStore` and `cablePendingReconnect.ts`). The Input Switch's One/Many toggle retypes its `out` socket, and `retypeOutputCables` drops the downstream cables the new type can't feed, so there is no connection left to draw dashed.
   1. Before the retype, `snapshotOutgoing` records the cables leaving `out`.
   2. After it, each cable that disappeared (and whose target node still exists) is recorded as a pending ghost keyed by source, output, target and input, so re-marking the same drop is idempotent, along with the target input's label.

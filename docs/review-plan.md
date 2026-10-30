@@ -155,7 +155,7 @@ the store, seed JSONs rewritten, and "pictures are data:image only" is a securit
 Commits: afbf53bc
 Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `excelFunctions.ts`,
 `nodeCatalog.ts`, `inputRoles.ts` (10 files)
-- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`tree/decisions/inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
+- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits in the backlog (`docs/backlog.md` § Formula library, under [[A5]] excelParity and [[D85]] columnsStayColumns). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
       columns; check it isn't a no-op. UNIQUE(table, by_col, exactly_once) same.
 - [x] Checked 2026-09-28: a matrix `include` is `#VALUE!`; a column mask filters rows and a one-row mask filters columns. Was: FILTER(table, include, if_empty): `include` must be a 1-D boolean the height of the
       table; a matrix `include` → Excel `#VALUE!`. Check.
@@ -312,7 +312,7 @@ the op (reading in MIN/compare, delta in +/−). That is a lot of per-op special
       weight? Commit says "scales only by a constant". A LAMBDA parameter, a column ref?
 - [x] Checked 2026-09-28: unit-flow § Unit algebra states it (`25 °C > 30` is FALSE, the bare number read as a reading in the display unit), on the card and the formula alike; kelvin meant as a bare number is a Convert first. Was: `adoptReading` in `compareUnits`: `25 °C > 30` reads 30 as 30 °C. But `25 °C > 300`
       where the user meant kelvin? Confirm the ruling text in C25 covers comparison.
-- [x] Confirmed 2026-09-28, not fixed: a difference is a displayless kelvin cell, indistinguishable from a kelvin reading, so Convert or the FC to °C puts the offset back (30 °C − 20 °C → −263.15 °C, and −441.67 °F). Inbox: `tree/decisions/inbox/temperature-difference-converts-by-scale.md`. Was: Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
+- [x] Confirmed 2026-09-28, not fixed: a difference is a displayless kelvin cell, indistinguishable from a kelvin reading, so Convert or the FC to °C puts the offset back (30 °C − 20 °C → −263.15 °C, and −441.67 °F). Open with the author, beside [[D105]] mixedTempUnitsRefused. Was: Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
       Convert node then let the user convert a delta-K to °C (wrong) or to delta-°F (right)?
 - [x] Checked 2026-09-28: GROUPBY SUM of a °C column is #UNIT! in every group; the native `group_sum` under `readingScale` answers `ERR_UNIT_ADD_BITS`, and `frameReadings.test.ts` plus the corpus hold both engines to it. Was: Frame verbs on °C columns (753f0062): groupBy SUM of a °C column → #UNIT!? Polars path
       never sees units; PolarsBackend sends `readingScale`; check the native `group_sum`

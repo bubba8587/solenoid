@@ -6,10 +6,7 @@ tags: [spec, integrations]
 
 # Spec: VaultBridge
 
-Serves [[B1]] obsidianBet. **VaultBridge** is everything that crosses between a Solenoid document and an
-Obsidian vault. Its cards are the **VaultBridge Nodes**; the processes behind them, which are not graph items,
-are the **VaultBridgeFx** (an Fx is a process, as in [[group-expand-push#LayoutFx]]). This spec names the
-members and routes each to the spec that governs it; the mechanics live there.
+Serves [[B1]] obsidianBet. **VaultBridge** is everything that crosses between a Solenoid document and an Obsidian vault. Its cards are the **VaultBridge Nodes**; the processes behind them, which are not graph items, are the **VaultBridgeFx** (an Fx is a process, as in [[group-expand-push#LayoutFx]]). This spec names the members and routes each to the spec that governs it; the mechanics live there.
 
 ```mermaid
 flowchart LR
@@ -51,8 +48,7 @@ flowchart LR
 | Write to Obsidian | writes a Note, a Report or a Cube of rows | the Note Write, the Property Patch | [[reports-and-notes#Write to Obsidian]] |
 | Write Tasks | creates or updates TaskNotes tasks from rows | the TaskNotes API | [[compute-pass]] (its Run only; no spec yet) |
 
-A Note and a Report are documents, not VaultBridge Nodes: they reach a vault through Write to Obsidian. The
-Solenoid Properties plugin is the bridge's other end, inside Obsidian ([[obsidian-plugin]]).
+A Note and a Report are documents, not VaultBridge Nodes: they reach a vault through Write to Obsidian. The Solenoid Properties plugin is the bridge's other end, inside Obsidian ([[obsidian-plugin]]).
 
 ## VaultBridgeFx
 
@@ -65,14 +61,10 @@ Solenoid Properties plugin is the bridge's other end, inside Obsidian ([[obsidia
 | **Property Patch** | changes only the frontmatter keys it targets in an existing note ([[C101]] onePatchPath) | `frontmatterPatch.ts` | [[reports-and-notes#Write to Obsidian]] |
 | **TaskNotes API** | the TaskNotes plugin's local HTTP API, read and write | `taskNotesApi.ts`, `nodes/taskNotes.ts` | no spec yet |
 
-`obsidianLinks.ts` builds the `obsidian://` links a card opens a note with. On the web, and whenever "Use demo
-vault" is on, the reads go to the read-only demo vault instead ([[live-connections#The demo vault]],
-[[D62]] demoVaultResolution).
+`obsidianLinks.ts` builds the `obsidian://` links a card opens a note with. On the web, and whenever "Use demo vault" is on, the reads go to the read-only demo vault instead ([[live-connections#The demo vault]], [[D62]] demoVaultResolution).
 
 ## What every VaultBridgeFx holds to
 
-- **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own
-  ([[C38]] sinkRunButtonOnly); a write refuses against the demo vault.
-- **Nothing leaves the vault.** A write drops empty, `.` and `..` path segments, and Vault Folder refuses a
-  folder outside the vault.
+- **Writes happen only on Run.** Write to Obsidian and Write Tasks load disarmed and write nothing on their own ([[C38]] sinkRunButtonOnly); a write refuses against the demo vault.
+- **Nothing leaves the vault.** A write drops empty, `.` and `..` path segments, and Vault Folder refuses a folder outside the vault.
 - **A write changes only what it targets** ([[C101]] onePatchPath).

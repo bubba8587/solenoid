@@ -42,7 +42,7 @@ A typed-in list breaks without a sound: leave a name off and nothing errors, the
 
 A report that measures differently from its test is how a ratchet stops ratcheting without anyone noticing. The report once matched a card by its host's label and listed nine registered `FILL*` functions as a gap, and a gap computed as `!inFormula` let `SCAN` drop out of a gap it was still in. A metric that folds two questions together also lets an improvement on one hide a regression on the other. The parity measurement is the worked case ([[formula-language#Parity measurement]]).
 
-The node-to-formula coverage figure divides by the in-scope cards, never the whole catalog. This is the author's ruling: sliders, notes, sinks and chrome were never candidates for a formula name, so a whole-catalog denominator understates coverage and answers a different question. The excluded population is reported on its own line.
+The node-to-formula coverage figure divides by the in-scope cards, never the whole catalog. Sliders, notes, sinks and chrome were never candidates for a formula name, so a whole-catalog denominator understates coverage and answers a different question. The excluded population is reported on its own line.
 
 ### Completeness checks use every
 

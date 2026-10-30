@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Pointer gestures
 
-Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves.
 
 This spec is the mechanics of canvas pointer input: which listener handles each gesture, in which event phase, and how a finger is told apart from a mouse or pen. [[touch-gestures]] is its companion: the inventory of what every gesture does on each device.
 
@@ -40,7 +40,7 @@ React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pan
 
 ## Zoom steps
 
-Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% step. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them; that is the author's call. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. **Reopen if:** the step size should change with the zoom level.
+Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% step. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. **Reopen if:** the step size should change with the zoom level.
 
 ## Wheel zoom: `installWheelZoom`
 

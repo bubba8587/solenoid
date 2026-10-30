@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Composite drill-in mount lifecycle
 
-Serves [[C77]] compositeIsSubgraph. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph. It covers what the system does and blocks, and the decision each behavior serves.
 
 A composite node holds a real subgraph in its own `internalEditor`. Opening it ("drilling in") shows that subgraph on a full canvas, `FlowCompositeOverlay`, which renders the same `FlowSurface` as the main canvas. This spec covers what lives for the life of the composite, what lives only while it is open, and how chrome follows whichever canvas is showing.
 
@@ -72,7 +72,7 @@ Snapshot undo is per composite and lives on the drill stack, so it survives clos
 
 ## Deleting inside a level
 
-The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]): the same ghost splicing, Conduit ghosts, FC unsplice and host-takes-its-FCs.
+The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]), so it splices ghosts and Conduit ghosts the same way, unsplices a docked FC, and deletes a host's FCs with it.
 
 ## Bulk edits inside a level
 
@@ -100,7 +100,7 @@ Anything the drill-in shares with the main canvas comes from the same module, ne
 - The drill-in's backdrop fills the region the main canvas occupies, above it and below the app chrome (header, status bar, the menu and Navigator), and is opaque, so drilling in swaps only the canvas surface while the app frame stays put.
 - The one drill-in-specific piece of chrome is the floating strip at the top left, below the app header and clear of the top-right menu: the breadcrumb (each crumb a quiet text button, the current one emphasized and inert) and the port-promotion buttons, on a sunken fill with an accent-tinted border as a state cue. A deep path wraps onto more lines rather than clipping, each separator kept with the crumb after it and each crumb truncated past its own cap; desktop wraps past 460px, a phone at the strip's width. Undo, delete, add, zoom and the rest are the real toolbar and keyboard pointed at the active graph.
 - The run-mode panel sits directly under the strip, because the top-right corner belongs to the Zoom pill and the Problems and Alerts HUDs. It mirrors the outer card's controls, and its head bar always shows the current run mode while the body folds.
-- While drilled in (`html.sol-drilled-in`) the main minimap hides and the drill-in's own shows; the Navigator stays and lists the open level, backing out through `compositeEditorStore.drillTo`, which the mounted drill-in registers so the levels it leaves settle ([[outline-panel#Composites]]), with the strip stepping right of the open panel on desktop; and the covered main canvas stops painting (`visibility: hidden`, [[html-in-canvas#The GPU texture budget]]).
+- While drilled in (`html.sol-drilled-in`) the main minimap hides and the drill-in's own shows; the Navigator stays and lists the open level, backing out through `compositeEditorStore.drillTo`, which the mounted drill-in registers so the levels it leaves settle ([[outline-panel#Composites]]), with the strip and its run controls stepping right of the Navigator on desktop, of its open panel or of its collapsed pill (`--nav-pill-w`); and the covered main canvas stops painting (`visibility: hidden`, [[html-in-canvas#The GPU texture budget]]).
 - On mobile the strip hangs flush in the corner under the top rows (the bar's accent line above it, the screen's left edge beside it, so only its bottom and right edges show), stops before the right-anchored Fit and Lock pill and holds the crumbs with the run controls under them: the port buttons move to the bottom bar, as I and O on a tab hugging the ➕ (`MobileControls.tsx`), which reach the drill-in's adder through `compositeEditorStore.registerAddPort`; the run panel becomes the strip's second row, under a hairline, its header the crumbs' size, starting collapsed and unfolding inside the strip; and the drill-in minimap is off.
 
 ## The canvas-substitution seam

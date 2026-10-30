@@ -66,6 +66,8 @@ leaf, because none is a product call.
   Mermaid block beside that prose (flowcharts mostly, plain text, so Obsidian renders it with pele,
   the renderer MermaidView uses). The prose stays the spec; a diagram that disagrees with it is the
   one to fix. `specDiagrams.test.ts` renders every block and keeps `[[` out of them.
+- **Leaf frontmatter is lean.** No `confidence`, `status`, `supersedes` or `superseded_by`: retiring deletes the file and the RETIRED ledger records the successor, so the fields only repeated it. `tools/dte.py` carries local patches (marked `local patch`) so it neither writes them nor needs them; a missing `status` reads as active. DTE feedback item 41 asks for this upstream.
+- **Triage: a leaf the code breaks.** DTE has no word for a rule the code doesn't keep yet, so Solenoid uses its own. The leaf gets an `*Unenforced:*` bullet under Consequences saying what the code doesn't do, and `docs/backlog.md` § Leaves the code breaks lists every such leaf, highest stakes first. An agent that finds a gap adds both and carries on; it doesn't stop to ask. When the code catches up, both go.
 
 ## Wikilinks
 

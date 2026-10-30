@@ -6,7 +6,7 @@ tags: [spec, documents]
 
 # Spec: Reports, Notes, Dashboards and the Knap template layer
 
-Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet, [[C101]] onePatchPath and [[C103]] untrustedContentSeams. It covers what the system does and blocks, and the decision each behavior serves.
 
 Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotation.ts`) is a pure source: its frontmatter keys become typed output sockets and it mints no inputs. A **Report** (`ReportNode`, `nodes/report.ts`) is a pure sink for values: its template variables mint inputs, and it emits one rendered document. Both bodies are **Knap** templates. Knap is Obsidian's template language (the `knap` npm package, version 0.6.0), and `knapTemplate.ts` is the only module that renders with it (the overlay's Filters list reads the package's `standardFilterMetadata`). Both nodes emit a **DocumentValue** on a `document` output, which Write to Obsidian, the Document chip and a Report's own inputs consume. A **Dashboard** is the Report's sibling without the text: the same bones (inputs minted from what the author writes, values drawn by one shared renderer, a full-size window) laid out as a grid of boxes ([[#Dashboards]]).
 
@@ -309,7 +309,7 @@ Opened on a **Report**:
 - **Export.** The webpage export, when the site chrome allows it.
 - **Dock.** Toggles a right-side docked panel (440 px, `--report-dock-w`) with no backdrop. Docked, a small Draft/Preview toggle replaces the side-by-side split; on mobile, a full-width tab bar does the same. The Dock button shows on desktop only, since on a narrow screen the report is already full-screen. Docked, the canvas area narrows by the dock width, and the viewport-fixed nav pill, HUD column, socket legend and command palette shift left with it.
 
-**Layout.** On desktop the overlay sits under the app bar, which stays usable, and the panel fills the remaining height. At a viewport width of 760 px or less the side-by-side split becomes Draft and Preview tabs, decided by width alone, never by device detection. An image or SVG embed with nothing loaded shows a quiet inline hint ("no image attached", "no SVG loaded"), not an error. A Frame embed never scrolls vertically, so its chip stays in view; a wide one scrolls sideways.
+**Layout.** On desktop, the overlay is positioned beneath the Header and fills the remaining height of the canvas. At a viewport width of 760 px or less the side-by-side split becomes Draft and Preview tabs, decided by width alone, never by device detection. An image or SVG embed with nothing loaded shows a quiet inline hint ("no image attached", "no SVG loaded"), not an error. A Frame embed never scrolls vertically, so its chip stays in view; a wide one scrolls sideways.
 
 Embed Note and Filters are disabled while a template is wired. With records wired, the preview shows one page at a time. A header row holds a stepper (`‹`, `name.md`, `i / N`, `›`), "first N of M" when the merge was capped, and the **Page name** field, which commits on blur or Enter and recomputes the graph.
 
@@ -452,7 +452,7 @@ Edit Layout swaps the grid for `react-grid-layout`. Each box shows a snapshot of
 
 ### Undo
 
-Every change on the board is one undo step: layout changes record through the recompute, colors and views through `notifyGraphChanged`. Ctrl+Z works with the board open and the board stays open: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id, resolves the name again (`openNodeId`), and skips the closes a rebuild sends.
+Each change on the board is one undo step. Layout changes are recorded when the graph recomputes, and color and view changes are recorded through `notifyGraphChanged`. Ctrl+Z works with the board open and the board stays open: an undo reloads the graph under new node ids, so `dashboardStore` keeps the board's addressable name beside its id, resolves the name again (`openNodeId`), and skips the closes a rebuild sends.
 
 ### The showcase
 

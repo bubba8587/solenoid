@@ -6,9 +6,9 @@ tags: [spec, computation]
 
 # Spec: Equation solver
 
-Serves [[C47]] equationNode. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C47]] equationNode. It covers what the system does and blocks, and the decision each behavior serves.
 
-The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The card lives in `nodes/equation.ts` (`EquationNode`); the solving layers run on the core, in `crates/solenoid-core/src/nodes/formula.rs` ([[node-bodies]]). TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver (`triangle_solver`, `crates/solenoid-core/src/nodes/packs.rs`).
+The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The Equation node lives in `nodes/equation.ts` (`EquationNode`), and its solving layers are in `crates/solenoid-core/src/nodes/formula.rs` ([[node-bodies]]). TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver (`triangle_solver`, `crates/solenoid-core/src/nodes/packs.rs`).
 
 ## Which cards are relations
 

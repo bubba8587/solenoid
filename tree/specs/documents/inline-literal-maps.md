@@ -6,7 +6,7 @@ tags: [spec, documents]
 
 # Spec: Inline literal maps
 
-Serves [[C28]] literalsIffEditable. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C28]] literalsIffEditable. It covers what the system does and blocks, and the decision each behavior serves.
 
 A **literal** is a value the user types straight into a card's input row instead of wiring a cable to it. A card keeps its literals in one or both of two fields: `literals`, a map from input key to number, and `stringLiterals`, a map from input key to raw text (CSV-typed lists, column pickers, text rows). An unwired input reads its literal; a wired input always reads its cable.
 
@@ -16,7 +16,7 @@ The governing convention: **a node class declares a literal map if and only if i
 
 When `persistence.ts` loads a saved node, it copies the saved `literals` and `stringLiterals` onto the new node only when the class already has that field as an object (`typeof anyNode.literals === "object"`). A field the class does not declare is dropped.
 
-A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and its body on the core (`equation` in `crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
+A wire-driven card declares neither map. The Equation family (Equation, TVM, Triangle Solver) is the main case: its variables are known only through cables, and `equation` (`crates/solenoid-core/src/nodes/formula.rs`) has no literal fallback. So a hand-written save or seed cannot plant a hardcoded known that the user can neither see nor edit on the card.
 
 ## Seeds are checked when they are written
 
@@ -24,7 +24,7 @@ A wire-driven card declares neither map. The Equation family (Equation, TVM, Tri
 
 ## A typeable list implies the declaration
 
-A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set of the core's input boundary, `crates/solenoid-graph/src/boundary.rs`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, the input boundary parses that text with `parseListLiteral` (`listLiterals.ts`) and injects the list as the input's value (for a body on the core, `coreHeader` in `nodeOnCore.ts` sends the parsed list); blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] oneTextReading). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
+A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set of the core's input boundary, `crates/solenoid-graph/src/boundary.rs`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, the input boundary parses that text with `parseListLiteral` (`listLiterals.ts`) and injects the list as the input's value (for a node ported to Rust, `coreHeader` in `nodeOnCore.ts` sends the parsed list); blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] oneTextReading). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
 
 The `FLAT_CATALOG` sweep in `coerceInputs.test.ts` constructs every catalog entry and fails for any node with a typeable input and no `stringLiterals`, so a new node cannot silently lose the user's typed CSV on reload.
 

@@ -88,7 +88,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`tree/specs/canvas/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
 - Reference: `docs/socket-reference.md` (every socket variant), `tree/specs/values/format-model.md` (FC
   controls), `tree/specs/values/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `tree/specs/computation/formulajs-divergences.md` (before touching a `registerInternal` override),
+  `tree/specs/computation/formulajs-divergences.md` (before changing a function whose answer differs from Formula.js),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plan

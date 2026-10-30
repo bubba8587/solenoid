@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Cable rendering knobs
 
-Serves [[A1]] visualGraphCalculator (the router and the spline) and [[C10]] socketLattice (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator (the router and the spline) and [[C10]] socketLattice (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves.
 
 This spec covers how a wired cable is drawn: the three cable shapes (spline, diagonal and straight), per-socket exit angles, ribbons (several Conduit lanes drawn as one wide cable), and Conduit runs (the whole wire through a chain of Conduits). The drawing lives in `flow/FlowCableEdge.tsx`, the paths in `cablePaths.ts`, the ribbon logic in `ribbonCable.ts`, and the run walk in the graph core (`conduit.rs`, reached through `conduitTrace.ts`).
 
@@ -66,7 +66,7 @@ Flow beads. In animated mode (`cableFlowStore`, persisted), every live cable car
 The inverse case (`kind: "groupSource"`) is a Conduit hidden inside a collapsed group whose 2 or more outputs leave the group. It mirrors the combined input pill:
 
 - `recomputeGroupCollapse` folds all of the hidden Conduit's crossing `out_*` sockets into one combined readout row and pill on the group (`RetainedTerminal.lanes`).
-- `groupSourceRibbon` detects the case. Members are filtered to one shared destination: a visible Conduit or a collapsed group.
+- `groupSourceRibbon` (`ribbonCable.ts`) builds the ribbon for a cable leaving a Conduit hidden in a collapsed group. The ribbon's members are that Conduit's `out_*` cables that run to the same destination as this one, either a visible Conduit or a collapsed group, in lane order. A ghost cable is never a member. With fewer than two members there is no ribbon, and the cable draws on its own.
 - `FlowCableEdge` draws a short trunk leaving the pill toward that destination. The pill is the bundling point, so there is no source fan. A visible Conduit destination gets a target fan; a collapsed-group destination takes the trunk whole on its pill.
 - Beads are phase-chained across trunk and fan as usual. There is no wide output stadium.
 

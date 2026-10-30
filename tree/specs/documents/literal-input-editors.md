@@ -6,7 +6,7 @@ tags: [spec, documents]
 
 # Spec: Literal input editors
 
-Serves [[C28]] literalsIffEditable and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C28]] literalsIffEditable and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves.
 
 ## The popup is the editor for rank-2+ literal sources
 
@@ -24,7 +24,7 @@ The stored truth is always text on the node (`tableText`, `frameText`, `cubeText
 
 ## The frame popup's column header is one row
 
-The author's call. On an editable Frame the order is type button → name → paintbrush and chevron → sort. On a read-only Frame it is name → paintbrush → sort.
+On an editable Frame the order is type button → name → paintbrush and chevron → sort. On a read-only Frame it is name → paintbrush → sort.
 
 - **Only the sort button sorts**, in table and Cube popups alike. It is drawn on every sortable column, stays quiet until it carries a direction (then takes the surface's accent), and a click anywhere else in the header does nothing. The header reserves the button's room (`--sortpad`). How the sort orders rows is [[table-popup]] § Sorting.
 - **The paintbrush** (the shared `PaintbrushIcon`, the Format Controller's icon) opens the column's Format Controller picks (style, the inherited-format hint, unit) in a dropdown panel, tinted once this node has made a pick. There is no format row under the header; a matrix keeps its one whole-sheet pair above the grid.
@@ -36,6 +36,6 @@ The author's call. On an editable Frame the order is type button → name → pa
 
 ## List Input is not one of them
 
-The author's call, recorded in [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. The value box's chip opens the ordinary list value popup view-only: no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items ([[D93]] oneTextReading). `tests/graph/listInputChip.test.ts` pins the card's form.
+This is [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. The value box's chip opens the ordinary list value popup view-only: no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items ([[D93]] oneTextReading). `tests/graph/listInputChip.test.ts` pins the card's form.
 
 **Reopen if:** the popup gains a save callback for it.

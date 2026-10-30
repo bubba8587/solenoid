@@ -6,7 +6,7 @@ tags: [spec, values]
 
 # Spec: Format model
 
-Serves [[C118]] formatTravelsWithValue, with the unit rules of [[C25]] firstClassUnits and the downstream carry of [[D41]] formatFlowsDownstream. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C118]] formatTravelsWithValue, with the unit rules of [[C25]] firstClassUnits and the downstream carry of [[D41]] formatFlowsDownstream. It covers what the system does and blocks, and the decision each behavior serves.
 
 A **Format Controller** (FC) is the small card that docks on a socket and decides how the value there is displayed: its style, precision, negatives, scale, text attributes and unit. This file is the model it follows. `formatModel.ts` says which controls exist for which value; `formatAnnotationStore.ts` stores what each FC has set and renders a number under a format through the core's formatter (`card_helpers.rs`); `nodes/formatController.ts` is the FC card itself. The FC popup shows and hides its controls from the same model, so what renders and what the popup offers can't disagree. How a format travels along the cables is [[unit-flow]].
 
@@ -39,7 +39,7 @@ Three cases short-circuit before stage 2 and outrank any annotation: a `SolError
 
 ### The unit is value-level; the format is display-level
 
-For the unit, the FC changes the value: the FC card's body tags the value's `UnitCell` (`tag_fc_unit`, the rule `applyFcUnit` reaches) ([[C25]] firstClassUnits). As a user-facing tool, though, the FC can set a unit only on a value that has none; re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
+For the unit, the FC changes the value: it tags the value's `UnitCell` (`tag_fc_unit`, the rule `applyFcUnit` reaches) ([[C25]] firstClassUnits). As a user-facing tool, though, the FC can set a unit only on a value that has none; re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
 
 | Lock state | Marker | Meaning |
 |---|---|---|
@@ -109,7 +109,7 @@ Which controls exist per family, both as popup rows and as resolution axes (`con
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
 
-The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. A chip wears its color the way a card's header band does (author 2026-10-05): opaque, the hue at `--header-tint` toward `--surface`, its text at `--mix-ink` toward `--text`, and no border, which stays the mark of a chip that is a button. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
+The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. A chip wears its color the way a card's header band does: opaque, the hue at `--header-tint` toward `--surface`, its text at `--mix-ink` toward `--text`, and no border, which stays the mark of a chip that is a button. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
 
 The two object families each carry exactly one control:
 
@@ -126,7 +126,7 @@ Both are display-only and ride the annotation like `logicalStyle`. The lambda's 
 
 | Style | Renders | Notes |
 |---|---|---|
-| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): an integer prints as is; anything else to the "Decimal places" setting (a slider from 0 to 10; default 4) with trailing zeros dropped; `sci_from` (`card_helpers.rs`) forces scientific at the "Scientific from" setting and above (10³, 10⁶, 10⁹ or 10¹², or never; default 10⁹, author 2026-10-05; 10³ added 2026-10-28) and below the smallest shown decimal, so a small value never reads as 0 |
+| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): an integer prints as is; anything else to the "Decimal places" setting (a slider from 0 to 10; default 4) with trailing zeros dropped; `sci_from` (`card_helpers.rs`) forces scientific at the "Scientific from" setting and above (10³, 10⁶, 10⁹ or 10¹², or never; default 10⁹) and below the smallest shown decimal, so a small value never reads as 0 |
 | `decimal` | `d` places or `d` significant figures, grouped | |
 | `integer` | `1,235` | rounded, grouped |
 | `percent` | ×100, then `d` places or significant figures, then `%` | |
@@ -203,7 +203,7 @@ One rule and one implementation, the private `format_precise` in the core's `car
 | `custom` | the pattern owns precision | — | no |
 | pack formats | the pack's `apply` owns everything | — | no |
 
-The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup caps the digits box at 20 in both modes, so 21 significant figures is unreachable from the control; switching to `sigfigs` bumps 0 to 1. The default is `d = 2` places, so `scientific` shows `1.23e+4`.
+The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup caps the digits box at 20 in both modes, so 21 significant figures can't be reached from the control. Switching to `sigfigs` raises a 0 to 1. The default is `d = 2` places, so `scientific` shows `1.23e+4`.
 
 ## Units on the FC
 
@@ -233,7 +233,7 @@ The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup
 - `FormatControllerNode.tsx` renders rows strictly from `controlsFor`, the custom pattern field (`customPattern`) included, with no inline `isDate`, text-type or `format === "decimal"` gates. The unit dropdown's `disabled` under a lock is the one sanctioned modifier outside `controlsFor`: presence is still the family's call, and only editability is the lock's.
 - Every render surface asks one question, `resolveDisplayAnnotation(nodeId, socketKey?)` (`valueDisplayFormat.ts`: the direct FC, else the carried `outAnnotation`, else the trailing FC's `downstreamAnnotation`, on the owning editor). The surfaces are `ValueDisplay` (any card, scalars and list cells), `InlineOutputRows` (per socket), `DisplayNode` and `TableDisplay` (matrix cells), `inlineRefDisplay` (Note and Report refs), `CableInspector`, `PinLayer` and the collapsed-group readouts. Booleans go through `applyLogicalStyle`, text through `applyTextCase` and numbers through `formatNumberWithAnnotation`. A `UnitCell` under an annotation whose `unit` is `none` keeps the cell's own display unit (`annotationForValue`): the annotation supplies the style and the value owns the unit. Frames, Cubes and the table popup grid stay per column. Pinned by `valueDisplayAnnotation.test.ts`.
 - `resolveDisplayAnnotation`'s optional `socketKey` names which output of a multi-box card to ask about; without it, each output is asked in declaration order. A value renders as a date only when its node's output socket declares a date type (`nodeOutputElemFamily`), never from the shape of its cells.
-- Without an FC, `dateFormatDisplay` turns a date output's serials into text: date only, or date and time when the serial carries a time fraction (`NOW()`). It works cell by cell: an error cell keeps its `#CODE!`, a blank stays blank, a non-finite serial shows `NaN` as a Frame's date column does ([[D93]] oneTextReading), and text or logical cells pass through. With an FC docked it does nothing, because the FC formats dates itself.
+- Without an FC, `dateFormatDisplay` turns a date output's serials into text. A serial with a time fraction, like `46000.5` or the one `NOW()` returns, becomes the date and time: `09-Dec-2025 12:00`. Any other serial becomes just the date. `dateFormatDisplay` works on a list one cell at a time. An error cell keeps its `#CODE!`, and a blank cell stays blank. A non-finite serial shows `NaN`, the same as in a Frame's date column ([[D93]] oneTextReading). Text and logical cells pass through unchanged. With an FC docked, `dateFormatDisplay` does nothing, because the FC formats dates itself.
 - In a list shown as text, a missing cell prints `null` and an error cell its code. An inline output row shows at most three cells and then `…`, and a missing value shows `—`.
 - Without an FC, a `UnitCell` renders as "magnitude unit" in its authored display unit; with one, as the magnitude in the FC's unit when the two are commensurable.
 

@@ -6,7 +6,7 @@ tags: [spec, computation]
 
 # Spec: Script sandbox
 
-Serves [[C66]] scriptNode. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C66]] scriptNode. It covers what the system does and blocks, and the decision each behavior serves.
 
 The Script card runs a user-written JavaScript function on its inputs. Each parameter becomes an input socket, the arguments are converted to plain JavaScript, and the returned value is folded back onto the app's value model, where it types itself. The function runs inside a Web Worker, a separate background thread with the input and output routes removed, so a runaway or careless script cannot freeze the app or reach the network.
 
@@ -62,7 +62,7 @@ flowchart TD
 
 ## The arguments
 
-Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. The author's call ([[C66]] scriptNode).
+Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. This is [[C66]] scriptNode.
 
 `scriptArgToJs` hands the script the same shapes it can return, so what one script emits another can read:
 

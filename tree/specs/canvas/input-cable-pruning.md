@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Input-cable pruning
 
-Serves [[B11]] maximalMerge through [[type-propagation-on-in-place-socket-retype#Control-driven socket swaps]]: a node that changes its own sockets updates what is wired to them. The prune is one loop, declared once ([[engineering#One declaration per fact]]). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B11]] maximalMerge through [[type-propagation-on-in-place-socket-retype#Control-driven socket swaps]]: a node that changes its own sockets updates what is wired to them. The prune is one loop, declared once ([[engineering#One declaration per fact]]). It covers what the system does and blocks, and the decision each behavior serves.
 
 Many nodes change their own sockets: a mode or op switch hides some inputs, a variadic row is deleted, a formula variable or a side socket disappears. Whenever input sockets are about to go away, the cables wired into them are removed first, through one helper. This spec says what that helper does and when code may bypass it.
 
@@ -14,7 +14,7 @@ Many nodes change their own sockets: a mode or op switch hides some inputs, a va
 
 `dropInputCables(nodeId, gone)` in `components/cablePrune.ts` removes every cable wired into the given input sockets of one node.
 
-- `gone` is either the set of departing socket keys, or a predicate over the input key. The predicate form covers the complement case, "every input the next mode does not show".
+- The `gone` argument tells `dropInputCables` which inputs to clear, in one of two ways: a list of socket keys, or a yes-or-no check it runs on each input. The check is simpler when a mode switch hides several inputs at once. It asks whether the new mode shows the input, and every input the new mode doesn't show loses its cables.
 - It works on the editor that owns the node (`getOwningEditor(nodeId)`), not the active one: a `data()`-time reconciler (Text, Computed Column, Report) can run for a main-canvas node while a drill-in is open, or for a drill-in node. A node inside a closed composite resolves too: `getOwningEditor` falls back to walking the composites' internal editors, at any depth.
 - It filters the matching cables into their own list first (`getConnections()` already returns a fresh array), then removes them one at a time, awaiting each `removeConnection`.
 - It is async. Callers await it before they change the sockets.

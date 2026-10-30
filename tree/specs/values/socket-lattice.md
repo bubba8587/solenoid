@@ -29,8 +29,7 @@ block-beta
     class h0,h1,h2,h3,h4,f1,f2,f3,f4,f5,f6,f7,f8,f9 head
 ```
 
-Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows,
-and through any chain of them:
+Within one family (number shown; string, date, complex and logical are the same), a value flows along the arrows, and through any chain of them:
 
 ```mermaid
 flowchart LR
@@ -128,8 +127,7 @@ flowchart LR
     class al,at strict
 ```
 
-Bold: the strict rungs, which keep their rank. What a wildcard input becomes when a cable lands on it
-(`adoptTypeForBase`):
+Bold: the strict rungs, which keep their rank. What a wildcard input becomes when a cable lands on it (`adoptTypeForBase`):
 
 ```mermaid
 flowchart TD

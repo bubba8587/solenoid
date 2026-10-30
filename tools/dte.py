@@ -273,7 +273,7 @@ class Node:
         self.title = str(data.get("title") or "")
         self.name = str(data.get("name") or _first_alias(data))   # Solenoid patch: aliases carries the name
         self.summary = summary_of(self.name, self.title)
-        self.status = str(data.get("status") or "")
+        self.status = str(data.get("status") or "active")   # local patch: status is written only when it isn't active
         self.made_by = str(data.get("made_by") or "ai")   # Solenoid patch: provenance is ratified_by + git
         self.by = str(data.get("by") or "")
         self.superseded_by = data.get("superseded_by") or None
@@ -1547,16 +1547,11 @@ def cmd_place(tree, args):
         "---",
         "id: %s" % new_id,
         "title: %s" % fm_str(item.title),
-        "status: active",
-        "parents: %s" % fm_ids(parents),
-        "supersedes: []",
-        "superseded_by:",
+        "parents: %s" % fm_ids(parents),   # local patch: no status, supersedes, superseded_by or confidence
         "conflicts_with: []",
         "date: %s" % (item.raw.get("date") or today),
         "ratified_by:",
     ]
-    if item.raw.get("confidence"):
-        fm.append("confidence: %s" % item.raw["confidence"])
     if item.name:
         fm.append("aliases: [%s]" % item.name)
     fm.append("---")
@@ -1678,8 +1673,7 @@ def cmd_retire(tree, args):
         t = read_text(new.path)
         nl = "\r\n" if "\r\n" in t else "\n"
         t = t.replace("\r\n", "\n")
-        if old_id not in new.supersedes:
-            t = set_field(t, "supersedes", fm_ids(new.supersedes + [old_id]))
+        # local patch: no supersedes field; the RETIRED ledger line records the successor
         carried = _section(node.body, "## Contest") if node.contested_by else ""
         if carried:   # dte:C17,C22 the contest that produced the successor travels with it, and settles it
             t = _insert_section(t, "## Contest",
@@ -1765,10 +1759,7 @@ def cmd_move(tree, args):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, "id", new_id)
-    text = set_field(text, "status", "active")
-    text = set_field(text, "parents", fm_ids(parents))
-    text = set_field(text, "supersedes", fm_ids([old_id]))
-    text = set_field(text, "superseded_by", "")
+    text = set_field(text, "parents", fm_ids(parents))   # local patch: the RETIRED ledger records the move
     text = set_field(text, "ratified_by", "")
     text = set_field(text, "authorized_by", args.authorized_by or "")  # the human authorised this file too
     body_note = "- %s moved from %s to ring %s as %s by %s%s.%s" % (
@@ -1946,14 +1937,14 @@ def cmd_new(tree, args):
         return 2
     new_id = next_id(tree, ring)
     fields = [
-        ("id", new_id), ("title", fm_str(args.title)), ("status", args.status), ("parents", parents),
-        ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
+        ("id", new_id), ("title", fm_str(args.title)), ("parents", parents),   # local patch: status only when proposed
+        ("conflicts_with", []),
         ("date", datetime.date.today().isoformat()), ("ratified_by", ""),
     ]
     if args.authorized_by:
         fields.append(("authorized_by", args.authorized_by))
-    if args.confidence:
-        fields.append(("confidence", args.confidence))
+    if args.status != "active":
+        fields.insert(2, ("status", args.status))
     if args.name:
         if not NAME_RE.match(args.name):
             print("a name is a camelCase identifier like shareImpl")
@@ -2090,7 +2081,7 @@ def cmd_import(tree, args):
         if data.get("name"):
             fields.append(("name", str(data["name"])))
         fields += [("title", fm_str(str(data["title"]))), ("status", str(data.get("status") or "active")),
-                   ("parents", parents), ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
+                   ("parents", parents), ("conflicts_with", []),
                    ("made_by", str(data.get("made_by") or "ai")), ("by", str(data.get("by") or args.by)),
                    ("date", str(data.get("date") or today)), ("ratified_by", str(data.get("ratified_by") or ""))]
         for f in ("authorized_by", "contested_by", "confidence", "tags", "cssclasses"):
@@ -2575,7 +2566,7 @@ def cmd_reparent(tree, args):
     return 0
 
 
-SETTABLE = ("title", "name", "confidence")       # dte:B29 the fields with no invariant
+SETTABLE = ("title", "name")   # local patch: no confidence field       # dte:B29 the fields with no invariant
 CONFIDENCES = ("low", "medium", "high")
 FIELD_OWNER = {                            # where a refused field is actually changed
     "status": "retire, ratify, or move", "parents": "reparent", "supersedes": "retire --superseded-by",
@@ -2804,7 +2795,7 @@ def settle_contest(tree, node, args):
                 print("a name is a camelCase identifier like shareImpl")
                 return 2
         fields += [("title", fm_str(args.title)), ("status", "active"), ("parents", list(node.parents)),
-                   ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
+                   ("conflicts_with", []),
                    ("date", datetime.date.today().isoformat()),
                    ("ratified_by", ""), ("contested_by", args.by)]
         if args.name:

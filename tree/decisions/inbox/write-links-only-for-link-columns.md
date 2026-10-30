@@ -1,22 +1,21 @@
 ---
-title: "Write Properties turns text into a note link only in a column that holds links"
+title: "Write Properties stops turning text into note links on its own"
 proposed_ring: D
 ask: human
-date: 2026-09-24
+date: 2026-10-29
 parents:
   - "[[B1]]"
-  - "[[B17]]"
 ---
 ## Decision
 
-Write Properties writes a text cell as a note link only when its column is a link column (typed as links, or read from a property that held links). Today a project column holding "Kitchen remodel" turns into a link to the Kitchen remodel note on the next write, if that note exists. After, it stays plain text.
+Checked against the code on 2026-10-29. When Write Properties writes a text cell, it writes it as a link whenever the text exactly matches a note's name: a project column holding "Kitchen remodel" becomes `[[Kitchen remodel]]` if that note exists, and plain text if it doesn't. After, text is always written as typed. A link is written only when the cell already holds one, such as `[[Kitchen remodel]]`.
 
 ## Why
 
-Any text that matches a note's name becomes a link today, and you can't tell which values will match.
+Whether a value becomes a link depends on which notes happen to exist, so the same write can change a note differently from one day to the next.
 
 ## What ratifying means
 
-- **Lean:** Ratify. Turning plain text into a link changes the note in a way you didn't ask for.
-- **Ratify:** Plain text stays plain; only link columns write links.
-- **Reject:** Any value matching a note name keeps becoming a link on the next write.
+- **Lean:** Ratify. A write should put down what the cell says.
+- **Ratify:** Text stays text; type the brackets to write a link.
+- **Reject:** Text matching a note name keeps becoming a link.

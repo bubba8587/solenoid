@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Drawn cables
 
-Serves [[A1]] visualGraphCalculator. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator. It covers what the system does and blocks, and the decision each behavior serves.
 
 A drawn cable is a free-drawn annotation curve: a list of points the user places, rendered with the same three drawers (spline, diagonal, straight) as wired cables. Drawn cables live in a world-coordinate layer inside React Flow's viewport portal (through `ViewportLayer`, [[react-flow-surface-contract#World-coordinate overlays]]), the same pattern the standoffs use. The layer is gated on the main-graph hook `hooks.drawnCables` and has its own store (`drawnCables.ts`), its own exclusive selection and a docked panel (`DrawnCableInspector.tsx`). The geometry is pure (`drawnCablePath.ts`); the components are `DrawnCableLayer.tsx` and `DrawnCableCapture.tsx`. Tests: `drawnCablePath.test.ts`, `textForm.test.ts`, `flow/flowHistoryDigest.test.ts`.
 
@@ -37,7 +37,7 @@ mindmap
 
 ## Stacking
 
-The layer's svg sits above every card (`z-index: 6`). Standoffs sit under the graph at `z-index: -3`. This is the author's call.
+The layer's svg sits above every card (`z-index: 6`). Standoffs sit under the graph at `z-index: -3`.
 
 ## Geometry
 
@@ -83,7 +83,7 @@ The armed tool is modal. `DrawnCableCapture` is a screen-space sheet over the pa
 
 ## How to reach it
 
-Insert ▸ Draw a cable in the menu bar is the only entry point, and it also appears in the Command Palette from the same `menuModel.ts` entry. There is no toolbar button and no hotkey: the author ruled the tool too minor to spend chrome or a key on.
+Insert ▸ Draw a cable in the menu bar is the only entry point, and it also appears in the Command Palette from the same `menuModel.ts` entry. There is no toolbar button and no hotkey: the tool is too minor to spend chrome or a key on.
 
 ## Selection and editing
 

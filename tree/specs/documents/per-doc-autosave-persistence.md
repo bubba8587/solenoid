@@ -6,7 +6,7 @@ tags: [spec, documents]
 
 # Spec: Per-doc autosave persistence
 
-Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves.
 
 Autosave keeps the user's whole document library in the browser's `localStorage`. Every document has its own pair of slots, and one small index pair lists the documents. The code is `documentStore.ts` (storage and the public store), `documentStoreCore.ts` (pure library transforms) and `persistenceCore.ts` (slot choice); `documentStorePersist.test.ts` guards it.
 

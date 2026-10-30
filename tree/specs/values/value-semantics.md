@@ -6,7 +6,7 @@ tags: [spec, values]
 
 # Spec: Value semantics
 
-Serves [[C24]] arraySemantics (the value model), [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C24]] arraySemantics (the value model), [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves.
 
 This is the one reference for the value model's special kinds: what each means, what produces it, how it propagates in each kind of computation, and how it renders. The mechanics (the error guard, the per-cell contract, the bounded scan) are [[error-values]]; this file is the meaning. Every rule here is built. A rule that is decided but not yet built gets a `[decided <date>]` tag here and an item in the backlog.
 
@@ -57,7 +57,7 @@ Three distinctions carry the most weight:
 ## Where each kind comes from
 
 - **Errors are minted at the failure, with the specific code.** `#DIV/0!` at the divide; `#DOMAIN!` at a sqrt, log or pow domain failure; `#N/A` at not-found or no-match; `#SHAPE!` at coercion, and per row in a computed column (a list-shaped cell result, or an `@`-read of a mis-sized list, which is the deliberate loud failure for a bare column name in scalar position, [[C22]] rowFormulaRefs); `#CIRC!` at engine cache seeding; `#OVERFLOW!` at representation overflow. A raw NaN is never a failure signal.
-- **Fill's unwired pad is `null`** (first-class missing, the author's call), not the `#N/A` Excel's EXPAND uses for an omitted `pad_with`. Wire the NA node into Fill to get Excel's form (`fill`, the core's `nodes/list.rs`).
+- **Fill's unwired pad is `null`** (first-class missing), not the `#N/A` Excel's EXPAND uses for an omitted `pad_with`. Wire the NA node into Fill to get Excel's form (`fill`, the core's `nodes/list.rs`).
 - **The non-finite guard** (the core's `guard_finite`, `value_kinds.rs`; `guardFinite` in `valueKinds.ts` for the frame backend's aggregates) applies to every numeric op:
   - a `NaN` result is `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`, `∞/∞`, `0×∞`, or a NaN input entering the op);
   - a `±Infinity` result from all-finite inputs is `#OVERFLOW!`;
@@ -126,7 +126,7 @@ A value can also enter a computation through a reference resolved against a comp
 
 ### The one rule
 
-Most inputs are both a socket and a field on the card. Read them with `readInput` (`nodes/shared.ts`), or in a core card body `Call::read_input` (`nodes/mod.rs`):
+Most inputs are both a socket and a field on the card. Read them with `readInput` (`nodes/shared.ts`), or in a node's Rust body, `Call::read_input` (`nodes/mod.rs`):
 
 ```ts
 const n = readInput(inputs.count, this.literals.count ?? 1);
@@ -175,4 +175,4 @@ Reading the input correctly is half of it; the other half is what the node then 
 
 ## Open divergence
 
-A mode selector on a wired blank: `text.ts` and `date.ts` fall back to the literal, where the table above says propagate. It awaits the author's call.
+A mode selector on a wired blank: `text.ts` and `date.ts` fall back to the literal, where the table above says propagate. Which one is right is still open.

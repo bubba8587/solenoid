@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[A1]] visualGraphCalculator; the position lock is [[#Position-locked groups]] ([[C112]] noOverlapsEver), the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator; the position lock is [[#Position-locked groups]] ([[C112]] noOverlapsEver), the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves.
 
 Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level. Both live in `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`). The integration harness is `tidyArrangeGroups.test.ts`, which drives the real arrange and cleanup with real elkjs over a fake area that models the DOM contract.
 

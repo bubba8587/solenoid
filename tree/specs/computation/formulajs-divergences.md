@@ -103,4 +103,4 @@ UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LI
 
 ## Names
 
-The dotted names Formula.js hung off callable parents (`CEILING.MATH`, `NORM.S.DIST`, `T.TEST`) are ordinary names on the core. The editor's list and dispatch read one set (`engine_function_names`), so a name can't be offered and then fail. `formulaTier1.test.ts` and `formulaNodeParity.test.ts` dispatch the dotted names.
+The dotted names Formula.js hung off callable parents (`CEILING.MATH`, `NORM.S.DIST`, `T.TEST`) are ordinary names in Solenoid. The editor's list and dispatch read one set (`engine_function_names`), so a name can't be offered and then fail. `formulaTier1.test.ts` and `formulaNodeParity.test.ts` dispatch the dotted names.

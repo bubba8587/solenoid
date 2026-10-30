@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Add menu
 
-Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves.
 
 A function's **listing** is everything that makes it findable: its leaf, its op entry, its Excel names, its search words and its Inspector notes. It is declared apart from what the function computes (its call-table row and its card, [[node-classes#A new function across the app]]), so one function can be listed several ways, as the map below shows.
 
@@ -36,8 +36,7 @@ Leaves are hand-placed in the tree. Many are built by small helpers (`arithLeaf`
 
 The tree is curated to read well: general plotters stay at the top of Visuals while specialist figures cluster by what they show, and everyday table verbs stay at the top of Tables & Frames while column surgery, reshaping and comparison fold into subcategories.
 
-How a function can be grouped and reached, independent of how its card and formula are built
-([[node-classes#A new function across the app]]):
+How a function can be grouped and reached, independent of how its card and formula are built ([[node-classes#A new function across the app]]):
 
 ```mermaid
 mindmap
@@ -228,8 +227,8 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 - `nodeDisplayName` is the name every surface shows ([[D22]] oneNamePerCard). `catalogUtils` binds it into `nodeNamer` at load, so modules below it in the import graph reach it through `displayNameOf`.
 - The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
 - A leaf name is a title, so it carries no glyph prefix ("+ Add") and no hint ("ROUND to N digits"), and an "X / Y" row that creates only X is split into two leaves (`leafOps`).
-- A node's name never reads as a core Excel function that does something else ([[B16]] oneFormulaSurface): the node that keeps or drops columns is "Keep Columns" / "Drop Columns", never a bare "Columns", which reads as COLUMNS(). A label that is the node form of its like-named function (Sort and SORT) is fine. The check is a denylist: no Tables & Frames leaf despaces to ROWS, COLUMNS, ROW or COLUMN, the count functions that started the rule (the author, 2026-08-25).
-- The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). It is the one surface that does not show the node's name, and that is the author's call: the hint exists to name the family once, which the title and op picker don't, so nothing removes this exception. A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
+- A node's name never reads as a core Excel function that does something else ([[B16]] oneFormulaSurface): the node that keeps or drops columns is "Keep Columns" / "Drop Columns", never a bare "Columns", which reads as COLUMNS(). A label that is the node form of its like-named function (Sort and SORT) is fine. The check is a denylist: no Tables & Frames leaf despaces to ROWS, COLUMNS, ROW or COLUMN, the count functions that started the rule.
+- The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). It is the one surface that does not show the node's name, on purpose: the hint exists to name the family once, which the title and op picker don't, so nothing removes this exception. A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
 
 ### Where each name comes from
 
@@ -277,7 +276,7 @@ flowchart LR
     n --> sk["each socket: its label, its type's<br>plain name (SOCKET_TYPE_LABELS),<br>its socketDocs sentence, and an<br>example table (frameHints) on a<br>frame input"]
 ```
 
-The name surfaces exist so that a user who reads a name in one place finds the same name in the next; when each surface picked its own source they disagreed (one node read "Table Size" in the menu and "Table Info" on hover, and a search for ROWS returned a row that never said ROWS). The Excel-name search row puts the Excel name before an arrow, never after a colon, because "Card: Excel" reads as an op the card has (the author, 2026-09-26). Socket labels carry no parentheticals: the author, 2026-09-26, "let's remove “(1-based)” from all socket labels. that's the kind of syntax which belongs in the Inspector's socket descriptions, not the main node card."
+The name surfaces exist so that a user who reads a name in one place finds the same name in the next; when each surface picked its own source they disagreed (one node read "Table Size" in the menu and "Table Info" on hover, and a search for ROWS returned a row that never said ROWS). The Excel-name search row puts the Excel name before an arrow, never after a colon, because "Card: Excel" reads as an op the card has. Socket labels carry no parentheticals, like “(1-based)”: that kind of detail belongs in the Inspector's socket descriptions, not on the node's card.
 
 The class name, the `GraphNode` label it passes to `super()` and the registry type key are internal and never shown. `nodeTypeName` (`nodeNamer.ts`) is the last-resort fallback for a node with no catalog entry (a Placeholder, a composite boundary). Modules below `catalogUtils` in the import graph (`errorValue`, `groupCollapse`) reach the same derivation through `displayNameOf`, which `catalogUtils` binds at load. Nothing else reads `constructor.name` for display; the enforcing test lists the two sanctioned uses that are not for display.
 

@@ -31,17 +31,12 @@ mindmap
       ["noWidenInputs: takes a Cube as is"]
       ["passthrough(): which inputs it<br>hands on unchanged"]
     ["data(): outputs from inputs"]
-      ["shares its kernel with the<br>formula, on the core"]
+      ["shares its kernel with the<br>formula"]
 ```
 
 ## A new function across the app
 
-A function that is both a formula and a card is declared in three places that never import each other: its call-table
-row and body on the core, its card in TypeScript and Rust, and its **listing**, the catalog entries that make it findable
-([[add-menu]]). The `add-node` skill
-walks the steps; this is the map of what each one is and which check catches a gap. A function that is only a formula
-needs the first box and an Excel name in its listing; a card no formula expresses (a Frame verb, a figure, an input) needs
-the last two.
+A function that is both a formula and a card is declared in three places that never import each other: its call-table row and Rust function, its node class in TypeScript and Rust, and its **listing**, the catalog entries that make it findable ([[add-menu]]). The `add-node` skill walks the steps; this is the map of what each one is and which check catches a gap. A function that is only a formula needs the first box and an Excel name in its listing; a card no formula expresses (a Frame verb, a figure, an input) needs the last two.
 
 ```mermaid
 flowchart TB
@@ -52,10 +47,10 @@ flowchart TB
         roles["ARG_ROLES (inputRoles.ts):<br>the same roles, for cards"]
         units["its unit class (unit_dims.rs);<br>without one a dimensioned<br>argument is #UNIT!"]
     end
-    subgraph card["the card"]
+    subgraph card["the node"]
         cls["the class (src/graph/nodes/*.ts):<br>sockets from shared.ts, saved fields<br>in INIT_FIELD_ORDER, data() = nodeOnCore"]
         decl["its declarations: inputRoles (rolesFrom),<br>literals only if edited inline, unitAware,<br>passthrough(), noWidenInputs, coreFields"]
-        cbody["its body on the core:<br>nodes/family.rs, reached by nodes::run,<br>listed in DIRECT"]
+        cbody["its body in Rust:<br>nodes/family.rs, reached by nodes::run,<br>listed in DIRECT"]
         ui["kind.ts (its accent), a component,<br>components/index.ts, nodeRegistry.ts"]
     end
     subgraph find["its listing (add-menu.md)"]
@@ -82,7 +77,7 @@ Each declaration in the map, and the spec that governs it:
 | `ARG_ROLES` | each argument's role (data, setting, required, picks), the same as the call table's | [[input-roles#The declaration]] |
 | a unit class in `unit_dims.rs` | what dimension the answer carries | [[unit-flow#Formula dimensions (`unit_dims.rs`)]] |
 | the class, `INIT_FIELD_ORDER` | the card's sockets and saved fields, in the save's order | this spec, [[save-format]] |
-| `data() = nodeOnCore` | the card's body is on the core | [[node-bodies]] |
+| `data() = nodeOnCore` | the node's work is done in Rust | [[node-bodies]] |
 | `inputRoles`, literal maps, `unitAware`, `passthrough()`, `noWidenInputs` | which roles its sockets take, which values it types inline, whether it sees units, which inputs it hands on unchanged, whether a Cube arrives as is | this spec, [[inline-literal-maps]], [[unit-flow]], [[compute-pass]] |
 | `coreFields` | run-time fields the body reads that no save keeps (a resolved angle mode) | [[node-bodies#The call (`nodeOnCore.ts`, `engine_node`)]] |
 | `nodes::run`, `DIRECT` | the Rust body's dispatch by class name; the classes the engine calls in Rust with no JavaScript between | [[node-bodies]], [[graph-core#Direct calls (phase C)]] |
@@ -128,7 +123,7 @@ mindmap
 ## Formula registrations and op modules
 
 - **A formula function's contract lives in one place**, the core's call table (`data/call_traits.json`): its routing, its argument roles and its empty-slot readings; its arity is `FUNCTION_ARITY`. Routing is derived from that table, never from a hand-kept list ([[formula-language#The registry]], [[engineering#Lists of names are generated]]).
-- **An op module imports nothing from the graph model** ([[engineering#The formula path is graph-free]]). **A card and its formula share one kernel** ([[C17]] shareImpl): the card's body on the core calls the formula's function by name or its kernel.
+- **An op module imports nothing from the graph model** ([[engineering#The formula path is graph-free]]). **A card and its formula share one kernel** ([[C17]] shareImpl): the node calls the formula's function by name, or its kernel.
 - **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct). A merge follows these mechanics, each of which was once gotten wrong:
   - An op's formula name is `fx ?? despace(label)`. When the real name is an Excel spelling or the label went bare, declare `fx` (distribution `normal` → NORM.DIST). Never dodge a [[formula-language#Derived names are unique]] collision by reclassifying the family as an argument or inventing a parallel presentation flag: the selector that names the node is the `op` field, and the accent follows.
   - Selector-driven socket swaps prune departing keys through `dropInputCables` before `removeInput` ([[input-cable-pruning#The ordering rule]]), keep the per-op shape in a spec table (the `DIST_SPECS` pattern), and carry state across a switch by meaning (PDF↔PMF, inverse variants → Inverse).
@@ -191,6 +186,6 @@ flowchart LR
 A Frame input's label names the columns it expects, in order, and an input that takes any columns gets a plain noun; the label never states the shape, which the socket already shows ([[B14]] oneDesignSystem). The label is the only place a user can see what columns a node wants before wiring it up. This would reopen if a node could show its expected columns some other way before it is wired.
 
 - **The label grammar.** A label that names columns lists their roles in the expected order, each a Title-case word, joined with `" + "` (`From + To + Value`, `Label + Value`); a standard group of columns may shorten to its standard initialism (`Date + OHLC`), never spaced-out single letters. An input that expects no particular columns is one plain Title-case noun (`Frame`, `Data`, `Series`). A label never carries the shape in brackets (`(2-D)`, `(list)`), which the socket and the Socket Legend already show. A role-labeled input declares its example in the class's static `frameHints` map under the input key (`frameHint.ts`), and the hint's column names equal the label's roles in order.
-- **Every role-labeled input shows a matching example table** (`frameHint.test.ts`). Its columns are the label's columns, in order, with a standard initialism spelled out (`OHLC` is Open, High, Low, Close). Every example, whether or not its label lists columns, is 3 to 5 full rows whose cells match the declared column types. The example is the label worked through, so the two are one promise: a labeled input with no example leaves the user guessing, and an example whose columns drift from the label shows a confidently wrong table, which is worse than none. That is why a test enforces it rather than care (the author's call).
+- **Every role-labeled input shows a matching example table** (`frameHint.test.ts`). Its columns are the label's columns, in order, with a standard initialism spelled out (`OHLC` is Open, High, Low, Close). Every example, whether or not its label lists columns, is 3 to 5 full rows whose cells match the declared column types. The example is the label worked through, so the two are one promise: a labeled input with no example leaves the user guessing, and an example whose columns drift from the label shows a confidently wrong table, which is worse than none. That is why a test enforces it rather than care.
 
 *Exception:* the λ-table inputs in `nodes/tableLambda.ts` are named for the λ argument they bind (`Values (value)`, `value2 (optional)`), since that is what the user needs to know there; the exception is scoped to that file. **Removed by:** those nodes binding by column name instead.

@@ -1,3 +1,5 @@
+/* The collapsed pill's width (two 32px buttons and its 1px border), for chrome that steps out to its right. */
+:root { --nav-pill-w: 66px; }
 .solenoid-outline__open-pill {
   position: absolute;
   top: calc(var(--chrome-top, 66px) + 14px);

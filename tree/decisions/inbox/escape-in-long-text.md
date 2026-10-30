@@ -1,5 +1,5 @@
 ---
-title: "Pressing Escape in a Note or Report body keeps what you typed"
+title: Pressing Escape in a Note or Report body keeps what you typed
 proposed_ring: E
 ask: human
 date: 2026-09-24

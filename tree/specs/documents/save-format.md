@@ -6,7 +6,7 @@ tags: [spec, documents]
 
 # Spec: Save format and load path
 
-Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves.
 
 A document has three representations: the live graph (the editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
 
@@ -17,7 +17,7 @@ A document has three representations: the live graph (the editor plus side store
 | `src/graph/persistence.ts` | `SavedGraph` types, `serializeGraph`, `loadGraph`, `rebuildGraph`, the autosave debounce |
 | `src/graph/persistenceCore.ts` | Pure helpers: `CURRENT_SAVE_VERSION`, `validateSavedGraph`, `deriveMissingNodeSockets`, slot choice |
 | `src/graph/textForm.ts`, `crates/solenoid-graph/src/text_form.rs` | `writeTextForm`, `readTextForm`, `parseNodeLine`: the core writes and reads the text (`text_form.rs`); the app names the nodes and passes the init field order. JSON is valid JSON as serde writes it, objects keeping the order their keys were written in, not JavaScript's spelling of it: a number keeps its digits and sign. Frozen in `fixtures/core/text-form.json.gz` (`coreTextForm.test.ts`, `tests/text_form.rs`) |
-| `src/graph/nodeInit.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste, save and a card body on the core) |
+| `src/graph/nodeInit.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste, save and `nodeOnCore`) |
 | `src/graph/graphValidate.ts` | The strict validator (`validateGraph`, `validateText`) |
 | `src/graph/documentStore.ts`, `documentStoreCore.ts` | The document library and its localStorage persistence |
 | `src/graph/fileSession.ts`, `fileBridge.ts` | Disk save and open (desktop dialogs, browser download and upload) |

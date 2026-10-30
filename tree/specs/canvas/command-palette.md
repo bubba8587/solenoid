@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Command Palette
 
-Serves [[C98]] paletteMirrorsMenubar, and in AI mode [[C55]] aiWholeDocRewrite. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C98]] paletteMirrorsMenubar, and in AI mode [[C55]] aiWholeDocRewrite. It covers what the system does and blocks, and the decision each behavior serves.
 
 The Command Palette is a searchable list of every action the app can take from its menus, plus the canvas and selection operations that have no menu home. It opens as a modal, or stays docked as a bar when the `commandPaletteAlwaysOn` setting is on (desktop only). The code is `CommandPalette.tsx`.
 
@@ -15,7 +15,7 @@ The Command Palette is a searchable list of every action the app can take from i
 - **Every enabled menubar item** (`buildMenus`), so a new menu item is a palette command automatically.
 - **Canvas operations with no menu home:** Isolate selection (I) and Expand or collapse groups (E), which the palette presses as synthetic keys (`fireMenuKey`) so the canvas's own keyboard handler runs them, with every gate it applies (a locked canvas refuses Tidy from the menu as it does from T). The key goes down on the document, where React Flow's Delete listens, bubbles on to the canvas keyboard on `window`, and is released a task later, since RF's key trackers would otherwise hold it pressed and a later Ctrl-click would stop multi-selecting.
 - **Selection layout:** the six aligns, whose labels name the end effect ("Align center (vertical)" runs `center-h` and stacks nodes in a column), the two distributes, and Collapse and Expand selection.
-- **Never settings:** they live in the Settings dialog (the author's call, 2026-10-04).
+- **Never settings:** they live in the Settings dialog.
 - **Never node types:** the Add menu is the one place to browse the catalog.
 
 ## Searching and running

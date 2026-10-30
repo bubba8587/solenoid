@@ -4,27 +4,19 @@ tags: [spec, computation]
 ---
 <!-- [[D102]] graphOnCore, [[D99]] rustIsSpec -->
 
-# Spec: card bodies on the core
+# Spec: Nodes on the core
 
-Serves [[D102]] graphOnCore and [[D99]] rustIsSpec. A card's body, its class's `data()`, moves into the Rust core
-(`crates/solenoid-core/src/nodes/`) class by class, the way [[rust-core]] moves formulas: its answers frozen first,
-then the Rust held to them, then the TypeScript body deleted.
+Serves [[D102]] graphOnCore and [[D99]] rustIsSpec. A node's body, the work its class's `data()` does, moves into the Rust core (`crates/solenoid-core/src/nodes/`) class by class, the way [[rust-core]] moves formulas: its answers frozen first, then the Rust held to them, then the TypeScript body deleted.
 
 ## What moves and what stays
 
-- **Moves:** the body, everything `data()` computes from its inputs and saved fields, and the shared readers it leans
-  on (`readInput`, the broadcasters, the non-finite guard, unit arithmetic).
-- **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), and a
-  card whose body needs the browser (a file, the network, the vault) or the canvas.
-- **Around the body, not in it:** arrival coercion and the error guard, the graph core's input boundary
-  (`boundary_core.rs` for a direct card, `boundary.rs` for a JavaScript one, [[compute-pass]] § The per-node wrappers).
+- **Moves:** the body, everything `data()` computes from its inputs and saved fields, and the shared readers it leans on (`readInput`, the broadcasters, the non-finite guard, unit arithmetic).
+- **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), and a node whose body needs the browser (a file, the network, the vault) or the canvas.
+- **Around the body, not in it:** arrival coercion and the error guard, the graph core's input boundary (`boundary_core.rs` for a direct card, `boundary.rs` for a JavaScript one, [[compute-pass]] § The per-node wrappers).
 
 ## The call (`nodeOnCore.ts`, `engine_node`)
 
-A ported class's `data()` is `return nodeOnCore(this, inputs)`. In an editor the engine doesn't call it: such a card is
-direct, and its body runs in Rust on the values already there, the call below kept in the core
-([[graph-core]] § Direct calls). `nodeOnCore` is what a shell around a body, a test driving `data()` and the recorder
-call. It sends:
+A ported class's `data()` is `return nodeOnCore(this, inputs)`. In an editor the engine doesn't call it: such a card is direct, and its body runs in Rust on the values already there, the call below kept in the core ([[graph-core]] § Direct calls). `nodeOnCore` is what a shell around a body, a test driving `data()` and the recorder call. It sends:
 
 | Field | What |
 |---|---|
@@ -34,10 +26,7 @@ call. It sends:
 | `inputs` | each wired input's values on the card wire (`nodeWire.ts`), in order |
 | `clock` | `engineClock()`, for a body that reads today |
 
-The reply is the outputs, or the error the body throws (thrown again for the error guard), beside `display`: the
-fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns.
-`cardOutputsOnCore` makes the same call and keeps only the outputs, so a card's shape hook can run its body over sample
-inputs without touching what the card shows.
+The reply is the outputs, or the error the body throws (thrown again for the error guard), beside `display`: the fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns. `cardOutputsOnCore` makes the same call and keeps only the outputs, so a card's shape hook can run its body over sample inputs without touching what the card shows.
 
 ```mermaid
 flowchart TD
@@ -50,31 +39,9 @@ flowchart TD
 ```
 
 
-**The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
-only cards hand each other, so a body holds a card value (`Cv`) where the formula language holds a value (`V`, which
-has no table, [[C15]] matricesInFormulas): a frame cell by cell with each column's unit, format and typed text
-(`Cv::Frame`), a cube, whose cells are card values so a table nests in one (`Cv::Cube`), a list holding a table
-(`Cv::Cells`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
-non-finite numbers, -0 and `undefined` are tagged (`Cv::Json`). A body reads a value socket with `Call::wired` and
-`read_input`, where a table is `#VALUE!` ("… takes a value or a list, not a table"), and a table or any socket with
-`wired_card` and `read_card`; a frame ref (a lazy verb's backend handle and plan of
-ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend runs it
-later; and a table's unit, a hidden field on the JS array
-(`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
-`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A LAMBDA crosses as its text: `coreValue`'s `{__lambda: {params, expr, captured, capturedValues, readValues,
-descriptions?}}`, its captures with their units (`capturedValues`, what a computed column and Frame Input read) beside
-the values its body reads (`readValues`, unit-blind); a bare function name crosses as `{__lambda: {eta}}`, and a
-closure a formula made, which has no text, can't cross. A body answers a λ with text as `{lambda: {…}}` in the same
-shape (`values::serialize_lambda`), which `nodeWire.ts` rebuilds callable (`wiredLambda`: `fn` compiles the text on
-first call and reads a capture naming a column from the row, [[C22]] rowFormulaRefs); a λ with no text answers
-`{lambda: true}` and reads back as nothing. A reply's values (an output, a list's items, a frame's and a
-cube's cells) cross bare where they can (a finite number other than -0, text, a logical), and a field the body shows that is one of its outputs crosses as that
-output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as
-where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush
-and collect by its ref. Uploading a frame to the backend for a handle is async I/O and stays in the card's TS before
+**The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what only cards hand each other, so a body holds a card value (`Cv`) where the formula language holds a value (`V`, which has no table, [[C15]] matricesInFormulas): a frame cell by cell with each column's unit, format and typed text (`Cv::Frame`), a cube, whose cells are card values so a table nests in one (`Cv::Cube`), a list holding a table (`Cv::Cells`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose non-finite numbers, -0 and `undefined` are tagged (`Cv::Json`). A body reads a value socket with `Call::wired` and `read_input`, where a table is `#VALUE!` ("… takes a value or a list, not a table"), and a table or any socket with `wired_card` and `read_card`; a frame ref (a lazy verb's backend handle and plan of ops, `{__frameRef, __plan}`) crosses the same way, since a body only extends the plan and the backend runs it later; and a table's unit, a hidden field on the JS array (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with `set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A LAMBDA crosses as its text: `coreValue`'s `{__lambda: {params, expr, captured, capturedValues, readValues, descriptions?}}`, its captures with their units (`capturedValues`, what a computed column and Frame Input read) beside the values its body reads (`readValues`, unit-blind); a bare function name crosses as `{__lambda: {eta}}`, and a closure a formula made, which has no text, can't cross. A body answers a λ with text as `{lambda: {…}}` in the same shape (`values::serialize_lambda`), which `nodeWire.ts` rebuilds callable (`wiredLambda`: `fn` compiles the text on first call and reads a capture naming a column from the row, [[C22]] rowFormulaRefs); a λ with no text answers `{lambda: true}` and reads back as nothing. A reply's values (an output, a list's items, a frame's and a cube's cells) cross bare where they can (a finite number other than -0, text, a logical), and a field the body shows that is one of its outputs crosses as that output's key, so it comes back the same object, as the TS body left it. An output that is one of the call's inputs as it came crosses as where it came from (`{input: [key, i]}`), so the card hands on that very object: the backend memoizes a plan's flush and collect by its ref. Uploading a frame to the backend for a handle is async I/O and stays in the card's TS before
 
-the call. **A big value crosses as buffers** (`nodes/columnar.rs`, `wireBinary` and `readBinary` in `nodeWire.ts`): a frame or a list of at least `BINARY_MIN_CELLS` (64) cells, every one a number, text, a logical, a blank or an error with no origin, crosses in the columnar hand-off (`binary.rs`) instead of as JSON: each column's schema entry, its typed text as a `raw` entry after it, and the frame's row total and sampling factor ride in one schema. Into `engine_node` it is staged first (`card_stage`) and the call names it `{__staged: id}`; a big answer in the reply is set aside while the reply is written and named `{staged: id}`, which `readNodeReply` takes (`card_unstage`); each call clears what the last left. Between a direct card and a JavaScript one the host's `toCore` hands the buffers over and `fromCoreBin` takes them back. A smaller or nested value, or an error carrying its origin, crosses as JSON. `cardWireBinary.test.ts` holds the two ways to the same answers. A value that can't cross (text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
-runs says.
+the call. **A big value crosses as buffers** (`nodes/columnar.rs`, `wireBinary` and `readBinary` in `nodeWire.ts`): a frame or a list of at least `BINARY_MIN_CELLS` (64) cells, every one a number, text, a logical, a blank or an error with no origin, crosses in the columnar hand-off (`binary.rs`) instead of as JSON: each column's schema entry, its typed text as a `raw` entry after it, and the frame's row total and sampling factor ride in one schema. Into `engine_node` it is staged first (`card_stage`) and the call names it `{__staged: id}`; a big answer in the reply is set aside while the reply is written and named `{staged: id}`, which `readNodeReply` takes (`card_unstage`); each call clears what the last left. Between a direct card and a JavaScript one the host's `toCore` hands the buffers over and `fromCoreBin` takes them back. A smaller or nested value, or an error carrying its origin, crosses as JSON. `cardWireBinary.test.ts` holds the two ways to the same answers. A value that can't cross (text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it runs says.
 
 ```mermaid
 flowchart LR
@@ -117,8 +84,7 @@ flowchart TD
 ```
 
 
-The core is required: the app's chrome renders while it loads, the surfaces that build a graph wait for it
-(`useCoreReady`, [[graph-core]] § The module), and every test file loads it (`tests/setup/graphEngine.ts`).
+The core is required: the app's chrome renders while it loads, the surfaces that build a graph wait for it (`useCoreReady`, [[graph-core]] § The module), and every test file loads it (`tests/setup/graphEngine.ts`).
 
 ## Freezing (`FREEZE_NODES`)
 
@@ -133,30 +99,15 @@ flowchart LR
 ```
 
 
-- `FREEZE_NODES=1 npx vitest run` records every body call the suite makes (`tests/setup/nodeRecorder.ts` wraps each
-  class's `data()`, or its `body()` where `data()` is an async shell around one, as a lazy verb's is: the shell
-  uploads a frame to the backend for a ref, the body plans over refs): the call as above, the outputs or the thrown error, the fields the body changed and what they held
-  before. `tests/graph/nodeFuzz.test.ts` adds 150 calls per catalog card on random values of its socket types, with
-  units on a unit-aware card's numbers. `FREEZE_NODES=ArithmeticNode,…` records only those classes.
-- `node scripts/freeze-nodes.mjs [Class …]` folds the calls into `fixtures/core/nodes/<Class>.json.gz`: deduplicated,
-  at most 2,500 a class, a call holding a value that can't cross counted in `.dev/node-freeze-report.json` and not
-  kept. A call whose answer differed between two identical calls (a random draw, the clock) is kept marked
-  `unstable` and not checked. A call whose body threw a JS exception freezes as its text (`thrownJs`) and is checked
-  as the error the error guard shows for it (`from_thrown`: `#SHAPE!` for a `ShapeError`, else `#ERROR!` "This node
-  failed to compute: …"), which is what the card answered. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
-- A class is frozen while its TypeScript body exists; once it is deleted, its fixture changes only on purpose, in the
-  commit that changes the behaviour.
+- `FREEZE_NODES=1 npx vitest run` records every body call the suite makes (`tests/setup/nodeRecorder.ts` wraps each class's `data()`, or its `body()` where `data()` is an async shell around one, as a lazy verb's is: the shell uploads a frame to the backend for a ref, the body plans over refs): the call as above, the outputs or the thrown error, the fields the body changed and what they held before. `tests/graph/nodeFuzz.test.ts` adds 150 calls per catalog card on random values of its socket types, with units on a unit-aware card's numbers. `FREEZE_NODES=ArithmeticNode,…` records only those classes.
+- `node scripts/freeze-nodes.mjs [Class …]` folds the calls into `fixtures/core/nodes/<Class>.json.gz`: deduplicated, at most 2,500 a class, a call holding a value that can't cross counted in `.dev/node-freeze-report.json` and not kept. A call whose answer differed between two identical calls (a random draw, the clock) is kept marked `unstable` and not checked. A call whose body threw a JS exception freezes as its text (`thrownJs`) and is checked as the error the error guard shows for it (`from_thrown`: `#SHAPE!` for a `ShapeError`, else `#ERROR!` "This node failed to compute: …"), which is what the card answered. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
+- A class is frozen while its TypeScript body exists; once it is deleted, its fixture changes only on purpose, in the commit that changes the behaviour.
 
 ## Checks
 
-- `cargo test --manifest-path crates/solenoid-core/Cargo.toml --test nodes` replays every frozen case of every class
-  with a body on the core, natively (`NODES=ArithmeticNode,…` narrows it). A field the body sets must equal the frozen
-  one, or what the card held before where the frozen call left it alone.
+- `cargo test --manifest-path crates/solenoid-core/Cargo.toml --test nodes` replays every frozen case of every class with a body on the core, natively (`NODES=ArithmeticNode,…` narrows it). A field the body sets must equal the frozen one, or what the card held before where the frozen call left it alone.
 - `tests/graph/coreNodes.test.ts` replays the same cases through the wasm module and the TS's reading of the reply.
-- A case whose answer comes from host data is held by both: the zone cards' cases, frozen through Node's `Intl`, are
-  replayed natively on jiff's bundled tzdb, so `tests/graph/timeZoneCards.test.ts` keeps to zones and instants on
-  which the two tzdb releases agree: a zone whose future rules releases keep revising is probed only through 2024, and
-  one a release rewrote (`EST5EDT` before 1967 in 2026e, Morocco and western Canada from 2026) stays out of them.
+- A case whose answer comes from host data is held by both: the zone cards' cases, frozen through Node's `Intl`, are replayed natively on jiff's bundled tzdb, so `tests/graph/timeZoneCards.test.ts` keeps to zones and instants on which the two tzdb releases agree: a zone whose future rules releases keep revising is probed only through 2024, and one a release rewrote (`EST5EDT` before 1967 in 2026e, Morocco and western Canada from 2026) stays out of them.
 - The whole vitest suite runs the ported cards on the core.
 
 ## What has moved

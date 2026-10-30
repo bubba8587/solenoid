@@ -1,21 +1,21 @@
 ---
-title: "A list output that can hold any kind of value can be wired into a table input"
+title: "A list output whose kind isn't known yet can be wired into a table input of a set kind"
 proposed_ring: C
 ask: human
-date: 2026-09-24
+date: 2026-10-29
 parents:
   - "[[C10]]"
 ---
 ## Decision
 
-A list output that may hold mixed values (numbers, text, dates) connects to a table input and is read as a one-column table. Today it can't be wired there, while the even looser output that may be a single value or a list can. After, both wire in.
+Checked against the code on 2026-10-29. A list output of no set kind (a node's list output before anything wired into the node has given it one) can be wired into a Frame input or a table input that takes any kind, but not into a table input of a set kind, such as a number table. Every other output of unknown kind can: a single value of any kind, and "a value or a list", both wire into a number table and are checked when the value arrives. A number list wires into a number table too. Ratifying lets the unknown-kind list wire in the same way. Once its node is wired up, the list takes a kind and wires normally either way.
 
 ## Why
 
-A review of how values connect found the difference. A test marks it as intended, but nothing written says why.
+It's the one unknown-kind output refused, and nothing written says why.
 
 ## What ratifying means
 
-- **Lean:** None firm. Connecting looks like the consistent choice unless you remember a reason for the difference.
-- **Ratify:** The list wires into table inputs as a one-column table.
-- **Reject:** Nothing changes on screen, and the connection rules gain a line giving the reason.
+- **Lean:** Ratify; it matches the other unknown-kind outputs.
+- **Ratify:** The cable connects, and a wrong kind shows as an error when a value arrives.
+- **Reject:** It stays refused, and the connection rules gain the reason.

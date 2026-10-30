@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Conduit lane faces
 
-Serves [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves.
 
 A Conduit is a rotatable block of lanes. Each lane is a pair of square sockets: input `in_i` on one face and output `out_i` on the opposite face, with the value passing straight through. This spec says where those faces and squares sit and which way cables leave them. The geometry lives in `ribbonCable.ts` (`conduitLaneOffset`, `conduitLanePoint`, `conduitFacePoint`) and `components/ConduitComponent.tsx`; the body box is covered in [[resizable-content-nodes]].
 
@@ -17,7 +17,7 @@ A Conduit is a rotatable block of lanes. Each lane is a pair of square sockets: 
 
 ## Faces
 
-There is **no flip rule**. Inputs sit on the block's local **−x** face and outputs on its **+x** face, and both simply rotate with the block. Any code that picks a face by the sign of the angle is dead and should be deleted.
+There is **no flip rule**. Inputs sit on the block's local **−x** face and outputs on its **+x** face, and both simply rotate with the block. Nothing picks a face by the sign of the angle.
 
 In the block's local frame, before rotation:
 
@@ -31,7 +31,7 @@ The point is then rotated by the angle about the pivot, the center of the body s
 
 `conduitLaneOffset` is the only lane geometry. The component paints each square on it, and `conduitLanePoint` puts each cable tip on it, so a tip can never drift off the square it plugs into.
 
-- A cable tip lands on the **center** of its lane's square, not on its rim (the author's ruling).
+- A cable tip lands on the **center** of its lane's square, not on its rim.
 - Tip positions are computed, never measured. React Flow's stored handle box is wrong for a Conduit twice over: it re-measures only on a node version bump, so an expand or collapse leaves it on the old geometry; and it is the bounding box of the rotated square, which is up to √2 larger off-axis.
 - A cable can arrive one frame before the component republishes its lane count, so the lane index is clamped to the last lane.
 - `conduitFacePoint` gives a ribbon trunk's attachment point: the pivot plus or minus the column offset along the angle, for the output or input face (see [[cable-rendering-knobs]]).

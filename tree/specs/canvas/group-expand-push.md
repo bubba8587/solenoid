@@ -6,7 +6,7 @@ tags: [spec, canvas]
 
 # Spec: Group Expand Push
 
-Serves [[C85]] groupPushDeterministic (the push and its records), [[A1]] visualGraphCalculator (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C85]] groupPushDeterministic (the push and its records), [[A1]] visualGraphCalculator (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves.
 
 A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back when the group collapses again. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
 
@@ -20,7 +20,7 @@ The push runs over plain boxes, with no editor or DOM, so the core (`computeExpa
 - A group moves with its members and with every FC docked to one of them; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
-The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the No-Overlap Pass on expand; whether it should run anyway is open with the author.
+The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the No-Overlap Pass on expand, which [[C112]] noOverlapsEver doesn't allow; the pass should run with the setting off too (`docs/backlog.md` § Canvas chrome).
 
 ## The push, per expanding group
 
@@ -74,7 +74,7 @@ flowchart LR
     user["the user's moves: a drag,<br>Align, paste"] --> stay["stay where they're put"]
 ```
 
-The user's own moves are not LayoutFx: a drag, Align and paste put cards where the user put them, and no No-Overlap Pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next LayoutFx's No-Overlap Pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
+The user's own moves are not LayoutFx: a drag puts cards where the user put them, and no No-Overlap Pass follows it ([[C112]] noOverlapsEver). A paste is an explicit exception under the same leaf: it lands at the pointer plus a small offset and may cover a card. Align and a card whose body chevron expands are LayoutFx and end with the No-Overlap Pass; neither does yet (`docs/backlog.md` § Leaves the code breaks). A card that grows with its live content (a Display showing a longer value, a list that gains rows) pushes nothing, since that can happen on any recalculation; it can cover a neighbor until the next LayoutFx's No-Overlap Pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box.
 
 ## Records and restore
 
