@@ -362,27 +362,12 @@ html.is-mobile.sol-dashboard-open .solenoid-menubar__center { visibility: hidden
     animation: dash-sweep var(--dash-in) var(--dash-ease) both;
   }
 
-  /* Table rows and cards cascade in, the cascade held inside the window. */
+  /* Table rows and cards cascade in, 20 ms apart, the cascade held inside the window. */
   .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr,
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > * { animation: dash-rise 560ms var(--dash-ease) both; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(2),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(2) { animation-delay: 20ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(3),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(3) { animation-delay: 40ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(4),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(4) { animation-delay: 60ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(5),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(5) { animation-delay: 80ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(6),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(6) { animation-delay: 100ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(7),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(7) { animation-delay: 120ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(8),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(8) { animation-delay: 140ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(9),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(9) { animation-delay: 160ms; }
-  .dashboard-overlay--intro .dashboard-box__value .solenoid-table-display tbody tr:nth-child(n + 10),
-  .dashboard-overlay--intro .dashboard-box__value .table-cards > :nth-child(n + 10) { animation-delay: 180ms; }
+  .dashboard-overlay--intro .dashboard-box__value .table-cards > * {
+    animation: dash-rise 560ms var(--dash-ease) both;
+    animation-delay: min(calc((sibling-index() - 1) * 20ms), 180ms);
+  }
 }
 /* Edit mode's snapshots are clones of the boxes' markup; they stay frozen rather than playing the motion again. */
 .dashboard-box--edit *,
