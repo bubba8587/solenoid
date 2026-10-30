@@ -1,0 +1,114 @@
+/* The phone's top-bar menus (the ⋮ sheet, the Tidy dropdown) at the Settings sheet's scale: 13px text, rows 30px tall,
+   every control in a row 28px, a heading's pills 24px. Each menu places itself; this is how it looks. */
+.sol-mpanel {
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-size: 13px;
+}
+/* The Navigator's accent ink: gold on the pale accent-soft fill of a light theme is too faint, so there it leans toward the text. */
+:root[data-theme="light"] .sol-mpanel { --mpanel-ink: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+.sol-mpanel button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sol-mpanel button:disabled { opacity: 0.45; cursor: default; }
+
+.sol-mpanel__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 6px 4px 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* A section's one-tap actions: DESIGN.md's pill button, riding in the heading as the Navigator's + rides beside its switch. */
+.sol-mpanel__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.sol-mpanel__pill:first-of-type { margin-left: auto; }
+.sol-mpanel__pill:active:not(:disabled) { background: var(--btn-hover); border-color: var(--btn-border-hover); }
+.sol-mpanel__pill--on { background: var(--accent-soft); border-color: var(--accent); color: var(--mpanel-ink, var(--accent)); }
+
+.sol-mpanel__row,
+.sol-mpanel__ctlrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+}
+.sol-mpanel__row {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+/* A finger leaves a sticky :hover on whatever lands under it after a tap, so only the press tints. */
+.sol-mpanel__row:active:not(:disabled) { background: var(--accent-soft); }
+.sol-mpanel__ctlrow { padding-right: 4px; }
+/* Its glyph centers under the last button of an icon pill above it. */
+.sol-mpanel__rowicon { display: flex; padding-right: 8px; color: var(--text-muted); }
+
+/* A pill of icon buttons, the Cables row's shape picker beside it. */
+.sol-mpanel__icons {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.sol-mpanel__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text);
+}
+.sol-mpanel__icon:active:not(:disabled) { background: var(--btn-hover); }
+
+/* The Navigator's Files and Outline switch. */
+.sol-mpanel__seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.sol-mpanel__segbtn {
+  height: 22px;
+  padding: 0 9px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.sol-mpanel__segbtn--on { background: var(--accent-soft); color: var(--mpanel-ink, var(--accent)); font-weight: 600; }

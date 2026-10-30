@@ -6,6 +6,7 @@ import { SaveIcon } from "./components/SaveIcon";
 import { RefreshIcon } from "./components/RefreshIcon";
 import { RecalcGlyph } from "./components/RecalcButton";
 import { InfoIcon, SearchIcon, TriangleAlertIcon } from "./components/Icons";
+import "./phonePanel.css";
 import "./MobileMenuSheet.css";
 
 type Option = Exclude<MenuItem, { sep: true }>;
@@ -71,9 +72,9 @@ function groupsOf(items: MenuItem[]): Group[] {
 export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Option, keepOpen?: boolean) => void }) {
   const press = (it: Option) => run(it, it.checked !== undefined);
   const row = (it: Option) => (
-    <button key={it.label} type="button" className="sol-msheet__row" aria-pressed={it.checked} disabled={it.disabled} onClick={() => press(it)}>
+    <button key={it.label} type="button" className="sol-mpanel__row" aria-pressed={it.checked} disabled={it.disabled} onClick={() => press(it)}>
       {it.label}
-      {it.icon && <span className="sol-msheet__rowicon">{ICONS[it.icon](15)}</span>}
+      {it.icon && <span className="sol-mpanel__rowicon">{ICONS[it.icon](15)}</span>}
     </button>
   );
 
@@ -92,11 +93,11 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
     }
     if (g.label && g.items.length > 1 && g.items.every((it) => it.checked !== undefined)) {
       return (
-        <div key={key} className="sol-msheet__ctlrow">
+        <div key={key} className="sol-mpanel__ctlrow">
           <span>{g.label}</span>
-          <div className="sol-msheet__seg" role="radiogroup" aria-label={g.label}>
+          <div className="sol-mpanel__seg" role="radiogroup" aria-label={g.label}>
             {g.items.map((it) => (
-              <button key={it.label} type="button" role="radio" aria-checked={!!it.checked} className={`sol-msheet__segbtn${it.checked ? " sol-msheet__segbtn--on" : ""}`} disabled={it.disabled} onClick={() => press(it)}>
+              <button key={it.label} type="button" role="radio" aria-checked={!!it.checked} className={`sol-mpanel__segbtn${it.checked ? " sol-mpanel__segbtn--on" : ""}`} disabled={it.disabled} onClick={() => press(it)}>
                 {it.short ?? it.label}
               </button>
             ))}
@@ -106,11 +107,11 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
     }
     if (g.label && g.items.every((it) => it.icon)) {
       return (
-        <div key={key} className="sol-msheet__ctlrow" role="group" aria-label={g.label}>
+        <div key={key} className="sol-mpanel__ctlrow" role="group" aria-label={g.label}>
           <span>{g.label}</span>
-          <div className="sol-msheet__icons">
+          <div className="sol-mpanel__icons">
             {g.items.map((it) => (
-              <button key={it.label} type="button" className="sol-msheet__icon" aria-label={it.label} title={it.label} disabled={it.disabled} onClick={() => press(it)}>
+              <button key={it.label} type="button" className="sol-mpanel__icon" aria-label={it.label} title={it.label} disabled={it.disabled} onClick={() => press(it)}>
                 {ICONS[it.icon!](16)}
               </button>
             ))}
@@ -122,17 +123,17 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
   };
 
   return (
-    <div className="sol-msheet">
+    <div className="sol-mpanel sol-msheet">
       {menus.map((menu) => (
         <section key={menu.label} className="sol-msheet__section">
-          <div className="sol-msheet__heading">
+          <div className="sol-mpanel__heading">
             {menu.label}
             {menu.items.map((it) =>
               "sep" in it || !it.inHeading || it.hideOnPhone ? null : (
                 <button
                   key={it.label}
                   type="button"
-                  className={`sol-msheet__pill${it.checked ? " sol-msheet__pill--on" : ""}`}
+                  className={`sol-mpanel__pill${it.checked ? " sol-mpanel__pill--on" : ""}`}
                   aria-label={it.label}
                   aria-pressed={it.checked}
                   disabled={it.disabled}
@@ -146,7 +147,7 @@ export function MobileMenuSheet({ menus, run }: { menus: Menu[]; run: (it: Optio
           </div>
           {/* The top bar's cable controls are hidden on touch, so View carries them here. */}
           {menu.label === "View" && (
-            <div className="sol-msheet__ctlrow">
+            <div className="sol-mpanel__ctlrow">
               <span>Cables</span>
               <CableShapeSelector />
             </div>

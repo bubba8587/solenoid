@@ -318,7 +318,7 @@ it lists the open drill-in level and folds composites open), `DocumentTitle` (th
 accent policy `minimapFillForNode` shared by both RF `<MiniMap>`s + the
 collapse-aware `collapsedAwareNodesRect` behind NavMenu's fit-all; the
 `.solenoid-minimap` window CSS both minimaps wear),
-`MobileControls` (+`mobileMenuStore`, `touchSelectStore`),
+`MobileControls` (+`mobileMenuStore`, `touchSelectStore`), `MobileMenuSheet` (the phone ⋮ menu; `phonePanel.css` is the look it shares with the phone Tidy dropdown),
 `WebDemoBanner`, `CommandPalette.tsx` (+ `palette.ts`, the app palette engine
 behind `PaletteEditor`/`paletteStore`), plus dialog/popup stores
 (`confirmStore`, `connectionDialogStore`, `formulaPopupStore`,
