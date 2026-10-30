@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 //! The socket lattice: which output type connects to which input, what an adoptive socket takes up from its cable,
 //! and each type's rank and element family. The app reads it as one set of tables (`lattice_tables`).
 

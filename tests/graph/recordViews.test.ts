@@ -119,7 +119,7 @@ describe("Record views read a cell as the Cards view does", () => {
 });
 
 describe("a board's number lanes", () => {
-  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[D94]] oneNumberDisplay)", async () => {
+  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[C118]] formatTravelsWithValue)", async () => {
     const f: FrameValue = { __frame: true, columns: [{ name: "Lane", type: "number", values: [1.23456, 1.23456, 2] }] };
     const rec = new RecordNode({ op: "board" });
     rec.stringLiterals.by = "Lane";

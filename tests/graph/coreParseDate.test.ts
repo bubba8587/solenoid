@@ -1,9 +1,9 @@
-// [[D93]] oneTextReading, [[D99]] rustIsSpec
+// [[C58]] tableInputRawText, [[D99]] rustIsSpec
 // Text a typed date input reads (Value Input's date entry, Frame and Table cells, vault properties): the core's
 // `engine_parse_date`, frozen from chrono-node's answers to `parseDate` when the absolute shapes moved to the core, with
 // one change on purpose: a date that reads as day/month or month/day stays `#AMBIGUOUS!` with a time after it, where
 // chrono read it month first. Relative phrases ("next friday") stay with chrono-node behind Settings ▸ Relative dates
-// ([[D54]]). FREEZE_CORE=parse-date re-records the core's answers after a deliberate change.
+// ([[C44]]). FREEZE_CORE=parse-date re-records the core's answers after a deliberate change.
 import { it, expect } from "vitest";
 import { frozen, sameJson } from "./coreFixtures";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";

@@ -1,4 +1,4 @@
-// [[D101]] financeCarriesMoney, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
+// [[C25]] firstClassUnits, [[D99]] rustIsSpec
 //! Which finance arguments are money, and the
 //! dimension a finance call answers.
 

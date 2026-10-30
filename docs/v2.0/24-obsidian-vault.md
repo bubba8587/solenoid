@@ -43,7 +43,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
 - **Decision Matrix** is the author's Bases-view plugin, math only (`../node-coverage.md`
   § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
-- **[[D54]] relativeDatesOptIn**: a stored date is a fixed calendar day; relative
+- **[[C44]] dateSerials**: a stored date is a fixed calendar day; relative
   phrases resolve only on a date Value Input under a setting, re-resolving each pass with an Alert
   when the day moves.
 - Constraints a vault feature meets: (1) the desktop fs allowlist
@@ -288,7 +288,7 @@ Run button's headless equivalent (`sinkRunButtonOnly` gains that clause). Makes 
 Obsidian-triggered recompute real without a listener (a `tasknotes-workflows` step or a Shell
 Commands hotkey), and lets `vaultCube.test.ts` run the real node over `fixtures/vault/`.
 
-**R. Relative dates, on top of `relativeDatesOptIn`.** Nothing here stores a relative date.
+**R. Relative dates, on top of the relative-date opt-in ([[C44]] dateSerials).** Nothing here stores a relative date.
 - **R1 One template grammar, Obsidian's:** `{{date}}`, `{{date:FORMAT}}` (moment tokens =
   Solenoid's `formatDateSerial` set), offsets `{{date+7d}}` / `{{date-1w}}` /
   `{{date+1m:YYYY-MM}}` (ours), `{{name}}`, `{{doc}}`; `{{today}}` is an alias of `{{date}}`.
@@ -362,7 +362,7 @@ step.
 `sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
 components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
-untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
+untouched, the relative-date opt-in untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
 `../architecture.md`'s desktop section).

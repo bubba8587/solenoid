@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore. The values only cards hand each other, on the wire `nodeWire.ts` speaks: a frame, a cube, and plain data (a chart,
+//! [[C130]] rustCore. The values only cards hand each other, on the wire `nodeWire.ts` speaks: a frame, a cube, and plain data (a chart,
 //! a document, an image) carried whole as JSON whose special numbers and errors are tagged.
 
 use crate::excel_functions::V;

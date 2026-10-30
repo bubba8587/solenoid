@@ -1,4 +1,4 @@
-// [[D94]] oneNumberDisplay
+// [[C118]] formatTravelsWithValue
 import { describe, it, expect, afterEach } from "vitest";
 import { formatScalar } from "../../src/graph/components/format";
 import { settingsStore } from "../../src/graph/settingsStore";

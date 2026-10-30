@@ -610,7 +610,7 @@ function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
 
-/** The amount in the To currency, #UNIT! when it carries another currency than From ([[D47]] noMixCurrencies), an error passed on ([[D35]] errorInErrorOut); null waits for the rate. */
+/** The amount in the To currency, #UNIT! when it carries another currency than From ([[C25]] firstClassUnits), an error passed on ([[C24]] arraySemantics); null waits for the rate. */
 function convertAmount(amount: unknown, from: string, to: string, rate: number | null): unknown {
   if (amount == null || amount === "") return null;
   if (isSolError(amount)) return amount;

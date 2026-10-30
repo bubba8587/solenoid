@@ -171,7 +171,7 @@ pub fn take_lens() -> Vec<u32> {
     STAGED.with(|s| std::mem::take(&mut s.borrow_mut().lens))
 }
 
-// ─── Display formatting ([[D94]] oneNumberDisplay): the one copy the app's value boxes, popups and chips call ─────
+// ─── Display formatting ([[C118]] formatTravelsWithValue): the one copy the app's value boxes, popups and chips call ─────
 
 thread_local! {
     static DISPLAY: std::cell::Cell<crate::card_helpers::NumberDisplay> =
@@ -223,7 +223,7 @@ pub fn card_image_src(text: &str) -> Option<String> {
     crate::card_helpers::record_image_src(text)
 }
 
-// ─── Typed text reading ([[D93]] oneTextReading): the one reader the input surfaces call ─────
+// ─── Typed text reading ([[C58]] tableInputRawText): the one reader the input surfaces call ─────
 
 /// Text as a number: plain decimal or scientific, or thousands grouped by commas; NaN otherwise.
 #[wasm_bindgen]

@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[D101]] financeCarriesMoney. The finance cards' bodies:
+//! [[C130]] rustCore, [[B11]] maximalMerge, [[C25]] firstClassUnits. The finance cards' bodies:
 //! depreciation, cash flows, securities, coupons, bonds, payments and returns. A card reads its money as its formula
 //! does, and a money answer carries that currency.
 

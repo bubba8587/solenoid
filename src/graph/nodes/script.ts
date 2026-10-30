@@ -1,4 +1,4 @@
-// [[C66]] scriptNode, [[D35]] errorInErrorOut
+// [[C66]] scriptNode, [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";

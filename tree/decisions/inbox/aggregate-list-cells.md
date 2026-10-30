@@ -5,7 +5,7 @@ ask: human
 date: 2026-10-29
 parents:
   - "[[C10]]"
-  - "[[D51]]"
+  - "[[C24]]"
   - "[[A5]]"
 ---
 ## Decision

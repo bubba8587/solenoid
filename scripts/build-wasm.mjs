@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D102]] graphOnCore
+// [[C130]] rustCore
 // Builds the one wasm module, the graph engine (crates/solenoid-graph) with the core it links (crates/solenoid-core),
 // into src/graph/engineWasm/: cargo, wasm-bindgen, then, for a module that ships, wasm-opt -O3 (`--opt`, `cargo install wasm-opt`),
 // which strips names and trims about a fifth.

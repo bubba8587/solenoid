@@ -1,4 +1,4 @@
-// [[D93]] oneTextReading, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
+// [[C58]] tableInputRawText, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState, type ReactNode } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../nodeClasses";
 import { processGraph } from "../process";

@@ -1,4 +1,4 @@
-// [[C130]], [[C24]], [[C23]]
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C23]] calcModes
 // The node-facing verb runners (runFrameUnary/Join/Append) + collect, on the core in
 // wasm. Each runner must produce EXACTLY what
 // the pure verb produces — that's what guarantees the migrated frame nodes behave
@@ -251,7 +251,7 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
   });
 });
 
-// A groupBy's ±∞ comes back classified: #OVERFLOW! from finite inputs, ∞ where an input was ∞ ([[D48]] classifyNonFinite).
+// A groupBy's ±∞ comes back classified: #OVERFLOW! from finite inputs, ∞ where an input was ∞ ([[C24]] arraySemantics).
 describe("the aggregate guard on a collected groupBy", () => {
   const big = (values: number[]): FrameValue => ({ __frame: true, columns: [
     { name: "s", type: "string", values: values.map(() => "a") }, { name: "n", type: "number", values }] });

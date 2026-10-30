@@ -3,7 +3,7 @@
 Should the canvas move from React Flow to a GPU-rendered Rust UI as part of a complete Rust port, and if
 so, how? This is a point-in-time report for the author's call, not a plan. Library versions are from
 crates.io and the projects' own READMEs and changelogs, read 2026-10-24. Nothing below is decided:
-[[D102]] graphOnCore still says the UI stays TypeScript, and any route here needs a leaf from the author
+[[C130]] rustCore still says the UI stays TypeScript, and any route here needs a leaf from the author
 first.
 
 ## The short answer

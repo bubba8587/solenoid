@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // The editor handle over the graph core: the signals its pipes hear and their order, a pipe's veto and throw, the
 // ports the core holds (tree/specs/computation/graph-core.md § The model).
 import { describe, it, expect } from "vitest";

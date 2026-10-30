@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 //! The walks through Conduits (`tree/specs/canvas/cable-rendering-knobs.md`): where an output's value really comes from,
 //! and the whole run a cable belongs to, from the producer through every Conduit it crosses to each consumer. A
 //! Conduit's lane `out_i` forwards `in_i`.

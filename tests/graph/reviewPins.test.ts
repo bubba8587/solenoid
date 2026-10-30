@@ -452,7 +452,7 @@ describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
   });
 });
 
-describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup ([[D76]] textMinMax)", () => {
+describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup ([[C24]] arraySemantics)", () => {
   it("PIVOTBY sorts rows by a text max in code-unit order, not as blanks", async () => {
     const { pivotFrame } = await import("./coreVerbs");
     const t = { __frame: true as const, columns: [

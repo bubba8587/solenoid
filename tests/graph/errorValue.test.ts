@@ -1,4 +1,4 @@
-// [[C24]], [[D35]], [[E9]]
+// [[C24]] arraySemantics, [[E9]]
 import { describe, it, expect } from "vitest";
 import { nodeDisplayName } from "../../src/graph/catalogUtils";
 import { solError, isSolError, type SolError } from "../../src/graph/errorValue";

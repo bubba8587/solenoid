@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[D102]] graphOnCore
+// [[A1]] visualGraphCalculator, [[C130]] rustCore
 // The cable readouts read each output as the last pass landed it in the core that ran it, and only `bump()` tells
 // subscribers (graph-core.md § Direct calls).
 import { describe, expect, it, vi } from "vitest";

@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // A node settled on the core (`settle.rs`) in a fresh editor: each fed input wired from a source whose output has the
 // type given (and, for a frame, the static shape given), so a test reads what the node's outputs resolve to.
 import { GraphEditor } from "../../src/graph/graphEditor";

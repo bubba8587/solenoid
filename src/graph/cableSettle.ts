@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[B11]] maximalMerge, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[B11]] maximalMerge, [[C118]] formatTravelsWithValue
 import type { GraphEditor } from "./graphEditor";
 import type { Schemes } from "./schemes";
 import type { View } from "./view";

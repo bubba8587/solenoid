@@ -125,7 +125,7 @@ export function readReply(r: unknown): { value: unknown } | null {
 
 // ─── Running on the core ─────────────────────────────────────────────────────────
 
-/** The moment a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): NOW as the TS reads it
+/** The moment a row formula reads, lowered once per calc ([[C23]] calcModes): NOW as the TS reads it
  *  (TODAY is its day). The core reads the local zone itself. */
 export interface EngineClock { now: number }
 

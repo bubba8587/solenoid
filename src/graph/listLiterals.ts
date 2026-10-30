@@ -1,4 +1,4 @@
-// [[D93]] oneTextReading, [[C24]] arraySemantics
+// [[C58]] tableInputRawText, [[C24]] arraySemantics
 // The typed list literals: a list input's text as a card stores it, and how its items read. Arrival coercion itself
 // is the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`, compute-pass.md § Arrival coercion).
 import type { SocketDataType } from "./sockets";
@@ -18,7 +18,7 @@ export function listLiteralText(items: readonly string[]): string {
 
 const LITERAL_READ: Partial<Record<SocketDataType, FrameColType>> = { numlist: "number", list: "number", datelist: "date", logicallist: "logical" };
 
-/** Each typed item reads as a Frame cell of the list's type ([[D93]] oneTextReading). */
+/** Each typed item reads as a Frame cell of the list's type ([[C58]] tableInputRawText). */
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   const parts = listLiteralItems(csv);
   const type = LITERAL_READ[dt];

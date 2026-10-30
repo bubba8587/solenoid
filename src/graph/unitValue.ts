@@ -1,4 +1,4 @@
-// [[C25]], [[D43]]
+// [[C25]] firstClassUnits
 
 import {
   type Dim, type Unit, DIMENSIONLESS,

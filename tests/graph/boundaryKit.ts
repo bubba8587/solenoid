@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // A node driven on its own through the graph core's input boundary, as an engine computes it.
 import { computeNode } from "../../src/graph/engineWasm/solenoid_graph.js";
 import type { GraphNode } from "../../src/graph/graphModel";

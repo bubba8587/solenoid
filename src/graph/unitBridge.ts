@@ -1,4 +1,4 @@
-// [[C25]], [[D43]]
+// [[C25]] firstClassUnits
 import { type Unit, dimEqual, fcUnitToUnit } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
 import { isUnitCell, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";

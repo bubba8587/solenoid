@@ -285,7 +285,7 @@ describe("extractInlineTags", () => {
   });
 });
 
-// [[D93]] oneTextReading
+// [[C58]] tableInputRawText
 describe("a typed property reads its text as a Frame cell of that type does", () => {
   it("text the type can't read is NaN, never a blank; a typed list's items read the same way", () => {
     const notes: VaultNote[] = [

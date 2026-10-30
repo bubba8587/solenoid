@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 // The Conduit walks' frozen answers (fixtures/core/conduit-walks.json.gz): over seeded random graphs of sources, Conduits
 // (chained, fanned out, looped) and sinks, where each output's value really comes from (`resolveTypedSource`) and the
 // whole run every cable belongs to (`conduitPath`).

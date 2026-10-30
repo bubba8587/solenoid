@@ -82,7 +82,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   async onload(): Promise<void> {
     setObsidianApp(this.app);
-    // Typed text (a date property, a frame cell) is read by the core ([[D93]] oneTextReading).
+    // Typed text (a date property, a frame cell) is read by the core ([[C58]] tableInputRawText).
     await loadWasmEngine();
     const stored = ((await this.loadData()) ?? {}) as PluginData;
     this.data = {

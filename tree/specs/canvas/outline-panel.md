@@ -26,7 +26,7 @@ The Outline is the Navigator's lower section: the list of every node on the open
 - **A composite's row folds open** to the cards inside it, at any depth, with the chevron in its dot's slot in its own color. The fold is per session and per panel, since a composite has no fold of its own on the canvas; folding open one that hasn't loaded its insides loads them. A group inside a closed composite lists its cards under it and doesn't fold from here.
 - **Opening a card inside a composite** (a double click, Enter, or a tap on a phone) drills level by level down to it, waiting for each level to mount, then selects and centers it as on the open level. Space and the selection clicks skip such rows: their cards aren't on the open level.
 - **A search reaches inside composites**: the flat list holds every card at every depth, each inside one followed by where it lives (Outer › Inner). The section's count stays the open level's.
-- **Refresh state** ([[D52]] compositesHoldUntilSolve): a held composite waiting on Refresh wears the card's hollow warning ring at its row's end; a composite with one waiting anywhere inside wears a smaller dot, so a folded row still says something inside is out of date. Only the Navigator shows the inside state; the outer card doesn't.
+- **Refresh state** ([[C23]] calcModes): a held composite waiting on Refresh wears the card's hollow warning ring at its row's end; a composite with one waiting anywhere inside wears a smaller dot, so a folded row still says something inside is out of date. Only the Navigator shows the inside state; the outer card doesn't.
 
 ```mermaid
 flowchart TD

@@ -1,4 +1,4 @@
-// [[D99]] rustIsSpec, [[C25]] firstClassUnits, [[D43]] unitByGranularity
+// [[D99]] rustIsSpec, [[C25]] firstClassUnits
 // Tagging a value with a Format Controller's unit, frozen (fixtures/core/fc-tag.json.gz): a number takes the unit, a
 // quantity of its dimension shows in it, a clash or a ratio is #UNIT!, a list tags each item, and a grid takes the unit
 // as its own, a held one rescaling. Inputs are built from unit ids so the case reads the same every run.

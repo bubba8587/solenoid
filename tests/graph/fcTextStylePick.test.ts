@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream
+// [[C118]] formatTravelsWithValue
 import { describe, it, expect } from "vitest";
 import { FormatControllerNode } from "../../src/graph/nodeClasses";
 

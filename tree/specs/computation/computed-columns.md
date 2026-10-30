@@ -2,7 +2,7 @@
 aliases: ["Computed columns"]
 tags: [spec, computation]
 ---
-<!-- [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas, [[C50]] lambdaBindsByName, [[D100]] computedColumnInfersUnit -->
+<!-- [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas, [[C50]] lambdaBindsByName, [[C25]] firstClassUnits -->
 
 # Spec: Computed columns
 
@@ -62,10 +62,10 @@ flowchart TD
 
 1. **Bind the variables.** For an inline formula, each bare variable binds to the whole column of that name, or else becomes a side variable. For a LAMBDA, each parameter binds to this row's cell of the column with the same name ([[C50]] lambdaBindsByName), in any order. A name that collides with one of the surface's own input names is a whole-column `#REF!` telling the user to rename the variable or the column.
 2. **Find the side names.** Every `@name` that matches no column is a side name too, so the surface can grow an input for it. The surface passes these as `row_refs`: the row reads its definition does not already own, a LAMBDA's captures excluded. A bound `@name` reads its column instead, and a binding to a missing column is the same whole-column `#REF!` the variable spelling gets. Side names are listed in first-appearance order (`sideVars`), and the surface grows and prunes its side inputs from that list.
-3. **Run each row.** The row count is the longest column. For each row, a LAMBDA parameter bound to an error cell makes that row's result the error, the first such parameter in binding order, without running the body ([[D35]] errorInErrorOut). A whole-column binding passes its errors into the formula, where the function's own rule applies, and a blank reaches the formula as blank, so ISBLANK and IF can see it. Otherwise the formula or LAMBDA body runs with this row's context available to `@` reads. A formula or LAMBDA that throws gives that row the thrown error value, or a `#VALUE!` carrying the message.
+3. **Run each row.** The row count is the longest column. For each row, a LAMBDA parameter bound to an error cell makes that row's result the error, the first such parameter in binding order, without running the body ([[C24]] arraySemantics). A whole-column binding passes its errors into the formula, where the function's own rule applies, and a blank reaches the formula as blank, so ISBLANK and IF can see it. Otherwise the formula or LAMBDA body runs with this row's context available to `@` reads. A formula or LAMBDA that throws gives that row the thrown error value, or a `#VALUE!` carrying the message.
 4. **Tag each result** (`tag_computed_cell`):
    - an error passes through;
-   - a number passes, except NaN, which becomes `#DOMAIN!` ([[D48]] classifyNonFinite); a surviving infinity is a real value, since the formula's operators have already classified overflow;
+   - a number passes, except NaN, which becomes `#DOMAIN!` ([[C24]] arraySemantics); a surviving infinity is a real value, since the formula's operators have already classified overflow;
    - text, TRUE/FALSE and blank pass, and an undefined result is blank;
    - a list is `#SHAPE!` (one value per row), except in a Cube, where a list or a grid is that row's cell and its items are tagged by these same rules (`tag_cube_cell` in `nodes/columns.rs`, [[C22]] rowFormulaRefs). A Frame row can't hold a list, so a Frame's computed column still answers one value per row. A one-item answer is one value, as a formula's answer is everywhere;
    - anything else is `#VALUE!` ("each row must be a number, text, TRUE/FALSE or blank").
@@ -102,7 +102,7 @@ Anything else stays a number. The Computed Column node can also pin the type ins
 
 ## Units
 
-A computed column, over a Frame or a Cube, takes the unit its formula works out from its columns' units and its wired values' units, and an authored unit (a `Name (unit)` name, or the Fx column's unit picker) wins; a clash is `#UNIT!` in every cell ([[D100]] computedColumnInfersUnit). The rule, its magnitudes and its readings are [[unit-flow#Computed columns]]. A LAMBDA is read through its body, whether it is the column's whole definition (a wired λ, or a Frame Input column that is only `λ1`), called by name (`λ1(@lo, @hi)`), or written inline: each parameter takes the unit of the column or argument it binds to.
+A computed column, over a Frame or a Cube, takes the unit its formula works out from its columns' units and its wired values' units, and an authored unit (a `Name (unit)` name, or the Fx column's unit picker) wins; a clash is `#UNIT!` in every cell ([[C25]] firstClassUnits). The rule, its magnitudes and its readings are [[unit-flow#Computed columns]]. A LAMBDA is read through its body, whether it is the column's whole definition (a wired λ, or a Frame Input column that is only `λ1`), called by name (`λ1(@lo, @hi)`), or written inline: each parameter takes the unit of the column or argument it binds to.
 
 A Cube carries its unit on its cells, so a Cube column's unit is the one its cells share and the result's unit is tagged onto each new cell ([[unit-flow#Computed columns]], Cubes). A LAMBDA's captured values count with their units.
 

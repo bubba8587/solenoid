@@ -28,7 +28,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm.
 - **Module size:** 4.8 MB raw / 1.7 MB gzipped (2026-10-23), with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
-  - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
+  - a lazy node's own column format never reached downstream (now a `formats` plan step, [[C118]] formatFlowsDownstream);
   - Split Column split a date's serial instead of its text;
   - VDB, CUMIPMT and CUMPRINC could hang, and the ODDF* period list was built in quadratic time;
   - HASH accepted "constructor" as an algorithm;
@@ -56,12 +56,12 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   computed-column units as on develop.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
-- **Card bodies are moving onto the core** ([[D102]] graphOnCore; mechanics [[node-bodies]]): a ported class's
+- **Card bodies are moving onto the core** ([[C130]] graphOnCore; mechanics [[node-bodies]]): a ported class's
   `data()` is one `engine_node` call, its TS body deleted. Every class's TS answers were frozen first
   (`FREEZE_NODES=1`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/`), frames, cubes and charts included (the
   card wire, `nodeWire.ts`). The core now loads in every test file and the app waits for it. The display-unit
   catalog runs in Rust too (`unit_catalog.rs`). Molar Mass answered a list with a JS TypeError; it says `#VALUE!`.
-- **The graph moved onto the core** ([[D102]] graphOnCore; mechanics [[graph-core]]): `rete` and `rete-engine` are
+- **The graph moved onto the core** ([[C130]] graphOnCore; mechanics [[graph-core]]): `rete` and `rete-engine` are
   gone. The model, the dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in
   Rust on Ruggine (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it); the
   app holds the model through `GraphEditor` (`graphEditor.ts`). The nodes stay JS objects the core calls back. About 2x rete-engine on a
@@ -76,7 +76,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Develop merged at `c7da52b`** (2026-10-24, [[rust-core]] § Tracking develop): every formula, card and verb fix
   it carried was mirrored already. Pele draws Mermaid in place of mermaid.js (about 4 MB of lazy chunks gone), and
   Describe's Dashboard ([[C129]] describeDashboard) runs its tiles in Describe's body on the core, `DescribeNode`
-  refrozen with them. Earlier mirrors: the finance functions' currency ([[D101]] financeCarriesMoney,
+  refrozen with them. Earlier mirrors: the finance functions' currency ([[C25]] financeCarriesMoney,
   `finance_units.rs`) and Pivot details ([[C128]]), whose layout gives each leaf row its source rows on the core.
 - **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
   unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
@@ -166,7 +166,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **`scripts/zoom-perf-probe.mjs`** traces pan and wheel cost per zoom by phase, counts layers mid-pan, and takes `--ko=` CSS knockouts.
 
 ### SESSION DIGEST (2026-10-08: the scalar input fold; 1.5.0 released; Windows laptop)
-- **Value Input is the only scalar input** ([[B11]] maximalMerge): Number, Text, Boolean and Date Input are gone, and the Add menu's Number / Text / Date / Boolean rows are Value Input's ops (`primaryRow` in `nodeOps.ts` gives the host's own op a row; the old names are keywords; a typed phrase that opens a search field ranks as a prefix, `catalogSearch.ts`). A date Value Input's output is `value` and takes relative dates under [[D54]] relativeDatesOptIn. Its Format section carries the FC's display picks (bold, italic, text size, alignment, markdown, monospace; grouping, negative style, scale) in its own annotation, so an FC that only formatted a scalar input merged into it in the seeds. Seeds hold Value Inputs collapsed with Format folded; the Unit Flow seed is out of the repo for now (`backlog.md`). Pinned by `seeds.test.ts`, `nodeOps.test.ts`, `catalogSearch.test.ts`.
+- **Value Input is the only scalar input** ([[B11]] maximalMerge): Number, Text, Boolean and Date Input are gone, and the Add menu's Number / Text / Date / Boolean rows are Value Input's ops (`primaryRow` in `nodeOps.ts` gives the host's own op a row; the old names are keywords; a typed phrase that opens a search field ranks as a prefix, `catalogSearch.ts`). A date Value Input's output is `value` and takes relative dates under [[C44]] relativeDatesOptIn. Its Format section carries the FC's display picks (bold, italic, text size, alignment, markdown, monospace; grouping, negative style, scale) in its own annotation, so an FC that only formatted a scalar input merged into it in the seeds. Seeds hold Value Inputs collapsed with Format folded; the Unit Flow seed is out of the repo for now (`backlog.md`). Pinned by `seeds.test.ts`, `nodeOps.test.ts`, `catalogSearch.test.ts`.
 
 - **1.5.0 is out** (`v1.5.0` on `main` `ff07890f`; notes `docs/release-notes-1.5.md`, on the GitHub Release): What's New is 1.5's eight slides (`HelpDialogs.tsx`), and Solenoid Properties 0.1.6 (snapshot from `4233b16`) passed the Obsidian review. Its lint delta over 0.1.5 is only four more thrown `solError`s, the standing kind; the vault path to the plugin's data lives app-only in `pluginDataPath.ts` so the bundle carries no `.obsidian`.
 - **Add menu**: Frame and Cube Input share a pair; a pair's halves know their side (`Half` in `AddNodeMenu.tsx`), so the middle gap matches the panel edge; a row striped by its types drops the `{ }` mark. **Value Input**: Format sits under the typed field, spaced by `.solenoid-valin__type` / `.solenoid-valin__format` (Value Input only).
@@ -198,7 +198,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Drags stay off the render path and the layer tree** ([[react-flow-surface-contract#Drag performance]]): FlowSurface's overlay layers are memoized (a standoff bar follows its own two cards through an RF-store selector); group cards and pills read their own socket's highlight; a dragged open group clips its paint and its members ride as layers (`sol-riding`); what moves floats above the cards mid-drag and the canvas chrome keeps its own layer, so nothing flips layers mid-drag (the phone's blinking cards and header). `scripts/drag-probe.mjs` counts what a drag renders. **Local File reads a plan file as the plan cube alone.**
 
 - **An empty argument slot reads as Excel's blank for its parameter, and shows it** ([[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, author 2026-10-05; input-roles § Empty slots / § Placeholders): one table in `emptySlots.ts` beside `ARG_ROLES`, pinned by an every-function test; the formula editor draws its own highlighted text (an editable box, not a textarea under a mirror) so the reading takes real width in the slot, read-only formulas and KaTeX draw it inline, and a card's empty setting field shows it as a muted placeholder. `IF(c,,x)` is now 0, as in Excel. **Polars engine switch** in Settings (desktop); a NaN logical uploads as blank with a notice. **The web node soft limit is 300.**
-- **Wrong inputs error instead of answering blank** ([[D70]] nullNotEnoughData): LOG2 of x ≤ 0, the distributions (formula and card) outside their domain, BETA with B ≤ A, GROWTH and LOGEST over a y ≤ 0, and the Depreciation card, which now answers its formula's errors. **Running keeps a list's unit**, as Reduce does. **Cancel in the table popup takes back formats picked on unsaved columns. UUID no longer saves its value**, so a recompute is never an undo step.
+- **Wrong inputs error instead of answering blank** ([[C24]] nullNotEnoughData): LOG2 of x ≤ 0, the distributions (formula and card) outside their domain, BETA with B ≤ A, GROWTH and LOGEST over a y ≤ 0, and the Depreciation card, which now answers its formula's errors. **Running keeps a list's unit**, as Reduce does. **Cancel in the table popup takes back formats picked on unsaved columns. UUID no longer saves its value**, so a recompute is never an undo step.
 - **Excel-checked answers** (the author's parity sheet, 2026-10-05; `excelChecked.test.ts` pins every row): TEXTJOIN's empty ignore_empty is TRUE and XLOOKUP's empty if_not_found is left out (`EXCEL_EMPTY_SLOT`); CUMIPMT/CUMPRINC past the loan are `#DOMAIN!` (card and formula share `cumulativePayment`); SLN with a zero life is `#DIV/0!`; coupon dates count back from maturity and keep a month end; LARGE/SMALL truncate a fractional k's ascending position; PERCENTRANK of one value is 1 in every form; TEXTSPLIT takes a row delimiter alone. **CI**: Rust tests run in `engine-test.yml` only on engine or corpus changes.
 - **A load adopts its graph without moving the time** (`adoptLoadedGraph`), so an imported file's first autosave only moves its time for a real edit. **The Gantt grid's first column truncates with "…"** when the pane is narrower than it. **The string editor scans with @babel/parser**, so regex literals, JSX text and nested templates no longer break the literal index (24 UI strings it used to miss).
 - **Author's calls, built (2026-10-05):** physical pack presets declare their input units (wired km, kΩ, cm convert; a wrong dimension is `#UNIT!`; `packs.test.ts` checks every id resolves); Cast and Series show defaults as ghosts only (`fieldPlaceholders`, `rolesOf`); TaskNotes' blank URL ghosts "Demo vault"; ∞ round-trips a note as `.inf`; Constant cards copy; World Clock ticks each minute; List Filter answers a mixed list per item; Currency converts a list; Append keeps agreed units and formats; IFERROR catches per cell in frames and cubes; Series remembers typed fields (`typedKeys`); the hero box is 16px.
@@ -257,7 +257,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **`scripts/zoom-perf-probe.mjs`** traces pan and wheel cost per zoom by phase, counts layers mid-pan, and takes `--ko=` CSS knockouts.
 
 ### SESSION DIGEST (2026-10-08: the scalar input fold; 1.5.0 released; Windows laptop)
-- **Value Input is the only scalar input** ([[B11]] maximalMerge): Number, Text, Boolean and Date Input are gone, and the Add menu's Number / Text / Date / Boolean rows are Value Input's ops (`primaryRow` in `nodeOps.ts` gives the host's own op a row; the old names are keywords; a typed phrase that opens a search field ranks as a prefix, `catalogSearch.ts`). A date Value Input's output is `value` and takes relative dates under [[D54]] relativeDatesOptIn. Its Format section carries the FC's display picks (bold, italic, text size, alignment, markdown, monospace; grouping, negative style, scale) in its own annotation, so an FC that only formatted a scalar input merged into it in the seeds. Seeds hold Value Inputs collapsed with Format folded; the Unit Flow seed is out of the repo for now (`backlog.md`). Pinned by `seeds.test.ts`, `nodeOps.test.ts`, `catalogSearch.test.ts`.
+- **Value Input is the only scalar input** ([[B11]] maximalMerge): Number, Text, Boolean and Date Input are gone, and the Add menu's Number / Text / Date / Boolean rows are Value Input's ops (`primaryRow` in `nodeOps.ts` gives the host's own op a row; the old names are keywords; a typed phrase that opens a search field ranks as a prefix, `catalogSearch.ts`). A date Value Input's output is `value` and takes relative dates under [[C44]] relativeDatesOptIn. Its Format section carries the FC's display picks (bold, italic, text size, alignment, markdown, monospace; grouping, negative style, scale) in its own annotation, so an FC that only formatted a scalar input merged into it in the seeds. Seeds hold Value Inputs collapsed with Format folded; the Unit Flow seed is out of the repo for now (`backlog.md`). Pinned by `seeds.test.ts`, `nodeOps.test.ts`, `catalogSearch.test.ts`.
 
 - **1.5.0 is out** (`v1.5.0` on `main` `ff07890f`; notes `docs/release-notes-1.5.md`, on the GitHub Release): What's New is 1.5's eight slides (`HelpDialogs.tsx`), and Solenoid Properties 0.1.6 (snapshot from `4233b16`) passed the Obsidian review. Its lint delta over 0.1.5 is only four more thrown `solError`s, the standing kind; the vault path to the plugin's data lives app-only in `pluginDataPath.ts` so the bundle carries no `.obsidian`.
 - **Add menu**: Frame and Cube Input share a pair; a pair's halves know their side (`Half` in `AddNodeMenu.tsx`), so the middle gap matches the panel edge; a row striped by its types drops the `{ }` mark. **Value Input**: Format sits under the typed field, spaced by `.solenoid-valin__type` / `.solenoid-valin__format` (Value Input only).
@@ -289,7 +289,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Drags stay off the render path and the layer tree** ([[react-flow-surface-contract#Drag performance]]): FlowSurface's overlay layers are memoized (a standoff bar follows its own two cards through an RF-store selector); group cards and pills read their own socket's highlight; a dragged open group clips its paint and its members ride as layers (`sol-riding`); what moves floats above the cards mid-drag and the canvas chrome keeps its own layer, so nothing flips layers mid-drag (the phone's blinking cards and header). `scripts/drag-probe.mjs` counts what a drag renders. **Local File reads a plan file as the plan cube alone.**
 
 - **An empty argument slot reads as Excel's blank for its parameter, and shows it** ([[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, author 2026-10-05; input-roles § Empty slots / § Placeholders): one table in `emptySlots.ts` beside `ARG_ROLES`, pinned by an every-function test; the formula editor draws its own highlighted text (an editable box, not a textarea under a mirror) so the reading takes real width in the slot, read-only formulas and KaTeX draw it inline, and a card's empty setting field shows it as a muted placeholder. `IF(c,,x)` is now 0, as in Excel. **Polars engine switch** in Settings (desktop); a NaN logical uploads as blank with a notice. **The web node soft limit is 300.**
-- **Wrong inputs error instead of answering blank** ([[D70]] nullNotEnoughData): LOG2 of x ≤ 0, the distributions (formula and card) outside their domain, BETA with B ≤ A, GROWTH and LOGEST over a y ≤ 0, and the Depreciation card, which now answers its formula's errors. **Running keeps a list's unit**, as Reduce does. **Cancel in the table popup takes back formats picked on unsaved columns. UUID no longer saves its value**, so a recompute is never an undo step.
+- **Wrong inputs error instead of answering blank** ([[C24]] nullNotEnoughData): LOG2 of x ≤ 0, the distributions (formula and card) outside their domain, BETA with B ≤ A, GROWTH and LOGEST over a y ≤ 0, and the Depreciation card, which now answers its formula's errors. **Running keeps a list's unit**, as Reduce does. **Cancel in the table popup takes back formats picked on unsaved columns. UUID no longer saves its value**, so a recompute is never an undo step.
 - **Excel-checked answers** (the author's parity sheet, 2026-10-05; `excelChecked.test.ts` pins every row): TEXTJOIN's empty ignore_empty is TRUE and XLOOKUP's empty if_not_found is left out (`EXCEL_EMPTY_SLOT`); CUMIPMT/CUMPRINC past the loan are `#DOMAIN!` (card and formula share `cumulativePayment`); SLN with a zero life is `#DIV/0!`; coupon dates count back from maturity and keep a month end; LARGE/SMALL truncate a fractional k's ascending position; PERCENTRANK of one value is 1 in every form; TEXTSPLIT takes a row delimiter alone. **CI**: Rust tests run in `engine-test.yml` only on engine or corpus changes.
 - **A load adopts its graph without moving the time** (`adoptLoadedGraph`), so an imported file's first autosave only moves its time for a real edit. **The Gantt grid's first column truncates with "…"** when the pane is narrower than it. **The string editor scans with @babel/parser**, so regex literals, JSX text and nested templates no longer break the literal index (24 UI strings it used to miss).
 - **Author's calls, built (2026-10-05):** physical pack presets declare their input units (wired km, kΩ, cm convert; a wrong dimension is `#UNIT!`; `packs.test.ts` checks every id resolves); Cast and Series show defaults as ghosts only (`fieldPlaceholders`, `rolesOf`); TaskNotes' blank URL ghosts "Demo vault"; ∞ round-trips a note as `.inf`; Constant cards copy; World Clock ticks each minute; List Filter answers a mixed list per item; Currency converts a list; Append keeps agreed units and formats; IFERROR catches per cell in frames and cubes; Series remembers typed fields (`typedKeys`); the hero box is 16px.
@@ -338,7 +338,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 ### SESSION DIGEST (2026-09-30c: 1.5 release notes, the cube formulas seed; cloud session)
 - `docs/release-notes-features.md` is the 1.5 selling list and carries the 1.4.1 and 1.4.2 headliners (author); Heatmap is not a headliner, Cubes take two slides, and the plugin release ships beside the app. The What's New deck is still 1.4.1's.
 - New seed **Cubes: records with their own lists and tables** (`cube-formulas.json`, Tables): a gradebook (per-student score lists: drop the two lowest, missing count, quiz slope, weighted grade, a check-in filter) and a portfolio (per-holding lot tables and price histories: cost basis, harvestable loss, max drawdown via SCAN), each ending in charts and totals rather than a Display of the cube (author).
-- **A range function's one-value arguments lift** (formula-language § Range functions, `RANGE_SCALAR_ARGS`): a list where LARGE's k, PERCENTILE's p, RANK's number or a criteria value goes runs the function per item, as Excel does. It never worked (v1.4.2 answers the same): range routing hands every list whole, and nothing said which arguments were ranges, so each implementation misread the list (LARGE blank, PERCENTILE a false `#OVERFLOW!`, COUNTIF and SUMIFS a silent 0). `orient` was not the gap; it covers only the whole-list natives. LARGE and SMALL with k below 1 are `#DOMAIN!` now, card and formula ([[D70]]).
+- **A range function's one-value arguments lift** (formula-language § Range functions, `RANGE_SCALAR_ARGS`): a list where LARGE's k, PERCENTILE's p, RANK's number or a criteria value goes runs the function per item, as Excel does. It never worked (v1.4.2 answers the same): range routing hands every list whole, and nothing said which arguments were ranges, so each implementation misread the list (LARGE blank, PERCENTILE a false `#OVERFLOW!`, COUNTIF and SUMIFS a silent 0). `orient` was not the gap; it covers only the whole-list natives. LARGE and SMALL with k below 1 are `#DOMAIN!` now, card and formula ([[C24]]).
 - **Narrow screens tightened** (author: the popup editor first, then the app), each checked in true mobile mode (the CDP user-agent override with `userAgentData.mobile`, since headless Chromium reports false) at 390 and 360 px: the table and Cube popups' grid is compact, not finger-sized (a header name as wide as its text through the input's `size`, no format chevron, 60% height), the popup title bar is 44 px, the Cards sort box shows its whole pick (the backlog item), the CSV view gets real height, the tools row fits under 380 px (30 px buttons), the Reference tabs scroll on one line with a plain close, and a long formula's typeset preview scrolls from its start instead of clipping both ends (desktop too).
 - **Table editors: Insert and Delete menus replace the footer's button row** (table-popup § The grid, § The Form view, § Editing a Cube Input; author): rows and columns insert and delete anywhere, on the selected rows or columns (row numbers, column headers, a focused header name, Shift to extend; the author removed a column-letter strip), else the focused cell's, else the last. A right click opens both at the pointer. Every per-column state follows a moved column (names, types, formulas, formats, footer stat, sort, live format keys, computed values); a Cube level's nested declarations follow their rows (`shiftNestedRows`). An open menu takes Escape before the popup (`escapeLayers.ts`), which also fixes the ⋯ menu closing the whole popup. Checked in the app through Playwright (Frame, Form, Table Input, Cube record and list levels, a Save round trip) and measured at 412 and 360 px under a coarse pointer. The demo-video scripts click the menus now; the videos need a re-film.
 - **Collapse sweep** (components § Collapsed; author: measure, don't eyeball): `scripts/collapse-sweep.mjs` mounts all 678 collapsible catalog cards, computes them, and measures every socket, the pill and React Flow's cable bounds expanded, collapsed and (`--wired`) with every input cabled; `--empty` lists cards that show nothing collapsed. Fixed: a pill hanging halfway off an emptied body (the 36 px floor), several cards drawing two pills or leaving sockets unpilled (Fx, SUMIFS, Filter, Join, Reconcile, Chart Builder, Composite outputs), and every card that went blank collapsed now shows its value, chip or a placeholder (Slider, Candlestick, Import XML, Vault Folder, Write to Obsidian, QR Code; connection cards through `sol-conn`). Found on the way: `__collapsed-only` boxes also showed on open chart cards (a specificity loss to `--chip`). Still flagged, on purpose until the author rules: the solver cards (TVM, Ohm's Law, Triangle Solver and kin) keep one row per variable collapsed instead of a pill, Conduit's sockets sit outside its edge, and some settings still show collapsed (Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code, Query's buttons).
@@ -378,11 +378,11 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - Chart exports size their root in canvas units (zoom taken out) and vault PNGs carry the legend (`nodeChartSvgString`).
 - Removed: the native pivot's unit tail (Pivot runs in JS; nothing reached it). A computed column builds each whole-column reading once per run.
 - Undo flushes a pending edit before it restores, keeps the last edit on documents past the byte budget, and restores the exact camera (`flowHistory.ts`, `View.setCamera`).
-- Volatile formula text (TODAY, NOW) folds the recalc generation into the Frame Input, Cube Input and Computed Column memos; Holidays and World Clock recompute at midnight ([[D46]] freezeVolatilePerCalc).
+- Volatile formula text (TODAY, NOW) folds the recalc generation into the Frame Input, Cube Input and Computed Column memos; Holidays and World Clock recompute at midnight ([[C23]] freezeVolatilePerCalc).
 - Lazy frame reads go through `readRefColumn` (sketch scaling and the aggregate guard), and a sink's Run in Sketch mode writes from a forced exact pass (`withExactPass`).
 - A superseded Local File load and a stale Pivot pass drop their result; Script calls run one at a time in the worker, each timed from its start.
 - Out-of-order odd-coupon dates, T-bills past a year and PRICEMAT after maturity are refused; XIRR's date check is one helper for node and formula; QUARTILE truncates; REGEXREPLACE counts a negative occurrence from the end (author).
-- Out-of-range finance arguments (frequency, basis, date order, T-bill term, amounts) are #DOMAIN! with a message naming the need, on node and formula alike; a missing date stays blank ([[D70]] nullNotEnoughData, the author's ruling).
+- Out-of-range finance arguments (frequency, basis, date order, T-bill term, amounts) are #DOMAIN! with a message naming the need, on node and formula alike; a missing date stays blank ([[C24]] nullNotEnoughData, the author's ruling).
 - DAYS360, YEARFRAC basis 0 and the coupon 30/360 follow Excel's end-of-February rules (unchecked in Excel: backlog).
 - NETWORKDAYS counts calendar days with its own kernel (`networkDays`, off Formula.js); PERCENTRANK skips blanks; the Z test reads a typed σ; Save Times shows the wall clock; a document's autosave time moves only when its graph changed.
 - Tests that assert a module's first state or mock a module run in the ISOLATED project (`noteMarkdown`, `sketchExport`, `localFileRace`, `flowHistory`).
@@ -405,13 +405,13 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   `SUM(prices)`, `ROWS(prices)` and `INDEX(prices, ROW(), 2)` work; a grid in some row keeps it `#SHAPE!`.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
-- **One number display** ([[D94]] oneNumberDisplay): `formatScalar` is the FC's General style (integer as is,
+- **One number display** ([[C118]] oneNumberDisplay): `formatScalar` is the FC's General style (integer as is,
   else the "Decimal places" setting, default 4, trimmed; extremes scientific) and every unformatted display uses it: value boxes, Frame
   and Table cards, the Table and Cube popups, complex parts, unit suffixes, Alert messages. `formatCx` (data) keeps
   4 decimals; the Constant and Physics Constant cards and chart ticks keep theirs. `listPreview` was dead and went.
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode
   it was handed and read the not-yet-updated toggle. It now takes the mode like the table path.
-- **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or
+- **One text reading** ([[C58]] oneTextReading): every place text becomes a typed value (List Input typed or
   wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`, Get Column's Number/Date read, the vault reader's typed properties) reads it with
   `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.
   `parseBoolText` (yes/no in list fields) is gone. List Input keeps its typed text (`cachedSource`) for the
@@ -490,7 +490,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   as no minimum, Clamp's tooltip matches its code, and the audit sheet gained the QUARTILE rows with
   `settingsAudit.test.ts` holding its formula table to `ARG_ROLES`. MAKEARRAY's required Rows / Cols wait on the author.
 - **Review plan blocks 2 and 3:** the one-row list convention checks out against [[D85]] columnsStayColumns (TAKE / DROP
-  tooltips now say it). Against [[D48]] classifyNonFinite, the MODEs, the Mode card and PRODUCT answer `#DOMAIN!` on a
+  tooltips now say it). Against [[C24]] classifyNonFinite, the MODEs, the Mode card and PRODUCT answer `#DOMAIN!` on a
   NaN (PRODUCT moved onto the shared kernel), and no repeated value is Excel's `#N/A`. A pivot group past a call's
   argument limit no longer throws (`pivotFrame`), nor do the chart renderers on long data.
 - **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
@@ -596,7 +596,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   (D83 imageTextCells (retired)).
 - **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
   Date, Boolean, Formula). A type overrides every kind in its column: scalars and list items read as Frame cells
-  (NaN when unreadable, [[D93]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
+  (NaN when unreadable, [[C58]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
   plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
   without Formula and saves the picks as a Frame's.
 - **Cube formulas read lists** (D81 cubeRowLists (retired)): in Cube Input's Fx columns and the Computed Column node over a
@@ -687,7 +687,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   (a tall column was N²: 40k rows took 1.9 s, now 54 ms), and MAP, BYCOL, HSTACK, CONCATLISTS, Set Cells and a script's
   table result read widths with `reduce`. The remaining `Math.max(...)` spreads run over bounded counts (canvas layout,
   chart axes, Frame from Lists, Template, Triangle). SUM still throws inside Formula.js past 125k values.
-- **One answer per aggregate** ([[D51]] oneAnswerOneDivergence): the statistics formulas keep a first-class ∞ and a NaN
+- **One answer per aggregate** ([[C24]] oneAnswerOneDivergence): the statistics formulas keep a first-class ∞ and a NaN
   cell, as the Aggregate card and GROUPBY do. `aggregate()` classifies its own result and answers `#DOMAIN!` for a NaN
   input on every op but the counts; the percentile, quartile, correlation, covariance and regression kernels classify
   theirs, and percentile interpolation returns a bracketing value both ends hold (PERCENTILE.INC of 1, 2, ∞ at 1 is ∞).
@@ -741,8 +741,8 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   charts, chrome, composites, Obsidian, node classes, packs), checked code against specs and nodes; well over
   100 bugs fixed with tests, specs corrected where the code was right. Full suite about 6500 tests, green
   under `--sequence.shuffle`; `dte validate`, `coverage --check` and `cargo test --lib` green.
-- **Author rulings, author present:** GROUPBY min/max over text is alphabetical ([[D76]] textMinMax); constants
-  always win in a LAMBDA and a parameter named `e`/`pi`/`tau`/`phi` is `#NAME?` ([[D77]] constantsAlwaysWin,
+- **Author rulings, author present:** GROUPBY min/max over text is alphabetical ([[C24]] textMinMax); constants
+  always win in a LAMBDA and a parameter named `e`/`pi`/`tau`/`phi` is `#NAME?` ([[C50]] constantsAlwaysWin,
   reversing two agent commits); the list Group By is Group Lists all the way down and prose calls the frame
   card GROUPBY; the Group card is Node Group; questions for the author go to `tree/decisions/inbox/`, never chat.
 - **Tree:** the author's outbox notes were processed: D4 rewritten plainly with E1 folded in, E2 into D13 and the
@@ -832,7 +832,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   and share / pct_change agree on blanks. A parity fuzz (every corpus case re-run with NaN, infinities, blanks
   and -0 added, prepended, or with every cell blank) found one more break, NaN order keys in the ranks, now
   fixed. The generator lives in the session scratchpad, not the repo.
-- **Formulas:** LAMBDA parameters shadow variables but never a constant (a parameter named `e` is refused, [[D77]] constantsAlwaysWin), a blank scalar argument gives a blank answer
+- **Formulas:** LAMBDA parameters shadow variables but never a constant (a parameter named `e` is refused, [[C50]] constantsAlwaysWin), a blank scalar argument gives a blank answer
   while an empty argument slot does not, arithmetic on text is #VALUE! with advice, malformed numbers are
   lexed as errors.
 - **Documents:** composites re-save byte-identical (saved ids), `seedStore.ts` and `SavedGraph.seedId` are
@@ -876,7 +876,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   socket-lattice, unit-flow and type-propagation paths are rewritten in the author's register: short, plain,
   Excel names where they help, no wiring narration.
 - **Facts corrected, not just reworded** (each verified against code): the help tab said a format resets at
-  the first transform (it carries through meaning-preserving ops, [[D41]]); Saving said examples replace the
+  the first transform (it carries through meaning-preserving ops, [[C118]]); Saving said examples replace the
   canvas (they open as new documents) and only newer formats are refused (older are too); six Excel notes
   (ISNA, ISERR, ISTEXT/ISNONTEXT, MINVERSE, CONCAT/CONCATENATE) and the CONCAT description misdescribed the
   node; XLOOKUP's advice named Build Frame for pairing two lists (Frame from Lists does); node-coverage put
@@ -955,7 +955,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
   gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
   Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar. The
-  rule is a node, [[D72]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
+  rule is a node, [[C58]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
 - The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
   which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
 - **The demo vault is BLOCK-STYLE YAML, what Obsidian writes.** Two reverts in one session had flipped
@@ -1163,9 +1163,9 @@ On `develop`, pushed (the author verified over HMR through the session).
   names list under the focused field. `FrameSourceColumn.lambda` is deleted (the column carries `expr` alone), the
   tokenizer and highlighter accept `λ` in a name, `calledNames` (excelFormula.ts) feeds the socket lookup.
 - **A computed column keeps a date a date** (author: the same idea as unit passthrough). `exprYieldsDate` (excelFormula.ts)
-  reads the functions' declared `returns` and the [[D41]] carry ops; both surfaces type through `computedColumnType`
+  reads the functions' declared `returns` and the [[C118]] carry ops; both surfaces type through `computedColumnType`
   (nodes/frame.ts), so `@start + 7` and `TODAY() + 7` are Date columns with no type pick. Computed Column's `addAs`
-  stays for what the formula can't show. Typed cells still refuse relative phrases ([[D54]] relativeDatesOptIn).
+  stays for what the formula can't show. Typed cells still refuse relative phrases ([[C44]] relativeDatesOptIn).
 - **Only the sort button sorts** (author): the header cell is no longer a click target in the table or cube popups;
   `SortButton` (columnSort.tsx) is drawn on every sortable column and `stopSortTrigger` is deleted.
 - **Editing a Date / Boolean cell** shows the calendar / checkbox on the right edge of the ONE cell being edited
@@ -1224,8 +1224,8 @@ On `develop`, pushed.
   ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
   lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C103]]
   foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
-  serialsNeverDate, [[D66]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, D69 convertBadPickIsNA (retired)
-  convertBadPickIsNA, [[D70]] nullNotEnoughData, D71 zoomLatticeDiscreteOnly (retired); the rest were spec content or
+  serialsNeverDate, [[C70]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, D69 convertBadPickIsNA (retired)
+  convertBadPickIsNA, [[C24]] nullNotEnoughData, D71 zoomLatticeDiscreteOnly (retired); the rest were spec content or
   consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that
   contradicted [[C50]] is fixed.
 - **The B ring grew its two missing parents** (author's ask): [[B16]] oneFormulaSurface under A5 (the parity families:
@@ -1725,7 +1725,7 @@ The author walked the "review with the author" backlog items one per turn; the L
   driver readouts null, until Solve/Refresh. Plain single-pass composites stay live. Author: "people's
   intuition expects the value to already be blank/unsolved so they can see it work when they hit
   Solve." Pinned in `composite.test.ts`.
-- **formatCarryPerOp** (Agent 3; the decision log, [[D41]] formatFlowsDownstream rewritten). The Lead's
+- **formatCarryPerOp** (Agent 3; the decision log, [[C118]] formatFlowsDownstream rewritten). The Lead's
   first proposal (exempt percent from ×/÷/^) was refuted by a 45-row fuzz: NPV of a 5% rate showed
   `123,456.00%`, COUNT inherited its list's style, integer `7 ÷ 2` showed `4`, `date − date` showed a
   1900 date, and the op class was never the axis. Ruling: a style survives only an op the node

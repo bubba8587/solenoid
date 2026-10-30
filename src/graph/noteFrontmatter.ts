@@ -53,7 +53,7 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
     return { value: (src[0] === "-" ? -1 : 1) * Number(src.replace(/^[-+]/, "")), kind: "number" };
   }
   if (typeof v === "boolean") return { value: v, kind: "logical" };
-  // .inf and -.inf are YAML's infinity and stay ∞ ([[D48]] classifyNonFinite); .nan reads blank.
+  // .inf and -.inf are YAML's infinity and stay ∞ ([[C24]] arraySemantics); .nan reads blank.
   if (typeof v === "number") return { value: Number.isNaN(v) ? null : v, kind: "number" };
   if (typeof v === "bigint") return { value: Number(v), kind: "number" };
   const s = String(v);

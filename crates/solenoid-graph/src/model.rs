@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 //! The graph model: a Ruggine editor whose nodes are classic nodes (ports and their socket types)
 //! beside the host's own node object, its cables, the signals it sends the host's pipes, and the
 //! dataflow engine attached to it (`tree/specs/computation/graph-core.md` § The model).

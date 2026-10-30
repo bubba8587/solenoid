@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D52]] compositesHoldUntilSolve
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[C23]] calcModes
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

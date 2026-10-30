@@ -114,7 +114,7 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[D102]] graphOnCore);
+// Nothing computes without the wasm module the graph, the cards' bodies and the table verbs run on ([[C130]] rustCore);
 // the chrome renders while it loads, and the surfaces that build a graph wait for it (`useCoreReady`).
 void startCore();
 

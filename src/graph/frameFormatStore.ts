@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream
+// [[C118]] formatTravelsWithValue
 
 import { createNotifier } from "./storeKit";
 import { settingsStore } from "./settingsStore";
@@ -33,7 +33,7 @@ function notify(...nodeIds: string[]): void {
   notifyAll();
 }
 
-// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[C118]] formatTravelsWithValue).
 let _display = displaySettingsKey();
 settingsStore.subscribe(() => {
   const d = displaySettingsKey();

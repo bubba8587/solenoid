@@ -1,4 +1,4 @@
-// [[D43]] unitByGranularity, [[D47]] noMixCurrencies
+// [[C25]] firstClassUnits
 
 import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
 import { displayMagnitudeOf, exactFcUnitId } from "./unitBridge";

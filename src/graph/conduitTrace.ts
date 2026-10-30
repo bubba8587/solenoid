@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 // The walks through Conduits run on the core (`conduit.rs`): where an output's value comes from, and the run a cable
 // belongs to.
 import type { GraphEditor } from "./graphEditor";

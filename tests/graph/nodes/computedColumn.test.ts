@@ -1,4 +1,4 @@
-// [[C22]], [[D43]]
+// [[C22]], [[C25]] firstClassUnits
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
@@ -206,7 +206,7 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
       columns: [{ name: "start", type: "date", values: [46000, 46010] }],
     };
     const auto = run(named("@start + 7", "due"), due) as FrameValue;
-    expect(getColumn(auto, "due")!.type).toBe("date"); // [[D41]]: a date + days is a date
+    expect(getColumn(auto, "due")!.type).toBe("date"); // [[C118]]: a date + days is a date
     // A serial the formula can't see through (a product) stays a number until declared.
     expect(getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.type).toBe("number");
     const typedNode = named("@start * 1 + 7", "due");
@@ -512,7 +512,7 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     expect(perRowParamClashes(["x"], "@x > QUARTILE([x], 3)")).toEqual([]);
   });
 
-  it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {
+  it("a formula that keeps a date a date types the column Date; a span stays a number ([[C118]])", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "start", type: "date", cells: ["2026-03-01", "2026-03-10"] },

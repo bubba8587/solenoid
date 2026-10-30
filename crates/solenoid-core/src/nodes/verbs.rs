@@ -538,7 +538,7 @@ fn values_answer(c: &mut Call, shown: V, values: V) -> Answer {
 }
 
 /// A column read as the card's Read as: text as it shows, logicals as Cast reads them, numbers and dates coerced
-/// (text read as a Frame cell of the type, [[D93]] oneTextReading), a number column keeping its unit.
+/// (text read as a Frame cell of the type, [[C58]] tableInputRawText), a number column keeping its unit.
 fn read_column(c: &mut Call, col: &Column) -> Answer {
     let read_as = c.field_str("readAs", "number").to_string();
     let out: Vec<V> = match read_as.as_str() {

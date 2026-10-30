@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity
+// [[C24]] arraySemantics, [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits
 import { useSyncExternalStore, type ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
@@ -54,7 +54,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   return String(cell);
 }
 
-/** A cell as a card shows it: a typed number in the General style ([[D94]] oneNumberDisplay), anything else as its token, which copies keep. */
+/** A cell as a card shows it: a typed number in the General style ([[C118]] formatTravelsWithValue), anything else as its token, which copies keep. */
 export function cubeCellShown(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
   if (type && cell !== null && typeof cell !== "object") {
     const f = formatFrameCell(type, cell, format);

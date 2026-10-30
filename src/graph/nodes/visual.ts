@@ -847,7 +847,7 @@ export class RecordNode extends GraphNode {
     else if (this.inputs.layout) this.removeInput("layout");
   }
 
-  /** The display settings a number nobody formatted shows by ([[D94]] oneNumberDisplay), which the Cards plan reads. */
+  /** The display settings a number nobody formatted shows by ([[C118]] formatTravelsWithValue), which the Cards plan reads. */
   static coreFields = ["numberDisplay"] as const;
   get numberDisplay(): { decimals: number; sciAbove: string } {
     return { decimals: displayDecimals(), sciAbove: String(settingsStore.get("sciAbove")) };

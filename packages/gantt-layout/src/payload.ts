@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C44]] dateSerials, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C44]] dateSerials, [[C70]] oneScheduleRule
 
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 

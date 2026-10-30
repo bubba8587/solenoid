@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec, [[C10]] socketLattice
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice
 // The Type Settle's frozen answers (fixtures/core/settle.json.gz): every seed graph, as saved, with every third cable
 // dropped and in reverse node order, as the facts the settle reads (`settleFacts`), the cables, and every socket's
 // type once it has settled.

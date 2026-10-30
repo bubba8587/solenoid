@@ -1,4 +1,4 @@
-// [[B3]] sameNodeEverywhere, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[C52]] visibleSelection, [[C118]] formatTravelsWithValue
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";

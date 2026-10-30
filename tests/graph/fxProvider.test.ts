@@ -1,4 +1,4 @@
-// [[D54]], [[C25]]
+// [[C44]] dateSerials, [[C25]] firstClassUnits
 import { describe, it, expect } from "vitest";
 import { fxLatestUrl, fxRangeUrl, FX_CURRENCIES } from "../../src/graph/fxProvider";
 import { applyFcUnit } from "../../src/graph/unitBridge";

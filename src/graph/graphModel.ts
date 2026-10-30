@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // What a node class is built from: a node with keyed input and output ports, each holding a socket, and the cable
 // between two of them. While a node is in an editor its port changes are made in the graph core too
 // (tree/specs/computation/graph-core.md § The model), so `inputs` and `outputs` change only through these methods.

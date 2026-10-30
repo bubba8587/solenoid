@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec, [[B12]] losslessSaves
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[B12]] losslessSaves
 // The text form's frozen answers (fixtures/core/text-form.json.gz): every seed graph written to text and read back,
 // and hand-written texts read, well-formed and not. Valid JSON, not JavaScript's spelling of it: a number keeps its
 // sign and digits, an object the order its keys were written in. Compared as text, since a save's key order is part of it; the Rust

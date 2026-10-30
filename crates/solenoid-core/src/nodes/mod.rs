@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[D99]] rustIsSpec: the cards' bodies, each class's `data()`, on the core. A card keeps its
+//! [[C130]] rustCore, [[D99]] rustIsSpec: the cards' bodies, each class's `data()`, on the core. A card keeps its
 //! TypeScript class (its sockets, its saved fields, its component); its body is one `engine_node` call that names the
 //! class and carries what a save holds, the socket types and the inputs as arrival coercion left them. The answer is
 //! the outputs, or the error the body threw, beside the fields the body sets on the card for its component.

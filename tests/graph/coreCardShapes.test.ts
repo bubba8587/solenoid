@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 // A card's own static output shape, where no verb makes it (fixtures/core/card-shapes.json.gz): each card that names
 // its output columns, in each of its modes, over a few input shapes, for every output.
 import { describe, expect, it } from "vitest";

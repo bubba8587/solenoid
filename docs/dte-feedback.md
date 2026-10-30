@@ -191,7 +191,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     record, or one line in a tree-wide log) so History stays about the decision.
 22. **`retire --superseded-by` rewrites the ID but keeps the old name.** Superseding D11 noAutoCross by
     C10 socketLattice turned the D11 citation (`[[`D11`]] noAutoCross`) into `[[C10]] noAutoCross`, a pair that names the wrong
-    leaf, and a line citing both became `[[C10]] socketLattice, [[C10]] noAutoCross`. Thirty files needed a
+    leaf, and a line citing both became `[[C10]] socketLattice`. Thirty files needed a
     follow-up script (rename the pair, drop the repeat), and dropping a repeat inside prose left empty
     brackets to clean by hand. The rewrite should write the winner's name and collapse a citation the
     line already carries.
@@ -246,7 +246,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     holds; two branches here each minted D-ring leaves the same day. Suggest: `new` fetches the remote's branch
     refs before allocating, or warns when the remote has branches the clone lacks.
 33. **`cite` adds a second header when the file already cites the node by name.** On a new file whose first line
-    was `// [[D101]] financeCarriesMoney, [[D47]] noMixCurrencies`, `cite <file> D101` inserted `// [[D101]]`
+    was `// [[C25]] firstClassUnits`, `cite <file> D101` inserted `// [[C25]]`
     above it. It should find `[[ID]]` anywhere in the existing header comment, with or without the name and beside
     other ids, and do nothing.
 34. **An agent's safety layer can refuse the protocol's own tree edits.** In a Claude Code session the

@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
+// [[C107]] obsidianPlugin, [[C58]] tableInputRawText
 import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
@@ -220,7 +220,7 @@ export function columnTypesOf(columns: FrameSourceColumn[]): ColumnTypes {
   return types;
 }
 
-/** A Text cell writes what was typed ([[D72]] pluginSaveWritesSourceText); any other reads numbers and booleans. */
+/** A Text cell writes what was typed ([[C58]] tableInputRawText); any other reads numbers and booleans. */
 export const scalarFromText = (text: string, asText = false): Scalar =>
   asText ? (text.trim() === "" ? null : text) : parseCellText(text) as Scalar;
 

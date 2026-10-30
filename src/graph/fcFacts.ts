@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C25]] firstClassUnits
+// [[C130]] rustCore, [[C25]] firstClassUnits
 // What the Format Controller reconcile reads from each node's JavaScript object (`fc.rs`): every socket's type now, whether
 // the node is a pure passthrough, a Convert's from-unit, and an FC's dock. The core holds the order and the cables.
 import type { GraphEditor } from "./graphEditor";

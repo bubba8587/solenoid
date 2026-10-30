@@ -209,7 +209,7 @@ describe("finance functions: formula matches node", () => {
     }).result);
   });
 
-  it("answers #DOMAIN!, not a number, when an argument is out of range ([[D70]] nullNotEnoughData)", () => {
+  it("answers #DOMAIN!, not a number, when an argument is out of range ([[C24]] arraySemantics)", () => {
     expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
     expect(ev("VDB(10000, 1000, 10, 5, 2)")).toMatchObject({ code: "#DOMAIN!", message: "VDB needs 0 ≤ start ≤ end ≤ life" });
   });

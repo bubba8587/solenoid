@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C10]] socketLattice
+// [[C130]] rustCore, [[C10]] socketLattice
 // What the Type Settle reads from each node's JavaScript object (graph-core.md § Phase D): each socket's current type
 // and kind, the node's passthroughs as data, its Conduit lanes, and whether its output carries only errors. The
 // core holds the node order and the cables.

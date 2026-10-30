@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D35]] errorInErrorOut, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
 //! The input boundary on core values, for a card the engine calls in Rust (`tree/specs/computation/graph-core.md` §
 //! Direct calls): the error guard's short-circuit, the unit boundary, each rung's coercion and the typed list literals
 //! on the way in, the origin tagging and the bounded error scan on the way out, and a throw read as the guard's

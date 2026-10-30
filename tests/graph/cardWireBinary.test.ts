@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C120]] linearWork
+// [[C130]] rustCore, [[C120]] linearWork
 // A big frame or list of flat cells crosses the card wire as buffers (`nodes/columnar.rs`, `wireBinary`), both into a
 // card and back, and reads exactly as the JSON wire reads it: the same card over the same cells answers the same
 // whichever way they crossed (node-bodies.md § The call).

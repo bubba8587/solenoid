@@ -36,6 +36,6 @@ On an editable Frame the order is type button → name → paintbrush and chevro
 
 ## List Input is not one of them
 
-This is [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. The value box's chip opens the ordinary list value popup view-only: no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items ([[D93]] oneTextReading). `tests/graph/listInputChip.test.ts` pins the card's form.
+This is [[C28]] literalsIffEditable. List Input's rows are typed on the card and are its only editor, and every row's values concatenate into one flat list. The value box's chip opens the ordinary list value popup view-only: no save callback, but it keeps the shell's resize grip, the Row / Column switcher and copy, and its Source view shows the typed items ([[C58]] tableInputRawText). `tests/graph/listInputChip.test.ts` pins the card's form.
 
 **Reopen if:** the popup gains a save callback for it.

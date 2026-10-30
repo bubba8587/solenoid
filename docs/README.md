@@ -161,7 +161,7 @@ results get retried and settled rulings relapse.
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `inputRoles.ts`, `readRole` (`nodes/shared.ts`) | `../tree/specs/values/input-roles.md`; [[D86]] blankRoles |
 | `fcReconcile.ts`, `fcFacts.ts`, `crates/solenoid-graph/src/fc.rs`, `settleFacts.ts`, `crates/solenoid-graph/src/settle.rs`, in-place socket retype | [[B11]] maximalMerge; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
-| `unitFlow.ts`, `annotationFacts.ts`, `crates/solenoid-graph/src/annotate.rs`, `unitBridge.ts`, `unitValue.ts`, `crates/solenoid-graph/src/boundary.rs` (the unit boundary), `crates/solenoid-core/src/unit_*.rs` | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
+| `unitFlow.ts`, `annotationFacts.ts`, `crates/solenoid-graph/src/annotate.rs`, `unitBridge.ts`, `unitValue.ts`, `crates/solenoid-graph/src/boundary.rs` (the unit boundary), `crates/solenoid-core/src/unit_*.rs` | `../tree/specs/values/unit-flow.md`; [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[B16]] oneFormulaSurface; `../tree/specs/documents/addressable-model.md` |
@@ -172,7 +172,7 @@ results get retried and settled rulings relapse.
 | `sockets.ts`, `crates/solenoid-graph/src/lattice.rs`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice |
 | `nodes/cube.ts` | [[C10]] socketLattice; `../tree/specs/values/socket-lattice.md` (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts`, `ReportOverlay.tsx`, `reportExport.ts`, `nodes/dashboard.ts`, `DashboardNode.tsx`, `DashboardOverlay.tsx`, `dashboardStore.ts` | `../tree/specs/documents/reports-and-notes.md`; [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
-| `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve |
+| `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[C23]] calcModes |
 | `nodes/visual.ts`, `nodes/chartOptions.ts`, `components/chartView.tsx`, `components/chartRender.tsx`, `chartCanvasViews.tsx`, `chartCards.tsx`, `ladderView.tsx`, `ladderLayout.ts`, `ladderNav.ts` | `../tree/specs/computation/chart-figures.md`; [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib |
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../tree/specs/computation/script-sandbox.md` |
 | `excelFunctions.ts`, `excelFormula.ts`, `formulaSignatures.ts`, `crates/solenoid-core/src/excel_formula.rs`, `eval.rs`, Expression/LAMBDA | `../tree/specs/computation/formula-language.md`; `../tree/specs/computation/formulajs-divergences.md`; the formula-surface nodes (`python3 tools/dte.py tree --under B16`) |
@@ -181,8 +181,8 @@ results get retried and settled rulings relapse.
 | Cube Input's typed columns (`cubeSourceColumns`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
 | `SPARKLINE` (`sparkline` in `crates/solenoid-core/src/fns_lists.rs`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `planImport.ts`, `planTypes.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*`, `crates/solenoid-schedule`, `plan_files.rs` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
-| `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[D102]] graphOnCore |
-| `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[D102]] graphOnCore |
+| `crates/solenoid-graph/`, `graphEditor.ts`, `graphModel.ts`, `dataflowEngine.ts` | `../tree/specs/computation/graph-core.md`; [[C130]] rustCore |
+| `crates/solenoid-core/src/nodes/`, `nodeOnCore.ts`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/` | `../tree/specs/computation/node-bodies.md`; [[C130]] rustCore |
 | `crates/solenoid-core/`, `engineWasm.ts`, `engineWasm/`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D99]] rustIsSpec |
 | `frameOps.ts`, `frameBackend.ts`, `binaryCells.ts`, `frame.ts`, `frameShape.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `crates/solenoid-core/src/frame_verbs.rs`, `frame_backend.rs`, `binary.rs`, `crates/solenoid-parquet` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `csv.ts` (and the core's `csv` module) | `../tree/specs/computation/frame-verbs.md` § Reading CSV text; [[C103]] untrustedContentSeams |
@@ -206,7 +206,7 @@ results get retried and settled rulings relapse.
 - **Choosing a socket type for a port, or "why won't this cable connect?":**
   `socket-reference.md` (the per-variant tables) + `../tree/specs/values/socket-lattice.md`.
 - **Touching the FC / formats / units:** `tree/specs/values/format-model.md` +
-  `../tree/specs/values/unit-flow.md` + [[D43]] unitByGranularity (units granularity).
+  `../tree/specs/values/unit-flow.md` + [[C25]] firstClassUnits (units granularity).
 - **Touching frames/the engine:** `glossary.md` + [[C130]] rustCore/arraySemantics + the
   frame-verb corpus (`fixtures/frame-verbs`) and the frozen verb pipelines.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.

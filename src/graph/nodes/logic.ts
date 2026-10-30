@@ -1,4 +1,4 @@
-// [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
+// [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import { rolesFrom } from "../inputRoles";

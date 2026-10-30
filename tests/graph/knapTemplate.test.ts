@@ -1,4 +1,4 @@
-// [[C68]], [[D54]]
+// [[C68]], [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import {
   hasKnapSyntax, extractKnapVariables, embedBareVariables, renderKnap, renderKnapPages, knapErrorText,

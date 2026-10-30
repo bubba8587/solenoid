@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl, [[D48]] classifyNonFinite, [[C44]] dateSerials, [[D70]] nullNotEnoughData
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl, [[C24]] arraySemantics, [[C44]] dateSerials
 //! Coupon schedules and day counts, bond prices and yields, odd coupons,
 //! VDB, the accrual and discount securities, the IRR / XIRR root finder, and the scalar return-series ops. A JS
 //! `Date` is its time value, NaN for an Invalid Date, so its getters and comparisons read as JS reads them.

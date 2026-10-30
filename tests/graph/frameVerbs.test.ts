@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D49]]
+// [[C130]] rustCore, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -113,7 +113,7 @@ describe("groupBy — error cells + the aggregate guard", () => {
   });
 });
 
-// [[D76]] textMinMax
+// [[C24]] arraySemantics
 describe("text min and max", () => {
   const t: FrameValue = {
     __frame: true,
@@ -488,12 +488,12 @@ describe("timesaver verbs", () => {
 
 });
 
-describe("[[D49]] textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {
+describe("[[C10]] socketLattice — a text predicate reads a TEXT column, or errors", () => {
   const grab = (fn: () => unknown) => {
     try { fn(); } catch (e) { return e as { code?: string; message?: string }; }
     return null;
   };
-  it("[[D49]] textPredicateNeedsText: a text predicate on a non-string column is #TYPE!", () => {
+  it("[[C10]] socketLattice: a text predicate on a non-string column is #TYPE!", () => {
     for (const op of ["contains", "startsWith", "endsWith"] as const) {
       const err = grab(() => filterRows(f, "qty", op, "0"));
       expect(isSolError(err)).toBe(true);
@@ -585,7 +585,7 @@ describe("sampleFrame (sketch mode's preview rows)", () => {
   });
 });
 
-describe("a logical column reads TRUE, FALSE or a number ([[D93]] oneTextReading)", () => {
+describe("a logical column reads TRUE, FALSE or a number ([[C58]] tableInputRawText)", () => {
   const f: FrameValue = { __frame: true, columns: [
     { name: "k", type: "string", values: ["a", "b", "c", "d"] },
     { name: "ok", type: "logical", values: [true, false, NaN, null] },

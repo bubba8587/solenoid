@@ -537,12 +537,12 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
     expect(mk([{ op: "contains", value: "berg" }]).data({ list: [cities] }).result).toEqual(["BERGEN"]);
   });
 
-  it("a text predicate on a number list is #TYPE! ([[D49]] textPredicateNeedsText)", () => {
+  it("a text predicate on a number list is #TYPE! ([[C10]] socketLattice)", () => {
     expect(() => mk([{ op: "contains", value: "2" }]).data({ list: [[1, 12, 3]] }))
       .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
   });
 
-  it("a text predicate on an empty or all-blank list keeps nothing and drops the blanks ([[D49]] textPredicateNeedsText)", () => {
+  it("a text predicate on an empty or all-blank list keeps nothing and drops the blanks ([[C10]] socketLattice)", () => {
     for (const op of ["contains", "startsWith", "endsWith"] as const) {
       expect(mk([{ op, value: "a" }]).data({ list: [[]] }).result).toEqual([]);
       const out = mk([{ op, value: "a" }]).data({ list: [[null, null]] });

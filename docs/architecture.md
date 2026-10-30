@@ -57,7 +57,7 @@ mindmap
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
 - **Model/compute spine**: the graph core (`crates/solenoid-graph`, Rust on Ruggine, linked
-  with the formula core into one wasm module, [[D102]] graphOnCore): a Ruggine editor holding the nodes, their ports
+  with the formula core into one wasm module, [[C130]] rustCore): a Ruggine editor holding the nodes, their ports
   and the cables, behind `GraphEditor` (`graphEditor.ts`), and the DataflowEngine
   (pull-based recompute, `dataflowEngine.ts`) on that same editor. `elkjs` is called
   directly for Tidy.
@@ -113,7 +113,7 @@ mindmap
 | `engineWasm.ts` (+`engineWasm/`, `coreReady.ts`) | The one wasm module (the graph core and the formula core it links): its load, `wasmInvokeSync`, and a trap's fresh instance (`../tree/specs/computation/graph-core.md` § Traps); `coreReady.ts` is the ready flag and its listeners |
 | `nodeOnCore.ts`, `nodeWire.ts`, `coreValues.ts` | A card's body on the core: its call (`coreHeader`, `coreInit`) and `nodeOnCore`; the card wire (`toCore`, `fromCore`); values across to the formula core and back (`../tree/specs/computation/node-bodies.md`) |
 | `nodeBoundary.ts` | What the graph core's input boundary (`crates/solenoid-graph/src/boundary.rs`: the error guard and arrival coercion every `data()` call runs through) asks the app for: lazy frame collects, frame and cube construction, unit display magnitudes, list literals, format stamps, names, the error sinks, the perf probe, each array's cell kinds. Mechanics: `../tree/specs/computation/compute-pass.md` § The per-node wrappers |
-| `volatileDates.ts` | The midnight rollover: a document holding a day-reading value (TODAY, NOW, the Today, Holidays and World Clock cards, a relative Date Input) recalculates at local midnight ([[D46]] freezeVolatilePerCalc) |
+| `volatileDates.ts` | The midnight rollover: a document holding a day-reading value (TODAY, NOW, the Today, Holidays and World Clock cards, a relative Date Input) recalculates at local midnight ([[C23]] calcModes) |
 | `presentSocketStore.ts` | The sockets each card shows right now, wired or not, so layout sees a card as drawn |
 | `listLiterals.ts` | The typed list literals: `TYPEABLE_LIST`, how a list input's text splits (`listLiteralItems`, `listLiteralText`) and reads (`parseListLiteral`) |
 | `planImport.ts` (+`planTypes.ts`) | A Project XML / GanttProject / XER file or a grammar CSV → the plan cube (Local File's `plan` socket), through the core's readers (`crates/solenoid-core/src/plan_files.rs` over `crates/solenoid-schedule`); `planTypes.ts` holds the plan JSON's shapes. The Schedule, Gantt and Earned Value bodies are `crates/solenoid-core/src/nodes/sched.rs` over the same crate; the Gantt payload's contract is `packages/gantt-layout/src/payload.ts` |
@@ -486,7 +486,7 @@ What each module is for; what runs where, and the frozen answers that hold it, i
 `../tree/specs/computation/rust-core.md` § What runs on the core, and the graph core's mechanics
 are `../tree/specs/computation/graph-core.md`.
 
-### `crates/solenoid-graph/src/` (the graph core, [[D102]] graphOnCore)
+### `crates/solenoid-graph/src/` (the graph core, [[C130]] rustCore)
 
 | Module | Role |
 |---|---|

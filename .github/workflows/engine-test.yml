@@ -107,5 +107,5 @@ jobs:
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings
           cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
 
-      - name: Graph core tests ([[D102]] graphOnCore)
+      - name: Graph core tests ([[C130]] rustCore)
         run: cargo test --manifest-path crates/solenoid-graph/Cargo.toml

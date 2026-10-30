@@ -2,11 +2,11 @@
 aliases: ["Input roles"]
 tags: [spec, values]
 ---
-<!-- [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[C17]] shareImpl -->
+<!-- [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank, [[C24]] arraySemantics, [[C17]] shareImpl -->
 
 # Spec: Input roles
 
-Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics and [[D36]] nullSkippedNotZero (data blanks), [[C24]] arraySemantics and [[D35]] errorInErrorOut (errors first), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics (data blanks), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns what a blank does once it reaches an input: the roles an input can have, the one declaration every function and card subscribes to, and how each surface reads it. How the blank gets there (unwired versus wired, `readInput`) is [[value-semantics]] "Reading an input"; what a blank then does inside a computation (totals skip it, element-wise math carries it) is the rest of [[value-semantics]]. The error codes are [[error-values]].
 
@@ -51,7 +51,7 @@ A role applies to the whole value and, for a list or a table, to each item:
 | blank | the declared blank | `#SYNTAX!` | left out (`#SYNTAX!` when required) |
 | a list with blank items | each blank item reads as the declared blank, in place | each blank item is `#SYNTAX!`, in place | blank items are removed; an empty result is left out |
 | a table with blank cells | each blank cell reads as the declared blank | each blank cell is `#SYNTAX!` | each blank cell is `#SYNTAX!` in place, and a blank row reads as its blank cells: one position answers one cell, so dropping it would break the table |
-| an error | passes on untouched ([[D35]] errorInErrorOut) | passes on | passes on |
+| an error | passes on untouched ([[C24]] arraySemantics) | passes on | passes on |
 
 So ROUND's digits `[1, blank]` round the second value to 0 places, INDEX's positions `[3, blank, 1]` pick two items, and `INDEX(x, P)` with a blank cell in the table `P` answers `#SYNTAX!` in that cell and values everywhere else.
 
@@ -142,7 +142,7 @@ The roles replace an older per-kind table in which most non-data inputs propagat
 | Input kind | Role | A wired blank today | Example |
 |---|---|---|---|
 | an operand, the value computed on | data | propagates, per cell | `UPPER(blank)` is blank |
-| a member of a reduction | data | skipped, as SUM skips nulls ([[D36]] nullSkippedNotZero) | `CONCAT(blank, "b")` is `"b"` |
+| a member of a reduction | data | skipped, as SUM skips nulls ([[C24]] arraySemantics) | `CONCAT(blank, "b")` is `"b"` |
 | a figure's datum: a chart's values, a KPI's number | data | renders an empty figure, never a `SolError` out a `chart` socket | Gauge, KPI |
 | a filter predicate, one per row | data | drops that row | Filter |
 | a distribution's parameter: a mean, a shape, a probability | data | propagates | `NORM.DIST(x, blank, 1, TRUE)` is blank |
@@ -159,7 +159,7 @@ The roles replace an older per-kind table in which most non-data inputs propagat
 
 Two dispositions keep their reason under the new roles:
 
-- A **reduction** that propagated would let one blank void a whole aggregate, which is neither Excel's range behavior nor SQL's. Its members are data, and data blanks in a reduction are skipped ([[D36]] nullSkippedNotZero).
+- A **reduction** that propagated would let one blank void a whole aggregate, which is neither Excel's range behavior nor SQL's. Its members are data, and data blanks in a reduction are skipped ([[C24]] arraySemantics).
 - A **control's** widget can't work without a bound: `±Infinity` breaks `<input type="range">`, the play loop's wrap-around and the Tornado sweep's bounds. Its setting default must be a working bound, and every consumer of the published bound (`effectiveMin`, a DOM attribute, a sweep in another file) must read the resolved value, not the raw input.
 
 **An empty string** is the literal most of these kinds ship with, and it already means something on almost every frame verb: "no column chosen, pass the Frame through". It is what an unwired slot on an untouched card reads. Read the raw value first and only then `.trim()` it: in `const raw = readInput(inputs.column, this.stringLiterals.column ?? "")`, `null` is the wired blank and `""` is the untouched card.

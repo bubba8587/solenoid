@@ -445,7 +445,7 @@ export async function assembleOnEngine(
   return wrapRef(await be.assemble(parts.map((p) => ({ ...p, ...metaOf(p.as) }))));
 }
 
-/** A lazy node's output with its own column format picks laid over it ([[D41]] formatFlowsDownstream). */
+/** A lazy node's output with its own column format picks laid over it ([[C118]] formatTravelsWithValue). */
 export function refWithFormats(ref: FrameRef, formats: Record<string, FormatAnnotation>): FrameRef {
   return extendRef(ref, { kind: "formats", formats });
 }

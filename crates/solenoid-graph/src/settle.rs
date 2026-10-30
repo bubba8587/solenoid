@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 //! The Type Settle: Conduit lane typing and adoption, run to a joint fixpoint over the graph
 //! (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Each node's facts are the app's
 //! (`settleFacts.ts`); the order and the cables are the graph's.

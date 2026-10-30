@@ -30,7 +30,7 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(isSolError(ev("XLOOKUP(7, x, y, , 0, )", { x, y: ["a", "b", "c"] }))).toBe(true);
   });
 
-  it("a blank VALUE into a scalar call is a blank answer; an empty slot is still the function's to read ([[D36]] nullSkippedNotZero)", () => {
+  it("a blank VALUE into a scalar call is a blank answer; an empty slot is still the function's to read ([[C24]] arraySemantics)", () => {
     expect(ev("ABS(x)", { x: null })).toBeNull();
     expect(ev("NOT(x)", { x: null })).toBeNull();
     expect(ev("ROUND(x, 1)", { x: null })).toBeNull();

@@ -40,7 +40,7 @@ flowchart LR
 ```
 
 - **Two or more unknowns:** the card shows "Wire in all but one variable".
-- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[D47]] noMixCurrencies). An evaluation failure gives `#VALUE!`.
+- **No unknowns:** the card checks whether the relation holds, and emits it on `holds`. Each side is evaluated and compared within a relative tolerance of 10⁻⁹ (`equals_within`), cell by cell for lists; a scalar broadcasts against a list and a ragged tail compares as null. With units, the check first compares the two sides' dimensions: different dimensions give `#UNIT!` "The two sides carry different units", and two different currencies give `#UNIT!` rather than holding by magnitude ([[C25]] firstClassUnits). An evaluation failure gives `#VALUE!`.
 - **One unknown:** the card solves for it. The unknown's name is `solvedFor`, which the card uses for its accent highlight. An error on any known passes through as the answer; a blank known makes the answer null.
 
 ## Solving for one unknown

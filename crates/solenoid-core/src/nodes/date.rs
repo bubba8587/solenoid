@@ -1,4 +1,4 @@
-//! [[C44]] dateSerials, [[B11]] maximalMerge, [[C17]] shareImpl, [[D41]] formatFlowsDownstream. The date
+//! [[C44]] dateSerials, [[B11]] maximalMerge, [[C17]] shareImpl, [[C118]] formatTravelsWithValue. The date
 //! card bodies: dates are serials, each card the formula of its name item by item; the zone cards read `zone.rs`.
 
 use super::kit::{broadcast_err, core_call, each, guard_finite, short_circuit};

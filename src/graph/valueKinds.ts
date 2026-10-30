@@ -1,4 +1,4 @@
-// [[C24]], [[D51]], [[D48]] classifyNonFinite (guardFinite), [[D36]] nullSkippedNotZero
+// [[C24]] arraySemantics
 import { solError, type SolError } from "./errorValue";
 import { coreReadDecimal, coreReadLogical } from "./engineWasm";
 
@@ -8,7 +8,7 @@ export function numberToLogical(n: number): boolean {
   return n !== 0;
 }
 
-/** A value read as a logical ([[D93]] oneTextReading, [[B17]] typedValueModel): a boolean as itself, a finite number or
+/** A value read as a logical ([[C58]] tableInputRawText, [[B17]] typedValueModel): a boolean as itself, a finite number or
  *  numeric text as true when non-zero, and other text only as `true` or `false` in any case. Blank is null; anything
  *  else is NaN: a cell shows it, and a computation turns it into `#TYPE!` (`logicalOrTypeError`). */
 export function coerceLogical(v: unknown): boolean | null | number {

@@ -1,4 +1,4 @@
-// [[B1]] obsidianBet, [[C44]], [[B11]]
+// [[B1]] obsidianBet, [[C44]] dateSerials, [[B11]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
@@ -220,7 +220,7 @@ describe("a hand-typed number spelling reads as Obsidian types it", () => {
   const val = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0]?.value;
   it("a signed dot-float is text; a signed or binary radix literal is a number", () => {
     expect(val("-.5")).toBe("-.5");
-    // YAML's infinity reads as ∞ ([[D48]] classifyNonFinite), so ∞ written to a note comes back.
+    // YAML's infinity reads as ∞ ([[C24]] arraySemantics), so ∞ written to a note comes back.
     expect(val("-.inf")).toBe(-Infinity);
     expect(val("+.inf")).toBe(Infinity);
     expect(val(".inf")).toBe(Infinity);

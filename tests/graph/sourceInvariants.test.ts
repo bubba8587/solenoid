@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[B11]], [[D22]], [[C25]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[B11]], [[D22]], [[C25]] firstClassUnits, [[D86]], [[C23]] calcModes, [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -417,7 +417,7 @@ describe("[[D86]] blankRoles — a wired blank never falls back to a literal or 
   });
 });
 
-describe("[[D46]] freezeVolatilePerCalc — a volatile data() freezes its roll on getRecalcGen()", () => {
+describe("[[C23]] calcModes — a volatile data() freezes its roll on getRecalcGen()", () => {
   // Math.random() called bare in data() re-rolls on EVERY recompute pass — any
   // unrelated edit anywhere silently changes the value, F9 stops being the
   // thing that controls re-rolling, and a Monte Carlo built on it is
@@ -440,7 +440,7 @@ describe("[[D46]] freezeVolatilePerCalc — a volatile data() freezes its roll o
     expect(
       offenders,
       `These node files call Math.random() without freezing on getRecalcGen() ` +
-      `([[D46]] freezeVolatilePerCalc): the value silently re-rolls on every recompute pass. Cache the ` +
+      `([[C23]] calcModes): the value silently re-rolls on every recompute pass. Cache the ` +
       `draw against the recalc generation, or add to SANCTIONED with the reason:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);

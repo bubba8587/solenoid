@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation
+// [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[C44]] dateSerials, [[C79]] packActivationIsPresentation
 
 import { formatScalar, displaySettingsKey } from "./components/format";
 import { COMPLEX_FORMAT_STYLES } from "./formatModel";
@@ -70,7 +70,7 @@ export function isDateStyle(style: FormatStyleId): boolean {
 
 export type DecimalMode = "places" | "sigfigs";
 
-/** A number in one format style, with no unit, scale or negative style: the core's formatter ([[D94]] oneNumberDisplay). */
+/** A number in one format style, with no unit, scale or negative style: the core's formatter ([[C118]] formatTravelsWithValue). */
 export function applyFormatStyle(
   n: number,
   style: FormatStyleId,
@@ -322,7 +322,7 @@ const _store = new Map<string, FormatAnnotation>();
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
 const { notify, subscribe, version } = createNotifier();
 
-// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[C118]] formatTravelsWithValue).
 let _display = displaySettingsKey();
 settingsStore.subscribe(() => {
   const d = displaySettingsKey();

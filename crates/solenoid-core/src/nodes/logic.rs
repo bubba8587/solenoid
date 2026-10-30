@@ -1,4 +1,4 @@
-//! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. Comparisons, IF and its kin, the Boolean
+//! [[C24]] arraySemantics. Comparisons, IF and its kin, the Boolean
 //! reducers and the parity tests.
 
 use super::kit::core_call;

@@ -1,8 +1,8 @@
 // [[C130]] rustCore
 //! The frame verbs the backend runs (every `FrameOp` but
 //! pivot, plus join, append, bindColumns and sampling).
-//! Each verb also decides the unit and format its columns carry ([[C25]] firstClassUnits, [[D41]]
-//! formatFlowsDownstream): a column that keeps its cells keeps them; the rest are below, verb by verb.
+//! Each verb also decides the unit and format its columns carry ([[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
+//! formatTravelsWithValue): a column that keeps its cells keeps them; the rest are below, verb by verb.
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -799,7 +799,7 @@ pub fn aggregate_group(values: &[FrameCell], op: AggOp, ty: Option<FrameColType>
     guard_agg(raw_aggregate(&nums, op), &nums)
 }
 
-// [[D76]] textMinMax: code-unit order ([[C59]] byteStringOrder), blanks and "" skipped.
+// [[C24]] arraySemantics: code-unit order ([[C59]] byteStringOrder), blanks and "" skipped.
 fn text_extreme(values: &[FrameCell], op: AggOp) -> FrameCell {
     let mut best: Option<String> = None;
     for v in values {

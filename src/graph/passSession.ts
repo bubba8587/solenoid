@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D102]] graphOnCore
+// [[C23]] calcModes, [[C130]] rustCore
 // The compute pass's state between passes lives in the graph core (`crates/solenoid-graph/src/session.rs`): the calc
 // mode, the dirty flag, the force-exact depth, the recalc generation, the rebuild depth, the single-flight flags and
 // the rerun they coalesce. Each transition is the core's; this module keeps the snapshot it answers, which is what

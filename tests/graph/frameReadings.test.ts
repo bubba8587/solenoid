@@ -302,7 +302,7 @@ describe("a computed column over readings classifies as Expression does", () => 
   });
 });
 
-// [[D93]] oneTextReading
+// [[C58]] tableInputRawText
 describe("Get Column reads a text cell as a Frame cell of the read type does", () => {
   it("a date read takes a bare number as a serial and unreadable text as NaN", () => {
     const g = new GetColumnNode({ readAs: "date" } as never);

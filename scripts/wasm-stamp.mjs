@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D102]] graphOnCore
+// [[C130]] rustCore
 // A hash of the wasm module's committed Rust sources, which `npm run build:wasm` writes beside the module it builds;
 // wasmStamp.test.ts recomputes it, so a Rust change without a rebuild fails. Only files git tracks count, so a
 // build's own leftovers (a vendored crate's Cargo.lock) never do.

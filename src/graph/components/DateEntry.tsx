@@ -1,4 +1,4 @@
-// [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C95]] commitOnEnter
+// [[C44]] dateSerials, [[C95]] commitOnEnter
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { isSolError } from "../errorValue";
@@ -13,7 +13,7 @@ const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOStr
 /** A date Value Input's typed field with its calendar and formats popup. The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing shows what was typed, and an ambiguous or unparseable entry stays put and flags red. */
 export function DateEntry({ raw, onCommit }: { raw: string; onCommit: (text: string) => void }) {
   const nativeRef = useRef<HTMLInputElement>(null);
-  // Mirrors the node ([[D54]] relativeDatesOptIn).
+  // Mirrors the node ([[C44]] dateSerials).
   const relativeAllowed = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("relativeDates"));
   const t = raw.trim();
   const relative = relativeAllowed && isRelativeDateText(t);

@@ -13,7 +13,7 @@ shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere)
 headless model is the graph core's Ruggine editor, in Rust: which nodes and cables exist and
 each node's ports. TypeScript holds it through `GraphEditor` (`graphEditor.ts`), node classes
 are `GraphNode`s (`graphModel.ts`), and the compute spine, `DataflowEngine`, runs on that same
-editor (`dataflowEngine.ts`, [[D102]] graphOnCore, `tree/specs/computation/graph-core.md`).
+editor (`dataflowEngine.ts`, [[C130]] rustCore, `tree/specs/computation/graph-core.md`).
 
 - `flow/SolNodeAdapter.tsx` binds a node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the
@@ -45,7 +45,7 @@ The compute path, in order (the full mechanics, including every coercion rung, a
    (`../tree/specs/computation/graph-core.md` § Direct calls).
 2. **processGraph** (`process.ts`) asks the graph core's session whether to run (manual calc
    mode stops here unless F9 forces a pass), then the engine's `pass` resets or targets the
-   cache and pulls outputs ([[D102]] graphOnCore). Cycles are found up front
+   cache and pulls outputs ([[C130]] rustCore). Cycles are found up front
    (Tarjan SCC) and pre-seeded as `#CIRC!`, so the engine never deadlocks. A topology change
    recomputes only the target's downstream closure.
 3. **Per node, the input boundary runs first.** The engine calls every card through it
@@ -121,7 +121,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
   ([[C25]] firstClassUnits).
 - An FC's number **format** is a display annotation, resolved by walking passthroughs in
   both directions and through transforms that keep the value's meaning
-  (`makeAnnotationResolver` over the core's walk, `annotate.rs`, [[D41]] formatFlowsDownstream). The spec is
+  (`makeAnnotationResolver` over the core's walk, `annotate.rs`, [[C118]] formatTravelsWithValue). The spec is
   `../tree/specs/values/unit-flow.md`.
 - Errors render as the red `#CODE!` badge. A scalar null renders as a muted em dash; the
   word `null` appears only for list and Frame cells. NaN is quiet residue, never "N/A".

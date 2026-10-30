@@ -123,7 +123,7 @@ export function dateFromName(name: string, format: string): number | null {
 function coerceScalar(value: FrontmatterScalar, kind: ScalarKind): FrontmatterScalar {
   if (value === null) return null;
   if (kind === "string") return typeof value === "string" ? value : String(value);
-  // Text reads as a Frame cell of the kind does ([[D93]] oneTextReading).
+  // Text reads as a Frame cell of the kind does ([[C58]] tableInputRawText).
   if (typeof value === "string") return coerceFrameCell(kind, value) as FrontmatterScalar;
   switch (kind) {
     case "number": return typeof value === "boolean" ? (value ? 1 : 0) : value;

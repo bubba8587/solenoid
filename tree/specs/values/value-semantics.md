@@ -2,11 +2,11 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D86]] blankRoles, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
 
 # Spec: Value semantics
 
-Serves [[C24]] arraySemantics (the value model), [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C24]] arraySemantics (the value model), [[D86]] blankRoles, [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves.
 
 This is the one reference for the value model's special kinds: what each means, what produces it, how it propagates in each kind of computation, and how it renders. The mechanics (the error guard, the per-cell contract, the bounded scan) are [[error-values]]; this file is the meaning. Every rule here is built. A rule that is decided but not yet built gets a `[decided <date>]` tag here and an item in the backlog.
 
@@ -73,7 +73,7 @@ Three distinctions carry the most weight:
       inf -->|no| ok["the number"]
   ```
 
-  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[D93]] oneTextReading) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
+  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or unreadable text in any typed cell, list item or list field, all read through `coerceFrameCell`, [[C58]] tableInputRawText) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
 
 ```mermaid
 flowchart LR
@@ -94,7 +94,7 @@ Which rule applies is decided by the kind of computation, not by the function's 
 | Context | An error | A `null` | Where |
 |---|---|---|---|
 | **Element-wise numeric** (operators, mapped functions) | propagates unchanged, per cell, the first in argument order | propagates (`null + 5` is `null`: the SQL model, not Excel's blank-as-0) | `map_cells` and `broadcast_call` (`eval.rs`) for formulas; `broadcast_err` (`nodes/kit.rs`) for cards |
-| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null, `TRUE OR null` is TRUE, `FALSE OR null` is null: a test with a blank in it answers unknown, never FALSE ([[D38]] kleeneLogic) | `broadcast_el` and the Kleene tables (`nodes/logic.rs`) |
+| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null, `TRUE OR null` is TRUE, `FALSE OR null` is null: a test with a blank in it answers unknown, never FALSE ([[C24]] arraySemantics) | `broadcast_el` and the Kleene tables (`nodes/logic.rs`) |
 | **Reduction or aggregate** (SUM, AVG, the formula AND and OR, the Aggregate node) | propagates, the first error wins | skipped (Excel's range behavior, SQL aggregates) | `for_aggregate`, `prep_range_args` |
 | **Paired, index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in any range drops that whole row pairwise; ragged ranges keep the shortest zip (pad-then-drop is the same as truncating) | `prep: paired` |
 | **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls stay put, since dropping them would shift indices | `prep: positional` |
@@ -114,7 +114,7 @@ mindmap
     ["a computed column row:<br>flows in, ISBLANK sees it"]
 ```
 
-The one sanctioned divergence ([[D51]] oneAnswerOneDivergence): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
+The one sanctioned divergence ([[C24]] arraySemantics): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 
 **Scalar operators.** The operator table (`apply_op`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `ARG_ROLES` declares its role, [[input-roles]], so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
 

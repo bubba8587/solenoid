@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C10]] socketLattice, [[E9]] errorsKeepOrigin
+// [[C130]] rustCore, [[C10]] socketLattice, [[E9]] errorsKeepOrigin
 //! The boundary on core values held to the frozen answers the JavaScript boundary gives
 //! (`fixtures/core/boundary-*.json.gz`, written by `tests/graph/coreBoundary.test.ts`): every rung, full and
 //! element-only, units kept and stripped; and the origin tagging of what a card answers.

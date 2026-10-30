@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[D43]] unitByGranularity
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C25]] firstClassUnits
 import { wasmInvokeSync, wasmInferBin } from "./engineWasm";
 import { encodeBinary, decodeBinary } from "./binaryCells";
 import { parseDate } from "./nodes/dateSerial";
@@ -179,7 +179,7 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   return NaN;
 }
 
-/** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[D93]] oneTextReading). Converts, never filters; the caller passes null and per-cell errors through. */
+/** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[C58]] tableInputRawText). Converts, never filters; the caller passes null and per-cell errors through. */
 export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
   if (typeof v === "string" && type !== "string") return coerceFrameCell(type, v);
   switch (type) {

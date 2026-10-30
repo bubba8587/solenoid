@@ -47,7 +47,7 @@ describe("a list where a range function takes one value", () => {
 });
 
 describe("LARGE and SMALL's k", () => {
-  it("below 1 is a wrong input; past the count is not enough data ([[D70]] nullNotEnoughData)", () => {
+  it("below 1 is a wrong input; past the count is not enough data ([[C24]] arraySemantics)", () => {
     expect(ev("LARGE(x, 0)")).toMatchObject({ code: "#DOMAIN!" });
     expect(ev("SMALL(x, -1)")).toMatchObject({ code: "#DOMAIN!" });
     expect(ev("LARGE(x, 99)")).toBeNull();

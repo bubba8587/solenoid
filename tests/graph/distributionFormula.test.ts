@@ -84,7 +84,7 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
     expect(ev("HYPGEOM.DIST(1, 4, 8, 20, FALSE)")).toBeCloseTo(0.363261094, 8);
     expect(ev("NEGBINOM.DIST(10, 5, 0.25, FALSE)")).toBeCloseTo(0.0550486603, 8);
   });
-  // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input, Excel's #NUM!.
+  // [[C24]] arraySemantics: a parameter outside the domain is a wrong input, Excel's #NUM!.
   const domain = (v: unknown) => (v as { code?: string } | null)?.code;
   it("a domain refusal is #DOMAIN! on both surfaces, never a number", () => {
     expect(domain(ev("NORM.DIST(1, 0, -1, TRUE)"))).toBe("#DOMAIN!");

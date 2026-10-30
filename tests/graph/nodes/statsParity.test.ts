@@ -156,7 +156,7 @@ describe("MODE / FISHER", () => {
     expect(code(ev("MODE(5)"))).toBe("#N/A");
     expect(code(new ModeNode().data({ list: [[1, 2, 3]] }).result)).toBe("#N/A");
   });
-  // [[D48]] classifyNonFinite: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
+  // [[C24]] arraySemantics: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
   it("a NaN makes MODE, MODE.MULT, the Mode card and PRODUCT #DOMAIN!", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : v);
     for (const f of ["MODE", "MODE.SNGL", "MODE.MULT", "PRODUCT"]) expect(code(ev(`${f}(x)`, { x: [1, NaN, 3] })), f).toBe("#DOMAIN!");

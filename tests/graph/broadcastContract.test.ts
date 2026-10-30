@@ -1,4 +1,4 @@
-// [[D86]], [[D36]], [[C24]], [[D48]]
+// [[D86]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";

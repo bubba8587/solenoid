@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore. `nodes/control.ts`'s card bodies, none of which runs on the core yet.
+//! [[C130]] rustCore. `nodes/control.ts`'s card bodies, none of which runs on the core yet.
 
 use super::{Answer, Call};
 

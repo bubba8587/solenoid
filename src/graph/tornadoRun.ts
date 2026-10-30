@@ -1,4 +1,4 @@
-// [[D46]] freezeVolatilePerCalc
+// [[C23]] calcModes
 // The graph-aware half of the Tornado node, so node classes stay decoupled from the live editor.
 import { getEditor, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { beginCompute, endCompute } from "./computeOverlayStore";

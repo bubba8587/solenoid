@@ -1,6 +1,6 @@
 //! The computed columns: Computed Column ([[B17]] typedValueModel, [[C48]]) and Cube Input's formula columns
 //! ([[C10]] socketLattice, [[C28]] literalsIffEditable), with what they share with Frame Input: the unit plan
-//! ([[D100]] computedColumnInfersUnit, [[C25]] firstClassUnits), a Cube as a row formula reads it ([[C22]]
+//! ([[C25]] firstClassUnits), a Cube as a row formula reads it ([[C22]]
 //! rowFormulaRefs) and a column's type. A frame ref's column is computed and assembled in the engine by the card's
 //! TS around the body, and a Cube Input's records are read there too: the text's key order is JS's.
 
@@ -645,7 +645,7 @@ impl UnitPlan {
     }
 }
 
-/// [[D100]] computedColumnInfersUnit: the formula's dimension from its columns' and side values'
+/// [[C25]] firstClassUnits: the formula's dimension from its columns' and side values'
 /// units. Where every united input shows a linear unit the formula runs on the shown numbers and the answer keeps
 /// their composed display; else it runs in base SI. An authored unit wins, and a clash with it is `#UNIT!`.
 pub(crate) fn plan_column_units(

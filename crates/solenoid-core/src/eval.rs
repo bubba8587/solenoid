@@ -929,7 +929,7 @@ impl Eval<'_> {
                 if params.contains(p) {
                     return V::err(sol_error(ErrorCode::Name, format!("LAMBDA parameter {p} appears twice")));
                 }
-                // [[D77]] constantsAlwaysWin
+                // [[C50]] lambdaBindsByName
                 if constant_value(p).is_some() {
                     return V::err(sol_error(
                         ErrorCode::Name,

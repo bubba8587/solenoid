@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits
+// [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits
 import type { View } from "./view";
 import type { GraphEditor } from "./graphEditor";
 import { GraphConnection } from "./graphModel";

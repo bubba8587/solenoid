@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // The values cards hand each other, as the core's card bodies read and answer them (`crates/solenoid-core/src/nodes/
 // values.rs`): a frame and a cube cell by cell, plain data (a chart, a document, an image) whole as JSON with its
 // special numbers tagged, and everything else as `coreValue` sends it.

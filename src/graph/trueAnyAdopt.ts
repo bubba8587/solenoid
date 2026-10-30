@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 import { MutableSocket, type SocketDataType } from "./sockets";

@@ -1,6 +1,6 @@
 //! What every card body leans on: a formula body called by name, the per-cell short circuit and non-finite guard,
 //! and the broadcasters that map a body over
-//! lists ([[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[D48]] classifyNonFinite).
+//! lists ([[C24]] arraySemantics).
 
 use super::list;
 use crate::error_value::ErrorCode;

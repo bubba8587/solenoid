@@ -172,7 +172,7 @@ pub fn reads_lists(name: &str) -> bool {
     )
 }
 
-/// The moment a calc reads, ([[D46]] freezeVolatilePerCalc): NOW's serial, the
+/// The moment a calc reads, ([[C23]] calcModes): NOW's serial, the
 /// local wall clock read as UTC.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 pub struct Clock {

@@ -1,4 +1,4 @@
-// [[D47]] noMixCurrencies, [[D35]] errorInErrorOut
+// [[C25]] firstClassUnits, [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { FxNode } from "../../src/graph/nodes/connection";
 import { throughBoundary } from "./boundaryKit";

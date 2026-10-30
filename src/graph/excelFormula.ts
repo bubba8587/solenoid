@@ -239,7 +239,7 @@ export function lambdaToLatex(params: readonly string[], expr: string): string |
 
 // ─── Step-by-step evaluation ─────────────────────────────────────────────────
 
-// A step shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay).
+// A step shows its numbers as every unformatted number shows ([[C118]] formatTravelsWithValue).
 const cleanNum = (v: number): string => (Number.isFinite(v) ? formatScalar(v) : String(v));
 
 function applyBin(op: string, l: number, r: number): number {

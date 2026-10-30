@@ -1,4 +1,4 @@
-// [[D54]], [[B11]] maximalMerge
+// [[C44]] dateSerials, [[B11]] maximalMerge
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
@@ -122,7 +122,7 @@ type LastRelative = { text: string; serial: number } | null;
 
 const relativeDatesAllowed = (): boolean => settingsStore.get("relativeDates");
 
-/** A typed date's serial; a relative phrase ([[D54]] relativeDatesOptIn) alerts when it re-resolves to a new day. */
+/** A typed date's serial; a relative phrase ([[C44]] dateSerials) alerts when it re-resolves to a new day. */
 function resolveDateText(
   node: { id: string; label?: string },
   raw: string,

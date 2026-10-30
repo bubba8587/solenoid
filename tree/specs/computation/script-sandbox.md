@@ -2,7 +2,7 @@
 aliases: ["Script sandbox"]
 tags: [spec, computation]
 ---
-<!-- [[C66]] scriptNode, [[D35]] errorInErrorOut -->
+<!-- [[C66]] scriptNode, [[C24]] arraySemantics -->
 
 # Spec: Script sandbox
 
@@ -54,7 +54,7 @@ flowchart TD
 
 1. The card's `data()` returns null for an empty source, and `#SYNTAX!` with the compile message when the source does not compile. The main thread checks the syntax too, for immediate feedback on the card: `checkScript` builds the `Function` and never calls it, because calling it evaluates the source, and a source that only opens with a function head (`x => x, (code), x => x`) would run its code on the main thread whenever a document holding the card is checked or loaded. Only the worker runs a script, so "Write a function" for a source that isn't one comes from the worker.
 2. Each parameter's argument is its cable's value, or the typed literal when unwired, converted to plain JavaScript (`scriptArgToJs`, below). A parameter is a value slot (`autoLiterals`), so an unwired one takes a typed number or text; exactly one of `literals` and `stringLiterals` holds it, because the inline field clears the other. An unwired input with nothing typed is `undefined`; a wired blank is `null`.
-3. An error anywhere in an argument, at any depth (a list cell, a row cell, a converted Frame row), becomes the result without running the script ([[D35]] errorInErrorOut at cell grain; the engine's error guard sees only whole-value errors).
+3. An error anywhere in an argument, at any depth (a list cell, a row cell, a converted Frame row), becomes the result without running the script ([[C24]] arraySemantics at cell grain; the engine's error guard sees only whole-value errors).
 4. `executeScript(src, args)` sends `{ id, src, args }` to the worker, with a fresh request id per call, and starts the timer.
 5. In the worker, `invokeScript` compiles (cached) and calls the function, awaiting a returned promise. A throw is `#VALUE!` with `Name: message`; a compile failure is `#SYNTAX!`. The card shows the message under the source field.
 6. The return value is passed through `toClonable` so it can cross back to the main thread. Functions and symbols become an `__unclonable` marker, as do `Map`, `Set` and anything nested more than 7 levels deep; typed arrays become plain arrays. The depth limit clears the deepest legal shape (cube rows holding frame rows holding lists) with a level to spare.

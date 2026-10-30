@@ -2,11 +2,11 @@
 aliases: ["Node bodies"]
 tags: [spec, computation]
 ---
-<!-- [[D102]] graphOnCore, [[D99]] rustIsSpec -->
+<!-- [[C130]] rustCore, [[D99]] rustIsSpec -->
 
 # Spec: Nodes on the core
 
-Serves [[D102]] graphOnCore and [[D99]] rustIsSpec. A node's body, the work its class's `data()` does, moves into the Rust core (`crates/solenoid-core/src/nodes/`) class by class, the way [[rust-core]] moves formulas: its answers frozen first, then the Rust held to them, then the TypeScript body deleted.
+Serves [[C130]] rustCore and [[D99]] rustIsSpec. A node's body, the work its class's `data()` does, moves into the Rust core (`crates/solenoid-core/src/nodes/`) class by class, the way [[rust-core]] moves formulas: its answers frozen first, then the Rust held to them, then the TypeScript body deleted.
 
 ## What moves and what stays
 

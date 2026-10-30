@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec, [[C23]] calcModes
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C23]] calcModes
 // The data providers' parses held to their frozen answers (fixtures/core/providers.json.gz): Open-Meteo, Nager.Date and
 // Frankfurter bodies, well-formed and not, read into the frames and values the cards output.
 import { describe, expect, it } from "vitest";

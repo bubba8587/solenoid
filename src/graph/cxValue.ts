@@ -26,7 +26,7 @@ export function assembleCx(z: Cx, fmtNum: (n: number) => string, bothParts = fal
   return { text: im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`, hasBothParts: true };
 }
 
-/** On screen each part reads as any unformatted number does ([[D94]] oneNumberDisplay). */
+/** On screen each part reads as any unformatted number does ([[C118]] formatTravelsWithValue). */
 export function formatCxDisplay(z: Cx): string {
   return assembleCx(z, displayNumber, true).text;
 }

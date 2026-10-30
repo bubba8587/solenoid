@@ -63,7 +63,7 @@ verbs; `guardFinite` signature changed (spread → array) across 7 files.
 - [x] Checked 2026-09-28: all 29 callers pass an array, and the parameter is typed `ReadonlyArray<unknown>`, so a stray scalar fails tsc. Was: `guardFinite` callers: grep every call; any caller still passing spread args now passes
       ONE array as arg 0 and type-checks if the param is `unknown[]`. tsc may not catch a
       caller that passes a single scalar (now wrapped? or treated as the array?).
-- [x] Conformance checked 2026-09-28 (formulas and the Aggregate card, NaN / ±∞ / ∞ with −∞). Fixed against D48: MODE / MODE.SNGL skipped a lone NaN, MODE.MULT and the Mode card passed NaN on bare, and PRODUCT (on Formula.js) answered `#VALUE!`; all are `#DOMAIN!` now, PRODUCT on the shared kernel. Also fixed for Excel parity: no value repeating is `#N/A` in the three MODEs and on the Mode card (was the first value, or every value). The native engine's guard needs the desktop run. Was: NaN in aggregates is RULED, not open ([[D48]] classifyNonFinite, `tree/specs/values/value-semantics.md`,
+- [x] Conformance checked 2026-09-28 (formulas and the Aggregate card, NaN / ±∞ / ∞ with −∞). Fixed against D48: MODE / MODE.SNGL skipped a lone NaN, MODE.MULT and the Mode card passed NaN on bare, and PRODUCT (on Formula.js) answered `#VALUE!`; all are `#DOMAIN!` now, PRODUCT on the shared kernel. Also fixed for Excel parity: no value repeating is `#N/A` in the three MODEs and on the Mode card (was the first value, or every value). The native engine's guard needs the desktop run. Was: NaN in aggregates is RULED, not open ([[C24]] arraySemantics, `tree/specs/values/value-semantics.md`,
       `tree/specs/computation/frame-verbs.md` § groupBy): a NaN input makes the group `#DOMAIN!`, checked before
       aggregating; `count` counts NaN and errors; NaN "sorts into the tail, fails every
       predicate except neq". So the check is conformance: list SUM/AVG/MIN/MAX/MEDIAN/MODE/
@@ -180,7 +180,7 @@ Spec: `tree/specs/documents/save-format.md`.
 ## 9. Frame edits and joins
 Commits: 3e776d37, b4c90711, e5f51eb1
 Where: `frame.ts`, `frameVerbs.ts`, `TablePopup.tsx`
-- [x] Checked 2026-09-28: `1, x, blank` and an all-blank column read as Text, numbers with blanks as Number; a column already typed keeps its type when the CSV adds columns, so a later text cell shows NaN over its text ([[D72]]). Was: CSV edit "types the columns it adds from their values": the inference for a column
+- [x] Checked 2026-09-28: `1, x, blank` and an all-blank column read as Text, numbers with blanks as Number; a column already typed keeps its type when the CSV adds columns, so a later text cell shows NaN over its text ([[C58]]). Was: CSV edit "types the columns it adds from their values": the inference for a column
       with mixed `1`, `x`, blank; and a column that is all blank (text? number?). A column
       inferred number then a later edit adds text — does the column retype or error?
 - [x] Checked 2026-09-28: the key rounds at the 15th significant digit of the larger term (`roundAtLargerTerm`, frame-verbs § Nest Join), so only keys equal to float precision collide; Nest Join builds a Cube in JS, so there is no Polars twin. Was: Nest Join keys "survive unit conversion noise": tolerance-based key matching. What
@@ -312,7 +312,7 @@ the op (reading in MIN/compare, delta in +/−). That is a lot of per-op special
       weight? Commit says "scales only by a constant". A LAMBDA parameter, a column ref?
 - [x] Checked 2026-09-28: unit-flow § Unit algebra states it (`25 °C > 30` is FALSE, the bare number read as a reading in the display unit), on the card and the formula alike; kelvin meant as a bare number is a Convert first. Was: `adoptReading` in `compareUnits`: `25 °C > 30` reads 30 as 30 °C. But `25 °C > 300`
       where the user meant kelvin? Confirm the ruling text in C25 covers comparison.
-- [x] Confirmed 2026-09-28, not fixed: a difference is a displayless kelvin cell, indistinguishable from a kelvin reading, so Convert or the FC to °C puts the offset back (30 °C − 20 °C → −263.15 °C, and −441.67 °F). Open with the author, beside [[D105]] mixedTempUnitsRefused. Was: Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
+- [x] Confirmed 2026-09-28, not fixed: a difference is a displayless kelvin cell, indistinguishable from a kelvin reading, so Convert or the FC to °C puts the offset back (30 °C − 20 °C → −263.15 °C, and −441.67 °F). Open with the author, beside [[C25]] firstClassUnits. Was: Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
       Convert node then let the user convert a delta-K to °C (wrong) or to delta-°F (right)?
 - [x] Checked 2026-09-28: GROUPBY SUM of a °C column is #UNIT! in every group; the native `group_sum` under `readingScale` answers `ERR_UNIT_ADD_BITS`, and `frameReadings.test.ts` plus the corpus hold both engines to it. Was: Frame verbs on °C columns (753f0062): groupBy SUM of a °C column → #UNIT!? Polars path
       never sees units; PolarsBackend sends `readingScale`; check the native `group_sum`
@@ -344,7 +344,7 @@ Commits: 19090f25, 38726731, 2494d74d, db08c964, e4d1a478, 4dde1c28, a68628ed, d
 Where: `nodes/composite.ts` (1086 lines, 17 commits in 5 days), `savedNodeBody.ts`,
 `flow/drillStack.ts`, `flow/FlowCompositeOverlay.tsx`, `activeGraph.ts`
 Leaves: [[C77]] compositeIsSubgraph, [[B12]] losslessSaves, [[C35]] unknownViaPlaceholder,
-[[D35]] errorInErrorOut, [[D86]] blankRoles (D33 unwiredNotBlank superseded).
+[[C24]] arraySemantics, [[D86]] blankRoles (D33 unwiredNotBlank superseded).
 - [x] Checked 2026-09-28: the node-held references are an FC's `hostNodeId`, a Group's `members` and a Presentation's step `nodeIds` (all in `remapNodeRefs`), and the ports' `internalNodeId` (remapped on hydrate, mapped back on save). The other `nodeId` fields are a card's own id in an alert or a computed result, and Goal Seek names port ids. Pins, comments, formats and standoffs are side tables, restored under the fresh ids by `restoreSideTables`. Was: Id remapping (38726731): hydrate remaps Group members and FC hosts, snapshot maps back.
       Enumerate EVERY node field that holds another node's id (grep `nodeId|hostNodeId|
       members|steps.*nodeIds|targetId|sourceId` in nodes/) and check each is in
@@ -425,7 +425,7 @@ only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patt
 
 ## 21. TODAY / NOW / volatile freeze
 Commits: 719591dd, 2c2d5b9b
-Leaves: [[C44]] dateSerials, [[D46]] freezeVolatilePerCalc.
+Leaves: [[C44]] dateSerials, [[C23]] calcModes.
 - [x] Checked 2026-09-28: block 44 answers the time zone (the local calendar day as a UTC-labelled serial, C44); at a DST fall-back NOW repeats an hour of serials, as Excel's local-time NOW does. Was: `wallClockSerial` local vs UTC: a doc saved in one TZ, opened in another: relative
       date Value Input "today" changes; is that stated in the spec? Serial for NOW at DST switch.
 - [x] Fixed 2026-09-28: the rollover finds TODAY/NOW in an `expr` (Expression, Computed Column, LAMBDA, Equation), a Frame Input's formula columns and composites, but not a Cube Input's formula columns (`cubeText`), which it reads now (`volatileDates.test.ts`). Was: Midnight rollover: the Today card inside a composite recalculates; a formula TODAY()
@@ -481,7 +481,7 @@ Leaves: [[C101]] onePatchPath, [[C103]] untrustedContentSeams, [[B1]] obsidianBe
 
 ## 25. LAMBDA naming rules
 Commits: 5219ee9b, d2090f9a, c76f414e, 07abd235, 94b25efb (part)
-Leaves: [[D77]] constantsAlwaysWin, [[C50]] lambdaBindsByName.
+Leaves: [[C50]] lambdaBindsByName.
 - [x] Checked 2026-09-28: one fixture, `formulaLambda.test.ts`, and it asserts the current rule (refused, `#NAME?`). D77's text said the formula answers `#VALUE!`; code and test have always said `#NAME?` on both surfaces, so the leaf's sentence is corrected. Was: Two reversals in one day (shadow-a-constant landed then was undone). Grep tests for
       `LAMBDA(e,` and `LAMBDA(pi` fixtures asserting the OLD behaviour.
 - [x] Checked 2026-09-28: constants are case-insensitive, so `E`, `Pi` and `PHI` are refused like `e`; inside a computed column bare `e` is the constant and `@e` reads a column named e. Was: Case: `E`, `Pi`, `PHI` as parameter names: are constants case-insensitive? A column
@@ -597,7 +597,7 @@ the landing site (~130 commits, marketing only), `TablePopup.tsx` (24), `nodeCat
 Commits: 506ae4e0, c955cadc, 2c963d58, 40cd262b, 20ab4615, 49ce7680, 3f11532c, e227b181,
 14dea0d0, b984af85, 7318edd4, 49759739, ff6cf56f (tests dropped), ebd1d68b (Knap, Part A)
 Where: `obsidian-plugin/src` (14 files), `pluginColumnTypes.ts`, `obsidianTypes.ts`,
-`noteFrontmatter.ts`. Leaf: [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText.
+`noteFrontmatter.ts`. Leaf: [[C107]] obsidianPlugin, [[C58]] tableInputRawText.
 Why risky: ZERO tests in `obsidian-plugin/` (author dropped them 09-22). Root `tsc` includes
 `obsidian-plugin/src` and `test.yml` runs `npm run plugin:build`, so it type-checks and bundles
 in CI, but nothing exercises it. It runs in another host's DOM with its own quirks (c955cadc
@@ -852,7 +852,7 @@ not a new leaf and not a patch.
 - Item 19: a failed fetch records its key and never retries until the key changes (by design);
   a timer whose card is gone clears itself on its next fire.
 - Item 21: TODAY is the local calendar day as a UTC serial; relative phrases only on an opted-in
-  date Value Input ([[D54]]); every reader uses UTC getters ([[C44]]). The TZ question is answered.
+  date Value Input ([[C44]]); every reader uses UTC getters ([[C44]]). The TZ question is answered.
 - Item 23: C95's Consequences: switch/save/close commit drafts; the background autosave never
   does. A half-typed frontmatter committing on a document switch is the rule.
 - Item 24: `frontmatterPatch.test.ts` "proves untouched bytes identical and a cube round-trip

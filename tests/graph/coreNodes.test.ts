@@ -1,4 +1,4 @@
-// [[D99]] rustIsSpec, [[D102]] graphOnCore
+// [[D99]] rustIsSpec, [[C130]] rustCore
 // Every card body on the core, through the wasm module the app runs, answers its frozen cases (fixtures/core/nodes/,
 // frozen by scripts/freeze-nodes.mjs). `crates/solenoid-core/tests/nodes.rs` holds the native build to the same cases.
 import { describe, it, expect } from "vitest";

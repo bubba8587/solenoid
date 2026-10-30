@@ -2,13 +2,13 @@
 aliases: ["React Flow surface contract"]
 tags: [spec, canvas]
 ---
-<!-- [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
+<!-- [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[C118]] formatTravelsWithValue -->
 
 # Spec: React Flow surface contract
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves.
 
-The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraphCalculator): a `GraphEditor` (`graphEditor.ts`), the handle on a Ruggine editor in the Rust graph core ([[D102]] graphOnCore, [[graph-core]]). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
+The canvas is drawn by React Flow (RF) over a headless model ([[A1]] visualGraphCalculator): a `GraphEditor` (`graphEditor.ts`), the handle on a Ruggine editor in the Rust graph core ([[C130]] rustCore, [[graph-core]]). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the graph core supplies those. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 
@@ -303,7 +303,7 @@ With Ctrl or Cmd:
 
 `deleteSelection` (`canvasActions.ts`) is the one delete verb for both surfaces, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members. A `DeleteScope` carries the host's differences: whether the main-only layers (drawn cables, standoffs) are in play, which nodes Delete keeps (a drill-in keeps its boundary markers, which are its ports), and the surface's `EditScope`, the rebuild gate and the one settle every bulk edit shares (`activeGraph.ts`: `bulkSettle` on the main canvas; `settleCableChange` in a drill-in, whose topology pipe then recomputes).
 
-What goes is the selection plus every FC docked to a doomed node, at any depth (`deleteSet`). A docked FC is part of its host's entity, as copy, isolate, nudge and Wrap as Composite treat it, and it formats nothing once its host is gone ([[D41]] formatFlowsDownstream), so deleting a host takes its FCs and no FC is ever left docked to a missing host.
+What goes is the selection plus every FC docked to a doomed node, at any depth (`deleteSet`). A docked FC is part of its host's entity, as copy, isolate, nudge and Wrap as Composite treat it, and it formats nothing once its host is gone ([[C118]] formatTravelsWithValue), so deleting a host takes its FCs and no FC is ever left docked to a missing host.
 
 1. On the main canvas, a selected drawn cable is its own target: it is removed and `commitDrawn()` records it.
 2. On the main canvas, a selected standoff is its own target: it is removed and an autosave scheduled.
@@ -332,7 +332,7 @@ What goes is the selection plus every FC docked to a doomed node, at any depth (
 
 ## Format Controller docking
 
-A Format Controller (FC) can dock onto a socket of another card and ride with it ([[D41]] formatFlowsDownstream: a docked FC formats display only). `fcDocking.ts` is pure over an editor, a view, a container and the FC, so the main canvas and a drill-in share it.
+A Format Controller (FC) can dock onto a socket of another card and ride with it ([[C118]] formatTravelsWithValue: a docked FC formats display only). `fcDocking.ts` is pure over an editor, a view, a container and the FC, so the main canvas and a drill-in share it.
 
 - **Snapping.** `findDockTarget` finds the nearest host socket whose pairing edge is within `DOCK_SNAP_CANVAS_PX` (34 canvas units, the screen distance divided by the zoom; raw screen pixels would let a zoomed-out canvas snap to a far host). A host output pairs with the FC's input edge and a host input with its output edge. An FC never docks onto another FC, by a drag or from the socket menu: `canAttachFc` refuses an FC host, and right-clicking an FC's own socket opens no socket menu.
 - **Placement** (`computeDockedCanvasPos`). On a host input the FC sits to the left, its output edge meeting the socket; on a host output it sits to the right. It is centered vertically on the socket using its measured size, because a stale estimate drops it several pixels low. The anchor is the host's model position plus the socket's offset inside the host wrapper, both read from the same DOM frame, so it holds even before the wrapper has re-committed at a new position (the post-Tidy snap runs a frame after the moves); a screen-to-canvas conversion is the fallback. The offset is snapped to the half-pixel grid first and the result rounded to whole canvas pixels. Without the snap, an odd FC height makes the rounding a coin flip that re-docks the FC a pixel off its saved spot on every load; without the rounding, a fractional edge shifts on every re-dock and a group's Autofit creeps after it.

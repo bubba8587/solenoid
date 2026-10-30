@@ -19,7 +19,7 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
   full?: boolean;
   peek?: boolean;
 }) {
-  // Its cells follow the Decimal places setting ([[D94]] oneNumberDisplay), which this store announces.
+  // Its cells follow the Decimal places setting ([[C118]] formatTravelsWithValue), which this store announces.
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
   if (isSolError(cube)) {
     return (

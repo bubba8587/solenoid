@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // A panic in the graph core rejects what was waiting on it, and a fresh instance takes over with every live
 // engine's editor mirrored into it (tree/specs/computation/graph-core.md § Traps).
 import { it, expect } from "vitest";

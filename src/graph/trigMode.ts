@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream: the one compute-time unit read. Mechanics: tree/specs/values/unit-flow.md.
+// [[C118]] formatTravelsWithValue: the one compute-time unit read. Mechanics: tree/specs/values/unit-flow.md.
 import type { GraphEditor } from "./graphEditor";
 import type { GraphConnection, GraphNode } from "./graphModel";
 import { MathFXNode, isTrigOp } from "./nodes/scalar";

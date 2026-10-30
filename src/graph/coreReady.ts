@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D102]] graphOnCore
+// [[C130]] rustCore
 import { useSyncExternalStore } from "react";
 import { initFrameBackend } from "./frameBackend";
 

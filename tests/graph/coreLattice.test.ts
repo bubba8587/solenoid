@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec, [[C10]] socketLattice
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice
 // The socket lattice's frozen answers (fixtures/core/lattice.json.gz): for every pair of the 31 socket types, whether
 // an output connects to an input, what an adoptive input of that base takes up from that cable, and what an adoptive
 // output of that base shows for that type; per type, its rank, its element family and its forms at each rank.

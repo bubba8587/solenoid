@@ -63,7 +63,7 @@ cables (the author, 2026-10-25).
   SolError, drop nulls, keep the rest. The correct-handling primitive for the value model.
   (the core's `value_kinds.rs`; its unit-aware twin is `for_aggregate_units`, `unit_lists.rs`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL.
-  (the core's `kleene_and`/`kleene_or`, `excel_functions.rs`; [[D38]] kleeneLogic)
+  (the core's `kleene_and`/`kleene_or`, `excel_functions.rs`; [[C24]] arraySemantics)
 - **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
   and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
   (`sockets.ts`, `nodes/logic.ts`)
@@ -87,7 +87,7 @@ cables (the author, 2026-10-25).
 - **Format Controller (FC)**: a node that locks a value's number format and sets a unit, but
   only on a value that has none. Both ride the value through passthroughs and selectors. The
   format also carries through a transform whose op keeps the value's meaning, and drops at
-  one that doesn't ([[D41]] formatFlowsDownstream). The unit's dimension is worked out again
+  one that doesn't ([[C118]] formatTravelsWithValue). The unit's dimension is worked out again
   through the algebra, keeping its display when the dimension survives ([[C25]]
   unitOnValue). (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states**: who owns the FC's unit dropdown. *Authored*: the FC set it.

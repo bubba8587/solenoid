@@ -2,11 +2,11 @@
 aliases: ["Error values"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits -->
+<!-- [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits -->
 
 # Spec: Error values
 
-Serves [[C24]] arraySemantics, [[D35]] errorInErrorOut and [[E9]] errorsKeepOrigin. It covers what the system does and blocks, and the decision each behavior serves. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
+Serves [[C24]] arraySemantics and [[E9]] errorsKeepOrigin. It covers what the system does and blocks, and the decision each behavior serves. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
 
 Failures in Solenoid are values. A node that cannot answer returns a tagged error, the error travels down the cables like any other value, and the value box shows it as a red badge until something catches it.
 
@@ -82,7 +82,7 @@ The error guard runs around every node's `data()` call, in the graph core's inpu
 
 ### Nodes that see raw errors
 
-`SEES_ERRORS` (`crates/solenoid-graph/src/boundary.rs`) names the classes, by constructor name, whose `data()` receives error values instead of short-circuiting ([[D35]] errorInErrorOut):
+`SEES_ERRORS` (`crates/solenoid-graph/src/boundary.rs`) names the classes, by constructor name, whose `data()` receives error values instead of short-circuiting ([[C24]] arraySemantics):
 
 - **IFERROR and the IS-checks** consume errors; that is their whole job.
 - **Conduit and CableSwitch** route lanes independently, and the any-error-to-every-output rule would poison sibling lanes.
@@ -136,7 +136,7 @@ The shared helper is `short_circuit` (`nodes/kit.rs`, the full rule); the Kleene
 - ±Infinity from all-finite inputs becomes `#OVERFLOW!` (one code, which splits out Excel's #NUM!, ERROR.TYPE 6);
 - ±Infinity when an input was already infinite passes, since the Constant node's ∞ is a real value: ∞ + 5 = ∞, 2 × ∞ = ∞, 5 / ∞ = 0.
 
-It runs at the producing op, so Expression's `tag_result` trusts it. The guarded producers are the core's: the element-wise broadcasters (`guard_finite`, `nodes/kit.rs`), the formula operators, the broadcast and range calls, the statistics kernels the cards call (`aggregate`, `percentile`, `quartile`, `pearson`, `covariance` and `regression`), the frame aggregation path (`guard_agg`, `frame_verbs.rs`); and the native engine's result normalizer (frameBackend). A kernel with its own recorded non-finite convention (a quiet null, a tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption ([[D48]] classifyNonFinite). Both engines mask a non-finite join key to unmatchable. When rows are grouped, deduplicated or split into windows, +∞, −∞ and NaN are three keys of their own, and none of them ever matches in a Join: one shared bucket would merge values every other surface tells apart, and two rows that both overflowed are not the same thing ([[D48]] classifyNonFinite). Expression trusts the guard: a surviving ∞ passes, and a stray NaN becomes `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
+It runs at the producing op, so Expression's `tag_result` trusts it. The guarded producers are the core's: the element-wise broadcasters (`guard_finite`, `nodes/kit.rs`), the formula operators, the broadcast and range calls, the statistics kernels the cards call (`aggregate`, `percentile`, `quartile`, `pearson`, `covariance` and `regression`), the frame aggregation path (`guard_agg`, `frame_verbs.rs`); and the native engine's result normalizer (frameBackend). A kernel with its own recorded non-finite convention (a quiet null, a tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption ([[C24]] arraySemantics). Both engines mask a non-finite join key to unmatchable. When rows are grouped, deduplicated or split into windows, +∞, −∞ and NaN are three keys of their own, and none of them ever matches in a Join: one shared bucket would merge values every other surface tells apart, and two rows that both overflowed are not the same thing ([[C24]] arraySemantics). Expression trusts the guard: a surviving ∞ passes, and a stray NaN becomes `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
 
 **Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. `readInputSweep.test.ts` is the zero-floor ratchet across `nodes/*.ts`, and the full rules are [[value-semantics]] "Reading an input". Machine-checked by `broadcastContract.test.ts`.
 

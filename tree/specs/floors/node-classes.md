@@ -2,11 +2,11 @@
 aliases: ["Node classes and op modules"]
 tags: [spec, floors]
 ---
-<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[D86]] blankRoles; covers: src/graph/nodes/*.ts -->
+<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[B11]] maximalMerge, [[B14]] oneDesignSystem, [[D86]] blankRoles; covers: src/graph/nodes/*.ts -->
 
 # Spec: Node classes and op modules
 
-Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder and [[D86]] blankRoles. Node merges and control-driven socket swaps serve [[B11]] maximalMerge; frame input labels serve [[B14]] oneDesignSystem.
+Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[C25]] firstClassUnits, [[C23]] calcModes and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder and [[D86]] blankRoles. Node merges and control-driven socket swaps serve [[B11]] maximalMerge; frame input labels serve [[B14]] oneDesignSystem.
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 
@@ -154,14 +154,14 @@ mindmap
 ## Reading inputs
 
 - **`data()` reads inputs the value-semantics way** ([[value-semantics]], "Reading an input"):
-  - a null is skipped, not treated as zero ([[D36]] nullSkippedNotZero);
+  - a null is skipped, not treated as zero ([[C24]] arraySemantics);
   - an error beats a missing value in the same cell ([[C24]] arraySemantics);
-  - a producer turns a non-finite result into a classified error rather than emitting it bare ([[D48]] classifyNonFinite);
+  - a producer turns a non-finite result into a classified error rather than emitting it bare ([[C24]] arraySemantics);
   - an input ignores units only where that input is declared unit-blind ([[C25]] firstClassUnits).
 - **Wired beats literal, even when blank.** A connected cable's value wins even when it carries null; only an unwired slot falls back to the card's typed literal ([[D86]] blankRoles). So a card tests connection presence (`readInput`, or `inputs[key]?.length`), never `?? literal`, which would hide a wired blank behind the literal. A setting or pick socket declares its role (`static inputRoles`, usually `rolesFrom` its formula twin) and reads through `readRole` ([[input-roles]]). A wildcard slot on an `autoLiterals` card reads through `pick_slot`, which applies the same rule over both literal maps.
 - **A unit-aware class sets `unitAware = true`.** It then receives `UnitCell` tags intact and runs the dimension algebra itself ([[unit-flow]]); every other class sees bare magnitudes.
 - **A class that takes a Cube as is lists the input in `noWidenInputs`**, so the coercion wrapper skips rank widening there and the class runs its own Cube branch ([[frame-verbs]] § Frames and Cubes).
-- **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.
+- **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[C23]] calcModes). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.
 - **A sink never acts from `data()`** ([[C38]] sinkRunButtonOnly). A class with an irreversible external effect (a disk write) computes only a preview in `data()`. The effect lives in `run()`, which fires only from the node's Run button or an explicit CLI run (`scripts/run-graph.ts --run <label>`, which stands in for the button), and only while the `enabled` arm flag is on. While Sketch is selected, `run()` goes through `withExactPass` (`process.ts`), which runs a forced exact full pass before the write, so a file, note or task carries every row rather than the sample. The arm flag never persists: it is left out of the `extractInit` whitelist, so every load path (reopening a save, paste, Placeholder restore) starts disarmed.
 
 ```mermaid

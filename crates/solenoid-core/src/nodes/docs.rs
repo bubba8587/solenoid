@@ -1,6 +1,6 @@
 //! The cards that watch, format and write up values: Display and Alert, Expect ([[D79]] effectsEdgeTriggered,
-//! [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format Controller ([[D41]] formatFlowsDownstream, [[C118]]
-//! formatTravelsWithValue), Template, Frame Input ([[B17]] typedValueModel, [[D100]] computedColumnInfersUnit) and
+//! [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format Controller ([[C118]] formatTravelsWithValue
+//! formatTravelsWithValue), Template, Frame Input ([[B17]] typedValueModel, [[C25]] firstClassUnits) and
 //! Record ([[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
 //! reconcile and a frame ref's read stay with the TS around these bodies.
 

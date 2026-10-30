@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge. The text cards' bodies: each shares its kernel with the formula
+//! [[C130]] rustCore, [[B11]] maximalMerge. The text cards' bodies: each shares its kernel with the formula
 //! of its name ([[C17]] shareImpl), broadcast item by item over a list ([[C24]] arraySemantics); and
 //! Cast, which reads a value as each of the five targets.
 
@@ -962,7 +962,7 @@ fn cast(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), Cv::from(scalar))])
 }
 
-// ─── UUID and Promo, over what their shells drew ([[D46]] freezeVolatilePerCalc) ─
+// ─── UUID and Promo, over what their shells drew ([[C23]] calcModes) ─
 
 fn uuid(c: &mut Call) -> Answer {
     let generated = match c.field("generated").map(super::decode) {

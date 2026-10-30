@@ -1,4 +1,4 @@
-// [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D79]] effectsEdgeTriggered
+// [[C23]] calcModes, [[D79]] effectsEdgeTriggered
 //! The compute pass's state between passes (`tree/specs/computation/compute-pass.md` § Entry order, § Calc modes and
 //! the dirty flag, § Volatile nodes and the recalc generation, § Rebuild scopes): the calc mode, the dirty flag, the
 //! force-exact depth, the recalc generation, the rebuild depth and its topology flag, and the single-flight flags with

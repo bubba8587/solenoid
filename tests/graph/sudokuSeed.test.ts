@@ -52,7 +52,7 @@ async function loadSeed(editor: GraphEditor<Schemes>) {
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
     if (node instanceof CompositeNode) {
       await node.hydrate(ctorRegistry());
-      node.requestSolve(); // heavy composites load unsolved ([[D52]] compositesHoldUntilSolve)
+      node.requestSolve(); // heavy composites load unsolved ([[C23]] calcModes)
     }
     byId.set(sn.id, node);
     await editor.addNode(node as unknown as Schemes["Node"]);

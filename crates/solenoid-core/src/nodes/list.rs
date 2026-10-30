@@ -649,7 +649,7 @@ fn logical_cell(v: &FrameCell) -> V {
     }
 }
 
-/// Typed text read as a cell of the list's type ([[D93]] oneTextReading).
+/// Typed text read as a cell of the list's type ([[C58]] tableInputRawText).
 pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
@@ -1810,7 +1810,7 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     }
 }
 
-// ─── Shuffle, over the keys its shell drew ([[D46]] freezeVolatilePerCalc) ──────
+// ─── Shuffle, over the keys its shell drew ([[C23]] calcModes) ──────
 
 /// An exponential draw's key, so a heavier weight tends to land earlier.
 fn weighted_shuffle_key(u: f64, weight: f64) -> f64 {

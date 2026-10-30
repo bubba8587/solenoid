@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // The dataflow engine, on the graph core (`crates/solenoid-graph`, Ruggine's port of rete-engine): a handle attached
 // with `editor.use(engine)`, running on that editor's core, which calls each node's own `data()` back.
 import type { GraphEditor } from "./graphEditor";

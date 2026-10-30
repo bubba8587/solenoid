@@ -45,7 +45,7 @@ describe("CubeRollupNode", () => {
     expect(out.columns.find((c) => c.name === "Name")?.values).toEqual(["Cabinet", "Bracket"]);
   });
 
-  it("rolls a text column's min up to its alphabetical first, typed as text ([[D76]] textMinMax)", () => {
+  it("rolls a text column's min up to its alphabetical first, typed as text ([[C24]] arraySemantics)", () => {
     const node = new CubeRollupNode({ agg: "min" });
     node.stringLiterals = { nested: "Lines", column: "Part", as: "FirstPart" };
     const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame as FrameValue;

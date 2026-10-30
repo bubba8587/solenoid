@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // Nothing computes without the wasm module the graph and the cards' bodies run on, so every test file gets it, loaded
 // once per module cache. While the node recorder records (`FREEZE_NODES`), every card's `data()` runs in JavaScript,
 // so it sees the calls the engine would otherwise make in Rust. A test fails that changes a direct card in place

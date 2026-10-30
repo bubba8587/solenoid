@@ -227,9 +227,9 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
-    // ── [[D46]] freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
-    rolls: "freezeVolatilePerCalc frozen rolls", rollsNeeded: "RANDARRAY: the rolls its body asked the shell to draw, per call", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
-    lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
+    // ── [[C23]] calcModes volatile roll state (freezes per recalc generation, never saved) ──
+    rolls: "calcModes frozen rolls", rollsNeeded: "RANDARRAY: the rolls its body asked the shell to draw, per call", rawRoll: "calcModes frozen roll", keys: "calcModes frozen shuffle keys",
+    lastGen: "calcModes generation marker", lastRollGen: "calcModes generation marker",
     roll: "promo rotation draw (session flavor)",
     nowMs: "World Clock's instant, read from the clock on every compute; a load is a new now",
     // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──
@@ -259,7 +259,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
-    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] oneTextReading)",
+    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[C58]] tableInputRawText)",
     entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",

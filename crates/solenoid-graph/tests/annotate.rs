@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D99]] rustIsSpec
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[D99]] rustIsSpec
 //! The annotation walk held to the frozen answers the TypeScript gave over every seed graph, three ways
 //! (`fixtures/core/annotations.json.gz`, written by `tests/graph/coreAnnotations.test.ts`).
 

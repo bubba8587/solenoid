@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D102]] graphOnCore
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[C130]] rustCore
 //! The annotation walk (`tree/specs/values/unit-flow.md` § The format annotation): the unit and format a value carries,
 //! read upstream from where it was set, and the one downstream that governs an output; and where a value really comes
 //! from. Each node's facts are the app's (`annotationFacts.ts`); an annotation is opaque here but for its unit,

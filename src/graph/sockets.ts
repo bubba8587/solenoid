@@ -104,7 +104,7 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   trueany:      "Anything",
 };
 
-// The rules are the core's (`crates/solenoid-graph/src/lattice.rs`, [[D102]] graphOnCore); these read its tables,
+// The rules are the core's (`crates/solenoid-graph/src/lattice.rs`, [[C130]] rustCore); these read its tables,
 // fetched once on first use.
 interface LatticeTables {
   connects: Record<SocketDataType, SocketDataType[]>;

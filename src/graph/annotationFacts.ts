@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream
+// [[C130]] rustCore, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
 // What the annotation walk reads from each node's JavaScript object (graph-core.md § Phase D): a Convert ends a walk; a
 // node may produce an annotation per output, hold its own (a Format Controller, a constant), or inherit one; a
 // passthrough forwards its selected or agreeing inputs; a Conduit forwards lane by lane; and a format carry hands an

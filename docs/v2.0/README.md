@@ -11,7 +11,7 @@ per-subsystem specs under `../../tree/specs/`). Residual open items from built b
 
 **05 — Units by dimensionality (FC A4)** SHIPPED 2026-07-12/13 and archived to
 `../archive/units-format-controller.md` (live truth: `formatModel.ts`,
-`tree/specs/values/unit-flow.md`, [[D43]] unitByGranularity).
+`tree/specs/values/unit-flow.md`, [[C25]] firstClassUnits).
 
 | Bundle | What | Status / gate |
 |---|---|---|

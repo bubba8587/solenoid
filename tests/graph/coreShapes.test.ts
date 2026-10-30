@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 // A verb's static output shape (fixtures/core/shapes.json.gz): what each table verb answers for a frame of a given
 // shape before any data flows, the columns a picker offers downstream and the type a passthrough projects. Each case is
 // an op, a join or an append over shapes; the answer is the shape or the error code.

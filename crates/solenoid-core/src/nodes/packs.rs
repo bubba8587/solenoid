@@ -1,5 +1,5 @@
 //! [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation, [[C17]] shareImpl, [[C15]] matricesInFormulas,
-//! [[C44]] dateSerials, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics. The small packs'
+//! [[C44]] dateSerials, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[C24]] arraySemantics. The small packs'
 //! card bodies (Electrical, Chemistry, Physics Constants, Astro, Thermo, Fluids, Health, EM Spectrum, Convert,
 //! Tornado and Triangle), with their kernels beside them.
 

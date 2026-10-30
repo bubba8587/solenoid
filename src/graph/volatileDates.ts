@@ -1,4 +1,4 @@
-// [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
+// [[C23]] calcModes, [[C44]] dateSerials
 // Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards (the clock also ticks each minute), a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 

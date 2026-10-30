@@ -55,7 +55,7 @@ const YAML_NONPRINTABLE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f]/g;
 
 export function yamlScalar(v: unknown): string {
   if (v === null || v === undefined) return "";
-  // YAML's own infinity, which the note reader reads back as ∞ ([[D48]] classifyNonFinite).
+  // YAML's own infinity, which the note reader reads back as ∞ ([[C24]] arraySemantics).
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : v === Infinity ? ".inf" : v === -Infinity ? "-.inf" : `"${v}"`;
   if (typeof v === "boolean") return v ? "true" : "false";
   const s = String(v);

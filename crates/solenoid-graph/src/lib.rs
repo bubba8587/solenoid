@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 //! Solenoid's graph: the canvas's nodes and cables in a Ruggine editor
 //! (<https://github.com/bubba8587/ruggine>), its dataflow engine, and the compute pass's graph
 //! walks (`tree/specs/computation/graph-core.md`). It links `solenoid-core` and is the one

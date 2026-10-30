@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 // The lazy frame verbs through data(): a frame value is uploaded for a ref and the body plans over it, a ref is
 // extended, a pass-through hands back what came in, and a Cube runs its verb on its cells. The sweep drives each
 // card over its ops and settings, so the recorder freezes each body on the inputs that matter.

@@ -1,4 +1,4 @@
-// [[D51]], [[D36]] nullSkippedNotZero (aggregators skip null)
+// [[C24]] arraySemantics
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";

@@ -1,4 +1,4 @@
-// [[D100]] computedColumnInfersUnit: a Cube's computed column takes the unit its formula works out, carried on its cells.
+// [[C25]] firstClassUnits: a Cube's computed column takes the unit its formula works out, carried on its cells.
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../../src/graph/errorValue";
 import { fromUnit, isUnitCell, type UnitCell } from "../../src/graph/unitValue";

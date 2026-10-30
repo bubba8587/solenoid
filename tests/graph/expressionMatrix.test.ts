@@ -31,7 +31,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
     expect(run("SUM(m)", { m: [M] })).toBe(10);
   });
 
-  it("per-cell null and error ride through a matrix formula ([[D36]] nullSkippedNotZero/[[C24]] arraySemantics)", () => {
+  it("per-cell null and error ride through a matrix formula ([[C24]] arraySemantics)", () => {
     const out = run("a + 1", { a: [[[1, null], [3, 4]]] }) as unknown[][];
     expect(out[0]).toEqual([2, null]);
     expect(out[1]).toEqual([4, 5]);

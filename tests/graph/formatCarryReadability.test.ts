@@ -1,5 +1,5 @@
-// [[D41]]
-// [[D41]] formatFlowsDownstream readability table: a styled source wired into a real transform,
+// [[C118]]
+// [[C118]] formatTravelsWithValue readability table: a styled source wired into a real transform,
 // the output formatted exactly as a Display would. `want` is what a reader should see —
 // "auto" = no carried style (a value of a new kind); a string = the style survives.
 //
@@ -166,7 +166,7 @@ async function shown(row: Row): Promise<string> {
   return ann ? formatNumberWithAnnotation(row.value, ann) : "auto";
 }
 
-describe("[[D41]] formatFlowsDownstream — what a reader sees after a transform", () => {
+describe("[[C118]] formatTravelsWithValue — what a reader sees after a transform", () => {
   for (const row of rows) {
     it(`${row.name} → ${row.want}`, async () => {
       expect(await shown(row)).toBe(row.want);

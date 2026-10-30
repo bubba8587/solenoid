@@ -1,4 +1,4 @@
-// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D102]] graphOnCore, [[C120]] linearWork
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[C130]] rustCore, [[C120]] linearWork
 // The cable readouts' values: each node output as an app pass last landed it, read from the core that ran the pass
 // (graph-core.md § Direct calls) and converted only when something asks. A pass ends with `bump()`.
 

@@ -1,4 +1,4 @@
-// [[C17]], [[B16]] oneFormulaSurface, [[D48]]
+// [[C17]], [[B16]] oneFormulaSurface, [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isRange } from "./callTraits";
@@ -63,7 +63,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
   // broadcastCall has always classified its results; the RANGE branch returned
   // dispatch results raw, so every degenerate whole-sample call leaked a bare
   // NaN into the graph — where it renders as an empty cell and poisons nothing
-  // visibly (the exact silent class [[D48]] classifyNonFinite exists for). The 2026-07-28 producer
+  // visibly (the exact silent class [[C24]] arraySemantics exists for). The 2026-07-28 producer
   // sweep probed the kernels (clean — they carry their own conventions: quiet
   // null, tagged errors, IMDIV's cx(NaN,NaN)) and found the leak HERE.
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -163,7 +163,7 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(out.intercept as number).toBeCloseTo(1, 10);
     // An exact exponential fits perfectly → log-scale R² = 1.
     expect(out.r2 as number).toBeCloseTo(1, 10);
-    // y ≤ 0 is a wrong input, #DOMAIN! (Excel's #NUM!) on the formula and the card alike ([[D70]] nullNotEnoughData).
+    // y ≤ 0 is a wrong input, #DOMAIN! (Excel's #NUM!) on the formula and the card alike ([[C24]] arraySemantics).
     for (const f of ["LOGEST(y, x)", "GROWTH(y, x)", "GROWTH(y, x, x, FALSE)"]) {
       expect((ev(f, { y: [1, -1, 2, 3], x: XS }) as { code?: string }).code).toBe("#DOMAIN!");
     }

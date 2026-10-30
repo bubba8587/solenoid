@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D35]] errorInErrorOut, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
+// [[C130]] rustCore, [[C24]] arraySemantics, [[C10]] socketLattice, [[B17]] typedValueModel, [[C25]] firstClassUnits, [[E9]] errorsKeepOrigin, [[D86]] blankRoles
 //! The input boundary every node's `data()` call goes through (`tree/specs/computation/compute-pass.md` § The per-node
 //! wrappers): the error guard's short-circuit, the lazy frames' collect, the unit boundary, the rung's coercion and
 //! the typed list literals on the way in; the frame format stamp and the guard's origin tagging on the way out; a

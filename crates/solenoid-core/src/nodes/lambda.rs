@@ -1,4 +1,4 @@
-//! [[C50]] lambdaBindsByName, [[C22]] rowFormulaRefs, [[C25]] firstClassUnits, [[D77]] constantsAlwaysWin.
+//! [[C50]] lambdaBindsByName, [[C22]] rowFormulaRefs, [[C25]] firstClassUnits.
 //! The LAMBDA card, a body over its parameters that captures every other name it reads, wired or
 //! typed. Its value crosses back as its text and its captures (`values::serialize_lambda`), which the card's TS
 //! compiles into a callable LAMBDA.
@@ -87,7 +87,7 @@ fn lambda(c: &mut Call) -> Answer {
     at_col_names(&ast, &mut names);
     let captured: Vec<String> = names.into_iter().filter(|n| !params.contains(n)).collect();
     let units: Vec<V> = captured.iter().map(|v| c.read_num(v, 0.0)).collect();
-    // The body reads its captures unit-blind; a computed column reads their units ([[D100]] computedColumnInfersUnit).
+    // The body reads its captures unit-blind; a computed column reads their units ([[C25]] firstClassUnits).
     let env: Env = captured.iter().cloned().zip(units.iter().map(strip_unit_cells)).collect();
     let descriptions =
         c.field("varDescriptions").filter(|d| d.as_object().is_some_and(|o| !o.is_empty())).map(|d| Rc::new(d.clone()));

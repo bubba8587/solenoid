@@ -242,7 +242,7 @@ describe("ONE Bond Pricing card: the odd-coupon dates are their own sockets", ()
 });
 
 describe("odd-coupon date order", () => {
-  it("ODD* dates out of Excel's order are #DOMAIN!, not a throw ([[D70]] nullNotEnoughData)", () => {
+  it("ODD* dates out of Excel's order are #DOMAIN!, not a throw ([[C24]] arraySemantics)", () => {
     const first = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], rate: [0.0575], redemption: [100], frequency: [2], yld: [0.06] };
     // issue after the first coupon
     expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2024-08-01")], firstcoupon: [d("2024-07-01")] }).result).toMatchObject({ code: "#DOMAIN!" });

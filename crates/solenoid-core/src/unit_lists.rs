@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
+// [[C25]] firstClassUnits, [[D99]] rustIsSpec
 //! The list bodies that read values with a unit: RUNNING's unit branch, and the
 //! key a unit cell takes in a set.
 

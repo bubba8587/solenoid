@@ -71,7 +71,7 @@ function reshapePin(
 }
 
 /** A plain ISO date is still text here; the reader's `dateColumns` names the date columns. */
-/** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[D72]]). */
+/** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[C58]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);

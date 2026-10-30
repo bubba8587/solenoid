@@ -238,7 +238,7 @@ describe("TBILL — money-market day-count conventions", () => {
   });
 });
 
-describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[D70]] nullNotEnoughData)", () => {
+describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] arraySemantics)", () => {
   const d = (s: string) => parseDateToSerial(s);
   const domain = (r: unknown) => expect(r).toMatchObject({ code: "#DOMAIN!" });
   it("a T-bill maturing more than one year after settlement is an error", () => {
@@ -351,7 +351,7 @@ describe("Depreciation", () => {
   });
 });
 
-describe("Depreciation answers its formula's domain errors ([[D70]] nullNotEnoughData)", () => {
+describe("Depreciation answers its formula's domain errors ([[C24]] arraySemantics)", () => {
   it("a period past the life is the formula's error, and a missing input stays blank", async () => {
     const { compileEvaluator } = await import("../../../src/graph/excelFormula");
     for (const op of ["syd", "ddb", "db"] as const) {

@@ -40,7 +40,7 @@ async function loadSeed(editor: GraphEditor<Schemes>) {
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
     if (node instanceof CompositeNode) {
       await node.hydrate(ctorRegistry()); // persistence.ts does the same
-      // A heavy composite loads UNSOLVED ([[D52]] compositesHoldUntilSolve); arm the
+      // A heavy composite loads UNSOLVED ([[C23]] calcModes); arm the
       // Solve these value-pins expect (the light single-run container ignores it).
       node.requestSolve();
     }

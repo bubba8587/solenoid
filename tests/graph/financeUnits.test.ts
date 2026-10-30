@@ -1,4 +1,4 @@
-// [[D101]] financeCarriesMoney: the finance functions carry the currency their money arguments share.
+// [[C25]] firstClassUnits: the finance functions carry the currency their money arguments share.
 import { describe, it, expect } from "vitest";
 import { dimWithCode } from "./coreDims";
 import { fromUnit, isUnitCell, type UnitCell } from "../../src/graph/unitValue";

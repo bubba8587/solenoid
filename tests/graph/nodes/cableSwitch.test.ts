@@ -1,4 +1,4 @@
-// [[D54]], [[C24]] arraySemantics, [[C44]] dateSerials
+// [[C44]] dateSerials, [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { type CubeValue } from "../../../src/graph/frame";

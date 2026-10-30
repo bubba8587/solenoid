@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[C120]] linearWork
+// [[C130]] rustCore, [[C120]] linearWork
 //! A value on a cable (`tree/specs/computation/graph-core.md` § Direct calls): one shared cell holding the form its
 //! producer made, a core value or a JavaScript object, and the other form once a reader of the other kind asks for
 //! it, kept beside the first so every reader of that kind gets the same one. Converting is the card wire

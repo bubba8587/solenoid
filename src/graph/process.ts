@@ -1,4 +1,4 @@
-// [[A1]], [[C23]] calcModes, [[D46]] freezeVolatilePerCalc (getRecalcGen), [[D102]] graphOnCore
+// [[A1]], [[C23]] calcModes (getRecalcGen), [[C130]] rustCore
 // The app's pass: its entry order and its body run in the graph core (`passSession.ts`, `engine.pass`); this module
 // holds the main editor, engine and view and does what touches them: the overlay, the cable values, the render.
 import type { View } from "./view";

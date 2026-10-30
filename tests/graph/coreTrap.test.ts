@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D99]] rustIsSpec, [[D102]] graphOnCore: a trap in the wasm module answers its call with an
+// [[C130]] rustCore, [[D99]] rustIsSpec: a trap in the wasm module answers its call with an
 // error and brings the module back, so the engine outlives it (tree/specs/computation/graph-core.md § Traps).
 import { it, expect } from "vitest";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";

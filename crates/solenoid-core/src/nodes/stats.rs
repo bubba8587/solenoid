@@ -1,4 +1,4 @@
-//! [[D102]] graphOnCore, [[B11]] maximalMerge, [[C17]] shareImpl. The stats cards' bodies: order statistics,
+//! [[C130]] rustCore, [[B11]] maximalMerge, [[C17]] shareImpl. The stats cards' bodies: order statistics,
 //! correlation and regression, the hypothesis tests, interpolation and the fits. Most share their kernel with a
 //! formula function.
 
@@ -975,7 +975,7 @@ fn distributions(c: &mut Call) -> Answer {
             match r {
                 e if e.is_sol_error() => e,
                 V::Num(n) if n.is_finite() => V::Num(n),
-                // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
+                // [[C24]] arraySemantics: a parameter outside the domain is a wrong input.
                 _ => err(ErrorCode::Domain, "A parameter is outside the distribution's domain"),
             }
         })

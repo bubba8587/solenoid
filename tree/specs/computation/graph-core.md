@@ -2,11 +2,11 @@
 aliases: ["Graph core"]
 tags: [spec, computation]
 ---
-<!-- [[D102]] graphOnCore, [[C130]] rustCore, [[C23]] calcModes -->
+<!-- [[C130]] rustCore, [[C23]] calcModes -->
 
 # Spec: the graph core
 
-Serves [[D102]] graphOnCore and [[C130]] rustCore. The graph model, the dataflow engine, the input boundary every node's call goes through, the compute pass and its state run in Rust: `crates/solenoid-graph`, built on [Ruggine](https://github.com/bubba8587/ruggine), the Rust port of rete and rete-engine kept as its own library. What the pass does with them is [[compute-pass]]; this file owns how the model and the engine are hosted.
+Serves [[C130]] rustCore. The graph model, the dataflow engine, the input boundary every node's call goes through, the compute pass and its state run in Rust: `crates/solenoid-graph`, built on [Ruggine](https://github.com/bubba8587/ruggine), the Rust port of rete and rete-engine kept as its own library. What the pass does with them is [[compute-pass]]; this file owns how the model and the engine are hosted.
 
 ## The module
 
@@ -166,7 +166,7 @@ flowchart LR
 
 ## Phase D: the graph's derived state
 
-What a graph works out from its own shape, after an edit and before a pass, runs in the core ([[D102]] graphOnCore), each piece moved by the [[rust-core]] routine (freeze the TypeScript's answers, cover them, delete it). It is the Type Settle and the Format Controller reconcile ([[type-propagation-on-in-place-socket-retype]]), and what they lean on:
+What a graph works out from its own shape, after an edit and before a pass, runs in the core ([[C130]] rustCore), each piece moved by the [[rust-core]] routine (freeze the TypeScript's answers, cover them, delete it). It is the Type Settle and the Format Controller reconcile ([[type-propagation-on-in-place-socket-retype]]), and what they lean on:
 
 ```mermaid
 flowchart LR
@@ -195,7 +195,7 @@ The rest of `src/graph/`'s non-component TypeScript, by group (lines as of 2026-
 | Graph model | moved: the text form (`text_form.rs`, frozen in `fixtures/core/text-form.json.gz`). Stays: `graphValidate` (it reads the node classes; the one rule it shares, `canConnect`, already reads the core's tables), `persistenceCore`, `copyPaste`, `persistence`, `compositeLogic`, `nodeInit`, `historyDigest` (they drive the editor, the view and the stores, or format a label) | about 2,800 |
 | Layout (the LayoutFx) | stays: `groupPushCore`, `groupPush`, `groupCollapse`, `groupLogic`, `standoffSolver`, `collapseSweep`, `selectionOps`, `canvasGeometry`, `nodeSize`, `tidyArrange` around ELK. No rule here has a core twin, and they work on the view's live boxes; reopen if one turns out slow | about 3,000 |
 | Cable geometry | stays: `cablePaths`, `cableShape`, `ribbonCable`, `drawnCables`, `drawnCablePath`, `hicCableGeom`, `pathPoints`. Drawing math with no core twin | about 1,400 |
-| Values and annotations | moved: the unit catalog, the dimension labels and the FC's tagging rule (`fc_unit_to_unit`, `format_dim`, `tag_fc_unit`; `dimension.ts` and `unitBridge.ts` read them, frozen in `fixtures/core/unit-catalog.json.gz`, `dim-labels.json.gz`, `fc-tag.json.gz`). Moved too: the date style patterns, through the core's formatter. Stays: the value shape and its cheap checks (`dimEqual`, `displayMagnitudeOf`, `stripUnitCells`), which run while drawing, and `frame`'s builders for the frames the app makes itself, whose text readings are already the core's ([[D93]] oneTextReading); `formatModel`, `numberSpec` | about 1,800 |
+| Values and annotations | moved: the unit catalog, the dimension labels and the FC's tagging rule (`fc_unit_to_unit`, `format_dim`, `tag_fc_unit`; `dimension.ts` and `unitBridge.ts` read them, frozen in `fixtures/core/unit-catalog.json.gz`, `dim-labels.json.gz`, `fc-tag.json.gz`). Moved too: the date style patterns, through the core's formatter. Stays: the value shape and its cheap checks (`dimEqual`, `displayMagnitudeOf`, `stripUnitCells`), which run while drawing, and `frame`'s builders for the frames the app makes itself, whose text readings are already the core's ([[C58]] tableInputRawText); `formatModel`, `numberSpec` | about 1,800 |
 | Catalog and search | stays: `catalogSearch`, `fuzzy`, `nodeOps`, `catalogUtils`. They read the node classes and the catalog | about 900 |
 | Colors and drawing math | stays: `palette`, `colormaps` (its colour stops are drawn here; the core keeps only the names, to check a card's pick), the geometry in `htmlCanvasRenderer` | about 2,000 |
 | Vault and files | stays: `vaultCube`, `frontmatterPatch`, `obsidianWrite`, `noteMarkdown`, `taskNotesApi`'s readers, and Write to Obsidian's and Write Tasks' preview columns. File access and YAML, with no core twin | about 2,800 |

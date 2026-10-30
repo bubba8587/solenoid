@@ -1,4 +1,4 @@
-// [[B11]], [[D46]] freezeVolatilePerCalc
+// [[B11]], [[C23]] calcModes
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numListIn, numListOut, type BroadcastResult } from "./shared";

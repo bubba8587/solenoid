@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[C25]], [[D41]]
+// [[C10]] socketLattice, [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
@@ -113,7 +113,7 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
   });
 });
 
-describe("[[D41]] formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
+describe("[[C118]] formatTravelsWithValue — the FORMAT crosses a transform, the unit stays locked", () => {
   it("the FORMAT carries through a transform, the unit does not", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;
     const fc = node("FC", { annotation: () => km3 });          // decimal, 3 places, km

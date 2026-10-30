@@ -369,7 +369,7 @@ describe("throughBoundary's FrameRef bridge (lazy forwards the ref, everyone els
     expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
   });
 
-  it("a frame that fails to collect is the guard's answer; a node that sees errors gets it as a value ([[D35]] errorInErrorOut)", async () => {
+  it("a frame that fails to collect is the guard's answer; a node that sees errors gets it as a value ([[C24]] arraySemantics)", async () => {
     const failed = { __solError: true, code: "#REF!", message: "gone" };
     const rf = readFrame as unknown as { mockResolvedValueOnce: (v: unknown) => void };
     rf.mockResolvedValueOnce(failed);

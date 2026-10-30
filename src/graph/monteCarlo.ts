@@ -1,4 +1,4 @@
-// [[D46]] freezeVolatilePerCalc
+// [[C23]] calcModes
 
 import { uncertain, type UncertainNumber } from "./valueKinds";
 import { stdNormCDF } from "./nodes/mathUtils";

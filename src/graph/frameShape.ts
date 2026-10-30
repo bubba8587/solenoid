@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D102]] graphOnCore
+// [[C10]] socketLattice, [[C130]] rustCore
 // A verb's static output shape is the core's verb run on an empty frame of its input's shape (graph-core.md § Phase D),
 // so it can never disagree with what the verb answers; a verb that refuses the shape throws, as it would on data.
 import { isFrameValue, type FrameValue } from "./frame";

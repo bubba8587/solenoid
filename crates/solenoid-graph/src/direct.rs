@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[C120]] linearWork
+// [[C130]] rustCore, [[C24]] arraySemantics, [[E9]] errorsKeepOrigin, [[C120]] linearWork
 //! A card the engine calls in Rust (`tree/specs/computation/graph-core.md` § Direct calls): what the core keeps for
 //! it (its call, read from the JavaScript object when it may have changed, and the fields its body shows), and the
 //! call itself, through the boundary on core values (`boundary_core.rs`) into its body (`solenoid_core::nodes`).

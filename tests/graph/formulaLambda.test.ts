@@ -26,12 +26,12 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
     expect(extractVariables("MAP(x, SQRT)")).toEqual(["x"]);
   });
 
-  it("a constant keeps its meaning inside a LAMBDA body ([[D77]] constantsAlwaysWin)", () => {
+  it("a constant keeps its meaning inside a LAMBDA body ([[C50]] lambdaBindsByName)", () => {
     expect(ev("LAMBDA(x, x + e)(1)")).toBeCloseTo(1 + Math.E);
     expect(ev("MAP(xs, LAMBDA(v, v * PI))", { xs: [1, 2] })).toEqual([Math.PI, 2 * Math.PI]);
   });
 
-  it("a parameter named after a constant is refused, on the formula and the card ([[D77]] constantsAlwaysWin)", () => {
+  it("a parameter named after a constant is refused, on the formula and the card ([[C50]] lambdaBindsByName)", () => {
     const f = ev("LAMBDA(e, e + 1)(5)") as SolError;
     expect(code(f)).toBe("#NAME?");
     expect(f.message).toMatch(/e is a constant/);
@@ -46,7 +46,7 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
     expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
   });
 
-  it("a positional binding never shadows a constant ([[D77]] constantsAlwaysWin)", () => {
+  it("a positional binding never shadows a constant ([[C50]] lambdaBindsByName)", () => {
     expect(compilePositional("e + 1", ["e"])!(5)).toBeCloseTo(Math.E + 1);
     expect(compilePositional("pi * r", ["r"])!(1)).toBeCloseTo(Math.PI);
   });

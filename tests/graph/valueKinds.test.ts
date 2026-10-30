@@ -1,4 +1,4 @@
-// [[D36]], [[C24]], [[D38]]
+// [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { numberToLogical, coerceLogical, logicalOrTypeError } from "../../src/graph/valueKinds";
 import { AggregateNode } from "../../src/graph/nodes/list";
@@ -28,7 +28,7 @@ describe("Aggregate's list prep", () => {
   });
 });
 
-describe("coerceLogical — the one reading of a value as a logical ([[D93]] oneTextReading)", () => {
+describe("coerceLogical — the one reading of a value as a logical ([[C58]] tableInputRawText)", () => {
   it("passes a real boolean through", () => {
     expect(coerceLogical(true)).toBe(true);
     expect(coerceLogical(false)).toBe(false);

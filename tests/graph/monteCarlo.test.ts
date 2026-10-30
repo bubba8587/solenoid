@@ -1,4 +1,4 @@
-// [[D46]] freezeVolatilePerCalc
+// [[C23]] calcModes
 import { describe, it, expect } from "vitest";
 import {
   mulberry32, sampleStandardNormal, sampleUncertain, summarizeSamples, histogram,

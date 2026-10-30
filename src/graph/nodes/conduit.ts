@@ -1,4 +1,4 @@
-// [[D35]] errorInErrorOut, [[C25]] firstClassUnits
+// [[C24]] arraySemantics, [[C25]] firstClassUnits
 // Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
 import { GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { trueAnySocket, MutableSocket } from "../sockets";

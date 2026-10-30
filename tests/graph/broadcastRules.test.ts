@@ -105,7 +105,7 @@ describe("the per-cell value model rides through rank 2 unchanged", () => {
     expect(out[1]).toEqual([4, 5]);
   });
 
-  it("a cell null propagates as null, not 0 ([[D36]] nullSkippedNotZero)", () => {
+  it("a cell null propagates as null, not 0 ([[C24]] arraySemantics)", () => {
     expect(ev("x + 1", { x: [[1, null], [3, 4]] })).toEqual([[2, null], [4, 5]]);
   });
 

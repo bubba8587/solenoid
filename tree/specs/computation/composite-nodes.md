@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
+Serves [[C77]] compositeIsSubgraph, [[C23]] calcModes, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 
@@ -316,7 +316,7 @@ With a stop port set, `simulationSteps` becomes a cap and its label reads Max st
 
 ## The heavy-mode hold
 
-A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[D52]] compositesHoldUntilSolve). Solving on load would stall opening a document, and a held composite sits blank so the user can watch it compute when they press Solve. The plain Single mode stays fully live.
+A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[C23]] calcModes). Solving on load would stall opening a document, and a held composite sits blank so the user can watch it compute when they press Solve. The plain Single mode stays fully live.
 
 **A Solve or Refresh runs everything inside it fresh** (`aroundSolving`): while a composite solves, each held composite inside it, at any depth, runs as though its own Solve were pressed, on its real inputs, and records that solve. A multi-run's passes therefore recompute a held composite inside on every run, as its changing inputs demand (timing only its own solves, so the store doesn't churn per pass). Without it a manual composite nested in another computed only when drilled into and refreshed on its own, and never while the one around it held. The context is a counter on each composite, raised by the composite directly around it for its own direct insides (`withInner`), never a module global: the engine fetches a card's inputs concurrently, so a held sibling elsewhere could otherwise read another card's solve as its own. `composite.test.ts` § nested manual refresh pins both directions three deep, the sibling rule and the cleared request.
 
@@ -365,7 +365,7 @@ flowchart TD
 
 **Solve from inside.** `requestSolve(insideOnly)` sets `solveRequested` and sets `solveInsideOnly` to `insideOnly && runMode !== "manual"`. The drill-in's controls pass `insideOnly`, so a Solve there runs on empty inputs: every exposed port falls to its seed, and Monte Carlo means and the goal-seek start come from the seeds too. The key is still taken on the real inputs, so the card does not read stale right after.
 
-**Errors on the card.** The card and the output marker are in `SEES_ERRORS` ([[D35]] errorInErrorOut): an error on a wired input crosses into the subgraph through its marker like any other value, and each member's own guard applies there. So a catcher inside (IFERROR) catches it, an output whose lane never reads that input keeps its value, and an error that reaches an output marker is that port's value, as the same nodes unpacked would give ([[C77]] compositeIsSubgraph). A held heavy card keeps its held outputs and reads stale ([[error-values]]).
+**Errors on the card.** The card and the output marker are in `SEES_ERRORS` ([[C24]] arraySemantics): an error on a wired input crosses into the subgraph through its marker like any other value, and each member's own guard applies there. So a catcher inside (IFERROR) catches it, an output whose lane never reads that input keeps its value, and an error that reaches an output marker is that port's value, as the same nodes unpacked would give ([[C77]] compositeIsSubgraph). A held heavy card keeps its held outputs and reads stale ([[error-values]]).
 
 ## Make a composite from a selection
 

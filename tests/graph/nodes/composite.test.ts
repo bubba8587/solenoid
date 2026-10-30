@@ -1,4 +1,4 @@
-// [[D52]]
+// [[C23]]
 import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../../src/graph/graphEditor";
@@ -1063,7 +1063,7 @@ describe("CompositeNode Goal Seek run mode", () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
     // Never solved (create/load): reads blank and stale until the user clicks Solve —
-    // people expect to watch it compute on Solve ([[D52]] compositesHoldUntilSolve).
+    // people expect to watch it compute on Solve ([[C23]] calcModes).
     const held0 = await c.data({ [inBId]: [10] });
     // Blank on every output key: rete-engine's fetch refuses a result missing a key.
     expect(held0[outId]).toBeNull();
@@ -1376,7 +1376,7 @@ describe("CompositeNode manual refresh mode", () => {
 
   it("a heavy composite loaded from JSON reads blank and stale until Solve", async () => {
     // extractInit → new → hydrate is the exact path persistence.ts and paste take, so a
-    // fresh load starts unsolved: no solve on load ([[D52]] compositesHoldUntilSolve).
+    // fresh load starts unsolved: no solve on load ([[C23]] calcModes).
     const src = (await makePassthrough()).c;
     const loaded = new CompositeNode(extractInit(src as unknown as GraphNode) as ConstructorParameters<typeof CompositeNode>[0]);
     await loaded.hydrate(ctorRegistry());
@@ -1467,7 +1467,7 @@ describe("CompositeNode run modes — review pins", () => {
   });
 });
 
-describe("an error crossing the boundary acts as it would unpacked ([[D35]] errorInErrorOut)", () => {
+describe("an error crossing the boundary acts as it would unpacked ([[C24]] arraySemantics)", () => {
   // Lane A: A → IFERROR(A, -1) → OutA. Lane B: B → OutB.
   async function twoLanes() {
     const c = new CompositeNode();

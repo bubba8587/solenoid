@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D47]] noMixCurrencies, [[D99]] rustIsSpec
+// [[C25]] firstClassUnits, [[D99]] rustIsSpec
 //! The dimension a formula's result carries, never its value.
 
 use std::collections::BTreeMap;

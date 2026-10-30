@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore
+// [[C130]] rustCore
 // The engine's own contract, as the app reads it: values cross by reference, a node's throw reaches the fetch as
 // itself, a reset mid-fetch rejects with Cancelled, and nodes added before `use` are registered.
 import { describe, it, expect } from "vitest";

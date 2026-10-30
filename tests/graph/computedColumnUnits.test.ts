@@ -1,4 +1,4 @@
-// [[D100]] computedColumnInfersUnit: a computed column takes the unit its formula works out.
+// [[C25]] firstClassUnits: a computed column takes the unit its formula works out.
 import { describe, it, expect } from "vitest";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";

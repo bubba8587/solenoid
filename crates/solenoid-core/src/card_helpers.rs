@@ -1,4 +1,4 @@
-// [[C118]] formatTravelsWithValue, [[C114]] cardsView, [[D94]] oneNumberDisplay
+// [[C118]] formatTravelsWithValue, [[C114]] cardsView
 //! What the Record card shares with the Table popup and the value boxes: a number as a format annotation shows it, the
 //! Cards view's plan and the Record layout grammar, held to the answers `tests/graph/coreCardHelpers.test.ts` freezes.
 

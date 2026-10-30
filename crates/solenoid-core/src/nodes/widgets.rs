@@ -1,5 +1,5 @@
-//! [[C28]] literalsIffEditable, [[D54]] relativeDatesOptIn, [[C118]] formatTravelsWithValue, [[D46]]
-//! freezeVolatilePerCalc, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input but its dates,
+//! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes
+//! calcModes, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input but its dates,
 //! Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter, Point Plotter, Date Range, Constant, Input
 //! Switch), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
 //! `colord` with its names plugin reads them.

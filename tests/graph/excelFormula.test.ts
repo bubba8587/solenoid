@@ -283,7 +283,7 @@ describe("evaluateSteps", () => {
     expect(falseResult!.value).toBe(0);
   });
 
-  it("shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay)", () => {
+  it("shows its numbers as every unformatted number shows ([[C118]] formatTravelsWithValue)", () => {
     const result = evaluateSteps("pi + 0", {});
     // 0 is a literal, pi is a constant; "pi + 0" emits one step, pi at the default 4 decimal places
     expect(result!.steps[0].latex).toContain("3.1416");

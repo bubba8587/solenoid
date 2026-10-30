@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C38]] sinkRunButtonOnly -->
 
 # Spec: Schedule and Gantt
 
@@ -262,7 +262,7 @@ Dates are Excel serials with a fractional day, zone-less local days. The engine 
 
 The schedule engine and the Gantt layout compute on day serials with integer arithmetic and never construct a JS `Date`. A serial converts once, at the border (import and display), and serials are never compared as floating-point numbers. Minutes mode works in whole minutes within the day, still on the serial. Every Gantt library surveyed has the daylight-saving off-by-an-hour class of bug, because it schedules with `Date`; integer serials can't have it. This is [[C44]] dateSerials applied where it matters most. **Reopen if:** a time-zone-aware schedule is wanted; the border would then grow a time zone, and the engine still wouldn't.
 
-Precision is an engine mode, chosen on the card, never a display snap ([[D66]] daysMinutesModes): rounding only what is shown would put two tasks on the same day and read as an overlap, so what is shown and what is computed stay the same. It is a mode of the whole schedule, not one of the per-task modes [[#The one rule]] leaves out, and a third precision would be a third mode.
+Precision is an engine mode, chosen on the card, never a display snap ([[C70]] oneScheduleRule): rounding only what is shown would put two tasks on the same day and read as an overlap, so what is shown and what is computed stay the same. It is a mode of the whole schedule, not one of the per-task modes [[#The one rule]] leaves out, and a third precision would be a third mode.
 
 - **Days** (the default) schedules whole working days. An FS link with lag 0 starts the successor on the next working day, and a finish is the last working day of the task, so `Finish − Start + 1 = Duration` holds on the cells, the `WORKDAY(Start, Duration − 1)` every Excel template computes.
 - **Minutes** schedules in working intervals of `hours` per day from 08:00 (with a lunch hour for a day of more than 4 and at most 8 hours), so an FS successor may start the same afternoon and a duration may be a fraction of a day.

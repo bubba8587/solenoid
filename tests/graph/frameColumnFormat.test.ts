@@ -1,4 +1,4 @@
-// [[D41]]
+// [[C118]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -51,7 +51,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
 beforeEach(() => { frameFormatStore.clear(); useWasmBackend(); clearCollectMemo(); });
 afterEach(() => { frameFormatStore.clear(); });
 
-// [[D41]] formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
+// [[C118]] formatTravelsWithValue: a frame column's DISPLAY format rides the value like its
 // unit — stamped at the producer from that node's own picks, overridden by a nearer one.
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {

@@ -52,7 +52,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
   it("every card that declares roles reads each declared socket through readRole", () => {
     const dir = "src/graph/nodes";
     const src = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => readFileSync(`${dir}/${f}`, "utf8")).join("\n");
-    // A body on the core ([[D102]] graphOnCore) reads its roles in Rust.
+    // A body on the core ([[C130]] rustCore) reads its roles in Rust.
     const rustDir = "crates/solenoid-core/src/nodes";
     const rust = readdirSync(rustDir).filter((f) => f.endsWith(".rs")).map((f) => readFileSync(`${rustDir}/${f}`, "utf8")).join("\n");
     const seen = new Set<string>();

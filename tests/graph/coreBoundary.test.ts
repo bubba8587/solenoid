@@ -1,4 +1,4 @@
-// [[D102]] graphOnCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C10]] socketLattice, [[C24]] arraySemantics, [[E9]] errorsKeepOrigin
 // The input boundary's frozen answers (fixtures/core/boundary-*.json.gz): what a value arriving on each rung reaches
 // `data()` as, under full coercion, element coercion alone (`noWidenInputs`) and with its units kept or stripped; the
 // typed list literals; the guard's origin tagging of what a node answers and its reading of what a node throws.

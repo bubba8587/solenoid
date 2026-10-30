@@ -147,3 +147,28 @@ C41	2026-10-01	reverted	-	Claude	-	branchModel: All work goes on develop; main i
 C16	2026-10-21	superseded	C130	Claude Opus 5.5	the author	polarsEngine: Desktop runs tables on Polars, the web on a matching JavaScript engine
 D97	2026-10-21	superseded	D99	Claude Opus 5.5	the author	tsIsSpec: The Rust core ports the TypeScript, which stays the spec: a different answer is a Rust bug
 D98	2026-10-23	reverted	-	Claude (delete-ts, ring B)	-	wholeColumnFallback: A formula the Rust core can't answer exactly runs whole on the TypeScript, never approximated
+D35	2026-10-30	superseded	C24	Claude Opus 5.5	-	errorInErrorOut: Error in, error out: a node that receives an error passes it on without computing
+D36	2026-10-30	superseded	C24	Claude Opus 5.5	-	nullSkippedNotZero: A blank is a missing value: totals skip it and nothing turns it into zero
+D38	2026-10-30	superseded	C24	Claude Opus 5.5	-	kleeneLogic: A test with a blank in it answers unknown, not false
+D41	2026-10-30	superseded	C118	Claude Opus 5.5	-	formatFlowsDownstream: A format carries on only while a step keeps the value's meaning
+D43	2026-10-30	superseded	C25	Claude Opus 5.5	-	unitByGranularity: A unit sits where the values are sure to agree
+D46	2026-10-30	superseded	C23	Claude Opus 5.5	-	freezeVolatilePerCalc: A node that draws random numbers keeps them until F9
+D47	2026-10-30	superseded	C25	Claude Opus 5.5	-	noMixCurrencies: Two different currencies never combine: no operation mixes $ and €
+D48	2026-10-30	superseded	C24	Claude Opus 5.5	-	classifyNonFinite: A calculation that goes out of range answers a named error, never a hidden not-a-number
+D49	2026-10-30	superseded	C10	Claude Opus 5.5	-	textPredicateNeedsText: Contains, Starts with and Ends with work only on text
+D51	2026-10-30	superseded	C24	Claude Opus 5.5	-	oneAnswerOneDivergence: Range totals skip blanks, while cell-by-cell math treats a blank as unknown
+D52	2026-10-30	superseded	C23	Claude Opus 5.5	-	compositesHoldUntilSolve: A heavy composite stays blank until you press Solve or Refresh
+D54	2026-10-30	superseded	C44	Claude Opus 5.5	-	relativeDatesOptIn: Phrases like 'today' or 'next Friday' become a date only on a date Value Input that opts in
+D66	2026-10-30	superseded	C70	Claude Opus 5.5	-	daysMinutesModes: A schedule works in whole days or in minutes, chosen on the node
+D70	2026-10-30	superseded	C24	Claude Opus 5.5	-	nullNotEnoughData: Not enough data answers a quiet blank, and only a wrong input errors
+D72	2026-10-30	superseded	C58	Claude Opus 5.5	-	pluginSaveWritesSourceText: The Obsidian plugin's Save writes what was typed, whatever the column type
+D76	2026-10-30	superseded	C24	Claude Opus 5.5	-	textMinMax: GROUPBY min and max of text give its first and last
+D77	2026-10-30	superseded	C50	Claude Opus 5.5	-	constantsAlwaysWin: Formula constants keep their meaning, even inside a LAMBDA
+D93	2026-10-30	superseded	C58	Claude Opus 5.5	-	oneTextReading: Text is read into a typed value one way everywhere
+D94	2026-10-30	superseded	C118	Claude Opus 5.5	-	oneNumberDisplay: A number nobody formatted shows the same way everywhere
+D100	2026-10-30	superseded	C25	Claude Opus 5.5	-	computedColumnInfersUnit: A computed column infers its unit from its formula
+D101	2026-10-30	superseded	C25	Claude Opus 5.5	-	financeCarriesMoney: The finance functions carry the currency their money arguments share
+D102	2026-10-30	superseded	C130	Claude Opus 5.5	-	graphOnCore: Everything headless moves to the Rust core, the graph included; only the React UI stays TypeScript
+D104	2026-10-30	superseded	C100	Claude Opus 5.5	-	displayKeepsControls: A chart keeps its controls in a Display: paging, rotating and the rest
+D105	2026-10-30	superseded	C25	Claude Opus 5.5	-	mixedTempUnitsRefused: Mixing temperature units in one calculation is #UNIT! for now; convert first
+D107	2026-10-30	superseded	C25	Claude Opus 5.5	-	tempDifferenceKeepsDelta: A temperature difference stays a difference, in Δ°C or Δ°F, never K

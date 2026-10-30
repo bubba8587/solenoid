@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C118]] formatTravelsWithValue
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue
 import type { GraphEditor } from "../graphEditor";
 import { GraphConnection, GraphInput, GraphNode, GraphOutput } from "../graphModel";
 import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";

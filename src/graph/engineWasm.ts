@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D102]] graphOnCore
+// [[C130]] rustCore
 // The one WebAssembly module: the graph engine and the core it links (`crates/solenoid-graph`, `crates/solenoid-core`),
 // answering the core's commands in-process. A trap anywhere drops the instance and brings a fresh one
 // (tree/specs/computation/graph-core.md § Traps). `npm run build:wasm` regenerates `engineWasm/`.
@@ -51,7 +51,7 @@ function onLoaded(): void {
   for (const fn of _onLoad) fn();
 }
 
-/** Display formatting runs on the core ([[D94]] oneNumberDisplay); a number shown before the module loads (the app's
+/** Display formatting runs on the core ([[C118]] formatTravelsWithValue); a number shown before the module loads (the app's
  *  chrome renders first) reads as `String(n)`. */
 export function coreFormatScalar(n: number): string {
   return wasmEngineLoaded() ? fmt_scalar(n) : String(n);
@@ -84,7 +84,7 @@ export function coreImageSrc(text: string): string | null {
   return wasmEngineLoaded() ? card_image_src(text) ?? null : null;
 }
 
-/** Text read as a number or a logical, as every typed input reads it ([[D93]] oneTextReading). */
+/** Text read as a number or a logical, as every typed input reads it ([[C58]] tableInputRawText). */
 export function coreReadDecimal(text: string): number {
   return read_decimal(text);
 }

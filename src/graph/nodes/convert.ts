@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[C24]] arraySemantics
+// [[C25]] firstClassUnits, [[C118]] formatTravelsWithValue, [[C24]] arraySemantics
 import { GraphNode } from "../graphModel";
 import { numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
