@@ -32,9 +32,13 @@ function openWebsite(): void {
   void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}${SITE_PAGES.about.path}` : `${window.location.origin}${SITE_PAGES.about.path}`);
 }
 
+/** Read only by the phone sheet (`MobileMenuSheet.tsx`): `icon` and `short`, a separator's `label` captioning the group
+ *  after it, and `hideOnPhone` for a command the phone's own chrome already carries on screen. */
+export type MenuIcon =
+  | "new" | "open" | "save" | "saveAs" | "copy" | "paste" | "toFront" | "forward" | "backward" | "toBack";
 export type MenuItem =
-  | { sep: true }
-  | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
+  | { sep: true; label?: string }
+  | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean; icon?: MenuIcon; short?: string; hideOnPhone?: true };
 export type Menu = { label: string; items: MenuItem[] };
 
 /** Presses a canvas key as a real keyboard would: down on the document, where React Flow's Delete listens (the event
@@ -57,11 +61,11 @@ export function buildMenus(): Menu[] {
     {
       label: "File",
       items: [
-        { label: "New Document", onClick: () => void documentStore.newBlank() },
-        { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
+        { label: "New Document", icon: "new", short: "New", onClick: () => void documentStore.newBlank() },
+        { label: "Open…", icon: "open", short: "Open", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
-        { label: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
-        { label: "Save As…", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
+        { label: "Save", icon: "save", short: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
+        { label: "Save As…", icon: "saveAs", short: "Save As", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
@@ -84,22 +88,22 @@ export function buildMenus(): Menu[] {
     {
       label: "Edit",
       items: [
-        { label: "Undo", shortcut: "Ctrl+Z", onClick: () => fireMenuKey("KeyZ", { ctrl: true }) },
-        { label: "Redo", shortcut: "Ctrl+Shift+Z", onClick: () => fireMenuKey("KeyZ", { ctrl: true, shift: true }) },
-        { sep: true },
-        { label: "Copy", shortcut: "Ctrl+C", onClick: () => fireMenuKey("KeyC", { ctrl: true }) },
-        { label: "Paste", shortcut: "Ctrl+V", onClick: () => fireMenuKey("KeyV", { ctrl: true }) },
-        { label: "Delete", shortcut: "Del", onClick: () => fireMenuKey("Delete", { key: "Delete" }) },
+        { label: "Undo", hideOnPhone: true, shortcut: "Ctrl+Z", onClick: () => fireMenuKey("KeyZ", { ctrl: true }) },
+        { label: "Redo", hideOnPhone: true, shortcut: "Ctrl+Shift+Z", onClick: () => fireMenuKey("KeyZ", { ctrl: true, shift: true }) },
+        { sep: true, label: "Clipboard" },
+        { label: "Copy", icon: "copy", shortcut: "Ctrl+C", onClick: () => fireMenuKey("KeyC", { ctrl: true }) },
+        { label: "Paste", icon: "paste", shortcut: "Ctrl+V", onClick: () => fireMenuKey("KeyV", { ctrl: true }) },
+        { label: "Delete", hideOnPhone: true, shortcut: "Del", onClick: () => fireMenuKey("Delete", { key: "Delete" }) },
         { sep: true },
         { label: "Select all", shortcut: "Ctrl+A", onClick: () => fireMenuKey("KeyA", { ctrl: true }) },
-        { label: "Group selection", shortcut: "G", onClick: () => fireMenuKey("KeyG") },
+        { label: "Group selection", hideOnPhone: true, shortcut: "G", onClick: () => fireMenuKey("KeyG") },
         { label: "Wrap as Composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
         { label: "Group Autofit", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
-        { sep: true },
-        { label: "Bring to front", shortcut: "Ctrl+Shift+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true, shift: true }) },
-        { label: "Bring forward", shortcut: "Ctrl+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true }) },
-        { label: "Send backward", shortcut: "Ctrl+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true }) },
-        { label: "Send to back", shortcut: "Ctrl+Shift+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true, shift: true }) },
+        { sep: true, label: "Arrange" },
+        { label: "Bring to front", icon: "toFront", shortcut: "Ctrl+Shift+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true, shift: true }) },
+        { label: "Bring forward", icon: "forward", shortcut: "Ctrl+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true }) },
+        { label: "Send backward", icon: "backward", shortcut: "Ctrl+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true }) },
+        { label: "Send to back", icon: "toBack", shortcut: "Ctrl+Shift+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true, shift: true }) },
         { sep: true },
         { label: "Find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
       ],
@@ -107,22 +111,22 @@ export function buildMenus(): Menu[] {
     {
       label: "View",
       items: [
-        { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
-        { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
+        { label: mode === "dark" ? "Light theme" : "Dark theme", hideOnPhone: true, onClick: () => appThemeStore.toggleMode() },
+        { label: "Lock canvas", hideOnPhone: true, checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy", shortcut: "T", onClick: () => fireMenuKey("KeyT") },
-        { label: "Cleanup", shortcut: "C", onClick: () => fireMenuKey("KeyC") },
-        { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
+        { label: "Tidy", hideOnPhone: true, shortcut: "T", onClick: () => fireMenuKey("KeyT") },
+        { label: "Cleanup", hideOnPhone: true, shortcut: "C", onClick: () => fireMenuKey("KeyC") },
+        { label: "Snap to grid", hideOnPhone: true, checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
-        { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
+        { label: "Function reference", hideOnPhone: true, shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
         { label: "Inspector", onClick: () => inspectorStore.toggle() },
-        { label: "Settings…", shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
+        { label: "Settings…", hideOnPhone: true, shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],
     },
     {
       label: "Insert",
       items: [
-        { label: "Add node…", shortcut: "A", onClick: () => addMenuRequest.open(window.innerWidth / 2, 140) },
+        { label: "Add node…", hideOnPhone: true, shortcut: "A", onClick: () => addMenuRequest.open(window.innerWidth / 2, 140) },
         { label: "Add connection…", onClick: () => connectionDialog.open() },
         { sep: true },
         {
@@ -156,7 +160,7 @@ export function buildMenus(): Menu[] {
       label: "Calculate",
       items: [
         { label: "Calculate now", shortcut: "F9", onClick: () => void requestRecalc() },
-        { sep: true },
+        { sep: true, label: "Mode" },
         {
           label: "Automatic",
           checked: calcMode === "auto",
@@ -183,7 +187,7 @@ export function buildMenus(): Menu[] {
         { label: "Help", onClick: () => frStore.open("help") },
         { label: "Notes", onClick: () => frStore.open("notes") },
         { sep: true },
-        { label: "Keyboard shortcuts…", onClick: () => shortcutsStore.toggle() },
+        { label: "Keyboard shortcuts…", hideOnPhone: true, onClick: () => shortcutsStore.toggle() },
         { sep: true },
         { label: "Solenoid website", onClick: openWebsite },
         { label: "What's new…", onClick: () => helpDialogStore.openWhatsNew() },

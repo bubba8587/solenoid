@@ -1,0 +1,136 @@
+/* The phone's ⋮ menu, at the Settings sheet's scale: 13px text, rows 30px tall, 28px controls. */
+.sol-msheet {
+  position: absolute;
+  top: calc(82px + env(safe-area-inset-top));
+  left: 8px;
+  width: min(296px, 88vw);
+  max-height: calc(100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  padding: 0 6px 6px;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-size: 13px;
+}
+.sol-msheet button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sol-msheet button:disabled { opacity: 0.45; cursor: default; }
+
+.sol-msheet__section { display: flex; flex-direction: column; padding-bottom: 4px; }
+.sol-msheet__section + .sol-msheet__section { border-top: 1px solid var(--panel-border); }
+.sol-msheet__heading {
+  padding: 8px 10px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sol-msheet__row,
+.sol-msheet__ctlrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+}
+.sol-msheet__row {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+/* A finger leaves a sticky :hover on whatever lands under it after a tap, so only the press tints. */
+.sol-msheet__row:active:not(:disabled) { background: var(--accent-soft); }
+.sol-msheet__ctlrow { padding-right: 4px; }
+
+.sol-msheet__tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 2px 4px 6px; }
+.sol-msheet__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 50px;
+  padding: 0;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 11.5px;
+}
+.sol-msheet__tile:active:not(:disabled) { background: var(--btn-hover); }
+
+/* Bare icon buttons, so the row reads as a row with tools, not a toolbar. */
+.sol-msheet__icons { display: flex; gap: 2px; }
+.sol-msheet__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+.sol-msheet__icon:active:not(:disabled) { background: var(--btn-hover); color: var(--text); }
+
+/* The Navigator's Files and Outline switch. */
+.sol-msheet__seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.sol-msheet__segbtn {
+  height: 24px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.sol-msheet__segbtn--on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* The Settings switch, a size down. */
+.sol-msheet__switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.sol-msheet__switch--on { background: var(--accent); border-color: var(--accent); }
+.sol-msheet__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-bright);
+  border-radius: 50%;
+  transition: transform 120ms ease;
+}
+.sol-msheet__switch--on .sol-msheet__knob { transform: translateX(14px); background: var(--accent-ink); }
+
+.sol-msheet .solenoid-toolbar { gap: 6px; }
+.sol-msheet .solenoid-toolbar__label { display: none; }
+.sol-msheet .solenoid-toolbar__segment,
+.sol-msheet .solenoid-toolbar__flow { padding: 3px 9px; }
+.sol-msheet .solenoid-toolbar__icon { width: 18px; height: 16px; }
+.sol-msheet .solenoid-toolbar__flow-icon { width: 30px; height: 13px; }

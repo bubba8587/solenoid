@@ -106,51 +106,6 @@ html.is-mobile {
   .solenoid-menubar__center .solenoid-doctitle { max-width: 100%; }
   .solenoid-menubar__center .solenoid-doctitle__name,
   .solenoid-menubar__center .solenoid-doctitle__caret { max-width: none; }
-  .solenoid-menubar__sheet {
-    position: absolute;
-    top: calc(82px + env(safe-area-inset-top));
-    left: 8px;
-    width: max-content;
-    max-width: min(280px, 86vw);
-    max-height: calc(100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    max-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y: auto;
-    background: var(--surface);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    box-shadow: var(--shadow-pop);
-    padding: 6px;
-  }
-  .solenoid-menubar__sheet-section + .solenoid-menubar__sheet-section {
-    border-top: 1px solid var(--panel-border);
-    margin-top: 4px;
-    padding-top: 6px;
-  }
-  .solenoid-menubar__sheet-heading {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 4px 10px 2px;
-  }
-  .solenoid-menubar__option { padding: 11px 10px; font-size: 14px; }
-  .solenoid-menubar__sheet .solenoid-menubar__shortcut { display: none; }
-
-  .solenoid-menubar__sheet-seed {
-    width: 100%;
-    max-width: none;
-    height: 40px;
-    margin: 2px 0 4px;
-    font-size: 14px;
-  }
-  .solenoid-menubar__sheet .solenoid-toolbar { padding: 2px 10px 6px; gap: 10px; justify-content: center; }
-  .solenoid-menubar__sheet .solenoid-toolbar__label { display: none; }
-  .solenoid-menubar__sheet .solenoid-toolbar__segment { padding: 8px 12px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__icon { width: 20px; height: 18px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__flow { padding: 8px 12px; }
-  .solenoid-menubar__sheet .solenoid-toolbar__flow-icon { width: 36px; height: 15px; }
-
   /* ── Web-demo notice ── */
   .solenoid-webdemo {
     top: calc(48px + env(safe-area-inset-top));
