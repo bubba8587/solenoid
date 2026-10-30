@@ -35,22 +35,20 @@
   justify-content: center;
   flex: 0 0 auto;
   align-self: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--btn-border);
   border-radius: 50%;
   appearance: none;
   -webkit-appearance: none;
   background: var(--btn-bg);
+  color: var(--text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .solenoid-topbar__icon:active { background: var(--btn-hover); }
 .solenoid-topbar__nav { display: none; }
-.solenoid-topbar__icon {
-  color: var(--text);
-}
 
 .solenoid-topbar__divider {
   align-self: stretch;

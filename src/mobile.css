@@ -27,16 +27,17 @@ html.is-mobile {
   .solenoid-topbar .solenoid-nav__btn.solenoid-topbar__tidymenu-btn { width: auto; padding: 0 9px 0 11px; border-radius: 999px; }
   .solenoid-topbar__tidymenu-btn svg { flex: 0 0 auto; }
   .solenoid-topbar .solenoid-topbar__tidymenu-btn .solenoid-topbar__chev { width: 11px; height: 11px; }
-  .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
-  .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
+  .solenoid-topbar .solenoid-nav__btn { width: 32px; height: 32px; }
+  /* Every Row B icon is half its 32px button, desktop's ratio (14 in 28), and both even, so the glyph centers on whole pixels. */
+  .solenoid-topbar :is(.solenoid-nav__btn, .solenoid-topbar__icon, .solenoid-topbar__nav, .solenoid-apptools__btn) svg { width: 16px; height: 16px; }
   .solenoid-topbar__icon { display: flex; }
   .solenoid-topbar__nav {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     background: var(--btn-bg);
     border: 1px solid var(--btn-border);
@@ -56,7 +57,7 @@ html.is-mobile {
   }
 
   .solenoid-apptools { gap: 2px; margin-left: auto; }
-  .solenoid-apptools__btn { width: 34px; height: 34px; }
+  .solenoid-apptools__btn { width: 32px; height: 32px; }
   .solenoid-apptools__palette { top: 40px; }
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
