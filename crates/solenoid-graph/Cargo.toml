@@ -15,9 +15,9 @@ ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d
 ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "2aa2ca2fbab976d2d6f3f4b78863a091ebbd5482" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "=0.2.100"
-wasm-bindgen-futures = "=0.4.50"
-js-sys = "=0.3.77"
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "=0.4.80"
+js-sys = "=0.3.107"
 
 [profile.release]
 opt-level = 2

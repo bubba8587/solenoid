@@ -20,12 +20,14 @@ function patchGlue(src) {
     if (!src.includes(from)) throw new Error(`build-wasm: wasm-bindgen's glue has no ${JSON.stringify(from)}`);
     src = all ? src.split(from).join(to) : src.replace(from, to);
   };
-  const maybe = (from, to, all) => { if (src.includes(from)) swap(from, to, all); };
-  swap("let wasm;\n", "let wasm;\nlet __wbg_epoch = 0;\n");
-  maybe("const state = { a: arg0, b: arg1, cnt: 1, dtor };", "const state = { a: arg0, b: arg1, cnt: 1, dtor, epoch: __wbg_epoch };", true);
-  maybe("const real = (...args) => {\n", "const real = (...args) => {\n        if (state.epoch !== __wbg_epoch) return;\n", true);
-  maybe("new FinalizationRegistry(state => {\n", "new FinalizationRegistry(state => {\n    if (state.epoch !== __wbg_epoch) return;\n");
-  src = src.replace(/new FinalizationRegistry\(ptr => (wasm\.__wbg_\w+_free)\(ptr >>> 0, 1\)\)/g,
+  // wasm-bindgen 0.2.130: objects live in the instance's externref table, so a fresh instance starts with a clean
+  // one, and the glue caches its init promise, which the reset clears with the instance.
+  swap("let wasmModule, wasmInstance, wasm;\n", "let wasmModule, wasmInstance, wasm;\nlet __wbg_epoch = 0;\n");
+  swap("const state = { a: arg0, b: arg1, cnt: 1 };", "const state = { a: arg0, b: arg1, cnt: 1, epoch: __wbg_epoch };", true);
+  swap("const real = (...args) => {\n", "const real = (...args) => {\n        if (state.epoch !== __wbg_epoch) return;\n", true);
+  src = src.replace(/new FinalizationRegistry\(state => (wasm\.\w+\(state\.a, state\.b\))\)/g,
+    "new FinalizationRegistry(state => state.epoch === __wbg_epoch && $1)");
+  src = src.replace(/new FinalizationRegistry\(ptr => (wasm\.__wbg_\w+_free)\(ptr(?: >>> 0)?, 1\)\)/g,
     "new FinalizationRegistry(({ ptr, epoch }) => epoch === __wbg_epoch && $1(ptr >>> 0, 1))");
   src = src.replace(/Finalization\.register\(this, this\.__wbg_ptr, this\)/g,
     "Finalization.register(this, { ptr: this.__wbg_ptr, epoch: __wbg_epoch }, this)");
@@ -35,13 +37,11 @@ function patchGlue(src) {
   if (guarded !== registries + closures) throw new Error("build-wasm: a finalizer or closure in the glue is unguarded");
   return src + `
 export function __wbg_reset() {
-    const module = __wbg_init.__wbindgen_wasm_module;
+    const module = wasmModule;
     wasm = undefined;
+    wasmInstance = undefined;
+    __wbg_init_promise = undefined;
     __wbg_epoch++;
-    heap.length = 128;
-    heap.fill(undefined);
-    heap.push(undefined, null, true, false);
-    heap_next = heap.length;
     return module;
 }
 `;

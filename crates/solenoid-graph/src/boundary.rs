@@ -1151,7 +1151,7 @@ impl Call {
         let mut out = Outputs::new();
         let outputs = get(&self.object, &k.outputs);
         if outputs.is_object() {
-            for key in Object::keys(outputs.unchecked_ref()).iter() {
+            for key in Object::keys::<JsValue>(outputs.unchecked_ref()).iter() {
                 out.insert(key.as_string().unwrap_or_default(), tagged.clone());
             }
         }
@@ -1270,7 +1270,7 @@ impl Call {
             return Ok(outputs);
         }
         let id: JsValue = self.id.as_str().into();
-        for key in Object::keys(out.unchecked_ref()).iter() {
+        for key in Object::keys::<JsValue>(out.unchecked_ref()).iter() {
             let mut v = Reflect::get(out, &key)?;
             if out.is_object() && (is_frame_value(&v) || is_frame_ref(&v)) {
                 v = self.host.stamp.call2(&JsValue::NULL, &id, &v)?;

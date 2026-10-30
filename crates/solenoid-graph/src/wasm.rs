@@ -157,7 +157,7 @@ fn keys_of(value: &JsValue) -> Vec<String> {
     if !value.is_object() {
         return Vec::new();
     }
-    Object::keys(value.unchecked_ref())
+    Object::keys::<JsValue>(value.unchecked_ref())
         .iter()
         .filter_map(|k| k.as_string())
         .collect()
@@ -366,7 +366,7 @@ fn inputs_from_js(inputs: &JsValue) -> Inputs<JsValue> {
     if !inputs.is_object() {
         return given;
     }
-    for key in Object::keys(inputs.unchecked_ref()).iter() {
+    for key in Object::keys::<JsValue>(inputs.unchecked_ref()).iter() {
         let values = Reflect::get(inputs, &key).unwrap_or(JsValue::UNDEFINED);
         let list: Vec<JsValue> = values
             .dyn_ref::<Array>()
