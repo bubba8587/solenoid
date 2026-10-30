@@ -46,7 +46,7 @@ webkit2gtk = "2.0"
 # accent so the focused-window frame matches the theme. Already in the dep tree via
 # tauri; the Dwm + Foundation features expose the one call we need.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
 
 # NOTE — stripping build paths from the shipped binary: Rust bakes source paths into
 # panic locations, and for registry deps those sit under the builder's home
