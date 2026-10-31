@@ -1,6 +1,6 @@
-<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
+<!-- vendored from DTE 0.2 (855a723) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:A4,B22,B8,B33,B34,C21,B45,B44,B51,B56,B58,B54 -->
+<!-- dte:A4,B22,B8,B33,B34,C21,B45,B44,B51,B56,B58,B54,B63,B48 -->
 # Adopting DTE in an existing project
 
 Written for a large, live codebase, but nothing here is specific to one. Adoption is incremental by design: coverage starts near zero and only goes up, and nothing fails until the tree itself is inconsistent.
@@ -60,7 +60,7 @@ Refresh with the command in the vendored files' stamp. `vendor` prints every DTE
 
 1. `vendor` from a 0.2 checkout. It refreshes the tool and replaces the vendored `CLAUDE.md` with `PROTOCOL.md`; point your harness at the new file.
 2. `dte upgrade`, then commit it on its own. It rewrites frontmatter only: the name becomes the leaf's one alias, uuids are backfilled stably, and `status: active`, `made_by: ai`, `confidence`, an empty `conflicts_with` and (under `retire = delete`) `supersedes` and `superseded_by` go.
-3. `dte validate`. Then apply the 0.2 rules to the leaves you have: the leaf-or-spec test, the child-or-aspect test, citations only up the lineage, a label on every unenforced MUST. `to-spec` and `fold` do the moves.
+3. `dte validate`. Then apply the 0.2 rules to the leaves you have: the leaf-or-spec and stakes tests, the whole-leaf test, citations only up the lineage, a label on every unenforced MUST. `to-spec` and `fold` do the moves.
 
 ## Using it
 

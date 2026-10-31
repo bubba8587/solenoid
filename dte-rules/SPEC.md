@@ -1,6 +1,6 @@
-<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
+<!-- vendored from DTE 0.2 (855a723) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:A1,A2,A3,A4,A5,A6,A8,A9,B1,B3,B4,B10,B11,B12,B13,B14,B15,B16,B21,B24,B29,B27,B30,B31,B32,B33,B35,B40,B42,B43,B44,B45,B46,B47,B48,B49,B50,B51,B52,B53,B54,B57,B58,B59,B60,B61,B62 -->
+<!-- dte:A1,A2,A3,A4,A5,A6,A8,A9,B1,B3,B4,B10,B11,B12,B13,B14,B15,B16,B21,B24,B29,B27,B30,B31,B32,B33,B35,B40,B42,B43,B44,B45,B46,B47,B48,B49,B50,B51,B52,B53,B54,B57,B58,B59,B60,B61,B62,B63,B64 -->
 # DTE Specification (0.2)
 
 This document is normative. Words in **bold** are defined terms. Each section cites the leaves it derives from; a leaf's file holds the reasoning. How the reference tool carries each rule out is in `specs/`.
@@ -44,7 +44,11 @@ DTE governs the tree: its format, its tool, and the rules for writing and changi
 
 A leaf records a call a person could weigh and choose otherwise, in the project's plain words. Anything describing how the code carries a call out (call order, wrappers, file formats, internal names) is spec content, fluid, with git as its record. The tripwire: a Decision names the call and its opposite, and a sentence that would still be true had the opposite been chosen belongs in the spec (dte:B47).
 
-A child decides a different question that its parent leaves open. A leaf that restates part of its parent, adds detail to it or names one of its aspects folds back into the parent's Consequences, or becomes spec. One decision may govern several things when turning it off for one would break the others; things that were ever reversed independently stay separate (dte:B48).
+A leaf is kept for a call with stakes: a product call, or a technical call whose flip would change what the project's users get, cost real rework, or that the owner wants settled. A description of how a system works, and a technical choice an agent could flip without anyone outside the code noticing, are spec content even when a person could weigh them. The tripwire: would the owner want to be asked before this flips? A non-trivial choice without stakes is recorded in the spec it changes (dte:B63, dte:B8).
+
+A part of a spec that must stop being fluid becomes a leaf, and the spec cites the leaf at that point instead of restating it. A spec has no other way to freeze text. Freezing is the owner's call; an agent proposes the leaf through the inbox, and once ratified the leaf is human-held (dte:B64).
+
+Each leaf states one whole decision: read alone, its Decision says what is chosen, fully enough to ratify without opening any child. A child decides a different question that its parent leaves open and could be flipped while the parent stands. A leaf that finishes its parent (fills in what the parent gestures at, supplies its numbers or cases, restates or details it, names one aspect of it) folds back into the parent, or becomes spec. Two tests: hide the child, and if the parent stops saying something whole, fold; flip the child, and if the parent goes false or empty, fold. One leaf may govern several things when turning it off for one would break the others; a leaf holding two calls that could be flipped separately splits; things that were ever reversed independently stay separate (dte:B48).
 
 A designed exception to a rule is the rule's child, with a "Removed by:" line naming the condition that would remove it; an exception nothing could remove means the rule was written wrong. A settled rule may carry a "Reopen if:" line (dte:B35).
 

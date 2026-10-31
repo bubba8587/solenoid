@@ -1,6 +1,6 @@
-<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
+<!-- vendored from DTE 0.2 (855a723) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:B8,B14,B15,B17,B18,B19,B20,B25,B60,B46,B47,B48,B49,B52,B53,B56,B57 -->
+<!-- dte:B8,B14,B15,B17,B18,B19,B20,B25,B60,B46,B47,B48,B49,B52,B53,B56,B57,B63,B64 -->
 # The DTE agent protocol
 
 This project keeps its decisions as a Decision Tree Engineering tree. One decision is a **leaf**: a markdown file under `decisions/<ring>/`. Read `SPEC.md` once, then follow this protocol in every session. The tool is `tools/dte.py` (run `python tools/dte.py --help`); below it is written `dte`.
@@ -34,12 +34,14 @@ Each is a leaf. If the owner reverts it, the permission is gone and the action b
 
 - Every artifact you create or substantially change cites what it serves: `dte cite <file> <ID>` writes the header in the right comment syntax. Cite the most specific leaf. A file built to a spec whose `covers:` glob matches it needs no citation of its own.
 - A citation replaces a WHY comment. The reason moves into the leaf's Why, a HOW explanation into the spec, and only WHAT the block does stays in the code.
-- A choice no leaf explains, that a reviewer could ask "why?" about, is a new decision. Before writing it, test it:
+- A choice no leaf explains, that a reviewer could ask "why?" about, is a new decision. Record it in the same change. Before writing a leaf, test it:
   - **Is it a leaf?** A leaf is a call a person could weigh and choose otherwise, in the project's plain words. Name the call and its opposite: a sentence that would still be true had the opposite been chosen is mechanics, and mechanics go in a spec (B47 leafIsACall).
-  - **Is it a child?** A child decides a question its parent leaves open. One that restates part of its parent, or details it, belongs in the parent's Consequences (B48 childIsFork).
+  - **Does it have stakes?** A leaf is kept for a product call, or a technical call the owner would want to be asked about before it flips. A description of how a system works, or a technical choice nobody outside the code would notice flipping, goes in the spec it changes, even when a person could weigh it (B63 leafHasStakes).
+  - **Is it whole, and is it a child?** Read alone, a leaf's Decision says what is chosen, fully enough to ratify without opening its children. A child decides a different question its parent leaves open. One that finishes its parent (fills in its cases or numbers, restates it, details it) folds back into the parent. Hide the child: if the parent stops saying something whole, fold. Flip the child: if the parent goes false or empty, fold (B48 childIsFork).
   - **At your ring or deeper:** `dte new <ring> --name <camelCase> --title "..." --by <your model name> --parents ... --decision "..." --why "..."`. Never hand-write frontmatter or pick numbers. The Decision is one or two citable sentences. The Why is the plain reason a person would say; it may lean on the parent ("we want the parent, so we want this") and never piles up specifics to make the parent look right. If you are guessing the owner's preference, the Why says so.
   - **Shallower than your ring, or unsure:** write `decisions/inbox/<slug>.md` and ask the ring's holder in chat, giving the title.
 - A leaf's Decision, Why and Consequences cite only shallower rings (B49 citesUpOnly). What a child adds, the child says.
+- Spec text is yours to change. When a part of a spec has to stop being fluid, that part becomes a leaf the spec cites at that point; there are no "do not change" notes or locked sections. Freezing is the owner's call: propose the leaf through the inbox (B64 freezeIsLeaf).
 - A MUST is cited by the test that enforces it, or its Consequences carry an `*Unenforced:*` line saying why no test can. A bug fix ships with the check that would have caught it (B46 mustEnforced).
 - An exception lives under its rule, as its child, with a "Removed by:" line naming what would remove it. An exception nothing could remove means the rule was written wrong.
 - Never delete, rename or renumber a leaf file by hand. The tool does each and writes the ledger: `retire` (supersede or revert), `move` (another ring), `fold` (an aspect back into its parent), `to-spec` (mechanics into a spec), `renumber`, and `merge-ids <base>` before a branch merges.

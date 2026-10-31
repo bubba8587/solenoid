@@ -3107,7 +3107,7 @@ def cmd_cite(tree, args):
 
 
 def cmd_brief(tree, args):
-    """dte:B27"""
+    """dte:B27, dte:B47, dte:B48, dte:B63, dte:B64"""
     if args.builder:
         if not os.path.isfile(args.builder):
             print("no such spec: %s" % args.builder)
@@ -3141,8 +3141,11 @@ def cmd_brief(tree, args):
     print("  1. Decide only at ring %s or deeper. Create decisions with" % ring)
     print("     `python %s new %s --name <camelCase> --title \"...\" --by <you> --parents <ids> --decision \"...\" --why \"...\"`." % (tool, ring))
     print("     A leaf is a call a person could make in plain words; a sentence that would still be true had the")
-    print("     opposite been chosen is mechanics and goes in the spec (B47). A child decides a question its parent")
-    print("     leaves open; one that only details its parent folds back into it (B48).")
+    print("     opposite been chosen is mechanics and goes in the spec (B47). Keep leaves for calls with stakes:")
+    print("     if the owner wouldn't want to be asked before it flips, record it in the spec instead (B63).")
+    print("     A leaf is whole read alone. A child decides a question its parent leaves open; one that finishes")
+    print("     or details its parent folds back into it (B48). Spec text is yours to change; a part that must be")
+    print("     frozen becomes a leaf, proposed through the inbox (B64).")
     if prev:
         print("  2. Anything that belongs at ring %s or shallower, or whose ring is unclear, is not yours:" % prev)
         print("     write decisions/inbox/<slug>.md and ask %s." % holder_of(prev, CONFIG))

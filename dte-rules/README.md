@@ -1,4 +1,4 @@
-<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
+<!-- vendored from DTE 0.2 (855a723) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
 <!-- dte:A1,A2,A3,A4,A5,A6,A7,A8,A9,B50 -->
 # Decision Tree Engineering (DTE)

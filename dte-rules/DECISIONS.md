@@ -1,4 +1,4 @@
-<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
+<!-- vendored from DTE 0.2 (855a723) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
 # DTE decisions
 
@@ -163,9 +163,9 @@ Held with medium confidence because the language is a guess at the owner's prefe
 **Consequences.** - No PyYAML: frontmatter parsing is a restricted subset (C1).
 - No JSON output or plugins in v0; keep the file small.
 
-### B8 recordWhenDecided: AI agents record each non-trivial decision as a leaf at the time they make it (ai, unratified)
+### B8 recordWhenDecided: AI agents record each non-trivial choice as they make it: a leaf if it has stakes, else in its spec (ai, unratified)
 
-**Decision.** An AI agent working in a DTE repo must, for every non-trivial choice it makes, create an AI leaf (one with no `made_by`), set its parents, and cite it from the artifacts it produces, in the same change. It must run `dte validate` before declaring work done, and `dte blast` before altering any existing leaf.
+**Decision.** An AI agent working in a DTE repo must record every non-trivial choice it makes, in the same change that makes it: as an AI leaf (one with no `made_by`) with its parents set and cited from the artifacts it produces when the choice is a call with stakes, otherwise in the spec the choice changes. It must run `dte validate` before declaring work done, and `dte blast` before altering any existing leaf.
 
 A choice is non-trivial if a reviewer could reasonably ask "why?" and no existing leaf answers.
 
@@ -516,14 +516,17 @@ Held with medium confidence on the content of the block; a real multi-agent run 
 - The protocol states this test where it introduces `dte new`, since an agent that reads only the protocol writes mechanics leaves.
 - "Could someone reverse it and would something break" is not enough: a load order passes that and is still mechanics.
 
-### B48 childIsFork: A child decides a question its parent leaves open; an aspect of the parent folds back in (ai, unratified)
+### B48 childIsFork: A leaf is one whole decision; a child decides a question its parent leaves open (ai, unratified)
 
-**Decision.** A child records a different question that its parent leaves open. A leaf that restates part of its parent, adds detail to it, or names one aspect of it is not a child: it folds back into the parent's Consequences, or becomes spec.
+**Decision.** Each leaf states one complete decision. Read alone, its Decision says what is chosen, fully enough that the owner could ratify or reject it without opening any child. A child records a different question that its parent leaves open, one that could be flipped while the parent stands. A leaf that finishes its parent (fills in what the parent's Decision gestures at, supplies its numbers or its list of cases, restates or details it, names one aspect of it) is not a child: it folds back into the parent, or becomes spec.
 
-**Why.** The tree's shape is what makes blast radius and precedence computable (A9). An aspect filed as a child adds a leaf to every radius and a place for the parent's rule to be contradicted, without adding a decision anyone could take separately.
+Two tests settle it. Hide the child: if the parent no longer says something whole, the child was finishing it, so fold. Flip the child: if the parent goes false or empty, the child was an aspect, so fold.
+
+**Why.** The tree's shape is what makes blast radius and precedence computable (A9). An unfinished parent can't be ratified on its own, and a child that finishes it adds a leaf to every radius and a place for the parent's rule to be contradicted, without adding a decision anyone could take separately.
 
 **Consequences.** - `dte fold <child>` moves the child's Decision and Consequences into the parent, its citations and children with them, and writes a `folded` ledger line.
-- One decision may govern several things when turning it off for one would break the others; those stay one leaf.
+- A parent that cites its children to complete itself fails validate already, since a leaf cites only up its lineage (B49).
+- One leaf may govern several things when turning it off for one would break the others; those stay one leaf. A leaf holding two calls that could be flipped separately splits in two.
 - Things that were ever reversed independently stay separate.
 
 ### B49 citesUpOnly: A leaf's body cites only up its lineage, never a deeper ring (ai, unratified)
@@ -653,6 +656,25 @@ Held with medium confidence on the content of the block; a real multi-agent run 
 **Consequences.** - `dte ratify` drops Contest and History and writes one History line naming the drop.
 - `validate` warns when a ratified leaf still carries a Contest section.
 - `contested_by` stays, since it is provenance.
+
+### B63 leafHasStakes: A leaf is kept for a call with stakes; system descriptions and low-stakes choices are spec (ai, unratified)
+
+**Decision.** A leaf records a call with stakes: a product call, or a technical call whose flip would change what the project's users get, cost real rework, or that the owner wants settled. A technical description of a system, and a technical choice an agent could flip without anyone outside the code noticing, go in a spec, even when a person could weigh them. The tripwire: would the owner want to be asked before this flips? If not, it is spec.
+
+**Why.** Leaves are what the owner ratifies and what agents never re-question. Every low-stakes leaf spends the owner's attention and freezes something agents should keep free to change, and enough of them bury the calls that matter.
+
+**Consequences.** - A non-trivial choice without stakes is still recorded, in the spec it changes; git keeps why it changed.
+- The leaf's Why says what the stakes are; a Why that can name none is a sign the text belongs in a spec.
+
+### B64 freezeIsLeaf: A part of a spec that must stay out of agents' hands becomes a leaf the spec cites (ai, unratified)
+
+**Decision.** When a part of a spec has to stop being fluid (a format others depend on, a number the owner chose, a constraint learned the hard way), that part becomes a leaf, and the spec cites the leaf at that point instead of restating it. A spec has no other way to freeze text: no "do not change" notes, no locked sections.
+
+**Why.** Agents change specs freely, and that is the point of a spec. Only a leaf carries ratification, protection from agents and a blast radius, so a freeze written anywhere else is a sentence the next agent can edit away.
+
+**Consequences.** - Freezing is the owner's call. An agent that thinks part of a spec should be frozen proposes the leaf through the inbox.
+- Once ratified, the leaf is human-held, so changing the frozen part needs the owner's authorization.
+- Unfreezing is retiring the leaf and putting its text back in the spec.
 
 ## Ring C
 
