@@ -6,19 +6,19 @@ Ranked by lines a swap would delete. "Same answers" was checked bit for bit agai
 
 | # | Our code (lines) | Crate | Answers | Verdict |
 |---|---|---|---|---|
-| 1 | NFD table + `text_ops::nfd` (~770) | unicode-normalization 0.1.26 | identical | consider: +35 KB gz wasm; rust-core.md § Size chose the table for size |
-| 2 | distribution kernels in dists.rs, fns_stats, formulajs jStat (~530) | statrs 0.19.1 | last digits (≤1.8e-10 rel) | consider: jStat parity vs accuracy |
+| 1 | NFD table + `text_ops::nfd` (~770) | unicode-normalization 0.1.26 | identical | **swapped** 2026-10-31 |
+| 2 | distribution kernels in dists.rs, fns_stats, formulajs jStat (~530) | statrs 0.19.1 | last digits (≤1.8e-10 rel) | keep: statrs computes with Rust's platform `ln`/`exp`, so wasm and native answers differ in the last bits (`fdlibm.rs` keeps them equal); its erf/erfc are also only ~1e-11 accurate, and its Γ overflows at 170 |
 | 3 | fdlibm.rs (1442) | libm 0.2.16 | libm is wrong vs V8 on log/log10/pow/sin/cos/tanh | keep |
 | 4 | matrix det/inverse/rank/solve/eigen/roots/polyfit (~370) | nalgebra / faer | pivot, sign, order change | keep |
-| 5 | Formula.js Bessel (~240) | libm jn/yn, puruspe | up to 1.4e-4 rel (bessel.js is imprecise) | keep for Formula.js; crates if Excel accuracy wanted |
+| 5 | Formula.js Bessel (~240) | libm jn/yn, puruspe | up to 1.4e-4 rel (bessel.js is imprecise) | keep: puruspe is far more accurate (1e-15) but uses platform math as statrs does, misreads underflow at large orders, and panics in its real-order routines; a swap needs a vendored copy on `fdlibm.rs` |
 | 6 | hash_ops md5/sha1/sha256/crc32/base64 (~200) | md-5, sha1, sha2, crc32fast, base64 | identical | **swap** (+17 KB gz) |
-| 7 | letters.rs (137) + generator | unicode-general-category 1.1.0 | identical | consider |
+| 7 | letters.rs (137) + generator | unicode-general-category 1.1.0 | identical | **swapped** 2026-10-31 |
 | 8 | FFT (~100) | rustfft 6.4.1 | last bits | keep: +76 KB gz |
 | 9 | fxhash.rs (61) | rustc-hash 2.1.3 | identical | **swap** |
 | 10 | spelled.rs macro (~70) | strum 0.28 | same | consider (proc-macro build deps) |
 | 11 | day ↔ y/m/d helpers (~60) | jiff 0.2.38 | same | consider with the jiff work |
-| 12 | Levenshtein, OSA (~38) | strsim 0.11.1 | identical (Jaro-Winkler differs: keep ours) | consider |
-| 13 | splitmix RNG, uuid_v4 (~24) | fastrand / uuid | random | consider (uuid would use crypto.getRandomValues) |
+| 12 | Levenshtein, OSA (~38) | strsim 0.11.1 | identical (Jaro-Winkler differs: keep ours) | **swapped** 2026-10-31 (Levenshtein, OSA, ratio) |
+| 13 | splitmix RNG, uuid_v4 (~24) | fastrand / uuid | random | **swapped** 2026-10-31 (uuid formats the browser's crypto bytes; fastrand off the web) |
 
 Totals: swap ~260 lines, same answers; consider-same-answers ~1,080; consider-answers-change ~770; keep ~55k
 (Solenoid's own semantics, or exact JS/V8/Excel/Formula.js behavior no crate reproduces: JS number formatting and
