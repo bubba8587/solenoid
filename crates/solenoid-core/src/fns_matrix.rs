@@ -183,7 +183,7 @@ fn num_mat_rows(v: &V) -> Result<Mat, Stop> {
 }
 
 fn mat_cols<T>(m: &[Vec<T>]) -> usize {
-    m.first().map_or(0, |r| r.len())
+    m.first().map_or_default(|r| r.len())
 }
 
 fn to_list(v: &V) -> Vec<V> {

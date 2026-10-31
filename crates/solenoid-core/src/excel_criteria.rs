@@ -253,7 +253,7 @@ fn chrono_reading(t: &str) -> DateReading {
 fn iso_date_time(t: &str) -> Option<DateReading> {
     let b = t.as_bytes();
     let digits = |from: usize, max: usize| {
-        b.get(from..).map_or(0, |r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count())
+        b.get(from..).map_or_default(|r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count())
     };
     let num = |r: std::ops::Range<usize>| f64::from(b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0')));
     let word = |i: usize| b.get(i).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_');
@@ -1053,7 +1053,7 @@ impl Tally {
                 Op::Lte => upto(*n),
             }),
             Value::Str(_) if c.wild.is_none() && matches!(c.op, Op::Eq | Op::Neq) => {
-                let equal = self.text_rows.get(&c.lowered).map_or(0, Vec::len);
+                let equal = self.text_rows.get(&c.lowered).map_or_default(Vec::len);
                 Some(if c.op == Op::Eq { equal } else { unlike(equal) })
             }
             _ => None,

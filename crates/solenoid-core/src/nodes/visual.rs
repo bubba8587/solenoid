@@ -569,7 +569,7 @@ fn read_chart_refs(f: &Cv) -> Vec<Json> {
         ("label", col("label"), &t),
         ("color", col("color"), &t),
     ];
-    let rows = f.columns.first().map_or(0, |c| c.values.len());
+    let rows = f.columns.first().map_or_default(|c| c.values.len());
     let mut out = Vec::new();
     for r in 0..rows {
         let mut o = Obj::new();

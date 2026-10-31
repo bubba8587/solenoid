@@ -2223,7 +2223,7 @@ pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option
             })
             .collect();
     let parts: Vec<Vec<&str>> =
-        texts.iter().map(|t| t.as_deref().map_or(Vec::new(), |t| t.split(delimiter).collect())).collect();
+        texts.iter().map(|t| t.as_deref().map_or_default(|t| t.split(delimiter).collect())).collect();
     let n = parts.iter().map(Vec::len).max().unwrap_or(0);
     let new_cols = (0..n).map(|k| {
         let name = match names.and_then(|ns| ns.get(k)).map(|s| js_trim(s)) {

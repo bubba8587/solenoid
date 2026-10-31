@@ -452,7 +452,7 @@ fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usiz
             }
             let count = count_at(s, at + 1);
             mass += inner * count.map_or(1.0, |c| c.1);
-            i = at + 1 + count.map_or(0, |c| c.0);
+            i = at + 1 + count.map_or_default(|c| c.0);
             continue;
         }
         if !upper(ch) {
@@ -474,7 +474,7 @@ fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usiz
         };
         let count = count_at(s, i + len);
         mass += weight * count.map_or(1.0, |c| c.1);
-        i += len + count.map_or(0, |c| c.0);
+        i += len + count.map_or_default(|c| c.0);
     }
     if close.is_some() {
         return Err(unbalanced());
@@ -519,7 +519,7 @@ pub(crate) fn molar_mass(input: &str) -> V {
     let mut total = 0.0;
     for seg in hydrate_segments(&s) {
         let lead = count_at(seg, 0);
-        let body = &seg[lead.map_or(0, |c| c.0)..];
+        let body = &seg[lead.map_or_default(|c| c.0)..];
         if body.is_empty() {
             return err(ErrorCode::Value, "A formula segment is empty");
         }

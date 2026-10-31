@@ -453,7 +453,7 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
             .iter()
             .map(|&i| if opts[i].requires.iter().all(|r| has.contains(r) || open.contains(r)) { '1' } else { '0' })
             .collect();
-        let num = |v: Option<f64>| v.map_or(String::new(), |v| number_to_string(math_round(v * 1e6)));
+        let num = |v: Option<f64>| v.map_or_default(|v| number_to_string(math_round(v * 1e6)));
         let join = |xs: Vec<String>| xs.join(",");
         format!(
             "{}|{}|{}|{}",

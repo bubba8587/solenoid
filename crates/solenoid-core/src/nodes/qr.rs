@@ -137,7 +137,7 @@ mod tests {
     use super::*;
 
     fn build(template: &str, text: &str, fields: &[(&str, &str)]) -> String {
-        payload(template, text, &|k| fields.iter().find(|(f, _)| *f == k).map_or(String::new(), |(_, v)| v.to_string()))
+        payload(template, text, &|k| fields.iter().find(|(f, _)| *f == k).map_or_default(|(_, v)| v.to_string()))
     }
 
     #[test]

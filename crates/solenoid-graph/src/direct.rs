@@ -129,7 +129,7 @@ impl Direct {
             return Ok(hd.clone());
         }
         let last = self.last.borrow().clone();
-        let stamp = last.as_ref().map_or(0.0, |l| l.stamp);
+        let stamp = last.as_ref().map_or_default(|l| l.stamp);
         let read = h
             .header
             .call2(&JsValue::NULL, object, &JsValue::from_f64(stamp))

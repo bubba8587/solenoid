@@ -619,7 +619,7 @@ impl CallDepth {
 
 impl Drop for CallDepth {
     fn drop(&mut self) {
-        CALL_DEPTH.with(|d| d.set(d.get() - 1));
+        CALL_DEPTH.update(|d| d - 1);
     }
 }
 

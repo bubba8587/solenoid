@@ -498,7 +498,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
             kids = Some(sub);
             child_level = Some(level);
         }
-        let repeat = if cols.repeat.is_some() { num(at(cols.repeat, i)).map_or(0.0, f64::floor) } else { 0.0 };
+        let repeat = if cols.repeat.is_some() { num(at(cols.repeat, i)).map_or_default(f64::floor) } else { 0.0 };
         let every = num(at(cols.every, i)).unwrap_or(7.0);
         let task_hours = num(at(cols.hours, i)).filter(|h| *h > 0.0).unwrap_or(hours.n);
         let mut generated = false;
@@ -1070,7 +1070,7 @@ fn deps_of(v: Option<&Cv>) -> Vec<Dependency> {
                 let lag = match num(cell(lag_col, i)) {
                     Some(n) => n,
                     None => {
-                        let n = cell(lag_col, i).map_or(0.0, to_number);
+                        let n = cell(lag_col, i).map_or_default(to_number);
                         if n.is_nan() || n == 0.0 {
                             0.0
                         } else {
@@ -1633,12 +1633,12 @@ fn earned_value_card(c: &mut Call) -> Answer {
         }
         let bi = base_idx.get(&norm(&name)).copied();
         let base_cost = bi.and_then(|bi| b_cost.map(|bc| magnitude(cell(Some(bc), bi))));
-        let cost = base_cost.unwrap_or_else(|| cost_col.map_or(0.0, |cc| magnitude(cell(Some(cc), i))));
+        let cost = base_cost.unwrap_or_else(|| cost_col.map_or_default(|cc| magnitude(cell(Some(cc), i))));
         let complete = math_max(
             0.0,
             math_min(
                 100.0,
-                complete_col.map_or(0.0, |cc| {
+                complete_col.map_or_default(|cc| {
                     let v = cell(Some(cc), i);
                     percent_complete(v).unwrap_or_else(|| magnitude(v))
                 }),

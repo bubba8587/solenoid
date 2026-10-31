@@ -80,7 +80,7 @@ fn width(m: &V) -> usize {
 /// Every cell a finite number, or the error naming the first that isn't.
 fn numeric(m: &V) -> Result<V, V> {
     let rows = rows_of(m);
-    let width = rows.first().map_or(0, |r| rows_of(r).len());
+    let width = rows.first().map_or_default(|r| rows_of(r).len());
     if rows.iter().any(|r| rows_of(r).len() != width) {
         return Err(err(ErrorCode::Shape, "This matrix operation needs every row the same width"));
     }
@@ -510,7 +510,7 @@ fn map_table(c: &mut Call) -> Answer {
     };
     let Some(m) = m else { return lambda_done(c, V::Null, None) };
     let extras = [any_matrix(&slot(c, "table2")), any_matrix(&slot(c, "table3"))];
-    let w = |m: &[Vec<V>]| m.first().map_or(0, Vec::len);
+    let w = |m: &[Vec<V>]| m.first().map_or_default(Vec::len);
     for e in extras.iter().flatten() {
         let one = e.len() == 1 && w(e) == 1;
         if !one && (e.len() != m.len() || w(e) != w(&m)) {
@@ -882,7 +882,7 @@ fn required_picks(c: &Call, key: &str) -> V {
 
 /// Positions read as JS reads them.
 fn choose_axis(m: &[Vec<V>], indices: &[V], by_row: bool) -> V {
-    let size = if by_row { m.len() } else { m.first().map_or(0, Vec::len) } as f64;
+    let size = if by_row { m.len() } else { m.first().map_or_default(Vec::len) } as f64;
     let (label, kind) = if by_row { ("CHOOSEROWS", "row") } else { ("CHOOSECOLS", "column") };
     let mut resolved = Vec::with_capacity(indices.len());
     for i in indices {
@@ -960,7 +960,7 @@ fn expand(c: &mut Call) -> Answer {
 /// Each value written over the table at its 1-based row and column, a list or a table as a block.
 fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
     let rows = m.len();
-    let cols = m.first().map_or(0, Vec::len);
+    let cols = m.first().map_or_default(Vec::len);
     let mut out: Vec<Vec<V>> =
         m.iter().map(|r| (0..cols).map(|j| r.get(j).cloned().unwrap_or(V::Null)).collect()).collect();
     let ref_err = |n: f64, max: usize, what: &str| {

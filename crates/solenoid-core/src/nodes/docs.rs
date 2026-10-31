@@ -920,7 +920,7 @@ fn format_json(col: &Column) -> Json {
 /// popup's.
 fn record_deck(cols: &[Column], drawn: &[usize], d: crate::card_helpers::NumberDisplay) -> Json {
     use crate::card_helpers::{is_date_style, plan_cards, CardColumn, PROFILE_ROWS};
-    let total = cols.first().map_or(0, |c| c.values.len());
+    let total = cols.first().map_or_default(|c| c.values.len());
     let profiled = total.min(PROFILE_ROWS);
     let raw_text = |col: &Column, r: usize| match col.values.get(r) {
         None | Some(V::Null | V::Undef) => String::new(),
@@ -1028,7 +1028,8 @@ fn record(c: &mut Call) -> Answer {
         Cv::Frame(f) => &f.columns,
         _ => &[],
     };
-    let order = record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or(0, |c| c.values.len()));
+    let order =
+        record_rows(&picks(super::text::role_value(c, "rows")), cols.first().map_or_default(|c| c.values.len()));
     let total = order.len();
     let mut index = 0;
     if op == "detail" && total > 0 {

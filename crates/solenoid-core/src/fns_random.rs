@@ -14,16 +14,12 @@ use std::rc::Rc;
 /// The names this module answers.
 pub const NAMES: &[&str] = &["RAND", "RANDBETWEEN", "RANDARRAY", "RANDDIST", "SHUFFLE", "UUID"];
 
-/// `Math.random()`.
-#[cfg(target_arch = "wasm32")]
+/// A uniform draw from [0, 1): `Math.random()` in a browser, `fastrand` outside one.
 pub fn random() -> f64 {
-    js_sys::Math::random()
-}
-
-/// A uniform draw from [0, 1), outside a browser.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn random() -> f64 {
-    fastrand::f64()
+    cfg_select! {
+        target_arch = "wasm32" => js_sys::Math::random(),
+        _ => fastrand::f64(),
+    }
 }
 
 fn arg(a: &[V], i: usize) -> &V {

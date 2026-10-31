@@ -855,7 +855,7 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                 }
                 let pick_scalar = PICK_SCALAR_FNS.contains(&f);
                 return Ok(aff(
-                    args.first().map_or(0.0, |a| a.w),
+                    args.first().map_or_default(|a| a.w),
                     !pick_scalar && args.first().is_some_and(|a| a.list),
                 ));
             }
@@ -871,7 +871,7 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
                 let ws: Vec<f64> = branches
                     .iter()
                     .filter(|&&i| !is_literal(nodes.get(i)) && !args.get(i).is_some_and(|a| a.bare))
-                    .map(|&i| args.get(i).map_or(0.0, |a| a.w))
+                    .map(|&i| args.get(i).map_or_default(|a| a.w))
                     .collect();
                 if !agree(&ws) {
                     return Err(aff_err());

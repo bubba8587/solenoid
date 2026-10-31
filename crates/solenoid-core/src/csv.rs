@@ -109,7 +109,7 @@ fn read(input: &str, delim: u8, keep_blank: bool, limit: Option<usize>) -> Rows 
     loop {
         let more = matches!(rdr.read_byte_record(&mut rec), Ok(true));
         if keep_blank {
-            let from = rec.position().map_or(0, |p| p.byte() as usize);
+            let from = rec.position().map_or_default(|p| p.byte() as usize);
             let lead = &b[from.min(b.len())..];
             let lead = if from == 0 { lead.strip_prefix("\u{feff}".as_bytes()).unwrap_or(lead) } else { lead };
             for _ in lead.iter().take_while(|&&c| c == b'\n') {

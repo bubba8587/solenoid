@@ -1979,7 +1979,7 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
                 if rm {
                     return V::List(Rc::new(lists.into_iter().map(V::List).collect()));
                 }
-                let first = lists.first().map_or(0, |l| l.len());
+                let first = lists.first().map_or_default(|l| l.len());
                 return V::List(Rc::new(
                     (0..first)
                         .map(|i| {
@@ -3959,7 +3959,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let mut at: Option<usize> = None;
             let mut i = 0.0;
             while i < k {
-                let from = at.map_or(0, |p| p + o.len());
+                let from = at.map_or_default(|p| p + o.len());
                 match t[from..].find(&o) {
                     Some(p) => at = Some(from + p),
                     None => return V::str(&t),
@@ -4345,7 +4345,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             };
             let lookups = match arg(a, 0) {
                 V::List(items) => {
-                    items.len().max(items.first().map_or(0, |r| if let V::List(r) = r { r.len() } else { 0 }))
+                    items.len().max(items.first().map_or_default(|r| if let V::List(r) = r { r.len() } else { 0 }))
                 }
                 _ => 1,
             };

@@ -20,7 +20,7 @@ fn link_type(code: &str) -> LinkType {
 
 /// `Number(attr ?? 0)`.
 fn number(el: &XmlNode, name: &str) -> f64 {
-    el.attr(name).map_or(0.0, string_to_number)
+    el.attr(name).map_or_default(string_to_number)
 }
 
 struct Link {

@@ -657,7 +657,7 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
             }));
         }
     };
-    let decimals = |f: &str| f.split('.').nth(1).map_or(0, |d| d.encode_utf16().count()) as f64;
+    let decimals = |f: &str| f.split('.').nth(1).map_or_default(|d| d.encode_utf16().count()) as f64;
     let fixed = |x: f64, d: f64| {
         crate::jsnum::to_fixed(x, d)
             .ok_or_else(|| super::frames::thrown("toFixed() digits argument must be between 0 and 100"))

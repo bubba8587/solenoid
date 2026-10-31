@@ -2570,7 +2570,7 @@ fn rank_options(
         None
     };
     let mut order: Vec<(f64, usize, usize)> =
-        pass.iter().enumerate().map(|(k, &row)| (ds.map_or(0.0, |d| d.scores[k]), k, row)).collect();
+        pass.iter().enumerate().map(|(k, &row)| (ds.map_or_default(|d| d.scores[k]), k, row)).collect();
     sort_by_num(&mut order, |a, b| b.0 - a.0);
     let mut rank: Vec<f64> = Vec::with_capacity(order.len());
     for (n, o) in order.iter().enumerate() {

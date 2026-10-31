@@ -1,6 +1,7 @@
 [package]
 name = "solenoid"
 version = "1.5.0"
+rust-version = "1.99"
 description = "Solenoid — a local-first node graph for wiring live data into personal computation"
 authors = ["Solenoid"]
 edition = "2024"

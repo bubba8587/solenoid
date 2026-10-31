@@ -51,7 +51,7 @@ fn link_type(code: Option<&str>) -> LinkType {
 
 /// `Number(row[f] ?? 0) || or`: a blank, missing or unreadable field falls back.
 fn number_or(row: &Row, f: &str, or: f64) -> f64 {
-    let v = row.get(f).map_or(0.0, |s| string_to_number(s));
+    let v = row.get(f).map_or_default(|s| string_to_number(s));
     if v == 0.0 || v.is_nan() {
         or
     } else {
@@ -99,7 +99,7 @@ pub fn read_xer(text: &str) -> PlanFile {
     let clndr = table("CALENDAR").iter().find(|c| field(Some(c), "clndr_id") == field(project, "clndr_id"));
     let hours_per_day = clndr.map_or(8.0, |c| number_or(c, "day_hr_cnt", 8.0));
     let mut wbs: Vec<&Row> = table("PROJWBS").iter().collect();
-    let seq = |r: &Row| r.get("seq_num").map_or(0.0, |s| string_to_number(s));
+    let seq = |r: &Row| r.get("seq_num").map_or_default(|s| string_to_number(s));
     wbs.sort_by(|a, b| seq(a).partial_cmp(&seq(b)).unwrap_or(std::cmp::Ordering::Equal));
     let mut names = UniqueNames::default();
     let mut arena: Vec<Node> = Vec::new();
@@ -138,7 +138,7 @@ pub fn read_xer(text: &str) -> PlanFile {
             }),
             ..PlanTask::default()
         };
-        let pct = r.get("phys_complete_pct").map_or(0.0, |s| string_to_number(s));
+        let pct = r.get("phys_complete_pct").map_or_default(|s| string_to_number(s));
         t.complete = (pct > 0.0).then_some(pct);
         t.actual_start = iso_to_serial(field(Some(r), "act_start_date"));
         let cstr = field(Some(r), "cstr_type").unwrap_or("");

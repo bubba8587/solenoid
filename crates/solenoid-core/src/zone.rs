@@ -101,17 +101,17 @@ mod host {
     }
 }
 
-/// LocalTime(t): the local wall clock at the instant t, as a time value read as UTC. Read through the local getters,
-/// since `getTimezoneOffset` truncates to whole minutes and a zone's early offsets carry seconds.
-#[cfg(target_arch = "wasm32")]
+/// LocalTime(t): the local wall clock at the instant t, as a time value read as UTC (UTC itself outside a browser).
+/// Read through the local getters, since `getTimezoneOffset` truncates to whole minutes and a zone's early offsets
+/// carry seconds.
 pub fn local_time(t: f64) -> f64 {
-    let d = host::Date::at(t);
-    make_date(make_day(d.year(), d.month(), d.date()), make_time(d.hours(), d.minutes(), d.seconds(), d.millis()))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn local_time(t: f64) -> f64 {
-    t
+    cfg_select! {
+        target_arch = "wasm32" => {
+            let d = host::Date::at(t);
+            make_date(make_day(d.year(), d.month(), d.date()), make_time(d.hours(), d.minutes(), d.seconds(), d.millis()))
+        }
+        _ => t,
+    }
 }
 
 /// The instant a local wall clock names, as V8's `new Date(y, m, d, …)` and the local setters resolve it: past the
@@ -455,7 +455,7 @@ mod tzdb {
         const CYCLE: i64 = 146_097 * 86_400;
         let (min, max) = (Timestamp::MIN.as_second(), Timestamp::MAX.as_second());
         let s = if s > max { s - ((s - max - 1) / CYCLE + 1) * CYCLE } else { s.max(min) };
-        Timestamp::from_second(s).map_or(0, |t| i64::from(z.to_offset(t).seconds()))
+        Timestamp::from_second(s).map_or_default(|t| i64::from(z.to_offset(t).seconds()))
     }
 
     /// The zone's wall clock at an instant, to the second: days since 1970 and seconds into the day.

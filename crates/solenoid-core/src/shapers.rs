@@ -65,7 +65,7 @@ fn back_to_list(mut m: Grid, list: bool) -> V {
 }
 
 fn transpose(m: &Grid) -> Grid {
-    let width = m.first().map_or(0, Vec::len);
+    let width = m.first().map_or_default(Vec::len);
     (0..width).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
 }
 
@@ -172,7 +172,7 @@ fn axis_count(m: &Grid, rows: bool) -> usize {
     if rows {
         m.len()
     } else {
-        m.first().map_or(0, Vec::len)
+        m.first().map_or_default(Vec::len)
     }
 }
 
@@ -350,7 +350,7 @@ fn sort(a: &[V]) -> V {
     let index = if absent(arg(a, 1)) { 1.0 } else { to_num(arg(a, 1)) };
     let by_col = truthy(arg(a, 3));
     let g = if by_col { transpose(&m) } else { m.clone() };
-    let width = g.first().map_or(0, Vec::len);
+    let width = g.first().map_or_default(Vec::len);
     if g.is_empty() || width == 0 {
         return back_to_list(m, list);
     }
@@ -435,7 +435,7 @@ fn drop(a: &[V]) -> V {
     let c = if cols_given { rounded(arg(a, 2)) } else { 0.0 };
     let gone = |len: usize, k: f64| len > 0 && k.abs() >= len as f64;
     let (m, list) = as_rows_of(v);
-    if gone(m.len(), n) || gone(m.first().map_or(0, Vec::len), c) {
+    if gone(m.len(), n) || gone(m.first().map_or_default(Vec::len), c) {
         return V::err(sol_error(ErrorCode::Domain, "DROP would leave nothing (Excel: #CALC!)"));
     }
     let cut: Grid = m.iter().map(|r| if cols_given { drop_slice(r, c) } else { r.clone() }).collect();
