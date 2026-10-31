@@ -26,14 +26,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     })
 }
 
-/// A formula over named values; `Err` where the evaluation throws.
+/// A formula over named values; `Err` where it doesn't parse.
 fn evaluate(src: &str, env: Env) -> Result<V, ()> {
-    let v = crate::eval::formula(src, env).ok_or(())?;
-    if crate::excel_functions::take_thrown().is_some() {
-        Err(())
-    } else {
-        Ok(v)
-    }
+    crate::eval::formula(src, env).ok_or(())
 }
 
 /// The label a unit id shows (`UNIT_ANNOTATIONS`), trimmed.
@@ -214,10 +209,8 @@ fn expression(c: &mut Call) -> Answer {
         env.insert(v.clone(), read);
     }
     if names.iter().any(|v| has_unit_cell(&env[v])) {
-        let r = crate::unit_expression::expression_units(&expr, &env, &names);
-        let thrown = crate::excel_functions::take_thrown().is_some();
-        return match r {
-            Some(v) if !thrown => expression_done(c, v, None, true),
+        return match crate::unit_expression::expression_units(&expr, &env, &names) {
+            Some(v) => expression_done(c, v, None, true),
             _ => {
                 let e = err(ErrorCode::Value, "The formula failed to evaluate");
                 expression_done(c, e, Some("Evaluation error"), false)

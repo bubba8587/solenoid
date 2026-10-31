@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
+use crate::excel_functions::{js_pow, js_string_of, to_f64_js, to_num, to_str, Thrown, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_string};
@@ -345,7 +345,25 @@ pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
         .collect()
 }
 
-pub fn call(name: &str, a: &[V]) -> V {
+pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
+    let a0 = arg(a, 0);
+    Ok(match name {
+        "SAVGOL" => {
+            let l = to_list(a0);
+            let (w, o) = (to_num(arg(a, 1)), to_num(arg(a, 2)));
+            match savgol_problem(l.len(), w, o) {
+                Some(why) => domain(why),
+                None => savgol(&l, w, o)?,
+            }
+        }
+        "NORM" => norm(a0)?,
+        "DECOMPOSE" => decompose(a0, arg(a, 1), arg(a, 2), arg(a, 3))?,
+        _ => answer(name, a),
+    })
+}
+
+/// `call`'s bodies that can't throw.
+fn answer(name: &str, a: &[V]) -> V {
     let a0 = arg(a, 0);
     match name {
         "REVERSE" => {
@@ -705,14 +723,6 @@ pub fn call(name: &str, a: &[V]) -> V {
         "LOGRETURNS" | "CUMRETURNS" | "DRAWDOWN" => returns(name, &to_list(a0)),
         "FINDPEAKS" => find_peaks(&to_list(a0), arg(a, 1), arg(a, 2), arg(a, 3)),
         "GAUSSIANSMOOTH" => gaussian_smooth(&to_list(a0), to_num(arg(a, 1))),
-        "SAVGOL" => {
-            let l = to_list(a0);
-            let (w, o) = (to_num(arg(a, 1)), to_num(arg(a, 2)));
-            match savgol_problem(l.len(), w, o) {
-                Some(why) => domain(why),
-                None => savgol(&l, w, o),
-            }
-        }
         "LOWESS" => {
             let frac = if blank(arg(a, 1)) { 2.0 / 3.0 } else { to_num(arg(a, 1)) };
             list(lowess(&to_list(a0), frac, 3))
@@ -725,9 +735,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let rate = if blank(rate) { 1.0 } else { number(rate) };
             spectrum(&to_list(a0), rate)
         }
-        "NORM" => norm(a0),
         "SPARKLINE" => sparkline(a0, arg(a, 1)),
-        "DECOMPOSE" => decompose(a0, arg(a, 1), arg(a, 2), arg(a, 3)),
         "FORECAST.ETS.SEASONALITY" => {
             let m = detect_season(&nums_of(a0));
             V::Num(if m > 1 { m as f64 } else { 0.0 })
@@ -1396,7 +1404,7 @@ fn savgol_problem(n: usize, window: f64, order: f64) -> Option<&'static str> {
     None
 }
 
-fn savgol(values: &[V], window: f64, order: f64) -> V {
+fn savgol(values: &[V], window: f64, order: f64) -> Result<V, Thrown> {
     let n = values.len() as f64;
     let m = math_max(1.0, window.floor());
     let h = if m.is_nan() { 0.0 } else { ((m as i64 - 1) >> 1) as f64 };
@@ -1424,11 +1432,11 @@ fn savgol(values: &[V], window: f64, order: f64) -> V {
             }
         }
         match poly_fit_w(&xs, &ys, &ws, order) {
-            Err(()) => return throw(sol_error(ErrorCode::Value, "Invalid array length")),
+            Err(()) => return Err(Thrown::value("Invalid array length")),
             Ok(c) => out.push(c.map_or(V::Null, |c| V::Num(c[0]))),
         }
     }
-    list(out)
+    Ok(list(out))
 }
 
 fn lowess(values: &[V], frac: f64, iterations: usize) -> Vec<V> {
@@ -1666,7 +1674,7 @@ fn spectrum(x: &[V], rate: f64) -> V {
 }
 
 /// NORM, the Frobenius norm: a row that isn't a list throws as JS iterates it.
-fn norm(m: &V) -> V {
+fn norm(m: &V) -> Result<V, Thrown> {
     let rows: Vec<V> = match m {
         V::List(items) if matches!(items.first(), Some(V::List(_))) => items.as_ref().clone(),
         V::List(_) => vec![m.clone()],
@@ -1679,25 +1687,25 @@ fn norm(m: &V) -> V {
             V::List(cells) => {
                 for c in cells.iter() {
                     match c {
-                        V::Null | V::Undef => return missing(),
-                        V::Str(s) if s.is_empty() => return missing(),
+                        V::Null | V::Undef => return Ok(missing()),
+                        V::Str(s) if s.is_empty() => return Ok(missing()),
                         V::Num(n) if n.is_finite() => {}
-                        _ => return text(),
+                        _ => return Ok(text()),
                     }
                 }
             }
             // A string iterates its characters, each one text.
-            V::Str(s) if !s.is_empty() => return text(),
+            V::Str(s) if !s.is_empty() => return Ok(text()),
             V::Str(_) => {}
-            _ => return throw(sol_error(ErrorCode::Value, "row is not iterable")),
+            _ => return Err(Thrown::value("row is not iterable")),
         }
     }
     let mut total = 0.0;
     for row in &rows {
-        let V::List(cells) = row else { return throw(sol_error(ErrorCode::Value, "r.reduce is not a function")) };
+        let V::List(cells) = row else { return Err(Thrown::value("r.reduce is not a function")) };
         total += cells.iter().fold(0.0, |x, y| if let V::Num(y) = y { x + y * y } else { x });
     }
-    V::Num(total.sqrt())
+    Ok(V::Num(total.sqrt()))
 }
 
 fn flat(v: &V, out: &mut Vec<V>) {
@@ -1816,26 +1824,26 @@ fn sparkline(range: &V, ty: &V) -> V {
 
 // ─── Forecasting ([[C17]] shareImpl) ─────────────────────────────────────────────
 
-fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
+fn decompose(l: &V, period: &V, component: &V, model: &V) -> Result<V, Thrown> {
     let comp = if blank(component) { String::new() } else { lower_key(component) };
     if !matches!(comp.as_str(), "trend" | "seasonal" | "residual") {
-        return domain("DECOMPOSE component must be trend, seasonal or residual");
+        return Ok(domain("DECOMPOSE component must be trend, seasonal or residual"));
     }
     let mdl = if blank(model) { "additive".to_string() } else { lower_key(model) };
     if !matches!(mdl.as_str(), "additive" | "multiplicative" | "stl") {
-        return domain("DECOMPOSE model must be additive, multiplicative or stl");
+        return Ok(domain("DECOMPOSE model must be additive, multiplicative or stl"));
     }
     let y: Vec<Option<f64>> = to_list(l).iter().map(finite).collect();
     // A NaN period reaches `new Array(NaN)`, which throws.
     if to_num(period).is_nan() {
-        return throw(sol_error(ErrorCode::Value, "Invalid array length"));
+        return Err(Thrown::value("Invalid array length"));
     }
     let d = if mdl == "stl" {
         stl_decompose(&y, to_num(period))
     } else {
         seasonal_decompose(&y, to_num(period), mdl == "additive")
     };
-    match d {
+    Ok(match d {
         None => V::Null,
         Some([t, s, r]) => list(
             match comp.as_str() {
@@ -1847,7 +1855,7 @@ fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
             .map(num_or_null)
             .collect(),
         ),
-    }
+    })
 }
 
 pub(crate) type Decomposition = [Vec<Option<f64>>; 3];

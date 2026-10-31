@@ -574,12 +574,8 @@ pub(crate) fn lowered(v: &Json) -> V {
 
 /// `dispatch`: a body's JavaScript failure answers #VALUE! at its call, so IFERROR reads it.
 pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
-    let v = call_function(name, argv);
-    if crate::excel_functions::thrown_pending() {
-        crate::excel_functions::take_thrown();
-        return V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")));
-    }
-    v
+    call_function(name, argv)
+        .unwrap_or_else(|_| V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments"))))
 }
 
 pub(crate) fn cell_to_v(c: &FrameCell) -> V {

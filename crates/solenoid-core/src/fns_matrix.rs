@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{
-    js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, throw, to_num, V,
+    js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, to_num, Thrown, V,
 };
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
 use crate::value_kinds::MAX_GENERATED;
@@ -135,16 +135,37 @@ fn row_of(v: &V) -> Option<Vec<V>> {
     }
 }
 
+/// Why a matrix helper stops: an answer the function gives as it is, or a JS throw.
+enum Stop {
+    Answer(V),
+    Thrown(Thrown),
+}
+
+impl From<V> for Stop {
+    fn from(v: V) -> Stop {
+        Stop::Answer(v)
+    }
+}
+
+impl From<Thrown> for Stop {
+    fn from(t: Thrown) -> Stop {
+        Stop::Thrown(t)
+    }
+}
+
 /// Blank is none, a flat list one row, a scalar one cell. A table with a row that
 /// isn't a list throws.
-fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
+fn to_matrix(v: &V) -> Result<Option<Mat>, Thrown> {
     match v {
         V::Undef | V::Null => Ok(None),
         V::List(items) => {
             if matches!(items.first(), Some(V::List(_))) {
-                items.iter().map(|r| row_of(r).ok_or(())).collect::<Result<Mat, ()>>().map(Some).map_err(|_| {
-                    crate::excel_functions::throw(sol_error(ErrorCode::Value, "A table's rows must all be lists"))
-                })
+                items
+                    .iter()
+                    .map(|r| row_of(r).ok_or(()))
+                    .collect::<Result<Mat, ()>>()
+                    .map(Some)
+                    .map_err(|_| Thrown::value("A table's rows must all be lists"))
             } else {
                 Ok(Some(vec![items.to_vec()]))
             }
@@ -154,7 +175,7 @@ fn to_matrix(v: &V) -> Result<Option<Mat>, V> {
 }
 
 /// As `to_matrix`, but a blank is one blank cell.
-fn num_mat_rows(v: &V) -> Result<Mat, V> {
+fn num_mat_rows(v: &V) -> Result<Mat, Stop> {
     match v {
         V::List(_) => Ok(to_matrix(v)?.unwrap_or_default()),
         other => Ok(vec![vec![other.clone()]]),
@@ -224,15 +245,15 @@ fn as_numeric(m: &Mat) -> Result<NumMat, V> {
 }
 
 /// None for a blank.
-fn num_matrix(v: &V) -> Result<Option<NumMat>, V> {
+fn num_matrix(v: &V) -> Result<Option<NumMat>, Stop> {
     match to_matrix(v)? {
         None => Ok(None),
-        Some(m) => as_numeric(&m).map(Some),
+        Some(m) => Ok(Some(as_numeric(&m)?)),
     }
 }
 
-fn num_mat(v: &V) -> Result<NumMat, V> {
-    as_numeric(&num_mat_rows(v)?)
+fn num_mat(v: &V) -> Result<NumMat, Stop> {
+    Ok(as_numeric(&num_mat_rows(v)?)?)
 }
 
 // ─── Matrices ───────────────────────────────────────────────────────────────────
@@ -601,19 +622,19 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
 }
 
 /// TOCOL / TOROW's flattening.
-fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, V> {
+fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, Stop> {
     let Some(m) = to_matrix(v)? else { return Ok(None) };
     let code = if nullish(ignore) { 0.0 } else { to_num(ignore) };
     // `SKIP_BY_CODE[code]`: 0 keeps every value, 1 skips blanks, 2 errors, 3 both.
     if !(code == 0.0 || code == 1.0 || code == 2.0 || code == 3.0) {
-        return Err(err(ErrorCode::Value, format!("{f}'s ignore is 0, 1, 2 or 3")));
+        return Err(err(ErrorCode::Value, format!("{f}'s ignore is 0, 1, 2 or 3")).into());
     }
     let by_col = if nullish(scan) {
         false
     } else {
         match logical_or_type_error(scan, &format!("{f}'s scan_by_column"))? {
             Some(b) => b,
-            None => return Err(err(ErrorCode::Value, format!("{f}'s scan_by_column is TRUE or FALSE"))),
+            None => return Err(err(ErrorCode::Value, format!("{f}'s scan_by_column is TRUE or FALSE")).into()),
         }
     };
     let (blanks, errors) = (code == 1.0 || code == 3.0, code == 2.0 || code == 3.0);
@@ -737,9 +758,9 @@ fn cross_product(a: &[V], b: &[V]) -> V {
     nums_v(vec![a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]])
 }
 
-fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
+fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> Result<V, Thrown> {
     if let Some(e) = first_error(xs).or_else(|| first_error(ys)) {
-        return e;
+        return Ok(e);
     }
     let (mut px, mut py) = (Vec::new(), Vec::new());
     for (a, b) in xs.iter().zip(ys) {
@@ -751,16 +772,16 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
     let n = px.len();
     let d = js_max(0.0, math_round(degree));
     if n == 0 {
-        return list(xs.iter().map(|_| V::Null).collect());
+        return Ok(list(xs.iter().map(|_| V::Null).collect()));
     }
     if (n as f64) < d + 1.0 {
-        return err(
+        return Ok(err(
             ErrorCode::Value,
             format!("A degree-{} fit needs at least {} points", number_to_string(d), number_to_string(d + 1.0)),
-        );
+        ));
     }
     if d.is_nan() {
-        return throw(sol_error(ErrorCode::Value, "Invalid array length"));
+        return Err(Thrown::value("Invalid array length"));
     }
     let m = d as usize + 1;
     let mut ata = vec![vec![0.0; m]; m];
@@ -780,10 +801,13 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
         }
     }
     let Some(coeffs) = solve_linear(&ata, &aty) else {
-        return err(ErrorCode::Solve, "The polynomial fit is singular. The points may be collinear for this degree");
+        return Ok(err(
+            ErrorCode::Solve,
+            "The polynomial fit is singular. The points may be collinear for this degree",
+        ));
     };
     let eval_at = |xv: f64| coeffs.iter().rev().fold(0.0, |acc, c| acc * xv + c);
-    list(xs.iter().map(|x| finite_num(x).map_or(V::Null, |x| V::Num(eval_at(x)))).collect())
+    Ok(list(xs.iter().map(|x| finite_num(x).map_or(V::Null, |x| V::Num(eval_at(x)))).collect()))
 }
 
 // ─── Math ───────────────────────────────────────────────────────────────────────
@@ -1147,7 +1171,7 @@ fn blocked(name: &str) -> Option<&'static str> {
     })
 }
 
-fn mats_of(args: &[V]) -> Result<Vec<Mat>, V> {
+fn mats_of(args: &[V]) -> Result<Vec<Mat>, Thrown> {
     let mut out = Vec::new();
     for v in args {
         if let Some(m) = to_matrix(v)? {
@@ -1157,29 +1181,35 @@ fn mats_of(args: &[V]) -> Result<Vec<Mat>, V> {
     Ok(out)
 }
 
+/// A helper's value, or `call` stops with its answer or its throw.
 macro_rules! tri {
     ($e:expr) => {
         match $e {
             Ok(v) => v,
-            Err(e) => return e,
+            Err(e) => {
+                return match Stop::from(e) {
+                    Stop::Answer(v) => Ok(v),
+                    Stop::Thrown(t) => Err(t),
+                }
+            }
         }
     };
 }
 
-pub fn call(name: &str, a: &[V]) -> V {
+pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
     if let Some(msg) = blocked(name) {
-        return err(ErrorCode::Name, msg);
+        return Ok(err(ErrorCode::Name, msg));
     }
-    match name {
+    Ok(match name {
         "TRANSPOSE" => {
-            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return V::Null };
+            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
             let cols = mat_cols(&m);
             mat_v((0..cols).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect())
         }
         "ROWS" | "COLUMNS" => {
             let v = arg(a, 0);
             let m: Mat = match v {
-                V::Undef | V::Null => return V::Null,
+                V::Undef | V::Null => return Ok(V::Null),
                 V::List(items) if items.is_empty() => vec![],
                 _ => tri!(to_matrix(v)).unwrap_or_default(),
             };
@@ -1197,7 +1227,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let axis = arg(a, 0);
             let ax = if nullish(axis) { String::new() } else { js_lower(js_trim(&js_string_of(axis))).to_string() };
             if ax != "v" && ax != "h" {
-                return err(ErrorCode::Value, "XSTACK axis must be \"v\" or \"h\"");
+                return Ok(err(ErrorCode::Value, "XSTACK axis must be \"v\" or \"h\""));
             }
             let mats = tri!(mats_of(a.get(1..).unwrap_or(&[])));
             if mats.is_empty() {
@@ -1207,7 +1237,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
         }
         "CHOOSECOLS" | "CHOOSEROWS" => {
-            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return V::Null };
+            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
             let idx: Vec<f64> = a
                 .iter()
                 .skip(1)
@@ -1221,14 +1251,14 @@ pub fn call(name: &str, a: &[V]) -> V {
             choose_axis(&m, &idx, name == "CHOOSEROWS")
         }
         "EXPAND" => {
-            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return V::Null };
+            let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
             let count = |v: &V| if nullish(v) { 0.0 } else { math_round(js_number(v)) };
             let fill = if nullish(arg(a, 3)) { V::Null } else { arg(a, 3).clone() };
             expand_mat(&m, count(arg(a, 1)), count(arg(a, 2)), fill)
         }
         "MMULT" => {
-            let Some(ma) = tri!(num_matrix(arg(a, 0))) else { return V::Null };
-            let Some(mb) = tri!(num_matrix(arg(a, 1))) else { return V::Null };
+            let Some(ma) = tri!(num_matrix(arg(a, 0))) else { return Ok(V::Null) };
+            let Some(mb) = tri!(num_matrix(arg(a, 1))) else { return Ok(V::Null) };
             match mat_mul(&ma, &mb) {
                 Some(p) => num_mat_v(p),
                 None => err(ErrorCode::Shape, "A's column count must equal B's row count"),
@@ -1237,14 +1267,14 @@ pub fn call(name: &str, a: &[V]) -> V {
         "MUNIT" => {
             let n = arg(a, 0);
             if nullish(n) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let k = math_round(js_number(n));
             if k < 1.0 || k.is_nan() {
-                return list(vec![]);
+                return Ok(list(vec![]));
             }
             if let Some(e) = cell_cap("MUNIT", k, k) {
-                return e;
+                return Ok(e);
             }
             let k = k as usize;
             num_mat_v((0..k).map(|i| (0..k).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect())
@@ -1261,12 +1291,12 @@ pub fn call(name: &str, a: &[V]) -> V {
                 other => to_list(other),
             };
             if read.iter().any(crate::excel_functions::holds_text) {
-                return err(ErrorCode::Value, "DIAGONAL needs numbers");
+                return Ok(err(ErrorCode::Value, "DIAGONAL needs numbers"));
             }
             let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(js_number(c)) };
             if let V::List(items) = v {
                 if matches!(items.first(), Some(V::List(_))) {
-                    return list(
+                    return Ok(list(
                         items
                             .iter()
                             .enumerate()
@@ -1275,16 +1305,16 @@ pub fn call(name: &str, a: &[V]) -> V {
                                 _ => V::Null,
                             })
                             .collect(),
-                    );
+                    ));
                 }
             }
             let vs: Vec<V> = to_list(v).iter().map(num_or_null).collect();
             if vs.is_empty() {
-                return V::Null;
+                return Ok(V::Null);
             }
             let n = vs.len();
             if let Some(e) = cell_cap("DIAGONAL", n as f64, n as f64) {
-                return e;
+                return Ok(e);
             }
             mat_v((0..n).map(|i| (0..n).map(|j| if i == j { vs[i].clone() } else { V::Num(0.0) }).collect()).collect())
         }
@@ -1294,10 +1324,10 @@ pub fn call(name: &str, a: &[V]) -> V {
             };
             let (x, y) = (nums(arg(a, 0)), nums(arg(a, 1)));
             if x.is_empty() || y.is_empty() {
-                return V::Null;
+                return Ok(V::Null);
             }
             if let Some(e) = cell_cap("OUTER", x.len() as f64, y.len() as f64) {
-                return e;
+                return Ok(e);
             }
             mat_v(
                 x.iter()
@@ -1315,7 +1345,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "TRACE" => {
             let m = tri!(num_mat(arg(a, 0)));
             if m.len() != mat_cols(&m) {
-                return err(ErrorCode::Shape, "TRACE needs a square matrix");
+                return Ok(err(ErrorCode::Shape, "TRACE needs a square matrix"));
             }
             let mut t = 0.0;
             for (i, row) in m.iter().enumerate() {
@@ -1334,7 +1364,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 })
                 .collect();
             if m.len() != mat_cols(&m) || bs.len() != m.len() {
-                return err(ErrorCode::Shape, "SOLVE needs a square A with one b per row");
+                return Ok(err(ErrorCode::Shape, "SOLVE needs a square A with one b per row"));
             }
             match solve_linear(&m, &bs) {
                 Some(x) => nums_v(x),
@@ -1355,9 +1385,9 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
         }
         "MDETERM" | "MINVERSE" => {
-            let Some(m) = tri!(num_matrix(arg(a, 0))) else { return V::Null };
+            let Some(m) = tri!(num_matrix(arg(a, 0))) else { return Ok(V::Null) };
             if m.len() != mat_cols(&m) {
-                return err(ErrorCode::Shape, "Matrix must be square");
+                return Ok(err(ErrorCode::Shape, "Matrix must be square"));
             }
             if name == "MDETERM" {
                 mat_det(&m).map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular"), V::Num)
@@ -1369,7 +1399,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "WRAPROWS" | "WRAPCOLS" => {
             let (l, w, pad_with) = (arg(a, 0), arg(a, 1), arg(a, 2));
             if nullish(l) || nullish(w) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let width = tri!(wrap_count(js_number(w), name)) as usize;
             let rows = name == "WRAPROWS";
@@ -1391,7 +1421,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "SEQUENCE" => {
             let (rows, cols, start, step) = (arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3));
             if nullish(rows) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let r = array_count(js_number(rows), "SEQUENCE");
             let c = if nullish(cols) { Ok(1.0) } else { array_count(js_number(cols), "SEQUENCE") };
@@ -1401,24 +1431,24 @@ pub fn call(name: &str, a: &[V]) -> V {
             let st = if nullish(step) { 1.0 } else { js_number(step) };
             let total = r * c;
             if total > MAX_GENERATED {
-                return err(
+                return Ok(err(
                     ErrorCode::Overflow,
                     format!("SEQUENCE count {} exceeds the 1000000 element limit", number_to_string(total)),
-                );
+                ));
             }
             let n = if total.is_nan() { 0 } else { total.floor().max(0.0) as usize };
             let flat: Vec<V> = (0..n).map(|i| V::Num(s0 + i as f64 * st)).collect();
             if c == 1.0 {
-                return list(flat);
+                return Ok(list(flat));
             }
             if c == 0.0 || flat.is_empty() {
-                return list(vec![]);
+                return Ok(list(vec![]));
             }
             mat_v(wrap_cells(&flat, c as usize, true, &|| V::Null))
         }
         "MODE.MULT" => {
             if a.iter().all(nullish) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let all: Vec<V> = a.iter().filter(|v| !nullish(v)).flat_map(to_list).collect();
             mode_mult(&all)
@@ -1426,12 +1456,12 @@ pub fn call(name: &str, a: &[V]) -> V {
         "FREQUENCY" => {
             let (d, b) = (arg(a, 0), arg(a, 1));
             if nullish(d) || nullish(b) {
-                return V::Null;
+                return Ok(V::Null);
             }
             frequency_bins(&to_list(d), &to_list(b))
         }
         "CROSSPRODUCT" => cross_product(&to_list(arg(a, 0)), &to_list(arg(a, 1))),
-        "POLYFIT" => polyfit_eval(&to_list(arg(a, 0)), &to_list(arg(a, 1)), js_number(arg(a, 2))),
+        "POLYFIT" => polyfit_eval(&to_list(arg(a, 0)), &to_list(arg(a, 1)), js_number(arg(a, 2)))?,
         "POLYROOTS" => {
             let cs = present_numbers(&to_list(arg(a, 0)));
             match poly_roots(&cs) {
@@ -1442,10 +1472,10 @@ pub fn call(name: &str, a: &[V]) -> V {
         "QUADRATICROOTS" => {
             let (qa, qb, qc) = (js_number(arg(a, 0)), js_number(arg(a, 1)), js_number(arg(a, 2)));
             if qa.is_nan() || qb.is_nan() || qc.is_nan() {
-                return err(ErrorCode::Value, "QUADRATICROOTS takes numeric coefficients a, b, c");
+                return Ok(err(ErrorCode::Value, "QUADRATICROOTS takes numeric coefficients a, b, c"));
             }
             if qa == 0.0 {
-                return err(ErrorCode::Domain, "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
+                return Ok(err(ErrorCode::Domain, "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly"));
             }
             let disc = qb * qb - 4.0 * qa * qc;
             let s = disc.abs().sqrt() / (2.0 * qa);
@@ -1461,20 +1491,20 @@ pub fn call(name: &str, a: &[V]) -> V {
         "LINEST" | "LOGEST" => {
             let ys = arg(a, 0);
             if nullish(ys) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let (px, py) = tri!(regression_pair(ys, arg(a, 1)));
             let enough = px.len() >= 2;
             let zero_var = || err(ErrorCode::DivZero, "Known Xs have zero variance");
             if name == "LINEST" {
-                return match linear_fit(&px, &py, true) {
+                return Ok(match linear_fit(&px, &py, true) {
                     Some((slope, intercept, r2)) => nums_v(vec![slope, intercept, r2]),
                     None if enough => zero_var(),
                     None => V::Null,
-                };
+                });
             }
             if py.iter().any(|y| !(js_number(y) > 0.0)) {
-                return nonpositive_y();
+                return Ok(nonpositive_y());
             }
             match exp_fit(&px, &py) {
                 Some((m, b)) => nums_v(vec![m, b]),
@@ -1484,5 +1514,5 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "HISTOGRAM2D" => histogram2d(&to_list(arg(a, 0)), &to_list(arg(a, 1)), to_num(arg(a, 2)), to_num(arg(a, 3))),
         _ => err(ErrorCode::Name, format!("Unknown function {name}")),
-    }
+    })
 }

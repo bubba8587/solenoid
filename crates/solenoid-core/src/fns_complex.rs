@@ -3,7 +3,7 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_pow, js_string_of, math_hypot, throw, to_num, to_str, V};
+use crate::excel_functions::{js_pow, js_string_of, math_hypot, to_num, to_str, Thrown, V};
 use crate::fdlibm::{atan2, cos, exp, expm1, log, sin};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::value_kinds::MAX_GENERATED;
@@ -497,23 +497,23 @@ fn bin_index(arr: &[V], breaks: &[V]) -> Vec<V> {
 
 /// The wall clock in `from` read as an instant (two offset reads settle a time beside a DST
 /// transition), then that instant's wall clock in `to`.
-fn convert_zone(serial: f64, from: &str, to: &str) -> V {
+fn convert_zone(serial: f64, from: &str, to: &str) -> Result<V, Thrown> {
     use crate::zone::{is_valid_zone, zone_offset_ms, ZoneError};
     if !serial.is_finite() {
-        return V::err(sol_error(ErrorCode::Value, "The date/time input is empty."));
+        return Ok(V::err(sol_error(ErrorCode::Value, "The date/time input is empty.")));
     }
     let (from, to) = (js_trim(from), js_trim(to));
     if !is_valid_zone(from) {
-        return V::err(sol_error(
+        return Ok(V::err(sol_error(
             ErrorCode::Value,
             format!("Unknown time zone \"{from}\". Use an IANA name like America/New_York."),
-        ));
+        )));
     }
     if !is_valid_zone(to) {
-        return V::err(sol_error(
+        return Ok(V::err(sol_error(
             ErrorCode::Value,
             format!("Unknown time zone \"{to}\". Use an IANA name like Asia/Tokyo."),
-        ));
+        )));
     }
     const MS_PER_DAY: f64 = 86_400_000.0;
     let run = || -> Result<f64, ZoneError> {
@@ -524,14 +524,14 @@ fn convert_zone(serial: f64, from: &str, to: &str) -> V {
         Ok((ms + zone_offset_ms(to, ms)?) / MS_PER_DAY + 25569.0)
     };
     match run() {
-        Ok(n) => V::Num(n),
+        Ok(n) => Ok(V::Num(n)),
         // `formatToParts` of an Invalid Date is a RangeError.
-        Err(_) => throw(sol_error(ErrorCode::Value, "Invalid time value")),
+        Err(_) => Err(Thrown::value("Invalid time value")),
     }
 }
 
-pub fn call(name: &str, a: &[V]) -> V {
-    match name {
+pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
+    Ok(match name {
         "LEVENSHTEIN" => V::Num(text_similarity(&to_str(arg(a, 0)), &to_str(arg(a, 1)), Sim::Levenshtein)),
         "SIMILARITY" => match sim_method(arg(a, 2)) {
             None => V::err(sol_error(
@@ -542,10 +542,10 @@ pub fn call(name: &str, a: &[V]) -> V {
         },
         "FUZZYMATCH" => {
             let Some(m) = sim_method(arg(a, 3)) else {
-                return V::err(sol_error(
+                return Ok(V::err(sol_error(
                     ErrorCode::Domain,
                     "FUZZYMATCH method must be ratio, damerau or jaro_winkler",
-                ));
+                )));
             };
             let m = if m == Sim::Levenshtein { Sim::Ratio } else { m };
             let threshold = if is_nullish(arg(a, 2)) { 0.6 } else { js_number(arg(a, 2)) };
@@ -576,12 +576,12 @@ pub fn call(name: &str, a: &[V]) -> V {
         "BIN" => V::List(std::rc::Rc::new(bin_index(&to_list(arg(a, 0)), &to_list(arg(a, 1))))),
         "TIMEZONECONVERT" => {
             if is_nullish(arg(a, 0)) || is_nullish(arg(a, 1)) || is_nullish(arg(a, 2)) {
-                return V::Null;
+                return Ok(V::Null);
             }
-            convert_zone(to_num(arg(a, 0)), &to_str(arg(a, 1)), &to_str(arg(a, 2)))
+            convert_zone(to_num(arg(a, 0)), &to_str(arg(a, 1)), &to_str(arg(a, 2)))?
         }
         _ => complex(name, a),
-    }
+    })
 }
 
 #[cfg(test)]
@@ -646,7 +646,7 @@ mod tests {
             ("IMCOS", vec![V::Cx(0.2, -400.0)], Some((0x63f08d69b79c8c87, 0x63cad7baa2fa6d98))),
         ];
         for (name, args, want) in cases {
-            let got = call(name, &args);
+            let Ok(got) = call(name, &args) else { panic!("{name} threw") };
             match want {
                 Some(want) => assert_eq!(bits(&got), want, "{name}"),
                 None => assert!(got.is_sol_error(), "{name}: {got:?}"),

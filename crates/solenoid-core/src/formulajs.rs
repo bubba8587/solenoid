@@ -5,8 +5,8 @@
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
-use crate::error_value::{sol_error, ErrorCode, FxError};
-use crate::excel_functions::{js_pow, js_string_of, parse_number, throw, truthy, V};
+use crate::error_value::FxError;
+use crate::excel_functions::{js_pow, js_string_of, parse_number, truthy, Thrown, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
@@ -118,50 +118,43 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
     Ok(out)
 }
 
-fn invalid_array_length() -> V {
-    throw(sol_error(ErrorCode::Value, "Invalid array length"))
+fn invalid_array_length() -> Thrown {
+    Thrown::value("Invalid array length")
 }
 
 /// `new Array(n).join(text)`: n − 1 copies, where n is a valid array length.
-fn array_join(n: f64, text: &str) -> Result<String, V> {
+fn array_join(n: f64, text: &str) -> Result<String, Thrown> {
     if !((0.0..=4_294_967_295.0).contains(&n) && n.fract() == 0.0) {
         return Err(invalid_array_length());
     }
     // V8's longest string, in UTF-16 units.
     let units = text.encode_utf16().count() as f64;
     if (n - 1.0).max(0.0) * units > 536_870_888.0 {
-        return Err(throw(sol_error(ErrorCode::Value, "Invalid string length")));
+        return Err(Thrown::value("Invalid string length"));
     }
     Ok(text.repeat((n as usize).saturating_sub(1)))
 }
 
 /// Formula.js's own REPT.
-fn rept(text: &str, times: f64) -> Result<String, V> {
+fn rept(text: &str, times: f64) -> Result<String, Thrown> {
     array_join(times + 1.0, text)
 }
 
 /// The places argument the DEC2…/…2BIN family pads with.
-fn with_places(result: String, places: &V) -> V {
+fn with_places(result: String, places: &V) -> Result<V, Thrown> {
     if matches!(places, V::Undef) {
-        return V::str(&result);
+        return Ok(V::str(&result));
     }
     if is_nan(places) {
-        return VALUE;
+        return Ok(VALUE);
     }
     let p = js_number(places);
     if p < 0.0 {
-        return NUM;
+        return Ok(NUM);
     }
     let p = p.floor();
     let len = result.len() as f64;
-    if p >= len {
-        match rept("0", p - len) {
-            Ok(z) => V::str(&(z + &result)),
-            Err(e) => e,
-        }
-    } else {
-        NUM
-    }
+    Ok(if p >= len { V::str(&(rept("0", p - len)? + &result)) } else { NUM })
 }
 
 fn radix_text(x: f64, radix: u32) -> String {
@@ -178,12 +171,9 @@ fn matches_decimal(s: &str, max: usize) -> bool {
 }
 
 /// `'1' + REPT('0', 9 − b.length) + b`, b being (512 + n) in binary.
-fn negative_binary(n: f64) -> V {
+fn negative_binary(n: f64) -> Result<V, Thrown> {
     let b = radix_text(512.0 + n, 2);
-    match rept("0", 9.0 - b.len() as f64) {
-        Ok(z) => V::str(&format!("1{z}{b}")),
-        Err(e) => e,
-    }
+    Ok(V::str(&format!("1{}{b}", rept("0", 9.0 - b.len() as f64)?)))
 }
 
 /// The first Str's UTF-16 length, as `number.length` reads it; None for anything else.
@@ -204,25 +194,25 @@ fn first_char(v: &V) -> Option<char> {
 }
 
 /// The base conversions.
-fn base_convert(name: &str, number: &V, places: &V) -> V {
+fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
     let s = js_string_of(number);
-    match name {
+    Ok(match name {
         "BIN2DEC" | "BIN2HEX" | "BIN2OCT" => {
             if !matches_digits(&s, 2, 10) {
-                return NUM;
+                return Ok(NUM);
             }
             let negative = s.len() == 10 && s.starts_with('1');
             match name {
                 "BIN2DEC" => V::Num(if negative { parse_int(&s[1..], 2.0) - 512.0 } else { parse_int(&s, 2.0) }),
                 "BIN2HEX" if negative => V::str(&radix_text(1_099_511_627_264.0 + parse_int(&s[1..], 2.0), 16)),
                 "BIN2OCT" if negative => V::str(&radix_text(1_073_741_312.0 + parse_int(&s[1..], 2.0), 8)),
-                _ => with_places(radix_text(parse_int(&s, 2.0), if name == "BIN2HEX" { 16 } else { 8 }), places),
+                _ => with_places(radix_text(parse_int(&s, 2.0), if name == "BIN2HEX" { 16 } else { 8 }), places)?,
             }
         }
         "DEC2BIN" | "DEC2HEX" | "DEC2OCT" => {
             let n = match parse_number(number) {
                 V::Num(n) => n,
-                e => return e,
+                e => return Ok(e),
             };
             let s = number_to_string(n);
             let (digits, lo, hi, wrap, radix) = match name {
@@ -231,16 +221,16 @@ fn base_convert(name: &str, number: &V, places: &V) -> V {
                 _ => (9, -536_870_912.0, 536_870_911.0, 1_073_741_824.0, 8),
             };
             if !matches_decimal(&s, digits) || n < lo || n > hi {
-                return NUM;
+                return Ok(NUM);
             }
             if n < 0.0 {
-                return if name == "DEC2BIN" { negative_binary(n) } else { V::str(&radix_text(wrap + n, radix)) };
+                return Ok(if name == "DEC2BIN" { negative_binary(n)? } else { V::str(&radix_text(wrap + n, radix)) });
             }
-            with_places(radix_text(parse_int(&s, 10.0), radix), places)
+            with_places(radix_text(parse_int(&s, 10.0), radix), places)?
         }
         "HEX2BIN" | "HEX2DEC" | "HEX2OCT" => {
             if !matches_digits(&s, 16, 10) {
-                return NUM;
+                return Ok(NUM);
             }
             let decimal = parse_int(&s, 16.0);
             match name {
@@ -250,28 +240,28 @@ fn base_convert(name: &str, number: &V, places: &V) -> V {
                         str_len(number) == Some(10) && first_char(number).is_some_and(|c| c.eq_ignore_ascii_case(&'f'));
                     let decimal = if negative { decimal - 1_099_511_627_776.0 } else { decimal };
                     if !(-512.0..=511.0).contains(&decimal) {
-                        return NUM;
+                        return Ok(NUM);
                     }
                     if negative {
-                        negative_binary(decimal)
+                        negative_binary(decimal)?
                     } else {
-                        with_places(radix_text(decimal, 2), places)
+                        with_places(radix_text(decimal, 2), places)?
                     }
                 }
                 _ => {
                     if decimal > 536_870_911.0 && decimal < 1_098_974_756_864.0 {
-                        return NUM;
+                        return Ok(NUM);
                     }
                     if decimal >= 1_098_974_756_864.0 {
-                        return V::str(&radix_text(decimal - 1_098_437_885_952.0, 8));
+                        return Ok(V::str(&radix_text(decimal - 1_098_437_885_952.0, 8)));
                     }
-                    with_places(radix_text(decimal, 8), places)
+                    with_places(radix_text(decimal, 8), places)?
                 }
             }
         }
         _ => {
             if !matches_digits(&s, 8, 10) {
-                return NUM;
+                return Ok(NUM);
             }
             let decimal = parse_int(&s, 8.0);
             match name {
@@ -280,23 +270,23 @@ fn base_convert(name: &str, number: &V, places: &V) -> V {
                     let negative = str_len(number) == Some(10) && first_char(number) == Some('7');
                     let decimal = if negative { decimal - 1_073_741_824.0 } else { decimal };
                     if !(-512.0..=511.0).contains(&decimal) {
-                        return NUM;
+                        return Ok(NUM);
                     }
                     if negative {
-                        negative_binary(decimal)
+                        negative_binary(decimal)?
                     } else {
-                        with_places(radix_text(decimal, 2), places)
+                        with_places(radix_text(decimal, 2), places)?
                     }
                 }
                 _ => {
                     if decimal >= 536_870_912.0 {
-                        return V::str(&format!("ff{}", radix_text(decimal + 3_221_225_472.0, 16)));
+                        return Ok(V::str(&format!("ff{}", radix_text(decimal + 3_221_225_472.0, 16))));
                     }
-                    with_places(radix_text(decimal, 16), places)
+                    with_places(radix_text(decimal, 16), places)?
                 }
             }
         }
-    }
+    })
 }
 
 /// The BIT functions' checks: whole numbers from 0 to 2^48 − 1.
@@ -361,7 +351,7 @@ fn arabic(s: &str) -> f64 {
     r
 }
 
-fn roman(n: f64) -> V {
+fn roman(n: f64) -> Result<V, Thrown> {
     const KEY: [&str; 30] = [
         "", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM", "", "X", "XX", "XXX", "XL", "L", "LX", "LXX",
         "LXXX", "XC", "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX",
@@ -374,10 +364,7 @@ fn roman(n: f64) -> V {
         roman = format!("{piece}{roman}");
     }
     let rest: String = digits.into_iter().collect();
-    match array_join(string_to_number(&rest) + 1.0, "M") {
-        Ok(ms) => V::str(&(ms + &roman)),
-        Err(e) => e,
-    }
+    Ok(V::str(&(array_join(string_to_number(&rest) + 1.0, "M")? + &roman)))
 }
 
 // ─── jStat ─────────────────────────────────────────────────────────────────────
@@ -612,7 +599,7 @@ fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
 }
 
 /// CHISQ.TEST's `ChiSq`.
-fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
+fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, Thrown> {
     let mut p = exp(-0.5 * xsqr);
     if dof % 2.0 == 1.0 {
         p *= (2.0 * xsqr / std::f64::consts::PI).sqrt();
@@ -631,7 +618,7 @@ fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
         p += t;
         steps += 1;
         if steps > 10_000_000 {
-            return Err(throw(sol_error(ErrorCode::Value, "CHISQ.TEST's statistic is too large to sum")));
+            return Err(Thrown::value("CHISQ.TEST's statistic is too large to sum"));
         }
     }
     Ok(1.0 - p)
@@ -639,7 +626,7 @@ fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
 
 /// JS `v[key]` on an argument: a list's item, a string's UTF-16 unit (a lone half reads as U+FFFD) or length,
 /// `undefined` on any other value, and the TypeError `null` and `undefined` throw. `list` reads a list's member.
-fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V> {
+fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, Thrown> {
     match v {
         V::List(items) => Ok(list(items).unwrap_or(V::Undef)),
         V::Str(s) => {
@@ -655,7 +642,7 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V>
         }
         V::Null | V::Undef => {
             let what = if matches!(v, V::Null) { "null" } else { "undefined" };
-            Err(throw(sol_error(ErrorCode::Value, format!("Cannot read properties of {what} (reading '{key}')"))))
+            Err(Thrown::value(format!("Cannot read properties of {what} (reading '{key}')")))
         }
         _ => Ok(V::Undef),
     }
@@ -663,8 +650,8 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V>
 
 // ─── Dispatch ──────────────────────────────────────────────────────────────────
 
-pub fn call(name: &str, a: &[V]) -> V {
-    match name {
+pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
+    Ok(match name {
         "PERMUTATIONA" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
             (V::Num(n), V::Num(k)) => V::Num(js_pow(n, k)),
             _ => VALUE,
@@ -675,14 +662,13 @@ pub fn call(name: &str, a: &[V]) -> V {
         },
         "SUMPRODUCT" => {
             if a.is_empty() {
-                return VALUE;
+                return Ok(VALUE);
             }
             let at = |v: &V, i: usize| js_member(v, &i.to_string(), |items| items.get(i).cloned());
             let mut result = 0.0;
-            let len = match js_member(&a[0], "length", |items| Some(V::Num(items.len() as f64))) {
-                Ok(V::Num(n)) => n as usize,
-                Ok(_) => 0,
-                Err(e) => return e,
+            let len = match js_member(&a[0], "length", |items| Some(V::Num(items.len() as f64)))? {
+                V::Num(n) => n as usize,
+                _ => 0,
             };
             let factor = |item: V| -> Result<f64, V> {
                 if let V::Fx(_) = item {
@@ -694,21 +680,13 @@ pub fn call(name: &str, a: &[V]) -> V {
                 }
             };
             for i in 0..len {
-                let first = match at(&a[0], i) {
-                    Ok(v) => v,
-                    Err(e) => return e,
-                };
-                if let V::List(inner) = first {
+                if let V::List(inner) = at(&a[0], i)? {
                     for j in 0..inner.len() {
                         let mut product = 1.0;
                         for v in a {
-                            let item = match at(v, i).and_then(|row| at(&row, j)) {
-                                Ok(x) => x,
-                                Err(e) => return e,
-                            };
-                            match factor(item) {
+                            match factor(at(&at(v, i)?, j)?) {
                                 Ok(n) => product *= n,
-                                Err(e) => return e,
+                                Err(e) => return Ok(e),
                             }
                         }
                         result += product;
@@ -716,9 +694,9 @@ pub fn call(name: &str, a: &[V]) -> V {
                 } else {
                     let mut product = 1.0;
                     for v in a {
-                        match at(v, i).and_then(factor) {
+                        match factor(at(v, i)?) {
                             Ok(n) => product *= n,
-                            Err(e) => return e,
+                            Err(e) => return Ok(e),
                         }
                     }
                     result += product;
@@ -728,11 +706,11 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" => {
             let (xs, ys) = (parse_number_array(&flatten(arg(a, 0))), parse_number_array(&flatten(arg(a, 1))));
-            let (Ok(xs), Ok(ys)) = (xs, ys) else { return VALUE };
+            let (Ok(xs), Ok(ys)) = (xs, ys) else { return Ok(VALUE) };
             // SUMX2PY2 parses both again, and a NaN parses as an error: an error has no length, nor items.
             let reparsed_nan = |v: &[f64]| name == "SUMX2PY2" && v.iter().any(|x| x.is_nan());
             if reparsed_nan(&xs) {
-                return V::Num(0.0);
+                return Ok(V::Num(0.0));
             }
             let ys = if reparsed_nan(&ys) { Vec::new() } else { ys };
             let mut result = 0.0;
@@ -755,11 +733,11 @@ pub fn call(name: &str, a: &[V]) -> V {
                     let units: Vec<u16> = s.encode_utf16().collect();
                     let last = String::from_utf16_lossy(&units[units.len() - 1..]);
                     return match parse_number(&V::str(&last)) {
-                        V::Num(_) => throw(sol_error(
-                            ErrorCode::Value,
-                            format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1),
-                        )),
-                        _ => VALUE,
+                        V::Num(_) => Err(Thrown::value(format!(
+                            "Cannot assign to read only property '{}' of string '{s}'",
+                            units.len() - 1
+                        ))),
+                        _ => Ok(VALUE),
                     };
                 }
                 // A truthy scalar has no length, so it parses as itself and reads `undefined` at [0].
@@ -773,9 +751,9 @@ pub fn call(name: &str, a: &[V]) -> V {
                 _ => Err(VALUE),
             };
             let (Some(x), Some(n), Some(m), Ok(cs)) = (num_of(&x), num_of(&n), num_of(&m), coefficients) else {
-                return VALUE;
+                return Ok(VALUE);
             };
-            let Some(cs) = cs else { return V::Num(f64::NAN) };
+            let Some(cs) = cs else { return Ok(V::Num(f64::NAN)) };
             let mut result = cs[0] * js_pow(x, n);
             for (i, c) in cs.iter().enumerate().skip(1) {
                 result += c * js_pow(x, n + i as f64 * m);
@@ -785,36 +763,33 @@ pub fn call(name: &str, a: &[V]) -> V {
         "BASE" => {
             let (n, r, l) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)));
             if let Some(e) = any_error(&[&n, &r, &l]) {
-                return e;
+                return Ok(e);
             }
             let (n, r, l) =
                 (num_of(&n).unwrap_or(f64::NAN), num_of(&r).unwrap_or(f64::NAN), num_of(&l).unwrap_or(f64::NAN));
             if r == 0.0 {
-                return NUM;
+                return Ok(NUM);
             }
             let s = match to_radix_string(n, r) {
                 Ok(s) => s,
-                Err(m) => return throw(sol_error(ErrorCode::Value, m)),
+                Err(m) => return Err(Thrown::value(m)),
             };
             let len = crate::jsnum::math_max(l + 1.0 - s.len() as f64, 0.0);
-            match array_join(len, "0") {
-                // The registration over BASE uppercases its text.
-                Ok(z) => V::str(&(z + &s).to_uppercase()),
-                Err(e) => e,
-            }
+            // The registration over BASE uppercases its text.
+            V::str(&(array_join(len, "0")? + &s).to_uppercase())
         }
         "DECIMAL" => {
             if a.len() < 2 {
-                return NA;
+                return Ok(NA);
             }
             let text = if truthy(&a[0]) { a[0].clone() } else { V::str("0") };
             let radix = parse_number(&a[1]);
             if let Some(e) = any_error(&[&text, &radix]) {
-                return e;
+                return Ok(e);
             }
             let r = num_of(&radix).unwrap_or(f64::NAN);
             if r == 0.0 {
-                return NUM;
+                return Ok(NUM);
             }
             let v = parse_int(&js_string_of(&text), r);
             if v.is_nan() {
@@ -824,7 +799,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
         }
         "ROMAN" => match parse_number(arg(a, 0)) {
-            V::Num(n) => roman(n),
+            V::Num(n) => roman(n)?,
             e => e,
         },
         "ARABIC" => match arg(a, 0) {
@@ -841,7 +816,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         },
         "BIN2DEC" | "BIN2HEX" | "BIN2OCT" | "DEC2BIN" | "DEC2HEX" | "DEC2OCT" | "HEX2BIN" | "HEX2DEC" | "HEX2OCT"
         | "OCT2BIN" | "OCT2DEC" | "OCT2HEX" => {
-            let r = base_convert(name, arg(a, 0), arg(a, 1));
+            let r = base_convert(name, arg(a, 0), arg(a, 1))?;
             // DEC2HEX, BIN2HEX and OCT2HEX are registered over Formula.js's to uppercase their text.
             match r {
                 V::Str(s) if matches!(name, "DEC2HEX" | "BIN2HEX" | "OCT2HEX") => V::str(&s.to_uppercase()),
@@ -850,10 +825,10 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "BITAND" | "BITOR" | "BITXOR" | "BITLSHIFT" | "BITRSHIFT" => {
             let (x, y) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
-            let (Some(x), Some(y)) = (num_of(&x), num_of(&y)) else { return VALUE };
+            let (Some(x), Some(y)) = (num_of(&x), num_of(&y)) else { return Ok(VALUE) };
             let shift = matches!(name, "BITLSHIFT" | "BITRSHIFT");
             if !bit_operand(x) || (!shift && !bit_operand(y)) {
-                return NUM;
+                return Ok(NUM);
             }
             let xi = to_int32(x);
             V::Num(f64::from(match name {
@@ -862,7 +837,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "BITXOR" => xi ^ to_int32(y),
                 _ => {
                     if y.abs() > 53.0 {
-                        return NUM;
+                        return Ok(NUM);
                     }
                     let left = (name == "BITLSHIFT") == (y >= 0.0);
                     let s = to_uint32(if y >= 0.0 { y } else { -y }) & 31;
@@ -885,10 +860,10 @@ pub fn call(name: &str, a: &[V]) -> V {
             let step = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(0.0) };
             let number = parse_number(arg(a, 0));
             if let V::Fx(_) = step {
-                return step;
+                return Ok(step);
             }
             if matches!(step, V::Fx(_)) || matches!(number, V::Fx(_)) {
-                return number;
+                return Ok(number);
             }
             let n = num_of(&number).unwrap_or(f64::NAN);
             V::Num(if n >= js_number(&step) { 1.0 } else { 0.0 })
@@ -925,27 +900,27 @@ pub fn call(name: &str, a: &[V]) -> V {
         "ERFC" | "ERFC.PRECISE" => {
             let x = arg(a, 0);
             if is_nan(x) {
-                return VALUE;
+                return Ok(VALUE);
             }
             V::Num(1.0 - jstat_erf(x))
         }
         "GAMMA" => {
             let n = match parse_number(arg(a, 0)) {
                 V::Num(n) => n,
-                e => return e,
+                e => return Ok(e),
             };
             if n == 0.0 || (parse_int(&number_to_string(n), 10.0) == n && n < 0.0) {
-                return NUM;
+                return Ok(NUM);
             }
             V::Num(jstat_gammafn(n))
         }
         "Z.TEST" => {
             let x = parse_number(arg(a, 1));
-            let (Some((n, mean, sd)), Some(x)) = (z_test_spread(arg(a, 0)), num_of(&x)) else { return VALUE };
+            let (Some((n, mean, sd)), Some(x)) = (z_test_spread(arg(a, 0)), num_of(&x)) else { return Ok(VALUE) };
             let sigma = if truthy(arg(a, 2)) {
                 match num_of(&parse_number(arg(a, 2))) {
                     Some(s) => s,
-                    None => return VALUE,
+                    None => return Ok(VALUE),
                 }
             } else {
                 sd
@@ -957,20 +932,20 @@ pub fn call(name: &str, a: &[V]) -> V {
         }
         "CHISQ.TEST" => {
             if a.len() != 2 {
-                return NA;
+                return Ok(NA);
             }
-            let (V::List(actual), V::List(expected)) = (&a[0], &a[1]) else { return VALUE };
+            let (V::List(actual), V::List(expected)) = (&a[0], &a[1]) else { return Ok(VALUE) };
             if actual.len() != expected.len() {
-                return VALUE;
+                return Ok(VALUE);
             }
             if truthy(arg(actual, 0)) && truthy(arg(expected, 0)) && str_len(&actual[0]) != str_len(&expected[0]) {
-                return VALUE;
+                return Ok(VALUE);
             }
             if actual.is_empty() {
-                return throw(sol_error(ErrorCode::Value, "Cannot read properties of undefined (reading 'length')"));
+                return Err(Thrown::value("Cannot read properties of undefined (reading 'length')"));
             }
             if actual.iter().chain(expected.iter()).any(|v| matches!(v, V::List(_))) {
-                return throw(sol_error(ErrorCode::Value, "CHISQ.TEST reads two tables of numbers"));
+                return Err(Thrown::value("CHISQ.TEST reads two tables of numbers"));
             }
             let dof = actual.len() as f64 - 1.0;
             let mut xsqr = 0.0;
@@ -978,10 +953,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 let e = js_number(e);
                 xsqr += js_pow(js_number(x) - e, 2.0) / e;
             }
-            match chi_sq(xsqr, dof) {
-                Ok(p) => V::Num(math_round(p * 1_000_000.0) / 1_000_000.0),
-                Err(e) => e,
-            }
+            V::Num(math_round(chi_sq(xsqr, dof)? * 1_000_000.0) / 1_000_000.0)
         }
         "NA" => NA,
         "GAUSS" => match parse_number(arg(a, 0)) {
@@ -993,13 +965,13 @@ pub fn call(name: &str, a: &[V]) -> V {
             _ => VALUE,
         },
         "CONFIDENCE.NORM" => {
-            let Some([alpha, sd, size]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
+            let Some([alpha, sd, size]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return Ok(VALUE) };
             let inv = -1.41421356237309505 * 1.0 * jstat_erfcinv(2.0 * (alpha / 2.0)) + 0.0;
             let change = (inv * sd / size.sqrt()).abs();
             V::Num((1.0 + change) - 1.0)
         }
         _ => V::Undef,
-    }
+    })
 }
 
 type ZSpread = Option<(std::rc::Rc<Vec<V>>, Option<(f64, f64, f64)>)>;

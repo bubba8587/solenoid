@@ -52,28 +52,14 @@ impl V {
     }
 }
 
-thread_local! {
-    static THROWN: std::cell::RefCell<Option<SolError>> = const { std::cell::RefCell::new(None) };
-}
+/// A JS exception: it ends the evaluation, so the call answers it whatever encloses the body.
+#[derive(Clone, Debug)]
+pub struct Thrown(pub SolError);
 
-/// A JS exception: it ends the row's evaluation, so the row answers it whatever encloses the call (the first one wins).
-pub(crate) fn throw(e: SolError) -> V {
-    THROWN.with(|t| {
-        let mut t = t.borrow_mut();
-        if t.is_none() {
-            *t = Some(e);
-        }
-    });
-    V::Undef
-}
-
-pub fn thrown_pending() -> bool {
-    THROWN.with(|t| t.borrow().is_some())
-}
-
-/// The exception the last row threw, if it did.
-pub fn take_thrown() -> Option<SolError> {
-    THROWN.with(|t| t.borrow_mut().take())
+impl Thrown {
+    pub(crate) fn value(message: impl Into<String>) -> Thrown {
+        Thrown(sol_error(ErrorCode::Value, message))
+    }
 }
 
 /// The modules that answer their own names, beside `call_function`'s arms and the finance functions.
@@ -196,19 +182,8 @@ thread_local! {
     static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
 }
 
-/// What a calc raised beside its answer.
-pub enum Raised {
-    Nothing,
-    Thrown(SolError),
-}
-
-/// What the calc raised since the last take, cleared.
-pub fn take_raised() -> Raised {
-    take_thrown().map_or(Raised::Nothing, Raised::Thrown)
-}
-
-/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row,
-/// anything raised and what was kept of long lists, so no return path leaves them to the next call.
+/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row
+/// and what was kept of long lists, so no return path leaves them to the next call.
 #[must_use]
 pub struct Calc {
     keep_lists: bool,
@@ -217,7 +192,6 @@ pub struct Calc {
 impl Calc {
     pub fn begin(clock: Option<Clock>) -> Calc {
         set_clock(clock);
-        take_raised();
         Calc { keep_lists: false }
     }
 
@@ -234,7 +208,6 @@ impl Drop for Calc {
     fn drop(&mut self) {
         set_clock(None);
         set_row_number(None);
-        take_raised();
         if !self.keep_lists {
             forget_kept_lists();
         }
@@ -1347,20 +1320,20 @@ pub(crate) fn js_slice_index(k: f64, len: usize) -> usize {
 
 /// `values.length` is `n` (a string's UTF-16 length, None where it is `undefined`) and `items`
 /// what `[...values]` spreads (None where that throws).
-fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
+fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> Result<V, Thrown> {
     let n = n.unwrap_or(f64::NAN);
     if n == 0.0 || percent.is_nan() {
-        return value_err("TRIMMEAN");
+        return Ok(value_err("TRIMMEAN"));
     }
     let trim = ((n * percent) / 2.0).floor();
     if trim * 2.0 >= n {
-        return V::err(sol_error(ErrorCode::Domain, "TRIMMEAN trimmed away every value"));
+        return Ok(V::err(sol_error(ErrorCode::Domain, "TRIMMEAN trimmed away every value")));
     }
-    let Some(items) = items else { return throw(sol_error(ErrorCode::Value, "values is not iterable")) };
+    let Some(items) = items else { return Err(Thrown::value("values is not iterable")) };
     let s = js_numeric_sort(&items);
     let (lo, hi) = (js_slice_index(trim, s.len()), js_slice_index(n - trim, s.len()));
     let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
-    V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
+    Ok(V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64))
 }
 
 /// Over the list's finite numbers, sorted (`sorted_of`, `Reading::PercentRank`).
@@ -1421,24 +1394,24 @@ fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
 }
 
 /// TEXT: its patched codes up front and Formula.js's TEXT after.
-fn excel_text(value: &V, fmt: &V) -> V {
+fn excel_text(value: &V, fmt: &V) -> Result<V, Thrown> {
     let f = to_str(fmt);
     let n = to_num(value);
     if n.is_nan() {
-        return V::str(&to_str(value));
+        return Ok(V::str(&to_str(value)));
     }
     if f == "@" || f.eq_ignore_ascii_case("general") {
-        return V::str(&number_to_text(n));
+        return Ok(V::str(&number_to_text(n)));
     }
     if !f.is_empty() && f.bytes().all(|c| c == b'0') {
         let digits = number_to_string(math_round(n.abs()));
         let pad = f.len().saturating_sub(digits.encode_utf16().count());
-        return V::str(&format!("{}{}{digits}", if n < 0.0 { "-" } else { "" }, "0".repeat(pad)));
+        return Ok(V::str(&format!("{}{}{digits}", if n < 0.0 { "-" } else { "" }, "0".repeat(pad))));
     }
     if let Some((frac, sign_ok, exp_zeros)) = sci_code(&f) {
         let _ = sign_ok;
         let Some(s) = crate::jsnum::to_exponential(n, frac as f64) else {
-            return throw(sol_error(ErrorCode::Value, "toExponential() argument must be between 0 and 100"));
+            return Err(Thrown::value("toExponential() argument must be between 0 and 100"));
         };
         let (mant, e) = match s.split_once('e') {
             Some((m, e)) => (m.to_string(), e.parse::<f64>().unwrap_or(f64::NAN)),
@@ -1446,15 +1419,15 @@ fn excel_text(value: &V, fmt: &V) -> V {
         };
         let exp_text = number_to_string(e.abs());
         let pad = exp_zeros.saturating_sub(exp_text.len());
-        return V::str(&format!("{mant}E{}{}{exp_text}", if e < 0.0 { "-" } else { "+" }, "0".repeat(pad)));
+        return Ok(V::str(&format!("{mant}E{}{}{exp_text}", if e < 0.0 { "-" } else { "+" }, "0".repeat(pad))));
     }
     let bare = strip_quoted(&f);
     let dateish = bare.chars().any(|c| "ymdhsYMDHS".contains(c)) && !bare.chars().any(|c| "#0?".contains(c));
     if dateish {
         // Formula.js writes any Date as its ISO date, whatever the code.
         return match serial_to_ms(n) {
-            Some(ms) => V::str(&iso_date(ms)),
-            None => throw(sol_error(ErrorCode::Value, "Invalid time value")),
+            Some(ms) => Ok(V::str(&iso_date(ms))),
+            None => Err(Thrown::value("Invalid time value")),
         };
     }
     fx_text_number(n, &f)
@@ -1513,13 +1486,13 @@ fn iso_date(ms: f64) -> String {
 }
 
 /// Formula.js's TEXT on a number: `$` and `%` read, the zeros after the point counted, then FIXED.
-fn fx_text_number(n: f64, f: &str) -> V {
+fn fx_text_number(n: f64, f: &str) -> Result<V, Thrown> {
     let currency = if f.starts_with('$') { "$" } else { "" };
     let percent = f.ends_with('%');
     let code: String = f.chars().filter(|&c| c != '%' && c != '$').collect();
     let places = match code.split('.').nth(1) {
         Some(after) => match after.chars().filter(|&c| c == '0').count() {
-            0 => return throw(sol_error(ErrorCode::Value, "Cannot read properties of null (reading 'length')")),
+            0 => return Err(Thrown::value("Cannot read properties of null (reading 'length')")),
             z => z as f64,
         },
         None => 0.0,
@@ -1527,7 +1500,7 @@ fn fx_text_number(n: f64, f: &str) -> V {
     let no_commas = !code.contains(',');
     let n = if percent { n * 100.0 } else { n };
     let Some(fixed) = crate::jsnum::to_fixed(n, places) else {
-        return throw(sol_error(ErrorCode::Value, "toFixed() digits argument must be between 0 and 100"));
+        return Err(Thrown::value("toFixed() digits argument must be between 0 and 100"));
     };
     let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
     let mut out = match fixed.strip_prefix('-') {
@@ -1537,7 +1510,7 @@ fn fx_text_number(n: f64, f: &str) -> V {
     if percent {
         out.push('%');
     }
-    V::str(&out)
+    Ok(V::str(&out))
 }
 
 /// `parts[0].replace(/\B(?=(\d{3})+$)/g, ",")` on the text before the first point.
@@ -2494,7 +2467,10 @@ fn proper_case(t: &str) -> V {
     for ch in t.chars() {
         let letter = {
             use unicode_general_category::{get_general_category as gc, GeneralCategory as G};
-            matches!(gc(ch), G::UppercaseLetter | G::LowercaseLetter | G::TitlecaseLetter | G::ModifierLetter | G::OtherLetter)
+            matches!(
+                gc(ch),
+                G::UppercaseLetter | G::LowercaseLetter | G::TitlecaseLetter | G::ModifierLetter | G::OtherLetter
+            )
         };
         if !letter {
             out.push(ch);
@@ -3459,9 +3435,10 @@ pub fn route(name: &str) -> Route {
     r
 }
 
-pub fn call_function(name: &str, a: &[V]) -> V {
+/// The body `name` answers over `a`, or the exception its JavaScript throws, which each caller answers its own way.
+pub fn call_function(name: &str, a: &[V]) -> Result<V, Thrown> {
     if let Some(e) = text_refused(name, a) {
-        return e;
+        return Ok(e);
     }
     // A range body written for flat arguments reads a list or a table among them as its items.
     if a.iter().any(|v| matches!(v, V::List(_)))
@@ -3475,10 +3452,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                         match x {
                             V::List(row) => {
                                 if row.iter().any(|y| matches!(y, V::List(_))) {
-                                    return throw(sol_error(
-                                        ErrorCode::Value,
-                                        format!("{name} reads values and tables, not lists nested inside a table"),
-                                    ));
+                                    return Err(Thrown::value(format!(
+                                        "{name} reads values and tables, not lists nested inside a table"
+                                    )));
                                 }
                                 flat.extend(row.iter().cloned());
                             }
@@ -3498,11 +3474,122 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         Route::Mod_fns_complex => return crate::fns_complex::call(name, a),
         Route::Mod_fns_lists => return crate::fns_lists::call(name, a),
         Route::Mod_fns_stats => return crate::fns_stats::call(name, a),
-        Route::Mod_fns_random => return crate::fns_random::call(name, a),
-        Route::Mod_fns_packs => return crate::fns_packs::call(name, a),
+        Route::Mod_fns_random => return Ok(crate::fns_random::call(name, a)),
+        Route::Mod_fns_packs => return Ok(crate::fns_packs::call(name, a)),
         Route::Finance => return finance_function(name, a),
-        Route::None => return V::Undef,
+        Route::None => return Ok(V::Undef),
     };
+    Ok(match arm {
+        F::RANK | F::RANK_EQ | F::RANK_AVG => {
+            let order = arg(a, 2);
+            let o = if matches!(order, V::Null | V::Undef) { 0.0 } else { to_num(order) };
+            if o.is_nan() {
+                return Ok(value_err("RANK"));
+            }
+            let value = to_num(arg(a, 0));
+            match arg(a, 1) {
+                refs @ (V::List(_) | V::Null | V::Undef) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
+                _ if value.is_nan() => value_err("RANK"),
+                // `ref.filter` on anything but a list is a TypeError.
+                _ => return Err(Thrown::value("ref.filter is not a function")),
+            }
+        }
+        F::TRIMMEAN => {
+            if holds_text(arg(a, 0)) {
+                return Ok(value_err("TRIMMEAN"));
+            }
+            let (n, items) = match arg(a, 0) {
+                V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
+                V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
+                V::Str(s) => (
+                    Some(s.encode_utf16().count() as f64),
+                    Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
+                ),
+                _ => (None, None),
+            };
+            excel_trimmean(n, items, to_num(arg(a, 1)))?
+        }
+        F::REPT => {
+            let t = to_str(arg(a, 0));
+            let n = to_num(arg(a, 1)).trunc();
+            if n.is_nan() {
+                return Ok(value_err("REPT"));
+            }
+            if n < 0.0 {
+                return Ok(V::err(sol_error(ErrorCode::Value, "REPT can't repeat text a negative number of times")));
+            }
+            let len = utf16(&t).len() as f64;
+            if len * n > 32767.0 {
+                return Ok(V::err(sol_error(
+                    ErrorCode::Value,
+                    "REPT's result would pass 32,767 characters, Excel's text limit",
+                )));
+            }
+            if n.is_infinite() {
+                return Err(Thrown::value(format!("Invalid count value: {}", number_to_string(n))));
+            }
+            V::str(&t.repeat(n as usize))
+        }
+        F::TEXT => excel_text(arg(a, 0), arg(a, 1))?,
+        F::FIXED => {
+            let d = opt_num(arg(a, 1), 2.0);
+            let n = to_num(arg(a, 0));
+            if n.is_nan() || d.is_nan() {
+                return Ok(value_err("FIXED"));
+            }
+            let dd = crate::jsnum::math_min(d.trunc(), 100.0);
+            // ROUND's reading first, unless it rounds to 0, which keeps the value as given.
+            let r = round_digits(n, dd, "round");
+            let x = if r == 0.0 { n } else { r } + 0.0;
+            let no_commas = !matches!(arg(a, 2), V::Null | V::Undef) && truthy(arg(a, 2));
+            // Formula.js FIXED: a negative count rounds to tens and writes the number as it is.
+            let text = if dd < 0.0 {
+                let factor = js_pow(10.0, -dd);
+                number_to_string(math_round(x / factor) * factor)
+            } else {
+                match crate::jsnum::to_fixed(x, dd) {
+                    Some(t) => t,
+                    None => return Err(Thrown::value("toFixed() digits argument must be between 0 and 100")),
+                }
+            };
+            V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
+        }
+        F::TODAY | F::NOW => match clock() {
+            Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
+            None => return Err(Thrown::value(format!("{name} reads the calculation's clock, and this call has none"))),
+        },
+        F::F_TEST => {
+            let ((na, sa), (nb, sb)) = (js_len_spread(arg(a, 0)), js_len_spread(arg(a, 1)));
+            // `a.length < 2` is false for an `undefined` length.
+            if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
+                return Ok(V::Null);
+            }
+            let unspread = if sa.is_none() { "a" } else { "b" };
+            let (Some(sa), Some(sb)) = (sa, sb) else {
+                return Err(Thrown::value(format!("{unspread} is not iterable")));
+            };
+            let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
+            if !(v1 > 0.0) || !(v2 > 0.0) {
+                return Ok(V::Null);
+            }
+            let f = v1 / v2;
+            let (df1, df2) = (na.unwrap_or(f64::NAN) - 1.0, nb.unwrap_or(f64::NAN) - 1.0);
+            let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
+            let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
+            if p.is_finite() {
+                V::Num(p)
+            } else {
+                V::Null
+            }
+        }
+        F::TEMPLATE if !matches!(arg(a, 0), V::Null | V::Undef) => template(a)?,
+        F::DOLLAR => dollar(arg(a, 0), arg(a, 1))?,
+        _ => arm_value(arm, name, a),
+    })
+}
+
+/// `call_function`'s arms whose bodies can't throw.
+fn arm_value(arm: F, name: &str, a: &[V]) -> V {
     match arm {
         F::FILTER | F::UNIQUE | F::SORT | F::SORTBY | F::TAKE | F::DROP => crate::shapers::call(name, a),
         F::IF => {
@@ -3730,35 +3817,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (y, x) = pair_args(a);
             regression(&x, &y, name)
         }
-        F::RANK | F::RANK_EQ | F::RANK_AVG => {
-            let order = arg(a, 2);
-            let o = if matches!(order, V::Null | V::Undef) { 0.0 } else { to_num(order) };
-            if o.is_nan() {
-                return value_err("RANK");
-            }
-            let value = to_num(arg(a, 0));
-            match arg(a, 1) {
-                refs @ (V::List(_) | V::Null | V::Undef) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
-                _ if value.is_nan() => value_err("RANK"),
-                // `ref.filter` on anything but a list is a TypeError.
-                _ => throw(sol_error(ErrorCode::Value, "ref.filter is not a function")),
-            }
-        }
-        F::TRIMMEAN => {
-            if holds_text(arg(a, 0)) {
-                return value_err("TRIMMEAN");
-            }
-            let (n, items) = match arg(a, 0) {
-                V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
-                V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
-                V::Str(s) => (
-                    Some(s.encode_utf16().count() as f64),
-                    Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
-                ),
-                _ => (None, None),
-            };
-            excel_trimmean(n, items, to_num(arg(a, 1)))
-        }
         F::PERCENTRANK | F::PERCENTRANK_INC | F::PERCENTRANK_EXC => {
             let sig = arg(a, 2);
             let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
@@ -3885,27 +3943,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     js_trim(&out).to_string()
                 }
             })
-        }
-        F::REPT => {
-            let t = to_str(arg(a, 0));
-            let n = to_num(arg(a, 1)).trunc();
-            if n.is_nan() {
-                return value_err("REPT");
-            }
-            if n < 0.0 {
-                return V::err(sol_error(ErrorCode::Value, "REPT can't repeat text a negative number of times"));
-            }
-            let len = utf16(&t).len() as f64;
-            if len * n > 32767.0 {
-                return V::err(sol_error(
-                    ErrorCode::Value,
-                    "REPT's result would pass 32,767 characters, Excel's text limit",
-                ));
-            }
-            if n.is_infinite() {
-                return throw(sol_error(ErrorCode::Value, format!("Invalid count value: {}", number_to_string(n))));
-            }
-            V::str(&t.repeat(n as usize))
         }
         F::SUBSTITUTE => {
             let (t, o, n) = (to_str(arg(a, 0)), to_str(arg(a, 1)), to_str(arg(a, 2)));
@@ -4339,7 +4376,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 l => pick(l),
             }
         }
-        F::TEXT => excel_text(arg(a, 0), arg(a, 1)),
         F::NORM_DIST => {
             dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()])
         }
@@ -4523,34 +4559,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 DateReading::Serial(d) if !d.is_nan() => V::Num(d - d.floor()),
                 _ => bad("time"),
             }
-        }
-        F::FIXED => {
-            let d = opt_num(arg(a, 1), 2.0);
-            let n = to_num(arg(a, 0));
-            if n.is_nan() || d.is_nan() {
-                return value_err("FIXED");
-            }
-            let dd = crate::jsnum::math_min(d.trunc(), 100.0);
-            // ROUND's reading first, unless it rounds to 0, which keeps the value as given.
-            let r = round_digits(n, dd, "round");
-            let x = if r == 0.0 { n } else { r } + 0.0;
-            let no_commas = !matches!(arg(a, 2), V::Null | V::Undef) && truthy(arg(a, 2));
-            // Formula.js FIXED: a negative count rounds to tens and writes the number as it is.
-            let text = if dd < 0.0 {
-                let factor = js_pow(10.0, -dd);
-                number_to_string(math_round(x / factor) * factor)
-            } else {
-                match crate::jsnum::to_fixed(x, dd) {
-                    Some(t) => t,
-                    None => {
-                        return throw(sol_error(
-                            ErrorCode::Value,
-                            "toFixed() digits argument must be between 0 and 100",
-                        ))
-                    }
-                }
-            };
-            V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
         }
         F::INDEX => {
             // `axis`: a left-out or blank position, or a list of them, as it is; anything else a number.
@@ -4985,13 +4993,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 "ROW() is this row's number, so it only works inside a computed column",
             )),
         },
-        F::TODAY | F::NOW => match clock() {
-            Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
-            None => throw(sol_error(
-                ErrorCode::Value,
-                format!("{name} reads the calculation's clock, and this call has none"),
-            )),
-        },
         F::EDATE => fx_edate(arg(a, 0), arg(a, 1)),
         F::CONVERT => {
             let n = to_num(arg(a, 0));
@@ -5017,30 +5018,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => value_err("FORECAST.LINEAR"),
                 Some(Some((slope, intercept))) => V::Num(intercept + slope * n),
                 Some(None) => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
-            }
-        }
-        F::F_TEST => {
-            let ((na, sa), (nb, sb)) = (js_len_spread(arg(a, 0)), js_len_spread(arg(a, 1)));
-            // `a.length < 2` is false for an `undefined` length.
-            if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
-                return V::Null;
-            }
-            let unspread = if sa.is_none() { "a" } else { "b" };
-            let (Some(sa), Some(sb)) = (sa, sb) else {
-                return throw(sol_error(ErrorCode::Value, format!("{unspread} is not iterable")));
-            };
-            let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
-            if !(v1 > 0.0) || !(v2 > 0.0) {
-                return V::Null;
-            }
-            let f = v1 / v2;
-            let (df1, df2) = (na.unwrap_or(f64::NAN) - 1.0, nb.unwrap_or(f64::NAN) - 1.0);
-            let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
-            let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
-            if p.is_finite() {
-                V::Num(p)
-            } else {
-                V::Null
             }
         }
         F::T_TEST => {
@@ -5155,8 +5132,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             Err(msg) => V::err(sol_error(ErrorCode::Domain, msg)),
         },
         F::VALUETOTEXT => V::str(&to_str(arg(a, 0))),
-        F::TEMPLATE => template(a),
-        F::DOLLAR => dollar(arg(a, 0), arg(a, 1)),
         F::TEXTSPLIT => {
             let given = |v: &V| !matches!(v, V::Null | V::Undef);
             let (col, row) = (arg(a, 1), arg(a, 2));
@@ -5187,6 +5162,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::err(sol_error(ErrorCode::Domain, "Width must be at least 1"));
             }
             V::List(Rc::new(wrap_text(&to_str(arg(a, 0)), w).iter().map(|l| V::str(l)).collect()))
+        }
+        F::RANK
+        | F::RANK_EQ
+        | F::RANK_AVG
+        | F::TRIMMEAN
+        | F::REPT
+        | F::TEXT
+        | F::FIXED
+        | F::TODAY
+        | F::NOW
+        | F::F_TEST
+        | F::TEMPLATE
+        | F::DOLLAR => {
+            unreachable!("call_function answers the arms that can throw")
         }
     }
 }
@@ -5668,19 +5657,19 @@ fn regex_call(name: &str, a: &[V]) -> V {
 }
 
 /// Numbers through TEXT.
-fn template_format(v: &V, spec: Option<&str>) -> String {
-    match v {
+fn template_format(v: &V, spec: Option<&str>) -> Result<String, Thrown> {
+    Ok(match v {
         V::Null | V::Undef => String::new(),
         V::Err(e) => e.code.to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
-        V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))),
-        V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Vec<_>>().join(", "),
+        V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))?),
+        V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Result<Vec<_>, _>>()?.join(", "),
         other => js_string_of(other),
-    }
+    })
 }
 
 /// TEMPLATE: positional placeholders, `{0}` the first value after the template.
-fn template(a: &[V]) -> V {
+fn template(a: &[V]) -> Result<V, Thrown> {
     use crate::text_ops::{template_tokens, Token};
     let tokens = template_tokens(&to_str(arg(a, 0)));
     let bad = tokens.iter().find_map(|(_, t)| match t {
@@ -5688,10 +5677,10 @@ fn template(a: &[V]) -> V {
         _ => None,
     });
     if let Some(bad) = bad {
-        return V::err(sol_error(
+        return Ok(V::err(sol_error(
             ErrorCode::Name,
             format!("TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"),
-        ));
+        )));
     }
     let values = a.get(1..).unwrap_or(&[]);
     let mut out = String::new();
@@ -5704,12 +5693,12 @@ fn template(a: &[V]) -> V {
                 let k = string_to_number(n);
                 let v = if k < values.len() as f64 { &values[k as usize] } else { &V::Null };
                 let spec = spec.as_deref().map(js_trim).filter(|s| !s.is_empty());
-                out.push_str(&template_format(v, spec));
+                out.push_str(&template_format(v, spec)?);
             }
             None => {}
         }
     }
-    V::str(&out)
+    Ok(V::str(&out))
 }
 
 /// Formula.js ROUND (`roundBase` with `Math.round`): the shift by `num_digits` goes through the number's text.
@@ -5797,7 +5786,7 @@ pub(crate) fn intl_usd(x: f64, fd: usize) -> String {
 }
 
 /// DOLLAR: ROUND's reading first (as FIXED's), then Formula.js DOLLAR, its negative form rewritten in parentheses.
-fn dollar(value: &V, decimals: &V) -> V {
+fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
     let n = to_num(value);
     let d = opt_num(decimals, 2.0);
     let pre = if n.is_nan() || d.is_nan() {
@@ -5810,14 +5799,14 @@ fn dollar(value: &V, decimals: &V) -> V {
     let decimals = if matches!(decimals, V::Undef) { V::Num(2.0) } else { decimals.clone() };
     let number = match parse_number(&pre) {
         V::Num(x) if !x.is_nan() => x,
-        _ => return V::Fx(FxError::Value),
+        _ => return Ok(V::Fx(FxError::Value)),
     };
     let out = match fx_round(&V::Num(number), &decimals) {
         V::Num(x) => {
             let dn = to_f64_js(&decimals);
             let fd = if dn >= 0.0 { dn } else { 0.0 };
             if fd > 100.0 {
-                return throw(sol_error(ErrorCode::Value, "minimumFractionDigits value is out of range."));
+                return Err(Thrown::value("minimumFractionDigits value is out of range."));
             }
             let formatted = intl_usd(x, fd.floor() as usize);
             if x < 0.0 {
@@ -5829,13 +5818,13 @@ fn dollar(value: &V, decimals: &V) -> V {
         // An Error's toLocaleString is its toString.
         other => js_string_of(&other),
     };
-    V::str(&if let Some(rest) = out.strip_prefix("$(") {
+    Ok(V::str(&if let Some(rest) = out.strip_prefix("$(") {
         format!("(${rest}")
     } else if let Some(rest) = out.strip_prefix("-$") {
         format!("(${rest})")
     } else {
         out
-    })
+    }))
 }
 
 /// `Number(v)` as `Math.abs` reads it.
@@ -6055,14 +6044,14 @@ fn is_finance(name: &str) -> bool {
     is_finance_whole(name) || FINANCE.contains(&name)
 }
 
-fn fin(r: crate::finance_ops::Fin) -> V {
+fn fin(r: crate::finance_ops::Fin) -> Result<V, Thrown> {
     use crate::finance_ops::Fin;
-    match r {
+    Ok(match r {
         Fin::Num(n) => V::Num(n),
         Fin::Err(e) => V::err(e),
         Fin::Null => V::Null,
-        Fin::Throw(m) => throw(sol_error(ErrorCode::Value, m)),
-    }
+        Fin::Throw(m) => return Err(Thrown::value(m)),
+    })
 }
 
 /// A finance list's numbers, as the finance ops read its cells.
@@ -6132,11 +6121,11 @@ fn parse_int_of(x: f64) -> f64 {
     }
 }
 
-fn finance_function(name: &str, a: &[V]) -> V {
+fn finance_function(name: &str, a: &[V]) -> Result<V, Thrown> {
     use crate::finance_ops::{self as f, CouponOp, OddCouponOp, ReturnsOp, SecurityDiscOp, TBillOp};
     let n = |i: usize| to_num(arg(a, i));
     let o = |i: usize, d: f64| opt_num(arg(a, i), d);
-    match name {
+    Ok(match name {
         "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" => {
             let op = match name {
                 "COUPDAYBS" => CouponOp::Coupdaybs,
@@ -6145,34 +6134,34 @@ fn finance_function(name: &str, a: &[V]) -> V {
                 "COUPPCD" => CouponOp::Couppcd,
                 _ => CouponOp::Coupnum,
             };
-            fin(f::coupon_value(op, n(0), n(1), o(2, 2.0), o(3, 0.0)))
+            fin(f::coupon_value(op, n(0), n(1), o(2, 2.0), o(3, 0.0)))?
         }
-        "ACCRINTM" => fin(f::accrint_m(n(0), n(1), n(2), o(3, 1000.0), o(4, 0.0))),
+        "ACCRINTM" => fin(f::accrint_m(n(0), n(1), n(2), o(3, 1000.0), o(4, 0.0)))?,
         "INTRATE" | "RECEIVED" => {
             let op = if name == "INTRATE" { SecurityDiscOp::Intrate } else { SecurityDiscOp::Received };
-            fin(f::security_disc(op, n(0), n(1), n(2), n(3), o(4, 0.0)))
+            fin(f::security_disc(op, n(0), n(1), n(2), n(3), o(4, 0.0)))?
         }
-        "YIELDDISC" => fin(f::price_disc(false, n(0), n(1), n(2), o(3, 100.0), o(4, 0.0))),
+        "YIELDDISC" => fin(f::price_disc(false, n(0), n(1), n(2), o(3, 100.0), o(4, 0.0)))?,
         "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" => {
             let op = match name {
                 "TBILLEQ" => TBillOp::Tbilleq,
                 "TBILLPRICE" => TBillOp::Tbillprice,
                 _ => TBillOp::Tbillyield,
             };
-            fin(f::tbill(op, n(0), n(1), n(2)))
+            fin(f::tbill(op, n(0), n(1), n(2)))?
         }
-        "PRICEMAT" | "YIELDMAT" => fin(f::price_mat(name == "PRICEMAT", n(0), n(1), n(2), n(3), n(4), o(5, 0.0))),
+        "PRICEMAT" | "YIELDMAT" => fin(f::price_mat(name == "PRICEMAT", n(0), n(1), n(2), n(3), n(4), o(5, 0.0)))?,
         "DURATION" | "MDURATION" => {
-            fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0)))
+            fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0)))?
         }
-        "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0))),
+        "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0)))?,
         "IRR" => {
             let nums = match f::cash_prep(&fin_cells(&without_text(arg(a, 0)))) {
                 Ok(nums) => nums,
-                Err(e) => return V::err(e),
+                Err(e) => return Ok(V::err(e)),
             };
             if nums.len() <= 1 {
-                return V::Null;
+                return Ok(V::Null);
             }
             let exps: Vec<f64> = (0..nums.len()).map(|t| t as f64).collect();
             match f::solve_discount_rate(&nums, &exps) {
@@ -6186,52 +6175,52 @@ fn finance_function(name: &str, a: &[V]) -> V {
         "MIRR" => {
             let nums = match f::cash_prep(&fin_cells(&without_text(arg(a, 0)))) {
                 Ok(nums) => nums,
-                Err(e) => return V::err(e),
+                Err(e) => return Ok(V::err(e)),
             };
             let (fr, rr) = (n(1), n(2));
             if fr.is_nan() || rr.is_nan() {
-                return value_err("MIRR");
+                return Ok(value_err("MIRR"));
             }
             if nums.len() <= 1 {
                 V::Null
             } else {
-                fin(f::mirr(&nums, fr, rr))
+                fin(f::mirr(&nums, fr, rr))?
             }
         }
         "XNPV" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let r = n(0);
             if r.is_nan() {
-                return value_err("XNPV");
+                return Ok(value_err("XNPV"));
             }
             let (values, dates) = match dated_prep(arg(a, 1), arg(a, 2)) {
                 Ok(p) => p,
-                Err(v) => return v,
+                Err(v) => return Ok(v),
             };
             let count = values.len().min(dates.len());
             if count == 0 {
-                return V::Null;
+                return Ok(V::Null);
             }
             let (ds, before) = date_nums(&dates, count);
-            fin(f::xnpv(r, &values, &ds, before))
+            fin(f::xnpv(r, &values, &ds, before))?
         }
         "XIRR" => {
             let (values, dates) = match dated_prep(arg(a, 0), arg(a, 1)) {
                 Ok(p) => p,
-                Err(v) => return v,
+                Err(v) => return Ok(v),
             };
             let count = values.len().min(dates.len());
             if count < 2 {
-                return V::Null;
+                return Ok(V::Null);
             }
             let (ds, before) = date_nums(&dates, count);
-            fin(f::xirr(&values, &ds, before))
+            fin(f::xirr(&values, &ds, before))?
         }
         "FVSCHEDULE" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
-                return V::Null;
+                return Ok(V::Null);
             }
             let p = n(0);
             if p.is_nan() {
@@ -6242,26 +6231,26 @@ fn finance_function(name: &str, a: &[V]) -> V {
         }
         "CUMIPMT" | "CUMPRINC" => {
             let ty = if is_true(arg(a, 5)) { 1.0 } else { 0.0 };
-            fin(f::cumulative_payment(name == "CUMIPMT", n(0), n(1), n(2), n(3), n(4), ty))
+            fin(f::cumulative_payment(name == "CUMIPMT", n(0), n(1), n(2), n(3), n(4), ty))?
         }
-        "VDB" => fin(f::vdb(n(0), n(1), n(2), n(3), n(4), o(5, 2.0), is_true(arg(a, 6)))),
+        "VDB" => fin(f::vdb(n(0), n(1), n(2), n(3), n(4), o(5, 2.0), is_true(arg(a, 6))))?,
         "ODDFPRICE" | "ODDFYIELD" => {
             let op = if name == "ODDFPRICE" { OddCouponOp::Oddfprice } else { OddCouponOp::Oddfyield };
-            fin(f::odd_coupon(op, n(0), n(1), n(2), n(3), n(4), n(5), o(6, 100.0), o(7, 2.0)))
+            fin(f::odd_coupon(op, n(0), n(1), n(2), n(3), n(4), n(5), o(6, 100.0), o(7, 2.0)))?
         }
         "ODDLPRICE" | "ODDLYIELD" => {
             let op = if name == "ODDLPRICE" { OddCouponOp::Oddlprice } else { OddCouponOp::Oddlyield };
-            fin(f::odd_coupon(op, n(0), n(1), f64::NAN, n(2), n(3), n(4), o(5, 100.0), o(6, 2.0)))
+            fin(f::odd_coupon(op, n(0), n(1), f64::NAN, n(2), n(3), n(4), o(5, 100.0), o(6, 2.0)))?
         }
-        "MAXDRAWDOWN" => fin(f::returns_op(ReturnsOp::Maxdrawdown, &fin_cells(arg(a, 0)), 0.0, 1.0)),
-        "CAGR" => fin(f::returns_op(ReturnsOp::Cagr, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
-        "VOLATILITY" => fin(f::returns_op(ReturnsOp::Volatility, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
+        "MAXDRAWDOWN" => fin(f::returns_op(ReturnsOp::Maxdrawdown, &fin_cells(arg(a, 0)), 0.0, 1.0))?,
+        "CAGR" => fin(f::returns_op(ReturnsOp::Cagr, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0)))?,
+        "VOLATILITY" => fin(f::returns_op(ReturnsOp::Volatility, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0)))?,
         "SHARPE" | "SORTINO" => {
             let op = if name == "SHARPE" { ReturnsOp::Sharpe } else { ReturnsOp::Sortino };
-            fin(f::returns_op(op, &fin_cells(arg(a, 0)), o(1, 0.0), o(2, 1.0)))
+            fin(f::returns_op(op, &fin_cells(arg(a, 0)), o(1, 0.0), o(2, 1.0)))?
         }
         _ => fx_finance(name, a),
-    }
+    })
 }
 
 /// Formula.js's finance bodies.
@@ -6489,12 +6478,12 @@ mod tests {
         ] {
             let r = call_function(name, &args);
             assert!(
-                matches!(&r, V::Fx(FxError::Value)) || matches!(&r, V::Err(e) if e.code == ErrorCode::Value),
+                matches!(&r, Ok(V::Fx(FxError::Value))) || matches!(&r, Ok(V::Err(e)) if e.code == ErrorCode::Value),
                 "{name}: {r:?}"
             );
         }
-        assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), V::Num(n) if n == 1.0));
-        assert!(matches!(call_function("VALUE", &[s("5")]), V::Num(n) if n == 5.0));
+        assert!(matches!(call_function("SUM", &[V::Num(1.0), s("5")]), Ok(V::Num(n)) if n == 1.0));
+        assert!(matches!(call_function("VALUE", &[s("5")]), Ok(V::Num(n)) if n == 5.0));
     }
 }
 

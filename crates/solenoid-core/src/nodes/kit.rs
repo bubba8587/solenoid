@@ -11,11 +11,13 @@ use crate::value_kinds::guard_finite as guard_cells;
 /// and a Formula.js error answered as its SolError.
 pub fn core_call(name: &str, args: &[V]) -> V {
     let upper = name.to_uppercase();
-    let v =
-        crate::eval::argument_error(&upper, args).unwrap_or_else(|| crate::excel_functions::call_function(name, args));
-    if crate::excel_functions::take_thrown().is_some() {
-        return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments"));
-    }
+    let v = match crate::eval::argument_error(&upper, args) {
+        Some(e) => e,
+        None => match crate::excel_functions::call_function(name, args) {
+            Ok(v) => v,
+            Err(_) => return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments")),
+        },
+    };
     normalize(v)
 }
 

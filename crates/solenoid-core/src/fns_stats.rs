@@ -8,8 +8,8 @@ use crate::date_serial::parts_of_ms;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
-    average_ranks, holds_text, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw,
-    to_f64_js, to_num, V,
+    average_ranks, holds_text, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum,
+    to_f64_js, to_num, Thrown, V,
 };
 use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
@@ -210,7 +210,16 @@ fn opt(r: Option<f64>) -> V {
     r.map_or(V::Null, V::Num)
 }
 
-pub fn call(name: &str, a: &[V]) -> V {
+pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
+    Ok(match name {
+        "COUPDAYS" => coupdays(a)?,
+        "DISC" | "PRICEDISC" => discounted(name, a)?,
+        _ => answer(name, a),
+    })
+}
+
+/// `call`'s bodies that can't throw.
+fn answer(name: &str, a: &[V]) -> V {
     if let Some((_, to)) = BLOCKED.iter().find(|(from, _)| *from == name) {
         return V::err(sol_error(ErrorCode::Name, format!("Use {to}")));
     }
@@ -309,8 +318,6 @@ pub fn call(name: &str, a: &[V]) -> V {
             _ => V::Fx(FxError::Value),
         },
         "ACCRINT" => accrint(a),
-        "COUPDAYS" => coupdays(a),
-        "DISC" | "PRICEDISC" => discounted(name, a),
         _ => V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))),
     }
 }
@@ -1034,8 +1041,8 @@ fn valid_basis(v: &V) -> Option<f64> {
 }
 
 /// A method called on the Error `parseDate` answers for an Invalid Date: a TypeError.
-fn not_a_function(method: &str) -> V {
-    throw(sol_error(ErrorCode::Value, format!("{method} is not a function")))
+fn not_a_function(method: &str) -> Thrown {
+    Thrown::value(format!("{method} is not a function"))
 }
 
 fn date_to_serial(t: f64) -> f64 {
@@ -1045,7 +1052,7 @@ fn date_to_serial(t: f64) -> f64 {
 }
 
 /// `DATEDIF(start, end, 'D')`, which is `DAYS(end, start)`: local midnights apart, through `dateToSerial`.
-fn datedif_days(start: f64, end: f64) -> Result<f64, V> {
+fn datedif_days(start: f64, end: f64) -> Result<f64, Thrown> {
     if start.is_nan() || end.is_nan() {
         return Err(not_a_function("getFullYear"));
     }
@@ -1063,36 +1070,33 @@ fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
     date
 }
 
-fn coupdays(a: &[V]) -> V {
+fn coupdays(a: &[V]) -> Result<V, Thrown> {
     if [2, 3].iter().any(|&i| holds_text(arg(a, i))) {
-        return V::Fx(FxError::Value);
+        return Ok(V::Fx(FxError::Value));
     }
     let basis = valid_basis(arg(a, 3));
     let frequency = valid_frequency(arg(a, 2));
     let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {
         (FxDate::Date(s), FxDate::Date(m)) => (s, m),
-        _ => return V::Fx(FxError::Value),
+        _ => return Ok(V::Fx(FxError::Value)),
     };
-    let (Some(basis), Some(frequency)) = (basis, frequency) else { return V::Fx(FxError::Num) };
+    let (Some(basis), Some(frequency)) = (basis, frequency) else { return Ok(V::Fx(FxError::Num)) };
     if settlement >= maturity {
-        return V::Fx(FxError::Num);
+        return Ok(V::Fx(FxError::Num));
     }
     if basis == 1.0 {
         // `parseDate` of an Invalid Date is an Error, which has no Date methods.
         if maturity.is_nan() {
-            return not_a_function("date.setFullYear");
+            return Err(not_a_function("date.setFullYear"));
         }
         let date = last_coupon_before(settlement, maturity, frequency);
         if date.is_nan() {
-            return not_a_function("nextDate.getMonth");
+            return Err(not_a_function("nextDate.getMonth"));
         }
         let next = zone::set_month(date, zone::get_month(date) + 12.0 / frequency);
-        return match datedif_days(date, next) {
-            Ok(d) => V::Num(d),
-            Err(e) => e,
-        };
+        return Ok(V::Num(datedif_days(date, next)?));
     }
-    V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency)
+    Ok(V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency))
 }
 
 /// Days in a month as `new Date(y, m + 1, 0).getDate()` counts them: a year from 0 to 99 is read as 1900 to 1999.
@@ -1126,35 +1130,34 @@ fn days360(start: f64, end: f64, european: bool) -> f64 {
 }
 
 /// DISC and PRICEDISC.
-fn discounted(name: &str, a: &[V]) -> V {
+fn discounted(name: &str, a: &[V]) -> Result<V, Thrown> {
     let (settlement, maturity) = (parse_date(arg(a, 0)), parse_date(arg(a, 1)));
     let (pr, redemption) = (parse_number(arg(a, 2)), parse_number(arg(a, 3)));
     let basis = parse_number(arg(a, 4));
-    let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx(FxError::Value) };
+    let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else {
+        return Ok(V::Fx(FxError::Value));
+    };
     let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else {
-        return V::Fx(FxError::Value);
+        return Ok(V::Fx(FxError::Value));
     };
     if pr <= 0.0 || redemption <= 0.0 {
-        return V::Fx(FxError::Num);
+        return Ok(V::Fx(FxError::Num));
     }
     if settlement >= maturity {
-        return V::Fx(FxError::Value);
+        return Ok(V::Fx(FxError::Value));
     }
     let (basis_val, diff) = if basis == 0.0 {
         (360.0, days360(settlement, maturity, false))
     } else if basis == 4.0 {
         (360.0, days360(settlement, maturity, true))
     } else if basis == 1.0 || basis == 2.0 || basis == 3.0 {
-        match datedif_days(settlement, maturity) {
-            Ok(d) => (if basis == 2.0 { 360.0 } else { 365.0 }, d),
-            Err(e) => return e,
-        }
+        (if basis == 2.0 { 360.0 } else { 365.0 }, datedif_days(settlement, maturity)?)
     } else {
-        return V::Fx(FxError::Num);
+        return Ok(V::Fx(FxError::Num));
     };
-    V::Num(if name == "DISC" {
+    Ok(V::Num(if name == "DISC" {
         (((redemption - pr) / redemption) * basis_val) / diff
     } else {
         redemption - (pr * redemption * diff) / basis_val
-    })
+    }))
 }

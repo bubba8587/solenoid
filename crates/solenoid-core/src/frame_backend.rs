@@ -11,7 +11,7 @@ use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_formula::parse_formula;
-use crate::excel_functions::{take_raised, Calc, Raised};
+use crate::excel_functions::{Calc, Thrown};
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{
     append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp,
@@ -350,7 +350,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     }
                 },
             };
-            take_raised();
             match outcome {
                 Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
                 Ok(o) => {
@@ -453,18 +452,23 @@ pub enum CallReply {
 }
 
 /// A body by name over decoded arguments, as `engine_call` makes it.
-fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> crate::excel_functions::V {
+fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Result<crate::excel_functions::V, Thrown> {
     use crate::excel_functions::{call_function, V};
     let upper = name.to_uppercase();
     if crate::eval::traits(&upper).is_none() && !crate::excel_functions::is_ported(name) {
-        return V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")));
+        return Ok(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))));
     }
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
-        return V::err(sol_error(ErrorCode::Unit, format!("{name} reads plain values, and one of these has a unit")));
+        return Ok(V::err(sol_error(
+            ErrorCode::Unit,
+            format!("{name} reads plain values, and one of these has a unit"),
+        )));
     }
     // `scan`: a node's call reads an error argument as the formula's call does; without it, the bare body.
-    let early = if scan { crate::eval::argument_error(&upper, argv) } else { None };
-    early.unwrap_or_else(|| call_function(name, argv))
+    match if scan { crate::eval::argument_error(&upper, argv) } else { None } {
+        Some(e) => Ok(e),
+        None => call_function(name, argv),
+    }
 }
 
 /// What a unit wrapper answers where it can't carry the formula, as the card answers it.
@@ -482,7 +486,10 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         let name = parse::<String>(args, "name")?;
         let argv: Vec<V> =
             list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
-        call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false))
+        match call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false)) {
+            Ok(v) => v,
+            Err(Thrown(e)) => return Ok(CallReply::Thrown(e.message)),
+        }
     } else if command == "engine_call_each" {
         // [[C120]] linearWork: one body over many items in one crossing, each call as `engine_call` makes it, the
         // items at the `at` positions. An item that throws answers as `engine_call` answers a throw.
@@ -502,12 +509,9 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             for (&p, x) in at.iter().zip(item) {
                 argv[p] = arg_of(x);
             }
-            out.push(match (call_body(&name, &argv, scan), take_raised()) {
-                (v, Raised::Nothing) => v,
-                (_, Raised::Thrown(_)) => {
-                    V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")))
-                }
-            });
+            out.push(call_body(&name, &argv, scan).unwrap_or_else(|_| {
+                V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")))
+            }));
         }
         return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {
@@ -552,10 +556,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         crate::eval::formula(&src, env)
             .unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
     };
-    Ok(match take_raised() {
-        Raised::Thrown(e) => CallReply::Thrown(e.message),
-        Raised::Nothing => CallReply::Value(r),
-    })
+    Ok(CallReply::Value(r))
 }
 
 impl serde::Serialize for CallReply {

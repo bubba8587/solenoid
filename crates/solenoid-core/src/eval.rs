@@ -747,15 +747,8 @@ impl Eval<'_> {
             match held {
                 Some(Some(v)) => return v,
                 Some(None) => {
-                    // A value computed while a raise was pending stays per row: the raise is that row's answer.
-                    let raised = crate::excel_functions::thrown_pending();
                     let v = self.eval_node(n, env);
-                    let mut hoisted = self.hoisted.borrow_mut();
-                    if raised || crate::excel_functions::thrown_pending() {
-                        hoisted.remove(&key);
-                    } else {
-                        hoisted.insert(key, Some(v.clone()));
-                    }
+                    self.hoisted.borrow_mut().insert(key, Some(v.clone()));
                     return v;
                 }
                 None => {}
@@ -2166,12 +2159,6 @@ fn column_hoisting<C>(
         binds.push(Bind::Side(ctx.aligned(side(p))));
     }
     let mut cells = Vec::with_capacity(inp.rows);
-    use crate::excel_functions::{take_raised, Raised};
-    take_raised();
-    let finish = |v: V| match take_raised() {
-        Raised::Thrown(e) => tag(V::err(e)),
-        Raised::Nothing => tag(v),
-    };
     /// ROW()'s row while the column runs; dropping it clears the row.
     struct Rows;
     impl Rows {
@@ -2228,7 +2215,7 @@ fn column_hoisting<C>(
                 ctx.cursor.set(i);
                 rows.at(i);
                 let v = ev.run(ast, &env);
-                cells.push(finish(v));
+                cells.push(tag(v));
             }
         }
         ColumnSpec::Lambda(lam) => {
@@ -2252,7 +2239,7 @@ fn column_hoisting<C>(
                     Some(e) => e,
                     None => ev.call_lambda(lam, &argv),
                 };
-                cells.push(finish(v));
+                cells.push(tag(v));
             }
         }
     }
