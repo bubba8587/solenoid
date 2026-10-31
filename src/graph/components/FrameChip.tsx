@@ -18,7 +18,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
     void collectPreview(frameRef).then((r) => { if (live && isFrameValue(r)) setValue(r); });
     return () => { live = false; };
   }, [frameRef]);
-  if (!value) return <span className="array-chip array-chip--placeholder" style={accent ? { color: accent } : undefined}>{label ? `${label}: ` : ""}table…</span>;
+  if (!value) return <span className="array-chip array-chip--placeholder" style={accent ? { color: accent } : undefined}>{label ? `${label}: ` : ""}Frame…</span>;
   return <FrameChip value={value} label={label} size={size} accent={accent} />;
 }
 

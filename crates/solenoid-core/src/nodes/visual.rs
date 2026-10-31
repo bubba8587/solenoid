@@ -997,21 +997,18 @@ fn mermaid(c: &mut Call) -> Answer {
 
 fn gauge(c: &mut Call) -> Answer {
     let value = c.read_input("value", literal_or(c, "value", V::Null));
-    let (payload, opts, title) = if c.field_str("mode", "dial") == "bar" {
+    let opts = read_options(c)?;
+    let payload = if c.field_str("mode", "dial") == "bar" {
         let target = c.read_input("target", literal_or(c, "target", V::Null));
         let max = match c.read_input("max", literal_or(c, "max", V::Num(100.0))) {
             V::Null => literal_or(c, "max", V::Num(100.0)),
             m => m,
         };
-        let opts = read_options(c)?;
-        let payload = json!({ "kind": "scale", "style": "bar", "value": jv(&value), "target": jv(&target), "min": 0, "max": jv(&max) });
-        let t = title(&opts, c, "Gauge");
-        (payload, opts, t)
+        json!({ "kind": "scale", "style": "bar", "value": jv(&value), "target": jv(&target), "min": 0, "max": jv(&max) })
     } else {
-        let payload =
-            json!({ "kind": "scale", "style": "dial", "value": jv(&value), "target": null, "min": 0, "max": 1 });
-        (payload, Obj::new(), title(&Obj::new(), c, "Gauge"))
+        json!({ "kind": "scale", "style": "dial", "value": jv(&value), "target": null, "min": 0, "max": 1 })
     };
+    let title = title(&opts, c, "Gauge");
     c.show("chartOptions", whole(Json::Object(opts.clone())));
     c.show("cachedPayload", whole(payload.clone()));
     let chart = json!({ "__chart": true, "op": "scale", "values": jv(&value), "payload": payload, "options": opts, "title": title });

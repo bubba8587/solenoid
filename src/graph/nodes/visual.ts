@@ -407,24 +407,24 @@ export class GaugeNode extends GraphNode {
     if (init?.mode === "bar") this.mode = "bar";
     this.addInput("value", numIn("Value"));
     if (this.mode === "bar") this.addBarInputs();
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
   private addBarInputs(): void {
     this.addInput("target", numIn("Target"));
     this.addInput("max", numIn("Max"));
-    this.addInput("options", strIn("Options"));
   }
 
   keysDropped(next: GaugeStyle): string[] {
-    return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
+    return next === "dial" && this.mode === "bar" ? ["target", "max"] : [];
   }
 
   setMode(next: GaugeStyle): void {
     if (next === this.mode) return;
     this.mode = next;
     if (next === "dial") {
-      for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
+      for (const k of ["target", "max"]) if (this.inputs[k]) this.removeInput(k);
     } else {
       this.addBarInputs();
     }

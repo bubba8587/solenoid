@@ -89,7 +89,7 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Merge Plots | `p0`, `p1`, … (charts), `options` | `overlay` | null | yes |
 | Histogram 1-D | `values`, `bins`, `options` | `column` | bin counts | yes |
 | Histogram 2-D | `values` (X), `bins`, `y`, `ybins`, `options` | `heatmap` | null | yes |
-| Gauge, Dial | `value` | `scale` | the value | none, `{}` |
+| Gauge, Dial | `value`, `options` | `scale` | the value | yes |
 | Gauge, Bar | `value`, `target`, `max`, `options` | `scale` | the value | yes |
 | KPI | `value`, `prev` (Prior), `options`; `unit` and `goodUp` on the card | `kpi` | the value | yes |
 | Proportion | `frame` (Label + Value), `options` | `proportion` | the values | yes |
@@ -173,7 +173,7 @@ The Histogram node bins its input with `histogram_bins` (`nodes/visual.rs`). A n
 
 ### Gauge
 
-The Gauge node's `mode` is `dial` or `bar`, an argument picked with a segmented toggle ([[C26]] opArgDistinct). Dial has only `value`; Bar adds `target`, `max` and `options`, which a switch to Dial prunes and removes. Dial emits `{ style: "dial", value, target: null, min: 0, max: 1 }` with `options: {}`. Bar emits `{ style: "bar", value, target, min: 0, max }`; `max` falls back to the card literal (default 100) even when wired blank, because it is the track's scale, while `value` and `target` are data (a wired blank is null). Literal defaults: value 0, target 80, max 100.
+The Gauge node's `mode` is `dial` or `bar`, an argument picked with a segmented toggle ([[C26]] opArgDistinct). Both modes take `value` and `options`; Bar adds `target` and `max`, which a switch to Dial prunes and removes. Dial emits `{ style: "dial", value, target: null, min: 0, max: 1 }`. Bar emits `{ style: "bar", value, target, min: 0, max }`; `max` falls back to the card literal (default 100) even when wired blank, because it is the track's scale, while `value` and `target` are data (a wired blank is null). Literal defaults: value 0, target 80, max 100.
 
 ### Gauge dial
 
@@ -324,7 +324,7 @@ Exceptions a key list cannot see, because the builder does not know the data:
 
 - **Series count.** Two or more series paint from the palette, so `color` is inert on a multi-series Column, Bar, Line, Area, Scatter, XY Line or Bubble. `radarscale` is read only by a multi-series Radar, and with `radarscale=axis` (the default) the radius is `[0, 1]`, so `ymin`/`ymax` apply to a single-series or `shared` Radar only.
 - **The data.** `markersize` is inert on points sized by an `s` column, so on a Bubble whose data has a third number column. `linewidth` is inert on a Scatter or Bubble with no `linestyle`. `aspect` and `xmin`/`xmax` are inert on a Merge Plots holding no XY source, and `aspect` on an XY figure whose x is a text column.
-- **Mode.** Gauge's Dial mode has no Options input and emits `{}`; the Gauge target covers the Bar mode. Surface's Flat view is the Contour target, its 3-D view the Surface target.
+- **Mode.** Surface's Flat view is the Contour target, its 3-D view the Surface target.
 ### Serialization and the Chart Builder
 
 `serializeChartOptions(fields)` emits only set fields, in this order: `title`, `xlabel`, `ylabel`, `color`, `grid`, `marker`, `pielabels`, `radarscale`, `zoom`, `layout`, `tiers`, `fit`, `critical`, `baseline`, `arrows`, `today`, `weekends`, `labels`, `histogram`, `minutes`, `window`, `columns`, `collapse`, `week`, `fiscal_start`, `status`, `group_by`, `cardsize`, `clamp`, `x`, `y`, `s`, `c`, `annotate`, `by`, `linestyle`, `aspect`, `cmap`, `annot`, `fmt`, `cbar`, `origin`, then `xlim=lo,hi` and `ylim=lo,hi` (each with either side blank when unset, emitted when either bound is finite), `linewidth`, `markersize`, `alpha`, `fontsize`, `vmin`, `vmax`, `center`. Text values are trimmed and a blank one is skipped; a number must be finite. Parts join with `;`, so an untouched builder yields `""`.

@@ -159,7 +159,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)
 - [ ] **A Bar gauge with a negative Max reads like a number line**: Max on the left, 0 on the right, the fill growing leftward from 0 (today Max -50 reads "0 … -50"). A Max of exactly 0 draws an empty track.
-- [ ] **Gauge Dial takes Options** like the other chart cards, for a title and a font size; dial mode is the only chart without them.
 - [ ] **A multi-series radar honors y min and max**: with Scale per axis, a y max of 100 is silently ignored when there are several series (one series honors it). Setting either switches Scale to shared, so the range takes effect.
 Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.
 - [ ] **Stacking:** stacked Column, Bar and Area (`stackId`), 100% stacked (`stackOffset="expand"`), streamgraph (`silhouette`, `wiggle`); `BarStack`.
@@ -264,7 +263,6 @@ live in specs.
 
 
 ## Frame popup (follow-ups from the 2026-09-19 header session)
-- [ ] **A lazy Frame's chip waits as `table…`** (`FrameRefChip`): the placeholder should say Frame, not table, since "table" means a matrix.
 - [ ] **A blank Frame's CSV view starts empty, and its header line looks like one** (author 2026-10-29): today it opens with an empty header line, so pasting `name,age` and rows makes `name,age` the first data row under blank names. Start empty, so a paste's first line becomes the column names, with a test of pasting into a blank Frame. In the CSV editor, set the first line apart as the header (a slightly darker band or similar, per DESIGN.md), so it's clear which line names the columns. Frames only: a table (matrix) has no header row.
 - [ ] **Cards view previews nested cells** (asked 2026-10-05): a cell holding a list, table or Cube shows its first few names, a tiny table or a count ("12 orders") beside the chip. The layout is a design call, and Cards' row layout rules need writing first.
 - [ ] **The editing footer's Insert and Delete menus are pills**, matching the toggles beside them; Cancel and Save keep their dialog-button style.
