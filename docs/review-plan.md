@@ -735,7 +735,7 @@ Commits: 0ac39856, ddc316aa, 0917b398, 169234fd, e0ee9307, 229c4433, 289ac6b9, 9
 
 # Part D: after reading the tree and the specs (corrections and three new findings)
 
-Read in this order before any block above: `dte-rules/CLAUDE.md`, `docs/dte.md`, `docs/mental-model.md`,
+Read in this order before any block above: `dte-rules/PROTOCOL.md`, `docs/dte.md`, `docs/mental-model.md`,
 `docs/README.md` (the routing table), `docs/glossary.md`, rings A→E (`python3 tools/dte.py tree`),
 then the spec the block's files route to. Several Part A/B/C items were open questions that the
 tree already answers; those are marked [x] in place above with the leaf. What follows is what the
@@ -870,7 +870,7 @@ not a new leaf and not a patch.
 checkable. Then 15, 42, 17, 20, 24, 28 in parallel. Then 18+19, then Part A 1/2/3. Every finding
 cites its leaf as `[[ID]] name`; a fix ships with the test that would have caught it
 (`docs/dte.md` § Solenoid practice); an unratified leaf gets its one contest before new work under
-it (DTE's own B28 oneContest, `dte-rules/CLAUDE.md`).
+it (DTE's own B60 oneContest, `dte-rules/PROTOCOL.md`).
 
 ## Already-flagged by the repo (don't re-find)
 `docs/backlog.md` § "From the 2026-09-24 review rounds": desktop close listener, composite

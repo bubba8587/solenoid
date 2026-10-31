@@ -68,7 +68,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
 - **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
-  The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session). **Ask the
+  The agent protocol is the vendored `dte-rules/PROTOCOL.md` (read it once per session). **Ask the
   author your ring** before the first leaf-governed task; until answered work at C, and subagents are
   always C or deeper (`docs/dte.md` § Solenoid's rings); `docs/dte.md` carries only Solenoid's differences and rings.
   A leaf is a choice a person could weigh, written in plain words (a MUST is fine when it is

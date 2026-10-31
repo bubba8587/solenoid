@@ -242,7 +242,7 @@ The site is five pages (`/about` is the landing page; `/` is the app) sharing `l
 ## DTE — decision provenance (`docs/dte.md`)
 
 The tree is the author's to ratify: 127 leaves, each a product call that follows from its parent; mechanics
-live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`.
+live in specs.
 - [ ] **Author ratifies the tree, one leaf at a time** — A1, B1, B2, B3, B7, C80, D62 and E10 are ratified.
   New today and unseen by the author: B18 safeToShare, B19 spreadsheetHabits. Next: the rest of ring B, then C.
   Ratifying adds the ID to `OWNER_RATIFIED` in `rules.test.ts`.

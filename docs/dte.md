@@ -5,16 +5,13 @@ tree. The tool is vendored at `tools/dte.py`
 (one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
-protocol, overview, adoption guide and a render of DTE's own tree live in `dte-rules/SPEC.md`,
-`dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
-`dte-rules/DECISIONS.md`, written by
+protocol, overview, adoption guide, walkthrough and a render of DTE's own tree live in
+`dte-rules/SPEC.md`, `dte-rules/PROTOCOL.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md`,
+`dte-rules/WALKTHROUGH.md` and `dte-rules/DECISIONS.md`, written by
 `python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
-`tools/dte.py` itself. Solenoid's copy is the forward line, not a fork waiting on upstream: the vendored
-upstream is DTE's first usable version, and the next one (0.2) is built from what proves good here. So a change
-the tool needs is made in `tools/dte.py` directly, marked `local patch` (the `.dtecoverage` store below, the
-`decisions` key in `dte.cfg` so the tree can live at `tree/decisions`, the block-list field write, the lean
-frontmatter, the leaf `uuid`), and the copy is never re-vendored over from upstream. Read them before
-creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
+`tools/dte.py` itself. The copy is plain upstream DTE 0.2: `tools/dte.py` is never patched here; a
+change the tool needs goes to the DTE repo and comes back by re-vendoring. Read them before
+creating or changing decisions. Do NOT re-create DTE's own format/protocol/usage decisions as
 leaves in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
 `.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
 A/B/C, which are not Solenoid's rings below.)
@@ -35,7 +32,7 @@ debt `*Unenforced:*`, names are unique, owner ratifications match the owner-kept
 DTE's rules govern how the tree is kept. These are the habits Solenoid adds on top; none is a
 leaf, because none is a product call.
 
-- **Author-ruled means ratified** (DTE A3 provenance, B7 provenanceFields). A leaf binds as the author's
+- **Author-ruled means ratified** (DTE A3 provenance, B59 provenanceFields). A leaf binds as the author's
   ruling only when `ratified_by` names the author, set on the author's word in session. Something
   the author said once, a quote in a Why, or an agent's confidence about what the author meant
   confers nothing; an unratified leaf binds as the working agent's inference and is open to
@@ -54,8 +51,8 @@ leaf, because none is a product call.
 - **An unenforced MUST is labeled.** A leaf with a MUST is cited by the test that enforces it, or
   its Consequences carry an `*Unenforced:*` line saying why it can't be checked; a bug fix ships
   with the check that would have caught it. The leaf never names its tests. `rules.test.ts` pins
-  the labeling; whether a citing test truly enforces its MUST is a reader's job. DTE has no such
-  rule yet (`docs/dte-feedback.md` item 27).
+  the labeling; whether a citing test truly enforces its MUST is a reader's job. DTE 0.2 makes it
+  a rule too (DTE B46).
 - **Exceptions live under their rule** (DTE B35 refinementsAreChildren), each naming the
   condition that would remove it. An exception no condition could remove means the rule was
   written wrong.
@@ -68,23 +65,21 @@ leaf, because none is a product call.
   Mermaid block beside that prose (flowcharts mostly, plain text, so Obsidian renders it with pele,
   the renderer MermaidView uses). The prose stays the spec; a diagram that disagrees with it is the
   one to fix. `specDiagrams.test.ts` renders every block and keeps `[[` out of them.
-- **Leaf frontmatter is lean.** No `confidence`, `status`, `supersedes` or `superseded_by`: retiring deletes the file and the RETIRED ledger records the successor, so the fields only repeated it. Every leaf carries a `uuid` (a time-ordered UUIDv7, after its `id`): the readable id stays what people cite, and the uuid tells two leaves apart when separate branches mint the same id, so a rebase or merge can renumber one instead of colliding. `dte new` and `dte place` write it, `dte uuids` backfills a leaf without one, and `validate` requires one, unique (`tools/dte.py`, local patches). `tools/dte.py` carries local patches (marked `local patch`) so it neither writes them nor needs them; a missing `status` reads as active. DTE feedback item 41 asks for this upstream.
+- **Leaf frontmatter is lean.** No `confidence`, `status`, `supersedes` or `superseded_by`: retiring deletes the file and the RETIRED ledger records the successor, so the fields only repeated it. Every leaf carries a `uuid` (a time-ordered UUIDv7, after its `id`): the readable id stays what people cite, and the uuid tells two leaves apart when separate branches mint the same id, so a rebase or merge can renumber one instead of colliding. `dte new` and `dte place` write it, `dte upgrade` backfills a leaf without one, and `validate` requires one, unique (DTE B58 uuidIdentity).
 - **Triage: a leaf the code breaks.** DTE has no word for a rule the code doesn't keep yet, so Solenoid uses its own. The leaf gets an `*Unenforced:*` bullet under Consequences saying what the code doesn't do, and `docs/backlog.md` § Leaves the code breaks lists every such leaf, highest stakes first. An agent that finds a gap adds both and carries on; it doesn't stop to ask. When the code catches up, both go.
 
 ## Wikilinks
 
 Solenoid writes every citation as an Obsidian wikilink, `[[C25]]` or `[[C25]] firstClassUnits`, and
-the link fields of a leaf (`parents`, `supersedes`, `superseded_by`, `conflicts_with`) as quoted
-wikilinks, `parents: ["[[B7]]"]`. The author opens `tree/` as one Obsidian vault holding `decisions/` and `specs/` (its `.obsidian/` is ignored; the tool finds the decisions through `decisions = tree/decisions` in `dte.cfg`, a local patch), and each node's lineage, its
+the link fields of a leaf (`parents`, `conflicts_with`) as quoted
+wikilinks, `parents: ["[[B7]]"]`. The author opens `tree/` as one Obsidian vault holding `decisions/` and `specs/` (its `.obsidian/` is ignored; the tool finds the decisions through `decisions = tree/decisions` in `dte.cfg`), and each node's lineage, its
 supersessions and every doc that cites it are followable links, backlinks and graph-view edges.
 `links = wikilink` in `dte.cfg` is what makes the vendored tool write this form; it reads the
 upstream `dte:ID` token as well, so the vendored spec below is still accurate about upstream and
 only its citation syntax differs here. Code files are invisible to Obsidian, so their `[[ID]]`
 lines serve the tool alone. Titles are double-quoted: the `name: summary` convention puts a
 colon in them, and Obsidian rejects the whole property block when the YAML is invalid
-(`fm_str` quotes on write). The wikilink patch (`cited_ids`, `LINK_RE`, `fm_id`, `fm_ids`,
-`cite_text` and the `links` config key) can go upstream as it is, since DTE's own tree keeps
-`links = token`; it is logged in DTE's FEEDBACK.md. The parser also accepts Obsidian's
+(`fm_str` quotes on write). The parser also accepts Obsidian's
 rewrites of a leaf's properties (`null` as empty, block lists, reordered keys), and a
 ratification made in the working tree does not fail the human-held check, because the leaf
 at HEAD was not human-held. Specs are
@@ -162,7 +157,7 @@ answers, and in a run nobody watches (a scheduled routine), it works at C: it bu
 leaves freely, and anything that would change a B leaf or above goes to the inbox
 (`tree/decisions/inbox/`) with the question in chat. Every subagent works at C or deeper, never
 the spawner's ring: `python tools/dte.py brief C` heads its instructions and `DTE_RING=C` is set in its
-environment, as `dte-rules/CLAUDE.md` § Your ring says. `validate --as <ring>` runs at the ring
+environment, as `dte-rules/PROTOCOL.md` § Your ring says. `validate --as <ring>` runs at the ring
 actually held.
 
 ## What is a leaf and what is a spec (the author's test)
@@ -214,7 +209,5 @@ that a whole class of files needs no decision: say why in the `why:` line, and i
 
 ## Feedback
 
-DTE is unfinished, and Solenoid's copy is where its next version takes shape. `docs/dte-feedback.md` is that
-change list: one numbered item each with the command, what happened, and what the tool does now or should. A fix
-that can be made is made in `tools/dte.py` as a local patch and its item says so; the list is what DTE 0.2 takes
-from this copy.
+A problem with the tool or the rules goes to the DTE repo, never into a local patch of
+`tools/dte.py`; the fix reaches Solenoid on the next `vendor`.
