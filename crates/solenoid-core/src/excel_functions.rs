@@ -2492,7 +2492,10 @@ fn proper_case(t: &str) -> V {
     let mut out = String::with_capacity(t.len());
     let mut after_letter = false;
     for ch in t.chars() {
-        let letter = crate::letters::is_letter(ch);
+        let letter = {
+            use unicode_general_category::{get_general_category as gc, GeneralCategory as G};
+            matches!(gc(ch), G::UppercaseLetter | G::LowercaseLetter | G::TitlecaseLetter | G::ModifierLetter | G::OtherLetter)
+        };
         if !letter {
             out.push(ch);
         } else if after_letter {

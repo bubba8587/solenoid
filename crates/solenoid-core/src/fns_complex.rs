@@ -385,44 +385,6 @@ fn sim_method(m: &V) -> Option<Sim> {
     }
 }
 
-fn levenshtein(s: &[char], t: &[char]) -> usize {
-    if s.is_empty() {
-        return t.len();
-    }
-    if t.is_empty() {
-        return s.len();
-    }
-    let mut prev: Vec<usize> = (0..=t.len()).collect();
-    for i in 1..=s.len() {
-        let mut cur = vec![i; t.len() + 1];
-        for j in 1..=t.len() {
-            cur[j] = (prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + usize::from(s[i - 1] != t[j - 1]));
-        }
-        prev = cur;
-    }
-    prev[t.len()]
-}
-
-fn damerau(s: &[char], t: &[char]) -> usize {
-    let mut d = vec![vec![0usize; t.len() + 1]; s.len() + 1];
-    for (i, row) in d.iter_mut().enumerate() {
-        row[0] = i;
-    }
-    for (j, c) in d[0].iter_mut().enumerate() {
-        *c = j;
-    }
-    for i in 1..=s.len() {
-        for j in 1..=t.len() {
-            let cost = usize::from(s[i - 1] != t[j - 1]);
-            d[i][j] = (d[i - 1][j] + 1).min(d[i][j - 1] + 1).min(d[i - 1][j - 1] + cost);
-            if i > 1 && j > 1 && s[i - 1] == t[j - 2] && s[i - 2] == t[j - 1] {
-                d[i][j] = d[i][j].min(d[i - 2][j - 2] + 1);
-            }
-        }
-    }
-    d[s.len()][t.len()]
-}
-
 fn jaro_winkler(s: &[char], t: &[char]) -> f64 {
     if s.is_empty() && t.is_empty() {
         return 1.0;
@@ -469,17 +431,16 @@ fn jaro_winkler(s: &[char], t: &[char]) -> f64 {
 }
 
 fn text_similarity(a: &str, b: &str, m: Sim) -> f64 {
-    let (s, t): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
     match m {
-        Sim::Levenshtein => levenshtein(&s, &t) as f64,
-        Sim::JaroWinkler => jaro_winkler(&s, &t),
-        _ => {
-            let max_len = s.len().max(t.len());
+        Sim::Levenshtein => strsim::levenshtein(a, b) as f64,
+        Sim::JaroWinkler => jaro_winkler(&a.chars().collect::<Vec<_>>(), &b.chars().collect::<Vec<_>>()),
+        Sim::Ratio => strsim::normalized_levenshtein(a, b),
+        Sim::Damerau => {
+            let max_len = a.chars().count().max(b.chars().count());
             if max_len == 0 {
                 return 1.0;
             }
-            let dist = if m == Sim::Damerau { damerau(&s, &t) } else { levenshtein(&s, &t) };
-            1.0 - dist as f64 / max_len as f64
+            1.0 - strsim::osa_distance(a, b) as f64 / max_len as f64
         }
     }
 }

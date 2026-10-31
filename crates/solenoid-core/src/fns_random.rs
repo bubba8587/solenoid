@@ -20,24 +20,10 @@ pub fn random() -> f64 {
     js_sys::Math::random()
 }
 
-/// A uniform draw from [0, 1): splitmix64, seeded once from the clock.
+/// A uniform draw from [0, 1), outside a browser.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn random() -> f64 {
-    use std::cell::Cell;
-    thread_local! {
-        static STATE: Cell<u64> = Cell::new(
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0x9e37_79b9_7f4a_7c15, |d| d.as_nanos() as u64),
-        );
-    }
-    let mut z = STATE.with(|s| {
-        let next = s.get().wrapping_add(0x9e37_79b9_7f4a_7c15);
-        s.set(next);
-        next
-    });
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^= z >> 31;
-    (z >> 11) as f64 / (1u64 << 53) as f64
+    fastrand::f64()
 }
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -324,7 +310,6 @@ fn shuffle(v: &V) -> V {
     list(order.into_iter().map(|i| items[i].clone()).collect())
 }
 
-/// 16 random bytes, the version and variant bits set.
 /// Bytes from the browser's `crypto.getRandomValues`, as the UUID card draws them; `random()`'s where there is none.
 #[cfg(target_arch = "wasm32")]
 fn random_bytes(b: &mut [u8]) {
@@ -346,16 +331,13 @@ fn random_bytes(b: &mut [u8]) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn random_bytes(b: &mut [u8]) {
-    b.iter_mut().for_each(|x| *x = (random() * 256.0) as u8);
+    fastrand::fill(b);
 }
 
 fn uuid_v4() -> String {
     let mut b = [0u8; 16];
     random_bytes(&mut b);
-    b[6] = (b[6] & 0x0f) | 0x40;
-    b[8] = (b[8] & 0x3f) | 0x80;
-    let h: String = b.iter().map(|x| format!("{x:02x}")).collect();
-    format!("{}-{}-{}-{}-{}", &h[0..8], &h[8..12], &h[12..16], &h[16..20], &h[20..])
+    uuid::Builder::from_random_bytes(b).into_uuid().hyphenated().to_string()
 }
 
 #[cfg(test)]

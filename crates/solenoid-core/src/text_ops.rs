@@ -454,44 +454,10 @@ fn translit(c: char) -> Option<&'static str> {
     })
 }
 
-/// `String.prototype.normalize("NFD")`, from `nfd_table.rs`: each code point decomposed, Hangul syllables by
-/// arithmetic, then each run of non-starters sorted stably by combining class.
+/// `String.prototype.normalize("NFD")`.
 pub fn nfd(t: &str) -> Vec<char> {
-    use crate::nfd_table::{CCC_KEYS, CCC_RANKS, NFD_CHARS, NFD_INDEX, NFD_KEYS};
-    const S_BASE: u32 = 0xac00;
-    let mut out: Vec<char> = Vec::with_capacity(t.len());
-    for c in t.chars() {
-        let u = c as u32;
-        if u < 0x80 {
-            out.push(c);
-        } else if (S_BASE..=0xd7a3).contains(&u) {
-            let s = u - S_BASE;
-            out.push(char::from_u32(0x1100 + s / 588).unwrap_or(c));
-            out.push(char::from_u32(0x1161 + (s % 588) / 28).unwrap_or(c));
-            if !s.is_multiple_of(28) {
-                out.push(char::from_u32(0x11a7 + s % 28).unwrap_or(c));
-            }
-        } else if let Ok(i) = NFD_KEYS.binary_search(&u) {
-            let span = usize::from(NFD_INDEX[i])..usize::from(NFD_INDEX[i + 1]);
-            out.extend(NFD_CHARS[span].iter().filter_map(|&d| char::from_u32(d)));
-        } else {
-            out.push(c);
-        }
-    }
-    let ccc = |c: char| CCC_KEYS.binary_search(&(c as u32)).map_or(0, |i| CCC_RANKS[i]);
-    let mut i = 0;
-    while i < out.len() {
-        if ccc(out[i]) == 0 {
-            i += 1;
-            continue;
-        }
-        let start = i;
-        while i < out.len() && ccc(out[i]) != 0 {
-            i += 1;
-        }
-        out[start..i].sort_by_key(|&c| ccc(c));
-    }
-    out
+    use unicode_normalization::UnicodeNormalization;
+    t.nfd().collect()
 }
 
 /// `unaccent`: NFD, the combining diacritics (U+0300–U+036F) dropped, then the letters NFD keeps whole spelled out.
