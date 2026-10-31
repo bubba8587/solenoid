@@ -60,10 +60,10 @@ fn main() {
             let t = Instant::now();
             let out = column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp);
             best = best.min(t.elapsed().as_secs_f64() * 1000.0);
-            if std::env::var("PRINT").is_ok() {
-                if let Ok(solenoid_core::eval::ColumnOutcome { cells, .. }) = &out {
-                    println!("{:?}", &cells[..cells.len().min(3)]);
-                }
+            if std::env::var("PRINT").is_ok()
+                && let Ok(solenoid_core::eval::ColumnOutcome { cells, .. }) = &out
+            {
+                println!("{:?}", &cells[..cells.len().min(3)]);
             }
             assert!(out.is_ok());
         }

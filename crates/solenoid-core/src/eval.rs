@@ -695,13 +695,12 @@ struct Site {
 impl Eval<'_> {
     fn site(&self, raw: &str, args: &[Ast]) -> Rc<Site> {
         let key = raw.as_ptr();
-        if let Some(s) = self.sites.borrow().get(&key) {
-            if s.raw == raw
-                && s.empty.len() == args.len()
-                && s.empty.iter().zip(args).all(|(e, a)| *e == matches!(a, Ast::Blank))
-            {
-                return s.clone();
-            }
+        if let Some(s) = self.sites.borrow().get(&key)
+            && s.raw == raw
+            && s.empty.len() == args.len()
+            && s.empty.iter().zip(args).all(|(e, a)| *e == matches!(a, Ast::Blank))
+        {
+            return s.clone();
         }
         let name = raw.to_uppercase();
         let empty: Vec<bool> = args.iter().map(|a| matches!(a, Ast::Blank)).collect();
@@ -729,12 +728,13 @@ impl Eval<'_> {
     }
 
     fn eta_or_eval(&self, a: &Ast, env: &Rc<Env>) -> V {
-        if let Ast::Name(name) = a {
-            if !env.contains_key(name) && constant_value(name).is_none() {
-                let up = name.to_uppercase();
-                if traits(&up).is_some_and(|t| t.resolves) {
-                    return V::Lambda(Rc::new(LambdaV { env: env.clone(), eta: Some(up), ..Default::default() }));
-                }
+        if let Ast::Name(name) = a
+            && !env.contains_key(name)
+            && constant_value(name).is_none()
+        {
+            let up = name.to_uppercase();
+            if traits(&up).is_some_and(|t| t.resolves) {
+                return V::Lambda(Rc::new(LambdaV { env: env.clone(), eta: Some(up), ..Default::default() }));
             }
         }
         self.eval(a, env)
@@ -954,10 +954,10 @@ impl Eval<'_> {
         let settled: &[bool] = roled.as_deref().unwrap_or(&site.empty);
         if site.any_empty {
             for (i, a) in args.iter().enumerate() {
-                if matches!(a, Ast::Blank) {
-                    if let Some(v) = t.blank(i) {
-                        argv[i] = lowered(v);
-                    }
+                if matches!(a, Ast::Blank)
+                    && let Some(v) = t.blank(i)
+                {
+                    argv[i] = lowered(v);
                 }
             }
         }
@@ -1006,11 +1006,11 @@ impl Eval<'_> {
     /// Steps 9 to 11 of the dispatch ladder.
     fn route_call(&self, name: &str, t: &Traits, mut argv: Vec<V>, settled: &[bool]) -> V {
         let mut column = false;
-        if t.free {
-            if let Some((read, col)) = read_vectors(&argv) {
-                argv = read;
-                column = col;
-            }
+        if t.free
+            && let Some((read, col)) = read_vectors(&argv)
+        {
+            argv = read;
+            column = col;
         }
         if t.kind == Kind::Range && (t.prep != Prep::Positional || t.matrix_args) {
             return match self.ready_range(name, t, argv) {
@@ -1143,30 +1143,29 @@ impl Eval<'_> {
             "WORKDAY.INTL" | "NETWORKDAYS.INTL" => Some(3),
             _ => None,
         };
-        if let Some(w) = whole_at {
-            if let Some(list @ V::List(_)) = argv.get(w) {
-                let V::List(items) = flat1(list) else { unreachable!() };
-                if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
-                    return e.clone();
-                }
-                let whole =
-                    V::List(Rc::new(items.iter().filter(|v| !matches!(v, V::Null | V::Undef)).cloned().collect()));
-                let rest: Vec<V> = argv.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, v)| v.clone()).collect();
-                let blanks: Vec<bool> =
-                    (0..argv.len()).filter(|&i| i != w).map(|i| blank_slots.get(i).copied().unwrap_or(false)).collect();
-                return self.broadcast_with(
-                    &rest,
-                    &blanks,
-                    t.inspects_null,
-                    &|args: &[V]| {
-                        let mut full: Vec<V> = args[..w.min(args.len())].to_vec();
-                        full.push(whole.clone());
-                        full.extend_from_slice(&args[w.min(args.len())..]);
-                        self.dispatch(name, Some(t), &full)
-                    },
-                    None,
-                );
+        if let Some(w) = whole_at
+            && let Some(list @ V::List(_)) = argv.get(w)
+        {
+            let V::List(items) = flat1(list) else { unreachable!() };
+            if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
+                return e.clone();
             }
+            let whole = V::List(Rc::new(items.iter().filter(|v| !matches!(v, V::Null | V::Undef)).cloned().collect()));
+            let rest: Vec<V> = argv.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, v)| v.clone()).collect();
+            let blanks: Vec<bool> =
+                (0..argv.len()).filter(|&i| i != w).map(|i| blank_slots.get(i).copied().unwrap_or(false)).collect();
+            return self.broadcast_with(
+                &rest,
+                &blanks,
+                t.inspects_null,
+                &|args: &[V]| {
+                    let mut full: Vec<V> = args[..w.min(args.len())].to_vec();
+                    full.push(whole.clone());
+                    full.extend_from_slice(&args[w.min(args.len())..]);
+                    self.dispatch(name, Some(t), &full)
+                },
+                None,
+            );
         }
         self.broadcast_with(
             argv,

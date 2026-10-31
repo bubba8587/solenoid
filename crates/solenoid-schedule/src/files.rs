@@ -46,12 +46,11 @@ fn comments_then_project(s: &str) -> bool {
 
 fn is_mspdi(text: &str) -> bool {
     let s = skip_space(text);
-    if s.starts_with("<?xml") {
-        if let Some(gt) = s.find('>') {
-            if comments_then_project(&s[gt + 1..]) {
-                return true;
-            }
-        }
+    if s.starts_with("<?xml")
+        && let Some(gt) = s.find('>')
+        && comments_then_project(&s[gt + 1..])
+    {
+        return true;
     }
     comments_then_project(s)
 }

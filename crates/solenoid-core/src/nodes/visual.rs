@@ -669,10 +669,12 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
     if s_col.is_none() && bubble {
         s_col = take(&mut pool, &mut taken);
     }
-    if bubble && yn.is_none() && y_cols.is_empty() {
-        if let Some(x) = x_col {
-            y_cols = vec![x];
-        }
+    if bubble
+        && yn.is_none()
+        && y_cols.is_empty()
+        && let Some(x) = x_col
+    {
+        y_cols = vec![x];
     }
     for (i, role) in y_cols.iter().map(|i| (*i, "y")).chain(s_col.map(|i| (i, "size"))) {
         if cols[i].ty != FrameColType::Number {
@@ -891,15 +893,17 @@ fn chart(c: &mut Call) -> Answer {
             let axis_name = |k: &str| {
                 xy["names"].get(k).and_then(Json::as_str).filter(|n| !n.is_empty()).map(|n| Json::String(n.into()))
             };
-            if explicit && !opts.contains_key("xlabel") {
-                if let Some(n) = axis_name("x") {
-                    opts.insert("xlabel".into(), n);
-                }
+            if explicit
+                && !opts.contains_key("xlabel")
+                && let Some(n) = axis_name("x")
+            {
+                opts.insert("xlabel".into(), n);
             }
-            if (explicit || opts.contains_key("y")) && !opts.contains_key("ylabel") {
-                if let Some(n) = axis_name("y") {
-                    opts.insert("ylabel".into(), n);
-                }
+            if (explicit || opts.contains_key("y"))
+                && !opts.contains_key("ylabel")
+                && let Some(n) = axis_name("y")
+            {
+                opts.insert("ylabel".into(), n);
             }
         }
         payload = xy;

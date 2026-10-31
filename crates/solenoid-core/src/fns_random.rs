@@ -320,11 +320,11 @@ fn random_bytes(b: &mut [u8]) {
         .as_ref()
         .and_then(|c| js_sys::Reflect::get(c, &"getRandomValues".into()).ok())
         .and_then(|f| f.dyn_into::<js_sys::Function>().ok());
-    if let (Some(c), Some(f)) = (crypto, fill) {
-        if f.call1(&c, &arr).is_ok() {
-            arr.copy_to(b);
-            return;
-        }
+    if let (Some(c), Some(f)) = (crypto, fill)
+        && f.call1(&c, &arr).is_ok()
+    {
+        arr.copy_to(b);
+        return;
     }
     b.iter_mut().for_each(|x| *x = (random() * 256.0) as u8);
 }

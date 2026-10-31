@@ -97,7 +97,7 @@ impl Host for Js {
             _ => {
                 return ready(Err(thrown(
                     js_sys::TypeError::new("node.data is not a function").into(),
-                )))
+                )));
             }
         };
         match data.call1(&node.object, &inputs_to_js(&inputs)) {
@@ -552,10 +552,8 @@ impl Shared {
     }
 
     fn loop_set(&self, reuse: bool) -> Vec<String> {
-        if reuse {
-            if let Some(loops) = self.loops.borrow().as_ref() {
-                return loops.clone();
-            }
+        if reuse && let Some(loops) = self.loops.borrow().as_ref() {
+            return loops.clone();
         }
         let loops = pass::loop_members(self.graph.editor());
         *self.loops.borrow_mut() = Some(loops.clone());

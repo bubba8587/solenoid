@@ -454,7 +454,7 @@ fn coerce_unit_cell_value(rung: &str, v: &V) -> R<Cv> {
             return Ok(match v {
                 V::List(_) => rows_frame(std::slice::from_ref(v)),
                 _ => rows_frame(&[list(vec![v.clone()])]),
-            })
+            });
         }
         "cube" => return Ok(to_cube(&Cv::V(v.clone()))),
         _ if COLLAPSING.contains(&rung) => collapse(v.clone()),
@@ -714,10 +714,10 @@ fn find_value_error(v: &V) -> Option<V> {
                 if matches!(cell, V::Err(_)) {
                     return Some(cell.clone());
                 }
-                if matches!(cell, V::List(_)) {
-                    if let Some(e) = find_value_error(cell) {
-                        return Some(e);
-                    }
+                if matches!(cell, V::List(_))
+                    && let Some(e) = find_value_error(cell)
+                {
+                    return Some(e);
                 }
             }
             None
@@ -754,11 +754,11 @@ pub fn with_origin(v: &Cv, origin: &dyn Fn() -> Origin) -> Option<Cv> {
     let mut tag_cells = |values: &[V]| -> Option<Vec<V>> {
         let mut out: Option<Vec<V>> = None;
         for (i, cell) in values.iter().enumerate() {
-            if let V::Err(e) = cell {
-                if e.origin.is_none() {
-                    let t = tag(e);
-                    out.get_or_insert_with(|| values.to_vec())[i] = t;
-                }
+            if let V::Err(e) = cell
+                && e.origin.is_none()
+            {
+                let t = tag(e);
+                out.get_or_insert_with(|| values.to_vec())[i] = t;
             }
         }
         out
@@ -769,11 +769,11 @@ pub fn with_origin(v: &Cv, origin: &dyn Fn() -> Origin) -> Option<Cv> {
         Cv::Cells(a) => {
             let mut out: Option<Vec<Cv>> = None;
             for (i, cell) in a.iter().enumerate() {
-                if let Cv::V(V::Err(e)) = cell {
-                    if e.origin.is_none() {
-                        let t = tag(e);
-                        out.get_or_insert_with(|| a.to_vec())[i] = Cv::V(t);
-                    }
+                if let Cv::V(V::Err(e)) = cell
+                    && e.origin.is_none()
+                {
+                    let t = tag(e);
+                    out.get_or_insert_with(|| a.to_vec())[i] = Cv::V(t);
                 }
             }
             out.map(|c| Cv::Cells(Rc::new(c)))

@@ -167,12 +167,12 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
         }
         DiffOp::Yd => {
             let mut base = date_utc(ep.y, sp.m, sp.d);
-            if let (Some(b), Some(e)) = (base, ed) {
-                if b > e {
-                    // `setUTCFullYear` keeps the month and day, carrying Feb 29 into March.
-                    let bp = parts(base);
-                    base = date_utc(ep.y - 1.0, bp.m, bp.d);
-                }
+            if let (Some(b), Some(e)) = (base, ed)
+                && b > e
+            {
+                // `setUTCFullYear` keeps the month and day, carrying Feb 29 into March.
+                let bp = parts(base);
+                base = date_utc(ep.y - 1.0, bp.m, bp.d);
             }
             math_round((time(ed) - time(base)) / MS_PER_DAY)
         }

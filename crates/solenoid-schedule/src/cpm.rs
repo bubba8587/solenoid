@@ -268,11 +268,11 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
                 es = cx.cal(i).index_ceil(actual)?;
                 driver = None;
             }
-            if let Some(floor) = alap_floor[i] {
-                if floor > es {
-                    es = floor;
-                    driver = None;
-                }
+            if let Some(floor) = alap_floor[i]
+                && floor > es
+            {
+                es = floor;
+                driver = None;
             }
             let mut ef = es + full;
             if let (true, true, Some(s_idx)) = (started, rest > 0.0, s_idx) {

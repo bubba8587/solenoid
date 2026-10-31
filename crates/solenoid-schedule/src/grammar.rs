@@ -55,13 +55,12 @@ fn lag(s: &str) -> Option<(f64, bool, &str)> {
 fn tail(s: &str, glued: bool) -> Option<Tail> {
     let mut r = s;
     let mut ty = LinkType::FS;
-    if glued || r.starts_with(is_js_space) {
-        if let Some((t, rest)) = link_type(ws(r)) {
-            if rest.is_empty() || rest.starts_with(|c: char| is_js_space(c) || c == '+' || c == '-') {
-                ty = t;
-                r = rest;
-            }
-        }
+    if (glued || r.starts_with(is_js_space))
+        && let Some((t, rest)) = link_type(ws(r))
+        && (rest.is_empty() || rest.starts_with(|c: char| is_js_space(c) || c == '+' || c == '-'))
+    {
+        ty = t;
+        r = rest;
     }
     let r = ws(r);
     let (lag, elapsed, r) = match lag(r) {

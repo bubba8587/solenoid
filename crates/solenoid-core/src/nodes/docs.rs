@@ -301,10 +301,10 @@ impl Allowed {
                     let n = if t.is_empty() { f64::NAN } else { string_to_number(t) };
                     if n.is_finite() {
                         m.nums.insert(num_key(n));
-                    } else if let crate::excel_criteria::DateReading::Serial(d) = crate::excel_criteria::parse_date(t) {
-                        if d.is_finite() {
-                            m.nums.insert(num_key(d.floor()));
-                        }
+                    } else if let crate::excel_criteria::DateReading::Serial(d) = crate::excel_criteria::parse_date(t)
+                        && d.is_finite()
+                    {
+                        m.nums.insert(num_key(d.floor()));
                     }
                 }
             }
@@ -462,10 +462,10 @@ fn held_unit(c: &Call, key: &str, v: &V) -> Option<UnitParts> {
     match v {
         V::Unit(u) => Some((u.dim.clone(), u.display.clone())),
         V::List(items) => {
-            if !matches!(items.first(), Some(V::List(_))) {
-                if let Some(V::Unit(u)) = items.iter().find(|x| matches!(x, V::Unit(_))) {
-                    return Some((u.dim.clone(), u.display.clone()));
-                }
+            if !matches!(items.first(), Some(V::List(_)))
+                && let Some(V::Unit(u)) = items.iter().find(|x| matches!(x, V::Unit(_)))
+            {
+                return Some((u.dim.clone(), u.display.clone()));
             }
             c.matrix_unit(key).map(column_unit_parts)
         }
@@ -738,33 +738,32 @@ fn json_text(x: &Json, logical_upper: bool) -> String {
 /// cells.
 fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
     let trimmed = js_trim(text);
-    if trimmed.starts_with('[') {
-        if let Ok(Json::Array(raw)) = serde_json::from_str::<Json>(trimmed) {
-            let given: Vec<String> =
-                raw.iter().map(|c| c.get("name").and_then(Json::as_str).unwrap_or("").to_string()).collect();
-            let names = crate::frame::make_headers(&given, raw.len());
-            return raw
-                .iter()
-                .zip(names)
-                .map(|(c, name)| {
-                    let ty = match c.get("type").and_then(Json::as_str) {
-                        Some("string") => FrameColType::String,
-                        Some("date") => FrameColType::Date,
-                        Some("logical") => FrameColType::Logical,
-                        _ => FrameColType::Number,
-                    };
-                    let cells = match (c.get("cells"), c.get("values")) {
-                        (Some(Json::Array(cs)), _) => cs.iter().map(|x| json_text(x, false)).collect(),
-                        (_, Some(Json::Array(vs))) => vs.iter().map(|x| json_text(x, true)).collect(),
-                        _ => Vec::new(),
-                    };
-                    let unit = c.get("unit").and_then(Json::as_str).filter(|u| !u.is_empty()).map(String::from);
-                    let expr =
-                        c.get("expr").and_then(Json::as_str).filter(|e| !js_trim(e).is_empty()).map(String::from);
-                    SourceColumn { name, ty, cells, unit, expr }
-                })
-                .collect();
-        }
+    if trimmed.starts_with('[')
+        && let Ok(Json::Array(raw)) = serde_json::from_str::<Json>(trimmed)
+    {
+        let given: Vec<String> =
+            raw.iter().map(|c| c.get("name").and_then(Json::as_str).unwrap_or("").to_string()).collect();
+        let names = crate::frame::make_headers(&given, raw.len());
+        return raw
+            .iter()
+            .zip(names)
+            .map(|(c, name)| {
+                let ty = match c.get("type").and_then(Json::as_str) {
+                    Some("string") => FrameColType::String,
+                    Some("date") => FrameColType::Date,
+                    Some("logical") => FrameColType::Logical,
+                    _ => FrameColType::Number,
+                };
+                let cells = match (c.get("cells"), c.get("values")) {
+                    (Some(Json::Array(cs)), _) => cs.iter().map(|x| json_text(x, false)).collect(),
+                    (_, Some(Json::Array(vs))) => vs.iter().map(|x| json_text(x, true)).collect(),
+                    _ => Vec::new(),
+                };
+                let unit = c.get("unit").and_then(Json::as_str).filter(|u| !u.is_empty()).map(String::from);
+                let expr = c.get("expr").and_then(Json::as_str).filter(|e| !js_trim(e).is_empty()).map(String::from);
+                SourceColumn { name, ty, cells, unit, expr }
+            })
+            .collect();
     }
     crate::csv::source_columns(trimmed)
         .into_iter()
@@ -998,10 +997,10 @@ fn record_field(name: &str, col: Option<&Column>, row: Option<usize>, at: &At) -
     if let (V::Num(_), Some(f)) = (&shown, col.and_then(|c| c.format.as_ref())) {
         o.insert("format".into(), f.clone());
     }
-    if let V::Str(s) = &shown {
-        if let Some(src) = crate::card_helpers::record_image_src(s) {
-            o.insert("image".into(), Json::String(src));
-        }
+    if let V::Str(s) = &shown
+        && let Some(src) = crate::card_helpers::record_image_src(s)
+    {
+        o.insert("image".into(), Json::String(src));
     }
     if at.title {
         o.insert("isTitle".into(), Json::Bool(true));

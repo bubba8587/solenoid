@@ -216,12 +216,12 @@ impl serde::Serialize for Cell<'_> {
                 q.end()
             }
         }
-        if let V::List(_) = self.0 {
-            if let Some(id) = super::columnar::stage_out(&Cv::V(self.0.clone())) {
-                let mut m = s.serialize_map(Some(1))?;
-                m.serialize_entry("staged", &id)?;
-                return m.end();
-            }
+        if let V::List(_) = self.0
+            && let Some(id) = super::columnar::stage_out(&Cv::V(self.0.clone()))
+        {
+            let mut m = s.serialize_map(Some(1))?;
+            m.serialize_entry("staged", &id)?;
+            return m.end();
         }
         match self.0 {
             V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
@@ -245,12 +245,12 @@ pub struct CvCell<'a>(pub &'a Cv);
 impl serde::Serialize for CvCell<'_> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::{SerializeMap, SerializeSeq};
-        if let Cv::Frame(_) = self.0 {
-            if let Some(id) = super::columnar::stage_out(self.0) {
-                let mut m = s.serialize_map(Some(1))?;
-                m.serialize_entry("staged", &id)?;
-                return m.end();
-            }
+        if let Cv::Frame(_) = self.0
+            && let Some(id) = super::columnar::stage_out(self.0)
+        {
+            let mut m = s.serialize_map(Some(1))?;
+            m.serialize_entry("staged", &id)?;
+            return m.end();
         }
         struct Items<'a>(&'a [Cv]);
         impl serde::Serialize for Items<'_> {

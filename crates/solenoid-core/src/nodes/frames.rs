@@ -708,10 +708,11 @@ fn ladder_from_wire(f: &Frame, plan: &FrameValue, wire: &V) -> (Frame, Json) {
     let r = resources.len();
     let mut out = from_core(plan);
     for (j, col) in out.columns.iter_mut().enumerate() {
-        if j >= 4 && j < 4 + 2 * r {
-            if let Some(src) = cols[(j - 4) % r] {
-                carry_money(col, src);
-            }
+        if j >= 4
+            && j < 4 + 2 * r
+            && let Some(src) = cols[(j - 4) % r]
+        {
+            carry_money(col, src);
         }
     }
     let obj = |row: &V, keys: &[&str]| {
@@ -2947,10 +2948,10 @@ fn rank_nested(
         group.extend(std::iter::repeat_n(*i, table_rows(t)));
     }
     let pooled = pool_tables(&tables.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>());
-    if let Cv::Frame(p) = &pooled {
-        if crate::decision::decision_columns(&to_core(p)).1.is_empty() {
-            return Ok((keys, None));
-        }
+    if let Cv::Frame(p) = &pooled
+        && crate::decision::decision_columns(&to_core(p)).1.is_empty()
+    {
+        return Ok((keys, None));
     }
     let ranked = rank_any(&pooled, wf, normalize, breakdown)?;
     let mut by_table: Vec<Vec<usize>> = vec![Vec::new(); out.len()];
@@ -3027,10 +3028,10 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     let mut failed = crate::decision::decision_screen(&parent, r.bounds.as_deref());
     for (n, col) in nested_cols.iter().enumerate() {
         for (i, x) in inner[n].iter().enumerate() {
-            if x.1.is_none() {
-                if let Some(f) = failed.get_mut(i) {
-                    f.push(format!("no acceptable {}", col.name));
-                }
+            if x.1.is_none()
+                && let Some(f) = failed.get_mut(i)
+            {
+                f.push(format!("no acceptable {}", col.name));
             }
         }
     }

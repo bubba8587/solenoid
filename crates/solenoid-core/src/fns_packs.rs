@@ -415,7 +415,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                     return err(
                         ErrorCode::Value,
                         format!("Unknown property \"{key}\". Use temp, pressure, density or sound"),
-                    )
+                    );
                 }
             };
             match k::standard_atmosphere(z) {
@@ -471,10 +471,10 @@ pub fn call(name: &str, a: &[V]) -> V {
         "TRIANGLESOLVER" => {
             let mut given: k::Parts = [None; 6];
             for (i, g) in given.iter_mut().enumerate() {
-                if let V::Num(n) = arg(a, i) {
-                    if n.is_finite() {
-                        *g = Some(*n);
-                    }
+                if let V::Num(n) = arg(a, i)
+                    && n.is_finite()
+                {
+                    *g = Some(*n);
                 }
             }
             if given.iter().all(Option::is_none) {

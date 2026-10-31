@@ -151,10 +151,10 @@ impl Session {
             let rerun = self.rerun.get_or_insert_with(Rerun::default);
             rerun.force |= force;
             rerun.exact |= exact;
-            if let Some(id) = changed {
-                if !rerun.changed.iter().any(|c| c == id) {
-                    rerun.changed.push(id.to_owned());
-                }
+            if let Some(id) = changed
+                && !rerun.changed.iter().any(|c| c == id)
+            {
+                rerun.changed.push(id.to_owned());
             }
             return Entry::Queued;
         }

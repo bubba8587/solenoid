@@ -462,11 +462,12 @@ fn parse_group(s: &[u16], mut i: usize, close: Option<u16>) -> Result<(f64, usiz
         let sym = String::from_utf16_lossy(&s[i..i + 1 + usize::from(two)]);
         let mut el = element(&sym);
         let mut len = sym.len();
-        if el.is_none() && two {
-            if let Some(one) = element(&sym[..1]) {
-                el = Some(one);
-                len = 1;
-            }
+        if el.is_none()
+            && two
+            && let Some(one) = element(&sym[..1])
+        {
+            el = Some(one);
+            len = 1;
         }
         let Some((_, weight)) = el else {
             return Err(err(ErrorCode::Name, format!("Unknown element \"{sym}\"")));
@@ -1174,12 +1175,12 @@ fn fill_by_sines(t: &mut Parts, known_side: usize, known_angle: usize) {
     let missing: Vec<usize> = (3..6).filter(|&k| t[k].is_none()).collect();
     if missing.len() == 1 {
         t[missing[0]] = Some(180.0 - (3..6).map(|k| t[k].unwrap_or(0.0)).sum::<f64>());
-    } else if missing.len() == 2 {
-        if let (Some(a), Some(b), Some(c)) = (t[0], t[1], t[2]) {
-            let ang_a = *t[3].get_or_insert_with(|| cos_rule(a, b, c));
-            let ang_b = *t[4].get_or_insert_with(|| cos_rule(b, a, c));
-            t[5] = Some(180.0 - ang_a - ang_b);
-        }
+    } else if missing.len() == 2
+        && let (Some(a), Some(b), Some(c)) = (t[0], t[1], t[2])
+    {
+        let ang_a = *t[3].get_or_insert_with(|| cos_rule(a, b, c));
+        let ang_b = *t[4].get_or_insert_with(|| cos_rule(b, a, c));
+        t[5] = Some(180.0 - ang_a - ang_b);
     }
     let ratio = t[known_side].unwrap_or(f64::NAN) / sin(t[known_angle].unwrap_or(f64::NAN) * D2R);
     for k in 0..3 {

@@ -778,7 +778,7 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
             return Err(V::err(sol_error(
                 ErrorCode::Value,
                 "Approximate match compares numbers. Use exact match (0) for text",
-            )))
+            )));
         }
     };
     let mut best: Option<(usize, f64)> = None;
@@ -1741,10 +1741,10 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
         Some(i) => (&s[..i], Some(&s[i + 1..])),
         None => (&s[..], None),
     };
-    if let Some(f) = frac {
-        if g.is_some_and(|g| f.contains(&g)) || f.contains(&d) {
-            return bad();
-        }
+    if let Some(f) = frac
+        && (g.is_some_and(|g| f.contains(&g)) || f.contains(&d))
+    {
+        return bad();
     }
     let mut num: Vec<u16> = int_part.iter().copied().filter(|&u| Some(u) != g).collect();
     if let Some(f) = frac {
@@ -1873,10 +1873,10 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
 fn as_one_dim(v: &V) -> Option<Vec<V>> {
     match v {
         V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
-            if rows.len() == 1 {
-                if let V::List(r) = &rows[0] {
-                    return Some(r.as_ref().clone());
-                }
+            if rows.len() == 1
+                && let V::List(r) = &rows[0]
+            {
+                return Some(r.as_ref().clone());
             }
             rows.iter()
                 .map(|r| match r {
@@ -2112,14 +2112,14 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         let width = || width_of(grid);
         // One position on a one-row or one-column table walks along it, as Excel's INDEX does ([[D85]] columnsStayColumns).
         if col.is_none() && !row_all {
-            if grid.len() == 1 {
-                if let V::List(only) = &grid[0] {
-                    return if inside(r, only.len()) {
-                        or_null(only.get(r as usize))
-                    } else {
-                        index_ref_error(r + 1.0, only.len(), "Column")
-                    };
-                }
+            if grid.len() == 1
+                && let V::List(only) = &grid[0]
+            {
+                return if inside(r, only.len()) {
+                    or_null(only.get(r as usize))
+                } else {
+                    index_ref_error(r + 1.0, only.len(), "Column")
+                };
             }
             if width() == 1 {
                 if !inside(r, grid.len()) {
@@ -2229,22 +2229,22 @@ fn clock_time(t: &str) -> Option<(f64, f64, f64, Option<bool>)> {
     while j < b.len() && is_js_space(b[j]) {
         j += 1;
     }
-    if let Some(&c) = b.get(j) {
-        if matches!(c, 'A' | 'a' | 'P' | 'p') {
-            let mut k = j + 1;
-            if b.get(k) == Some(&'.') {
-                k += 1;
-            }
-            if matches!(b.get(k), Some('M' | 'm')) {
-                k += 1;
-            }
-            if b.get(k) == Some(&'.') {
-                k += 1;
-            }
-            if k == b.len() {
-                meridiem = Some(matches!(c, 'P' | 'p'));
-                i = k;
-            }
+    if let Some(&c) = b.get(j)
+        && matches!(c, 'A' | 'a' | 'P' | 'p')
+    {
+        let mut k = j + 1;
+        if b.get(k) == Some(&'.') {
+            k += 1;
+        }
+        if matches!(b.get(k), Some('M' | 'm')) {
+            k += 1;
+        }
+        if b.get(k) == Some(&'.') {
+            k += 1;
+        }
+        if k == b.len() {
+            meridiem = Some(matches!(c, 'P' | 'p'));
+            i = k;
         }
     }
     if i != b.len() {
@@ -4583,10 +4583,10 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
         }
         F::CONTAINS => {
-            if let V::List(items) = arg(a, 0) {
-                if items.iter().any(|v| matches!(v, V::List(_))) {
-                    return V::err(sol_error(ErrorCode::Shape, "CONTAINS takes a list"));
-                }
+            if let V::List(items) = arg(a, 0)
+                && items.iter().any(|v| matches!(v, V::List(_)))
+            {
+                return V::err(sol_error(ErrorCode::Shape, "CONTAINS takes a list"));
             }
             let k = arg(a, 1);
             V::Bool(
@@ -5632,7 +5632,7 @@ fn regex_call(name: &str, a: &[V]) -> V {
             return V::err(sol_error(
                 ErrorCode::Value,
                 format!("{name} can't run this pattern: a repeat count past 100,000 or a \\p{{…}} class"),
-            ))
+            ));
         }
     };
     // Every match list (modes 1 and 2) is a list.
@@ -5679,7 +5679,9 @@ fn template(a: &[V]) -> Result<V, Thrown> {
     if let Some(bad) = bad {
         return Ok(V::err(sol_error(
             ErrorCode::Name,
-            format!("TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"),
+            format!(
+                "TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"
+            ),
         )));
     }
     let values = a.get(1..).unwrap_or(&[]);
@@ -5910,12 +5912,11 @@ fn iso_week(ms: f64) -> f64 {
     if week < 1.0 {
         return date_utc(p.year as f64 - 1.0, 11.0, 28.0).map_or(f64::NAN, iso_week);
     }
-    if week > 52.0 {
-        if let Some(next) = week_start(p.year as f64 + 1.0) {
-            if ms >= next {
-                return 1.0;
-            }
-        }
+    if week > 52.0
+        && let Some(next) = week_start(p.year as f64 + 1.0)
+        && ms >= next
+    {
+        return 1.0;
     }
     week
 }

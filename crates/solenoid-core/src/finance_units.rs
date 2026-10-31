@@ -76,10 +76,10 @@ pub fn finance_dim(fn_: &str, sig: &MoneySignature, args: &[OpResult]) -> OpResu
             return Err(unit_error(&format!("{fn_}'s money arguments take a currency, not {}.", format_dim(&a.dim))));
         }
         if let Some(c) = &a.code {
-            if let Some(prev) = &code {
-                if prev != c {
-                    return Err(currency_clash(prev, c));
-                }
+            if let Some(prev) = &code
+                && prev != c
+            {
+                return Err(currency_clash(prev, c));
             }
             code = Some(c.clone());
         }

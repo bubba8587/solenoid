@@ -443,7 +443,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
             return Err(err(
                 ErrorCode::Error,
                 "This node failed to compute: ((intermediate value) ?? []).filter is not a function",
-            ))
+            ));
         }
     };
     let threshold = match setting(c, "threshold", V::Undef) {
@@ -598,7 +598,7 @@ fn regex(c: &mut Call) -> Answer {
                 c,
                 "cachedResult",
                 err(ErrorCode::Value, "This pattern uses a feature the engine can't run yet"),
-            )
+            );
         }
     };
     let p = Pattern { re, global, sticky, unicode: jf.unicode || jf.unicode_sets };

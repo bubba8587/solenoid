@@ -598,18 +598,19 @@ fn hypothesis_test(c: &mut Call) -> Answer {
                 _ => None,
             };
             let mut r = V::Null;
-            if let Some(xs) = xs.filter(|xs| xs.len() >= 2) {
-                if !matches!(x, V::Null) && !matches!(sigma, V::Null) {
-                    let n = xs.len() as f64;
-                    let m = mean(&xs);
-                    let std = if !matches!(sigma, V::Undef) && js_num(&sigma) > 0.0 {
-                        js_num(&sigma)
-                    } else {
-                        sample_var(&xs).sqrt()
-                    };
-                    if std > 0.0 {
-                        r = V::Num(1.0 - std_norm_cdf((m - js_num(&x)) / (std / n.sqrt())));
-                    }
+            if let Some(xs) = xs.filter(|xs| xs.len() >= 2)
+                && !matches!(x, V::Null)
+                && !matches!(sigma, V::Null)
+            {
+                let n = xs.len() as f64;
+                let m = mean(&xs);
+                let std = if !matches!(sigma, V::Undef) && js_num(&sigma) > 0.0 {
+                    js_num(&sigma)
+                } else {
+                    sample_var(&xs).sqrt()
+                };
+                if std > 0.0 {
+                    r = V::Num(1.0 - std_norm_cdf((m - js_num(&x)) / (std / n.sqrt())));
                 }
             }
             r

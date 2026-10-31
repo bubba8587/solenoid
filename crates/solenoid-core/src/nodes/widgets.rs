@@ -634,7 +634,7 @@ fn curve_points(text: &str) -> Vec<(f64, f64)> {
 }
 
 /// The Fritsch–Carlson interpolant through the points, flat beyond the ends.
-fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 {
+fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 + use<> {
     let n = xs.len();
     let (mut h, mut slope) = (Vec::new(), Vec::new());
     for i in 0..n.saturating_sub(1) {
@@ -887,15 +887,15 @@ fn source_has_layer(source: &str, name: &str) -> bool {
             if p.rest().starts_with('=') {
                 p.at += 1;
                 p.ws();
-                if let Some(q) = p.rest().chars().next().filter(|&q| q == '"' || q == '\'') {
-                    if let Some(close) = p.rest()[1..].find(q) {
-                        let value = &p.rest()[1..1 + close];
-                        if js_trim(&decode_entities(value)) == name {
-                            return true;
-                        }
-                        i = p.at + close + 2;
-                        continue;
+                if let Some(q) = p.rest().chars().next().filter(|&q| q == '"' || q == '\'')
+                    && let Some(close) = p.rest()[1..].find(q)
+                {
+                    let value = &p.rest()[1..1 + close];
+                    if js_trim(&decode_entities(value)) == name {
+                        return true;
                     }
+                    i = p.at + close + 2;
+                    continue;
                 }
             }
         }

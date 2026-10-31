@@ -32,10 +32,10 @@ pub fn loop_members<S: Schemes>(editor: &NodeEditor<S>) -> Vec<String> {
             }
             continue;
         }
-        if let (Some(&s), Some(&t)) = (slot.get(c.source()), slot.get(c.target())) {
-            if !adj[s].contains(&t) {
-                adj[s].push(t);
-            }
+        if let (Some(&s), Some(&t)) = (slot.get(c.source()), slot.get(c.target()))
+            && !adj[s].contains(&t)
+        {
+            adj[s].push(t);
         }
     }
     const NONE: usize = usize::MAX;

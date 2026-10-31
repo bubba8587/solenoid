@@ -176,7 +176,7 @@ fn mismatch(case: &Json) -> Option<String> {
             return Some(format!(
                 "got outputs {:?}, want {result}",
                 outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>()
-            ))
+            ));
         }
         (Err(e), _, _) => return Some(format!("threw {}, want {result}", show_v(e))),
     }

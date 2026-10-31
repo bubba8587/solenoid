@@ -716,10 +716,10 @@ fn is_code(t: &str) -> bool {
         return false;
     }
     let mut rest = &b[letters..];
-    if let Some((c, r)) = rest.split_first() {
-        if matches!(c, b'-' | b'_' | b' ' | b'#' | b'/') {
-            rest = r;
-        }
+    if let Some((c, r)) = rest.split_first()
+        && matches!(c, b'-' | b'_' | b' ' | b'#' | b'/')
+    {
+        rest = r;
     }
     (1..=10).contains(&rest.len()) && rest.iter().all(u8::is_ascii_digit)
 }
@@ -1216,11 +1216,11 @@ pub fn plan_cards(cols: &[CardColumn]) -> Json {
     let mut meta = first(&taken, &is_date);
     taken.extend(meta);
     let mut meta_end = None;
-    if let Some(m) = meta {
-        if has(&words[m], START_WORDS) {
-            meta_end = first(&taken, &|i| is_date(i) && has(&words[i], END_WORDS));
-            taken.extend(meta_end);
-        }
+    if let Some(m) = meta
+        && has(&words[m], START_WORDS)
+    {
+        meta_end = first(&taken, &|i| is_date(i) && has(&words[i], END_WORDS));
+        taken.extend(meta_end);
     }
     if meta.is_none() {
         meta = first(&taken, &|i| is_num(i) && profiles[i].year_like && has_word(&words[i], "year"));

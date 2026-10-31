@@ -703,19 +703,22 @@ pub(crate) fn plan_column_units(
         Ok(Some(op)) => op,
     };
     let dr = (!is_dimensionless(&r.dim)).then(|| r.dim.clone());
-    if let (Some((a_dim, a_display)), Some(dr)) = (&authored, &dr) {
-        if !dim_equal(dr, a_dim) {
-            let label = match a_display.as_deref() {
-                Some(d) if crate::unit_catalog::fc_unit_to_unit(d).is_some() => d.to_string(),
-                _ => format_dim(a_dim),
-            };
-            return Err(unit_err(format!("The formula gives {}, but the column's unit is {label}.", format_dim(dr))));
-        }
+    if let (Some((a_dim, a_display)), Some(dr)) = (&authored, &dr)
+        && !dim_equal(dr, a_dim)
+    {
+        let label = match a_display.as_deref() {
+            Some(d) if crate::unit_catalog::fc_unit_to_unit(d).is_some() => d.to_string(),
+            _ => format_dim(a_dim),
+        };
+        return Err(unit_err(format!("The formula gives {}, but the column's unit is {label}.", format_dim(dr))));
     }
-    if let (Some((a_dim, Some(a_display))), Some(code)) = (&authored, &r.code) {
-        if dim_equal(a_dim, &currency) && a_display != code {
-            return Err(unit_err(format!("The formula gives {code}, but the column's unit is {a_display}: they are different currencies with no exchange rate.")));
-        }
+    if let (Some((a_dim, Some(a_display))), Some(code)) = (&authored, &r.code)
+        && dim_equal(a_dim, &currency)
+        && a_display != code
+    {
+        return Err(unit_err(format!(
+                "The formula gives {code}, but the column's unit is {a_display}: they are different currencies with no exchange rate."
+            )));
     }
     let inputs: Vec<&United> = united.iter().map(|(_, u)| u).collect();
     let first_display = inputs[0].display.clone();
@@ -1212,10 +1215,10 @@ fn cube_input(c: &mut Call) -> Answer {
         progress = false;
         for i in pending.clone() {
             let expr = exprs[i].as_deref().unwrap_or("");
-            if let Some((_, names)) = &compiled[i] {
-                if names.iter().any(|n| index_of(&cols, n).is_some_and(|d| pending.contains(&d))) {
-                    continue;
-                }
+            if let Some((_, names)) = &compiled[i]
+                && names.iter().any(|n| index_of(&cols, n).is_some_and(|d| pending.contains(&d)))
+            {
+                continue;
             }
             pending.retain(|&p| p != i);
             progress = true;

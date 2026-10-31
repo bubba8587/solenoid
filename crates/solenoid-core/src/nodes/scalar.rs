@@ -512,17 +512,15 @@ fn math_fx(c: &mut Call) -> Answer {
             };
             let unit = if let V::Unit(u) = cell { Some(u.as_ref()) } else { None };
             let bare = unit.is_none() || rd.is_none();
-            if let (false, Some(u)) = (bare, unit) {
-                if preserves {
-                    if let Some(shown) =
-                        crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim))
-                    {
-                        return match compute_raw(crate::unit_expression::display_magnitude_of(u)) {
-                            None => domain_err(),
-                            Some(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),
-                        };
-                    }
-                }
+            if let (false, Some(u)) = (bare, unit)
+                && preserves
+                && let Some(shown) =
+                    crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim))
+            {
+                return match compute_raw(crate::unit_expression::display_magnitude_of(u)) {
+                    None => domain_err(),
+                    Some(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),
+                };
             }
             let x = magnitude_of(cell);
             let Some(raw) = compute_raw(if bare && fwd_deg { x * deg2rad } else { x }) else { return domain_err() };

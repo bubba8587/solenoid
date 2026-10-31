@@ -272,10 +272,10 @@ impl Search<'_> {
         if i >= self.open.len() {
             return Ok(());
         }
-        if let Some((bt, _)) = &self.best {
-            if total + self.bound(i, &l) < bt - EPS {
-                return Ok(());
-            }
+        if let Some((bt, _)) = &self.best
+            && total + self.bound(i, &l) < bt - EPS
+        {
+            return Ok(());
         }
         if nd.iter().enumerate().any(|(r, &x)| x > self.reach[r][i] + EPS) {
             return Ok(());
@@ -332,10 +332,10 @@ fn must_clash(opts: &[Opt], res: &[Resource]) -> Option<MustClash> {
         }
     }
     for (r, res) in res.iter().enumerate() {
-        if let Some(lim) = res.limit {
-            if need.iter().fold(0.0, |s, &i| s + opts[i].costs[r]) > lim + EPS {
-                return Some(MustClash::Over(r));
-            }
+        if let Some(lim) = res.limit
+            && need.iter().fold(0.0, |s, &i| s + opts[i].costs[r]) > lim + EPS
+        {
+            return Some(MustClash::Over(r));
         }
     }
     None
@@ -927,24 +927,24 @@ fn ladder_inner(
             return Err(sol_error(
                 ErrorCode::Value,
                 format!("Choice Ladder: Must options {} and {} exclude each other", names[a], names[b]),
-            ))
+            ));
         }
         Some(MustClash::Over(r)) => {
             return Err(sol_error(
                 ErrorCode::Value,
                 format!("Choice Ladder: the Must options need more {} than its limit", resources[r].name),
-            ))
+            ));
         }
         None => {}
     }
     for (k, r) in resources.iter().enumerate() {
-        if let Some(floor) = r.floor {
-            if opts.iter().fold(0.0, |s, o| s + math_max(0.0, o.costs[k])) < floor - 1e-9 {
-                return Err(sol_error(
-                    ErrorCode::Value,
-                    format!("Choice Ladder: the options can't reach {}'s At least", r.name),
-                ));
-            }
+        if let Some(floor) = r.floor
+            && opts.iter().fold(0.0, |s, o| s + math_max(0.0, o.costs[k])) < floor - 1e-9
+        {
+            return Err(sol_error(
+                ErrorCode::Value,
+                format!("Choice Ladder: the options can't reach {}'s At least", r.name),
+            ));
         }
     }
     let gap = if !close.is_finite() || close < 0.0 {

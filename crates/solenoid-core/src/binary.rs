@@ -51,12 +51,12 @@ impl<'a> Cutter<'a> {
     fn next(&mut self) -> Result<&'a str, SolError> {
         let want = *self.lens.next().ok_or_else(|| sol_error(ErrorCode::Error, "binary frame: text lengths run out"))?
             as usize;
-        if let Some(head) = self.rest.as_bytes().get(..want) {
-            if head.is_ascii() {
-                let (piece, rest) = self.rest.split_at(want);
-                self.rest = rest;
-                return Ok(piece);
-            }
+        if let Some(head) = self.rest.as_bytes().get(..want)
+            && head.is_ascii()
+        {
+            let (piece, rest) = self.rest.split_at(want);
+            self.rest = rest;
+            return Ok(piece);
         }
         let mut units = 0;
         let mut end = 0;

@@ -1070,10 +1070,10 @@ pub(crate) fn find_cell_error(v: &JsValue) -> Option<JsValue> {
             if is_sol_error(&cell) {
                 return Some(cell);
             }
-            if is_array(&cell) {
-                if let Some(e) = find_cell_error(&cell) {
-                    return Some(e);
-                }
+            if is_array(&cell)
+                && let Some(e) = find_cell_error(&cell)
+            {
+                return Some(e);
             }
         }
         return None;
@@ -1370,10 +1370,10 @@ pub(crate) fn call<'a>(
         .iter()
         .map(|(k, v)| (k.to_owned(), v.clone()))
         .collect();
-    if !facts.sees {
-        if let Some((err, slot)) = first_input_error(&inputs) {
-            return ready(Ok(call.error_out(err, Some(&slot))));
-        }
+    if !facts.sees
+        && let Some((err, slot)) = first_input_error(&inputs)
+    {
+        return ready(Ok(call.error_out(err, Some(&slot))));
     }
     let t0 = perf_on().then(|| now(&call.host));
     let lazy_refs = !facts.lazy && inputs.iter().any(|(_, arr)| arr.iter().any(is_frame_ref));
@@ -1415,10 +1415,10 @@ pub(crate) fn call<'a>(
                     .await?
                     .unchecked_into::<Array>()
                     .to_vec();
-                if !facts.sees {
-                    if let Some(failed) = values.iter().find(|v| is_sol_error(v)) {
-                        return Err(Thrown::Js(failed.clone()));
-                    }
+                if !facts.sees
+                    && let Some(failed) = values.iter().find(|v| is_sol_error(v))
+                {
+                    return Err(Thrown::Js(failed.clone()));
                 }
                 collected.push((key.clone(), values));
             }

@@ -117,13 +117,13 @@ fn get_substitution(replacement: &[u16], m: &Match, text: &[u16]) -> Vec<u16> {
             _ if digit(p) => {
                 let mut index = usize::from(p - u16::from(b'0'));
                 let mut advance = 1;
-                if let Some(&q) = replacement.get(i + 2) {
-                    if digit(q) {
-                        let two = index * 10 + usize::from(q - u16::from(b'0'));
-                        if two <= caps {
-                            index = two;
-                            advance = 2;
-                        }
+                if let Some(&q) = replacement.get(i + 2)
+                    && digit(q)
+                {
+                    let two = index * 10 + usize::from(q - u16::from(b'0'));
+                    if two <= caps {
+                        index = two;
+                        advance = 2;
                     }
                 }
                 if index == 0 || index > caps {

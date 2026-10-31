@@ -711,7 +711,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
                     return V::err(sol_error(
                         ErrorCode::Type,
                         "Cannot order values of different types; Cast one side first",
-                    ))
+                    ));
                 }
             };
             V::Bool(match op {

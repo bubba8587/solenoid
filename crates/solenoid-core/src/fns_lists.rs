@@ -604,7 +604,9 @@ fn answer(name: &str, a: &[V]) -> V {
                 js_trim(&shown).to_uppercase().as_str(),
                 "SUM" | "AVERAGE" | "AVG" | "MIN" | "MAX" | "MEDIAN" | "PRODUCT" | "STDEV"
             ) {
-                return value(&format!("RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT or STDEV, not \"{shown}\""));
+                return value(&format!(
+                    "RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT or STDEV, not \"{shown}\""
+                ));
             }
             if matches!(w, V::Null) {
                 return V::Null;
@@ -695,10 +697,12 @@ fn answer(name: &str, a: &[V]) -> V {
             let mut out = Vec::new();
             for i in 0..count as usize {
                 let mut v = start + i as f64 * st;
-                if let Some(stop) = stop {
-                    if i as f64 == count - 1.0 && st != 0.0 && (v - stop).abs() < st.abs() * 1e-9 {
-                        v = stop;
-                    }
+                if let Some(stop) = stop
+                    && i as f64 == count - 1.0
+                    && st != 0.0
+                    && (v - stop).abs() < st.abs() * 1e-9
+                {
+                    v = stop;
                 }
                 out.push(v);
             }
@@ -1769,7 +1773,9 @@ fn sparkline(range: &V, ty: &V) -> V {
             .enumerate()
             .map(|(i, &v)| format!("{}{} {}", if i == 0 { "M" } else { "L" }, r1(pad + i as f64 * step), r1(y(v))))
             .collect();
-        format!("<path d='{d}' fill='none' stroke='{gold}' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'/>")
+        format!(
+            "<path d='{d}' fill='none' stroke='{gold}' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'/>"
+        )
     } else {
         let signed = op == "winloss";
         let lo = if signed { -1.0 } else { ys.iter().copied().fold(0.0, math_min) };
@@ -1815,7 +1821,9 @@ fn sparkline(range: &V, ty: &V) -> V {
         }
         body
     };
-    let svg = format!("<svg xmlns='http://www.w3.org/2000/svg' class='sol-spark' viewBox='0 0 80 20' width='80' height='20'>{body}</svg>");
+    let svg = format!(
+        "<svg xmlns='http://www.w3.org/2000/svg' class='sol-spark' viewBox='0 0 80 20' width='80' height='20'>{body}</svg>"
+    );
     V::str(&format!(
         "data:image/svg+xml,{}",
         svg.replace('%', "%25").replace('#', "%23").replace('<', "%3C").replace('>', "%3E")
@@ -2374,10 +2382,10 @@ fn fitdist(sample: &V, family: &V) -> V {
 // ─── INTERPOLATE ([[C17]] shareImpl) ────────────────────────────────────────────
 
 fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
-    if let V::List(rows) = ys {
-        if rows.iter().any(|r| matches!(r, V::List(_))) {
-            return grid_mode(rows, xs, new_xs, forecast);
-        }
+    if let V::List(rows) = ys
+        && rows.iter().any(|r| matches!(r, V::List(_)))
+    {
+        return grid_mode(rows, xs, new_xs, forecast);
     }
     if matches!(new_xs, V::Undef) {
         return value("INTERPOLATE: list mode needs known_ys, known_xs and new_xs");

@@ -137,14 +137,13 @@ fn unescape(s: &str) -> Rc<str> {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars().peekable();
     while let Some(c) = chars.next() {
-        if c == '~' {
-            if let Some(&n) = chars.peek() {
-                if !matches!(n, '\n' | '\r' | '\u{2028}' | '\u{2029}') {
-                    out.push(n);
-                    chars.next();
-                    continue;
-                }
-            }
+        if c == '~'
+            && let Some(&n) = chars.peek()
+            && !matches!(n, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+        {
+            out.push(n);
+            chars.next();
+            continue;
         }
         out.push(c);
     }
@@ -190,19 +189,22 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
             DateReading::Serial(ms / 86_400_000.0 + 25569.0)
         };
     }
-    if let Some((a, rest)) = split_num(b, 1, 2) {
-        if let Some((bn, rest)) =
+    if let Some((a, rest)) = split_num(b, 1, 2)
+        && let Some((bn, rest)) =
             rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.')).and_then(|(_, r)| split_num(r, 1, 2))
-        {
-            if let Some((_, year)) = rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.')) {
-                if year.len() == 4 && ascii_digits(year) && a <= 12 && bn <= 12 && a != bn {
-                    return DateReading::Ambiguous(sol_error(
+        && let Some((_, year)) = rest.split_first().filter(|(c, _)| matches!(c, b'-' | b'/' | b'.'))
+        && year.len() == 4
+        && ascii_digits(year)
+        && a <= 12
+        && bn <= 12
+        && a != bn
+    {
+        return DateReading::Ambiguous(sol_error(
                         ErrorCode::Ambiguous,
-                        format!("\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"),
+                        format!(
+                            "\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"
+                        ),
                     ));
-                }
-            }
-        }
     }
     chrono_reading(t)
 }
@@ -228,16 +230,17 @@ fn chrono_reading(t: &str) -> DateReading {
         return r;
     }
     // An ISO day then " and …": chrono reads the day alone, so text is left over.
-    if b.len() > 10 && b[10].is_ascii_whitespace() {
-        if let DateReading::Serial(d) = parse_date(&t[..10]) {
-            let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
-            if !d.is_nan()
-                && rest.len() > 3
-                && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and"))
-                && rest.as_bytes()[3].is_ascii_whitespace()
-            {
-                return DateReading::NotADate;
-            }
+    if b.len() > 10
+        && b[10].is_ascii_whitespace()
+        && let DateReading::Serial(d) = parse_date(&t[..10])
+    {
+        let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
+        if !d.is_nan()
+            && rest.len() > 3
+            && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and"))
+            && rest.as_bytes()[3].is_ascii_whitespace()
+        {
+            return DateReading::NotADate;
         }
     }
     DateReading::NotADate
@@ -663,7 +666,9 @@ fn slash_date_time(t: &str) -> Option<DateReading> {
     if first <= 12 && second <= 12 && first != second {
         return Some(DateReading::Ambiguous(sol_error(
             ErrorCode::Ambiguous,
-            format!("\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"),
+            format!(
+                "\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"
+            ),
         )));
     }
     Some(read)
@@ -949,10 +954,10 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         }
         crits.push(c);
     }
-    if let (Kind::Count, [(range, _)], [c], [f]) = (kind, pairs, &crits[..], &facts[..]) {
-        if let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len())) {
-            return V::Num(n as f64);
-        }
+    if let (Kind::Count, [(range, _)], [c], [f]) = (kind, pairs, &crits[..], &facts[..])
+        && let Some(n) = f.tally.as_ref().and_then(|t| t.count(c, range.len()))
+    {
+        return V::Num(n as f64);
     }
     let mut n = pairs.iter().map(|(r, _)| r.len()).min().unwrap_or(0);
     if let Some(v) = values {

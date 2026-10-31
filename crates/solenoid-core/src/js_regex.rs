@@ -309,10 +309,12 @@ fn name_char(p: &[u16], i: usize) -> Option<(u32, usize)> {
             return (v <= 0x10ffff).then_some((v, end + 1));
         }
         let v = hex(p, i + 2, 4)?;
-        if is_lead(v) && is(p, i + 6, b'\\') && is(p, i + 7, b'u') {
-            if let Some(t) = hex(p, i + 8, 4).filter(|&t| is_trail(t)) {
-                return Some((pair(v, t), i + 12));
-            }
+        if is_lead(v)
+            && is(p, i + 6, b'\\')
+            && is(p, i + 7, b'u')
+            && let Some(t) = hex(p, i + 8, 4).filter(|&t| is_trail(t))
+        {
+            return Some((pair(v, t), i + 12));
         }
         return Some((v, i + 6));
     }
@@ -574,11 +576,11 @@ impl Parser<'_> {
         if let Some(d) = oct(i + 1) {
             v = v * 8 + d;
             len = 2;
-            if first <= 3 {
-                if let Some(d) = oct(i + 2) {
-                    v = v * 8 + d;
-                    len = 3;
-                }
+            if first <= 3
+                && let Some(d) = oct(i + 2)
+            {
+                v = v * 8 + d;
+                len = 3;
             }
         }
         (v as u16, len)

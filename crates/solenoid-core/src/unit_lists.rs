@@ -138,15 +138,15 @@ pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Resul
             }
             _ => {}
         }
-        if pure_currency(d) {
-            if let Some(code) = u.display.as_deref() {
-                match currency {
-                    None => currency = Some(code),
-                    Some(c) if c != code => {
-                        return Err(unit_error(&format!("Can't aggregate different currencies: {c} and {code}.")));
-                    }
-                    _ => {}
+        if pure_currency(d)
+            && let Some(code) = u.display.as_deref()
+        {
+            match currency {
+                None => currency = Some(code),
+                Some(c) if c != code => {
+                    return Err(unit_error(&format!("Can't aggregate different currencies: {c} and {code}.")));
                 }
+                _ => {}
             }
         }
     }

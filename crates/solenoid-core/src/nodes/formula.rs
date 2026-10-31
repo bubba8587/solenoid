@@ -557,17 +557,17 @@ fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
     let mut prev_f: Option<f64> = None;
     for &x in &grid {
         let Some(f) = finite(residual(x)) else {
-            if let (Some(px), Some(pf)) = (prev_x, prev_f) {
-                if pf != 0.0 {
-                    match domain_edge(px, x) {
-                        Some((ex, 0.0)) => consider(ex),
-                        Some((ex, ef)) if jsign(ef) != jsign(pf) => {
-                            if let Some(r) = bisect(px, ex, pf, ef) {
-                                consider(r);
-                            }
+            if let (Some(px), Some(pf)) = (prev_x, prev_f)
+                && pf != 0.0
+            {
+                match domain_edge(px, x) {
+                    Some((ex, 0.0)) => consider(ex),
+                    Some((ex, ef)) if jsign(ef) != jsign(pf) => {
+                        if let Some(r) = bisect(px, ex, pf, ef) {
+                            consider(r);
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
             }
             prev_x = Some(x);
@@ -794,13 +794,13 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
                     s.holds = V::err(unit_error("The two sides carry different units."));
                     return s;
                 }
-                if let (Some(a), Some(b)) = (&dl.code, &dr.code) {
-                    if a != b {
-                        s.holds = V::err(unit_error(&format!(
-                            "Can't equate {a} and {b}: they are different currencies with no exchange rate."
-                        )));
-                        return s;
-                    }
+                if let (Some(a), Some(b)) = (&dl.code, &dr.code)
+                    && a != b
+                {
+                    s.holds = V::err(unit_error(&format!(
+                        "Can't equate {a} and {b}: they are different currencies with no exchange rate."
+                    )));
+                    return s;
                 }
             }
         }
@@ -861,36 +861,34 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
         Some(l - r).filter(|d| d.is_finite())
     };
     let scalar_knowns = !env.iter().any(|(_, x)| matches!(x, V::List(_)));
-    if scalar_knowns {
-        if let Some(quad) = sniff_quadratic(&residual) {
-            let holds = |x: f64| root_holds(&quad, &residual, x);
-            match solve_quadratic(&quad) {
-                Roots::Err(e) => {
-                    let found = solve_numeric(&residual);
-                    s.set(&unknown, if found.is_sol_error() { e } else { found });
-                    tag_unknown(&mut s);
-                    return s;
-                }
-                Roots::One(r) if holds(r) => {
-                    s.set(&unknown, V::Num(r));
-                    tag_unknown(&mut s);
-                    return s;
-                }
-                Roots::Two(a, b) if holds(a) && holds(b) => {
-                    s.set(&unknown, list(vec![V::Num(a), V::Num(b)]));
-                    tag_unknown(&mut s);
-                    return s;
-                }
-                Roots::None => {
-                    let repeated = count_occurrences(&eq.lhs, &unknown) + count_occurrences(&eq.rhs, &unknown) > 1;
-                    if let Some(root) = solve_linear(&quad).filter(|&r| repeated && holds(r)) {
-                        s.set(&unknown, V::Num(root));
-                        tag_unknown(&mut s);
-                        return s;
-                    }
-                }
-                _ => {}
+    if scalar_knowns && let Some(quad) = sniff_quadratic(&residual) {
+        let holds = |x: f64| root_holds(&quad, &residual, x);
+        match solve_quadratic(&quad) {
+            Roots::Err(e) => {
+                let found = solve_numeric(&residual);
+                s.set(&unknown, if found.is_sol_error() { e } else { found });
+                tag_unknown(&mut s);
+                return s;
             }
+            Roots::One(r) if holds(r) => {
+                s.set(&unknown, V::Num(r));
+                tag_unknown(&mut s);
+                return s;
+            }
+            Roots::Two(a, b) if holds(a) && holds(b) => {
+                s.set(&unknown, list(vec![V::Num(a), V::Num(b)]));
+                tag_unknown(&mut s);
+                return s;
+            }
+            Roots::None => {
+                let repeated = count_occurrences(&eq.lhs, &unknown) + count_occurrences(&eq.rhs, &unknown) > 1;
+                if let Some(root) = solve_linear(&quad).filter(|&r| repeated && holds(r)) {
+                    s.set(&unknown, V::Num(root));
+                    tag_unknown(&mut s);
+                    return s;
+                }
+            }
+            _ => {}
         }
     }
     if let Some(text) = solver_text(&eq, &unknown) {

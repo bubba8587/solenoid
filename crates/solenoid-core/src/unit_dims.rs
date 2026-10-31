@@ -234,7 +234,7 @@ fn require_same(args: &[DimResult], what: &str) -> DimResult {
             DimResult::Dim(d) => match acc {
                 None => acc = Some(d),
                 Some(x) if !dim_equal(x, d) => {
-                    return DimResult::Err(unit_error(&format!("{what} needs matching units.")))
+                    return DimResult::Err(unit_error(&format!("{what} needs matching units.")));
                 }
                 _ => {}
             },
@@ -349,7 +349,7 @@ fn call_dim(name: &str, args: &[DimResult]) -> DimResult {
             DimResult::Null => indeterminate = true,
             DimResult::Err(e) => return DimResult::Err(e.clone()),
             DimResult::Dim(d) if !is_dimensionless(d) => {
-                return DimResult::Err(unit_error(&format!("{f} doesn't carry units.")))
+                return DimResult::Err(unit_error(&format!("{f} doesn't carry units.")));
             }
             DimResult::Dim(_) => {}
         }
@@ -469,10 +469,10 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                 return apply_dim(&lam, &vals, env, codes);
             }
             let up = name.to_uppercase();
-            if let Some(host) = host_of(&up, args.len()) {
-                if let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n)) {
-                    return host_dim(args, &host, &lam, env, codes);
-                }
+            if let Some(host) = host_of(&up, args.len())
+                && let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n))
+            {
+                return host_dim(args, &host, &lam, env, codes);
             }
             if let Some(sig) = finance_money(&up) {
                 let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
@@ -815,19 +815,19 @@ fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
         Ast::Call { name, args: nodes } => {
             let fn_ = name.to_uppercase();
             let f = fn_.as_str();
-            if let Some(host) = host_of(f, nodes.len()) {
-                if let Some(lam) = lambda_of(nodes.get(host.lam_arg), host.params.len(), &|n| scope.is_var(n)) {
-                    return aff_host(f, nodes, &host, &lam, scope);
-                }
+            if let Some(host) = host_of(f, nodes.len())
+                && let Some(lam) = lambda_of(nodes.get(host.lam_arg), host.params.len(), &|n| scope.is_var(n))
+            {
+                return aff_host(f, nodes, &host, &lam, scope);
             }
             let mut args = Vec::with_capacity(nodes.len());
             for a in nodes {
                 args.push(aff_eval(a, scope)?);
             }
-            if !scope.locals.contains_key(name) {
-                if let Some((params, body)) = scope.fns.get(name) {
-                    return aff_apply(params, body, &args, scope);
-                }
+            if !scope.locals.contains_key(name)
+                && let Some((params, body)) = scope.fns.get(name)
+            {
+                return aff_apply(params, body, &args, scope);
             }
             if RESULT_DIMLESS_FNS.contains(&f) {
                 return Ok(ZERO);

@@ -136,11 +136,11 @@ impl Direct {
             .map_err(|e| js_message(&e))?;
         let audited = self.audited.replace(false);
         // `null`: the call reads as it did when it was stamped `stamp`.
-        if read.is_null() {
-            if let Some(last) = last {
-                *self.header.borrow_mut() = Some(last.clone());
-                return Ok(last);
-            }
+        if read.is_null()
+            && let Some(last) = last
+        {
+            *self.header.borrow_mut() = Some(last.clone());
+            return Ok(last);
         }
         let read: Array = read
             .dyn_into()
@@ -370,7 +370,7 @@ impl Run<'_> {
                                 "{}: an input holds a value the card can't read",
                                 header.label
                             ),
-                        )))
+                        )));
                     }
                 }
             }
@@ -446,14 +446,14 @@ impl Run<'_> {
                     })
                     .collect();
                 self.show(display, &vals);
-                if let (Some(f), Some(before)) = (header.watch.as_deref(), watched) {
-                    if before.differs(&self.field(f)) {
-                        let hook = Reflect::get(self.card.object, &"coreWatched".into())
-                            .ok()
-                            .and_then(|h| h.dyn_into::<Function>().ok());
-                        if let Some(hook) = hook {
-                            let _ = hook.call0(self.card.object);
-                        }
+                if let (Some(f), Some(before)) = (header.watch.as_deref(), watched)
+                    && before.differs(&self.field(f))
+                {
+                    let hook = Reflect::get(self.card.object, &"coreWatched".into())
+                        .ok()
+                        .and_then(|h| h.dyn_into::<Function>().ok());
+                    if let Some(hook) = hook {
+                        let _ = hook.call0(self.card.object);
                     }
                 }
                 self.finish(&header, vals)
@@ -601,7 +601,7 @@ pub(crate) fn call<'a>(
             return ready(Err(crate::wasm::thrown(boundary::sol_error(
                 "#ERROR!",
                 "the boundary host isn't set",
-            ))))
+            ))));
         }
     };
     let header = card.direct.header(card.object, card.facts, &h);
@@ -616,14 +616,14 @@ pub(crate) fn call<'a>(
         .iter()
         .map(|(k, v)| (k.to_owned(), v.clone()))
         .collect();
-    if !card.facts.sees {
-        if let Some((e, slot)) = raw.iter().find_map(|(k, vs)| {
+    if !card.facts.sees
+        && let Some((e, slot)) = raw.iter().find_map(|(k, vs)| {
             vs.iter()
                 .find(|v| v.is_err())
                 .map(|e| (e.clone(), k.clone()))
-        }) {
-            return ready(Ok(run.error_out(e, Some(&slot))));
-        }
+        })
+    {
+        return ready(Ok(run.error_out(e, Some(&slot))));
     }
     if let Err(m) = header {
         return ready(Ok(run.thrown_out(Thrown::Message(m))));
@@ -669,11 +669,11 @@ pub(crate) fn call<'a>(
                     }
                 })
                 .collect();
-            if !card.facts.sees {
-                if let Some(failed) = values.iter().find(|v| v.is_err()) {
-                    timed(&run, t0);
-                    return Ok(run.error_out(failed.clone(), None));
-                }
+            if !card.facts.sees
+                && let Some(failed) = values.iter().find(|v| v.is_err())
+            {
+                timed(&run, t0);
+                return Ok(run.error_out(failed.clone(), None));
             }
             collected.push((key.clone(), values));
         }

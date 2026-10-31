@@ -6,7 +6,7 @@ use webkit2gtk::glib::translate::ToGlibPtr;
 use webkit2gtk::{WebView, WebViewExt};
 
 // The feature API is WebKitGTK 2.42; the bindings stop at 2.40.
-extern "C" {
+unsafe extern "C" {
     fn webkit_settings_get_all_features() -> *mut c_void;
     fn webkit_feature_list_get_length(list: *mut c_void) -> usize;
     fn webkit_feature_list_get(list: *mut c_void, index: usize) -> *mut c_void;

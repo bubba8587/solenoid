@@ -137,13 +137,12 @@ impl<'a> Walk<'a> {
             let anns = keys.iter().map(|k| self.in_annotation(id, k)).collect();
             return combine(anns);
         }
-        if f["lanes"] == true {
-            if let Some(n) = key
+        if f["lanes"] == true
+            && let Some(n) = key
                 .strip_prefix("out_")
                 .filter(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
-            {
-                return self.in_annotation(id, &format!("in_{n}"));
-            }
+        {
+            return self.in_annotation(id, &format!("in_{n}"));
         }
         self.carried(id, key, f)
     }

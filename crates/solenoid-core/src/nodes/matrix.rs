@@ -88,10 +88,10 @@ fn numeric(m: &V) -> Result<V, V> {
         for cell in rows_of(&row) {
             match cell {
                 V::Null | V::Undef => {
-                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"))
+                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"));
                 }
                 V::Str(s) if s.is_empty() => {
-                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"))
+                    return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"));
                 }
                 V::Num(n) if n.is_finite() => {}
                 _ => return Err(err(ErrorCode::Type, "This matrix operation needs numbers, but got text")),
@@ -353,12 +353,13 @@ pub(crate) fn syntax_hint(expr: &str) -> Option<String> {
     let close_at = |from: usize| (from..cs.len()).find(|&k| cs[k] == ']');
     while i < cs.len() {
         if cs[i] == '[' {
-            if cs.get(i + 1) == Some(&'@') && cs.get(i + 2) == Some(&'[') {
-                if let Some(k) = close_at(i + 3).filter(|&k| cs.get(k + 1) == Some(&']')) {
-                    bare.push_str("[]");
-                    i = k + 2;
-                    continue;
-                }
+            if cs.get(i + 1) == Some(&'@')
+                && cs.get(i + 2) == Some(&'[')
+                && let Some(k) = close_at(i + 3).filter(|&k| cs.get(k + 1) == Some(&']'))
+            {
+                bare.push_str("[]");
+                i = k + 2;
+                continue;
             }
             if let Some(k) = close_at(i + 1) {
                 bare.push_str("[]");
@@ -664,10 +665,10 @@ fn same_unit(a: Option<&Json>, b: Option<&Json>) -> bool {
 
 /// A table's unit, kept only where it has a dimension.
 fn put_unit(c: &mut Call, key: &str, out: &V, unit: Option<Json>) {
-    if let (V::List(_), Some(u)) = (out, unit) {
-        if !is_dimensionless(&unit_dim(&u)) {
-            c.set_matrix_unit(key, u);
-        }
+    if let (V::List(_), Some(u)) = (out, unit)
+        && !is_dimensionless(&unit_dim(&u))
+    {
+        c.set_matrix_unit(key, u);
     }
 }
 

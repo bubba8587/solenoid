@@ -254,7 +254,9 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
                 }
                 let raw = link_type(cell(type_col, i));
                 let Some(ty) = LinkType::parse(&raw) else {
-                    return Err(value_err(format!("Schedule: task \"{task_name}\" waits on \"{task}\" with link type \"{raw}\"; use FS, SS, FF or SF")));
+                    return Err(value_err(format!(
+                        "Schedule: task \"{task_name}\" waits on \"{task}\" with link type \"{raw}\"; use FS, SS, FF or SF"
+                    )));
                 };
                 let lag = lag_of(cell(lag_col, i));
                 if !lag.is_finite() {
@@ -530,22 +532,22 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
                     }
                 })
                 .collect();
-            let mut gen = vec![
+            let mut made = vec![
                 col_of("Task", occ.iter().map(|s| V::str(s)).collect(), Some(FrameColType::String)),
                 col_of("Duration", vec![V::Num(dur); n], Some(FrameColType::Number)),
                 col_of("Predecessors", pred_cells, None),
             ];
             if let Some(b) = base {
-                gen.push(col_of(
+                made.push(col_of(
                     "Start",
                     (0..n).map(|k| V::Num(b + k as f64 * every)).collect(),
                     Some(FrameColType::Date),
                 ));
             }
-            let Cv::Cube(gen) = super::frames::cube_from_columns(gen) else {
+            let Cv::Cube(made) = super::frames::cube_from_columns(made) else {
                 unreachable!("cube_from_columns makes a cube")
             };
-            let (level, sub) = read_level(gen, hours)?;
+            let (level, sub) = read_level(made, hours)?;
             kids = Some(sub);
             child_level = Some(level);
         }
@@ -1224,11 +1226,12 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
                 let parts: Vec<&str> = val.split(',').collect();
                 let read = |s: Option<&&str>| -> Rd<Option<f64>> { s.map(|s| parse_date_text(js_trim(s))).transpose() };
                 let (a, b) = (read(parts.first())?, read(parts.get(1))?);
-                if let (Some(a), Some(b)) = (a, b) {
-                    if a.is_finite() && b.is_finite() {
-                        let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
-                        v.insert(key, json!([json_num(lo), json_num(hi)]));
-                    }
+                if let (Some(a), Some(b)) = (a, b)
+                    && a.is_finite()
+                    && b.is_finite()
+                {
+                    let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+                    v.insert(key, json!([json_num(lo), json_num(hi)]));
                 }
             }
             "columns" => {
@@ -1269,10 +1272,10 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
     gantt_flatten(cube, 0.0, &mut rows)?;
     let by_key: HashMap<String, usize> = rows.iter().enumerate().map(|(i, r)| (norm(&r.name), i)).collect();
     let mut base_rows = Vec::new();
-    if let Some(b) = &o.baseline {
-        if gantt_flatten(b, 0.0, &mut base_rows).is_err() {
-            base_rows.clear();
-        }
+    if let Some(b) = &o.baseline
+        && gantt_flatten(b, 0.0, &mut base_rows).is_err()
+    {
+        base_rows.clear();
     }
     let base_by_key: HashMap<String, usize> = base_rows.iter().enumerate().map(|(i, r)| (norm(&r.name), i)).collect();
     let mut tasks: Vec<Json> = Vec::new();
@@ -1338,22 +1341,22 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
                 t.insert("group".into(), Json::String(g));
             }
         }
-        if let Some(V::Str(color)) = r.get("color") {
-            if !js_trim(color).is_empty() {
-                t.insert("color".into(), Json::String(js_trim(color).to_string()));
-            }
+        if let Some(V::Str(color)) = r.get("color")
+            && !js_trim(color).is_empty()
+        {
+            t.insert("color".into(), Json::String(js_trim(color).to_string()));
         }
-        if let Some(V::Str(res)) = r.first(&["resource", "who", "owner", "assignee"]) {
-            if !js_trim(res).is_empty() {
-                t.insert("resource".into(), Json::String(js_trim(res).to_string()));
-                t.insert("units".into(), json_num(r.num("units").filter(|u| *u >= 0.0).unwrap_or(1.0)));
-            }
+        if let Some(V::Str(res)) = r.first(&["resource", "who", "owner", "assignee"])
+            && !js_trim(res).is_empty()
+        {
+            t.insert("resource".into(), Json::String(js_trim(res).to_string()));
+            t.insert("units".into(), json_num(r.num("units").filter(|u| *u >= 0.0).unwrap_or(1.0)));
         }
-        if let Some(b) = base_by_key.get(&norm(&r.name)).map(|&k| &base_rows[k]) {
-            if let (Some(bs), Some(bf)) = (b.num("start"), b.num("finish")) {
-                t.insert("baselineStart".into(), json_num(bs.floor()));
-                t.insert("baselineFinish".into(), json_num(bf.floor()));
-            }
+        if let Some(b) = base_by_key.get(&norm(&r.name)).map(|&k| &base_rows[k])
+            && let (Some(bs), Some(bf)) = (b.num("start"), b.num("finish"))
+        {
+            t.insert("baselineStart".into(), json_num(bs.floor()));
+            t.insert("baselineFinish".into(), json_num(bf.floor()));
         }
         any_clock |= start.fract() != 0.0 || finish.fract() != 0.0;
         starts.push(start);

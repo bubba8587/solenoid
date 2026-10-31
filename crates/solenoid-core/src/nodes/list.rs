@@ -239,10 +239,10 @@ fn series(c: &mut Call) -> Answer {
     };
     c.show("cachedList", result.clone());
     // The rank the output socket follows; an error, a blank or an empty list says nothing about shape.
-    if let V::List(items) = &result {
-        if let Some(first) = items.first() {
-            c.show("lastRank", V::Num(if matches!(first, V::List(_)) { 2.0 } else { 1.0 }));
-        }
+    if let V::List(items) = &result
+        && let Some(first) = items.first()
+    {
+        c.show("lastRank", V::Num(if matches!(first, V::List(_)) { 2.0 } else { 1.0 }));
     }
     Ok(vec![("list".into(), Cv::from(result))])
 }
@@ -677,10 +677,10 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
 
 /// A wired item read as the list's type; converts, never filters.
 fn list_item_of(ty: &str, v: &V) -> V {
-    if let V::Str(s) = v {
-        if ty != "string" {
-            return frame_cell_of(ty, s);
-        }
+    if let V::Str(s) = v
+        && ty != "string"
+    {
+        return frame_cell_of(ty, s);
     }
     match ty {
         "number" => match v {
@@ -867,15 +867,17 @@ fn filter(c: &mut Call) -> Answer {
     let any = c.field_str("combine", "and") != "and";
     let (mut kept, mut dropped) = (Vec::new(), Vec::new());
     for (i, mag) in mags.iter().enumerate() {
-        if let Some(label) = first_text {
-            if !nullish(mag) && !mag.is_sol_error() && !matches!(mag, V::Str(_)) {
-                let what = elem_col_type(std::slice::from_ref(mag)).as_str();
-                kept.push(err(
-                    ErrorCode::Type,
-                    format!("{label} reads text; this item is a {what}. Cast it to Text first"),
-                ));
-                continue;
-            }
+        if let Some(label) = first_text
+            && !nullish(mag)
+            && !mag.is_sol_error()
+            && !matches!(mag, V::Str(_))
+        {
+            let what = elem_col_type(std::slice::from_ref(mag)).as_str();
+            kept.push(err(
+                ErrorCode::Type,
+                format!("{label} reads text; this item is a {what}. Cast it to Text first"),
+            ));
+            continue;
         }
         let cell = as_cell(mag);
         let mut pass = !any;
@@ -1413,10 +1415,10 @@ fn list_index(c: &mut Call) -> Answer {
     let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
     let unit = c.matrix_unit("list").cloned();
     let result = index_container(&v, &row, &col, unit.as_ref());
-    if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result) {
-        if std::rc::Rc::ptr_eq(a, b) {
-            c.set_matrix_unit("result", u.clone());
-        }
+    if let (Some(u), Cv::V(V::List(a)), Cv::V(V::List(b))) = (&unit, &v, &result)
+        && std::rc::Rc::ptr_eq(a, b)
+    {
+        c.set_matrix_unit("result", u.clone());
     }
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), result)])
@@ -1623,14 +1625,14 @@ fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
         let width = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
         // One position on a one-row or one-column table walks along it, as Excel's INDEX does.
         if matches!(col, V::Undef) && !row_all {
-            if grid.len() == 1 {
-                if let V::List(only) = &grid[0] {
-                    return if outside(r, only.len()) {
-                        index_ref_error(r + 1.0, only.len(), "Column")
-                    } else {
-                        tag(or_null(at_pos(only, r)))
-                    };
-                }
+            if grid.len() == 1
+                && let V::List(only) = &grid[0]
+            {
+                return if outside(r, only.len()) {
+                    index_ref_error(r + 1.0, only.len(), "Column")
+                } else {
+                    tag(or_null(at_pos(only, r)))
+                };
             }
             if width() == 1 {
                 if outside(r, grid.len()) {

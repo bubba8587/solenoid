@@ -96,9 +96,9 @@ fn random_formulas_answer_without_panicking_or_stalling() {
     let (tx, rx) = mpsc::channel::<Msg>();
     let worker = std::thread::spawn(move || {
         std::panic::set_hook(Box::new(|_| {}));
-        let mut gen = Gen { rng: fastrand::Rng::with_seed(seed), names: function_names(true) };
+        let mut cases_from = Gen { rng: fastrand::Rng::with_seed(seed), names: function_names(true) };
         for _ in 0..cases {
-            let src = gen.expr(3);
+            let src = cases_from.expr(3);
             if tx.send(Msg::Start(src.clone())).is_err() {
                 return;
             }

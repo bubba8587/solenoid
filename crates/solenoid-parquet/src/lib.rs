@@ -88,10 +88,10 @@ pub fn inside(folder: &Path, name: &str) -> Result<PathBuf, SolError> {
         return Err(outside());
     }
     let path = folder.join(name);
-    if let (Ok(real), Ok(root)) = (path.canonicalize(), folder.canonicalize()) {
-        if !real.starts_with(root) {
-            return Err(outside());
-        }
+    if let (Ok(real), Ok(root)) = (path.canonicalize(), folder.canonicalize())
+        && !real.starts_with(root)
+    {
+        return Err(outside());
     }
     Ok(path)
 }

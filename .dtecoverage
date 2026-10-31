@@ -26,6 +26,9 @@ crates/solenoid-parquet/Cargo.toml
 crates/solenoid-schedule/Cargo.toml
 crates/solenoid-core/rustfmt.toml
 crates/solenoid-schedule/rustfmt.toml
+crates/solenoid-graph/rustfmt.toml
+crates/solenoid-parquet/rustfmt.toml
+src-tauri/rustfmt.toml
 deny.toml
 rust-toolchain.toml
 crates/solenoid-core/clippy.toml

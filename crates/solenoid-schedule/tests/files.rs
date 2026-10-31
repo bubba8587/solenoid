@@ -141,7 +141,9 @@ fn dcma_invariants_over_the_corpus() {
 }
 
 fn mspdi_file(tasks: &str) -> String {
-    format!("<?xml version=\"1.0\"?><Project xmlns=\"http://schemas.microsoft.com/project\"><Tasks>{tasks}</Tasks></Project>")
+    format!(
+        "<?xml version=\"1.0\"?><Project xmlns=\"http://schemas.microsoft.com/project\"><Tasks>{tasks}</Tasks></Project>"
+    )
 }
 
 fn mspdi_task(uid: u32, name: &str, dur: &str, fmt: u32, extra: &str) -> String {
@@ -161,7 +163,9 @@ fn an_elapsed_duration_counts_24_hour_days() {
 #[test]
 fn lag_formats() {
     let link = |fmt: u32, tenths: u32| {
-        format!("<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>{tenths}</LinkLag><LagFormat>{fmt}</LagFormat></PredecessorLink>")
+        format!(
+            "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>{tenths}</LinkLag><LagFormat>{fmt}</LagFormat></PredecessorLink>"
+        )
     };
     let plan = read_mspdi(&mspdi_file(
         &[

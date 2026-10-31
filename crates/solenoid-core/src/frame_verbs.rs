@@ -599,7 +599,7 @@ type Pred<'a> = Box<dyn FnMut(&FrameCell) -> Res<bool> + 'a>;
 pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, match_case: bool) -> Res<Pred<'a>> {
     match op {
         FilterOp::ListContains | FilterOp::ListContainsAny | FilterOp::ListContainsAll | FilterOp::ListEmpty => {
-            return Ok(Box::new(|_| Ok(false)))
+            return Ok(Box::new(|_| Ok(false)));
         }
         FilterOp::IsError => return Ok(Box::new(|c| Ok(c.is_err()))),
         FilterOp::NotError => return Ok(Box::new(|c| Ok(!c.is_err()))),
@@ -1146,10 +1146,10 @@ fn asof_nearest(sorted_right: &[Keyed], key: f64, direction: AsofDirection, tole
             }
         },
     }?;
-    if let Some(t) = tolerance {
-        if (sorted_right[pick].key - key).abs() > t {
-            return None;
-        }
+    if let Some(t) = tolerance
+        && (sorted_right[pick].key - key).abs() > t
+    {
+        return None;
     }
     Some(sorted_right[pick].idx)
 }

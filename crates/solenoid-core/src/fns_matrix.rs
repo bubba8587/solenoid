@@ -1294,19 +1294,19 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(err(ErrorCode::Value, "DIAGONAL needs numbers"));
             }
             let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(js_number(c)) };
-            if let V::List(items) = v {
-                if matches!(items.first(), Some(V::List(_))) {
-                    return Ok(list(
-                        items
-                            .iter()
-                            .enumerate()
-                            .map(|(i, row)| match row {
-                                V::List(r) => r.get(i).map_or(V::Null, num_or_null),
-                                _ => V::Null,
-                            })
-                            .collect(),
-                    ));
-                }
+            if let V::List(items) = v
+                && matches!(items.first(), Some(V::List(_)))
+            {
+                return Ok(list(
+                    items
+                        .iter()
+                        .enumerate()
+                        .map(|(i, row)| match row {
+                            V::List(r) => r.get(i).map_or(V::Null, num_or_null),
+                            _ => V::Null,
+                        })
+                        .collect(),
+                ));
             }
             let vs: Vec<V> = to_list(v).iter().map(num_or_null).collect();
             if vs.is_empty() {
