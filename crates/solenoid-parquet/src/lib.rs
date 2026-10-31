@@ -1,6 +1,7 @@
 // [[C130]] rustCore
 //! The desktop's Parquet reader (Local File): a file's columns as the core's frame, on Apache's `parquet` and
 //! `arrow` crates. Desktop only; the web has no files to read.
+#![forbid(unsafe_code)]
 
 use std::fs::File;
 use std::path::{Component, Path, PathBuf};

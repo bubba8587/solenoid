@@ -26,11 +26,12 @@ crates/solenoid-parquet/Cargo.toml
 crates/solenoid-schedule/Cargo.toml
 crates/solenoid-core/rustfmt.toml
 crates/solenoid-schedule/rustfmt.toml
+deny.toml
+scripts/rust-licenses/*
 src-tauri/build.rs
 src-tauri/tauri.conf.json
 src-tauri/tauri.live.conf.json
 src-tauri/.gitignore
-src-tauri/.cargo
 src-tauri/capabilities
 packages/*/package.json
 obsidian-plugin/manifest.json
@@ -42,6 +43,7 @@ tree/specs/floors/spec-prose.md
 why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
 LICENSE
 THIRD-PARTY-NOTICES.md
+public/third-party-licenses-rust.txt
 README.md
 PRODUCT.md
 

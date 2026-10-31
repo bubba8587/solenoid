@@ -38,7 +38,9 @@ SOFTWARE.
 
 The web bundle ships the complete generated license inventory for every
 bundled npm package at `third-party-licenses.txt` (produced by
-`rollup-plugin-license`, see `vite.config.ts`). Highlights: the graph model and
+`rollup-plugin-license`, see `vite.config.ts`), and every Rust crate compiled into the
+engine and the desktop shell at `third-party-licenses-rust.txt` (produced by
+`scripts/rust-licenses.mjs` with `cargo-about`). Highlights: the graph model and
 the dataflow engine are [Ruggine](https://github.com/bubba8587/ruggine) (MIT),
 Solenoid's Rust port of `rete` and `rete-engine`; the Excel functions run on
 Solenoid's own Rust core (`crates/solenoid-core`), which ports Formula.js and the

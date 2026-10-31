@@ -1,0 +1,44 @@
+# cargo-deny for every Rust crate in the repo: `cargo deny --manifest-path <crate>/Cargo.toml --config deny.toml check`
+# (.github/workflows/engine-test.yml runs it). Licenses must be on the allow list; advisories fail on vulnerabilities.
+
+[graph]
+all-features = false
+
+[advisories]
+# Unmaintained crates reach the desktop shell only through Tauri; cargo-audit reports them.
+unmaintained = "none"
+# The two quick-xml advisories exist only in the desktop shell's tree; the other crates don't meet them.
+unused-ignored-advisory = "allow"
+ignore = [
+  # quick-xml XML-parsing DoS: build time only, through plist <- tauri-build parsing Tauri's own config
+  # (src-tauri/.cargo/audit.toml carries the same two).
+  "RUSTSEC-2026-0194",
+  "RUSTSEC-2026-0195",
+]
+
+[licenses]
+allow = [
+  "MIT", "MIT-0", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Zlib",
+  "0BSD", "Unlicense", "CC0-1.0", "BSL-1.0", "Unicode-3.0", "CDLA-Permissive-2.0",
+  # File-level copyleft, reaching only the desktop shell through Tauri's HTML stack (cssparser, selectors); unmodified.
+  "MPL-2.0",
+]
+confidence-threshold = 0.9
+# One allow list serves every crate, so a license one crate never meets is expected.
+unused-allowed-license = "allow"
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# Ruggine, the graph engine library, pinned to a commit in crates/solenoid-graph/Cargo.toml.
+allow-git = ["https://github.com/bubba8587/ruggine"]
+# Only the graph crate meets Ruggine.
+unused-allowed-source = "allow"

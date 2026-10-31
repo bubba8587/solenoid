@@ -25,5 +25,7 @@ impl From<solenoid_core::error_value::SolError> for IpcError {
 #[tauri::command]
 pub fn read_parquet(folder: String, name: String) -> Result<tauri::ipc::Response, IpcError> {
     let path = solenoid_parquet::inside(std::path::Path::new(&folder), &name)?;
-    Ok(tauri::ipc::Response::new(solenoid_parquet::read_bytes(&path)?))
+    Ok(tauri::ipc::Response::new(solenoid_parquet::read_bytes(
+        &path,
+    )?))
 }

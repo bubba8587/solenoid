@@ -1,0 +1,87 @@
+name: Rust supply chain
+
+# Every Rust crate's dependencies (advisories, licenses, sources) through cargo-deny, the shipped license inventory
+# (public/third-party-licenses-rust.txt), and the desktop shell's own lints and tests.
+on:
+  push:
+    paths:
+      - "crates/**"
+      - "src-tauri/**"
+      - "deny.toml"
+      - "scripts/rust-licenses.mjs"
+      - "scripts/rust-licenses/**"
+      - "public/third-party-licenses-rust.txt"
+      - ".github/workflows/rust-supply-chain.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "src-tauri/**"
+      - "deny.toml"
+      - "scripts/rust-licenses.mjs"
+      - "scripts/rust-licenses/**"
+      - "public/third-party-licenses-rust.txt"
+      - ".github/workflows/rust-supply-chain.yml"
+  schedule:
+    # Weekly, so a new advisory against an unchanged lockfile still surfaces.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: rust-supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deny:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        manifest:
+          - crates/solenoid-core/Cargo.toml
+          - crates/solenoid-graph/Cargo.toml
+          - crates/solenoid-schedule/Cargo.toml
+          - crates/solenoid-parquet/Cargo.toml
+          - src-tauri/Cargo.toml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: ${{ matrix.manifest }}
+          arguments: --config deny.toml
+          command: check
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: The Rust license inventory is current
+        run: node scripts/rust-licenses.mjs --check
+
+  shell:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+      - name: Install Tauri's Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+      - name: Desktop shell lints and tests
+        working-directory: src-tauri
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test

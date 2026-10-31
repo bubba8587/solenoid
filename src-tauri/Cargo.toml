@@ -4,6 +4,8 @@ version = "1.5.0"
 description = "Solenoid — a local-first node graph for wiring live data into personal computation"
 authors = ["Solenoid"]
 edition = "2021"
+license = "MIT"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
