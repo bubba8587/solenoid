@@ -39,8 +39,6 @@ export default defineConfig({
   test: {
     environment: "node",
     maxWorkers: 4,
-    // Transformed modules persist across runs (in node_modules/.vite), so a rerun skips most transforms.
-    fsModuleCache: true,
     // Re-importing the node catalog per file was most of the run, so files share each
     // worker's module cache; tests/setup/sharedWorker.ts undoes a file's global edits.
     // A file that mocks a module would leak the mock, so it runs isolated.

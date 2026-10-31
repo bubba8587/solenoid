@@ -52,8 +52,6 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 - **Never run `npm run build:wasm:opt` or install/run `wasm-opt`** (author's order): it costs half an hour. After a
   change to `crates/solenoid-core` or `crates/solenoid-graph`, rebuild with plain `npm run build:wasm`; the stamp
   test checks the source, not the optimization. Optimizing is the author's call at release time.
-- **vitest's `fsModuleCache` misses a new or deleted file under an `import.meta.glob`** (a seed, a pack): delete
-  `node_modules/.vitest-cache` before the run, or a local suite passes on the old file list while CI fails.
 - **The dev machine is Linux** (X11). There is no bare `python`: every `python tools/dte.py …` in
   the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
   scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
