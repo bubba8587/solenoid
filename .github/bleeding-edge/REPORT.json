@@ -1,7 +1,61 @@
 {
-  "date": "2026-10-30",
+  "date": "2026-10-31",
   "base": "rust-port",
-  "baseSha": "adfd689aa8e3ab3ec920874e91d4567246e1c67b",
+  "baseSha": "a0afae2975eda0539aa596605f0cf771e44d3af6",
+  "fromSha": "54ab942164be5d7ce6fb49bc14a659f3c646fd69",
+  "carried": [
+    {
+      "sha": "8b3af0513e32febf89b1dc2a44a58692aa67dea3",
+      "subject": "Bleeding edge 2026-10-30: every dependency at its newest, on rust-port"
+    },
+    {
+      "sha": "f495c856ef01de02ef160c4953a048f2e6952d6c",
+      "subject": "Edge: text-fit: the Dashboard half box's glyph-width estimate"
+    },
+    {
+      "sha": "0139dd8b88e1088f1ac1a0c25a25415d948ea8d6",
+      "subject": "Bleeding edge: the experiments ledger"
+    },
+    {
+      "sha": "db5a4deefeb841b017cc0331e21d53e1ed595234",
+      "subject": "Bleeding edge: its leaves and specs, on this branch only, and ready-to-port verdicts"
+    },
+    {
+      "sha": "5b1aa58a0f4c3ec6732be8c86b2987d0b4e13ba8",
+      "subject": "Bleeding edge: uuids for its leaves, and the renumbering in its spec"
+    },
+    {
+      "sha": "aaf7169c393f8ae66811f2a0bb3c41694982d6e3",
+      "subject": "Bleeding edge: four platform features ported to rust-port"
+    },
+    {
+      "sha": "8b923e50fde7fa2ad8682384f35988bd2d2f0f5a",
+      "subject": "Bleeding edge: focusgroup ported too"
+    },
+    {
+      "sha": "87240323d6b1d3a66d575ce63c051b60453557a3",
+      "subject": "Bleeding edge: a ready finding ports as it stands"
+    },
+    {
+      "sha": "79bc61a39ea0393413aaf03de4d1ed99bd5d59a0",
+      "subject": "Bleeding edge: the wasm-bindgen 0.2.130 port is on rust-port"
+    },
+    {
+      "sha": "17a2361a6410a310c3e79bfb61896a000dddadc7",
+      "subject": "Bleeding edge: a finding is one commit, ported with port.mjs"
+    }
+  ],
+  "dropped": [],
+  "renumbered": [],
+  "ports": [
+    {
+      "sha": "f495c856ef01de02ef160c4953a048f2e6952d6c",
+      "subject": "Edge: text-fit: the Dashboard half box's glyph-width estimate",
+      "ok": false,
+      "why": "Edge: text-fit: the Dashboard half box's glyph-width estimate\n\nA phone's half box sized its value from the character count (a glyph taken as 0.6 em, 130cqw over --chars), which misjudged commas and currency signs, so neighbors drew at different widths. text-fit: shrink sets the value at its largest size and shrinks it to 86% of the box by the text's own measure; --chars is gone from the three components that set it. A counting value pads to its final length with figure spaces, so it fits once and holds still.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01BJp3bVvDK9qNZ5oxC2FHcC\n\nPorted from bleeding-edge f495c856e.\nPORT_MSG\nAuthor identity unknown\n\n*** Please tell me who you are.\n\nRun\n\n  git config --global user.email \"you@example.com\"\n  git config --global user.name \"Your Name\"\n\nto set your account's default identity.\nOmit --global to set the identity only in this repository.\n\nfatal: empty ident name (for <runner@runnervm48cm3.sgaplscctz0uxe4tann0drhwng.phxx.internal.cloudapp.net>) not allowed\n\n    at must (file:///home/runner/work/_temp/port.mjs:35:78)\n    at file:///home/runner/work/_temp/port.mjs:148:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\n    at async node:internal/modules/esm/loader:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v24.22.1"
+    }
+  ],
+  "bumped": true,
   "toolchain": {
     "node": "v24.22.1",
     "npm": "11.19.1",
@@ -11,9 +65,16 @@
     {
       "name": "Engine module builds (npm run build:wasm)",
       "cmd": "npm run build:wasm",
-      "ok": false,
-      "secs": 114,
-      "log": "\u001b[1m\u001b[92m   Compiling\u001b[0m solenoid-core v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-core)\n\u001b[1m\u001b[92m   Compiling\u001b[0m solenoid-graph v0.1.0 (/home/runner/work/solenoid/solenoid/crates/solenoid-graph)\n\u001b[1m\u001b[91merror[E0282]\u001b[0m\u001b[1m: type annotations needed\u001b[0m\n    \u001b[1m\u001b[94m--> \u001b[0msrc/boundary.rs:1154:24\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m1154\u001b[0m \u001b[1m\u001b[94m|\u001b[0m             for key in Object::keys(outputs.unchecked_ref()).iter() {\n     \u001b[1m\u001b[94m|\u001b[0m                        \u001b[1m\u001b[91m^^^^^^^^^^^^\u001b[0m \u001b[1m\u001b[94m-----------------------\u001b[0m \u001b[1m\u001b[94mtype must be known at this point\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m                        \u001b[1m\u001b[91m|\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m                        \u001b[1m\u001b[91mcannot infer type of the type parameter `T` declared on the associated function `keys`\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m: consider specifying a concrete type for the type parameter `T`\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m1154\u001b[0m \u001b[1m\u001b[94m| \u001b[0m            for key in Object::keys\u001b[92m::</* Type */>\u001b[0m(outputs.unchecked_ref()).iter() {\n     \u001b[1m\u001b[94m|\u001b[0m                                    \u001b[92m++++++++++++++\u001b[0m\n\n\u001b[1m\u001b[91merror[E0282]\u001b[0m\u001b[1m: type annotations needed\u001b[0m\n    \u001b[1m\u001b[94m--> \u001b[0msrc/boundary.rs:1273:20\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m1273\u001b[0m \u001b[1m\u001b[94m|\u001b[0m         for key in Object::keys(out.unchecked_ref()).iter() {\n     \u001b[1m\u001b[94m|\u001b[0m                    \u001b[1m\u001b[91m^^^^^^^^^^^^\u001b[0m \u001b[1m\u001b[94m-------------------\u001b[0m \u001b[1m\u001b[94mtype must be known at this point\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m                    \u001b[1m\u001b[91m|\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m                    \u001b[1m\u001b[91mcannot infer type of the type parameter `T` declared on the associated function `keys`\u001b[0m\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m: consider specifying a concrete type for the type parameter `T`\n     \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m1273\u001b[0m \u001b[1m\u001b[94m| \u001b[0m        for key in Object::keys\u001b[92m::</* Type */>\u001b[0m(out.unchecked_ref()).iter() {\n     \u001b[1m\u001b[94m|\u001b[0m                                \u001b[92m++++++++++++++\u001b[0m\n\n\u001b[1m\u001b[91merror[E0282]\u001b[0m\u001b[1m: type annotations needed\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0msrc/wasm.rs:160:5\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m160\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     Object::keys(value.unchecked_ref())\n    \u001b[1m\u001b[94m|\u001b[0m     \u001b[1m\u001b[91m^^^^^^^^^^^^\u001b[0m \u001b[1m\u001b[94m---------------------\u001b[0m \u001b[1m\u001b[94mtype must be known at this point\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m     \u001b[1m\u001b[91m|\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m     \u001b[1m\u001b[91mcannot infer type of the type parameter `T` declared on the associated function `keys`\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m: consider specifying a concrete type for the type parameter `T`\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m160\u001b[0m \u001b[1m\u001b[94m| \u001b[0m    Object::keys\u001b[92m::</* Type */>\u001b[0m(value.unchecked_ref())\n    \u001b[1m\u001b[94m|\u001b[0m                 \u001b[92m++++++++++++++\u001b[0m\n\n\u001b[1m\u001b[91merror[E0282]\u001b[0m\u001b[1m: type annotations needed\u001b[0m\n   \u001b[1m\u001b[94m--> \u001b[0msrc/wasm.rs:369:16\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m369\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     for key in Object::keys(inputs.unchecked_ref()).iter() {\n    \u001b[1m\u001b[94m|\u001b[0m                \u001b[1m\u001b[91m^^^^^^^^^^^^\u001b[0m \u001b[1m\u001b[94m----------------------\u001b[0m \u001b[1m\u001b[94mtype must be known at this point\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m                \u001b[1m\u001b[91m|\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m                \u001b[1m\u001b[91mcannot infer type of the type parameter `T` declared on the associated function `keys`\u001b[0m\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[96mhelp\u001b[0m: consider specifying a concrete type for the type parameter `T`\n    \u001b[1m\u001b[94m|\u001b[0m\n\u001b[1m\u001b[94m369\u001b[0m \u001b[1m\u001b[94m| \u001b[0m    for key in Object::keys\u001b[92m::</* Type */>\u001b[0m(inputs.unchecked_ref()).iter() {\n    \u001b[1m\u001b[94m|\u001b[0m                            \u001b[92m++++++++++++++\u001b[0m\n\n\u001b[1mFor more information about this error, try `rustc --explain E0282`.\u001b[0m\n\u001b[1m\u001b[91merror\u001b[0m: could not compile `solenoid-graph` (lib) due to 4 previous errors\nnode:internal/errors:986\n  const err = new Error(message);\n              ^\n\nError: Command failed: cargo build --release --target wasm32-unknown-unknown --manifest-path crates/solenoid-graph/Cargo.toml --target-dir crates/solenoid-graph/target\n    at genericNodeError (node:internal/errors:986:15)\n    at wrappedFn (node:internal/errors:540:14)\n    at checkExecSyncError (node:child_process:943:11)\n    at execFileSync (node:child_process:979:15)\n    at run (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:10:28)\n    at build (file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:54:3)\n    at file:///home/runner/work/solenoid/solenoid/scripts/build-wasm.mjs:70:1\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\n    at async node:internal/modules/esm/loader:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n  status: 101,\n  signal: null,\n  output: [ null, null, null ],\n  pid: 8053,\n  stdout: null,\n  stderr: null\n}\n\nNode.js v24.22.1"
+      "ok": true,
+      "secs": 117,
+      "log": ""
+    },
+    {
+      "name": "Site snapshots regenerate (node scripts/prerender-site.mjs)",
+      "cmd": "node scripts/prerender-site.mjs",
+      "ok": true,
+      "secs": 30,
+      "log": ""
     },
     {
       "name": "Typecheck",
@@ -26,8 +87,8 @@
       "name": "Unit tests",
       "cmd": "npx vitest run",
       "ok": false,
-      "secs": 47,
-      "log": "    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3318:20\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run arms and runs a named Write to Obsidian into a temp copy of the vault; nothing runs without it\n\u001b[22m\u001b[39mWrite memo: Wrote Notes/CLI memo.md\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run a Write Properties over the vault leaves current values byte-identical and writes a new key\n\u001b[22m\u001b[39mSync status: 0 changes across 0 notes\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run a Write Properties over the vault leaves current values byte-identical and writes a new key\n\u001b[22m\u001b[39mAdd folder: 6 changes across 6 notes\n\n\u001b[90mstderr\u001b[2m | tests/graph/draftFlush.test.ts\u001b[2m > \u001b[22m\u001b[2mopen drafts flush before a capture\u001b[2m > \u001b[22m\u001b[2mcommits every registered draft once, and a failing one never blocks the rest\n\u001b[22m\u001b[39m[solenoid] draft flush failed Error: boom\n    at \u001b[90m/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/draftFlush.test.ts:9:44\n    at flushDrafts \u001b[90m(/home/runner/work/solenoid/solenoid/\u001b[39msrc/graph/draftFlush.ts:11:11\u001b[90m)\u001b[39m\n    at \u001b[90m/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/draftFlush.test.ts:11:12\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:1632:35\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:2801:26\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3338:20\n    at new Promise (<anonymous>)\n    at runWithCancel \u001b[90m(file:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3333:10\u001b[90m)\u001b[39m\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3318:20\n    at new Promise (<anonymous>)\n\n\n\u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m\u001b[1m\u001b[41m Failed Tests 2 \u001b[49m\u001b[22m\u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m\n\n\u001b[41m\u001b[1m FAIL \u001b[22m\u001b[49m \u001b[30m\u001b[42m shared \u001b[49m\u001b[39m tests/graph/coreConformance.test.ts\u001b[2m > \u001b[22mthe core's Math answers as V8's, bit for bit\u001b[2m > \u001b[22mpow\n\u001b[31m\u001b[1mAssertionError\u001b[22m: expected [ [ 22.5, 7.5, …(2) ], …(2) ] to deeply equal []\u001b[39m\n\n\u001b[32m- Expected\u001b[39m\n\u001b[31m+ Received\u001b[39m\n\n\u001b[32m- []\u001b[39m\n\u001b[31m+ [\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     22.5,\u001b[39m\n\u001b[31m+     7.5,\u001b[39m\n\u001b[31m+     \"4758557643364502669\",\u001b[39m\n\u001b[31m+     \"4758557643364502668\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     26.6,\u001b[39m\n\u001b[31m+     6.5,\u001b[39m\n\u001b[31m+     \"4745449661846722843\",\u001b[39m\n\u001b[31m+     \"4745449661846722842\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     14.139106450602412,\u001b[39m\n\u001b[31m+     13.811988537199795,\u001b[39m\n\u001b[31m+     \"4844621592307258059\",\u001b[39m\n\u001b[31m+     \"4844621592307258060\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n\u001b[36m \u001b[2m❯\u001b[22m tests/graph/coreConformance.test.ts:\u001b[2m128:29\u001b[22m\u001b[39m\n    \u001b[90m126|\u001b[39m     const got = wasmInvokeSync<string[]>(\"engine_math\", { fn: c.fn, xs…\n    \u001b[90m127|\u001b[39m     const bad = c.xs.map((x, i) => [x, c.ys[i], c.want[i], got[i]] as …\n    \u001b[90m128|\u001b[39m     expect(bad.slice(0, 3)).toEqual([]);\n    \u001b[90m   |\u001b[39m                             \u001b[31m^\u001b[39m\n    \u001b[90m129|\u001b[39m   });\n    \u001b[90m130|\u001b[39m });\n\n\u001b[31m\u001b[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯\u001b[22m\u001b[39m\n\n\u001b[41m\u001b[1m FAIL \u001b[22m\u001b[49m \u001b[30m\u001b[42m shared \u001b[49m\u001b[39m tests/graph/wasmStamp.test.ts\u001b[2m > \u001b[22mthe module is current with the crates it links (run npm run build:wasm)\n\u001b[31m\u001b[1mAssertionError\u001b[22m: expected '9d06b997515666febe636ddfe86bcd4d8f16f…' to be 'e5943569b2a3caa01918c9cba72c69cb2d968…' // Object.is equality\u001b[39m\n\nExpected: \u001b[32m\"e5943569b2a3caa01918c9cba72c69cb2d968a29eae98af78e7aa1f9437433bb\"\u001b[39m\nReceived: \u001b[31m\"9d06b997515666febe636ddfe86bcd4d8f16fd9b2bf56fef2eadaf908ea45c38\"\u001b[39m\n\n\u001b[36m \u001b[2m❯\u001b[22m tests/graph/wasmStamp.test.ts:\u001b[2m12:19\u001b[22m\u001b[39m\n    \u001b[90m 10|\u001b[39m   const root = path.resolve(__dirname, \"../..\");\n    \u001b[90m 11|\u001b[39m   const stamped = fs.readFileSync(path.join(root, (MODULE as { out: st…\n    \u001b[90m 12|\u001b[39m   expect(stamped).toBe(sourceStamp(root));\n    \u001b[90m   |\u001b[39m                   \u001b[31m^\u001b[39m\n    \u001b[90m 13|\u001b[39m });\n    \u001b[90m 14|\u001b[39m\n\n\u001b[31m\u001b[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯\u001b[22m\u001b[39m"
+      "secs": 52,
+      "log": "    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:2801:26\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3338:20\n    at new Promise (<anonymous>)\n    at runWithCancel \u001b[90m(file:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3333:10\u001b[90m)\u001b[39m\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3318:20\n    at new Promise (<anonymous>)\n[solenoid] capture failed Error: capture fault\n    at serializeGraph \u001b[90m(/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/documentStorePersist.test.ts:28:72\u001b[90m)\u001b[39m\n    at Object.captureCurrent \u001b[90m(/home/runner/work/solenoid/solenoid/\u001b[39msrc/graph/documentStore.ts:366:11\u001b[90m)\u001b[39m\n    at Object.newBlank \u001b[90m(/home/runner/work/solenoid/solenoid/\u001b[39msrc/graph/documentStore.ts:391:15\u001b[90m)\u001b[39m\n    at \u001b[90m/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/documentStorePersist.test.ts:232:27\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:1632:35\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:2801:26\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3338:20\n    at new Promise (<anonymous>)\n    at runWithCancel \u001b[90m(file:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3333:10\u001b[90m)\u001b[39m\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3318:20\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run arms and runs a named Write to Obsidian into a temp copy of the vault; nothing runs without it\n\u001b[22m\u001b[39mWrite memo: Wrote Notes/CLI memo.md\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run a Write Properties over the vault leaves current values byte-identical and writes a new key\n\u001b[22m\u001b[39mSync status: 0 changes across 0 notes\n\n\u001b[90mstderr\u001b[2m | scripts/run-graph-vault.test.ts\u001b[2m > \u001b[22m\u001b[2mrun-graph --vault\u001b[2m > \u001b[22m\u001b[2m--run a Write Properties over the vault leaves current values byte-identical and writes a new key\n\u001b[22m\u001b[39mAdd folder: 6 changes across 6 notes\n\n\u001b[90mstderr\u001b[2m | tests/graph/draftFlush.test.ts\u001b[2m > \u001b[22m\u001b[2mopen drafts flush before a capture\u001b[2m > \u001b[22m\u001b[2mcommits every registered draft once, and a failing one never blocks the rest\n\u001b[22m\u001b[39m[solenoid] draft flush failed Error: boom\n    at \u001b[90m/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/draftFlush.test.ts:9:44\n    at flushDrafts \u001b[90m(/home/runner/work/solenoid/solenoid/\u001b[39msrc/graph/draftFlush.ts:11:11\u001b[90m)\u001b[39m\n    at \u001b[90m/home/runner/work/solenoid/solenoid/\u001b[39mtests/graph/draftFlush.test.ts:11:12\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:1632:35\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:2801:26\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3338:20\n    at new Promise (<anonymous>)\n    at runWithCancel \u001b[90m(file:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3333:10\u001b[90m)\u001b[39m\n    at \u001b[90mfile:///home/runner/work/solenoid/solenoid/\u001b[39mnode_modules/\u001b[4mvitest\u001b[24m/dist/chunks/run.BPv-BBRv.js:3318:20\n    at new Promise (<anonymous>)\n\n\n\u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m\u001b[1m\u001b[41m Failed Tests 1 \u001b[49m\u001b[22m\u001b[31m⎯⎯⎯⎯⎯⎯⎯\u001b[39m\n\n\u001b[41m\u001b[1m FAIL \u001b[22m\u001b[49m \u001b[30m\u001b[42m shared \u001b[49m\u001b[39m tests/graph/coreConformance.test.ts\u001b[2m > \u001b[22mthe core's Math answers as V8's, bit for bit\u001b[2m > \u001b[22mpow\n\u001b[31m\u001b[1mAssertionError\u001b[22m: expected [ [ 22.5, 7.5, …(2) ], …(2) ] to deeply equal []\u001b[39m\n\n\u001b[32m- Expected\u001b[39m\n\u001b[31m+ Received\u001b[39m\n\n\u001b[32m- []\u001b[39m\n\u001b[31m+ [\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     22.5,\u001b[39m\n\u001b[31m+     7.5,\u001b[39m\n\u001b[31m+     \"4758557643364502669\",\u001b[39m\n\u001b[31m+     \"4758557643364502668\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     26.6,\u001b[39m\n\u001b[31m+     6.5,\u001b[39m\n\u001b[31m+     \"4745449661846722843\",\u001b[39m\n\u001b[31m+     \"4745449661846722842\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+   [\u001b[39m\n\u001b[31m+     14.139106450602412,\u001b[39m\n\u001b[31m+     13.811988537199795,\u001b[39m\n\u001b[31m+     \"4844621592307258059\",\u001b[39m\n\u001b[31m+     \"4844621592307258060\",\u001b[39m\n\u001b[31m+   ],\u001b[39m\n\u001b[31m+ ]\u001b[39m\n\n\u001b[36m \u001b[2m❯\u001b[22m tests/graph/coreConformance.test.ts:\u001b[2m128:29\u001b[22m\u001b[39m\n    \u001b[90m126|\u001b[39m     const got = wasmInvokeSync<string[]>(\"engine_math\", { fn: c.fn, xs…\n    \u001b[90m127|\u001b[39m     const bad = c.xs.map((x, i) => [x, c.ys[i], c.want[i], got[i]] as …\n    \u001b[90m128|\u001b[39m     expect(bad.slice(0, 3)).toEqual([]);\n    \u001b[90m   |\u001b[39m                             \u001b[31m^\u001b[39m\n    \u001b[90m129|\u001b[39m   });\n    \u001b[90m130|\u001b[39m });\n\n\u001b[31m\u001b[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\u001b[22m\u001b[39m"
     },
     {
       "name": "Site build",
@@ -61,7 +122,7 @@
       "name": "crates/solenoid-core: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-core/Cargo.toml",
       "ok": true,
-      "secs": 64,
+      "secs": 76,
       "log": ""
     },
     {
@@ -75,7 +136,7 @@
       "name": "crates/solenoid-graph: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-graph/Cargo.toml",
       "ok": true,
-      "secs": 32,
+      "secs": 31,
       "log": ""
     },
     {
@@ -89,14 +150,14 @@
       "name": "crates/solenoid-parquet: tests",
       "cmd": "cargo test --manifest-path crates/solenoid-parquet/Cargo.toml",
       "ok": true,
-      "secs": 46,
+      "secs": 48,
       "log": ""
     },
     {
       "name": "crates/solenoid-schedule: clippy",
       "cmd": "cargo clippy --manifest-path crates/solenoid-schedule/Cargo.toml --all-targets -- -D warnings",
       "ok": true,
-      "secs": 2,
+      "secs": 3,
       "log": ""
     },
     {
@@ -117,7 +178,7 @@
       "name": "Desktop shell compiles (src-tauri)",
       "cmd": "cargo check --manifest-path src-tauri/Cargo.toml",
       "ok": true,
-      "secs": 96,
+      "secs": 102,
       "log": ""
     }
   ],
@@ -126,21 +187,21 @@
       "name": "npm: every package.json range to the newest release",
       "cmd": "npx --yes npm-check-updates@latest --upgrade --root --workspaces",
       "ok": true,
-      "secs": 4,
+      "secs": 2,
       "log": ""
     },
     {
       "name": "npm: fresh lockfile (newest transitive versions too)",
       "cmd": "npm install --no-audit --no-fund",
       "ok": true,
-      "secs": 24,
+      "secs": 20,
       "log": ""
     },
     {
       "name": "cargo: crates/solenoid-core manifest to the newest releases",
       "cmd": "cargo upgrade --incompatible allow --pinned allow --manifest-path crates/solenoid-core/Cargo.toml",
       "ok": true,
-      "secs": 3,
+      "secs": 1,
       "log": ""
     },
     {
@@ -196,7 +257,7 @@
       "name": "cargo: src-tauri manifest to the newest releases",
       "cmd": "cargo upgrade --incompatible allow --pinned allow --manifest-path src-tauri/Cargo.toml",
       "ok": true,
-      "secs": 5,
+      "secs": 4,
       "log": ""
     },
     {
@@ -210,533 +271,287 @@
       "name": "wasm-bindgen-cli 0.2.130",
       "cmd": "cargo install --force --locked wasm-bindgen-cli --version 0.2.130",
       "ok": true,
-      "secs": 97,
+      "secs": 90,
       "log": ""
     }
   ],
   "changes": [
     {
       "eco": "npm",
-      "name": "@lezer/common",
-      "from": "1.5.4",
-      "to": "1.5.5",
-      "direct": true,
-      "major": false,
-      "notes": "https://www.npmjs.com/package/@lezer/common?activeTab=versions"
-    },
-    {
-      "eco": "npm",
-      "name": "@lezer/lr",
-      "from": "1.4.11",
-      "to": "1.4.12",
+      "name": "@rollup/rollup-android-arm-eabi",
+      "from": "4.66.0",
+      "to": "4.67.2",
       "direct": false,
       "major": false
     },
     {
       "eco": "npm",
-      "name": "magic-string (in @vitest/mocker)",
-      "from": "1.4.5",
+      "name": "@rollup/rollup-android-arm64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-darwin-arm64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-darwin-x64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-freebsd-arm64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-freebsd-x64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-arm-gnueabihf",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-arm-musleabihf",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-arm64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-arm64-musl",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-loong64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-loong64-musl",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-ppc64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-ppc64-musl",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-riscv64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-riscv64-musl",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-s390x-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-x64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-linux-x64-musl",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-openbsd-x64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-openharmony-arm64",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-win32-arm64-msvc",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-win32-ia32-msvc",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-win32-x64-gnu",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@rollup/rollup-win32-x64-msvc",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "pele",
+      "from": "1.12.0",
+      "to": "1.13.0",
+      "direct": true,
+      "major": false,
+      "notes": "https://github.com/obsidianmd/pele/releases"
+    },
+    {
+      "eco": "npm",
+      "name": "rollup",
+      "from": "4.66.0",
+      "to": "4.67.2",
+      "direct": false,
+      "major": false
+    },
+    {
+      "eco": "npm",
+      "name": "@types/estree (in rollup)",
+      "from": "1.0.9",
       "to": null,
       "direct": false,
       "major": false
     },
     {
       "eco": "npm",
-      "name": "es-toolkit",
-      "from": "1.53.0",
-      "to": "1.53.1",
+      "name": "ws",
+      "from": "8.22.0",
+      "to": "8.22.1",
       "direct": false,
       "major": false
     },
     {
       "eco": "npm",
-      "name": "magic-string",
-      "from": "0.30.21",
-      "to": "1.4.5",
-      "direct": true,
-      "major": true,
-      "notes": "https://github.com/Rich-Harris/magic-string/releases"
-    },
-    {
-      "eco": "npm",
-      "name": "three",
-      "from": "0.186.1",
-      "to": "0.187.0",
-      "direct": true,
-      "major": true,
-      "notes": "https://github.com/mrdoob/three/releases"
-    },
-    {
-      "eco": "npm",
-      "name": "magic-string (in vitest)",
-      "from": "1.4.5",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "npm",
-      "name": "magic-string (in rollup-plugin-license)",
+      "name": "@rollup/rollup-android-x64",
       "from": null,
-      "to": "0.30.21",
+      "to": "4.67.2",
       "direct": false,
       "major": false
     },
     {
       "eco": "cargo",
       "where": "crates/solenoid-core",
-      "name": "js-sys",
-      "from": "0.3.77",
-      "to": "0.3.107",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/wasm-bindgen/wasm-bindgen/releases"
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "once_cell",
-      "from": "1.21.4",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "wasm-bindgen",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/wasm-bindgen/wasm-bindgen/releases"
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "wasm-bindgen-backend",
-      "from": "0.2.100",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "wasm-bindgen-macro",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "wasm-bindgen-macro-support",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "wasm-bindgen-shared",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "futures-core",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "futures-task",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "futures-util",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "pin-project-lite",
-      "from": null,
-      "to": "0.2.17",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-core",
-      "name": "slab",
-      "from": null,
-      "to": "0.4.12",
+      "name": "log",
+      "from": "0.4.34",
+      "to": "0.4.35",
       "direct": false,
       "major": false
     },
     {
       "eco": "cargo",
       "where": "crates/solenoid-graph",
-      "name": "js-sys",
-      "from": "0.3.77",
-      "to": "0.3.107",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/wasm-bindgen/wasm-bindgen/releases"
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "once_cell",
-      "from": "1.21.4",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/wasm-bindgen/wasm-bindgen/releases"
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen-backend",
-      "from": "0.2.100",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen-futures",
-      "from": "0.4.50",
-      "to": "0.4.80",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/wasm-bindgen/wasm-bindgen/releases"
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen-macro",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen-macro-support",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "wasm-bindgen-shared",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "web-sys",
-      "from": "0.3.77",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "futures-core",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "futures-task",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "futures-util",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "pin-project-lite",
-      "from": null,
-      "to": "0.2.17",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "slab",
-      "from": null,
-      "to": "0.4.12",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-graph",
-      "name": "tokio",
-      "from": null,
-      "to": "1.54.1",
+      "name": "log",
+      "from": "0.4.34",
+      "to": "0.4.35",
       "direct": false,
       "major": false
     },
     {
       "eco": "cargo",
       "where": "crates/solenoid-parquet",
-      "name": "js-sys",
-      "from": "0.3.77",
-      "to": "0.3.107",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "wasm-bindgen",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "wasm-bindgen-backend",
-      "from": "0.2.100",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "wasm-bindgen-macro",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "wasm-bindgen-macro-support",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "wasm-bindgen-shared",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "futures-core",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "futures-task",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "futures-util",
-      "from": null,
-      "to": "0.3.34",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "pin-project-lite",
-      "from": null,
-      "to": "0.2.17",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "crates/solenoid-parquet",
-      "name": "slab",
-      "from": null,
-      "to": "0.4.12",
+      "name": "log",
+      "from": "0.4.34",
+      "to": "0.4.35",
       "direct": false,
       "major": false
     },
     {
       "eco": "cargo",
       "where": "src-tauri",
-      "name": "encoding_rs",
-      "from": "0.8.42",
-      "to": "0.8.44",
+      "name": "log",
+      "from": "0.4.34",
+      "to": "0.4.35",
       "direct": false,
       "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "js-sys",
-      "from": "0.3.77",
-      "to": "0.3.107",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "reqwest",
-      "from": "0.12.28, 0.13.1",
-      "to": "0.12.28, 0.13.5",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen-backend",
-      "from": "0.2.100",
-      "to": null,
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen-futures",
-      "from": "0.4.50",
-      "to": "0.4.80",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen-macro",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen-macro-support",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-bindgen-shared",
-      "from": "0.2.100",
-      "to": "0.2.130",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "wasm-streams",
-      "from": "0.4.2",
-      "to": "0.5.0",
-      "direct": false,
-      "major": true
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "web-sys",
-      "from": "0.3.77",
-      "to": "0.3.107",
-      "direct": false,
-      "major": false
-    },
-    {
-      "eco": "cargo",
-      "where": "src-tauri",
-      "name": "windows-sys",
-      "from": "0.45.0, 0.52.0, 0.59.0, 0.61.2",
-      "to": "0.45.0, 0.52.0, 0.61.2",
-      "direct": true,
-      "major": false,
-      "notes": "https://github.com/microsoft/windows-rs/releases"
     }
   ],
   "audit": {
