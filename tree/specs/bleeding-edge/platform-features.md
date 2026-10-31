@@ -26,6 +26,16 @@ The oldest engine is the Linux desktop app's WebKitGTK, which comes from the use
 | `popover="auto"`, `popovertarget` and CSS anchor positioning | The Documents menu: a popover in the top layer, the caret as its invoker, anchored under its own title; each of the two mounted titles names its anchor from React's `useId` (`DocumentTitle.tsx`, `documentTitle.css`, `mobile.css`) | A portal to `<body>`, the trigger's measured rect divided by the chrome zoom, and a window `pointerdown` listener | Same on desktop and phone | None on the web: popover is Baseline, and anchor positioning since January 2026 (Firefox 147, Safari 26). The Linux app's WebKitGTK: unverified | Run with anchor positioning taken away: `anchor()` drops, and the menu landed in the window's top-left corner, half off-screen. Fallback in the commit: `@supports not (anchor-name: --a)` centers the menu in the window, checked the same way (anchor positioning is in Safari 26; whether the WebKitGTK floor builds it is unverified) | **Ported** to rust-port 2026-10-30 (`6a5cc4839`, then the fallback `714750ff0`, which the edge commit lacked) |
 | `focusgroup` | Every composite widget: the segmented switches (Settings, the Tidy options, the phone menu sheet), the Navigator's Files and Outline switch, the Report's tabs, the overflow, table, cell-kind and Files menus, and the Pivot view's toolbar; React's types learn the attribute in `src/focusgroup.d.ts` | Nothing: each button was its own Tab stop, with no arrow keys | Same; one Tab stop per widget and arrow keys inside it | Gecko and WebKit (Chrome 150; not yet in the HTML standard) | The attribute is ignored: one Tab stop per button and no arrow keys, as the work branches are today | **Ported** to rust-port 2026-10-30 (`06e6d2c56`) |
 
+## Toolchain and dependency features in use
+
+What a bump's release notes, read from the version the branch had to the new one, offered the app ([[branch#Working on the branch]]). Answers don't change; each ports alone.
+
+| Feature | Where | What it replaced | Look | Ready to port |
+|---|---|---|---|---|
+| Rust 2024 edition (1.85) and let chains (1.88) | Every crate; 87 nested `if`/`if let` blocks | Nested blocks; extern blocks without `unsafe`; a `gen` binding | None (engine only) | **Ready**: the work branches pin Rust 1.99.1, port-checked onto rust-port 2026-10-31 |
+| `cfg_select!` (1.95), `LocalKey<Cell>::update` (1.99), `map_or_default` (1.98), `rust-version = 1.99` | `random()` and `local_time` in the core; the call-depth counter; 39 `map_or` calls | Twin `#[cfg]` functions; `with(\|d\| d.set(d.get() - 1))`; a default value spelled out | None (engine only) | **Ready**, port-checked onto rust-port 2026-10-31 |
+| pele 1.13 series theme variables and label inks | `MermaidView.tsx`: the palette's eight series colors as Mermaid theme variables, and `--pele-fg-on-light/-dark` from the palette's text colors | One label ink per theme on every slice, and pele's own `#1f1f1f`/`#fff` | Better: each slice's label takes the ink that reads on it (white on blue, dark on gold, in both themes) | **Ready** with `Upgrades: pele@1.13.0`, port-checked onto rust-port 2026-10-31 |
+
 ## Next, within reason
 
 - Popover and anchor positioning for the other hand-placed menus: the phone Tidy dropdown and the Tidy options (`useClickaway`), the Navigator's row menus, the value peek's placement after render, and the phone menu sheet's own `pointerdown` close.
@@ -47,5 +57,6 @@ These wait for the author ([[B23]] edgePlatformFeatures).
 | `background-clip: border-area` | Gradient borders, which the app doesn't use. |
 | Element-scoped view transitions | A card growing into a composite's inner canvas or into its popup: new motion. |
 | `interestfor` with `popover="hint"` | Styled tooltips in place of 234 native `title` tooltips. |
+| rustfmt `style_edition = "2024"` | The 2024 formatting style for every crate (the crates keep `style_edition = "2021"` for now): about 600 lines move across 124 files, no behavior. |
 | `appearance: base-select` | Styled dropdown lists for every `<select>` on the cards. |
 | Scroll-driven and scroll-triggered animations | Nothing in the app scrolls into view with motion today. |
