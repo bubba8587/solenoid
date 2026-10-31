@@ -1,0 +1,7 @@
+# The Rust every work branch builds with, so a new stable release never changes CI underneath a change. Bump it on
+# purpose; the bleeding-edge branch moves it to the newest stable on each run (.github/bleeding-edge/bleeding-edge.mjs).
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"
