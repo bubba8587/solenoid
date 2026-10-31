@@ -521,6 +521,7 @@ pub const DIRECT: &[&str] = &[
     "SeriesSumNode",
     "SetCellNode",
     "SetsNode",
+    "SettleNode",
     "ShiftNode",
     "SliceNode",
     "SliderInputNode",

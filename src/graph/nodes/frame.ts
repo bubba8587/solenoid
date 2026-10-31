@@ -11,8 +11,7 @@ import { isLambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
 import { stripUnitCells } from "../unitBridge";
 import { dropInputCables } from "../components/cablePrune";
-import { getOwningEditor, getOwningView } from "../activeGraph";
-import { cableGhostStore } from "../cableState";
+import { getOwningView } from "../activeGraph";
 import type { FrameHint } from "../frameHint";
 import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -1602,11 +1601,6 @@ export class SettleNode extends GraphNode {
     return this.mode === "transactions" ? cubeIn("Ledger") : frameIn("People");
   }
 
-  private inGhosted(): boolean {
-    const c = getOwningEditor(this.id)?.getConnections().find((c) => c.target === this.id && c.targetInput === "in");
-    return !!c && cableGhostStore.isGhost(c.id);
-  }
-
   setMode(next: SettleMode): void {
     if (next === this.mode) return;
     this.mode = next;
@@ -1626,15 +1620,7 @@ export class SettleNode extends GraphNode {
   }
 
 
-  /** A ghosted cable (left incompatible by a mode change) does not feed, so the card shows empty rather than a
-   *  coercion #VALUE!; the canvas says which, so it is read here and `body` settles. */
   data(inputs: Record<string, unknown[] | undefined>) {
-    if (!this.inGhosted()) return this.body(inputs);
-    this.cachedResult = null; this.cachedNet = null;
-    return { transfers: null, net: null };
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { transfers: FrameValue | SolError | null; net: FrameValue | SolError | null };
   }
 }
