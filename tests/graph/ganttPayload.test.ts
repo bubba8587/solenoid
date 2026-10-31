@@ -54,6 +54,20 @@ describe("the Gantt card's payload", () => {
     const bad = ganttPayload(cubeFromColumns([{ name: "Task", cells: ["X"], type: "string" }]));
     expect(isSolError(bad) && bad.message).toMatch(/"X"/);
   });
+
+  it("refuses a weekend code WORKDAY.INTL doesn't know, and reads a done checkbox as 100%", () => {
+    const r = scheduleTasks(plan, { start: MON, workingDays: true });
+    const bad = ganttPayload(r.cube, { weekendCode: 99 });
+    expect(isSolError(bad) && bad.message).toMatch(/Weekend must be a code/);
+    const done = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Complete", cells: [true, false], type: "logical" },
+    ]);
+    const p = ganttPayload(scheduleTasks(done, { start: MON, workingDays: true }).cube);
+    if (isSolError(p)) throw new Error(p.message);
+    expect(p.tasks.map((t) => (t as { complete?: number }).complete)).toEqual([100, 0]);
+  });
 });
 
 describe("Schedule rows with a Repeat column", () => {

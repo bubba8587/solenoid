@@ -34,6 +34,14 @@ fn value_err(msg: impl Into<String>) -> SolError {
     sol_error(ErrorCode::Value, msg)
 }
 
+/// A weekend code WORKDAY.INTL knows, or the error the Workdays card gives.
+fn weekend_checked(code: f64, who: &str) -> Result<f64, SolError> {
+    match crate::date_ops::weekend_days(code) {
+        Some(_) => Ok(code),
+        None => Err(value_err(format!("{who}: Weekend must be a code: 1 to 7, or 11 to 17"))),
+    }
+}
+
 fn norm(s: &str) -> String {
     js_lower(js_trim(s)).into_owned()
 }
@@ -55,6 +63,14 @@ fn num(v: Option<&V>) -> Option<f64> {
     match v {
         Some(V::Num(n)) if n.is_finite() => Some(*n),
         _ => None,
+    }
+}
+
+/// A percent complete; a done checkbox reads TRUE as 100 and FALSE as 0.
+fn percent_complete(v: Option<&V>) -> Option<f64> {
+    match v {
+        Some(V::Bool(b)) => Some(if *b { 100.0 } else { 0.0 }),
+        _ => num(v),
     }
 }
 
@@ -165,6 +181,8 @@ const WORK_NAMES: &[&str] = &["work", "effort", "work (h)", "hours of work"];
 const UNITS_NAMES: &[&str] = &["units", "assignment", "fte"];
 const ACTIVE_NAMES: &[&str] = &["active", "included"];
 const REPEAT_NAMES: &[&str] = &["repeat", "occurrences", "times"];
+/// More occurrences would stall the critical path and the Gantt long before a generator's million.
+const MAX_REPEAT: f64 = 1000.0;
 const EVERY_NAMES: &[&str] = &["every", "every (days)", "interval", "period"];
 const KNOWN_NAMES: &[&[&str]] = &[
     TASK_NAMES,
@@ -193,19 +211,7 @@ const LINK_PRED_NAMES: &[&str] = &["predecessor", "predecessors", "from", "after
 const TYPE_NAMES: &[&str] = &["type", "link", "kind"];
 const LAG_NAMES: &[&str] = &["lag", "lead", "offset"];
 
-/// What a reader throws: the card's error, or a JS exception the card's error guard shows.
-enum Fail {
-    Sol(SolError),
-    Js(V),
-}
-
-impl From<SolError> for Fail {
-    fn from(e: SolError) -> Fail {
-        Fail::Sol(e)
-    }
-}
-
-type Rd<T> = Result<T, Fail>;
+type Rd<T> = Result<T, SolError>;
 
 /// The project's hours a day: the number, and whether it came as a number at all (a value of
 /// another kind compares unequal to every task's own Hours).
@@ -238,8 +244,7 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
             let Some(name_col) = name_col.map(|i| &t.columns[i]) else {
                 return Err(value_err(format!(
                     "Schedule: task \"{task_name}\" has a Predecessors table with no Predecessor or Task column"
-                ))
-                .into());
+                )));
             };
             let mut out = Vec::new();
             for i in 0..rows_of(&t) {
@@ -249,14 +254,13 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
                 }
                 let raw = link_type(cell(type_col, i));
                 let Some(ty) = LinkType::parse(&raw) else {
-                    return Err(value_err(format!("Schedule: task \"{task_name}\" waits on \"{task}\" with link type \"{raw}\"; use FS, SS, FF or SF")).into());
+                    return Err(value_err(format!("Schedule: task \"{task_name}\" waits on \"{task}\" with link type \"{raw}\"; use FS, SS, FF or SF")));
                 };
                 let lag = lag_of(cell(lag_col, i));
                 if !lag.is_finite() {
                     return Err(value_err(format!(
                         "Schedule: task \"{task_name}\" waits on \"{task}\" with a lag that is not a number"
-                    ))
-                    .into());
+                    )));
                 }
                 let elapsed_col = find_column(&t, ELAPSED_NAMES, None).map(|k| &t.columns[k]);
                 let elapsed = elapsed_col.is_some() && read_logical(cell(elapsed_col, i));
@@ -278,7 +282,7 @@ fn read_duration(v: Option<&V>, hours_per_day: f64, name: &str) -> Rd<f64> {
         if u.dim.len() == 1 && u.dim.get("time") == Some(&1.0) {
             return Ok(u.value / 3600.0 / hours_per_day);
         }
-        return Err(value_err(format!("Schedule: task \"{name}\" has a Duration that is not a time")).into());
+        return Err(value_err(format!("Schedule: task \"{name}\" has a Duration that is not a time")));
     }
     let d = match v {
         V::Num(n) if n.is_finite() => *n,
@@ -286,7 +290,7 @@ fn read_duration(v: Option<&V>, hours_per_day: f64, name: &str) -> Rd<f64> {
         _ => f64::NAN,
     };
     if !d.is_finite() || d < 0.0 {
-        return Err(value_err(format!("Schedule: task \"{name}\" needs a duration of 0 or more days")).into());
+        return Err(value_err(format!("Schedule: task \"{name}\" needs a duration of 0 or more days")));
     }
     Ok(d)
 }
@@ -297,7 +301,7 @@ fn parse_date_text(s: &str) -> Rd<f64> {
     match parse_date(s) {
         DateReading::Serial(d) => Ok(d),
         DateReading::NotADate => Ok(f64::NAN),
-        DateReading::Ambiguous(e) => Err(Fail::Sol(e)),
+        DateReading::Ambiguous(e) => Err(e),
     }
 }
 
@@ -307,13 +311,11 @@ fn read_date(v: Option<&V>, task: &str, column: &str) -> Rd<Option<f64>> {
         Some(V::Str(s)) if s.is_empty() => Ok(None),
         Some(V::Num(n)) if n.is_finite() => Ok(Some(*n)),
         Some(V::Str(s)) => match parse_date_text(s) {
-            Err(Fail::Sol(e)) => {
-                Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}"))
-                    .into())
+            Err(e) => {
+                Err(sol_error(e.code, format!("Schedule: task \"{task}\" has a {column} that reads two ways: {s}")))
             }
-            Err(js) => Err(js),
             Ok(d) if !d.is_finite() => {
-                Err(value_err(format!("Schedule: task \"{task}\" has a {column} that is not a date: {s}")).into())
+                Err(value_err(format!("Schedule: task \"{task}\" has a {column} that is not a date: {s}")))
             }
             Ok(d) => Ok(Some(d)),
         },
@@ -326,16 +328,14 @@ fn check_active(v: Option<&V>, task: &str) -> Rd<()> {
     match v {
         None | Some(V::Null | V::Bool(_)) => Ok(()),
         Some(V::Num(n)) if n.is_finite() => Ok(()),
-        Some(V::Err(e)) => {
-            Err(sol_error(e.code, format!("Schedule: task \"{task}\" has an Active that is an error")).into())
-        }
+        Some(V::Err(e)) => Err(sol_error(e.code, format!("Schedule: task \"{task}\" has an Active that is an error"))),
         Some(V::Str(s))
             if js_trim(s).is_empty()
                 || ["true", "yes", "y", "1", "on", "false", "no", "n", "0", "off"].contains(&norm(s).as_str()) =>
         {
             Ok(())
         }
-        _ => Err(value_err(format!("Schedule: task \"{task}\" has an Active that is neither true nor false")).into()),
+        _ => Err(value_err(format!("Schedule: task \"{task}\" has an Active that is neither true nor false"))),
     }
 }
 
@@ -430,7 +430,7 @@ fn col_of<T: Into<Cv>>(name: &str, cells: Vec<T>, ty: Option<FrameColType>) -> C
 fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     let find = |names: &[&str]| find_column(&c, names, None);
     let Some(task) = find_column(&c, TASK_NAMES, Some(&|_, col: &CubeColumn| has_text(col))) else {
-        return Err(value_err("Schedule needs a Task column (text) naming each task").into());
+        return Err(value_err("Schedule needs a Task column (text) naming each task"));
     };
     let pred = find(PRED_NAMES);
     let children =
@@ -445,7 +445,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     };
     let duration = if work.is_some() { find(DURATION_NAMES) } else { find_column(&c, DURATION_NAMES, Some(&fallback)) };
     if duration.is_none() && children.is_none() && work.is_none() {
-        return Err(value_err("Schedule needs a Duration column (number of days) or a Work column (hours)").into());
+        return Err(value_err("Schedule needs a Duration column (number of days) or a Work column (hours)"));
     }
     let cols = Cols {
         duration,
@@ -479,7 +479,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     for i in 0..rows_of(&c) {
         let name = js_trim(&js_str(at(Some(task), i))).to_string();
         if name.is_empty() {
-            return Err(value_err(format!("Schedule: row {} has no task name", i + 1)).into());
+            return Err(value_err(format!("Schedule: row {} has no task name", i + 1)));
         }
         names.push(name.clone());
         check_active(at(cols.active, i), &name)?;
@@ -501,8 +501,11 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         let task_hours = num(at(cols.hours, i)).filter(|h| *h > 0.0).unwrap_or(hours.n);
         let mut generated = false;
         if kids.is_none() && repeat > 1.0 {
-            if repeat > 4_294_967_295.0 {
-                return Err(Fail::Js(thrown("Invalid array length")));
+            if repeat > MAX_REPEAT {
+                return Err(sol_error(
+                    ErrorCode::Overflow,
+                    format!("Schedule: task \"{name}\" repeats {repeat} times; the most is 1,000"),
+                ));
             }
             generated = true;
             let base = read_date(at(cols.start, i), &name, "Start")?;
@@ -583,12 +586,21 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
             finish,
             deadline,
             manual: cols.manual.is_some() && read_logical(at(cols.manual, i)),
-            complete: Some(if cols.complete.is_some() { num(at(cols.complete, i)).unwrap_or(0.0) } else { 0.0 }),
+            complete: Some(if cols.complete.is_some() {
+                percent_complete(at(cols.complete, i)).unwrap_or(0.0)
+            } else {
+                0.0
+            }),
             group,
             alap: cols.alap.is_some() && read_logical(at(cols.alap, i)),
             actual_start,
             elapsed: cols.elapsed.is_some() && read_logical(at(cols.elapsed, i)),
-            calendar: task_calendar(&cols, &c, i, hours),
+            calendar: {
+                if let Some(w) = num(at(cols.weekend, i)) {
+                    weekend_checked(w, &format!("Schedule: task \"{name}\""))?;
+                }
+                task_calendar(&cols, &c, i, hours)
+            },
             children: kids,
             row: Some((i + 1) as f64),
         });
@@ -629,8 +641,7 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
     let (Some(succ_col), Some(pred_col)) = (find(LINK_SUCC_NAMES), find(LINK_PRED_NAMES)) else {
         return Err(value_err(
             "Schedule: the Links frame needs a Successor (or Task, To) column and a Predecessor (or From) column",
-        )
-        .into());
+        ));
     };
     let (type_col, lag_col) = (find(TYPE_NAMES), find(LAG_NAMES));
     fn collect(ts: &[PlanTask], path: &mut Vec<usize>, out: &mut HashMap<String, Vec<usize>>) {
@@ -660,23 +671,19 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
             if inactive.contains(&key) {
                 continue;
             }
-            return Err(
-                value_err(format!("Schedule: the Links frame names task \"{succ}\", which isn't in the plan")).into()
-            );
+            return Err(value_err(format!("Schedule: the Links frame names task \"{succ}\", which isn't in the plan")));
         };
         let raw = link_type(value(type_col, i));
         let Some(ty) = LinkType::parse(&raw) else {
             return Err(value_err(format!(
                 "Schedule: the Links frame links \"{succ}\" with type \"{raw}\"; use FS, SS, FF or SF"
-            ))
-            .into());
+            )));
         };
         let lag = lag_of(value(lag_col, i));
         if !lag.is_finite() {
             return Err(value_err(format!(
                 "Schedule: the Links frame links \"{succ}\" with a lag that is not a number"
-            ))
-            .into());
+            )));
         }
         let mut list: &mut [PlanTask] = tasks;
         let (last, head) = path.split_last().expect("a path names a task");
@@ -955,6 +962,7 @@ fn schedule_card(c: &mut Call) -> Answer {
         Hours { n: 8.0, is_num: true }
     };
     let run = || -> Rd<(Cv, f64, V, Cv, Json, String)> {
+        weekend_checked(weekend_code, "Schedule")?;
         let (level, mut plan) = read_level(tasks.clone(), hours)?;
         if let Some(l) = &links {
             let mut off = HashSet::new();
@@ -1020,14 +1028,13 @@ fn schedule_card(c: &mut Call) -> Answer {
                 ("mspdi".into(), Cv::from(mspdi)),
             ])
         }
-        Err(Fail::Sol(e)) => {
+        Err(e) => {
             let e = V::err(e);
             for f in FIELDS {
                 c.show(f, if f == "cachedOutput" { V::Null } else { e.clone() });
             }
             Ok(outs(&e))
         }
-        Err(Fail::Js(e)) => Err(e),
     }
 }
 
@@ -1278,8 +1285,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             return Err(value_err(format!(
                 "Gantt: \"{}\" has no Start or Finish; it needs a Schedule node's output",
                 r.name
-            ))
-            .into());
+            )));
         };
         let summary = read_logical(r.get("summary")) || rows.get(ri + 1).is_some_and(|n| n.level == r.level + 1.0);
         let dur = r.num("duration").or_else(|| r.num("days"));
@@ -1288,7 +1294,8 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             Some(d) => Some(d),
             None => gantt_date(r.get("due"))?,
         };
-        let complete = r.num("complete").or_else(|| r.num("% complete")).unwrap_or(0.0);
+        let complete =
+            percent_complete(r.get("complete")).or_else(|| percent_complete(r.get("% complete"))).unwrap_or(0.0);
         let mut t = Map::new();
         t.insert("id".into(), Json::String(r.name.clone()));
         t.insert("name".into(), Json::String(r.name.clone()));
@@ -1430,6 +1437,10 @@ fn gantt_card(c: &mut Call) -> Answer {
         return done(c, schedule);
     }
     let Some(cube) = as_cube(&schedule) else { return done(c, Cv::NULL) };
+    let weekend_code = match weekend_checked(js_arith(&read_or(c, "weekend_code", 1.0)), "Gantt") {
+        Ok(w) => w,
+        Err(e) => return done(c, Cv::V(V::err(e))),
+    };
     let inputs = GanttInputs {
         baseline: as_cube(&c.raw_card("baseline")),
         today: match today() {
@@ -1438,13 +1449,12 @@ fn gantt_card(c: &mut Call) -> Answer {
         },
         status: wired_first(c, "status").and_then(|v| num(Some(&v))),
         options: opt.as_deref(),
-        weekend_code: js_arith(&read_or(c, "weekend_code", 1.0)),
+        weekend_code,
         holidays: holiday_list(&slot(c, "holidays")),
     };
     let payload = match gantt_payload(&cube, &inputs) {
         Ok(p) => p,
-        Err(Fail::Sol(e)) => return done(c, Cv::V(V::err(e))),
-        Err(Fail::Js(e)) => return Err(e),
+        Err(e) => return done(c, Cv::V(V::err(e))),
     };
     let title = match chart_options.get("title") {
         Some(Json::String(t)) if !t.is_empty() => t.clone(),
@@ -1621,7 +1631,16 @@ fn earned_value_card(c: &mut Call) -> Answer {
         let bi = base_idx.get(&norm(&name)).copied();
         let base_cost = bi.and_then(|bi| b_cost.map(|bc| magnitude(cell(Some(bc), bi))));
         let cost = base_cost.unwrap_or_else(|| cost_col.map_or(0.0, |cc| magnitude(cell(Some(cc), i))));
-        let complete = math_max(0.0, math_min(100.0, complete_col.map_or(0.0, |cc| magnitude(cell(Some(cc), i)))));
+        let complete = math_max(
+            0.0,
+            math_min(
+                100.0,
+                complete_col.map_or(0.0, |cc| {
+                    let v = cell(Some(cc), i);
+                    percent_complete(v).unwrap_or_else(|| magnitude(v))
+                }),
+            ),
+        );
         let planned = |bc: Option<&CubeColumn>, sc: Option<&CubeColumn>| match (bi, bc) {
             (Some(bi), Some(bc)) => date_of(cell(Some(bc), bi)),
             _ => date_of(cell(sc, i)),
@@ -1637,7 +1656,10 @@ fn earned_value_card(c: &mut Call) -> Answer {
             actual_cost,
         });
     }
-    let weekend_code = js_arith(&read_or(c, "weekend_code", 1.0));
+    let weekend_code = match weekend_checked(js_arith(&read_or(c, "weekend_code", 1.0)), "Earned Value") {
+        Ok(w) => w,
+        Err(e) => return empty(c, V::err(e)),
+    };
     let spec = CalendarSpec {
         working_days: true,
         weekend_code: Some(weekend_code),

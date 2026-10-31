@@ -222,6 +222,35 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(iso(col(inner, "Start")[0])).toBe("2026-01-12");
   });
 
+  it("a Repeat above 1,000 is #OVERFLOW! naming the cap", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["Standup"], type: "string" },
+      { name: "Duration", cells: [0.5], type: "number" },
+      { name: "Repeat", cells: [1e9], type: "number" },
+    ]);
+    expect(() => scheduleTasks(c, { start: MON, workingDays: true })).toThrow(/"Standup".*the most is 1,000/);
+  });
+
+  it("a weekend code WORKDAY.INTL doesn't know is an error, on the card and on a row", () => {
+    expect(() => scheduleTasks(tasks([["A", 1, null]]), { start: MON, workingDays: true, weekendCode: 99 })).toThrow(/Weekend must be a code/);
+    const row = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Duration", cells: [1], type: "number" },
+      { name: "Weekend", cells: [99], type: "number" },
+    ]);
+    expect(() => scheduleTasks(row, { start: MON, workingDays: true })).toThrow(/"A".*Weekend must be a code/);
+  });
+
+  it("a done checkbox in Complete reads TRUE as 100% and FALSE as 0%", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Complete", cells: [true, false], type: "logical" },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(r.output.tasks.map((t) => t.complete)).toEqual([100, 0]);
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);

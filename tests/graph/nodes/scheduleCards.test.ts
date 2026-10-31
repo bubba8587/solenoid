@@ -58,7 +58,8 @@ describe("the Schedule card reads every column of a plan", () => {
   });
 
   it("the calendar inputs: holidays, weekend codes, hours, an unwired start, a blank or text start", () => {
-    for (const code of [1, 2, 7, 11, 17, 3.6, 99]) expect(isCubeValue(sched(plain, {}, { weekend_code: [code] }).out.cube)).toBe(true);
+    for (const code of [1, 2, 7, 11, 17, 3.6]) expect(isCubeValue(sched(plain, {}, { weekend_code: [code] }).out.cube)).toBe(true);
+    expect(sched(plain, {}, { weekend_code: [99] }).out.cube).toMatchObject({ code: "#VALUE!" });
     expect(isCubeValue(sched(plain, {}, { holidays: [[d("2026-01-06"), null, d("2026-01-07")]] }).out.cube)).toBe(true);
     expect(isCubeValue(sched(plain, { mode: "calendar" }, { holidays: [[d("2026-01-06")]] }).out.cube)).toBe(true);
     for (const h of [4, 6, 10, 20, 0, -2]) {

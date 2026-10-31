@@ -30,15 +30,15 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Finish (`end`) | date, optional | A ceiling: caps the late finish. A task that cannot meet it shows negative float and nothing moves. |
 | Deadline (`due`) | date, optional | A flag. It caps the late dates and marks the task late; it never moves the task. |
 | Manual (`pinned`) | logical, optional | Pins Start and Finish (Start plus Duration when Finish is blank) and ignores the task's predecessors. The pinned task still drives its successors. |
-| Complete (`% complete`, `percent complete`, `done`, `progress`) | number, optional | 0 to 100. Drawn as the bar's fill. With a status date it drives the remaining work. A non-number reads as 0. |
+| Complete (`% complete`, `percent complete`, `done`, `progress`) | number, optional | 0 to 100. Drawn as the bar's fill. With a status date it drives the remaining work. A done checkbox reads TRUE as 100 and FALSE as 0; any other non-number reads as 0. |
 | Project (`section`, `group`) | text, optional | One Mermaid `section` and one figure band per value. |
 | ALAP (`as late as possible`, `late as possible`) | logical, optional | The task starts at its late start. |
 | Actual start (`started`, `started on`) | date, optional | The day work began; pins the early start. |
 | Elapsed | logical, optional | The duration counts every calendar day. |
 | Work (`effort`, `work (h)`, `hours of work`) and Units (`assignment`, `fte`) | number, optional | With no Duration, the duration is Work ÷ (Units × the task's hours per day) days. Units defaults to 1 and is at least 0.01. |
-| Weekend (`weekend code`), Hours (`hours per day`), Holidays (`days off`) | number, number, date list | The task's own calendar, layered over the project's. |
+| Weekend (`weekend code`), Hours (`hours per day`), Holidays (`days off`) | number, number, date list | The task's own calendar, layered over the project's. A Weekend code outside the `WORKDAY.INTL` table is `#VALUE!` naming the task. |
 | Active (`included`) | logical, optional | A row whose Active cell is set and false is left out of the schedule, and its computed cells are blank. |
-| Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. |
+| Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. A Repeat above 1,000 is `#OVERFLOW!` naming the cap. |
 | Anything else (color, notes, url, resource names) | passthrough | Never read by the engine. |
 
 Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`, `y`, `1` or `on` (`read_logical`, `nodes/sched.rs`, which the Gantt also reads its Summary, Critical, Late and Manual cells with). A date cell may be a serial or text; text that parses two ways or not at all is an error.
@@ -113,7 +113,7 @@ flowchart LR
     s --> mspdi["mspdi: Microsoft Project XML"]
 ```
 
-The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code, and a code outside the table reads as Saturday and Sunday in the scheduler where `WORKDAY.INTL` answers `#NUM!`.
+The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, with the same `WORKDAY.INTL` codes. The scheduling crate carries its own copy of the code table (`weekend_days` in `crates/solenoid-schedule/src/calendar.rs`, so it stands alone) beside the core's (`date_ops.rs`); the two agree on every code. Schedule, Gantt and Earned Value refuse a code outside the table with the Workdays card's `#VALUE!` before the scheduler sees it, so the scheduler's fallback to Saturday and Sunday is never reached from a card.
 
 The card has four options, each persisted with the node:
 
