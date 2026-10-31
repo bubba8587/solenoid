@@ -908,7 +908,8 @@ fn reading_plan(unit: Option<&ColumnUnit>, refused: Option<&str>, delta: Option<
             if delta != Some(2) {
                 return ReadingPlan::Identity;
             }
-            let k = unit.and_then(ColumnUnit::linear_scale).unwrap_or(1.0).powi(2);
+            let s = unit.and_then(ColumnUnit::linear_scale).unwrap_or(1.0);
+            let k = s * s;
             if k == 1.0 {
                 ReadingPlan::Identity
             } else {

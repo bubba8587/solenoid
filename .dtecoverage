@@ -28,6 +28,8 @@ crates/solenoid-core/rustfmt.toml
 crates/solenoid-schedule/rustfmt.toml
 deny.toml
 rust-toolchain.toml
+crates/solenoid-core/clippy.toml
+crates/solenoid-graph/clippy.toml
 scripts/rust-licenses/*
 src-tauri/build.rs
 src-tauri/tauri.conf.json

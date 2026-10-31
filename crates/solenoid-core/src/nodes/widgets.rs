@@ -153,7 +153,7 @@ const BLACK: Rgba = Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 
 /// colord's `round(n, digits)`: `Math.round(10^d·n)/10^d + 0`.
 fn round_to(n: f64, digits: i32) -> f64 {
-    let p = 10f64.powi(digits);
+    let p = crate::fdlibm::pow(10.0, f64::from(digits));
     math_round(p * n) / p + 0.0
 }
 

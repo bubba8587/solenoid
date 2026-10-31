@@ -2113,7 +2113,7 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
             }
             // Each end runs on along its own segment's direction.
             let out = |(x, y): (f64, f64), (dx, dy): (f64, f64)| {
-                let len = dx.hypot(dy);
+                let len = crate::excel_functions::math_hypot(&[dx, dy]);
                 if len > 0.0 {
                     (x + dx / len * reach, y + dy / len * reach)
                 } else {
@@ -2238,7 +2238,7 @@ fn segment_distance(s: &[f64], x: f64, y: f64) -> f64 {
     let (dx, dy) = (s[2] - s[0], s[3] - s[1]);
     let len2 = dx * dx + dy * dy;
     let t = if len2 > 0.0 { (((x - s[0]) * dx + (y - s[1]) * dy) / len2).clamp(0.0, 1.0) } else { 0.0 };
-    (x - s[0] - t * dx).hypot(y - s[1] - t * dy)
+    crate::excel_functions::math_hypot(&[x - s[0] - t * dx, y - s[1] - t * dy])
 }
 
 /// The keys of the regions a point on a line touches, found a hair away from it on every side; none off the lines.
@@ -2297,7 +2297,7 @@ fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<Piece> {
     let mut ts: Vec<f64> = Vec::new();
     let mut cut = |a: &[f64; 4], long: bool, ts: &mut Vec<f64>| {
         let (dx, dy) = (a[2] - a[0], a[3] - a[1]);
-        let len = dx.hypot(dy);
+        let len = crate::excel_functions::math_hypot(&[dx, dy]);
         if len == 0.0 {
             return;
         }
