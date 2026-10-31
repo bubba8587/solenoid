@@ -2,11 +2,11 @@
 aliases: ["Bleeding-edge branch"]
 tags: [spec, bleeding-edge]
 ---
-<!-- [[A7]] bleedingEdgeSolenoid, [[B25]] edgeReadyToPort -->
+<!-- [[A7]] bleedingEdgeSolenoid, [[B25]] edgeReadyToPort, [[B26]] edgeReadsReleaseNotes -->
 
 # Spec: The bleeding-edge branch
 
-Serves [[A7]] bleedingEdgeSolenoid, [[B21]] edgeRebasesNotRebuilds, [[B22]] edgeNewestDependencies, [[B23]] edgePlatformFeatures, [[B24]] edgeAgentsAct and [[B25]] edgeReadyToPort. It covers how the branch is kept (the generator), how its dependencies move, and how an agent works there. These leaves and specs live only on the bleeding-edge branch. The platform features in use are [[platform-features]], and the fixes the dependency bumps needed are [[dependency-fixes]]; each finding says whether it's ready to port to a work branch ([[B25]] edgeReadyToPort).
+Serves [[A7]] bleedingEdgeSolenoid, [[B21]] edgeRebasesNotRebuilds, [[B22]] edgeNewestDependencies, [[B23]] edgePlatformFeatures, [[B24]] edgeAgentsAct, [[B25]] edgeReadyToPort and [[B26]] edgeReadsReleaseNotes. It covers how the branch is kept (the generator), how its dependencies move, and how an agent works there. These leaves and specs live only on the bleeding-edge branch. The platform features in use are [[platform-features]], and the fixes the dependency bumps needed are [[dependency-fixes]]; each finding says whether it's ready to port to a work branch ([[B25]] edgeReadyToPort).
 
 ## The generator
 
@@ -48,7 +48,7 @@ The engine module build, the site's prerender snapshots, the typecheck (`tsrs`),
 
 An agent on the branch works without asking ([[B24]] edgeAgentsAct):
 
-1. **Start** by rebasing onto the newest work (`node .github/bleeding-edge/bleeding-edge.mjs --rebase-only`, then push), reading the branch's platform-features spec, then working down the newest release notes (Chrome's release notes and its "What's new in web UI" round-ups, web.dev's monthly "New to the web platform", the Interop dashboard) for anything that spec doesn't list yet.
+1. **Start** by rebasing onto the newest work (`node .github/bleeding-edge/bleeding-edge.mjs --rebase-only`, then push), reading the branch's platform-features spec, then working down the newest release notes (Chrome's release notes and its "What's new in web UI" round-ups, web.dev's monthly "New to the web platform", the Interop dashboard) for anything that spec doesn't list yet. Then, for every dependency and toolchain the report lists as moved, reading its release notes from the version the branch had to the new one, for anything the app can put to use ([[B26]] edgeReadsReleaseNotes).
 2. **Pick what's within reason** ([[B23]] edgePlatformFeatures): the look and behavior stay the same or get clearly better (more accessible, crisper, faster, fewer lines, a bug class gone), and the feature replaces something the app already does by hand. A feature that would change the look goes in the platform-features spec's candidates, with what it would change, for the author.
 3. **Use it for real.** Delete what it replaces. No `@supports` fallback, JS fallback or polyfill, except the one [[B23]] edgePlatformFeatures allows: the smallest fallback that makes an otherwise ready feature port as it stands.
 4. **One finding, one commit**, named `Edge: <feature>: <what it replaces>`, or `Fix: <what broke>` for a bump's breakage. A `Fix:` that needs an upgrade names it in its message, one line: `Upgrades: wasm-bindgen@0.2.130 js-sys@0.3.107`. On the branch those packages have already moved, so the commit's diff can't carry them, and the port applies the line instead. Generated files (lockfiles, the engine module, the site's prerender snapshots) need no care: a port rebuilds them for the branch it lands on. The branch is never merged into a work branch.
