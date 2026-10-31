@@ -916,7 +916,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
             children: [
-              { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: true },
+              { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Min and max over text give the first and last alphabetically, where Excel ignores text. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: false },
               { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
               { type: "pair", children: [
                 { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
