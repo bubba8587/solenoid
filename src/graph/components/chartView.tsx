@@ -1,5 +1,5 @@
 // [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
-import { lazy, memo, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, memo, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices, figurePoints, HEAVY_FIGURE_POINTS } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
@@ -134,6 +134,20 @@ type FigureProps = {
 };
 
 const RESIZE_SETTLE_MS = 160;
+/** A redraw that takes longer than this to reach the screen makes the figure stretch through a resize: under 20 frames a second. */
+const SLOW_DRAW_MS = 50;
+
+/** Times each redraw into `ms`: from its render to the frame after it painted.
+ *  A newer redraw never cancels an older timing, since the next resize step lands before the frame that would end it. */
+function useDrawTime(ms: { current: number }, deps: readonly unknown[]): void {
+  const live = useRef(true);
+  const start = performance.now();
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (live.current) ms.current = performance.now() - start; }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  useEffect(() => () => { live.current = false; }, []);
+}
 
 /** The size a heavy figure draws at: the live size once it has held still for a moment, else the last such size. */
 function useSettledSize(width: number, height: number, heavy: boolean): { w: number; h: number } {
@@ -150,12 +164,15 @@ function useSettledSize(width: number, height: number, heavy: boolean): { w: num
 // [[C120]] linearWork: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
 export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
   const { value, width, height } = props;
-  const heavy = value.op !== "gantt" && figurePoints(value) > HEAVY_FIGURE_POINTS;
+  const drawMs = useRef(0);
+  const heavy = value.op !== "gantt" && (figurePoints(value) > HEAVY_FIGURE_POINTS || drawMs.current > SLOW_DRAW_MS);
   const { w, h } = useSettledSize(width, height, heavy);
-  if (!heavy) return <FigureBody {...props} />;
+  useDrawTime(drawMs, [value, w, h, props.fontScale]);
+  // The wrappers stay in the tree when they stretch nothing, since adding them mid-resize would remount the figure.
+  const stretched = w !== width || h !== height;
   return (
-    <div style={{ width, height, overflow: "hidden" }}>
-      <div style={{ width: w, height: h, transform: `scale(${width / w}, ${height / h})`, transformOrigin: "0 0", willChange: "transform" }}>
+    <div style={stretched ? { width, height, overflow: "hidden" } : { display: "contents" }}>
+      <div style={stretched ? { width: w, height: h, transform: `scale(${width / w}, ${height / h})`, transformOrigin: "0 0", willChange: "transform" } : { display: "contents" }}>
         <FigureBody {...props} width={w} height={h} />
       </div>
     </div>

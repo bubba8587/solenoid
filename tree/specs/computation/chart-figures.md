@@ -443,7 +443,7 @@ Tick labels on the canvas figures are compact (`compactTick` in `chartCore.ts`):
 
 ## Surfaces and sizing
 
-The same value draws at several sizes; the renderer is always given pixel width and height. A figure of more than 5,000 points (`figurePoints`, `HEAVY_FIGURE_POINTS`; a Gantt virtualizes instead) draws at the last size it held for 160 ms, stretched by a CSS transform to the live size until the resize settles, so dragging a popup or card edge costs a transform per frame and one redraw at the end. Its surface hands it the same value object across a resize (`ChartPopup` and Merge Plots memoize it), since a new one would redraw.
+The same value draws at several sizes; the renderer is always given pixel width and height. A heavy figure draws at the last size it held for 160 ms, stretched by a CSS transform to the live size until the resize settles, so dragging a popup or card edge costs a transform per frame and one redraw at the end. A figure is heavy when it holds more than 5,000 points (`figurePoints`, `HEAVY_FIGURE_POINTS`), or when its last redraw took more than 50 ms to reach the screen (`SLOW_DRAW_MS`, timed from its render to the frame after it painted), which catches a slow figure whatever makes it slow; a Gantt virtualizes instead. A light figure redraws live. The stretch wrappers stay in the tree when they stretch nothing, since adding them mid-resize would remount the figure. Its surface hands it the same value object across a resize (`ChartPopup` and Merge Plots memoize it), since a new one would redraw.
 
 | Surface | Size |
 |---|---|
