@@ -1,260 +1,234 @@
-<!-- vendored from DTE 3050da4 on 2026-09-18. Do not edit; refresh with: python tools/dte.py vendor --from <your DTE checkout> -->
+<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:A1,A2,A3,A4,A5,A6,B1,B3,B4,B24,B7,B10,B11,B12,B13,B14,B15,B16,B21,B32,B29,B27,B30,B31,C19,B33,B34,B35,B36,B37,C20,C21,C22,C23,C24 -->
-# DTE Specification (v0)
+<!-- dte:A1,A2,A3,A4,A5,A6,A8,A9,B1,B3,B4,B10,B11,B12,B13,B14,B15,B16,B21,B24,B29,B27,B30,B31,B32,B33,B35,B40,B42,B43,B44,B45,B46,B47,B48,B49,B50,B51,B52,B53,B54,B57,B58,B59,B60,B61,B62 -->
+# DTE Specification (0.2)
 
-This document is normative. Words in **bold** are defined terms. Each section cites the decision it derives from; the decision file holds the rationale.
+This document is normative. Words in **bold** are defined terms. Each section cites the leaves it derives from; a leaf's file holds the reasoning. How the reference tool carries each rule out is in `specs/`.
 
 ## 1. Premise
 
-Nothing in a project can exist without a decision having been made (dte:A2). Some decisions are made by humans, some by AI, some jointly (dte:A3). DTE records the decisions as a tree of **rings** and links every **artifact** to the decisions it serves, so that the **blast radius** of changing any decision is knowable (dte:A1).
+Nothing in a project can exist without a decision having been made (dte:A2). Some decisions are made by humans, some by AI, some jointly (dte:A3). DTE records the decisions as a tree of **rings** and links every **artifact** to the decisions it serves, so the **blast radius** of changing any decision is knowable (dte:A1).
 
-DTE is not a dependency graph. It records *why*, not *what calls what* (dte:A4, dte:B9).
+DTE is not a dependency graph. It records *why*, not *what calls what* (dte:A4).
+
+DTE governs the tree: its format, its tool, and the rules for writing and changing leaves. It defines no process around the tree (triage, backlog, release habits, house voice, naming habits for specs); an adopter sets those up its own way (dte:B57).
 
 ## 2. Vocabulary
 
-- **Decision**: a choice that caused something to exist or be shaped a certain way. Recorded as a **node**.
-- **Node**: one markdown file describing one decision (dte:B1).
-- **Ring** (or **layer**): the depth of a node from the core. Ring 0 is `A`, ring 1 is `B`, and so on (dte:B32).
-- **Core**: the `A` ring. The abstract goals of the project. Core nodes have no parents (dte:B10).
-- **Parent**: a node this node exists *because of*. Parents are always in a strictly shallower ring (dte:B10).
-- **Artifact**: any file in the project that is not a node: code, config, docs, tests, data.
-- **Citation**: the token `dte:ID` placed in an artifact, meaning "this exists because of ID" (dte:B3).
-- **Blast radius** of a node: every node that descends from it, every artifact that cites it or any descendant, and every node it currently supersedes (dte:C2).
-- **Precedence**: when two active nodes contradict, the one in the shallower ring wins (dte:B4).
-- **Provenance**: who made the decision: `human`, `ai`, or `joint` (dte:B7).
-- **Human-held**: a node made by a human, or ratified by one (dte:B11).
+- **Leaf**: one recorded decision, a markdown file under `decisions/<ring>/` (dte:B1, dte:B50).
+- **Ring**: a leaf's depth from the core. `A` is the core, `B` the next ring out, and so on (dte:B32).
+- **Core**: ring `A`, the project's goals. Core leaves have no parents (dte:B10).
+- **Parent**: a leaf this leaf exists *because of*, always in a strictly shallower ring (dte:B10). A **child** decides a question its parent leaves open (dte:B48).
+- **Artifact**: any file in the project that is not a leaf: code, config, docs, tests, data.
+- **Spec**: an artifact in the `specs` layer that says what to build; it cites the leaves it serves (dte:A8).
+- **Citation**: `dte:ID` or `[[ID]]` in an artifact, meaning "this exists because of ID" (dte:B3).
+- **Blast radius** of a leaf: every descendant, every artifact citing it or a descendant (and every file built to a citing spec), and every leaf it superseded (dte:A1).
+- **Precedence**: when two in-effect leaves contradict, the shallower ring wins (dte:B4).
+- **Human-held**: a leaf made by a human, or ratified by one (dte:B11).
 - **Authority**: the ring an agent operates at. It decides at that ring or deeper and asks upward for anything shallower (dte:A6).
-- **Inbox**: where a decision waits, without an ID, until someone with authority places it in a ring (dte:B14).
-- **Outbox**: the human-to-agent channel: a note in `decisions/outbox/`, an action tag on a node, or a `ratified_by` typed in by hand (dte:B31).
-- **Name**: the node's camelCase handle, unique among in-effect nodes, which always accompanies its ID when a model refers to it (dte:A5, dte:B32). **Title** is the one-sentence description behind it (dte:B16).
-- **Ledger**: `decisions/RETIRED`, one line per retired node. Burns the number for ever and records who retired it (dte:B24, dte:C11).
+- **Inbox**: where a decision waits, without an id, until someone with authority places it (dte:B14).
+- **Outbox**: the human-to-agent channel: a note in `decisions/outbox/`, an action tag on a leaf, or a `ratified_by` typed in by hand (dte:B31).
+- **Name**: a leaf's camelCase handle, its one alias, unique among in-effect leaves; it always accompanies the id when a model refers to the leaf (dte:A5, dte:B32). **Title** is the one-sentence description behind it (dte:B16).
+- **Ledger**: `decisions/RETIRED`, one line per retired leaf, burning its number for good and naming any successor (dte:B24).
 
-## 3. Identity and rings (dte:B32)
+## 3. Identity and rings
 
-- An ID is one uppercase letter followed by a positive integer: `A1`, `B14`, `C3`. The letter is the ring. `A` is the core.
-- Numbers within a ring are allocated upward and **never reused**, even after a node is moved or reverted. `dte next <ring>` gives the next free number, counting the tree, the ledger, and every branch git knows about (dte:C15).
-- The ID appears in the frontmatter `id:` field and is the file name: `decisions/<ring>/<ID>.md`.
-- A `name` is a handle, never a second identity: the tool resolves only IDs (dte:B32). A node **moved** to another ring becomes a new node with a new ID there; the old node stays as a file, `superseded` by the new one, and every citation and child is rewritten in the same change (see section 7). The old file is deleted or kept per `retire` in `dte.cfg`; either way the ledger records it and the number is burned.
+- An id is one uppercase letter and a positive integer: `A1`, `B14`. The letter is the ring (dte:B32).
+- Numbers within a ring are allocated upward and **never reused**. `dte next <ring>` counts the tree, the ledger, and every branch git knows about.
+- The id is the file name, `decisions/<ring>/<ID>.md`, and the frontmatter `id:`.
+- Every leaf also carries a **uuid**, a time-ordered UUIDv7. The id is what people cite; the uuid says which leaf an id means when two branches minted the same number. A renumbered leaf keeps its uuid (dte:B58).
+- A name is a handle, never a second identity: the tool resolves only ids. A leaf **moved** to another ring becomes a new leaf with a new id and uuid; the old one retires through the ledger and every citation and child follows.
+- A long-lived specialized branch keeps its own subtree, rooted at an A leaf that carries `branch: <name>` and inherited by everything under it. It lives only on that branch, its findings reach other branches as ported changes, and its leaves' departure from another branch is not a deletion (dte:B54).
 
-## 4. Node format (dte:B1, dte:B7)
+## 4. What a leaf is
 
-A node is a markdown file with YAML frontmatter. Only the subset of YAML shown here is supported (dte:C1): scalars, inline lists `[a, b]`, and block lists.
+A leaf records a call a person could weigh and choose otherwise, in the project's plain words. Anything describing how the code carries a call out (call order, wrappers, file formats, internal names) is spec content, fluid, with git as its record. The tripwire: a Decision names the call and its opposite, and a sentence that would still be true had the opposite been chosen belongs in the spec (dte:B47).
+
+A child decides a different question that its parent leaves open. A leaf that restates part of its parent, adds detail to it or names one of its aspects folds back into the parent's Consequences, or becomes spec. One decision may govern several things when turning it off for one would break the others; things that were ever reversed independently stay separate (dte:B48).
+
+A designed exception to a rule is the rule's child, with a "Removed by:" line naming the condition that would remove it; an exception nothing could remove means the rule was written wrong. A settled rule may carry a "Reopen if:" line (dte:B35).
+
+Every document that describes how the system works is a leaf or a spec. An adopter's existing mechanics docs are its spec layer, declared in the `specs` globs, one per subsystem; a rationale doc (out-of-scope lists, deferrals) is a set of unlifted leaves. Proposals (the inbox), history (git) and reader on-ramps (a glossary, a mental model) are exempt (dte:B51).
+
+## 5. Leaf format
+
+A leaf is a markdown file with frontmatter in a restricted YAML subset: scalars, inline lists `[a, b]`, and block lists (C1). Its frontmatter holds only what no other record holds (dte:B43):
 
 ```yaml
 ---
 id: B3
-name: citationToken       # camelCase handle, unique; the chat form beside the ID (dte:B32)
-title: "Artifacts cite decisions with a dte: token"   # free text is double-quoted (dte:B30)
-status: active            # proposed | active | superseded | reverted
-parents: [A1, A2]         # required unless ring A; each must be shallower
-supersedes: []            # nodes this one replaces (they become superseded)
-superseded_by:            # set when status is superseded
-conflicts_with: []        # active nodes this one contradicts (resolved by ring)
-made_by: ai               # human | ai | joint
-by: Claude Fable 5.1      # person or model, free text
+uuid: 01a05f6a-5803-7151-84ae-6f4c191d8679
+title: "Artifacts cite decisions with a dte:ID token"   # free text is double-quoted
+status: proposed          # only when not active: proposed | superseded | reverted (keep mode)
+parents: [A1, A2]         # required unless ring A; each strictly shallower
+branch: bleeding-edge     # only on the root of a branch-local subtree (B54)
+made_by: human            # only when not ai: human | joint
 date: 2026-09-02
-ratified_by:              # human who confirmed an ai/joint decision (optional)
-authorized_by:            # human who authorised retiring/moving a human-held node
-contested_by:             # who ran this node's one contest while unratified (dte:B28)
-confidence: high          # low | medium | high (optional)
-aliases: [citationToken]  # written by the tool from name so [[name]] resolves in Obsidian
+ratified_by:              # the human who settled an ai or joint leaf
+authorized_by:            # a human's go-ahead to change a human-held leaf
+contested_by:             # who ran this leaf's one contest while unratified (B60)
+conflicts_with: [C9]      # only when it lists something
+aliases: [citationToken]  # the leaf's name, and nothing else
 ---
 ```
 
-`name` is the handle a model says beside the ID (dte:A5, dte:B32); `title` is the description. Write the title as the decision in one sentence, under 100 characters (dte:B16).
+Provenance is `date` and `ratified_by` on every leaf, with `made_by` written only when a human, or a human with an agent, made it; absent, it reads as `ai`. Who wrote a leaf is git's record: the tool writes no `by`, and reads one an import carries (dte:B59). What a leaf superseded is the ledger's fact, not a field. Under `retire = keep` a retired file carries `status` and `superseded_by`, because there the file is the record. With `links = wikilink` the link fields are written as quoted wikilinks, `parents: ["[[A1]]", "[[A2]]"]`; both spellings are always read. Obsidian's `tags` and `cssclasses` are known keys, `null` and `~` read as empty, and dot-directories under `decisions/` are skipped, so the directory opens as a vault (dte:B30). `dte upgrade` brings a 0.1 leaf to this shape.
 
-With `links = wikilink` (dte:B30) the link fields are written as quoted wikilinks, `parents: ["[[A1]]", "[[A2]]"]`, so Obsidian draws them as edges; the tool reads both spellings whatever the setting. `tags` and `cssclasses` are accepted as Obsidian's own keys; `null` and `~` read as empty; `aliases` must equal `[name]` (dte:B32). Dot-directories under `decisions/` (`.obsidian`) are ignored, so the directory opens as a vault.
-
-Body sections, in this order. Only **Decision** and **Why** are required.
+Body sections, in this order. Only **Decision** and **Why** are required, and no section is left empty.
 
 ```
 ## Decision
-One or two sentences. The thing that was decided, stated so it can be cited.
+One or two sentences: the call, stated so it can be cited.
 
 ## Why
-The reasoning only: what the parents demanded, what was traded off. No
-dates, no account of who said what when; history that matters is a History
-line (dte:B41). If a concrete incident forced this decision, say so in the
-first sentence; there is no field for it (dte:B40). A Why with no incident is preventive judgment, and a
-contest weighs it as the thinner claim.
+The plain reason, one or two sentences a person would say. It may lean on
+the parent and never runs uphill (B40). If a concrete incident forced the
+decision, the first sentence says so; a Why with none is preventive
+judgment, the thinner claim in a contest. If the writer was guessing the
+owner's preference, it says so.
 
 ## Consequences
-What this makes true for the rings below and for artifacts.
+What this makes true for the rings below and for artifacts, in this leaf's
+own terms. A MUST that no test enforces carries an *Unenforced:* line.
 
 ## Alternatives considered
-Optional. A terse list of the other ways this could have gone, one line
-each. It stays; it is part of what the decision means.
+Optional. A terse list of the other ways this could have gone. It stays.
 
 ## Contest
-Optional. A contest (dte:B28) records its rubric, the keep, opposite,
-deletion and variant cases with their scoped costs, and the verdict here.
-It informs the ratification and `ratify` deletes it (dte:B41); git keeps
-the text.
+Optional. The one contest's rubric, cases, costs and verdict (B60). Ratify
+drops it.
 
 ## History
-Optional. One line per event: created, ratified, moved, reworded,
-contested. Nothing else: a node is present governance, not a dev log
-(dte:B41).
+Optional. One line per event: created, moved, reworded, contested, ratified.
+Ratify drops it too; History restarts at the ratification (B62).
 ```
 
-### Relationship to ADR and MADR
+A ratified leaf is present governance: what stands, why, and what it makes true. The owner may rewrite it in their own voice; git keeps everything before (dte:B62).
 
-A node is an Architecture Decision Record with more structure. Against the MADR template (adr.github.io/madr, version 4): its *Context and Problem Statement* and *Decision Drivers* are the Why; *Decision Outcome* is the Decision; its *Consequences* subsection is Consequences; *Considered Options* and *Pros and Cons of the Options* are Alternatives considered; `status: superseded by ADR-NNNN` is `superseded_by`; `decision-makers` is `by` plus `ratified_by`. MADR's *Confirmation* subsection has no field here: confirmation is derived from citing tests (dte:B37). What a node has that MADR does not: `ring`, `parents`, `made_by`, `contested_by`, the ledger. The mapping is declared so a reader who knows ADRs can read a tree; the tool does not export MADR files.
+A leaf maps onto an Architecture Decision Record: MADR's *Context and Problem Statement* and *Decision Drivers* are the Why, *Decision Outcome* the Decision, *Consequences* the Consequences, *Considered Options* the Alternatives considered, and *decision-makers* is the commit author plus `ratified_by`. MADR's *Confirmation* has no field: confirmation is derived from citing tests. What a leaf has that MADR does not: ring, parents, uuid, the ledger, the one contest.
 
-### Status semantics (dte:C5)
+## 6. Citations
 
-| status       | in effect?         | meaning                                             |
-|--------------|--------------------|-----------------------------------------------------|
-| `proposed`   | yes, provisionally | made but not yet confirmed. Children get a warning. |
-| `active`     | yes                | the normal state.                                   |
-| `superseded` | no                 | replaced by `superseded_by`. File is kept.          |
-| `reverted`   | no                 | withdrawn with no replacement. File is kept.        |
+- Token: `dte:` followed by one or more comma-separated ids, `dte:ZZ1` or `dte:ZZ1,ZZ2`. Wikilink: `[[ZZ1]]` or `[[ZZ1|text]]`. Both are read everywhere; `links` picks the one the tool writes (dte:B3, dte:B30). Examples use the two-letter placeholder ring `ZZ`, which is never an id.
+- A citation in a comment near the top says why the file exists; one beside a block says why that block does. A citation may be followed by the leaf's name for the reader, `dte:ZZ1 shareImpl`; the tool counts only the id.
+- A citation replaces the comment that held the reason: WHY prose moves to the leaf, HOW prose to a spec, and a code comment says WHAT the block is and does.
+- Citing a leaf cites its ancestry. Cite the most specific leaf.
+- A spec may declare its scope with `covers: <globs>` in a comment line near its top. Every file the globs match is built to the spec and counts as citing what the spec cites; a rule about a whole class of files reaches the class through its spec instead of a citation in every member (dte:B44).
+- Citing an unknown or retired id is an error.
+- A leaf's lineage is its `parents:`. A leaf's Decision, Why and Consequences cite only shallower rings; History may name anything (dte:B49).
 
-## 5. Citations (dte:B3)
+## 7. Rules
 
-- Token: `dte:` immediately followed by one or more IDs separated by commas. Examples: `dte:B3`, `dte:B6,C1`. Case-sensitive. No spaces before the ID.
-- Wikilink: `[[B3]]` or `[[B3|text]]` is the same citation in Obsidian's spelling (dte:B30, dte:C19). Both forms are read everywhere; `links` in `dte.cfg` picks which one the tool writes.
-- Examples in prose use the placeholder ring `ZZ`: `dte:ZZ1`, `[[ZZ1]]`. Two letters is not an ID shape, so it is never a citation and never an error.
-- Place it in a comment for code, or in prose or an HTML comment for docs. A file-level citation at the top says why the file exists. Line-level citations say why a specific block exists.
-- A citation replaces the comment that held the reason (dte:B38). WHY prose lives in the node, HOW prose in a spec, and a code comment says WHAT the block is and does. The tool's `scope --comments` lists comment-heavy files with no citation as migration candidates.
-- Citing a node implicitly cites its whole ancestry. Cite the *most specific* node that explains the artifact. Citing an `A` node directly is allowed and means "this exists straight from the core goal".
-- Citing an unknown ID is an error. Citing a superseded or reverted node is a warning: the artifact was built under a decision that no longer stands.
-- Nodes do not use citation tokens for lineage; they use `parents:`. A `[[ID]]` in a node's prose is a link for the reader, not lineage.
+- **R1 (dte:B10)** Every non-core leaf has at least one parent. Core leaves have none. Every parent is strictly shallower.
+- **R2 (dte:B4)** Two in-effect leaves that contradict are resolved by ring: shallower wins. A same-ring contradiction is an error, and usually means a refinement was filed as a sibling (dte:B35).
+- **R3 (dte:B24)** A leaf is retired only through the ledger. In delete mode the file is removed and git keeps the text; in keep mode the file stays with a status. A deleted or renamed leaf file with no ledger line is an error, unless its uuid lives on under another id (a renumber) or it belongs to another branch's subtree. Retired numbers are never reissued.
+- **R4 (dte:B24)** An in-effect leaf whose parent is retired is an **orphan**, and an error. This is how A1 is enforced: retiring a leaf forces its blast radius to be dealt with.
+- **R5 (dte:B59)** Every leaf records its `date` and uuid; git records who wrote it. AI and joint leaves may be in effect unratified, so agents are not blocked, and validate surfaces every unratified leaf until a human ratifies it: it names those in rings A and B and counts the rest. A decision nobody remembers making is reconstructed as an AI leaf whose Why says it is inferred and from what.
+- **R6 (dte:B61)** A hand edit to a leaf's body adds a History line, or a wording-only sweep is logged once in `decisions/EDITORIAL`. Validate warns on a body change neither covers.
+- **R7 (dte:B11)** A human-held leaf that is superseded, reverted, moved or re-parented carries `authorized_by` naming a human. Off with `protect_human = off`.
+- **R8 (dte:A6, dte:B15)** An agent never places or alters a leaf shallower than its ring. It writes the decision to the inbox and asks. `validate --as <ring>` enforces this on the agent's changed files, and warns when leaves changed with no ring declared (dte:B52).
+- **R9 (dte:A5)** A model refers to a decision as `ID name`, adding the title when the reader needs it, never a bare id.
+- **R10 (dte:B45)** The goal is total coverage. Every artifact cites a leaf, is built to a spec that does, or is listed in `.dtecoverage` under a `why:` line saying why it needs none. Coverage is reported as three gauges, one per hop: artifacts, specs, MUSTs. It is not an error; `coverage --check` makes it a gate for a project that wants one.
+- **R11 (dte:B46)** A MUST is cited by the test that enforces it, or its Consequences carry an `*Unenforced:*` line saying why no test can. Validate warns on one that is neither.
+- **R12 (dte:B53)** When the environment refuses an edit to the tree, the agent stops that change and asks the owner for an authorization naming the leaves. It never routes around the refusal.
 
-## 6. Rules
+## 8. Operations
 
-- **R1 (dte:B10)** Every non-core node has at least one parent. Core nodes have none. Every parent is in a strictly shallower ring.
-- **R2 (dte:B4)** Two active nodes that contradict each other are resolved by ring: shallower wins. Two contradicting nodes in the *same* ring are an error; resolve by superseding one or moving one. A node that narrows, excepts or supports another belongs below it as a child (dte:B35): a same-ring contradiction usually means a refinement was filed as a sibling.
-- **R3 (dte:B24, dte:C11)** A node is retired only through the ledger. In delete mode the file is removed and git keeps the text; in keep mode the file stays with `status` set. A deleted node file with no ledger line, or a renamed node file, is an error. Retired numbers are never reissued.
-- **R4 (dte:B24)** An in-effect node whose parent is retired is an **orphan**. Orphans are errors: re-parent, supersede, or revert them. This is how A1 is enforced: reverting a node forces its blast radius to be dealt with, not forgotten.
-- **R5 (dte:B7)** Every node records `made_by` and `by`. AI-made nodes may be `active` without ratification so agents are not blocked, but tools surface every unratified AI node until a human sets `ratified_by`. A decision nobody remembers making is reconstructed as `made_by: ai`, low confidence (dte:B34). A hand edit to a body adds a History line; validate flags a body change without one (dte:B36).
-- **R6 (dte:A2)** The goal is total coverage: every artifact cites at least one node. Coverage below 100% is not an error (adoption is incremental, dte:B22) but it is always reported.
-- **R7 (dte:B11)** A human-held node that is superseded, reverted, or moved must carry `authorized_by` naming a human. Off with `protect_human = off`.
-- **R8 (dte:A6, dte:B15)** An agent never places or alters a node shallower than its ring. It writes the decision to the inbox and asks. With `--as <ring>`, validate enforces this on the agent's changed files.
-- **R9 (dte:A5)** A model refers to a decision as `ID name`, adding the title when the reader needs it, never bare ID, unless `summaries = off`.
+Frontmatter is never hand-edited (dte:B29). Each operation below is one command; `specs/commands.md` and `specs/retiring.md` hold what each does in full.
 
-## 7. Operations
+**Add a decision.** `dte new <ring> --name camelCase --title "..." --by <name> --parents A1 [--decision "..." --why "..." | --body-file LEAF.md]`. Test it first (section 4). Cite it from what it produces, then validate.
 
-**Add a decision.** `dte new <ring> --name camelCase --title "..." --by <name> --parents A1 [--decision "..." --why "..." | --body-file NODE.md]`. The tool allocates the ID and writes the node; unfilled sections are `TODO` and validate warns until they are written. `--body-file` takes the sections verbatim (dte:C20). Cite it from the artifacts it produces. Run `dte validate`. Frontmatter is never hand-edited (dte:B29).
+**Import a corpus (dte:B33).** `dte import <dir> --by <who>` lifts one markdown file per leaf, properties unchanged, ids allocated parent-first. The History line `imported from <source>` marks re-homed content.
 
-**Import an existing corpus (dte:B33, dte:C20).** `dte import <dir> --by <who>` lifts one markdown file per node: frontmatter `ring`, `title`, optional `name`, `parents` (ids, names, or other files in the batch by name) and any node property the source already carries, all written unchanged; the body verbatim. IDs are allocated parent-first. Each node gets one History line, `imported from <source>`, and that line is the mark: an imported node is re-homed content, not a new decision, and owes its contest before the first new work under it, not at import.
+**Supersede.** Write the new leaf, read `dte blast OLD`, then `dte retire OLD --by <name> --superseded-by NEW [--authorized-by <human>]`. Every citation of OLD, in artifacts and in leaf bodies outside History, becomes NEW, with NEW's name where OLD's followed it; a line that ends up citing NEW twice keeps one. Children follow. A contest travels to NEW only when that contest produced NEW.
 
-**Supersede.** Write the new node. Run `dte blast OLD`. Then `dte retire OLD --by <name> --superseded-by NEW [--authorized-by <human>]`: the tool adds OLD to NEW's `supersedes`, rewrites every citation and child of OLD to NEW and prints them for review (they were built under OLD), writes the ledger line, and deletes or keeps the file per `retire`.
+**Revert.** `dte retire OLD --by <name> [--authorized-by <human>]` with no successor. Citations and children of OLD now fail validation: that list is the revert's blast radius. Fix each child with `dte reparent` or retire it; re-point or remove each citation.
 
-**Revert.** `dte retire OLD --by <name> [--authorized-by <human>]` with no successor. Citations and children of OLD are left as they are and now fail validation with a hint: that list is the blast radius of the revert. Each orphaned child is fixed with `dte reparent <ID> --parents ... --by <name>` or retired; each citation is re-pointed with `dte cite` or removed. Nodes OLD had superseded are printed as candidates to return.
+**Move.** `dte move <ID> <ring> --by <name> [--parents ...] [--authorized-by <human>]` writes the leaf at the new ring with a new id and uuid, keeps the parents still shallower (naming every one it drops), retires the old as `moved`, and rewrites every reference. Moving changes precedence: run `dte conflicts` after.
 
-**Move (promote or demote).** Moving changes precedence (dte:A1, dte:B32). A move is a supersession with the same text at a different ring. Use `dte move <ID> <ring> --by <name> [--parents ...] [--authorized-by <human>]`, which does all of the following in one run (dte:C9):
-1. Refuses if a child would not be strictly deeper than the new ring: move or re-parent the child first. Refuses a human-held node without `--authorized-by`.
-2. Allocates the new ID and writes the new node with the old body, `supersedes: [OLD]`, and `ratified_by` cleared, because precedence changed.
-3. Keeps the old parents that are still strictly shallower, or takes `--parents`. Every dropped parent is named: its blast radius shrank.
-4. Retires the old node through the ledger: deleted in delete mode, kept with `status: superseded` in keep mode.
-5. Rewrites `dte:OLD` in every artifact and `OLD` in every child's `parents`.
-Then run `dte blast` on each dropped parent, and `dte conflicts` if the node has declared contradictions: promotion means it now wins ones it lost. Never `git mv` or hand-delete a node file; validation rejects renames and ledger-less deletions.
+**Fold (dte:B48).** `dte fold <ID> [--into PARENT] --by <name>` takes an aspect back into its parent: its Decision and Consequences become the parent's Consequences, its citations and children move to the parent, and the ledger records `folded`.
 
-**Set a field (dte:B29, dte:C18).** `dte set <ID> title|name|confidence <value> --by <name> [--authorized-by <human>]` is the one generic frontmatter write, for the fields that carry no invariant (`name` is checked for shape and uniqueness and rewrites `aliases`). Every other field belongs to the command that owns its invariant, and `set` names that command when refused. Provenance fields are never changed after creation (dte:A3). The old value goes to History.
+**To spec (dte:B47).** `dte to-spec <ID> <spec> --by <name>` turns mechanics into spec text: the leaf's Decision and Consequences go into the spec under its title, the spec cites the leaf's parents, citations and children move to those parents, and the ledger records `to-spec` with the spec's path.
 
-**Ratify.** `dte ratify <ID> --by <human>` sets `ratified_by`, flips `proposed` to `active`, drops `## Contest` and logs the drop in one History line (dte:B41). `## Alternatives considered` stays. A ratified node is human-held from then on (dte:B11). `validate` warns when a ratified node still carries a Contest section.
+**Renumber and merge (dte:B58).** `dte renumber <ID> --by <name>` gives a leaf a fresh number and keeps its uuid. `dte merge-ids <base> --by <name>`, run on a branch before it merges into or rebases onto `base`, renumbers every leaf here whose id the base gives to another.
 
-**Authorize (dte:C21).** `dte authorize <ID> --by <human> [--note ...]` records a human's go-ahead on a node that already exists: `authorized_by` plus a History line. It is how an owner's "go ahead" reaches a node an agent drafted above its ring, and the only writer of that field.
+**Set a field.** `dte set <ID> title|name <value> --by <name> [--authorized-by <human>]` is the one generic frontmatter write. Every other field belongs to the command that owns its invariant, and `set` names it when refused. Provenance never changes after creation (dte:A3).
 
-**Contest (dte:B28).** An unratified node is not a block, but before a tree agent first builds new work under it (a child, a spec, an artifact) the agent runs `dte contest <ID>` (dte:C17). An import owes none (dte:B33). The tool prints the node, its parents as the rubric, and four slots: keep, opposite, deletion, variant. The agent builds each alternative far enough to scope its cost, judges them against the parents alone, and records the verdict with `dte contest <ID> --record --chosen <slot> --by <name> --note "..."`. Parents are read, never reopened. Siblings are not touched. Children and citing artifacts count for nothing, not even as cost: a better node may need none of them. If keep did not win, the agent writes the winner with `new` and retires the loser, or does both in the same run with `--record --chosen variant --title ... --body-file ...` (dte:C22); a successor that carries the loser's contest is marked contested by it. A contested node is settled (dte:A7): it is acted on without re-asking until a human ratifies it or an agent supersedes it; a second contest needs `--again`. Ratification then reviews a comparison with costs, not a bare proposal.
+**Re-parent.** `dte reparent <ID> --parents ... --by <name> [--authorized-by <human>]` replaces a leaf's parents, orphan or not.
 
-**Declare a contradiction.** `dte conflict <A> <B>` writes `conflicts_with` on both nodes and prints the winner by ring (dte:B4).
+**Ratify.** `dte ratify <ID> --by <human>` sets `ratified_by`, makes a proposed leaf active, drops Contest and History, and logs one line. The leaf is human-held from then on.
 
-**Escalate (dte:B14).** When a decision belongs above your ring, or you do not know where it belongs, write `decisions/inbox/<slug>.md`:
+**Authorize.** `dte authorize <ID> --by <human> [--note ...]` records a human's go-ahead on a leaf that exists: `authorized_by` plus a History line. It is how the owner's in-chat word reaches a leaf (C21).
 
-```yaml
----
-title: One-sentence statement of the decision
-proposed_ring: B          # your best guess, or omit
-ask: orchestrator         # who should place it; defaults to the ring's holder
-made_by: ai
-by: <model>
-date: 2026-09-02
-parents: [A1]             # candidate parents, optional
----
-## Decision
-## Why
-```
+**Contest (dte:B60).** Before a tree agent first builds new work under an unratified leaf, it runs `dte contest <ID>`: the tool prints the leaf, its parents as the rubric, and four slots (keep, opposite, deletion, variant). The agent builds each far enough to scope its cost, judges them against the parents alone, and records the verdict with `--record`. Parents are read, never reopened; siblings are not touched; children and citing artifacts count for nothing. A non-keep winner is written and the loser retired in the same run with `--record --chosen variant --title ... --body-file ...`. A contested leaf is settled until a human ratifies it or an agent supersedes it; a second contest needs `--again`. Re-homing text that already governs built code (an import, a fold, a move into a spec) owes no contest, and a rewrite the owner directs settles the leaf.
 
-Then say so in chat, with the title. Validate and tree print PENDING PLACEMENT with the question to ask until it is placed.
+**Wording sweep (dte:B61).** `dte editorial --by <name> --note "..." [--replace old=new ...] [--skip ID]` logs one line for a sweep instead of one History line per leaf; with `--replace` it does the sweep itself over every in-effect leaf's title and body, History kept.
 
-**Outbox (dte:B31).** A human directs agents from inside the vault without the CLI: drop a note in `decisions/outbox/` (any shape; title from frontmatter, first heading, or file name), put `ratify`, `retire`, `contest` or `ask` in a node's `tags` property or inline as `#ask`, or type a name into `ratified_by`. `dte outbox` lists every item with the command that processes it; `dte outbox --done <ID|slug>` removes the note or strips the tags; `validate` prints `OUTBOX (n)` until the list is empty. A bare edit with no tag is not an outbox item: validate's changed-nodes list covers it.
+**Declare a contradiction.** `dte conflict <A> <B>` writes `conflicts_with` on both and prints the winner by ring.
 
-**Place (dte:B14).** Someone with authority runs `dte place <slug> <ring> --by <name> [--parents A1,B2]`. The tool allocates the ID, writes the node into the ring with a History line, and removes the inbox file. The placer is not thereby ratifying the content; `ratified_by` stays empty until a human sets it.
+**Escalate (dte:B14).** A decision above your ring, or of unclear ring, goes to `decisions/inbox/<slug>.md` with `title`, optional `proposed_ring`, `ask`, `by`, `date`, candidate `parents`, and a Decision and Why. Say so in chat with the title. Validate prints PENDING PLACEMENT until someone with authority runs `dte place <slug> <ring> --by <name> [--parents ...]`. The placer does not thereby ratify.
 
-**Authorise an override (dte:B11).** To retire or move a human-held node, a human sets `authorized_by:` on it. An AI may prepare the change but the field must name a person.
+**Outbox (dte:B31).** A human directs agents from the vault: a note in `decisions/outbox/`, a `ratify`, `retire`, `contest` or `ask` tag on a leaf, or a name typed into `ratified_by`. `dte outbox` lists each with the command that processes it; `--done <ID|slug>` clears it.
 
-**Spec (dte:A8, dte:C26).** `dte spec <ID> [--out FILE]` renders a spec skeleton from a node: its citation at the top, its Decision as the purpose, its parents' Decisions and its Consequences as constraints, every descendant as a covered decision, and empty Requirements, Out of scope and Gaps. A tree agent fills it. The spec cites the node; the node never lists its specs (dte:B37).
+**Spec (dte:A8).** `dte spec <ID> [--out FILE]` renders a spec skeleton from a leaf and its subtree. The spec cites the leaf; the leaf never lists its specs. A spec opens by citing what it serves and states each rule plainly: one point per paragraph, every sentence readable alone, no history and no "you" (B55).
 
-**Build to a spec (dte:B42, dte:C27).** `dte brief --builder <spec>` prints the builder rules and the spec: build exactly what it says, cite the IDs it names, decide nothing, never read `decisions/`, and when the spec is silent stop and file `dte gap <spec> --title "..." --by <who>`. A gap is an inbox item with `kind: gap` naming the spec; `inbox` lists gaps apart from decisions, `place` refuses them, and whoever holds the spec answers in the spec and removes the file.
+**Build to a spec (dte:B42).** `dte brief --builder <spec>` prints the builder rules and the spec. A builder builds exactly what the spec says, cites the ids it names, decides nothing, never reads `decisions/`, and when the spec is silent files `dte gap <spec> --title "..." --by <who>`. Whoever holds the spec answers there.
 
-## 8. Blast radius (dte:C2)
+**Upgrade.** `dte upgrade` rewrites a 0.1 tree's frontmatter to section 5's shape, bodies untouched, uuids backfilled stably. It is idempotent.
 
-For node X:
+## 9. Blast radius
 
-1. **Descendants**: every node with X in `parents`, transitively. Grouped by ring.
-2. **Artifacts**: every file and line citing X or any descendant.
-3. **Formerly superseded**: every node X supersedes. If X is reverted, those are candidates to come back.
+For leaf X: its descendants by ring; every artifact line citing X or a descendant, and every file built to a citing spec through `covers:`; and every leaf X superseded, from the ledger, as candidates to return if X is reverted. `dte blast X` prints all of it. Read it before changing X.
 
-`dte blast X` prints all three. Read it before changing X.
+## 10. Relationship to structural graphs (dte:A4)
 
-## 9. Relationship to graph engineering (dte:B9, dte:A4)
+A structural graph (dependencies, call graph, data flow, ownership) answers "what is connected to what". DTE answers "why does this exist and who decided". They are orthogonal axes over the same artifacts, joined by file path: `dte export` writes leaves, citations, ledger and inbox as one JSON document. Neither tool should grow to absorb the other.
 
-A structural graph (dependencies, call graph, data flow, module ownership) answers "what is connected to what". DTE answers "why does this exist and who decided". They are orthogonal axes over the same artifacts and they cross-reference:
+## 11. Authority and agents (dte:A6, dte:B13, dte:B15, dte:B52)
 
-- An artifact appears in both. Its graph edges say what it touches; its citations say what it serves.
-- A DTE node may name graph elements in its Consequences section. A graph element may carry a citation.
-- DTE does not model structural edges, and a graph does not model precedence or provenance. Neither tool should grow to absorb the other.
+Every agent has a ring. A top-level agent asks the owner its ring before tree work; until answered, and in a run nobody watches, it works at the ring the project names for that case. A spawning agent puts `dte brief <ring> [--under ID]` at the top of each subagent's instructions, one ring deeper (dte:B27). The agent:
 
-## 10. Authority and agents (dte:A6, dte:B13, dte:B15)
-
-Every agent has a ring. A spawning agent puts the output of `dte brief <ring> [--under ID]` at the top of the subagent's instructions (dte:B27): the ring, the `DTE_RING` variable, whom to ask, the in-effect decisions above the ring that bind it, and the rules. The agent:
-
-- makes decisions at its ring or deeper, and cites them;
+- decides at its ring or deeper, and cites what it builds;
 - writes anything shallower, or of unclear ring, to the inbox and asks;
-- runs `dte validate --as <ring>` before finishing, which fails if any node it changed is shallower than its ring or is human-held without `authorized_by`.
+- stops and asks when its environment refuses a tree edit (dte:B53);
+- runs `dte validate --as <ring>` before finishing.
 
-The advisory map in `dte.cfg` (`authority = A:human, B:orchestrator, C+:subagent`) says who holds each ring, so "ask upward" has an addressee. `dte authority` prints it. The map binds agents. It never binds humans, who may decide at any ring; a human-made node is valid anywhere.
+The advisory map in `dte.cfg` (`authority = A:human, B:orchestrator, C+:subagent`) says who holds each ring, so "ask upward" has an addressee. It binds agents, never humans. What each ring means beyond A is the adopter's map.
 
-## 11. Configuration (dte:B12)
+The agent protocol DTE ships is `PROTOCOL.md`, free of this repository's specifics. `dte vendor --from <checkout>` copies it, this spec, the adoption guide, the walkthrough and a render of DTE's own decisions into an ignored directory, and names the A and B leaves added or retired since the last copy (B56).
 
-`dte.cfg` at the project root, `key = value` per line, `#` comments.
+## 12. Configuration (dte:B12)
 
-| key             | default | meaning                                      |
-|-----------------|---------|----------------------------------------------|
-| `summaries`     | `on`    | print `ID name: title`; `off` prints bare IDs (A5) |
-| `protect_human` | `on`    | enforce R7 (B11)                             |
-| `authority`     | none    | advisory ring-to-holder map (B13)            |
-| `docs`          | `*.md, docs/*` | describing artifacts; not counted as reach (C8) |
-| `broad_fraction`| `0.3`   | share of nodes or artifacts that makes a node broad (C8) |
-| `broad_min`     | `5`     | minimum count before the share is considered (C8) |
-| `retire`        | `delete`| `delete` removes retired files (needs git); `keep` sets status (B24) |
-| `specs`, `tests`, `agents` | see cfg | globs for the layers below the tree; `show` derives per-layer lists (B37, C24) |
-| `scan_self`     | `off`   | scan the running tool file; only DTE's own repo sets it (C24) |
-| `links`         | `token` | `token` writes `dte:ID`; `wikilink` writes `[[ID]]` for Obsidian (B30, C19) |
+`dte.cfg` at the project root, `key = value` per line, `#` comments. `dte init` writes every key with its default.
 
-## 12. Scope checks and layers (dte:B21, dte:C8, dte:B37)
+| key | default | meaning |
+|---|---|---|
+| `summaries` | `on` | print `ID name: title`; `off` prints bare ids (A5) |
+| `protect_human` | `on` | enforce R7 (B11) |
+| `authority` | none | advisory ring-to-holder map (B13) |
+| `decisions` | `decisions` | where the tree lives, relative to the root |
+| `retire` | `delete` | `delete` removes retired files (needs git); `keep` sets a status (B24) |
+| `links` | `token` | `token` writes `dte:ID`; `wikilink` writes `[[ID]]` (B30) |
+| `must_test` | `on` | warn on a MUST neither tested nor labeled (B46) |
+| `specs`, `tests`, `agents`, `docs` | see `init` | globs for the layers below the tree; `show` derives per-layer lists; docs are not reach |
+| `broad_fraction`, `broad_min` | `0.3`, `5` | thresholds for the broad scope finding (B21) |
+| `scan_self` | `off` | scan the running tool file; only DTE's own repo sets it |
 
-The tree holds why. Below it, artifacts are told apart by the `dte.cfg` globs: `specs` (what to build), `tests` (what enforces), `agents` (instruction files that carry process rules), `docs` (what describes), and everything else is code. A node stores none of this; `show` derives "specified by", "implemented by", "enforced by", "instructs" and "described by" from citations at read time, and `coverage` lists in-effect nodes with no citing test.
+`.dteignore` lists globs the scanner skips. `.dtecoverage` lists files that need no decision, grouped under `why:` lines (B45).
 
-`dte scope` is advisory and never fails. It reports:
+## 13. Scope checks and layers (dte:B21, dte:B37)
 
-- **no reach**: a non-core node with no descendants and no citing spec, code, test or agent instruction. Describing documents (the `docs` globs) do not count. Retire it, or cite it from what it governs.
-- **broad**: a non-core node whose descendants or implementing files are at least `broad_fraction` of the whole, with at least `broad_min` of them. Promote it, or split it into several decisions.
-- **skipped ring**: a parent more than one ring shallower. A decision in the ring between is missing, or the node is at the wrong ring.
-- **core-only code**: an implementing artifact line that cites ring A. No rule-level decision explains that line; add one, or cite something more specific.
+The tree holds why. Below it, artifacts are told apart by the layer globs: specs (what to build), tests (what enforces), agents (instruction files that carry process rules), docs (what describes), and everything else is code. A leaf stores none of this; `show` derives each list from citations at read time.
 
-The thresholds are guesses until calibrated on a large tree. Ring balance (equal depth everywhere) is deliberately not a check: not everything needs the same depth to be useful.
+`dte scope` is advisory and never fails. It reports a non-core leaf with **no reach**; a **broad** leaf whose reach rivals the core's; a **skipped ring**, a parent more than one ring shallower, unless the parent or the leaf is human-held; and **core-only code**, an implementing line citing ring A. `scope --comments` lists comment-heavy files with no citation, where a WHY may still live.
 
-## 13. Tooling contract (dte:B6)
+## 14. Tooling contract (dte:B6)
 
-A conforming tool is a single file with no dependencies beyond the language runtime, and implements (dte:B29): asking the tree with `show`, `find`, `tree` (with `--under`), `blast`, `trace`, `conflicts`, `coverage`, `scope`, `retired`, `authority`, `next`, `brief` (dte:B27); changing it with `new`, `cite` (dte:C14), `ratify`, `conflict`, `reparent`, `set` (dte:C18), `contest` (dte:C17), `move`, `retire`, `inbox`, `outbox` (dte:B31), `place`, `import` (dte:C20), `authorize` (dte:C21), `unratified` (dte:C23), `spec` (dte:C26), `gap` and `brief --builder` (dte:C27); and `validate` (a summary by default, `--full` for the whole unratified list) (with `--as`, defaulting to `$DTE_RING`), `export` (JSON: nodes, citations, ledger, inbox; the join surface for structural tools, dte:C12), `init` (scaffold, dte:C13), `vendor` (copy DTE's rule text and a render of its decisions into an ignored directory, stamped with the source commit, dte:C25, dte:B39), and `hook` (pre-commit validate, dte:C14). Every output that names a node prints `ID name: title` unless summaries are off. The reference implementation is `tools/dte.py`. Exit code is non-zero when `validate` finds errors.
+A conforming tool is a single file with no dependencies beyond the language runtime. It implements asking the tree (`show`, `find`, `tree`, `blast`, `trace`, `conflicts`, `coverage`, `scope`, `unratified`, `retired`, `authority`, `next`), changing it (`new`, `import`, `place`, `cite`, `set`, `reparent`, `ratify`, `authorize`, `contest`, `conflict`, `retire`, `move`, `fold`, `to-spec`, `renumber`, `merge-ids`, `editorial`, `inbox`, `outbox`), agents and specs (`brief`, `brief --builder`, `spec`, `gap`), and integration (`validate`, `export`, `init`, `upgrade`, `vendor`, `hook`). Every output that names a leaf prints `ID name: title` unless summaries are off. The exit code is non-zero when `validate` finds errors. The reference implementation is `tools/dte.py`.
 
-## 14. Open questions (not yet decided)
+## 15. Open questions
 
-- Whether a node may have a parent in a *deeper* ring for "supporting" links. Current answer: no; use Consequences prose.
+- Whether a leaf may name a deeper ring for a "supporting" link. Current answer: no; the child says how it follows (B49).
 - Rings beyond `Z`. Current answer: if you need 27 rings, the core is wrong.
 - Whether citations should carry a reason string. Deferred.
-- License for this repo. Owner's decision.
+- License for this repository. The owner's decision.

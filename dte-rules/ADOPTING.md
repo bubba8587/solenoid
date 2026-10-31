@@ -1,54 +1,82 @@
-<!-- vendored from DTE 3050da4 on 2026-09-18. Do not edit; refresh with: python tools/dte.py vendor --from <your DTE checkout> -->
+<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:A4,B22,B8,B33,B34,C21 -->
+<!-- dte:A4,B22,B8,B33,B34,C21,B45,B44,B51,B56,B58,B54 -->
 # Adopting DTE in an existing project
 
-Written for a large, live codebase as the target, but nothing here is specific to it. Adoption is incremental by design (A4, B22): coverage starts near zero and only goes up. Nothing fails until the tree itself is inconsistent.
+Written for a large, live codebase, but nothing here is specific to one. Adoption is incremental by design: coverage starts near zero and only goes up, and nothing fails until the tree itself is inconsistent.
 
 ## Day one (an hour)
 
-1. Copy `tools/dte.py` into the project and run `python dte.py init`. It creates `decisions/`, a fully commented `dte.cfg`, and a `.dteignore` that already skips the tool itself (its citations belong to DTE's tree); add vendored, generated, and binary directories to the ignore file. Then `python dte.py vendor --from <path to a DTE checkout>`: it copies DTE's rule text (`CLAUDE.md`, `SPEC.md`, this file, `README.md`) and a render of DTE's decisions into `vendor/dte/`, stamped with the DTE commit, and ignores the directory (B39 vendoredRules, C25). Run it again to refresh. Point your agent harness at those copies with a session-start hook or a slash command; that is the harness's job, not the tree's.
-2. Write the core. Sit with the owner and state the project's abstract goals in one or two sentences each. Three to six of them: `dte new A --name goalName --title "..." --by <owner> --made-by human --decision "..." --why "..."`. Everything else will hang off these, so get the wording right and keep them abstract: goals, not features. If an agent does this for the owner, the owner's "go ahead" is the authorization: the agent drafts each A node as `made_by: ai`, unratified, then runs `dte authorize <ID> --by <owner>` so `validate --as B` accepts the change; the owner ratifies later (C21).
-3. Run `python dte.py validate`. It should pass with zero citations.
-4. Run `python dte.py coverage`. That number is the adoption gauge.
-5. Optionally `python dte.py hook`, so a commit that breaks the tree is refused.
+1. Copy `tools/dte.py` into the project and run `python tools/dte.py init`. It creates the decisions directory, a commented `dte.cfg`, a `.dteignore` that skips the tool itself (its citations belong to DTE's tree), and a `.dtecoverage` that already lists DTE's own scaffold. Add vendored, generated and binary directories to the ignore file. Set `decisions` in `dte.cfg` if the tree should live somewhere else, inside an Obsidian vault for instance.
+2. `python tools/dte.py vendor --from <path to a DTE checkout>`. It copies `PROTOCOL.md`, `SPEC.md`, this file, `README.md`, `WALKTHROUGH.md` and a render of DTE's own decisions into `vendor/dte/`, stamped with the DTE version and the copy's own refresh command, and ignores the directory. Point your agent harness at `vendor/dte/PROTOCOL.md` with a session-start hook or a line in your own agent instructions; that is the harness's job, not the tree's.
+3. Write the core. Sit with the owner and state the project's goals in one or two sentences each, three to six of them: `dte new A --name goalName --title "..." --by <owner> --made-by human --decision "..." --why "..."`. Keep them abstract: goals, not features. If an agent drafts them, the owner's go-ahead is the authorization: the agent writes each as an AI leaf, unratified, then runs `dte authorize <ID> --by <owner>`; the owner ratifies later.
+4. In your own agent instructions, say which ring an agent takes when nobody has told it, and what each ring beyond A means here. Those are yours to set; DTE defines neither.
+5. `dte validate`, then `dte coverage`. The three gauges are the adoption measure.
+6. Optionally `dte hook`, so a commit that breaks the tree is refused.
 
 ## Growing the tree
 
-Pick one subsystem the team understands well. For it:
+Pick one subsystem the team understands well.
 
-- Ask of each major component: "what was decided that made this exist?" Write those as ring `B` nodes with parents in `A`. Then the choices those forced as ring `C`, and so on. Most subsystems are three or four rings deep.
+- Ask of each major component: "what was decided that made this exist?" Write each answer that is a real call, one a person could weigh and choose otherwise, as a ring B leaf with parents in A, then the calls those forced as ring C, and so on. Most subsystems are three or four rings deep.
+- Test every leaf before you write it. A sentence that would still be true had the opposite been chosen is mechanics: it belongs in a spec. A leaf that only details its parent belongs in the parent's Consequences. Expect a large share of first drafts to fail this; `dte to-spec` and `dte fold` fix the ones that got through.
+- Your existing mechanics docs are your spec layer. Declare them in the `specs` globs, one per subsystem, and give each a header citing what it serves. A rationale doc (out of scope, deferred) is a set of leaves waiting to be lifted.
+- A rule about a whole class of files (every component, every store) goes in the class's spec with a `covers:` glob, not a citation in every file. A file's own header cites only what is specific to it.
 - Cite from the top of each file with `dte cite <file> <ID>`. Line-level citations, written by hand, are for blocks whose reason differs from the file's.
-- Decisions nobody remembers making still get a node. Write what you can infer as `made_by: ai`, `confidence: low`, with a History line naming the evidence (B34). It stays unratified until the owner confirms it; a low-confidence node is far more useful than a gap: it is a question the tree is now asking out loud.
-- An existing rule corpus is lifted in one run: one markdown file per rule with `ring`, `title`, `parents` (by name) and whatever provenance the source already records, then `dte import <dir> --by <you>` (B33). Nothing is contested at import; a lifted node owes its contest when something is first built under it.
-- Comments split three ways (B38 commentsMigrate). A comment that explains *why* is a decision's rationale in the wrong home: move it into the node's Why and leave `dte:ID` behind. A comment that explains *how* beyond what the block literally does belongs in a spec, if the project keeps one, and the code cites the node the spec serves. A comment that says *what* the block is and is doing stays. `dte scope --comments` lists comment-heavy files with no citation, a place to start.
-- When the tree disagrees with the code, that is a finding. Either the code drifted (fix it, citing the node) or the decision changed silently (write the superseding node, retire the old one, walk the orphans).
+- A decision nobody remembers making still gets a leaf: an AI leaf whose Why says it is inferred and from what, with a History line naming the evidence. It stays unratified until the owner confirms it, and a guessed leaf is far more useful than a gap: it is a question the tree now asks out loud.
+- An existing rule corpus is lifted in one run: one markdown file per rule with `ring`, `title`, `parents` (by name) and whatever provenance the source already records, then `dte import <dir> --by <you>`. Nothing is contested at import.
+- Comments split three ways. A comment that explains *why* moves into the leaf's Why and leaves a citation behind. A comment that explains *how* moves into the spec. A comment that says *what* the block is and does stays. `dte scope --comments` and the worklist at the end of `dte coverage` are places to start.
+- A file that needs no decision goes into `.dtecoverage` under a `why:` line naming the reason. "Not swept yet" is not a reason.
+- A MUST gets a test that cites it, or an `*Unenforced:*` line in its Consequences. How you triage the unenforced ones is your own process.
+- When the tree disagrees with the code, that is a finding. Either the code drifted (fix it, citing the leaf) or the decision changed silently (write the superseding leaf, retire the old one, walk the orphans).
 
-Stop when validate is clean and coverage for that subsystem is 100%. Move on.
+Stop when validate is clean and the gauges for that subsystem read 100%. Move on.
 
 ## Working with AI agents
 
-Have your harness load the vendored `CLAUDE.md`; do not re-author it, and never re-create DTE's own decisions as nodes in your tree: your tree holds your decisions, DTE's rules stay DTE's (B39 vendoredRules). The vendored `DECISIONS.md` is how your agents read DTE's rules without hosting them. From then on every agent session leaves a trail of `made_by: ai` nodes, and the owner's job becomes ratification: read the unratified list at the end of each validate run, agree or supersede, set `ratified_by`.
+Have your harness load the vendored `PROTOCOL.md`; do not re-author it, and never re-create DTE's own decisions as leaves in your tree. Your tree holds your decisions; the vendored `DECISIONS.md` is how your agents read DTE's without hosting them. From then on every agent session leaves a trail of AI leaves, and the owner's job becomes ratification: read the unratified list (widest first) at the end of each validate run, agree or supersede, ratify.
 
-An agent that only builds needs no ring and no tree (B42 builderAutonomy). Write the spec from the node with `dte spec <ID> --out specs/<name>.md`, fill its requirements, and hand the builder `dte brief --builder specs/<name>.md` as its whole instruction block. It cites the IDs the spec names, decides nothing, and files `dte gap` when the spec is silent; the gap lands in the inbox for whoever holds the spec. The same model can hold a ring in one session and build in the next; what makes it a builder is that it has the spec and not the tree.
+An agent that only builds needs no ring and no tree. Write the spec from the leaf with `dte spec <ID> --out specs/<name>.md`, fill its requirements, and hand the builder `dte brief --builder specs/<name>.md` as its whole instruction block.
 
-Give each agent a ring (A6). Set `authority` in `dte.cfg` so the tool can say whom to ask, for example `A:human, B:orchestrator, C+:subagent`. An orchestrating agent at ring B spawns subagents at C with `dte brief C --under <the node they work beneath>` at the top of their instructions and `DTE_RING=C` in their environment; anything they try to decide at B or A lands in the inbox with a prompt to escalate. You can still decide at any ring yourself; the map binds agents, not people. The owner's own decisions, and any AI decision the owner ratifies, become human-held: an agent cannot retire or move them without a human writing `authorized_by` (B11).
+Give each agent a ring. Set `authority` in `dte.cfg`, for example `A:human, B:orchestrator, C+:subagent`. An orchestrator at ring B spawns subagents at C with `dte brief C --under <the leaf they work beneath>` and `DTE_RING=C` in their environment. The owner can still decide at any ring.
+
+If your environment has a permission layer that guards the decisions directory, an agent that hits it stops and asks you in chat, naming the leaves. Your answer, recorded with `dte authorize`, is the authorization.
+
+## Several branches
+
+Parallel branches and cloud clones mint ids independently. Every leaf's uuid tells two leaves with one id apart. Before a branch merges into or rebases onto another, run `dte merge-ids <that branch> --by <you>`: every leaf here whose id the other branch gives to a different leaf takes a fresh id, its citations and children with it. `dte new` warns when the remote has branches the clone has not fetched.
+
+A long-lived specialized branch (one that builds the product on the newest of everything, say) keeps its own subtree: an A leaf saying how the branch changes the product, with `branch: <name>`, and the leaves and specs under it. It never merges out; a finding it makes moves to other branches as a ported change.
+
+## When the rules change
+
+Refresh with the command in the vendored files' stamp. `vendor` prints every DTE A and B leaf added or retired since your last copy, with its Decision. For each new one:
+
+1. Read it in `vendor/dte/DECISIONS.md` and ask what it asks of an existing tree: a new check validate will run, a field that changed, a test to apply to leaves already written.
+2. Run `dte validate` and `dte coverage`. New checks name what they find.
+3. Sweep. A vocabulary change is one `dte editorial --replace` line, not a History line per leaf.
+
+## Upgrading from 0.1
+
+1. `vendor` from a 0.2 checkout. It refreshes the tool and replaces the vendored `CLAUDE.md` with `PROTOCOL.md`; point your harness at the new file.
+2. `dte upgrade`, then commit it on its own. It rewrites frontmatter only: the name becomes the leaf's one alias, uuids are backfilled stably, and `status: active`, `made_by: ai`, `confidence`, an empty `conflicts_with` and (under `retire = delete`) `supersedes` and `superseded_by` go.
+3. `dte validate`. Then apply the 0.2 rules to the leaves you have: the leaf-or-spec test, the child-or-aspect test, citations only up the lineage, a label on every unenforced MUST. `to-spec` and `fold` do the moves.
 
 ## Using it
 
 - Before changing a decision: `dte blast <ID>`. The report is the checklist.
-- Before touching an unfamiliar file: `dte trace <path>`. It tells you what the file is for, all the way to the core.
+- Before touching an unfamiliar file: `dte trace <path>`.
 - When two decisions fight: `dte conflicts`. The ring order gives the answer. If the answer is wrong, the fix is a move, not an edit.
 
 ## Beside a spec tool
 
-Spec-driven toolchains hold the middle layer, the *what* (B37 derivedLinks: tree above, spec in the middle, code below). DTE does not replace them and is not a fourth spec format; it is the layer their files should cite. As each tool's own documentation describes it:
+Spec-driven toolchains hold the middle layer, the *what*. DTE does not replace them and is not a fourth spec format; it is the layer their files should cite.
 
-- **GitHub Spec Kit** writes a constitution at `memory/constitution.md` ("immutable principles that govern how specifications become code") and, per feature, `specs/<branch>/spec.md`, `plan.md` and `tasks.md`. The constitution is a prose rendering of rings A and B; each spec is a spec in DTE's sense and should cite the nodes it serves.
-- **AWS Kiro** writes, per feature, `requirements.md` (user stories with acceptance criteria in EARS notation), `design.md` and `tasks.md`, with standing project context under `.kiro/steering/`. The steering files are where the vendored DTE rule text goes; each requirement should cite the node it serves.
-- **OpenSpec** keeps current specs under `openspec/specs/` and each change under `openspec/changes/<name>/` as `proposal.md` ("why we're doing this, what's changing"), `design.md`, `tasks.md` and delta specs, archived on completion. A proposal's *why* is a decision: it belongs in a node, and the proposal cites it. A proposal an agent is not authorized to decide is an inbox item.
+- **GitHub Spec Kit** writes a constitution at `memory/constitution.md` and, per feature, `specs/<branch>/spec.md`, `plan.md` and `tasks.md`. The constitution is a prose rendering of rings A and B; each spec should cite the leaves it serves.
+- **AWS Kiro** writes, per feature, `requirements.md`, `design.md` and `tasks.md`, with standing context under `.kiro/steering/`. The steering files are where the vendored protocol goes; each requirement should cite the leaf it serves.
+- **OpenSpec** keeps current specs under `openspec/specs/` and each change under `openspec/changes/<name>/` with a `proposal.md`. A proposal's *why* is a decision: it belongs in a leaf, and the proposal cites it.
 
-In each case the tool's per-feature files are consumed at build time and go stale after; the nodes they cite outlive them, and `dte trace` on a spec file still answers why it exists. The word for what `trace` and `blast` compute is traceability: not requirements to tests, but decisions to everything that serves them.
+In each case the per-feature files are consumed at build time and go stale after; the leaves they cite outlive them, and `dte trace` on a spec file still answers why it exists.
 
 ## Alongside graph engineering
 

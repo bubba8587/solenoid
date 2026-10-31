@@ -1,13 +1,15 @@
-<!-- vendored from DTE 3050da4 on 2026-09-18. Do not edit; refresh with: python tools/dte.py vendor --from <your DTE checkout> -->
+<!-- vendored from DTE 0.2 (f4df54a) on 2026-10-31. Do not edit; refresh with: python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules -->
 
-<!-- dte:A1,A2,A3,A4,A5,A6,A7,A8,A9 -->
+<!-- dte:A1,A2,A3,A4,A5,A6,A7,A8,A9,B50 -->
 # Decision Tree Engineering (DTE)
 
 **Every thing in a project exists because a decision was made.** DTE makes that lineage explicit, ring by ring, so that when a decision changes you know exactly what it touches.
 
-A project's decisions form a branching tree (dte:A9). The core is ring `A`, the project's goals. Each ring outward holds decisions made *because of* the ring inside it, so every node has parents in a shallower ring. Position is both authority and reach: the shallower ring wins a contradiction, and a change reaches everything below it. Code, config, docs and tests are the leaves and bark. Each one cites the decision(s) it exists to serve.
+A project's decisions form a branching tree (dte:A9). The core is ring `A`, the project's goals. Each ring outward holds decisions made *because of* the ring inside it, so every decision, called a **leaf**, has parents in a shallower ring. Position is both authority and reach: the shallower ring wins a contradiction, and a change reaches everything below it. Code, config, docs and tests are the **artifacts**, and each one cites the leaves it exists to serve.
 
 DTE works **alongside** structural methods such as graph engineering. A dependency graph tells you *what* touches *what*. The decision tree tells you *why* any of it is there, and who decided. It is traceability for rationale: from any decision to every spec, test, file and instruction that serves it, and back.
+
+This is version 0.2, rebuilt from what a 200-leaf tree in a live product needed.
 
 ## The one rule that matters (A1 blastRadius)
 
@@ -19,120 +21,113 @@ Everything else in this repo descends from that. See `decisions/A/A1.md`.
 
 | Layer | Holds | Where |
 |---|---|---|
-| Decisions | **why**: goals, rules, choices, and who made them | `decisions/` |
-| Specs | **what** to build, generated from the tree and citing the nodes they serve | `specs/` |
+| Leaves | **why**: goals, rules, calls, and who made them | `decisions/` |
+| Specs | **what** to build, citing the leaves they serve | `specs/` |
 | Code and tests | **how** | everywhere else |
 
-A layer cites upward and stores nothing from below. A node never lists its specs, tests or files; the tool derives those lists from citations when you ask (dte:B37). Comments follow the same split: the why moves to a node, the how to a spec, and only the what stays in the code (dte:B38). Spec tools such as Spec Kit, Kiro and OpenSpec live in the middle layer; DTE is the rationale layer under them, never a fourth spec format.
+A layer cites upward and stores nothing from below. A leaf never lists its specs, tests or files; the tool derives those lists from citations when you ask. A spec can say `covers: src/components/*` and every file it matches is built to it, so a rule about a whole class of files reaches the class through one spec instead of a citation in every file.
+
+The line between a leaf and a spec is the one test DTE asks you to apply every time: **a leaf is a call a person could weigh and choose otherwise.** Name the call and its opposite. A sentence that would still be true had the opposite been chosen is mechanics, and mechanics are spec. When DTE ran that test over its own tree, 18 of its 24 tool leaves turned out to be mechanics and moved into `specs/`.
 
 ## How it looks
 
-An adopting project:
-
 ```
 decisions/
-  A/A1.md      ring 0: core goals          (made by a human)
-  B/B3.md      ring 1: "cite decisions with a dte: token"   parents: [A1, A2]
-  C/C3.md      ring 2: "how the scanner finds citations"    parents: [B3]
+  A/A1.md      ring A: core goals            (made by a human)
+  B/B3.md      ring B: "cite decisions with a dte: token"   parents: [A1, A2]
   inbox/       agent -> human: decisions waiting to be placed, spec gaps
-  outbox/      human -> agent: notes and tagged nodes
+  outbox/      human -> agent: notes and tagged leaves
   RETIRED      ledger of retired ids; numbers are never reused
-specs/         what to build; each spec cites the node it serves
-tools/dte.py   # dte:B6,C3   <- code cites the decisions it serves
+  EDITORIAL    one line per wording-only sweep
+specs/         what to build; each spec cites the leaves it serves
+tools/dte.py   # dte:B6   <- code cites the leaves it serves
+.dtecoverage   files that need no decision, each group under the reason why
 ```
 
-A decision node is a markdown file. Its frontmatter is written by the tool, never by hand (dte:B29):
+A leaf is a markdown file. Its frontmatter is written by the tool, never by hand, and holds only what no other record holds:
 
 ```yaml
 ---
 id: B3
+uuid: 01a05f6a-5803-7151-84ae-6f4c191d8679   # tells two branches' B3s apart
 title: "Artifacts cite decisions with a dte:ID token"
-status: active            # proposed | active | superseded | reverted
 parents: [A1, A2]         # must be in shallower rings; ["[[A1]]", "[[A2]]"] in wikilink form
-made_by: ai               # human | ai | joint
-by: Claude Fable 5.1
 date: 2026-09-02
-ratified_by:              # a human's name here settles the node
-name: citationToken       # the handle: chat says "B3 citationToken"
+ratified_by:              # a human's name here settles the leaf
+aliases: [citationToken]  # its name: chat says "B3 citationToken"
 ---
 ```
 
-The body is a Decision (one or two citable sentences), a Why (the reasoning and nothing else), Consequences, and a History of one line per event (dte:B41).
+The body is a Decision (one or two citable sentences), a Why (the plain reason and nothing else), Consequences, and a History of one line per event. Ratifying drops the History; git keeps it.
 
-Any artifact cites a decision with the token `dte:ID` in a comment or in prose, or as `[[ID]]` when `links = wikilink` is set; `decisions/` then opens directly as an Obsidian vault with lineage as graph edges (dte:B30). Every node has a camelCase `name` beside its `title`; chat says `ID name` (dte:A5, dte:B32).
+Any artifact cites a leaf with `dte:ID` in a comment or in prose, or as `[[ID]]` when `links = wikilink` is set; `decisions/` then opens directly as an Obsidian vault with lineage as graph edges.
 
 ## The tool
 
 ```
 # ask the tree
-python tools/dte.py show B3           # one decision: lineage, children, citing lines, body
-python tools/dte.py find "alias"      # search ids, titles, bodies, ledger, inbox
+python tools/dte.py show B3           # one leaf: lineage, children, citing lines, body
+python tools/dte.py find "alias"      # search ids, names, titles, bodies, ledger, inbox
 python tools/dte.py tree [--under B3] # the whole tree ring by ring, or one subtree
 python tools/dte.py blast B3          # what would changing B3 touch?
 python tools/dte.py trace tools/dte.py   # why does this file exist?
-python tools/dte.py conflicts         # who wins each contradiction?
-python tools/dte.py coverage          # which artifacts have no lineage yet?
-python tools/dte.py scope             # advisory: dead nodes, over-broad nodes, skipped rings
-python tools/dte.py retired           # the ledger of retired ids
-python tools/dte.py authority         # who holds each ring, so whom to ask
-python tools/dte.py unratified        # the full list validate only counts (dte:C23)
+python tools/dte.py coverage          # three gauges: artifacts, specs, MUSTs
+python tools/dte.py scope             # advisory: dead leaves, over-broad leaves, skipped rings
+python tools/dte.py unratified        # shallowest and widest first
 
-# change the tree (frontmatter is never hand-edited)
+# change the tree
 python tools/dte.py new C --name scannerWalk --title "..." --by agent --parents B3 --decision "..." --why "..."
-python tools/dte.py cite src/thing.py C3   # insert the citation in the file's comment syntax
+python tools/dte.py cite src/thing.py C3        # insert the citation in the file's comment syntax
 python tools/dte.py ratify B3 B4 --by owner
-python tools/dte.py conflict B4 C2    # declare a contradiction on both sides
-python tools/dte.py reparent C7 --parents B5 --by agent   # fix an orphan
-python tools/dte.py set B3 title "..." --by owner           # the one generic field write: title or confidence
-python tools/dte.py contest B3                            # one contest per unratified node: alternatives, costs, verdict
-python tools/dte.py contest B3 --record --chosen keep --by agent --note "..."
-python tools/dte.py move C4 B --by owner              # promote: new id, old retired, references rewritten
-python tools/dte.py retire B5 --by owner --superseded-by B24   # retire through the ledger
-python tools/dte.py inbox / place <slug> B --by owner # escalation and placement
-python tools/dte.py outbox [--done <ID|note>]  # what the human tagged or dropped in the vault (dte:B31)
-python tools/dte.py import <dir> --by <you>    # lift an existing rule corpus, properties unchanged (dte:B33)
-python tools/dte.py authorize <ID> --by <human> # record a human's go-ahead on an existing node (dte:C21)
+python tools/dte.py contest B3                  # one contest per unratified leaf
+python tools/dte.py retire B5 --by owner --superseded-by B24
+python tools/dte.py move C4 B --by owner        # promote: new id, old retired, references rewritten
+python tools/dte.py fold C7 --by agent          # an aspect goes back into its parent
+python tools/dte.py to-spec C9 specs/x.md --by agent   # mechanics become spec text
+python tools/dte.py merge-ids main --by agent   # before merging: renumber what main gave another leaf
+python tools/dte.py editorial --by agent --note "..." --replace old=new   # one log line for a sweep
 
 # specs and agents
-python tools/dte.py brief C --under B3   # the block to hand a subagent working at ring C
-python tools/dte.py spec B3 --out specs/b3.md   # a spec skeleton from a node, for a tree agent to fill
-python tools/dte.py brief --builder specs/b3.md # the block to hand a builder: spec only, no ring, no tree
-python tools/dte.py gap specs/b3.md --title "..." --by builder   # the spec is silent: file a gap in the inbox (dte:C27)
+python tools/dte.py brief C --under B3          # the block to hand a subagent at ring C
+python tools/dte.py spec B3 --out specs/b3.md   # a spec skeleton from a leaf
+python tools/dte.py brief --builder specs/b3.md # the block to hand a builder: spec only
+python tools/dte.py gap specs/b3.md --title "..." --by builder
 
 # check and integrate
 python tools/dte.py validate --as C   # consistency; as an agent at ring C, did I overstep?
-python tools/dte.py export --out tree.json   # nodes, citations, ledger, inbox: join it to your graph
-python tools/dte.py init              # scaffold a new project
-python tools/dte.py vendor --from ../DTE   # copy DTE's rules and decisions in, ignored, stamped
-python tools/dte.py hook              # pre-commit: refuse commits that break the tree
+python tools/dte.py export --out tree.json
+python tools/dte.py init / upgrade / vendor --from ../DTE / hook
 ```
 
 Three rules the tool enforces:
 
-- **Authority follows ring** (A6 authorityByRing). An agent decides at its ring or deeper. Anything shallower, or of unclear ring, goes to `decisions/inbox/` without an ID, and the tool prints "ask so-and-so where this belongs" until a person or a higher agent places it. The map in `dte.cfg` says who holds each ring. It binds agents, never humans.
-- **Human-held decisions are protected** (B11 humanHeldProtected). A node a human made or ratified cannot be superseded, reverted, or moved without `authorized_by` naming a human. DTE supplies the flag; honouring it is on the model.
-- **Nothing vanishes** (B24 retiredLedger). A node is retired or moved through the tool, which writes the ledger and rewrites every reference. A node file deleted by hand fails validation.
+- **Authority follows ring** (A6 authorityByRing). An agent decides at its ring or deeper. Anything shallower goes to `decisions/inbox/` without an id until a person or a higher agent places it.
+- **Human-held decisions are protected** (B11 humanHeldProtected). A leaf a human made or ratified cannot be superseded, reverted, moved or re-parented without `authorized_by` naming a human.
+- **Nothing vanishes** (B24 retiredLedger). A leaf leaves through the tool, which writes the ledger and rewrites every reference, names included. A leaf file deleted by hand fails validation.
 
 The tool is one file with no dependencies (Python 3.8+). Copy it into any project. Its tests run with `python -m unittest discover -s tests`.
 
 ## Working with agents
 
-DTE exists so agents can work autonomously and indefinitely without re-asking what is already decided (A7 autonomy). Three habits carry that, and `CLAUDE.md` spells them out:
+DTE exists so agents can work autonomously and indefinitely without re-asking what is already decided (A7 autonomy). `PROTOCOL.md` is the protocol an agent loads in any DTE repo:
 
-- **Two kinds of agent.** A *tree agent* holds a ring, records each non-trivial decision as a node when it makes it (dte:B8), and briefs its subagents one ring deeper with `dte brief`. A *builder* holds no ring and never reads the tree: it gets a spec, builds exactly that, decides nothing, and files a gap when the spec is silent (B42 builderAutonomy).
-- **One contest, then settled.** Before the first new work under an unratified node, a tree agent contests it once (keep, opposite, deletion, maybe a variant) judged against the node's parents alone, and records the verdict. After that the node stands and is never re-asked (B28 oneContest).
-- **Say the name, name the node.** A decision is always referred to by ID *and* its camelCase name, never a bare "A4", with the title in quotes when the sentence needs it; the reader does not have the file open (A5 idPlusName). A report that something was built names the node that governs it (dte:B17), and an action a node justifies is done and reported, not asked about (dte:B25).
+- **Ask your ring.** An agent asks the owner its ring before tree work, and briefs each subagent one ring deeper with `dte brief`. A *builder* holds no ring and never reads the tree: it gets a spec, builds exactly that, and files a gap when the spec is silent.
+- **One contest, then settled.** Before the first new work under an unratified leaf, a tree agent contests it once (keep, opposite, deletion, maybe a variant) judged against its parents alone, and records the verdict.
+- **Say the name, name the leaf.** A decision is always referred to by id *and* name, never a bare "A4" (A5 idPlusName). A report that something was built names the leaf that governs it.
+- **A refusal stops the agent.** When the environment refuses an edit to the tree, the agent asks the owner and never routes around it.
 
-The human answers through the same tree: ratify a node, tag it, or drop a note in `decisions/outbox/` (dte:B31).
+The human answers through the same tree: ratify a leaf, tag it, or drop a note in `decisions/outbox/`.
+
+DTE defines none of the process around the tree. Triage, backlog, release habits and house voice are the adopter's own.
 
 ## Read next
 
-- `SPEC.md` for the normative rules.
-- `decisions/` for this repo's own tree. DTE is built with DTE: every change is a node first, then the tool, then the docs (A9 treeStructure).
+- `SPEC.md` for the normative rules, and `specs/` for how the reference tool carries them out.
+- `PROTOCOL.md` for how AI agents behave in a DTE repo.
 - `WALKTHROUGH.md` for the whole life cycle on a toy project, real output.
-- `ADOPTING.md` for bringing DTE into an existing project.
-- `CLAUDE.md` for how AI agents are expected to behave in a DTE repo.
+- `ADOPTING.md` for bringing DTE into an existing project, or upgrading from 0.1.
+- `decisions/` for this repo's own tree. DTE is built with DTE: every change is a leaf first, then the tool, then the docs (A9 treeStructure).
 
 ## Status
 
-Ring A is set by the project owner. Its newest nodes, and most of rings B and C (the format and the tooling), are in effect and being ratified one node at a time; `python tools/dte.py unratified` has the live list. The goal is a finished package that other repos and agents install in one step (dte:A4).
+Ring A is set by the project owner. Rings B and C are in effect and being ratified one leaf at a time; `python tools/dte.py unratified` has the live list, widest first. The goal is a finished package other repos and agents install in one step (dte:A4).
