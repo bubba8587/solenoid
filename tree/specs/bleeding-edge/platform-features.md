@@ -6,7 +6,7 @@ tags: [spec, bleeding-edge]
 
 # Spec: Platform features on the bleeding-edge branch
 
-Serves [[B23]] edgePlatformFeatures and [[B25]] edgeReadyToPort. It lists every web-platform feature the bleeding-edge branch puts to use: what each replaced, whether the look changed, which engines lack it, and whether it's ready to port to a work branch. It also lists the features not yet tried that are within reason, and the ones that would change the look and wait for the author. How features are picked and checked is [[branch#Working on the branch]]. Each landed feature is one commit named `Edge: <feature>: …`, ported by cherry-picking it. A ported row says so, and the next rebase drops the edge commit as already in the base.
+Serves [[B23]] edgePlatformFeatures and [[B25]] edgeReadyToPort. It lists every web-platform feature the bleeding-edge branch puts to use: what each replaced, whether the look changed, which engines lack it, and whether it's ready to port to a work branch. It also lists the features not yet tried that are within reason, and the ones that would change the look and wait for the author. How features are picked and checked is [[branch#Working on the branch]]. Each landed feature is one commit named `Edge: <feature>: …`, ported with `port.mjs` ([[branch#Porting a finding]]). A ported row says so, and the next rebase drops the edge commit as already in the base.
 
 ## Engines
 
@@ -14,7 +14,7 @@ Solenoid ships into Chromium (Chrome and Edge on the web, WebView2 in the Window
 
 The oldest engine is the Linux desktop app's WebKitGTK, which comes from the user's system and trails Safari. Ubuntu's LTS releases take each WebKitGTK stable release as an update a few months after it ships, so the floor is the stable release that has reached them: on 2026-10-30, 2.52.3 in Ubuntu 24.04's updates (May 2026). A feature Safari shipped after that release counts as lacking in the Linux app until the floor moves.
 
-**Ready to port** follows [[B25]] edgeReadyToPort: the finding's commits port as they stand. Every engine has the feature, or each one without it was run with the feature taken away ([[branch#Working on the branch]], step 6) and behaves as the work branches do today; and the commits were cherry-picked onto the base and checked there. "Without it" records what the run showed. Every landed feature was checked in Chrome 153.
+**Ready to port** follows [[B25]] edgeReadyToPort: the finding's commits port as they stand. Every engine has the feature, or each one without it was run with the feature taken away ([[branch#Working on the branch]], step 6) and behaves as the work branches do today; and its port check passes on the current base ([[branch#Porting a finding]]). "Without it" records what the run showed. Every landed feature was checked in Chrome 153.
 
 ## In use
 
