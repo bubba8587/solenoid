@@ -356,6 +356,14 @@ md.push("## Checks", "", "| | Check | Time |", "|---|---|---|");
 for (const c of checks) md.push(`| ${icon(c.ok)} | ${c.name}${c.ok === null ? ` (${c.log})` : ""} | ${c.secs}s |`);
 const badSetup = setup.filter((s) => !s.ok);
 if (badSetup.length) { md.push("", "Setup steps that failed:", ""); for (const s of badSetup) md.push(`- ❌ ${s.name}`); }
+// The toolchain moves too (rust-toolchain.toml says stable here, the runner's Node is the newest LTS); a move since the
+// last run is a span of release notes to read, as a dependency's is.
+const TOOL_NOTES = { rust: "https://github.com/rust-lang/rust/blob/master/RELEASES.md", node: "https://nodejs.org/en/blog/release", npm: "https://github.com/npm/cli/releases" };
+const toolMoves = Object.entries(toolchain).filter(([k, v]) => prev?.toolchain?.[k] && prev.toolchain[k] !== v);
+if (toolMoves.length) {
+  md.push("", "## Toolchain that moved since the last run", "", "| Tool | From | To | Notes |", "|---|---|---|---|");
+  for (const [k, v] of toolMoves) md.push(`| ${k} | ${prev.toolchain[k]} | ${v} | [release notes](${TOOL_NOTES[k]}) |`);
+}
 md.push("", "## Direct dependencies that moved today", "", "| | Package | Where | From | To | Notes |", "|---|---|---|---|---|---|");
 for (const c of direct) md.push(`| ${c.major ? "⚠️ major" : ""} | \`${c.name}\` | ${where(c)} | ${c.from ?? "(new)"} | ${c.to ?? "(gone)"} | ${c.notes ? `[releases](${c.notes})` : ""} |`);
 md.push("", `<details><summary>${transitive.length} transitive changes</summary>`, "", "| Package | Where | From | To |", "|---|---|---|---|");
