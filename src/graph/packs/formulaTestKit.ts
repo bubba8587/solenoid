@@ -2,7 +2,6 @@
 // Test-only.
 
 import { ExpressionNode, EquationNode } from "../nodeClasses";
-import { parseEquation } from "../equationSolve";
 import { initPackFormulas } from "../formulaExtensions";
 import { compileEvaluator, parseFormula } from "../excelFormula";
 import type { FormulaPackEntry, Pack } from "./packShared";
@@ -54,10 +53,10 @@ export function auditFormulaPack(entries: FormulaPackEntry[]): string[] {
     if (seen.has(e.type)) problems.push(`${e.type}: duplicate type id`);
     seen.add(e.type);
     if (e.equation) {
-      const parsed = parseEquation(e.expr);
-      if (parsed === null || typeof parsed === "string") {
-        problems.push(`${e.type}: equation does not parse: ${e.expr}${typeof parsed === "string" ? ` (${parsed})` : ""}`);
-      }
+      // Every variable wired, so the core only checks the equation and any error it leaves is the parse's.
+      const node = new EquationNode({ expr: e.expr, locked: true });
+      node.data(Object.fromEntries(node.varNames.map((v) => [v, [1]])));
+      if (node.cachedError) problems.push(`${e.type}: equation does not parse: ${e.expr} (${node.cachedError})`);
     } else {
       if (!parseFormula(e.expr)) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
     }

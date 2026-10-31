@@ -106,7 +106,7 @@ A name immediately followed by `(` is a call, never an application; application 
 
 Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()` has no arguments. A slot that is empty, because a comma or the closing paren sits where an expression should start, is `{ t: "blank" }`: `IF(x,,y)` has three arguments, the middle one blank; `F(a,)` has two; `F(,)` has two blanks.
 
-`parseFormula` hands back the core's tree (null on a syntax error); `equationSolve.ts` and the editor's analyses walk it.
+`parseFormula` hands back the core's tree (null on a syntax error); the editor's analyses walk it.
 
 ### Syntax hints
 

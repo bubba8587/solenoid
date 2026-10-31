@@ -135,7 +135,7 @@ results get retried and settled rulings relapse.
 | `tree/decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
 | `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../tree/specs/canvas/add-menu.md`; [[B16]] oneFormulaSurface |
-| `equationSolve.ts`, `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
+| `nodes/equation.ts`, `crates/solenoid-core/src/nodes/formula.rs` (Equation) | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
 | `semanticZoomStore.ts` | [[A1]] visualGraphCalculator; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[A1]] visualGraphCalculator |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
