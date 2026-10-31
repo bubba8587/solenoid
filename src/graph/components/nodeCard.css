@@ -740,6 +740,60 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   height: auto;
   padding: 0;
 }
+.solenoid-composite__edit { margin-bottom: 2px; }
+.solenoid-composite__solve {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.solenoid-composite__solve > .solenoid-node__recalc-btn { flex: 1 1 auto; }
+.solenoid-composite__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.solenoid-composite__editor > .solenoid-node__section { margin-top: 0; }
+.solenoid-composite__row { margin-top: 0; }
+.solenoid-composite__row > .solenoid-node__field-label {
+  flex: 0 0 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solenoid-composite__row > .solenoid-node__inline-input,
+.solenoid-composite__row > .solenoid-composite__op + .solenoid-node__inline-input { flex: 1 1 0; }
+.solenoid-composite__op { flex: 0 0 52px; }
+.solenoid-composite__pm { flex: 0 0 auto; color: var(--text-muted); }
+.solenoid-composite__mc-input {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.solenoid-composite__grid {
+  display: grid;
+  gap: 4px;
+  align-items: center;
+}
+.solenoid-composite__colheads > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.solenoid-node__inline-input.solenoid-composite__text {
+  font-family: inherit;
+  text-align: left;
+}
+.solenoid-composite__note {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 
 .solenoid-node__inline-input {

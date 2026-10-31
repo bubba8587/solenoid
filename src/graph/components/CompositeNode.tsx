@@ -1,14 +1,15 @@
 // [[C77]] compositeIsSubgraph. Mechanics: tree/specs/canvas/composite-drill-in-mount-lifecycle.md.
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../nodeClasses";
 import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
 import { isSolError } from "../errorValue";
 import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
-import { InlineInputs, InlineNumberField, InlineTextField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { NodeShell, ValueDisplay, ArgSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { CardSection } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
@@ -50,30 +51,6 @@ export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "by-row", label: "By row" },
 ];
 
-function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onToggle: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <>
-      {open && <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 4 }}>{children}</div>}
-      <div className="solenoid-fc__more-row">
-        <button
-          type="button"
-          className="solenoid-fc__more"
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={(e) => e.stopPropagation()}
-          title={title}
-          aria-expanded={open}
-        >
-          <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"
-               style={{ display: "block", transform: open ? "rotate(180deg)" : undefined }}>
-            <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
-    </>
-  );
-}
-
 /** "" gives undefined, which clears the override back to the port's wired or default value. */
 function parseOverride(text: string): unknown {
   const t = text.trim();
@@ -86,9 +63,10 @@ function overrideToText(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
 }
 
-function ScenarioField({ value, placeholder, toText, parse, apply }: {
+function DraftField({ value, placeholder, toText, parse, apply, text = false }: {
   value: unknown;
   placeholder?: string;
+  text?: boolean;
   toText: (v: unknown) => string;
   parse: (t: string) => unknown;
   apply: (v: unknown) => void;
@@ -96,7 +74,7 @@ function ScenarioField({ value, placeholder, toText, parse, apply }: {
   const field = useDraftCommit(value, toText, parse, apply);
   return (
     <input
-      className="solenoid-node__inline-input"
+      className={`solenoid-node__inline-input${text ? " solenoid-composite__text" : ""}`}
       value={field.draft}
       placeholder={placeholder}
       onChange={(e) => field.setDraft(e.target.value)}
@@ -115,26 +93,27 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
   const cols = `minmax(0,1.2fr) repeat(${exposed.length}, minmax(0,1fr)) auto`;
 
   return (
-    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className="solenoid-composite__editor">
       {exposed.length === 0 ? (
         <div className="solenoid-node__text-empty">expose an input to give scenarios something to vary</div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted, #9aa0a6)" }}>
+          <div className="solenoid-composite__grid solenoid-composite__colheads" style={{ gridTemplateColumns: cols }}>
             <span>Scenario</span>
-            {exposed.map((p) => <span key={p.id} title={p.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>)}
+            {exposed.map((p) => <span key={p.id} title={p.label}>{p.label}</span>)}
             <span />
           </div>
           {node.scenarios.map((s) => (
-            <div key={s.id} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
-              <ScenarioField
+            <div key={s.id} className="solenoid-composite__grid" style={{ gridTemplateColumns: cols }}>
+              <DraftField
+                text
                 value={s.name}
                 toText={(v) => String(v ?? "")}
                 parse={(t) => t}
                 apply={(v) => { node.renameScenario(s.id, String(v)); recompute(); }}
               />
               {exposed.map((p) => (
-                <ScenarioField
+                <DraftField
                   key={p.id}
                   value={s.overrides[p.id]}
                   placeholder="—"
@@ -159,8 +138,9 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
         type="button"
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); node.addScenario(); recompute(); }}
+        onPointerDown={stopDragStart}
       >
-        + Scenario
+        Add Scenario
       </button>
     </div>
   );
@@ -185,10 +165,10 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
     return <div className="solenoid-node__text-empty">expose an input to sweep it</div>;
   }
   return (
-    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className="solenoid-composite__editor">
       {exposed.map((p) => (
-        <div key={p.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.6fr)", gap: 6, alignItems: "center" }}>
-          <span className="solenoid-node__io-label" title={p.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+        <div key={p.id} className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label" title={p.label}>{p.label}</span>
           <input
             className="solenoid-node__inline-input"
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
@@ -223,39 +203,29 @@ function outputComparable(node: CompositeNodeType, portId: string): boolean {
 
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
-  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   // Keep the current pick even if its type drifted, so the choice never vanishes.
   const candidates = node.outputPorts.filter((p) => outputComparable(node, p.id) || p.id === node.stopWhenPortId);
+  const stopOptions: OpOption<string>[] = [{ value: "", label: "None" }, ...candidates.map((p) => ({ value: p.id, label: p.label }))];
   return (
-    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
-      <span className="solenoid-node__io-label">{hasStop ? "Max steps" : "Steps"}</span>
-      <InlineNumberField
-        value={node.simulationSteps}
-        onChange={(v) => { node.simulationSteps = v ?? 10; void processGraph(node.id); }}
-      />
+    <div className="solenoid-composite__editor">
+      <div className="solenoid-node__field-row solenoid-composite__row">
+        <span className="solenoid-node__field-label">{hasStop ? "Max steps" : "Steps"}</span>
+        <InlineNumberField
+          value={node.simulationSteps}
+          onChange={(v) => { node.simulationSteps = v ?? 10; void processGraph(node.id); }}
+        />
+      </div>
       {candidates.length > 0 && (
         <>
-          <span className="solenoid-node__io-label">Stop when</span>
-          <select
-            className="solenoid-node__inline-input"
-            value={node.stopWhenPortId}
-            onChange={(e) => { node.stopWhenPortId = e.target.value; void processGraph(node.id); }}
-            {...stop}
-          >
-            <option value="">— none</option>
-            {candidates.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
+          <div className="solenoid-node__field-row solenoid-composite__row">
+            <span className="solenoid-node__field-label">Stop when</span>
+            <ArgSelect value={node.stopWhenPortId} options={stopOptions} onChange={(v) => { node.stopWhenPortId = v; void processGraph(node.id); }} />
+          </div>
           {hasStop && (
-            <div style={{ gridColumn: "1 / -1", display: "flex", gap: 6, alignItems: "center" }}>
-              <select
-                className="solenoid-node__inline-input"
-                style={{ flex: "0 0 auto", width: 52 }}
-                value={node.stopWhenOp}
-                onChange={(e) => { node.stopWhenOp = e.target.value as CompositeStopOp; void processGraph(node.id); }}
-                {...stop}
-              >
-                {STOP_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+            <div className="solenoid-node__field-row solenoid-composite__row">
+              <span className="solenoid-composite__op">
+                <ArgSelect<CompositeStopOp> value={node.stopWhenOp} options={STOP_OPS} onChange={(v) => { node.stopWhenOp = v; void processGraph(node.id); }} />
+              </span>
               <InlineNumberField
                 value={node.stopWhenValue}
                 onChange={(v) => { node.stopWhenValue = v ?? 0; void processGraph(node.id); }}
@@ -263,7 +233,7 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
             </div>
           )}
           {hasStop && node.simLastSteps != null && (
-            <div style={{ gridColumn: "1 / -1", fontSize: 10, color: "var(--text-muted)" }}>
+            <div className="solenoid-composite__note">
               {node.simLastSteps < node.simulationSteps
                 ? `stopped at step ${node.simLastSteps}`
                 : `ran all ${node.simulationSteps} steps (never met)`}
@@ -276,23 +246,17 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
 }
 
 function ByRowEditor({ node }: { node: CompositeNodeType }) {
-  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   if (exposed.length === 0) {
-    return <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)" }}>— expose an input to iterate</div>;
+    return <div className="solenoid-node__text-empty">expose an input to iterate</div>;
   }
+  const options: OpOption<string>[] = [{ value: "", label: "None" }, ...exposed.map((p) => ({ value: p.id, label: p.label }))];
   return (
-    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
-      <span className="solenoid-node__io-label">For each row of</span>
-      <select
-        className="solenoid-node__inline-input"
-        value={node.byRowPortId}
-        onChange={(e) => { node.byRowPortId = e.target.value; void processGraph(node.id); }}
-        {...stop}
-      >
-        <option value="">— none</option>
-        {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-      </select>
+    <div className="solenoid-composite__editor">
+      <div className="solenoid-node__field-row solenoid-composite__row">
+        <span className="solenoid-node__field-label">For each row of</span>
+        <ArgSelect value={node.byRowPortId} options={options} onChange={(v) => { node.byRowPortId = v; void processGraph(node.id); }} />
+      </div>
     </div>
   );
 }
@@ -311,7 +275,7 @@ function MiniHistogram({ samples }: { samples: readonly number[] }) {
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", marginTop: 2 }}>
       {counts.map((c, i) => {
         const h = (c / peak) * (H - 2);
-        return <rect key={i} x={i * bw + 0.5} y={H - h} width={Math.max(0.5, bw - 1)} height={h} fill="var(--accent)" opacity={0.75} />;
+        return <rect key={i} x={i * bw + 0.5} y={H - h} width={Math.max(0.5, bw - 1)} height={h} fill="var(--node-accent, var(--accent))" opacity={0.75} />;
       })}
     </svg>
   );
@@ -331,7 +295,7 @@ function MiniSparkline({ series }: { series: readonly number[] }) {
   }).join(" ");
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", marginBottom: 2 }}>
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <polyline points={pts} fill="none" stroke="var(--node-accent, var(--accent))" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -342,7 +306,6 @@ function isNumericSeries(v: unknown): v is number[] {
 
 function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
-  const [advanced, setAdvanced] = useState(false);
   const recompute = () => { void processGraph(node.id); };
   useEffect(() => { if (!node.monteCarlo) { node.setMonteCarlo({}); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   const mc = node.monteCarlo;
@@ -352,7 +315,6 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   }
   const markerOf = (portInternalId: string) =>
     node.internalEditor.getNode(portInternalId) as CompositeInputNode | undefined;
-  const row = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,0.9fr) auto", gap: 6, alignItems: "center" } as const;
 
   const distSamples = (() => {
     for (const p of node.outputPorts) {
@@ -367,18 +329,19 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   }, 0);
   const drawCount = Math.max(1, Math.round(mc?.samples ?? 0));
 
+  const sampled = (mc?.samples ?? 500) !== 500 || (mc?.seed ?? 1) !== 1 || !!mc?.correlations;
   return (
-    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+    <div className="solenoid-composite__editor">
       {dropped > 0 && (
         <div className="solenoid-node__text-empty">{drawCount - dropped} of {drawCount} draws</div>
       )}
       {exposed.map((p) => {
         const m = markerOf(p.internalNodeId);
         return (
-          <div key={p.id} style={row}>
-            <span className="solenoid-node__io-label" title={p.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <span style={{ color: "var(--text-muted, #9aa0a6)" }}>±</span>
+          <div key={p.id} className="solenoid-composite__mc-input">
+            <div className="solenoid-node__field-row solenoid-composite__row">
+              <span className="solenoid-node__field-label" title={p.label}>{p.label}</span>
+              <span className="solenoid-composite__pm" aria-hidden="true">±</span>
               <InlineNumberField
                 value={m?.uncertainty ?? 0}
                 onChange={(v) => { if (m) m.uncertainty = v && v > 0 ? v : null; recompute(); }}
@@ -393,20 +356,27 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
         );
       })}
       {distSamples && <MiniHistogram samples={distSamples} />}
-      <AdvancedFoot open={advanced} onToggle={() => setAdvanced((o) => !o)} title="Sampling options">
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
-          <span className="solenoid-node__io-label">Samples</span>
+      <CardSection label="Sampling" collapsible defaultOpen={sampled}>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label">Samples</span>
           <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
-          <span className="solenoid-node__io-label">Seed</span>
+        </div>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label">Seed</span>
           <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
-          <span className="solenoid-node__io-label" title="Correlate inputs with a Gaussian copula: label ~ label = ρ, several separated by semicolons. Each input keeps its own ± and shape; only the dependence changes.">Correlations</span>
-          <InlineTextField
+        </div>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label" title="Correlate inputs with a Gaussian copula: label ~ label = ρ, several separated by semicolons. Each input keeps its own ± and shape; only the dependence changes.">Correlations</span>
+          <DraftField
+            text
             value={mc?.correlations ?? ""}
-            onChange={(v) => { node.setMonteCarlo({ correlations: v }); recompute(); }}
+            toText={(v) => String(v ?? "")}
+            parse={(t) => t}
+            apply={(v) => { node.setMonteCarlo({ correlations: String(v) }); recompute(); }}
             placeholder={exposed.length >= 2 ? `${exposed[0].label} ~ ${exposed[1].label} = 0.7` : "a ~ b = 0.7"}
           />
         </div>
-      </AdvancedFoot>
+      </CardSection>
     </div>
   );
 }
@@ -414,7 +384,6 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
 function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
-  const [advanced, setAdvanced] = useState(false);
   const recompute = () => { void processGraph(node.id); };
   useEffect(() => {
     if (!node.goalSeek && exposed.length > 0 && outputs.length > 0) { node.setGoalSeek({}); recompute(); }
@@ -428,43 +397,38 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   const inputId = gs?.inputPortId || exposed[0].id;
   const outputId = gs?.outputPortId || outputs[0].id;
   const result = node.goalSeekResult;
-  const row = { display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1.4fr)", gap: 6, alignItems: "center" } as const;
-  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
+  const tuned = gs?.maxIterations != null || gs?.tolerance != null || gs?.boundsLo != null || gs?.boundsHi != null;
   return (
-    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={row}>
-        <span className="solenoid-node__io-label">Set</span>
-        <select className="solenoid-node__inline-input" value={outputId} onChange={(e) => { node.setGoalSeek({ outputPortId: e.target.value }); recompute(); }} {...stop}>
-          {outputs.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
+    <div className="solenoid-composite__editor">
+      <div className="solenoid-node__field-row solenoid-composite__row">
+        <span className="solenoid-node__field-label">Set</span>
+        <ArgSelect value={outputId} options={outputs.map((p) => ({ value: p.id, label: p.label }))} onChange={(v) => { node.setGoalSeek({ outputPortId: v }); recompute(); }} />
       </div>
-      <div style={row}>
-        <span className="solenoid-node__io-label">To value</span>
+      <div className="solenoid-node__field-row solenoid-composite__row">
+        <span className="solenoid-node__field-label">To value</span>
         <InlineNumberField value={gs?.target ?? 0} onChange={(v) => { node.setGoalSeek({ target: v ?? 0 }); recompute(); }} />
       </div>
-      <div style={row}>
-        <span className="solenoid-node__io-label">By changing</span>
-        <select className="solenoid-node__inline-input" value={inputId} onChange={(e) => { node.setGoalSeek({ inputPortId: e.target.value }); recompute(); }} {...stop}>
-          {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
+      <div className="solenoid-node__field-row solenoid-composite__row">
+        <span className="solenoid-node__field-label">By changing</span>
+        <ArgSelect value={inputId} options={exposed.map((p) => ({ value: p.id, label: p.label }))} onChange={(v) => { node.setGoalSeek({ inputPortId: v }); recompute(); }} />
       </div>
-      <AdvancedFoot open={advanced} onToggle={() => setAdvanced((o) => !o)} title="Solver options">
-        <div style={row}>
-          <span className="solenoid-node__io-label">Max iters</span>
+      <CardSection label="Solver" collapsible defaultOpen={tuned}>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label">Max iters</span>
           <InlineNumberField value={gs?.maxIterations ?? 80} onChange={(v) => { node.setGoalSeek({ maxIterations: v && v >= 1 ? Math.round(v) : undefined }); recompute(); }} />
         </div>
-        <div style={row}>
-          <span className="solenoid-node__io-label">Tolerance</span>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label">Tolerance</span>
           <InlineNumberField value={gs?.tolerance ?? 0} placeholder="1e-7" onChange={(v) => { node.setGoalSeek({ tolerance: v && v > 0 ? v : undefined }); recompute(); }} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,0.6fr) minmax(0,0.6fr)", gap: 6, alignItems: "center" }}>
-          <span className="solenoid-node__io-label">Bounds</span>
+        <div className="solenoid-node__field-row solenoid-composite__row">
+          <span className="solenoid-node__field-label">Bounds</span>
           <InlineNumberField value={gs?.boundsLo ?? undefined} placeholder="lo" onChange={(v) => { node.setGoalSeek({ boundsLo: v ?? undefined }); recompute(); }} />
           <InlineNumberField value={gs?.boundsHi ?? undefined} placeholder="hi" onChange={(v) => { node.setGoalSeek({ boundsHi: v ?? undefined }); recompute(); }} />
         </div>
-      </AdvancedFoot>
+      </CardSection>
       {result != null && node.outputs[outputId] && (
-        <div className="solenoid-composite__output solenoid-node__io-row--output" style={{ marginTop: 4 }}>
+        <div className="solenoid-composite__output solenoid-node__io-row--output">
           <span className="solenoid-node__io-label">
             Solution: {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
@@ -488,7 +452,7 @@ function formatRunTime(ms: number): string {
 
 // An SVG circle: a small CSS box reads as an oval in the flex row.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
-  const color = state === "stale" ? "var(--sol-warn)" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
+  const color = state === "stale" ? "var(--sol-warn)" : state === "failed" ? "var(--sol-error)" : "var(--sol-ok)";
   const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0, display: "block" }}>
@@ -539,11 +503,10 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
         <ArgSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
       {heavy && (
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+        <div className="solenoid-composite__solve">
           <button
             type="button"
-            className="solenoid-node__inline-input"
-            style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+            className="solenoid-node__recalc-btn"
             onClick={(e) => { e.stopPropagation(); node.requestSolve(insideOnly); void processGraph(node.id); }}
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
@@ -555,9 +518,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
         </div>
       )}
       {heavy && lastRunMs !== null && (
-        <div style={{ marginTop: 3, color: "var(--text-muted)", fontSize: 10, fontVariantNumeric: "tabular-nums" }}>
-          last run {formatRunTime(lastRunMs)}
-        </div>
+        <div className="solenoid-composite__note">last run {formatRunTime(lastRunMs)}</div>
       )}
       {gated && (
         <div className="sol-conn__status-text" style={{ marginTop: 4 }} title="Waiting for permission. Allow this document to connect in Settings ▸ Data.">
@@ -581,8 +542,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
     <NodeShell node={node} emit={emit} hideOutputSockets>
       <button
         type="button"
-        className="solenoid-node__inline-input"
-        style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        className="solenoid-node__recalc-btn solenoid-composite__edit"
         onClick={(e) => {
           e.stopPropagation();
           if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(node);
@@ -592,7 +552,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         onMouseDown={stopDragStart}
       >
         <EditSvg />
-        Edit contents
+        Edit Contents
       </button>
       <InlineInputs node={node} emit={emit} />
       <CompositeRunControls node={node} emit={emit} />
