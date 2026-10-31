@@ -237,6 +237,14 @@ export interface PlanRow {
   reason?: string;
 }
 
+/** Whether a planned "add" is held back: every add when Add missing is off, and a blank one unless its key is listed,
+ *  so a folder-wide write never seeds an empty property the user didn't name. */
+export function holdsAdd(addMissing: boolean, keysCsv: string, key: string, value: YamlValue): boolean {
+  if (!addMissing) return true;
+  const blank = value === null || value === "" || (Array.isArray(value) && value.length === 0);
+  return blank && !listLiteralItems(keysCsv).includes(key);
+}
+
 export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
   const present = new Set(cube.columns.map((c) => c.name));
   const listed = listLiteralItems(keysCsv);

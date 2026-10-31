@@ -108,7 +108,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Widget nodes Tier 2 (`v2.0/16`), post-1.4:** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
-- [ ] **Add missing writes blank properties only for listed keys**: with Add missing on and an empty key list, Write Properties adds a blank `status:` to every note it writes that lacks one, for every written column, which is hard to undo across a folder. Only keys named in the list should get a blank property.
 - [ ] **A daily-note source card**: outputs today's daily-note path from the user's Obsidian daily-notes settings, to wire into a vault-writing card. It replaces the removed `{{daily}}` shortcut, asked back as something wirable; its exact shape is open.
 - [ ] **Import Obsidian Note says when its note is gone**: renamed or deleted, the card keeps its last body and shows a status line, as connection cards do when they lose their source. Today the stale body looks live.
 - [ ] **A Note card shows a list property as a chip** ([[D87]] knapNotes): a bare `{{ items }}` holding a list or table prints raw text such as `[1,2,3]` on the card, where Obsidian with the plugin draws the chip.

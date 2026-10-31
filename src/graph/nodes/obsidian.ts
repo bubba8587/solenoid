@@ -12,7 +12,7 @@ import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, r
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
-import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, frontmatterTags, keepDateTime, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
+import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, holdsAdd, frontmatterTags, keepDateTime, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { nearestMdbaseSchema, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
@@ -312,7 +312,7 @@ export class WriteObsidianNode extends GraphNode {
           r.after = displayValue(r.value);
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
-          r.action = action === "add" && !this.addMissing ? "unchanged" : action;
+          r.action = action === "add" && holdsAdd(this.addMissing, this.stringLiterals.keys ?? "", r.key, r.value) ? "unchanged" : action;
           r.reason = undefined;
         }
         this.validateRows(rows, await this.schemaFor(vault, p));
@@ -347,7 +347,7 @@ export class WriteObsidianNode extends GraphNode {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const value = keepDateTime(text, r.key, r.key === "tags" ? frontmatterTags(text, r.value) : r.value);
           const { action } = resolveKey(text, r.key, value);
-          if (action === "add" && !this.addMissing) continue;
+          if (action === "add" && holdsAdd(this.addMissing, this.stringLiterals.keys ?? "", r.key, value)) continue;
           if (action === "unchanged") continue;
           if (sch) {
             if (sch.required.includes(r.key) && value === null) continue;

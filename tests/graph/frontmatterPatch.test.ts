@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime, holdsAdd } from "../../src/graph/frontmatterPatch";
 import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
@@ -271,5 +271,16 @@ describe("a Date & time property at midnight is written back as a date and time"
     expect(keepDateTime(note, "due", "2026-09-05")).toBe("2026-09-05T00:00:00");
     expect(keepDateTime(note, "when", ["2026-09-01", "2026-09-03"])).toEqual(["2026-09-01T00:00:00", "2026-09-03"]);
     expect(keepDateTime("---\ndue: 2026-09-02\n---\n", "due", "2026-09-05")).toBe("2026-09-05");
+  });
+});
+
+describe("Add missing adds a blank property only for a listed key", () => {
+  it("holds a blank add unless its key is listed, and every add when Add missing is off", () => {
+    expect(holdsAdd(true, "", "status", null)).toBe(true);
+    expect(holdsAdd(true, "", "status", "")).toBe(true);
+    expect(holdsAdd(true, "", "tags", [])).toBe(true);
+    expect(holdsAdd(true, "status, due", "status", null)).toBe(false);
+    expect(holdsAdd(true, "", "status", "open")).toBe(false);
+    expect(holdsAdd(false, "status", "status", "open")).toBe(true);
   });
 });
