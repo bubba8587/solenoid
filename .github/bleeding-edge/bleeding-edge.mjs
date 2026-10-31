@@ -3,20 +3,24 @@
 // REPORT.md and REPORT.json). The branch is persistent. Each run rebases its own commits (earlier dependency bumps,
 // fixes, experiments, the weekly ANALYSIS.md) from the base commit it was last built on onto the newest base, so no
 // bump is ever redone, then bumps only what is newer still, runs the checks and replaces the report commit on top.
-// A carried commit that conflicts with new work anywhere but a manifest or lockfile is dropped and named in the
-// report; the pre-rebase tip is kept on `bleeding-edge-prev`, so a dropped experiment can be redone from it.
+// The findings (commits whose subjects start `Edge:` or `Fix:`) each port to a work branch alone, a `Fix:` naming the
+// upgrade it needs in an `Upgrades:` line; the report says whether each still does (port.mjs --check). A carried commit that
+// conflicts with new work anywhere but a manifest, a lockfile or a generated file is dropped and named in the report;
+// the pre-rebase tip is kept on `bleeding-edge-prev`, so a dropped experiment can be redone from it.
 //
 //   node .github/bleeding-edge/bleeding-edge.mjs [--push] [--base <branch>] [--rebase-only]
 //
 // --rebase-only stops after the rebase and prints what was carried and dropped (no installs, checks or push).
 //
-// Self-contained (no repo imports), so the workflow can run it from a copy while the base branch is checked out.
+// Self-contained (no repo imports) apart from port.mjs beside it, so the workflow runs both from a copy while the base
+// branch is checked out.
 // Needs on PATH: node/npm, cargo with clippy and the wasm32 target, cargo-upgrade (cargo-edit). Optional:
 // cargo-binstall (fast wasm-bindgen-cli install), cargo-audit, WebKitGTK dev libraries (the desktop check).
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const PUSH = args.includes("--push");
@@ -29,6 +33,10 @@ const REPORT_SUBJECT = "Bleeding edge report";
 // dependency both sides list at the newer of the two versions); the others take the base's copy, which the install and
 // `cargo upgrade` below bring forward again.
 const DEP_FILE = /(^|\/)(package\.json|package-lock\.json|Cargo\.toml|Cargo\.lock)$/;
+// Files built rather than written: a conflict in them takes the base's copy, and the checks below rebuild them.
+const GENERATED = /^src\/graph\/engineWasm\/|^prerender\//;
+const FINDING = /^(Edge|Fix): /;
+const PORT = join(dirname(fileURLToPath(import.meta.url)), "port.mjs");
 const OUT = ".github/bleeding-edge";
 const ALL_CRATES = ["crates/solenoid-core", "crates/solenoid-graph", "crates/solenoid-parquet", "crates/solenoid-schedule", "src-tauri"];
 // Branches that aren't where work happens: production (it only takes releases), this one, session and bot branches.
@@ -143,7 +151,7 @@ if (run("git status --porcelain").trim()) run("git ${BOT} commit --quiet --amend
   while (!r.ok && inProgress()) {
     const sha = must("git rev-parse REBASE_HEAD");
     const files = must("git diff --name-only --diff-filter=U").split("\n").filter(Boolean);
-    if (files.length && files.every((f) => DEP_FILE.test(f))) {
+    if (files.length && files.every((f) => DEP_FILE.test(f) || GENERATED.test(f))) {
       for (const f of files) {
         if (/(^|\/)package\.json$/.test(f)) mergePackageJson(f);
         else must(`git checkout --ours -- '${f}'`);
@@ -263,6 +271,8 @@ const check = (name, cmd, skip) => {
 };
 check("Engine module builds (npm run build:wasm)", "npm run build:wasm");
 rmSync("node_modules/.vitest-cache", { recursive: true, force: true });
+check("Site snapshots regenerate (node scripts/prerender-site.mjs)", "node scripts/prerender-site.mjs");
+rmSync("node_modules/.vitest-cache", { recursive: true, force: true });
 check("Typecheck", "npx tsrs --noEmit");
 check("Unit tests", "npx vitest run");
 check("Site build", "npm run build");
@@ -275,6 +285,24 @@ for (const d of CRATES.filter((c) => c.startsWith("crates/"))) {
 check("crates/solenoid-core: clippy (wasm)", "cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings");
 check("Desktop shell compiles (src-tauri)", "cargo check --manifest-path src-tauri/Cargo.toml",
   sh("pkg-config --exists webkit2gtk-4.1", { quiet: true }).ok ? "" : "skipped: no WebKitGTK dev libraries on this machine");
+
+// ── port check: does each finding still port to the base alone? ───────────────────────────────────────────
+const ports = [];
+const findings = carried.filter((c) => FINDING.test(c.subject));
+if (findings.length) {
+  const tree = join(tmpdir(), `bleeding-edge-port-${process.pid}`);
+  rmSync(tree, { recursive: true, force: true });
+  must(`git worktree add --quiet --detach ${tree} origin/${base}`);
+  const ready = sh(`cd ${tree} && npm ci --no-audit --no-fund`);
+  for (const f of findings) {
+    if (!ready.ok) { ports.push({ ...f, ok: false, why: "npm ci failed on the base" }); continue; }
+    // Each finding alone on the base: --check resets after itself.
+    const r = sh(`cd ${tree} && node ${PORT} --check ${f.sha}`, { quiet: true });
+    const line = r.out.trim().split("\n").reverse().find((l) => l.startsWith("{"));
+    try { ports.push({ ...f, ...JSON.parse(line) }); } catch { ports.push({ ...f, ok: false, why: tail(r.out, 30) }); }
+  }
+  sh(`git worktree remove --force ${tree}`, { quiet: true });
+}
 
 const audit = {};
 try { audit.npm = JSON.parse(sh("npm audit --json", { quiet: true }).out).metadata?.vulnerabilities ?? null; } catch { audit.npm = null; }
@@ -309,6 +337,11 @@ if (dropped.length) {
   md.push("", `**Dropped: ${dropped.length} commits conflicted with new work** outside the dependency files. Each is still on \`${BACKUP}\`; redo it on top of this branch if it's still wanted.`, "");
   for (const d of dropped) md.push(`- ❌ \`${d.sha.slice(0, 9)}\` ${d.subject} (conflicts in ${d.files.map((f) => `\`${f}\``).join(", ")})`);
 }
+if (ports.length) {
+  md.push("", `**Findings: ${ports.filter((p) => p.ok).length} of ${ports.length} port onto \`${base}\` alone** (cherry-picked with \`port.mjs\`, generated files rebuilt, typecheck and unit tests run there). Whether a finding is ready also takes the engine check in its spec row.`, "");
+  for (const p of ports) md.push(`- ${p.ok ? "✅" : "❌"} \`${p.sha.slice(0, 9)}\` ${p.subject}${p.why ? `: ${p.why.split("\n")[0]}` : ""}`);
+  for (const p of ports.filter((x) => !x.ok && x.why.includes("\n"))) md.push("", `<details><summary>Why \`${p.sha.slice(0, 9)}\` doesn't port</summary>`, "", "```", p.why, "```", "", "</details>");
+}
 const ahead = [...after.npmDirect].filter(([name, v]) => baseNpmDirect.get(name) !== v);
 md.push("", `<details><summary>${ahead.length} npm direct dependencies ahead of ${base}</summary>`, "", "| Package | On base | Here |", "|---|---|---|");
 for (const [name, v] of ahead.sort(([a], [b]) => a.localeCompare(b))) md.push(`| \`${name}\` | ${baseNpmDirect.get(name) ?? "(none)"} | ${v} |`);
@@ -332,10 +365,11 @@ if (failed.length || badSetup.length) {
 }
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}/REPORT.md`, md.join("\n") + "\n");
-writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, fromSha, carried, dropped, renumbered, bumped, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
+writeFileSync(`${OUT}/REPORT.json`, JSON.stringify({ date, base, baseSha, fromSha, carried, dropped, renumbered, ports, bumped, toolchain, checks, setup, changes, audit }, null, 2) + "\n");
 console.log(`\n${OUT}/REPORT.md written: ${failed.length} failing checks, ${changes.length} changes`);
 
-must(`git add -- ${OUT}/REPORT.md ${OUT}/REPORT.json`);
+// The rebuilt engine module and site snapshots ride in the report commit, so they're rebuilt fresh every run.
+must(`git add -- ${OUT}/REPORT.md ${OUT}/REPORT.json src/graph/engineWasm prerender`);
 must(`git ${BOT} commit --quiet -m '${REPORT_SUBJECT} ${date}: ${failed.length} failing checks, on ${base}' -m 'See ${OUT}/REPORT.md.'`);
 if (PUSH) {
   // A rebase rewrites the branch, so the push forces; the lease refuses if someone pushed to it during the run.

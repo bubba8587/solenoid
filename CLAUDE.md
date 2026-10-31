@@ -19,7 +19,7 @@ harness branch the same way. When rust-port merges into `develop`, this paragrap
 **`bleeding-edge` builds Solenoid on the newest of everything and reports what breaks.** Its leaves and specs live only
 on that branch (its own A-ring leaf and the B leaves under it, and the specs in its tree under bleeding-edge): check the
 branch out to work on it. Its generator, which keeps it rebased onto the newest work, is `.github/bleeding-edge/bleeding-edge.mjs`.
-Never merge it into a work branch: a change it finds ready moves over as its own commit.
+Never merge it into a work branch: a finding it marks ready moves over with `node .github/bleeding-edge/port.mjs <commit>`.
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub

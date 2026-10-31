@@ -2,7 +2,8 @@ name: Bleeding edge
 
 # Daily: rebases the persistent `bleeding-edge` branch (its dependency bumps, fixes and platform experiments) onto the
 # most recently pushed work branch, bumps whatever is newer still, runs every check and replaces the report commit
-# (.github/bleeding-edge/bleeding-edge.mjs). It never fails on a broken check: the report is the result.
+# (.github/bleeding-edge/bleeding-edge.mjs), with a port check of every finding against the base (port.mjs). It never
+# fails on a broken check: the report is the result.
 # GitHub runs a schedule only from the default branch, so this starts once it is on main.
 on:
   schedule:
@@ -23,7 +24,7 @@ permissions:
 jobs:
   bleeding-edge:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v5
         with:
@@ -48,12 +49,13 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
-      # Run from a copy: the script checks out the base branch, which may carry an older copy or none.
+      # Run from a copy: the script checks out the base branch, which may carry an older copy or none. port.mjs rides
+      # beside it, since the port check runs it.
       - name: Upgrade, check, report and push
         env:
           BASE: ${{ inputs.base }}
         run: |
-          cp .github/bleeding-edge/bleeding-edge.mjs "$RUNNER_TEMP/bleeding-edge.mjs"
+          cp .github/bleeding-edge/bleeding-edge.mjs .github/bleeding-edge/port.mjs "$RUNNER_TEMP/"
           node "$RUNNER_TEMP/bleeding-edge.mjs" --push ${BASE:+--base "$BASE"}
 
       - name: Job summary
