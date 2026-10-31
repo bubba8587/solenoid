@@ -35,6 +35,9 @@ What a bump's release notes, read from the version the branch had to the new one
 | Rust 2024 edition (1.85) and let chains (1.88) | Every crate; 87 nested `if`/`if let` blocks | Nested blocks; extern blocks without `unsafe`; a `gen` binding | None (engine only) | **Ready**: the work branches pin Rust 1.99.1, port-checked onto rust-port 2026-10-31 |
 | `cfg_select!` (1.95), `LocalKey<Cell>::update` (1.99), `map_or_default` (1.98), `rust-version = 1.99` | `random()` and `local_time` in the core; the call-depth counter; 39 `map_or` calls | Twin `#[cfg]` functions; `with(\|d\| d.set(d.get() - 1))`; a default value spelled out | None (engine only) | **Ready**, port-checked onto rust-port 2026-10-31 |
 | pele 1.13 series theme variables and label inks | `MermaidView.tsx`: the palette's eight series colors as Mermaid theme variables, and `--pele-fg-on-light/-dark` from the palette's text colors | One label ink per theme on every slice, and pele's own `#1f1f1f`/`#fff` | Better: each slice's label takes the ink that reads on it (white on blue, dark on gold, in both themes) | **Ready** with `Upgrades: pele@1.13.0`, port-checked onto rust-port 2026-10-31 |
+| tauri-plugin-fs 2.7 `scopeDroppedPaths: false` | `src-tauri/tauri.conf.json` | The plugin's default of adding every path dropped on the window (directories recursively) to the webview's file scope, which Solenoid never reads | None | **Ready**, port-checked onto rust-port 2026-10-31 (rust-port already locks the crate at 2.7.1) |
+
+Read with nothing to use, on 2026-10-31 (each span from the branch's old version to its new one): React 19.3.1 (a server-transport fix), Vite 8.3.5, Vitest 5.0.5, puppeteer-core 25.14 to 25.16, marked 18.1.2, KaTeX 0.19.1, DOMPurify 3.4.17, chrono-node 2.10.3 (Arabic and Indonesian; the app parses English), magic-string 1.0 to 1.4 (the plugin build's overwrite-and-map use is unchanged), three r187 (the motion clips use none of its renames), the Tauri API and CLI 2.12.4, the dialog and opener plugins, and windows-sys 0.61 (`DwmSetWindowAttribute` and `DWMWA_BORDER_COLOR` keep the signatures the shell calls). @lezer/common 1.5.4 and 1.5.5 publish no notes. @types/react 19.3 is unread.
 
 ## Next, within reason
 
@@ -58,5 +61,7 @@ These wait for the author ([[B23]] edgePlatformFeatures).
 | Element-scoped view transitions | A card growing into a composite's inner canvas or into its popup: new motion. |
 | `interestfor` with `popover="hint"` | Styled tooltips in place of 234 native `title` tooltips. |
 | rustfmt `style_edition = "2024"` | The 2024 formatting style for every crate (the crates keep `style_edition = "2021"` for now): about 600 lines move across 124 files, no behavior. |
+| ELK DisCo (elkjs 0.12.1 restores it) | Tidy with a flipped card: `INCLUDE_CHILDREN` turns off ELK's packing of disconnected components, so loose cards and collapsed groups stack in one tall column; DisCo could pack them as an unflipped layout does. Changes those layouts. |
+| pele 1.11 `monospace` option | Class members, ER attributes, TreeView files and sequence messages in the monospace font. |
 | `appearance: base-select` | Styled dropdown lists for every `<select>` on the cards. |
 | Scroll-driven and scroll-triggered animations | Nothing in the app scrolls into view with motion today. |
