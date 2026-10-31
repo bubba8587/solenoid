@@ -71,6 +71,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Bring the Unit Flow example back**: restore or rebuild it from `../backups/unit-flow.seed.json` and `../backups/unitFlowSeed.test.ts` (outside the repo) with Value Inputs; the test pinned unit-flow's captioned behaviors A to J.
 
 ## Performance (found 2026-10-06, not done)
+- [ ] **Switching a composite's run mode stalls about a second on a big table** (author 2026-10-31): in the Engine Speed Test seed at ~800,000 rows, changing the "Build, group, sort" composite's run mode (Manual and the rest) freezes the canvas for about a second. A mode switch changes no data, so something runs that shouldn't: likely a whole pass, a re-serialized frame or a rebuilt snapshot fired by the switch, or work done in the wrong order. Profile the switch and find what fires.
 - [ ] **`raw` source text** rides beside every imported number/date column (`inferColumn`), doubling its memory; only the value popup reads it.
 - [ ] **Table popup filter** formats every row per keystroke (`TablePopup.tsx` `matchedOrder`), and up to 1000 rows × every column render unvirtualized; a memo needs every display dep (format controls, Source toggle, column types, computed values) or it filters stale text.
 - [ ] **Each edit serializes the graph twice** (history at 400 ms, autosave at 700 ms): sharing one capture needs an edit counter every mutation bumps, or a store-only edit between the two could be dropped from the save.
