@@ -28,7 +28,7 @@ export type SolFlowEdge = Edge<Record<string, unknown>, "cable">;
 
 const DEFAULT_COLOR = SOCKET_COLORS.number;
 const SELECTED_COLOR = "var(--cable-selected)";
-const RIBBON_COLOR = "#8a909c";
+const RIBBON_COLOR = "var(--sock-any)";
 const RIBBON_WIDTH = 7.2;
 const RIBBON_SPLIT = 24;
 

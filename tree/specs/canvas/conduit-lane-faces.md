@@ -55,7 +55,7 @@ The block is drawn as an IDC connector: a gray shell around the grid of lane squ
 
 - The grid stays centered on the pivot. The shell pads it by 2 × `scale` on every side (`SHELL_PAD`) and pokes up to hold the grab handle; its border is 1.25 wide and its corner radius is the smaller of half its width and 6 × `scale`.
 - The grab handle ([[resizable-content-nodes]]) is the shell's full-width top slice, with its top corners following the shell and its bottom edge flat, a 1 px hairline above the grid, a step lighter than the shell so it reads as the graspable edge.
-- A red pin-1 stripe, 3 tall and inset 2.5 inside the handle, marks the block's orientation. It stays red whether or not the block is selected.
+- A pin-1 stripe in the accent, 3 tall and inset 2.5 inside the handle, marks the block's orientation. It keeps its color whether or not the block is selected, and it is never red, which would read as an error.
 - Each lane square is the socket itself: the type glyph is hidden and the square paints a dark pin hole, sized to `--socket-size` (set inline as the base times `scale`) so the painted square and the React Flow Handle it wraps coincide. Its rim is an inset ring, because a layout border would push the Handle 1 px off center.
 - Selected, the block keeps its grays: the border takes the accent and the shell a soft accent glow, and the size change of the expansion signals the selection. In light mode the shell is a lighter gray with a darker rim and the pin holes a mid gray, so the block doesn't read as a dark blob on the pale canvas.
 

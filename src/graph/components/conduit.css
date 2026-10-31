@@ -31,8 +31,8 @@
 /* A step lighter than the shell, so it reads as the graspable edge. */
 .solenoid-conduit__handle { fill: #5b616c; }
 
-/* Stays red regardless of selection, so orientation reads at a glance. */
-.solenoid-conduit__stripe { fill: #e0473a; pointer-events: auto; }
+/* The accent, not red: it marks orientation and must not read as an error. Unchanged by selection. */
+.solenoid-conduit__stripe { fill: var(--accent); pointer-events: auto; }
 
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #515761; }
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block-border { fill: #9aa1ad; }

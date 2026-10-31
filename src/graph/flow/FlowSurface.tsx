@@ -1004,8 +1004,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         >
           <polygon
             points={lasso.points.map((p) => `${p.x},${p.y}`).join(" ")}
-            fill={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.10)" : "rgba(255, 220, 0, 0.10)"}
-            stroke={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.9)" : "rgba(255, 220, 0, 0.95)"}
+            fill={`color-mix(in srgb, var(--lasso-${lasso.mode === "enclose" ? "enclose" : "touch"}) 10%, transparent)`}
+            stroke={`var(--lasso-${lasso.mode === "enclose" ? "enclose" : "touch"})`}
             strokeWidth={1.4}
             strokeDasharray={lasso.mode === "touch" ? "5 4" : undefined}
           />

@@ -2,7 +2,7 @@
 .solenoid-filelink {
   position: relative;
   width: 240px; /* fixed — the node owns no resizable width (see FileLinkNode class) */
-  --node-accent: #6b8299; /* neutral slate — selection ring + shadow */
+  --node-accent: var(--sock-any); /* neutral: selection ring + shadow */
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

@@ -3,15 +3,13 @@ import { createPortal } from "react-dom";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import { cableFlourishBridge } from "../cableFlourishStore";
+import { COLOR_PALETTE, resolveColor } from "../palette";
 
 // A cosmetic viewport-space overlay (pointer-events none), triggered by the NavMenu button or `window.__cableFlourish()`.
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
-const PALETTE = [
-  "#56b4e9", "#e69f00", "#009e73", "#cc79a7",
-  "#f0e442", "#d55e00", "#0072b2", "#ec4899",
-];
+const FLOURISH_SLOTS = COLOR_PALETTE.filter((s) => s !== "gray");
 
 type Pt = { x: number; y: number };
 type Run = {
@@ -89,7 +87,7 @@ function makeRun(id: number, w: number, h: number): Run {
 
   return {
     id,
-    color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+    color: resolveColor(FLOURISH_SLOTS[Math.floor(Math.random() * FLOURISH_SLOTS.length)]),
     waypoints,
     d,
     el,
