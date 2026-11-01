@@ -54,6 +54,9 @@ pub(crate) struct Header {
 /// A frame as a card's format picks stamped it: the call that held the picks, the frame that arrived, the stamped one.
 type Stamped = (Rc<Header>, Rc<nodes::Frame>, Val);
 
+/// A lazy frame as a card's format picks stamped it: the call that held the picks, the ref that arrived, the stamped one.
+type StampedRef = (Rc<Header>, Rc<solenoid_core::frame_ref::FrameRef>, Val);
+
 /// What the core keeps for a direct card.
 #[derive(Default)]
 pub(crate) struct Direct {
@@ -67,8 +70,7 @@ pub(crate) struct Direct {
     /// Each output's frame as its format picks stamped it, kept while the frame and the picks stand.
     stamped: RefCell<FxHashMap<String, Stamped>>,
     /// The same for a lazy frame: the picks a step of its plan.
-    stamped_refs:
-        RefCell<FxHashMap<String, (Rc<Header>, Rc<solenoid_core::frame_ref::FrameRef>, Val)>>,
+    stamped_refs: RefCell<FxHashMap<String, StampedRef>>,
     /// A `nodes::keeps_answer` card's last answer, with the call and the inputs it answered (`call`).
     kept: RefCell<Option<Kept>>,
     /// What its body drew, and the recalc generation the draws hold for ([[C23]] calcModes).
