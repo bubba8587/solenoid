@@ -1097,11 +1097,24 @@ impl Eval<'_> {
         if t.checks_cx && cx {
             return Err(cx_refusal(name));
         }
-        match err {
-            Some(e) => Err(e),
-            None if blank && t.prep == Prep::Paired => Ok(pair_blanks(out)),
-            None => Ok(out),
+        if let Some(e) = err {
+            return Err(e);
         }
+        if t.prep == Prep::Paired {
+            // Term-by-term lists must be the same size, as Excel requires of each of these.
+            let mut lens = out.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None });
+            if let Some(n) = lens.next()
+                && lens.any(|m| m != n)
+            {
+                let code = match name {
+                    "SUMPRODUCT" => ErrorCode::Value,
+                    "XNPV" => ErrorCode::Domain,
+                    _ => ErrorCode::NotAvailable,
+                };
+                return Err(V::err(sol_error(code, format!("{name}'s lists must be the same size"))));
+            }
+        }
+        Ok(if blank && t.prep == Prep::Paired { pair_blanks(out) } else { out })
     }
 
     fn range_dispatch(&self, name: &str, t: &Traits, args: Vec<V>) -> V {
