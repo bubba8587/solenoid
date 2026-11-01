@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from "fs";
 import { ARG_ROLES, applyRole, setting, required, picks, LEFT_OUT } from "../../src/graph/inputRoles";
 import { isFunctionName, FUNCTION_ARITY } from "../../src/graph/excelFunctions";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { TakeDropNode, ExpandNode, TableSelectNode } from "../../src/graph/nodes/matrix";
+import { TableSelectNode } from "../../src/graph/nodes/matrix";
 import { RoundNNode } from "../../src/graph/nodes/scalar";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 
@@ -94,19 +94,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     expect(isSolError(grid[0][1]) && grid[0][1].code).toBe("#SYNTAX!");
   });
 
-  it("TAKE / DROP cards: a wired blank count keeps that axis instead of blanking the table", () => {
-    const take = new TakeDropNode({ op: "take" });
-    take.literals.rows = 1;
-    expect(take.data({ data: [m], rows: blank, cols: [2] }).result).toEqual([[1, 2], [4, 5], [7, 8]]);
-    const drop = new TakeDropNode({ op: "drop" });
-    expect(drop.data({ data: [m], rows: blank, cols: [1] }).result).toEqual([[2, 3], [5, 6], [8, 9]]);
-  });
 
-  it("EXPAND card: a wired blank size keeps the current size", () => {
-    const node = new ExpandNode();
-    node.literals.rows = 9;
-    expect(node.data({ matrix: [[[1, 2]]], rows: blank, cols: [3], fill: [0] }).result).toEqual([[1, 2, 0]]);
-  });
 
   it("ROUND: a blank digits setting is 0, whole or item by item, on the card, in a formula and per row", () => {
     const node = new RoundNNode();

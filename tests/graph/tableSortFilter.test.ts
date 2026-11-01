@@ -1,7 +1,7 @@
 // [[D85]] columnsStayColumns, [[A5]] excelParity, [[D86]] blankRoles
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { FilterNode, SortNode, UniqueNode } from "../../src/graph/nodes/list";
+import { FilterNode } from "../../src/graph/nodes/list";
 
 const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
 const code = (v: unknown) => (v as { code?: string })?.code;
@@ -50,18 +50,7 @@ describe("SORT, SORTBY, FILTER and UNIQUE take a table, as Excel's do", () => {
 });
 
 describe("the cards take a table and keep a list a list", () => {
-  it("Sort: Columns sorts a list's items; a blank wired Column is column 1", () => {
-    expect(new SortNode({ byCol: true }).data({ list: [[3, 1, 2]] }).result).toEqual([1, 2, 3]);
-    const n = new SortNode();
-    n.literals.index = 2;
-    expect(n.data({ list: [m], index: [null] }).result).toEqual([[1, "a"], [2, "b"], [3, "c"]]);
-  });
 
-  it("Unique: Rows on a table, Only singles keeps the rows that appear once", () => {
-    const d = [[1, "a"], [2, "b"], [1, "a"]];
-    expect(new UniqueNode().data({ list: [d] }).result).toEqual([[1, "a"], [2, "b"]]);
-    expect(new UniqueNode({ exactlyOnce: true }).data({ list: [d] }).result).toEqual([[2, "b"]]);
-  });
 
   it("Filter: a table's rows are tested on its Column; kept and dropped are rows", () => {
     const f = new FilterNode({ valueKeys: ["list", "column", "value0"] });

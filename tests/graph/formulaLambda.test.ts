@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, compilePositional, extractVariables } from "../../src/graph/excelFormula";
-
+import { LambdaNode } from "../../src/graph/nodes/lambda";
+import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
+import { GroupListsNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
@@ -29,7 +31,20 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
     expect(ev("MAP(xs, LAMBDA(v, v * PI))", { xs: [1, 2] })).toEqual([Math.PI, 2 * Math.PI]);
   });
 
+  it("a parameter named after a constant is refused, on the formula and the card ([[C50]] lambdaBindsByName)", () => {
+    const f = ev("LAMBDA(e, e + 1)(5)") as SolError;
+    expect(code(f)).toBe("#NAME?");
+    expect(f.message).toMatch(/e is a constant/);
+    expect(code(ev("LAMBDA(x, Tau, x + Tau)(1, 2)"))).toBe("#NAME?");
+    const card = new LambdaNode({ params: "x, phi", expr: "x + phi" });
+    expect(code(card.data({}).result)).toBe("#NAME?");
+    expect(card.cachedError).toBe("phi is a constant");
+  });
 
+  it("a parameter named twice is refused, not silently bound to the last argument", () => {
+    expect(code(ev("LAMBDA(x, x, x + 1)(1, 2)"))).toBe("#NAME?");
+    expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
+  });
 
   it("a positional binding never shadows a constant ([[C50]] lambdaBindsByName)", () => {
     expect(compilePositional("e + 1", ["e"])!(5)).toBeCloseTo(Math.E + 1);
@@ -56,6 +71,62 @@ describe("LAMBDA — the special form", () => {
   });
 });
 
+describe("each host computes what its node computes ([[C17]] shareImpl)", () => {
+  it("MAP — per cell, with the node's (value, value2, value3, row, col) binding", () => {
+    const node = new MapTableNode({ expr: "value * 2" });
+    expect(ev("MAP(m, LAMBDA(value, value * 2))", { m: M }))
+      .toEqual(node.data({ table: [M] }).result);
+    // Two arrays zip cell-wise, like the node's table2.
+    const node2 = new MapTableNode({ expr: "value * value2" });
+    expect(ev("MAP(a, b, LAMBDA(v, w, v * w))", { a: M, b: M }))
+      .toEqual(node2.data({ table: [M], table2: [M] }).result);
+  });
+
+  it("BYROW / BYCOL — the whole row/column reaches the lambda as a LIST", () => {
+    const rowNode = new ByAxisNode({ op: "row", expr: "SUM(values)" });
+    expect(ev("BYROW(m, LAMBDA(values, SUM(values)))", { m: M }))
+      .toEqual(rowNode.data({ table: [M] }).result);
+    const colNode = new ByAxisNode({ op: "col", expr: "MAX(values)" });
+    expect(ev("BYCOL(m, LAMBDA(values, MAX(values)))", { m: M }))
+      .toEqual(colNode.data({ table: [M] }).result);
+  });
+
+  it("REDUCE / SCAN — the fold pair, (acc, value, step), row-major", () => {
+    const reduceNode = new ReduceLambdaNode({ expr: "acc + value", literals: { initial: 0 } });
+    expect(ev("REDUCE(0, m, LAMBDA(acc, value, acc + value))", { m: M }))
+      .toEqual(reduceNode.data({ table: [M] }).result);
+    const scanNode = new ScanLambdaNode({ expr: "acc + value", literals: { initial: 0 } });
+    expect(ev("SCAN(0, m, LAMBDA(acc, value, acc + value))", { m: M }))
+      .toEqual(scanNode.data({ table: [M] }).result);
+    // SCAN over a list ≡ the Running card's cumulative SUM — the general fold agreeing
+    // with the task-shaped RUNNING("sum", x). Asserted against the NODE so this pins
+    // the lambda machinery, not the RUNNING wrapper (formulaTier3 covers that).
+    expect(ev("SCAN(0, x, LAMBDA(a, v, a + v))", { x: [1, 2, 3, 4] }))
+      .toEqual(new RunningNode({ agg: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
+  });
+
+  it("MAKEARRAY — (row, col) 1-based; an n×1 result reads as a LIST", () => {
+    const node = new MakeArrayNode({ expr: "row * 10 + col", literals: { rows: 2, cols: 3 } });
+    expect(ev("MAKEARRAY(2, 3, LAMBDA(row, col, row * 10 + col))"))
+      .toEqual(node.data({}).result);
+    // [[D85]] columnsStayColumns: one column stays a column.
+    expect(ev("MAKEARRAY(3, 1, LAMBDA(r, c, r))")).toEqual([[1], [2], [3]]);
+    expect(code(ev("MAKEARRAY(2000, 2000, LAMBDA(r, c, r))"))).toBe("#OVERFLOW!");
+  });
+
+  it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
+    const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
+    const node = new GroupListsNode({ agg: "sum" });
+    // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
+    const cols = node.data({ keys: [k], values: [v] }).result!.columns;
+    const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];
+    expect(fx.map((r) => r[0])).toEqual(cols[0].values); // Key
+    expect(fx.map((r) => r[1])).toEqual(cols[1].values); // aggregated Value
+    expect(cols.map((c) => c.name)).toEqual(["Key", "Value"]);
+    // A wired blank keys list → null frame (propagate).
+    expect(new GroupListsNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
+  });
+});
 
 describe("the value model rides through lambdas", () => {
   it("a cell error stops REDUCE and propagates (aggregator policy)", () => {

@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isRange } from "./callTraits";
-
+import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";
+import { isSolError } from "../../src/graph/errorValue";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // The range functions are a hand-kept list (`kind: "range"` in the core's call table), and one missing from it fails SILENTLY in the
@@ -114,12 +115,26 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
   const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];
   const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
   const XS = [1, 2, 3, 4];
+  const YS = [3, 5, 7, 9];        // exactly 2x + 1
   const EXP = [2, 4, 8, 16];      // exactly 2·2ˣ⁻¹ → m = 2, b = 1
 
   it.each(QUARTET)("%s is owned (listArgs), not range-routed", (name) => {
     expect(isRange(name), `${name} became a range function — it is owned, not routed`).toBe(false);
   });
 
+  it("TREND / GROWTH stay callable as formulas; Forecast is the node", () => {
+    // The formulas are unchanged: an omitted new_xs still defaults to the known xs.
+    expect(ev("TREND(y, x, n)", { y: YS, x: XS, n: [5, 6] })).toEqual([11, 13]);
+    expect(ev("TREND(y, x)", { y: YS, x: XS })).toEqual(YS);
+    expect(ev("TREND(y)", { y: YS })).toEqual(YS);
+    // The NODE mirrors the query's shape; an unwired X predicts nothing (not at 0).
+    expect(new ForecastNode().data({ ys: [YS], xs: [XS] }).result).toBeNull();
+    expect(new ForecastNode().data({ x: [[5, 6]], ys: [YS], xs: [XS] }).result).toEqual([11, 13]);
+    // A scalar X → a scalar prediction; the exponential op fits y = b·mˣ (GROWTH).
+    expect(new ForecastNode().data({ x: [5], ys: [YS], xs: [XS] }).result).toBe(11);
+    expect(new ForecastNode({ op: "exponential" }).data({ x: [5], ys: [EXP], xs: [XS] }).result as number)
+      .toBeCloseTo(32, 10);
+  });
 
   it("GROWTH is TREND in log space", () => {
     const out = ev("GROWTH(y, x, n)", { y: EXP, x: XS, n: [5] }) as number[];
@@ -128,7 +143,33 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect((ev("GROWTH(y)", { y: EXP }) as number[])[3]).toBeCloseTo(16, 10);
   });
 
+  it("LINEST matches the node's three outputs as [slope, intercept, r²]", () => {
+    const node = new LinestNode();
+    const nodeOut = node.data({ ys: [YS], xs: [XS] });
+    expect(ev("LINEST(y, x)", { y: YS, x: XS }))
+      .toEqual([nodeOut.slope, nodeOut.intercept, nodeOut.r2]);
+    expect(ev("LINEST(y, x)", { y: YS, x: XS })).toEqual([2, 1, 1]);
+    const flat = ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] });
+    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
+  });
 
+  it("LOGEST is the Fit card's exponential op — m, b on the slope/intercept sockets", () => {
+    const node = new LinestNode({ op: "exponential" });
+    const out = node.data({ ys: [EXP], xs: [XS] });
+    const fx = ev("LOGEST(y, x)", { y: EXP, x: XS }) as number[];
+    expect(out.slope as number).toBeCloseTo(fx[0], 10);     // m
+    expect(out.intercept as number).toBeCloseTo(fx[1], 10); // b
+    expect(out.slope as number).toBeCloseTo(2, 10);
+    expect(out.intercept as number).toBeCloseTo(1, 10);
+    // An exact exponential fits perfectly → log-scale R² = 1.
+    expect(out.r2 as number).toBeCloseTo(1, 10);
+    // y ≤ 0 is a wrong input, #DOMAIN! (Excel's #NUM!) on the formula and the card alike ([[C24]] arraySemantics).
+    for (const f of ["LOGEST(y, x)", "GROWTH(y, x)", "GROWTH(y, x, x, FALSE)"]) {
+      expect((ev(f, { y: [1, -1, 2, 3], x: XS }) as { code?: string }).code).toBe("#DOMAIN!");
+    }
+    const bad = node.data({ ys: [[1, -1, 2, 3]], xs: [XS] });
+    expect([bad.slope, bad.intercept, bad.r2].map((v) => (v as { code?: string })?.code)).toEqual(["#DOMAIN!", "#DOMAIN!", "#DOMAIN!"]);
+  });
 
   it("the value model rides through: a cell error propagates, a null pair drops", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };

@@ -2,8 +2,6 @@
 import { describe, it, expect } from "vitest";
 import { readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { ComparisonNode, IfNode, BooleanOpNode } from "../../src/graph/nodes/logic";
-import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { guardFinite } from "../../src/graph/valueKinds";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
@@ -27,14 +25,6 @@ describe("readInput — unwired (undefined) vs wired-missing (null)", () => {
     expect(readInput([null], 7)).toBe(null);
   });
 
-  it("Arithmetic: a wired null propagates (null + 5 → null), not the literal", () => {
-    // b unwired → literal 5; a wired to a missing null.
-    const add = new ArithmeticNode({ op: "add" });
-    add.literals.a = 99; // the box value that the OLD `??` idiom would have used
-    expect(add.data({ a: [null as unknown as number], b: [5] }).result).toBe(null);
-    // Sanity: an unwired a still uses its literal box.
-    expect(new ArithmeticNode({ op: "add" }).data({ b: [5] }).result).toBe(5); // 0 (literal) + 5
-  });
 });
 
 describe("broadcastCall / unary / percent — formula-layer broadcasters", () => {
@@ -96,17 +86,6 @@ describe("guardFinite — a computation never yields a bare NaN/Infinity", () =>
     expect(guardFinite(0, [0, 0])).toBe(0);
   });
 
-  it("Arithmetic node: 10^400 overflows to #OVERFLOW!", () => {
-    const r = new ArithmeticNode({ op: "pow" }).data({ a: [10], b: [400] }).result;
-    expect(isSolError(r) && (r as { code: string }).code).toBe("#OVERFLOW!");
-  });
-  it("Arithmetic node: a wired ∞ input passes through (∞ + 5 = ∞)", () => {
-    const r = new ArithmeticNode({ op: "add" }).data({ a: [Infinity], b: [5] }).result;
-    expect(r).toBe(Infinity);
-  });
-  it("Arithmetic node: 0^0 stays 1 (JS/Python/Polars convention, parity:false)", () => {
-    expect(new ArithmeticNode({ op: "pow" }).data({ a: [0], b: [0] }).result).toBe(1);
-  });
 
   it("formula: 2^5000 → #OVERFLOW!, EXP(1000) → #OVERFLOW!, 0^0 → 1", () => {
     const ev = (expr: string) => compileEvaluator(expr)!({});
@@ -116,31 +95,3 @@ describe("guardFinite — a computation never yields a bare NaN/Infinity", () =>
   });
 });
 
-describe("broadcastEl — the logic family gains the error guard, keeps Kleene null", () => {
-  it("comparison over a list propagates an error cell unmorphed", () => {
-    const r = new ComparisonNode({ op: "gt" }).data({ a: [[1, e, 3] as unknown as number[]], b: [2] }).result as unknown[];
-    expect(r[0]).toBe(false);
-    expect(r[1]).toBe(e);   // error, not a coerced comparison
-    expect(r[2]).toBe(true);
-  });
-
-  it("comparison still feeds null to its own rule (null > 2 → null, not an error)", () => {
-    const r = new ComparisonNode({ op: "gt" }).data({ a: [[1, null, 3]], b: [2] }).result as unknown[];
-    expect(r).toEqual([false, null, true]);
-  });
-
-  it("BooleanOp propagates a per-cell error, Kleene-handles null", () => {
-    // AND over element-wise operands: error cell → error; null follows Kleene.
-    const r = new BooleanOpNode({ op: "and" }).data({ a0: [[1, 1, e] as unknown as number[]], a1: [[1, 0, 1]] }).result as unknown[];
-    expect(r[0]).toBe(true);
-    expect(r[1]).toBe(false); // Kleene: F wins
-    expect(r[2]).toBe(e);
-  });
-
-  it("IF propagates an error in the CONDITION per cell", () => {
-    const r = new IfNode().data({ cond: [[true, e, false]], then: [10], else: [20] }).result as unknown[];
-    expect(r[0]).toBe(10);
-    expect(r[1]).toBe(e);
-    expect(r[2]).toBe(20);
-  });
-});

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { PayoffPlannerNode, type PayoffOrder, type PayoffView } from "../../../src/graph/nodeClasses";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
-
+import { isSolError } from "../../../src/graph/errorValue";
 import { isFrameValue, type FrameValue } from "../../../src/graph/frame";
 
 // Payoff Planner: minimums everywhere, the extra + freed minimums cascade onto the head debt (highest APR =
@@ -67,6 +67,14 @@ describe("PayoffPlannerNode", () => {
     expect(f.columns[0].values.length).toBeGreaterThan(10);
   });
 
+  it("the node reads a wired extra (a wired blank = 0) and turns a runaway plan into #VALUE!", () => {
+    const n = new PayoffPlannerNode();
+    n.literals.extra = 500;
+    expect(isFrameValue(n.data({ debts: [debts], extra: [null] }).frame)).toBe(true);
+    const runaway = debtFrame([{ name: "Trap", balance: 10000, apr: 0.5, min: 10 }]);
+    const out = new PayoffPlannerNode().data({ debts: [runaway] });
+    expect(isSolError(out.frame) ? out.frame.message : "").toMatch(/Trap/);
+  });
 });
 
 describe("the payoff plan", () => {

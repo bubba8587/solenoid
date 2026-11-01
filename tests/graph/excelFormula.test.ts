@@ -617,7 +617,30 @@ describe("classic lookups redirect to their current-Excel replacements ([[B16]] 
     expect(ev('XMATCH("PEAR", k)', { k: ["apple", "pear"] })).toBe(2);
   });
 
+  it("XMATCH match modes are the node's kernel (finePrintContract cases, formula-side)", async () => {
+    const { XMatchNode } = await import("../../src/graph/nodes/list");
+    const node = (value: number, array: number[], matchMode?: "exact" | "next_larger" | "next_smaller") => {
+      const n = new XMatchNode(matchMode ? { matchMode } : undefined);
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7]));            // 2 — first duplicate
+    expect(ev("XMATCH(6, x, 1)", { x: [5, 7, 9, 7] })).toEqual(node(6, [5, 7, 9, 7], "next_larger"));   // 2
+    expect(ev("XMATCH(8, x, -1)", { x: [5, 7, 9] })).toEqual(node(8, [5, 7, 9], "next_smaller"));       // 2
+    const miss = ev("XMATCH(10, x, 1)", { x: [5, 7] });
+    expect(isSolError(miss) && miss.code).toBe("#N/A");
+  });
 
+  it("XMATCH search_mode -1 scans from the end — the LAST duplicate wins", async () => {
+    const { XMatchNode } = await import("../../src/graph/nodes/list");
+    const node = (value: number, array: number[], searchMode: "first" | "last") => {
+      const n = new XMatchNode({ searchMode });
+      n.literals.value = value;
+      return n.data({ array: [array] }).result;
+    };
+    expect(ev("XMATCH(7, x, 0, -1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "last"));
+    expect(ev("XMATCH(7, x, 0, 1)", { x: [5, 7, 7] })).toEqual(node(7, [5, 7, 7], "first"));
+  });
 
   it("XLOOKUP carries the mode arguments; a blank mode is the Excel default", () => {
     const k = [5, 7, 9], v = ["a", "b", "c"];

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
+import { ColebrookNode } from "../../../src/graph/nodes/fluids";
 import { PIPE_ROUGHNESS } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -94,6 +95,12 @@ describe("Pipe Roughness", () => {
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
+  it("COLEBROOK matches the node core, laminar hand-off included", () => {
+    expect(evalPackFormula("COLEBROOK(100000, 0.0001)")).toBe(new ColebrookNode().data({ re: [100000], rr: [0.0001] }).result);
+    expect(evalPackFormula("COLEBROOK(1000, 0)")).toBeCloseTo(0.064, 12);
+    const bad = evalPackFormula("COLEBROOK(-5, 0)");
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
+  });
   it("PIPEROUGHNESS looks up the material's absolute roughness in mm", () => {
     expect(evalPackFormula('PIPEROUGHNESS("steel")')).toBe(0.045);
     const bad = evalPackFormula('PIPEROUGHNESS("adamantium")');

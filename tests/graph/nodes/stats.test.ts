@@ -2,14 +2,6 @@
 import { describe, it, expect } from "vitest";
 import {
   RankPercentileNode,
-  
-  
-  
-  
-  
-  
-  
-  
   InterpolateNode,
   HypothesisTestNode,
 } from "../../../src/graph/nodes/stats";
@@ -19,7 +11,7 @@ const interpolateLinear = (xs: number[], ys: number[], at: number[]) => coreFunc
 const fillGrid = (z: (number | null)[][], xs: number[], ys: number[], forecast = true) =>
   coreFunction("INTERPOLATE")!(z, xs, ys, forecast) as (number | null)[][];
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
 
 // List-socket inputs arrive as inputs.<port>[0] = the array.
@@ -28,6 +20,12 @@ import { extractInit } from "../../../src/graph/nodeInit";
 
 describe("QUARTILE", () => {
   const data = [[1, 2, 3, 4, 5]];
+  it("INC returns the expected quartiles", () => {
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [0] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [1] }).result).toBe(2);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [2] }).result).toBe(3);
+    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [4] }).result).toBe(5);
+  });
   it("the FORMULA surface matches the node — quart 0/4 are MIN/MAX, not #NUM! ([[C24]] arraySemantics)", () => {
     // Formula.js's QUARTILE.INC errors on 0 and 4; the formula must answer like the node.
     const q = (fn: string, n: number) => compileEvaluator(`${fn}(x, ${n})`)!({ x: [1, 2, 3, 4, 5] });
@@ -56,6 +54,20 @@ describe("QUARTILE", () => {
     expect(node("quartile-exc", 3.9)).toBe(4.5);
     const exc = fx("QUARTILE.EXC(x, 0.5)");
     expect(isSolError(exc) && exc.code).toBe("#DOMAIN!");
+  });
+  it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);
+    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [3] }).result).toBe(4.5);
+  });
+  it("EXC errors out of domain with #DOMAIN! instead of clamping to min/max (Excel #NUM!)", () => {
+    // q=0/4 are always outside the EXC domain.
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [0] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [4] }).result)).toBe(true);
+    // Small n pushes an interior quartile out of [1/(n+1), n/(n+1)]: n=2 → q1/q3 invalid.
+    const two = [[1, 2]];
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [1] }).result)).toBe(true);
+    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [3] }).result)).toBe(true);
   });
 });
 
@@ -267,6 +279,21 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     expect(Object.keys(n.inputs).sort()).toEqual(["xs", "ys", "z"]);
     n.mode = "list"; n._rebuildSockets();
     expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
+  });
+  it("fills a Z table through the node (a per-cell error reads as a blank)", () => {
+    const err = solError("#REF!", "bad cell");
+    // Z = x·y with the center cell errored → reads as blank, filled by 2-D interp to 1.
+    const z = [[0, 0, 0], [0, err, 2], [0, 2, 4]];
+    const r = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[0, 1, 2]], ys: [[0, 1, 2]] }).result as (number | null)[][];
+    expect(r[1][1]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
+  });
+  it("unwired Xs/Ys count 1, 2, 3…, and a wired-blank axis makes the result null", () => {
+    const z = [[1, null], [null, 4]];
+    const idx = new InterpolateNode({ mode: "grid" }).data({ z: [z] }).result as (number | null)[][];
+    expect(idx.length).toBe(2);
+    expect(Number.isFinite(idx[0][1] as number)).toBe(true); // filled from the index axes
+    // a WIRED-blank axis is unknown → the whole result is null (shape propagates).
+    expect(new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [null] }).result).toBeNull();
   });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
     const n = new InterpolateNode({ mode: "grid" });

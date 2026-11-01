@@ -3,11 +3,9 @@ import { describe, it, expect } from "vitest";
 import {
   TvmNode,
   PaymentBreakdownNode,
-  
-  
+  DiscountSecurityNode,
   NPVNode,
   IRRNode,
-  
   DepreciationNode,
   FvScheduleNode,
 } from "../../../src/graph/nodes/finance";
@@ -16,7 +14,6 @@ import { coreFunction } from "../coreFunction";
 const securityDisc = (op: string, ...a: number[]) => coreFunction(op)!(...a) as number;
 const priceMat = (op: string, ...a: number[]) => coreFunction(op)!(...a);
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
-
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -90,10 +87,36 @@ describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
 });
 
 
+describe("TBILL — money-market day-count conventions", () => {
+  const d = (s: string) => parseDateToSerial(s);
+  it("TBILLEQ switches to the compounding form past 182 days (real Excel = 0.052539935)", () => {
+    // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
+      .toBeCloseTo(0.052539935, 9);
+  });
+});
 
 describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[C24]] arraySemantics)", () => {
   const d = (s: string) => parseDateToSerial(s);
   const domain = (r: unknown) => expect(r).toMatchObject({ code: "#DOMAIN!" });
+  it("a T-bill maturing more than one year after settlement is an error", () => {
+    const tb = new DiscountSecurityNode({ op: "tbillprice" });
+    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result)
+      .toMatchObject({ code: "#DOMAIN!", message: "TBILLPRICE needs the maturity date within one year of settlement" });
+    domain(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
+    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
+  });
+  it("a zero or negative discount or price is an error", () => {
+    const s = d("2024-01-15"), m = d("2024-07-15");
+    domain(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result);
+    domain(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result);
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result)
+      .toMatchObject({ code: "#DOMAIN!", message: "TBILLYIELD needs a price above 0" });
+    domain(ev("TBILLYIELD(s, m, -1)", { s, m }));
+  });
+  it("a missing date stays a quiet blank", () => {
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ maturity: [d("2024-07-15")], discount: [0.05] }).result).toBeNull();
+  });
   it("PRICEMAT and YIELDMAT refuse a settlement on or after maturity", () => {
     const issue = d("2023-01-01"), s = d("2025-01-01"), m = d("2024-06-01");
     expect(priceMat("pricemat", s, m, issue, 0.05, 0.06))
@@ -136,6 +159,23 @@ describe("FVSCHEDULE", () => {
 
 
 
+describe("Depreciation", () => {
+
+
+
+  it("DB honours the first-year Month, matching =DB (Microsoft's worked example)", () => {
+    const db = (per: number, month?: number) => new DepreciationNode({ op: "db" })
+      .data({ cost: [1000000], salvage: [100000], life: [6], per: [per], ...(month != null ? { month: [month] } : {}) }).result;
+    // =DB(1000000,100000,6,period,7) — a 7-month first year. Before the Month input the
+    // node was locked to month=12; now it matches the formula surface for month≠12.
+    expect(db(1, 7)).toBeCloseTo(186083.33, 2);
+    expect(db(2, 7)).toBeCloseTo(259639.42, 2);
+    expect(db(1, 7)).toBe(ev("DB(c,s,l,p,m)", { c: 1000000, s: 100000, l: 6, p: 1, m: 7 }));
+    expect(db(2, 7)).toBe(ev("DB(c,s,l,p,m)", { c: 1000000, s: 100000, l: 6, p: 2, m: 7 }));
+    // Month defaults to 12 when unwired — same as the formula's omitted 5th arg.
+    expect(db(1)).toBe(ev("DB(c,s,l,p)", { c: 1000000, s: 100000, l: 6, p: 1 }));
+  });
+});
 
 describe("Depreciation answers its formula's domain errors ([[C24]] arraySemantics)", () => {
   it("a period past the life is the formula's error, and a missing input stays blank", async () => {

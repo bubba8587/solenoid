@@ -1,6 +1,6 @@
 // [[C44]], [[B11]]
 import { describe, it, expect, afterEach } from "vitest";
-import { DateAddNode, DateTimeValueNode, WorkdaysNode, WeekInfoNode, DateDiffNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "../../../src/graph/nodes/date";
+import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, WeekInfoNode, DateDiffNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { SolenoidSocket } from "../../../src/graph/sockets";
@@ -33,7 +33,47 @@ describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] par
 
 });
 
+describe("WORKDAY jumps whole weeks and stays inside the calendar", () => {
+  const walk = (start: number, days: number, off: Set<number>, hol: Set<number>) => {
+    let d = start, left = Math.abs(days);
+    const step = days < 0 ? -1 : 1;
+    while (left > 0) { d += step; if (!off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d)) left--; }
+    return d;
+  };
+  it("agrees with a day-by-day walk, holidays included", async () => {
+    const { coreFunction } = await import("../coreFunction");
+    const intl = coreFunction("WORKDAY.INTL")!;
+    const hol = [MON + 3, MON + 10, MON + 11, MON + 40, MON - 9, MON - 30];
+    for (const days of [1, 4, 5, 6, 13, 50, 101, -1, -5, -6, -37, -120]) {
+      expect(intl(MON, days, "0000011", hol)).toBe(walk(MON, days, new Set([6, 0]), new Set(hol)));
+      expect(intl(MON + 2, days, "0110001", hol)).toBe(walk(MON + 2, days, new Set([2, 3, 0]), new Set(hol)));
+      expect(new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [days], holidays: [hol] }).result)
+        .toBe(walk(MON, days, new Set([6, 0]), new Set(hol)));
+    }
+  });
+  it("a count past year 9999 is an error at once, not a frozen walk", async () => {
+    const { coreFunction } = await import("../coreFunction");
+    for (const f of [() => coreFunction("WORKDAY.INTL")!(MON, 1e9, "0000011"), () => coreFunction("WORKDAY")!(MON, -1e9),
+      () => new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1e9] }).result]) {
+      const t = Date.now();
+      const r = f();
+      expect(Date.now() - t).toBeLessThan(500);
+      expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+    }
+  });
+});
 
+describe("DATE — numeric year is literal (no century guessing)", () => {
+  const yr = (serial: number) => serialToJsDate(serial).getUTCFullYear();
+  it("a small year is that literal year, not 1900+year", () => {
+    const r = new DateConstructNode().data({ year: [26], month: [1], day: [15] }).result;
+    expect(yr(r as number)).toBe(26); // 26 AD, NOT 1926
+  });
+  it("a full year round-trips", () => {
+    const r = new DateConstructNode().data({ year: [2026], month: [3], day: [15] }).result;
+    expect(r).toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 15))));
+  });
+});
 
 describe("parseDate — wider formats, day-first, and #AMBIGUOUS!", () => {
   const iso = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
@@ -331,6 +371,11 @@ describe("DATEVALUE / TIMEVALUE — one node, op-switch mechanics", () => {
 describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () => {
 
 
+  it("both operands broadcast together, zipped by position", () => {
+    expect(new DateDiffNode({ op: "days" }).data({ start: [[MON, MON]], end: [[WED, FRI]] }).result).toEqual([2, 4]);
+    expect(new DateConstructNode().data({ year: [[2023, 2024]], month: [1], day: [2] }).result)
+      .toEqual([MON, parseDateToSerial("2024-01-02")]);
+  });
 
   it("a CONFIG input stays scalar — a per-element mode is meaningless", () => {
     // return_type / basis / weekend_code select a MODE; holidays is a whole SET

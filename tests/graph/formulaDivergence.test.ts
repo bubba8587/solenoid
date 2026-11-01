@@ -2,6 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { coreFunction } from "./coreFunction";
 import { isSolError } from "../../src/graph/errorValue";
+import { MathFXNode } from "../../src/graph/nodes/scalar";
+import { TextSliceNode, TextFindNode } from "../../src/graph/nodes/text";
 
 // ─── Where Formula.js was wrong ──────────────────────────────────────────────────
 // The 2026-06-25 consolidation compared every formula-reachable function against Formula.js and overrode the handful
@@ -37,6 +39,21 @@ describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX
   });
 });
 
+describe("ACOT, GAMMALN and GAMMALN.PRECISE answer Excel's (FX is wrong)", () => {
+  it("ACOT is in (0, π) and the log-gamma of 0 or less is #DOMAIN!, as the Math Function card's", () => {
+    expect(num(call("ACOT", -1))).toBeCloseTo(3 * Math.PI / 4, 14);
+    expect(num(call("ACOT", 1))).toBeCloseTo(Math.PI / 4, 14);
+    expect(call("ACOT", 1e8)).toBe(1e-8);
+    expect(call("ACOT", 0)).toBe(Math.PI / 2);
+    expect(new MathFXNode({ op: "acot" }).data({ in: [1e8] }).result).toBe(1e-8);
+    expect(call("GAMMALN", 1)).toBe(0);
+    for (const name of ["GAMMALN", "GAMMALN.PRECISE"]) {
+      for (const x of [-3.7, 0]) expect((call(name, x) as { code?: string }).code).toBe("#DOMAIN!");
+      expect(call(name, 4.5)).toBe(new MathFXNode({ op: "gammaln" }).data({ in: [4.5] }).result);
+    }
+    expect((new MathFXNode({ op: "gammaln" }).data({ in: [-3.7] }).result as { code?: string }).code).toBe("#DOMAIN!");
+  });
+});
 
 describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a million or below 0 (FX recurs once per order and rounds)", () => {
   it("an infinite order answers #DOMAIN! too, and a negative one as Excel's #NUM!", () => {
@@ -140,6 +157,19 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   });
 });
 
+describe("LEFT, RIGHT, FIND and SEARCH refuse a negative count or a start below 1 (Excel)", () => {
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("our answers, and the Text Slice and Text Find cards say the same", () => {
+    expect(code(call("LEFT", "abc", -1))).toBe("#VALUE!");
+    expect(code(call("RIGHT", "abc", -2))).toBe("#VALUE!");
+    expect(call("LEFT", "abc", -0.5)).toBe("");
+    expect(code(call("FIND", "a", "abc", 0))).toBe("#VALUE!");
+    expect(code(call("SEARCH", "A", "abc", -1))).toBe("#VALUE!");
+    expect(code(new TextSliceNode({ op: "left" }).data({ text: ["abc"], n: [-1] }).result)).toBe("#VALUE!");
+    expect(code(new TextSliceNode({ op: "mid" }).data({ text: ["abc"], start: [0], len: [1] }).result)).toBe("#VALUE!");
+    expect(code(new TextFindNode({ op: "find" }).data({ needle: ["a"], haystack: ["abc"], start: [0] }).result)).toBe("#VALUE!");
+  });
+});
 
 describe("hex digits are uppercase, as Excel writes them", () => {
   it("our answers", () => {

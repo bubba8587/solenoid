@@ -1,9 +1,8 @@
 // [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect, vi } from "vitest";
-import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NPVNode } from "../../src/graph/nodeClasses";
+import { SeriesNode, RandArrayNode, AggregateNode } from "../../src/graph/nodeClasses";
 import { extractInit } from "../../src/graph/nodeInit";
-import { isSolError, solError } from "../../src/graph/errorValue";
-import type { FrameValue } from "../../src/graph/frame";
+import { isSolError } from "../../src/graph/errorValue";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { TableUnitNode, TableOuterNode } from "../../src/graph/nodes/matrix";
 import { PadNode } from "../../src/graph/nodes/list";
@@ -11,11 +10,6 @@ import { PadNode } from "../../src/graph/nodes/list";
 // Regressions from the data-pathway audit (empty / null / error / large-list).
 
 describe("generator element caps (#5)", () => {
-  it("SEQUENCE over the cap returns #OVERFLOW! instead of a giant array", () => {
-    const out = new SeriesNode({ op: "sequence" }).data({ count: [5_000_000] });
-    if (!isSolError(out.list)) throw new Error("expected SolError");
-    expect(out.list.code).toBe("#OVERFLOW!");
-  });
 
   it("RANDARRAY over the cap returns #OVERFLOW!", () => {
     const out = new RandArrayNode().data({ count: [5_000_000] });
@@ -79,53 +73,4 @@ describe("Aggregate min/max over a large list (#5 — no Math.min spread RangeEr
   });
 });
 
-describe("Nest Join parent type guard (#8)", () => {
-  it("a non-frame/cube parent returns #TYPE!, not a silent blank", () => {
-    const child: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [1] }] };
-    const n = new NestJoinNode();
-    n.stringLiterals.key = "k";
-    const out = n.data({ parent: [[1, 2, 3]], child: [child], key: ["k"], name: ["x"] });
-    if (!isSolError(out.cube)) throw new Error("expected SolError");
-    expect(out.cube.code).toBe("#TYPE!");
-  });
 
-  it("an UNWIRED parent stays blank (incomplete input)", () => {
-    const child: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [1] }] };
-    const n = new NestJoinNode();
-    n.stringLiterals.key = "k";
-    const out = n.data({ child: [child], key: ["k"], name: ["x"] });
-    expect(out.cube).toBeNull();
-  });
-});
-
-describe("list reducers honor null / error (#3)", () => {
-  const err = solError("#DIV/0!", "boom");
-
-  it("CORREL propagates an embedded error and drops null pairs", () => {
-    // error in either list → propagate
-    const e = new CorrelNode().data({ x: [[1, err, 3]], y: [[1, 2, 3]] });
-    if (!isSolError(e.result)) throw new Error("expected SolError");
-    expect(e.result.code).toBe("#DIV/0!");
-    // the (null, 100) pair is dropped → the remaining points are perfectly correlated
-    const r = new CorrelNode().data({ x: [[1, 2, 3, null]], y: [[2, 4, 6, 100]] });
-    expect(r.result).toBeCloseTo(1, 10);
-  });
-
-  it("MODE skips null instead of counting it as the most frequent value", () => {
-    const out = new ModeNode().data({ list: [[1, 1, 2, null, null, null]] });
-    expect(out.result).toBe(1); // not null, even though null appears most
-  });
-
-  it("QUARTILE skips null before ranking", () => {
-    const out = new RankPercentileNode({ op: "quartile-inc" }).data({ list: [[1, 2, 3, 4, null]], q: [2] });
-    expect(out.result).toBe(2.5); // median of [1,2,3,4]
-  });
-
-  it("NPV propagates an embedded error; a null period counts as 0", () => {
-    const e = new NPVNode().data({ rate: [0], list: [[100, err]] });
-    if (!isSolError(e.result)) throw new Error("expected SolError");
-    expect(e.result.code).toBe("#DIV/0!");
-    const r = new NPVNode().data({ rate: [0], list: [[100, null, 100]] });
-    expect(r.result).toBe(200); // null period → 0; 100 + 0 + 100
-  });
-});

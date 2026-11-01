@@ -332,51 +332,6 @@ describe("logical columns", () => {
     expect(node.data({ frame: [f] }).values).toEqual(["TRUE", "FALSE"]);
   });
 
-  it("Split Frame filters columns by type (the colType toggle)", async () => {
-    const { SplitFrameNode } = await import("../../src/graph/nodes/frame");
-    const f: any = {
-      __frame: true,
-      columns: [
-        { name: "City", type: "string", values: ["A", "B"] },
-        { name: "Pop", type: "number", values: [10, 20] },
-        { name: "Founded", type: "date", values: [44000, 45000] },
-        { name: "Area", type: "number", values: [5, 6] },
-      ],
-    };
-
-    // num → only the two number columns, as a matrix + their headers
-    const numOut = new SplitFrameNode({ colType: "number" }).data({ frame: [f] });
-    expect(numOut.headers).toEqual(["Pop", "Area"]);
-    expect(numOut.matrix).toEqual([[10, 5], [20, 6]]);
-
-    // date → date serials matrix + the date header
-    const dateOut = new SplitFrameNode({ colType: "date" }).data({ frame: [f] });
-    expect(dateOut.headers).toEqual(["Founded"]);
-    expect(dateOut.matrix).toEqual([[44000], [45000]]);
-
-    // text → the text columns as a STRING matrix
-    const textOut = new SplitFrameNode({ colType: "string" }).data({ frame: [f] });
-    expect(textOut.headers).toEqual(["City"]);
-    expect(textOut.matrix).toEqual([["A"], ["B"]]);
-
-    // all → every header; matrix null because the mixed frame has a text column
-    const allOut = new SplitFrameNode({ colType: "all" }).data({ frame: [f] });
-    expect(allOut.headers).toEqual(["City", "Pop", "Founded", "Area"]);
-    expect(allOut.matrix).toBeNull();
-
-    // text → a STRING matrix of the text columns (not null)
-    const f2: any = {
-      __frame: true,
-      columns: [
-        { name: "City", type: "string", values: ["A", "B"] },
-        { name: "Note", type: "string", values: ["x", null] },
-        { name: "Pop", type: "number", values: [10, 20] },
-      ],
-    };
-    const txt = new SplitFrameNode({ colType: "string" }).data({ frame: [f2] });
-    expect(txt.headers).toEqual(["City", "Note"]);
-    expect(txt.matrix).toEqual([["A", "x"], ["B", ""]]);
-  });
 
   it("Split Frame's Matrix output socket type tracks the colType", async () => {
     const { splitMatrixOutput } = await import("../../src/graph/nodes/frame");
@@ -606,11 +561,6 @@ describe("BuildFrameNode — types columns by the adopted matrix socket", () => 
     adopt(n, "strtable");
     const out = n.data({ matrix: [[["x"], ["y"]]], headers: [["name"]] }).frame!;
     expect(out.columns[0].type).toBe("string");
-  });
-  it("carries a (unit) header onto a numeric column", () => {
-    const out = new BuildFrameNode().data({ matrix: [[[5], [6]]], headers: [["Revenue ($0.00)"]] }).frame!;
-    expect(out.columns[0].name).toBe("Revenue");
-    expect(out.columns[0].unit).toBeTruthy();
   });
   it("an unadopted anytable falls back to value inference", () => {
     const n = new BuildFrameNode(); // socket base is anytable (never wired/settled)

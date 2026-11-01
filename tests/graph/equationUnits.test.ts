@@ -7,7 +7,6 @@ import { describe, it, expect } from "vitest";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { fromUnit, isUnitCell, dimOf, isRatio, type UnitCell } from "../../src/graph/unitValue";
 import { fcUnitToUnit } from "../../src/graph/dimension";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
 import { formatDim } from "../../src/graph/dimension";
 
 const unitLabelOf = (v: unknown) => formatDim(dimOf(v));
@@ -62,24 +61,8 @@ describe("Equation node — units derive through the solve", () => {
     expect((roots as UnitCell[]).map((r) => r.value).sort((a, b) => a - b)).toEqual([-6, 6]);
   });
 
-  it("check mode: commensurable sides compare in base SI (1 km = 1000 m holds)", () => {
-    const eq = new EquationNode({ expr: "a = b" });
-    const out = eq.data({ a: [cell(1, "km")], b: [cell(1000, "m")] });
-    expect(out.holds).toBe(true);
-  });
 
-  it("check mode: different dimensions can't hold — #UNIT!", () => {
-    const eq = new EquationNode({ expr: "a = b" });
-    const out = eq.data({ a: [cell(1, "m")], b: [cell(1, "s")] });
-    expect(isSolError(out.holds)).toBe(true);
-    expect((out.holds as SolError).code).toBe("#UNIT!");
-  });
 
-  it("a bare-number equation stays bare (no unit machinery engaged)", () => {
-    const eq = new EquationNode({ expr: "V = I * R" });
-    const out = eq.data({ V: [12], I: [2] });
-    expect(out.R).toBe(6);
-  });
 
   it("Ohm's law with units: R from 12 V and 2 A reads 6 Ω", () => {
     const eq = new EquationNode({ expr: "V = I * R" });

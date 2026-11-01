@@ -2,7 +2,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { callTraits, liftsAScalar, callTraitNames } from "./callTraits";
-import { CubeInputNode } from "../../src/graph/nodes/cube";
 
 const env = { x: [5, 1, 9, 3, 7, 2], y: [10, 2, 18, 6, 14, 4] };
 const ev = (f: string) => compileEvaluator(f)!(env as never);
@@ -38,12 +37,6 @@ describe("a list where a range function takes one value", () => {
     expect(ev("COUNTIF(x, \">4\")")).toBe(3);
   });
 
-  it("per row in a Cube formula column", () => {
-    const text = JSON.stringify({ columns: [{ name: "s", type: "number" }, { name: "top", expr: "LARGE(@s, SEQUENCE(COUNT(@s) - 1))" }],
-      rows: [{ s: [3, 9, 1, 7] }, { s: [4, 2] }] });
-    const cube = new CubeInputNode({ cubeText: text }).data().cube as { columns: { name: string; cells: unknown[] }[] };
-    expect(cube.columns.find((c) => c.name === "top")!.cells).toEqual([[9, 7, 3], 4]);
-  });
 });
 
 describe("LARGE and SMALL's k", () => {

@@ -1,7 +1,6 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
 import { ColorBlendNode } from "../../../src/graph/nodes/input";
-
 import { extractInit } from "../../../src/graph/nodeInit";
 
 describe("ColorBlendNode", () => {

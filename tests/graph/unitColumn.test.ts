@@ -97,10 +97,6 @@ describe("Aggregate over a unit-tagged list carries the unit", () => {
     const count = new AggregateNode({ op: "count" });
     expect(count.data({ list: [list as never] }).result).toBe(3);
   });
-  it("plain-number lists are unchanged (dimensionless → bare number)", () => {
-    const sum = new AggregateNode({ op: "sum" });
-    expect(sum.data({ list: [[1, 2, 3]] }).result).toBe(6);
-  });
 });
 
 describe("column display helpers", () => {

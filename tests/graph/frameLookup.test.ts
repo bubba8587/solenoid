@@ -8,8 +8,7 @@ import type { FrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import { throughBoundary } from "./boundaryKit";
-
-
+import { applyFcUnit } from "../../src/graph/unitBridge";
 
 const people: FrameValue = {
   __frame: true,
@@ -184,3 +183,12 @@ describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () =
   });
 });
 
+describe("a lookup column with a unit reads the typed needle in that unit ([[C25]] firstClassUnits)", () => {
+  it("the XLOOKUP formula over a united list agrees with the card", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const miles = [1, 5, 10].map((v) => applyFcUnit(v, "mi"));
+    const vs = ["pen", "pad", "ink"];
+    expect(new ExpressionNode({ expr: "XLOOKUP(5, ks, vs)" }).data({ ks: [miles], vs: [vs] }).result).toBe("pad");
+    expect(new ExpressionNode({ expr: 'XLOOKUP(7, ks, vs, "none", -1)' }).data({ ks: [miles], vs: [vs] }).result).toBe("pad");
+  });
+});

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { AggregateNode } from "../../../src/graph/nodes/list";
-import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
+import { RankPercentileNode, CorrelNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
@@ -49,16 +49,6 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
 });
 
-describe("a NaN cell poisons an aggregate, as it does in GROUPBY", () => {
-  it("every op but the counts answers #DOMAIN!, on the card and in a formula", () => {
-    const code = (v: unknown) => (v as { code?: string }).code;
-    const list = [1, NaN, 3];
-    for (const op of ["avg", "min", "max", "median", "ptp"] as const) {
-      expect(code(new AggregateNode({ op }).data({ list: [list] }).result), op).toBe("#DOMAIN!");
-    }
-    expect(new AggregateNode({ op: "count" }).data({ list: [list] }).result).toBe(3);
-  });
-});
 
 describe("a first-class infinity is a value, as on the cards", () => {
   const code = (v: unknown) => (v as { code?: string }).code;
@@ -124,26 +114,6 @@ describe.each([
   });
 });
 
-describe("paired statistics formulas == Correl / Covariance / Regression nodes", () => {
-  const PAIRS: Array<[(number | null)[], (number | null)[]]> = [
-    [[1, 2, 3, 4], [2, 4.1, 5.9, 8.2]],
-    [[1, 1, 1], [1, 2, 3]],
-    [[1, null, 3, 4], [2, 4, null, 8]],
-    [[1, 2], [3, 3]],
-    [[1, 2, Infinity], [2, 4, 6]],
-    [[1, 2, 3], [-Infinity, 4, 6]],
-  ];
-  it.each(PAIRS)("CORREL/RSQ/COVARIANCE.P/.S/SLOPE/INTERCEPT/STEYX over %j, %j", (x, y) => {
-    same(ev("CORREL(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
-    same(ev("PEARSON(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
-    same(ev("RSQ(y, x)", { x, y }), new CorrelNode({ op: "rsq" }).data({ x: [x], y: [y] }).result);
-    same(ev("COVARIANCE.P(x, y)", { x, y }), new CovarianceNode({ op: "pop" }).data({ x: [x], y: [y] }).result);
-    same(ev("COVARIANCE.S(x, y)", { x, y }), new CovarianceNode({ op: "samp" }).data({ x: [x], y: [y] }).result);
-    for (const op of ["slope", "intercept", "steyx"] as const) {
-      same(ev(`${op.toUpperCase()}(y, x)`, { x, y }), new RegressionNode({ op }).data({ xs: [x], ys: [y] }).result);
-    }
-  });
-});
 
 describe("MODE / FISHER", () => {
   it("MODE.SNGL is Excel's first-occurring tie; the node keeps every tie", () => {

@@ -1,10 +1,7 @@
 // [[B11]], [[C48]], [[C49]]
 import { describe, expect, it } from "vitest";
-
 import { XMatchNode } from "../../src/graph/nodes/list";
-
 import { BaseConvertNode } from "../../src/graph/nodes/scalar";
-
 import { dropBlankRows, mergeColumns } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";

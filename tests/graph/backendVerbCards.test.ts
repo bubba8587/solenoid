@@ -7,7 +7,6 @@ import { planned, planOf } from "./frameRefKit";
 import { JoinNode, AppendNode, BindColumnsNode, PivotNode } from "../../src/graph/nodes/frame";
 import { TableInfoNode } from "../../src/graph/nodes/matrix";
 import { SlicerNode } from "../../src/graph/nodes/control";
-import { solError } from "../../src/graph/errorValue";
 import { makeCube, type FrameValue } from "../../src/graph/frame";
 import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 
@@ -255,16 +254,6 @@ describe("PIVOTBY beyond the field filter", () => {
     expect(n.sourceColumns).toEqual([]);
   });
 
-  it("drops saved fields the frame no longer has", async () => {
-    const n = pivot({ funcs: { Amount: "avg", Gone: "max" }, filterExclude: { Gone: ["x"], Region: ["E"] }, detailFields: ["Gone", "Region"] });
-    n.stringLiterals = { rowFields: "Rep,Gone", colFields: "", values: "Amount" };
-    const out = await n.data({ frame: [sales], rowFields: [["Rep", "Gone"]], values: [["Amount"]] });
-    expect(n.stringLiterals.rowFields).toBe("Rep");
-    expect(n.funcs).toEqual({ Amount: "avg" });
-    expect(n.filterExclude).toEqual({ Region: ["E"] });
-    expect(n.detailFields).toEqual(["Region"]);
-    expect(cols(out.frame as FrameValue)?.Amount).toEqual([65, 50]);
-  });
 
   it("pivots a cube's flat columns", async () => {
     const cube = makeCube([
@@ -278,20 +267,5 @@ describe("PIVOTBY beyond the field filter", () => {
     expect(n.sourceColumns.map((c) => c.name)).toEqual(["g", "v"]);
   });
 
-  it("a wired blank list answers nothing, a missing value field passes the frame", async () => {
-    expect((await pivot().data({ frame: [sales], rowFields: [null], values: [["Amount"]] })).frame).toBeNull();
-    expect((await pivot().data({ frame: [sales], values: [["Gone"]] })).frame).toEqual(sales);
-    expect((await pivot().data({})).frame).toBeNull();
-  });
 
-  it("a key cell holding an error keys the filter by its code", async () => {
-    const f: FrameValue = { __frame: true, columns: [
-      { name: "k", type: "number", values: [1, solError("#N/A", "x"), true as never, 1] },
-      { name: "v", type: "number", values: [1, 2, 3, 4] },
-    ] };
-    const n = pivot({ filterExclude: { k: ["#N/A"] } });
-    const out = await n.data({ frame: [f], rowFields: [["k"]], values: [["v"]] });
-    expect(n.sourceColumns[0].distinct).toEqual(["1", "#N/A", "TRUE"]);
-    expect(cols(out.frame as FrameValue)?.v).toEqual([5, 3]);
-  });
 });

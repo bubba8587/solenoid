@@ -5,7 +5,7 @@ import {
   TextSliceNode, 
   
   TextJoinNode,
-  
+  TextSplitNode, ConcatNode,
 } from "../../../src/graph/nodes/text";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { CastNode } from "../../../src/graph/nodes/cast";
@@ -120,6 +120,18 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(nv, "in", "group_sep")).toBe("string");
   });
 
+  it("the REDUCERS and rank-changers stay as they were", () => {
+    // CONCAT / TEXTJOIN fold a set to ONE string (Excel's CONCAT flattens an array
+    // rather than spilling); TEXTSPLIT and Text Filter are already 1-D → 1-D, and
+    // broadcasting either would need a rank-2 result the lattice has no edge for.
+    expect(dt(new TextJoinNode(), "in", "strings")).toBe("strlist");
+    expect(dt(new TextJoinNode(), "out", "result")).toBe("string");
+    expect(dt(new ConcatNode(), "in", "v0")).toBe("string");
+    expect(dt(new TextSplitNode(), "in", "text")).toBe("string");
+    expect(dt(new TextSplitNode(), "out", "result")).toBe("strlist");
+    expect(new TextJoinNode().data({ strings: [["a", "b"]], delimiter: ["-"] }).result).toBe("a-b");
+    expect(new TextSplitNode().data({ text: ["a-b"], delimiter: ["-"] }).result).toEqual(["a", "b"]);
+  });
 
   it("TEXTJOIN answers like the formula: blanks drop, logicals read TRUE, an error wins ([[C17]] shareImpl)", () => {
     const fx = (ign: string, xs: unknown[]) => compileEvaluator(`TEXTJOIN(",", ${ign}, x)`)!({ x: xs });

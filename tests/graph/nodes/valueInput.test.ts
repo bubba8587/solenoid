@@ -1,8 +1,6 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue
 import { describe, it, expect } from "vitest";
 import { ValueInputNode, carryValueText } from "../../../src/graph/nodes/control";
-
-
 import { extractInit } from "../../../src/graph/nodeInit";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 

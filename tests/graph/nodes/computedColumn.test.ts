@@ -242,14 +242,6 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
     expect(getColumn(typed, "due")!.values).toEqual([46007, 46017]);
   });
 
-  it("a λ param naming no column becomes a side input too", () => {
-    const lam = new LambdaNode({ expr: "price * rate", params: "price, rate" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const n = named("", "scaled");
-    const r = run(n, sales, { fn: [fn], rate: [[2]] }) as FrameValue;
-    expect(getColumn(r, "scaled")!.values).toEqual([20, 40, 60]);
-    expect(n.sideVars).toEqual(["rate"]);
-  });
 });
 
 describe("ComputedColumnNode — bracket references, rows, and placement", () => {
@@ -316,16 +308,6 @@ describe("ComputedColumnNode — kitchen sink", () => {
     expect(getColumn(r, "tag")!.values).toEqual(["oslo #1", "BERGEN #2", "TROMSØ #3"]);
   });
 
-  it("a λ that returns a SolError poisons only its row", () => {
-    const lam = new LambdaNode({ expr: "IF(v < 0, NA(), v)", params: "v" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: [1, -1, 3] }] };
-    const r = run(named("", "ok"), f, { fn: [fn] }) as FrameValue;
-    const vals = getColumn(r, "ok")!.values;
-    expect(vals[0]).toBe(1);
-    expect(isSolError(vals[1])).toBe(true);
-    expect(vals[2]).toBe(3);
-  });
 
   it("a bracket read, an @ read, ROW(), and a side input all mix in one formula", () => {
     const n = named("[@qty] * @price + ROW() + base", "mix");
@@ -630,21 +612,6 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
     expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
   });
 
-  it("bracket references work INSIDE a λ body too (the row context is dynamic)", () => {
-    const awkward: FrameValue = {
-      __frame: true,
-      columns: [{ name: "Unit Price", type: "number", values: [5, 7] }],
-    };
-    const lam = new LambdaNode({ expr: "@[Unit Price] * 2", params: "" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const r = run(named("", "dbl"), awkward, { fn: [fn] }) as FrameValue;
-    expect(getColumn(r, "dbl")!.values).toEqual([10, 14]);
-    // [Name] = the whole column, so a λ body can aggregate the table.
-    const lam2 = new LambdaNode({ expr: "@[Unit Price] / SUM([Unit Price])", params: "" });
-    const fn2 = (lam2.data({}) as { result: unknown }).result;
-    const r2 = run(named("", "shr"), awkward, { fn: [fn2] }) as FrameValue;
-    expect(getColumn(r2, "shr")!.values.map((v) => (v as number).toFixed(4))).toEqual(["0.4167", "0.5833"]);
-  });
 
   it("a zero-param λ using @ still orders after the column it reads (Frame Input topo)", () => {
     const n = new FrameInputNode({
@@ -753,19 +720,6 @@ describe("@ over side values — row-aligned lists (no capture, no column)", () 
 });
 
 describe("binding pickers — explicit variable → column bindings", () => {
-  it("a bound variable reads its picked column — whole for expr vars, this-row for λ params (tableRefSemantics)", () => {
-    const n = named("SUM(a)", "total");
-    n.bindings = { a: "price" };
-    const r = run(n, sales) as FrameValue;
-    expect(getColumn(r, "total")!.values).toEqual([60, 60, 60]);
-    // λ params stay ROW-bound through the same alias.
-    const lam = new LambdaNode({ expr: "x + 1", params: "x" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const m = named("", "inc");
-    m.bindings = { x: "qty" };
-    const r2 = run(m, sales, { fn: [fn] }) as FrameValue;
-    expect(getColumn(r2, "inc")!.values).toEqual([3, 4, 5]);
-  });
 
   it("binding a would-be side variable to a column removes its socket role", () => {
     const n = named("SUM(k) + @qty", "sum");

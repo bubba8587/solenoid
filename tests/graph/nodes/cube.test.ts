@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { relateFramesToCube } from "../coreVerbs";
-
+import { isSolError } from "../../../src/graph/errorValue";
 import { CubeRollupNode } from "../../../src/graph/nodes/cube";
 
 // Products (assembly) × BOM lines (already enriched with each part's UnitCost and
@@ -45,6 +45,14 @@ describe("CubeRollupNode", () => {
     expect(out.columns.find((c) => c.name === "Name")?.values).toEqual(["Cabinet", "Bracket"]);
   });
 
+  it("rolls a text column's min up to its alphabetical first, typed as text ([[C24]] arraySemantics)", () => {
+    const node = new CubeRollupNode({ agg: "min" });
+    node.stringLiterals = { nested: "Lines", column: "Part", as: "FirstPart" };
+    const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame as FrameValue;
+    const col = out.columns.find((c) => c.name === "FirstPart")!;
+    expect(col.type).toBe("string");
+    expect(col.values).toEqual(["Hinge", "Hinge"]);
+  });
 
   it("respects the chosen aggregate op (count)", () => {
     const cube = productsCube({ hinge: 2, panel: 10 });
@@ -52,6 +60,19 @@ describe("CubeRollupNode", () => {
     expect(out.columns.find((c) => c.name === "TotalCost")?.values).toEqual([2, 1]);
   });
 
+  it("#REF!s when the nested column name doesn't match", () => {
+    const node = new CubeRollupNode();
+    node.stringLiterals = { nested: "NotAColumn", column: "ExtendedCost", as: "Total" };
+    const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame;
+    expect(isSolError(out)).toBe(true);
+  });
 
+  it("#REF!s when the value column is missing from the nested sub-frame", () => {
+    const node = new CubeRollupNode();
+    node.stringLiterals = { nested: "Lines", column: "NotAColumn", as: "Total" };
+    const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame as FrameValue;
+    const totalCol = out.columns.find((c) => c.name === "Total")!;
+    expect(totalCol.values.every((v) => isSolError(v))).toBe(true);
+  });
 
 });

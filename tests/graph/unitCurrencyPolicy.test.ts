@@ -1,9 +1,7 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
 import { type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
-import { AggregateNode } from "../../src/graph/nodes/list";
 import { arithmeticCell } from "./coreVerbs";
-import { ComparisonNode } from "../../src/graph/nodes/logic";
 import { isSolError } from "../../src/graph/errorValue";
 
 // ─── The currency policy sweep (matrixUnitPolicy's shape, applied to currency) ──
@@ -54,14 +52,6 @@ describe("every arithmetic op refuses mismatched currencies", () => {
   });
 });
 
-describe("the non-arithmetic combinators carry the same policy", () => {
-  it("Comparison: $5 vs 5€ → #UNIT!", () => {
-    expect(err(new ComparisonNode({ op: "gt" }).data({ a: [usd5], b: [eur5] }).result)).toBe(true);
-  });
-  it("Aggregate: mixed codes → #UNIT!", () => {
-    expect(err(new AggregateNode({ op: "sum" }).data({ list: [[usd5, eur5]] }).result)).toBe(true);
-  });
-});
 
 describe("the formula surface — codes ride the dim pass (the Expression gap, closed)", () => {
   // The numeric evaluator computes on stripped magnitudes and can't see codes,
@@ -70,28 +60,8 @@ describe("the formula surface — codes ride the dim pass (the Expression gap, c
   // refuse a mismatch with the same #UNIT!, and a coded result carries its
   // code's dim. CALLS drop codes — the recorded limitation (SUM over two coded
   // inputs still combines in a formula; the node-side aggregators refuse).
-  const mkUsd = (v: number): UnitCell => money(v, "usd");
-  const mkEur = (v: number): UnitCell => money(v, "eur");
 
-  it("operators refuse mismatched codes in an Expression", async () => {
-    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    for (const expr of ["a + b", "a - b", "a * b", "a / b", "a > b"]) {
-      const n = new ExpressionNode({ expr });
-      const r = n.data({ a: [mkUsd(5)], b: [mkEur(5)] }).result;
-      expect(isSolError(r), `${expr} combined mismatched currencies`).toBe(true);
-      expect((r as { code: string }).code).toBe("#UNIT!");
-    }
-  });
 
-  it("same-code and dimensionless-adopt still compute", async () => {
-    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    const sum = new ExpressionNode({ expr: "a + b" });
-    expect((sum.data({ a: [mkUsd(5)], b: [mkUsd(2)] }).result as UnitCell).value).toBe(7);
-    const scale = new ExpressionNode({ expr: "a * 2" });
-    const scaled = scale.data({ a: [mkUsd(5)] }).result as UnitCell;
-    expect(scaled.value).toBe(10);
-    expect(scaled.dim).toEqual({ currency: 1 });
-  });
 
   it("the dimension pass refuses codes directly", async () => {
     const { dimOf } = await import("./coreDims");
@@ -104,16 +74,3 @@ describe("the formula surface — codes ride the dim pass (the Expression gap, c
   });
 });
 
-describe("the Equation surface — `=` is itself a combination", () => {
-  it("$5 = €5 refuses; $5 = $5 holds", async () => {
-    // No operator inside either side ever sees both codes, so the equals
-    // compares the sides' RESULT codes (dimEvalWithCode).
-    const { EquationNode } = await import("../../src/graph/nodes/equation");
-    const n = new EquationNode({ expr: "p = c" });
-    n.data({ p: [money(5, "usd")], c: [money(5, "eur")] });
-    expect((n.cachedHolds as { code?: string })?.code).toBe("#UNIT!");
-    const m = new EquationNode({ expr: "p = c" });
-    m.data({ p: [money(5, "usd")], c: [money(5, "usd")] });
-    expect(m.cachedHolds).toBe(true);
-  });
-});

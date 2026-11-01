@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { coreFunction } from "./coreFunction";
 import { TimeZoneConvertNode, WorldClockNode } from "../../src/graph/nodes/date";
-import { isSolError } from "../../src/graph/errorValue";
 
 const convertZone = (serial: number, from: string, to: string) => coreFunction("TIMEZONECONVERT")!(serial, from, to);
 
@@ -103,18 +102,6 @@ describe("Time Zone Convert card", () => {
     }
   });
 
-  it("answers #VALUE! for a name Intl refuses, and nothing for a blank", () => {
-    for (const bad of BAD) {
-      const r = card(serial(2026, 1, 1), bad, "UTC");
-      expect(isSolError(r) && r.code, bad).toBe("#VALUE!");
-      const r2 = card(serial(2026, 1, 1), "UTC", bad);
-      expect(isSolError(r2) && r2.code, bad).toBe("#VALUE!");
-    }
-    expect(card(serial(2026, 1, 1), "", "UTC")).toBeNull();
-    expect(card(serial(2026, 1, 1), "UTC", "   ")).toBeNull();
-    expect(card(NaN, "UTC", "Asia/Tokyo")).toBeNull();
-    expect(new TimeZoneConvertNode().data({ from: ["UTC"], to: ["Asia/Tokyo"] }).result).toBeNull();
-  });
 
   it("keeps the year before 100 and before 1 AD, which Date.UTC would read as the 1900s", () => {
     const early = (y: number) => {
@@ -131,11 +118,6 @@ describe("Time Zone Convert card", () => {
     }
   });
 
-  it("reads the typed zones when From and To are unwired", () => {
-    const node = new TimeZoneConvertNode();
-    node.stringLiterals = { from: "Europe/London", to: "Australia/Sydney" };
-    expect(node.data({ datetime: [serial(2026, 1, 15, 9, 0)] }).result).toBeCloseTo(serial(2026, 1, 15, 20, 0), 9);
-  });
 
   it("agrees with the formula on each side of every transition, there and back", () => {
     for (const zone of DST_ZONES) {

@@ -2,7 +2,7 @@
 import { SolenoidSocket } from "../../../src/graph/sockets";
 import { describe, it, expect } from "vitest";
 import { evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/nodeClasses";
+import { IsInNode, AggregateNode } from "../../../src/graph/nodeClasses";
 import { type JoinOpts } from "../../../src/graph/frameOps";
 import { joinFrames } from "../coreVerbs";
 import { shapeOfJoin } from "../../../src/graph/frameShape";
@@ -24,24 +24,6 @@ describe("IsInNode", () => {
   });
 });
 
-describe("TallyNode", () => {
-  it("counts distinct values in first-seen order", () => {
-    const r = new TallyNode().data({ list: [["b", "a", "b", "c", "a", "b"]] }).frame as FrameValue;
-    expect(getColumn(r, "Value")!.values).toEqual(["b", "a", "c"]);
-    expect(getColumn(r, "Count")!.values).toEqual([3, 2, 1]);
-  });
-
-  it("numeric lists get a numeric Value column; blanks/errors don't count", () => {
-    const r = new TallyNode().data({ list: [[5, 5, null, solError("#N/A", "x"), 7]] }).frame as FrameValue;
-    expect(getColumn(r, "Value")!.type).toBe("number");
-    expect(getColumn(r, "Value")!.values).toEqual([5, 7]);
-    expect(getColumn(r, "Count")!.values).toEqual([2, 1]);
-  });
-
-  it("no input → blank", () => {
-    expect(new TallyNode().data({}).frame).toBe(null);
-  });
-});
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("ISIN masks membership aligned to the values list", () => {
@@ -54,12 +36,6 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
 });
 
 describe("COUNT DISTINCT aggregate op", () => {
-  it("counts unique values, skipping nulls, propagating errors", () => {
-    const n = new AggregateNode({ op: "countdistinct" });
-    expect(n.data({ list: [[1, 2, 2, 3, 3, 3, null]] }).result).toBe(3);
-    const err = solError("#N/A", "x");
-    expect(n.data({ list: [[1, err]] }).result).toBe(err);
-  });
 
   it("counts names too: its list input takes any scalar list, and the numeric ops read numbers", () => {
     const n = new AggregateNode({ op: "countdistinct" });

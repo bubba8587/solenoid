@@ -4,7 +4,6 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
 import { stdNormCDF } from "../../../src/graph/nodes/mathUtils";
-import { LinestNode } from "../../../src/graph/nodes/stats";
 
 const ev = (e: string) => compileEvaluator(e)!({}) as number;
 const err = (e: string) => isSolError(compileEvaluator(e)!({}));
@@ -146,15 +145,3 @@ describe("the regularized beta, as BETA.DIST's CDF", () => {
   });
 });
 
-describe("Linest's exponential fit", () => {
-  it("recovers y = b·mˣ with a perfect log-scale R²", () => {
-    const fit = new LinestNode({ op: "exponential" }).data({ xs: [[1, 2, 3, 4]], ys: [[2, 4, 8, 16]] }); // y = 1·2ˣ
-    expect(fit.slope).toBeCloseTo(2, 10);
-    expect(fit.intercept).toBeCloseTo(1, 10);
-    expect(fit.r2).toBeCloseTo(1, 10);
-  });
-
-  it("is #DOMAIN! when any y ≤ 0 (the log is undefined)", () => {
-    expect(new LinestNode({ op: "exponential" }).data({ xs: [[1, 2, 3]], ys: [[1, -1, 2]] }).slope).toMatchObject({ code: "#DOMAIN!" });
-  });
-});

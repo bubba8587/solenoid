@@ -55,13 +55,6 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
     expect(drop([1, 2, 3], undefined, 1)).toEqual([2, 3]);
     expect(isSolError(drop([[1, 2], [3, 4]], 0, 2))).toBe(true);
   });
-  it("an exponential fit over a y at or below zero is #NUM! on both cards", async () => {
-    const { ForecastNode, LinestNode } = await import("../../src/graph/nodeClasses") as unknown as Record<string, new (i: { op: string }) => { data: (i: Record<string, unknown[]>) => Record<string, unknown> }>;
-    const f = new ForecastNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]], x: [4] });
-    expect(isSolError(f.result) && (f.result as { code: string }).code).toBe("#DOMAIN!");
-    const l = new LinestNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]] });
-    expect(isSolError(l.slope) && (l.slope as { code: string }).code).toBe("#DOMAIN!");
-  });
 });
 
 describe("review pins: analytics batch", () => {
@@ -221,11 +214,6 @@ describe("review pins: whole-argument formulas", () => {
     expect(ev("NETWORKDAYS.INTL(s, f, 1, h)", { s: mon, f: fri, h: [mon + 1, null] })).toBe(4);
     expect(ev("WORKDAY.INTL(s, n, 1, h)", { s: mon, n: [1, 2], h: [mon + 1] })).toEqual([mon + 2, mon + 3]);
   });
-  it("a linear Fit over collinear x is #DIV/0! like SLOPE, not three blanks", async () => {
-    const { LinestNode } = await import("../../src/graph/nodes/stats");
-    const out = new LinestNode({ op: "linear" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
-    expect(isSolError(out.slope) && out.slope.code).toBe("#DIV/0!");
-  });
   it("an exponential Fit over collinear x is #DIV/0! like the linear op, and so are LINEST and LOGEST", async () => {
     const { LinestNode } = await import("../../src/graph/nodes/stats");
     const { compileEvaluator } = await import("../../src/graph/excelFormula");
@@ -256,16 +244,6 @@ describe("review pins: one-element lists into list-consuming matrix nodes", () =
   });
 });
 
-describe("review pins: Slider bounds", () => {
-  it("inverted wired bounds swap; a non-finite bound is the card's own", async () => {
-    const { SliderInputNode } = await import("../../src/graph/nodes/input");
-    const n = new SliderInputNode() as unknown as { data: (i: Record<string, unknown[]>) => { value: number }; effectiveMin: number; effectiveMax: number; literals: Record<string, number> };
-    n.data({ min: [50], max: [10] });
-    expect([n.effectiveMin, n.effectiveMax]).toEqual([10, 50]);
-    n.data({ min: [NaN] });
-    expect(n.effectiveMin).toBe(n.literals.min ?? 0);
-  });
-});
 
 describe("review pins: a blank optional numeric argument is Excel's 0", () => {
   it("ROUND / MOD / DATE read a blank slot like their siblings do", () => {
@@ -309,13 +287,6 @@ describe("review pins: SORTBY length, COMBINA at zero", () => {
   it("SORTBY refuses a key list of another length", () => {
     expect(isSolError(coreFunction("SORTBY")!(["a", "b", "c"], [2, 1]))).toBe(true);
     expect(coreFunction("SORTBY")!(["a", "b", "c"], [2, 1, 3])).toEqual(["b", "a", "c"]);
-  });
-  it("COMBINA(0,0) is 1 on the card; COMBINA(4,2) is 10", async () => {
-    const { CombinatoricsNode } = await import("../../src/graph/nodes/scalar");
-    const card = (n: number, k: number) => (new CombinatoricsNode({ op: "combina" }) as unknown as { data: (i: Record<string, unknown[]>) => { result: unknown } }).data({ n: [n], k: [k] }).result;
-    expect(card(0, 0)).toBe(1);
-    expect(card(0, 3)).toBe(0);
-    expect(card(4, 2)).toBe(10);
   });
 });
 

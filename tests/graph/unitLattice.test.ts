@@ -1,0 +1,62 @@
+// [[C25]] firstClassUnits, [[B16]] oneFormulaSurface
+import { describe, it, expect } from "vitest";
+import { type Dim } from "../../src/graph/dimension";
+import { arithmeticCell } from "./coreVerbs";
+import { tagDim, isUnitCell } from "../../src/graph/unitValue";
+import { AggregateNode } from "../../src/graph/nodes/list";
+import { isSolError } from "../../src/graph/errorValue";
+
+// A representative cross-section of the dimension lattice: the universal
+// (dimensionless), four base dims, and one derived (speed = length/time).
+const DIMS: Record<string, Dim> = {
+  scalar: {},
+  length: { length: 1 },
+  time: { time: 1 },
+  mass: { mass: 1 },
+  currency: { currency: 1 },
+  speed: { length: 1, time: -1 },
+};
+const NAMES = Object.keys(DIMS);
+const isUniversalDim = (dim: Dim) => Object.keys(dim).length === 0;
+/** The +, − and compare contract: equal dims, or either side dimensionless. */
+const dimensionsAdd = (a: string, b: string) => a === b || isUniversalDim(DIMS[a]) || isUniversalDim(DIMS[b]);
+const cellOf = (dim: Dim) => (isUniversalDim(dim) ? 2 : tagDim(2, dim));
+const isUnitErr = (v: unknown) => isSolError(v) && (v as { code: string }).code === "#UNIT!";
+
+describe("unit lattice — full sweep of the dimensional separation contract (step 7)", () => {
+  it("×/÷ ALWAYS combine (dimensional flow): never a #UNIT!", () => {
+    for (const a of NAMES) for (const b of NAMES) {
+      for (const op of ["mul", "div"] as const) {
+        const r = arithmeticCell(op, cellOf(DIMS[a]), cellOf(DIMS[b]));
+        expect(isUnitErr(r)).toBe(false);
+      }
+    }
+  });
+
+  it("+/− combine when equal OR either is dimensionless; two real dims → #UNIT!", () => {
+    for (const a of NAMES) for (const b of NAMES) {
+      const combines = dimensionsAdd(a, b);
+      for (const op of ["add", "sub"] as const) {
+        const r = arithmeticCell(op, cellOf(DIMS[a]), cellOf(DIMS[b]));
+        expect(isUnitErr(r)).toBe(!combines);
+      }
+    }
+  });
+
+  it("aggregation reduces when equal OR either is dimensionless; two real dims → #UNIT!", () => {
+    for (const a of NAMES) for (const b of NAMES) {
+      const sum = new AggregateNode({ op: "sum" }).data({ list: [[cellOf(DIMS[a]), cellOf(DIMS[b])]] }).result;
+      // a bare number (dimensionless) adopts the other's unit — only two genuinely
+      // different real dimensions separate.
+      const shouldErr = a !== b && !isUniversalDim(DIMS[a]) && !isUniversalDim(DIMS[b]);
+      expect(isUnitErr(sum)).toBe(shouldErr);
+    }
+  });
+
+  it("the algebra is closed: every ×/÷ result is a valid tagged cell or bare number", () => {
+    for (const a of NAMES) for (const b of NAMES) {
+      const r = arithmeticCell("div", cellOf(DIMS[a]), cellOf(DIMS[b]));
+      expect(isSolError(r) || typeof r === "number" || isUnitCell(r)).toBe(true);
+    }
+  });
+});

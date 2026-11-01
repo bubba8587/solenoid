@@ -1,7 +1,6 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
 
-
 // Comparisons now emit a real logical (P7): TRUE/FALSE, not 1/0. Downstream
 // numeric consumers coerce boolean→1/0 at the socket (coerceInputs), so the
 // classic multiply-by-a-condition trick still works — that path is exercised
@@ -92,7 +91,6 @@ describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
   // [[D73]] nodeCoversFormula: ISERR is current Excel, so the card carries it beside ISERROR.
 
 });
-
 
 
 

@@ -4,8 +4,11 @@ import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
 import { resolveTrigModes } from "../../src/graph/trigMode";
 import { MathFXNode } from "../../src/graph/nodes/scalar";
+import { tagDim, magnitudeOf } from "../../src/graph/unitValue";
 
 // A dimensioned angle cell: base-SI RADIANS carrying a display unit (deg or rad).
+const angle = (rad: number, display: "deg" | "rad") => tagDim(rad, { angle: 1 }, display);
+const mags = (r: unknown) => (r as unknown[]).map((c) => magnitudeOf(c));
 
 type AnyEditor = GraphEditor<{ Node: GraphNode; Connection: GraphConnection<GraphNode, GraphNode> }>;
 const sock = new (class extends GraphSocket {})("any");
@@ -71,4 +74,37 @@ describe("resolveTrigModes — Auto trig reads its incoming unit", () => {
   });
 });
 
+describe("MathFn trig — per-cell mixed-unit interpretation", () => {
+  it("in deg mode a mixed list reads each cell in its own unit", () => {
+    // A radian-tagged angle and a degree-tagged angle carry their OWN unit (base
+    // radians, so the node mode is ignored); a BARE number has no unit and follows the
+    // node's deg mode. One list, three interpretations.
+    const sin = new MathFXNode({ op: "sin", angleMode: "deg" });
+    const res = sin.data({ in: [[angle(Math.PI / 2, "rad"), angle(Math.PI / 3, "deg"), 30]] as never });
+    const [a, b, c] = mags(res.result);
+    expect(a).toBeCloseTo(1, 9);              // sin(π/2 rad) — own unit
+    expect(b).toBeCloseTo(Math.sin(Math.PI / 3), 9); // sin(60° = π/3 rad) — own unit
+    expect(c).toBeCloseTo(0.5, 9);            // sin(30°) — bare, follows deg mode
+  });
 
+  it("a dimensioned-only list ignores the node's deg mode (each cell is base radians)", () => {
+    const sin = new MathFXNode({ op: "sin", angleMode: "deg" });
+    const res = sin.data({ in: [[angle(Math.PI / 6, "deg"), angle(Math.PI / 2, "rad")]] as never });
+    expect(mags(res.result)).toEqual([Math.sin(Math.PI / 6), Math.sin(Math.PI / 2)]);
+  });
+
+});
+
+describe("MathFn inverse trig and units", () => {
+  it("a dimensioned argument is #UNIT!, not an angle", () => {
+    const n = new MathFXNode({ op: "asin", angleMode: "rad" });
+    const r = n.data({ in: [tagDim(0.5, { length: 1 }, "m") as never] }).result;
+    expect((r as { code?: string }).code).toBe("#UNIT!");
+  });
+  it("in deg mode a dimensionless tagged cell answers in degrees beside a plain number", () => {
+    const n = new MathFXNode({ op: "asin", angleMode: "deg" });
+    const r = n.data({ in: [[0.5, { __unitCell: true, value: 0.5, dim: {}, ratio: true }] as never] }).result;
+    expect(mags(r)[0]).toBeCloseTo(30, 9);
+    expect(mags(r)[1]).toBeCloseTo(30, 9);
+  });
+});

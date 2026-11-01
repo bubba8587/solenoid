@@ -2,7 +2,7 @@
 // FREEZE_NODES=1 records every card body's call while the suite runs: the class, its saved fields, the inputs its body
 // saw (after arrival coercion), what it answered or threw, and the fields it set on itself for its component. Each
 // worker appends to .dev/node-calls/<pid>.jsonl; `node scripts/freeze-nodes.mjs` folds them into fixtures/core/nodes/.
-import { afterAll } from "vitest";
+import { afterAll, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -80,7 +80,14 @@ const written = new Set<string>();
 function record(lines: string[], node: GraphNode, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
   const kind = node.constructor.name;
   if (ONLY && !ONLY.has(kind)) return;
-  if ((counts.get(kind) ?? 0) >= PER_CLASS) return;
+  // The test that made the call, so a test can go once every call it made is frozen (scripts/answer-tests.mjs).
+  const st = expect.getState();
+  const at = `${path.relative(path.resolve(__dirname, "../.."), st.testPath ?? "")} > ${st.currentTestName ?? ""}`;
+  if ((counts.get(kind) ?? 0) >= PER_CLASS) {
+    const capped = JSON.stringify({ kind, uncrossable: ["capped"], at });
+    if (!written.has(capped)) { written.add(capped); lines.push(capped); }
+    return;
+  }
   const uncrossable: string[] = [];
   const ins: Record<string, unknown[]> = {};
   for (const [k, arr] of Object.entries(inputs ?? {})) {
@@ -152,10 +159,12 @@ function record(lines: string[], node: GraphNode, inputs: Record<string, unknown
   // A call over a huge value (a 10⁵-item list) is counted, not kept.
   const kept = line.length > 64_000 ? JSON.stringify({ kind, uncrossable: ["oversize"] }) : line;
   const key = createHash("sha1").update(kept.replace(/"clock":\{[^}]*\},"gen":-?\d+/, "")).digest("base64");
-  if (written.has(key)) return;
+  // A call made again is written once per test, so each test's calls are all on file.
+  if (written.has(key + at)) return;
+  if (!written.has(key)) counts.set(kind, (counts.get(kind) ?? 0) + 1);
   written.add(key);
-  counts.set(kind, (counts.get(kind) ?? 0) + 1);
-  lines.push(kept);
+  written.add(key + at);
+  lines.push(kept.slice(0, -1) + `,"at":${JSON.stringify(at)}}`);
   if (lines.length >= 2000) flush(lines);
 }
 

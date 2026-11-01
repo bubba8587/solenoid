@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { cx, isCx, parseCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
 import {
-  ComplexUnaryNode, ComplexBinaryNode,
-  
+  ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
+  ComplexPowerNode, QuadraticRootsNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
 } from "../../src/graph/nodes/complex";
@@ -84,6 +84,38 @@ describe("[[C17]] shareImpl — each registration computes what its node compute
       const node = new ComplexBinaryNode({ op });
       expect(ev(`${name}(a, b)`, { a: Z, b: W }), name).toEqual(node.data({ a: [Z], b: [W] }).result);
     }
+  });
+  it("the four extractions match IM Unpack", () => {
+    const node = new ComplexUnpackNode();
+    const out = node.data({ z: [Z] });
+    expect(ev("IMREAL(z)", { z: Z })).toEqual(out.re);
+    expect(ev("IMAGINARY(z)", { z: Z })).toEqual(out.im);
+    expect(ev("IMABS(z)", { z: Z })).toEqual(out.abs);
+    expect(ev("IMARGUMENT(z)", { z: Z })).toEqual(out.arg);
+  });
+  it("COMPLEX and IMPOWER", () => {
+    expect(ev("COMPLEX(3, 4)")).toEqual(new ComplexFromNode().data({ re: [3], im: [4] }).z);
+    const p = new ComplexPowerNode();
+    p.literals.n = 3;
+    expect(ev("IMPOWER(z, 3)", { z: Z })).toEqual(p.data({ z: [Z] }).result);
+  });
+  it("QUADRATICROOTS — the node's two outputs as [x₁, x₂], same kernel", () => {
+    const node = new QuadraticRootsNode();
+    node.literals = { a: 1, b: -3, c: 2 };
+    const out = node.data({});
+    expect(ev("QUADRATICROOTS(1, -3, 2)")).toEqual([out.x1, out.x2]);
+    // The conjugate pair, and the degenerate a = 0.
+    expect(ev("QUADRATICROOTS(1, 0, 1)")).toEqual([cx(0, -1), cx(0, 1)]);
+    expect(code(ev("QUADRATICROOTS(0, 2, 1)"))).toBe("#DOMAIN!");
+  });
+  it("broadcasts over complex lists like the node family", () => {
+    const node = new ComplexUnaryNode({ op: "conj" });
+    const list = [cx(1, 1), cx(2, -2)];
+    expect(ev("IMCONJUGATE(z)", { z: list })).toEqual(node.data({ z: [list] }).result);
+    expect(ev("IMABS(z)", { z: [cx(3, 4), cx(6, 8)] })).toEqual([5, 10]);
+    // Per-cell error/missing contract rides along.
+    const err = { __solError: true, code: "#DIV/0!", message: "x" };
+    expect(ev("IMREAL(z)", { z: [Z, err, null] })).toEqual([3, err, null]);
   });
 });
 

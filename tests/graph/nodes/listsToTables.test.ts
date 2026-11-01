@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { StackNode } from "../../../src/graph/nodes/matrix";
 import { ConcatListsNode } from "../../../src/graph/nodes/list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "../../../src/graph/nodes/frame";
-
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { throughBoundary } from "../boundaryKit";
@@ -112,6 +111,12 @@ describe("Frame Append — N-ary, by column name", () => {
     expect(f.columns[0].values).toEqual([1, 2, 3, 4]);
   });
 
+  it("one wired frame passes through; none is blank", async () => {
+    const n = new AppendNode();
+    const solo = (await readFrame((await n.data({ f0: [mk([7])] })).frame)) as FrameValue;
+    expect(solo.columns[0].values).toEqual([7]);
+    expect((await n.data({})).frame).toBe(null);
+  });
 });
 
 describe("the [[C49]] filterOneJob table-filter route: a MATRIX widens into the frame Filter", () => {

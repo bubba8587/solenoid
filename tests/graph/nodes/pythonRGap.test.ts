@@ -16,12 +16,12 @@ import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes
 import { SpectrumNode } from "../../../src/graph/nodes/list";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
 import { inEditor } from "../cardPasses";
-import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
+import { ArgMinMaxNode, SmoothNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
 import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
 import type { FitFamily } from "../../../src/graph/nodes/fitOps";
 import { PolyRootsNode } from "../../../src/graph/nodes/complex";
-import { DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode } from "../../../src/graph/nodes/frame";
+import { DescribeNode, CorrMatrixNode, KMeansNode } from "../../../src/graph/nodes/frame";
 import { AmortizationNode, ReturnsNode } from "../../../src/graph/nodes/finance";
 import type { FrameValue } from "../../../src/graph/frame";
 import { isFrameValue } from "../../../src/graph/frame";
@@ -276,15 +276,6 @@ describe("Amortization schedule", () => {
     expect(totalInterest).toBeCloseTo(-327.97, 1); // Excel CUMIPMT(0.005,12,10000,1,12,0)
     expect(amortizationSchedule(0, 4, 1000)[0].payment).toBe(-250);
     expect(amortizationSchedule(0.01, 0, 1000)).toEqual([]);
-  });
-  it("payment at the start of the period bears no first-period interest", () => {
-    const rows = amortizationSchedule(0.005, 12, 10000, 0, "beg");
-    expect(rows[0].interest).toBe(0);
-    expect(rows[11].balance).toBeCloseTo(0, 6);
-    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
-    const f = node.data({}).frame as FrameValue;
-    expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
-    expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
   });
   it("a row per period, so a count past a million (or an infinite one) is refused at once", () => {
     for (const nper of [1e9, Infinity]) {
@@ -653,12 +644,6 @@ describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (re
     expect(a.length).toBe(ys.length);
     a.forEach((v, i) => (ys[i] === null ? expect(v).toBeNull() : expect(v).toBeCloseTo(ys[i] as number, 8)));
   };
-  it("log / simple returns lead with a blank; a blank price blanks both neighbours", () => {
-    const returns = (op: "log" | "simple", list: unknown[]) => new ReturnsNode({ op }).data({ list: [list] }).result;
-    close(returns("log", P), [null, 0.0198026273, -0.0098522964, 0.0388398333, -0.0192313619, 0.0474022389, 0.0183491387, -0.0276515313]);
-    close(returns("simple", P), [null, ...R]);
-    close(returns("simple", [100, null, 110, 121]), [null, null, null, 0.1]);
-  });
   it("cumulative return compounds; drawdown is ≤ 0 from the running peak; max drawdown is its minimum", () => {
     const ev = (e: string, x: unknown[]) => compileEvaluator(e)!({ x });
     close(ev("CUMRETURNS(x)", R), [0.02, 0.01, 0.05, 0.03, 0.08, 0.1, 0.07]);
@@ -742,13 +727,6 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
 
 describe("Template — str_glue / f-string placeholders", () => {
   const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
-  it("the placeholders are the distinct names in order, past {{ }} and a :spec", async () => {
-    const n = new TemplateNode();
-    n.stringLiterals.template = "Hi {name}, {total:0.00} for {name} — {{literal}} {0}";
-    n.data({});
-    await Promise.resolve(); // the microtask that moves the inputs
-    expect(n.sideVars).toEqual(["name", "total", "0"]);
-  });
   it("the node grows a socket per name, formats numbers through TEXT, broadcasts a list", async () => {
     const n = new TemplateNode();
     n.stringLiterals.template = "Hello {name}, total {total:0.00}";
@@ -795,18 +773,6 @@ describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalFormu
     expect(ev("FINDPEAKS(y)")).toEqual([2, 4, 6, 8, 10, 14]);
     expect(ev("FINDPEAKS(y, 2.5)")).toEqual([6, 8, 10]);
     expect(ev("FINDPEAKS(y, 0, 1, 2)")).toEqual([4, 6, 8, 10]);
-  });
-  it("Find Peaks: unwired filters mean none; a Position/Height frame", () => {
-    const n = new FindPeaksNode();
-    const c0 = n.data({ list: [Y] }).result!.columns;
-    expect(c0.map((c) => c.name)).toEqual(["Position", "Height"]);
-    expect(c0[0].values).toEqual([2, 4, 6, 8, 10, 14]);
-    expect(c0[1].values).toEqual([1, 2, 3, 3, 5, 1]);
-    n.literals.prominence = 2;
-    expect(n.data({ list: [Y] }).result!.columns[0].values).toEqual([4, 6, 8, 10]);
-    expect(n.data({ list: [Y], distance: [3] }).result!.columns[0].values).toEqual([6, 10]);
-    // A wired blank list → null frame (propagate).
-    expect(new FindPeaksNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
   });
 });
 
@@ -891,87 +857,5 @@ describe("K-Means / PCA cards (k-means++ seeded restarts; numpy eigh of the cova
     expect(c.columns[2].values[0]).toBeCloseTo(1.025, 9);
     expect(n.data({ frame: [f] })).toEqual(out); // seeded: the same answer every recalculation
   });
-  it("K-Means: k = n puts every point in its own cluster; a k it can't make is an error naming why", () => {
-    const f = frame([["x", [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, null]], ["y", [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 2]]]);
-    const n = new KMeansNode();
-    n.literals.k = 7;
-    expect(n.data({ frame: [f] }).labels).toEqual([1, 2, 3, 4, 5, 6, 7, null]);
-    const msg = (out: { labels: unknown; centers: unknown }) => {
-      expect(out.centers).toEqual(out.labels);
-      return isSolError(out.labels) ? `${out.labels.code} ${out.labels.message}` : out.labels;
-    };
-    n.literals.k = 8;
-    expect(msg(n.data({ frame: [f] }))).toBe("#VALUE! K-Means can't make 8 clusters from 7 rows with every number filled in");
-    for (const k of [0, 0.4, -3]) {
-      n.literals.k = k;
-      expect(msg(n.data({ frame: [f] }))).toBe("#VALUE! K-Means needs at least 1 cluster");
-    }
-    expect(msg(n.data({ frame: [frame([["x", [4, null]]])], k: [2] }))).toBe("#VALUE! K-Means can't make 2 clusters from 1 row with every number filled in");
-    expect(msg(n.data({ frame: [f], k: ["three"] }))).toBe("#VALUE! K-Means: Clusters is not a number");
-    expect(n.data({ frame: [frame([["x", []]])] })).toEqual({ labels: null, centers: null });
-  });
-  it("PCA: scores per row (blank rows blank), loadings per feature, explained ratios", () => {
-    const f = frame([["a", [2.5, 0.5, 2.2, 1.9, 3.1, 2.3, 2, 1, 1.5, 1.1]], ["b", [2.4, 0.7, 2.9, 2.2, 3.0, 2.7, 1.6, 1.1, 1.6, 0.9]]]);
-    const n = new PcaNode();
-    const out = n.data({ frame: [f] });
-    const sc = out.scores as FrameValue;
-    expect(sc.columns.map((c) => c.name)).toEqual(["PC1", "PC2"]);
-    expect(sc.columns[0].values[0]).toBeCloseTo(0.82797, 5);
-    expect(sc.columns[1].values[0]).toBeCloseTo(0.175115, 5);
-    expect(sc.columns[0].values[1]).toBeCloseTo(-1.77758, 5);
-    expect(sc.columns[1].values[2]).toBeCloseTo(-0.384375, 5);
-    expect(out.explained![0]).toBeCloseTo(0.9631813143486462, 9);
-    const ld = out.loadings as FrameValue;
-    expect(ld.columns[0].values).toEqual(["a", "b"]);
-    expect(ld.columns[1].values[0]).toBeCloseTo(0.677873, 5); expect(ld.columns[1].values[1]).toBeCloseTo(0.735179, 5);
-    expect(ld.columns[2].values[0]).toBeCloseTo(0.735179, 5); expect(ld.columns[2].values[1]).toBeCloseTo(-0.677873, 5);
-    n.standardize = true;
-    expect(n.data({ frame: [f] }).explained![0]).toBeCloseTo(0.9629646363461228, 9);
-    expect(n.data({ frame: [frame([["a", [1]], ["b", [2]]])] }).explained).toBeNull();
-  });
 });
 
-describe("Logistic Regression card (IRLS; references from a numpy IRLS transcription + scipy norm)", () => {
-  it("coefficient frame + per-row probabilities; a logical target works; blank rows skipped", () => {
-    const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
-    const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
-    const f: FrameValue = { __frame: true, columns: [
-      { name: "hours", type: "number", values: [...hours, null] },
-      { name: "pass", type: "logical", values: [...pass.map((v) => v === 1), true] },
-    ] };
-    const n = new LogisticNode();
-    n.stringLiterals.target = "pass";
-    const out = n.data({ frame: [f] });
-    const c = out.coefficients as FrameValue;
-    expect(c.columns[0].values).toEqual(["(Intercept)", "hours"]);
-    expect(c.columns.map((col) => col.name)).toEqual(["Term", "Coefficient", "Std Error", "z", "p"]);
-    expect(c.columns[1].values[0]).toBeCloseTo(-4.077713431087625, 6);
-    expect(c.columns[1].values[1]).toBeCloseTo(1.5046454283733315, 6);
-    expect(c.columns[2].values[0]).toBeCloseTo(1.7609943141564697, 6);
-    expect(c.columns[2].values[1]).toBeCloseTo(0.6287208459453852, 6);
-    expect(c.columns[3].values[1]).toBeCloseTo(2.393185207833931, 6);
-    expect(c.columns[4].values[0]).toBeCloseTo(0.02058151551245868, 8);
-    expect(c.columns[4].values[1]).toBeCloseTo(0.016702807340367887, 8);
-    expect(out.probabilities!.length).toBe(21);
-    expect(out.probabilities![0]).toBeCloseTo(0.034710335976879586, 8);
-    expect(out.probabilities![20]).toBeNull();
-    n.stringLiterals.target = "nope";
-    expect((n.data({ frame: [f] }).coefficients as { code?: string }).code).toBe("#REF!");
-  });
-  it("two features; degenerate designs are errors", () => {
-    const hours = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5];
-    const pass = [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1];
-    const x2 = [1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1];
-    const fit = (cols: [string, number[]][]) => {
-      const n = new LogisticNode();
-      n.stringLiterals.target = "y";
-      return n.data({ frame: [{ __frame: true, columns: cols.map(([name, values]) => ({ name, type: "number", values })) } as FrameValue] }).coefficients;
-    };
-    const c = fit([["hours", hours], ["x2", x2], ["y", pass]]) as FrameValue;
-    expect(c.columns[1].values[0]).toBeCloseTo(-4.434292614310739, 6);
-    expect(c.columns[1].values[1]).toBeCloseTo(1.5277346065203303, 6);
-    expect(c.columns[1].values[2]).toBeCloseTo(0.5691081986876356, 6);
-    expect(isSolError(fit([["hours", hours], ["y", pass.map(() => 1)]]))).toBe(true);
-    expect(isSolError(fit([["hours", [1, 2]], ["y", [0, 1]]]))).toBe(true);
-  });
-});

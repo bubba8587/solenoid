@@ -7,10 +7,10 @@ import { initPackFormulas } from "../../src/graph/formulaExtensions";
 // The declarations are checked with pack formulas registered, as the app runs.
 initPackFormulas();
 import {
-  PadNode, 
-  ArgMinMaxNode, WeightedNode, RunningNode, RUNNING_OP_META,
-  
-  PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
+  ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
+  ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode, RunningNode, RUNNING_OP_META,
+  SeriesNode,
+  SetsNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "../../src/graph/nodes/list";
 import { buildCatalog } from "../../src/graph/catalogUtils";
@@ -33,11 +33,28 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
 const LIST = [4, 1, 7, 2];
+const WITH_GAP = [4, null, 7, 2];
 
 describe("every Tier 3 name computes what its node computes", () => {
+  it("REVERSE", () => {
+    expect(ev("REVERSE(x)", { x: LIST })).toEqual(new ReverseNode().data({ list: [LIST] }).result);
+  });
 
+  it("SLICE — both the 2-arg (open end) and 3-arg forms", () => {
+    const open = new SliceNode();
+    expect(ev("SLICE(x, 2)", { x: LIST })).toEqual(open.data({ list: [LIST], start: [2] }).result);
+    const closed = new SliceNode();
+    expect(ev("SLICE(x, 2, 3)", { x: LIST })).toEqual(closed.data({ list: [LIST], start: [2], end: [3] }).result);
+  });
 
+  it("NTHELEMENT", () => {
+    expect(ev("NTHELEMENT(x, 2)", { x: LIST })).toEqual(new NthElementNode().data({ list: [LIST], n: [2] }).result);
+  });
 
+  it("INTERLEAVE", () => {
+    expect(ev("INTERLEAVE(a, b)", { a: [1, 2], b: [9] }))
+      .toEqual(new InterleaveNode().data({ a: [[1, 2]], b: [[9]] }).result);
+  });
 
   it("PADLEFT / PADRIGHT — one name per direction, from PAD_OP_META", () => {
     for (const [dir, meta] of Object.entries(PAD_OP_META)) {
@@ -47,7 +64,13 @@ describe("every Tier 3 name computes what its node computes", () => {
     }
   });
 
+  it("DIFF", () => {
+    expect(ev("DIFF(x)", { x: LIST })).toEqual(new DiffNode().data({ list: [LIST] }).result);
+  });
 
+  it("NORMALIZE", () => {
+    expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
+  });
 
   // The [[C26]] opArgDistinct contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
   // Both halves matter. The family gets exactly ONE name — RUNNING(op, list, [window]),
@@ -78,6 +101,10 @@ describe("every Tier 3 name computes what its node computes", () => {
     }
   });
 
+  it("LENGTH — counts the missing slot, which is why it takes the list RAW", () => {
+    expect(ev("LENGTH(x)", { x: WITH_GAP })).toBe(4);
+    expect(ev("LENGTH(x)", { x: WITH_GAP })).toEqual(new ListLengthNode().data({ list: [WITH_GAP] }).result);
+  });
 
   it("ARGMAX / ARGMIN / ARGSORT / WHICH", () => {
     // The descending op is ARGSORT's second argument on the formula side.
@@ -88,6 +115,10 @@ describe("every Tier 3 name computes what its node computes", () => {
     }
   });
 
+  it("CONTAINS", () => {
+    expect(ev("CONTAINS(x, 7)", { x: LIST })).toEqual(new ContainsNode().data({ list: [LIST], value: [7] }).result);
+    expect(ev("CONTAINS(x, 99)", { x: LIST })).toBe(false);
+  });
 
   it("WAVG / WVAR / WSTDEV", () => {
     const values = [1, 2, 3], weights = [1, 1, 2];
@@ -98,6 +129,12 @@ describe("every Tier 3 name computes what its node computes", () => {
     }
   });
 
+  it("LINSPACE / REPEAT / GEOMETRIC / FIBONACCI", () => {
+    expect(ev("LINSPACE(0, 1, 5)")).toEqual(new SeriesNode({ op: "linspace" }).data({ start: [0], end: [1], count: [5] }).list);
+    expect(ev("REPEAT(7, 4)")).toEqual(new SeriesNode({ op: "repeat" }).data({ value: [7], count: [4] }).list);
+    expect(ev("GEOMETRIC(1, 3, 5)")).toEqual(new SeriesNode({ op: "geometric" }).data({ start: [1], ratio: [3], count: [5] }).list);
+    expect(ev("FIBONACCI(8)")).toEqual(new SeriesNode({ op: "fibonacci" }).data({ count: [8] }).list);
+  });
 });
 
 describe("the whole-list routing, which is the half that isn't the function", () => {
@@ -141,8 +178,36 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
   // ("Union", "Constant") despaces to UNION/CONSTANT, not the SET*/FILL* family name.
   // So each op carries an explicit `fx` in its OP_META — same one-table principle,
   // declared instead of derived, and the test reads the table so a rename fails here.
+  it("SET* — one name per Set op", () => {
+    const a = [1, 2, 3], b = [3, 4];
+    for (const [op, meta] of Object.entries(SET_OP_META)) {
+      const node = new SetsNode({ op: op as "union" });
+      expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
+        .toEqual(node.data({ a: [a], b: [b] }).result);
+    }
+  });
 
+  it("SET* relations — one name per relation", () => {
+    const a = [1, 2], b = [1, 2, 3];
+    for (const [op, meta] of Object.entries(SET_RELATION_META)) {
+      const node = new SetsNode({ op: op as "equal" });
+      expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
+        .toEqual(node.data({ a: [a], b: [b] }).result);
+    }
+  });
 
+  it("FILL* — one name per Fill op, except the variadic COALESCE", () => {
+    const gappy = [1, null, null, 4];
+    for (const [op, meta] of Object.entries(FILL_OP_META)) {
+      if (op === "coalesce") continue; // N-ary — its own case below
+      const node = new FillNode({ op: op as "ffill" });
+      const call = op === "constant" ? `${meta.fx}(x, 0)` : `${meta.fx}(x)`;
+      const nodeOut = op === "constant"
+        ? node.data({ list: [gappy], value: [0] }).result
+        : node.data({ list: [gappy] }).result;
+      expect(ev(call, { x: gappy }), meta.fx).toEqual(nodeOut);
+    }
+  });
 
   it("COALESCE takes the first present across its sources, in order", () => {
     expect(ev("COALESCE(a, b, 99)", { a: [1, null, null], b: [null, 2, null] })).toEqual([1, 2, 99]);
@@ -164,6 +229,14 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
     expect(draws.size).toBeGreaterThan(1);
   });
 
+  it("RANGE and CONCATLISTS", () => {
+    expect(ev("RANGE(0, 5)")).toEqual(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5] }).list);
+    expect(ev("RANGE(0, 10, 3)")).toEqual([0, 3, 6, 9]);
+    const cat = new ConcatListsNode();
+    const keys = cat.valueInputKeys();
+    expect(ev("CONCATLISTS(a, b)", { a: [1, 2], b: [3] }))
+      .toEqual(cat.data({ [keys[0]]: [[1, 2]], [keys[1]]: [[3]] }).result);
+  });
 });
 
 describe("the formula namespace stays unambiguous", () => {

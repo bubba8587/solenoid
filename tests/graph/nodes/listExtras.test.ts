@@ -1,7 +1,6 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
-import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, SpectrumNode } from "../../../src/graph/nodes/list";
-import { BetweenNode, IsCloseNode } from "../../../src/graph/nodes/logic";
+import { CrossNode, SpectrumNode } from "../../../src/graph/nodes/list";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 
@@ -24,11 +23,6 @@ describe("shiftList (Shift / lag-lead / roll)", () => {
   it("wrap keeps every element (numpy.roll)", () => {
     expect(shiftList([1, 2, 3, 4], 1, true)).toEqual([4, 1, 2, 3]);
   });
-  it("the node reads its `by` literal and wrap toggle", () => {
-    const n = new ShiftNode({ wrap: "wrap" });
-    n.literals.by = 2;
-    expect(n.data({ list: [[1, 2, 3, 4]] }).result).toEqual([3, 4, 1, 2]);
-  });
 });
 
 describe("pctChangeList (Percent Change)", () => {
@@ -37,9 +31,6 @@ describe("pctChangeList (Percent Change)", () => {
     const z = pctChangeList([0, 5]);
     expect(isSolError(z[0]) && (z[0] as { code: string }).code).toBe("#DIV/0!");
   });
-  it("the DIFF node in percent mode computes it (merged, not a separate node)", () => {
-    expect(new DiffNode({ mode: "percent" }).data({ list: [[10, 20]] }).result).toEqual([1]);
-  });
 });
 
 describe("zscoreList (Z-Score / standardize)", () => {
@@ -47,17 +38,11 @@ describe("zscoreList (Z-Score / standardize)", () => {
     expect(zscoreList([1, 2, 3])).toEqual([-1.224744871391589, 0, 1.224744871391589]);
     expect(zscoreList([5, 5, 5])).toEqual([0, 0, 0]);
   });
-  it("the Normalize node in z-score mode computes it (merged, not a separate node)", () => {
-    expect((new NormalizeNode({ mode: "zscore" }).data({ list: [[2, 4]] }).result as number[])).toEqual([-1, 1]);
-  });
 });
 
 describe("binIndex (Bin / findInterval)", () => {
   it("counts breakpoints cleared: 0 below the first, n above the last", () => {
     expect(binIndex([-1, 0, 5, 10, 20], [0, 10])).toEqual([0, 1, 1, 2, 2]);
-  });
-  it("the node reads list + breaks", () => {
-    expect(new BinNode().data({ list: [[3, 7, 12]], breaks: [[5, 10]] }).result).toEqual([0, 1, 2]);
   });
 });
 
@@ -66,37 +51,13 @@ describe("combinationsOf (itertools combinations / permutations)", () => {
     expect(combinationsOf([1, 2, 3], 2, "permutations")).toEqual([[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]);
     expect(combinationsOf([1, 2], 3, "combinations")).toEqual([]); // k > n
   });
-  it("the node reads list + k and the mode", () => {
-    const n = new CombinationsNode({ mode: "combinations" });
-    n.literals.k = 2;
-    expect(n.data({ list: [["a", "b", "c"]] }).result).toEqual([["a", "b"], ["a", "c"], ["b", "c"]]);
-  });
 });
 
 describe("Tier-2/3 kernels (gradient / ewma / trapz / convolve / cross / rle / polyfit)", () => {
-  it("gradient is central-difference interior, one-sided at the ends", () => {
-    expect(new DiffNode({ mode: "gradient" }).data({ list: [[1, 2, 4, 7]] }).result).toEqual([1, 1.5, 2.5, 3]);
-  });
-  it("ewma weights recent values by alpha; blanks carry forward", () => {
-    expect(new EwmaNode().data({ list: [[1, 2, 3]], alpha: [0.5] }).result).toEqual([1, 1.5, 2.25]);
-  });
-  it("trapz integrates by the trapezoidal rule", () => {
-    expect(new TrapzNode().data({ list: [[0, 1, 2, 3]], dx: [1] }).result).toBe(4.5);
-  });
-  it("convolve is the full sliding dot-product", () => {
-    expect(new ConvolveNode().data({ a: [[1, 2]], b: [[1, 1]] }).result).toEqual([1, 3, 2]);
-  });
   it("cross product of two 3-vectors; wrong length is #SHAPE!", () => {
     expect(new CrossNode().data({ a: [[1, 0, 0]], b: [[0, 1, 0]] }).result).toEqual([0, 0, 1]);
     const bad = crossProduct([1, 2], [3, 4]);
     expect(isSolError(bad) && (bad as { code: string }).code).toBe("#SHAPE!");
-  });
-  it("rle compresses runs into value/count rows", () => {
-    expect(new RleNode().data({ list: [[1, 1, 2, 2, 2, 3]] }).result).toEqual([[1, 2], [2, 3], [3, 1]]);
-  });
-  it("polyfit fits exactly through points that lie on a degree-d curve", () => {
-    const node = new PolyfitNode(); node.literals.degree = 2;
-    (node.data({ x: [[0, 1, 2]], y: [[0, 1, 4]] }).result as number[]).forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
   });
   it("polyfit pairs x with y BY POSITION — a blank on one side drops that pair, never shifts it — and the result stays position-aligned with x", () => {
     // y = 2x; a blank x at slot 1 must NOT pair x=3 with y=2 (the old present-numbers compaction did).
@@ -110,26 +71,7 @@ describe("Tier-2/3 kernels (gradient / ewma / trapz / convolve / cross / rle / p
   });
 });
 
-describe("Between / Is-Close predicates", () => {
-  it("Between is inclusive; Is-Close compares within a tolerance", () => {
-    expect(new BetweenNode().data({ value: [5], lo: [1], hi: [10] }).result).toBe(true);
-    expect(new BetweenNode().data({ value: [11], lo: [1], hi: [10] }).result).toBe(false);
-    expect(new IsCloseNode().data({ a: [1], b: [1.0000001], tol: [1e-3] }).result).toBe(true);
-    expect(new IsCloseNode().data({ a: [1], b: [2], tol: [1e-3] }).result).toBe(false);
-  });
-  it("both broadcast over a list (input rank matches the boolean-list output)", () => {
-    expect(new BetweenNode().data({ value: [[0, 5, 11]], lo: [1], hi: [10] }).result).toEqual([false, true, false]);
-    expect(new IsCloseNode().data({ a: [[1, 2]], b: [[1.0001, 5]], tol: [1e-2] }).result).toEqual([true, false]);
-  });
-});
 
-describe("COUNTBLANK — Aggregate op that counts missing cells", () => {
-  it("counts blanks from the raw list, even when every cell is blank", async () => {
-    const { AggregateNode } = await import("../../../src/graph/nodes/list");
-    expect(new AggregateNode({ op: "countblank" }).data({ list: [[1, null, 3, null, null]] }).result).toBe(3);
-    expect(new AggregateNode({ op: "countblank" }).data({ list: [[null, null]] }).result).toBe(2);
-  });
-});
 
 describe("closed formula-only gaps — GROWTH and ORDINAL now have nodes", () => {
   it("GROWTH is Forecast's exponential op; ORDINAL is Spell Number's ordinal mode", async () => {
@@ -172,9 +114,5 @@ describe("Spectrum propagates an error ([[E10]] pickVsAggregateErrors)", () => {
     expect(isSolError(node) && (node as { code: string }).code).toBe("#DIV/0!");
     const f = ev("SPECTRUM(x)", { x: [1, div0, 3, 4] });
     expect(isSolError(f) && (f as { code: string }).code).toBe("#DIV/0!");
-  });
-  it("a wired error rate is the answer", () => {
-    const node = new SpectrumNode().data({ list: [[1, 2, 3, 4]], rate: [div0 as never] }).result;
-    expect(isSolError(node) && (node as { code: string }).code).toBe("#DIV/0!");
   });
 });

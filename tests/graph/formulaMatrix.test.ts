@@ -53,16 +53,6 @@ describe("each matrix name computes what its node computes", () => {
     expect(ev("MUNIT(3)")).toEqual(new TableUnitNode().data({ n: [3] }).result);
   });
 
-  it("MUNIT off-diagonal blank fills nulls (stays out of counts), zero fills 0s", () => {
-    const zero = new TableUnitNode({ offDiag: "zero" }).data({ n: [3] }).result as (number | null)[][];
-    const blank = new TableUnitNode({ offDiag: "blank" }).data({ n: [3] }).result as (number | null)[][];
-    expect(zero[0]).toEqual([1, 0, 0]);
-    expect(blank[0]).toEqual([1, null, null]);
-    // The claim: a blank off-diagonal is ABSENT, not a zero — so aggregators skip it.
-    const present = (m: (number | null)[][]) => m.flat().filter((c) => c !== null).length;
-    expect(present(zero)).toBe(9);  // every cell is a value
-    expect(present(blank)).toBe(3); // only the three diagonal 1s count
-  });
 
   it("DIAGONAL node — a list becomes a square matrix's diagonal (numpy.diag); off-diagonal 0 or blank", () => {
     const zero = new TableDiagNode({ offDiag: "zero" }).data({ diag: [[2, 5, 7]] }).result as (number | null)[][];

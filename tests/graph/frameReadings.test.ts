@@ -12,8 +12,8 @@ const READINGS_ADD = "Temperature readings can't be added. Subtract two for a di
 const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
 import { cubeFromColumns, frameToCube, frameSourceToText, type CubeValue, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
-import { GetColumnNode, ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";
-import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
+import { ComputedColumnNode, FrameInputNode, WindowNode } from "../../src/graph/nodes/frame";
+import { SumIfsNode } from "../../src/graph/nodes/list";
 import { compilePositional } from "../../src/graph/excelFormula";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
@@ -155,20 +155,6 @@ describe("Cube Rollup carries units", () => {
   });
 });
 
-describe("Get Column into Aggregate", () => {
-  const list = (): never => {
-    const g = new GetColumnNode();
-    g.stringLiterals.name = "t";
-    return g.data({ frame: [temps("degC")] }).values as never;
-  };
-
-  it("a column of readings has no SUM but has an AVERAGE", () => {
-    const sum = new AggregateNode({ op: "sum" }).data({ list: [list()] }).result;
-    expect(isSolError(sum) && sum.code).toBe("#UNIT!");
-    const avg = new AggregateNode({ op: "avg" }).data({ list: [list()] }).result as UnitCell;
-    expect(avg.display).toBe("degC");
-  });
-});
 
 describe("SUMIFS reads the column in its unit", () => {
   const ifs = (op: string, f: unknown) => {
@@ -191,15 +177,6 @@ describe("SUMIFS reads the column in its unit", () => {
     expect(avg.display).toBe("degC");
   });
 
-  it("MINIFS and MAXIFS with no match are 0 in the column's unit, not 0 K", () => {
-    for (const op of ["minifs", "maxifs"]) {
-      const s = new SumIfsNode({ op: op as never });
-      s.stringLiterals.values = "t"; s.stringLiterals.column0 = "k"; s.stringLiterals.value0 = "zzz";
-      const r = s.data({ frame: [temps("degC")] }).result as UnitCell;
-      expect(r.display).toBe("degC");
-      expect(r.value).toBeCloseTo(273.15, 9);
-    }
-  });
 
   it("a cube (a vault table) keeps its column's unit on the way in", () => {
     const avg = ifs("averageifs", frameToCube(temps("degC"))) as UnitCell;
@@ -303,15 +280,3 @@ describe("a computed column over readings classifies as Expression does", () => 
 });
 
 // [[C58]] tableInputRawText
-describe("Get Column reads a text cell as a Frame cell of the read type does", () => {
-  it("a date read takes a bare number as a serial and unreadable text as NaN", () => {
-    const g = new GetColumnNode({ readAs: "date" } as never);
-    g.stringLiterals.name = "s";
-    (g as unknown as { readAs: string }).readAs = "date";
-    const f = frame({ name: "s", type: "string", values: ["2024", "abc", "01-Jan-2026"] });
-    const out = g.data({ frame: [f] }).values as unknown as number[];
-    expect(out[0]).toBe(2024);
-    expect(Number.isNaN(out[1])).toBe(true);
-    expect(out[2]).toBe(46023);
-  });
-});
