@@ -4,6 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
+import { previewed } from "../listPreview";
 
 const MODELS = (Object.keys(DECOMPOSE_MODEL_META) as DecomposeModel[]).map((m) => ({
   value: m, label: DECOMPOSE_MODEL_META[m].label, title: DECOMPOSE_MODEL_META[m].description,
@@ -15,7 +16,7 @@ export function DecomposeComponent({ data, emit }: NodeProps<DecomposeNodeType>)
     <NodeShell node={data} emit={emit}>
       <ArgSelect value={model} onChange={setModel} options={MODELS} />
       <InlineInputs node={data} emit={emit} />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

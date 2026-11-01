@@ -26,6 +26,7 @@ import "./ConnectionNodes.css";
 import "./WriteNodes.css";
 import "./ImportObsidianNode.css";
 import { stopDragStart } from "../coarse";
+import { previewed } from "../listPreview";
 
 type WriteNodeData = WriteFileNodeType & {
   path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
@@ -152,7 +153,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
             {message}
           </div>
         )}
-        <FrameDisplay frame={d.cachedFrame} label={d.label} />
+        <FrameDisplay frame={previewed(() => d.cachedFrame)} label={d.label} />
       </div>
     </NodeShell>
   );
@@ -480,7 +481,7 @@ export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType
             {message}
           </div>
         )}
-        <FrameDisplay frame={data.cachedPlan} label={data.label || "Write Tasks"} />
+        <FrameDisplay frame={previewed(() => data.cachedPlan)} label={data.label || "Write Tasks"} />
       </div>
     </NodeShell>
   );

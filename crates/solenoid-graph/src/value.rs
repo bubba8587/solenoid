@@ -98,6 +98,38 @@ impl Val {
                         .into()
                     })
                     .clone(),
+                // A big frame: its first rows in every column, its row count beside them.
+                Cv::Frame(f)
+                    if f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0)
+                        >= PREVIEW_FROM =>
+                {
+                    self.0
+                        .preview
+                        .get_or_init(|| {
+                            let rows = f.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
+                            let columns = f
+                                .columns
+                                .iter()
+                                .map(|c| solenoid_core::nodes::Column {
+                                    values: c.values.iter().take(PREVIEW_CELLS).cloned().collect(),
+                                    raw: c.raw.as_ref().map(|r| match r {
+                                        Json::Array(a) => Json::Array(
+                                            a.iter().take(PREVIEW_CELLS).cloned().collect(),
+                                        ),
+                                        other => other.clone(),
+                                    }),
+                                    ..c.clone()
+                                })
+                                .collect();
+                            let cut = solenoid_core::nodes::Frame {
+                                columns,
+                                ..(**f).clone()
+                            };
+                            let preview = Arrived::bare(Cv::Frame(Rc::new(cut)));
+                            Array::of2(&to_js(&preview), &JsValue::from_f64(rows as f64)).into()
+                        })
+                        .clone()
+                }
                 _ => Array::of1(&self.js()).into(),
             },
             _ => Array::of1(&self.js()).into(),

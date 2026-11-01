@@ -6,6 +6,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { AGG_OP_OPTIONS } from "./FrameNodes";
 import { nodeDisplayName } from "../catalogUtils";
+import { previewed } from "../listPreview";
 
 export function BuildCubeComponent({ data, emit }: NodeProps<BuildCubeNodeType>) {
   return (
@@ -50,7 +51,7 @@ export function CubeRollupComponent({ data, emit }: NodeProps<CubeRollupNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <ArgSelect value={agg} options={AGG_OP_OPTIONS} onChange={setAgg} />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

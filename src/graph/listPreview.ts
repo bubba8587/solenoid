@@ -2,10 +2,11 @@
 // A card's box draws a big list as a chip and its first rows, so a list a card body on the core made isn't taken whole
 // to draw it: a read made inside `previewed` (the standard boxes', `standardNode.tsx`) gets the first rows the core
 // keeps for the box, tagged with the list's length and how to take the whole of it; any other read gets the whole list.
-// The chip counts by `listLength`; the popup, a copy and an inline list take `fullList` (graph-core.md § Direct calls).
+// A big frame is its first rows the same way. The chip counts by `listLength` (`frameRows`); the popup, a copy, an inline
+// list and a full table take `fullList` (graph-core.md § Direct calls).
 
 let depth = 0;
-const previews = new WeakMap<object, { total: number; width?: number; load: () => unknown; whole?: unknown[] }>();
+const previews = new WeakMap<object, { total: number; width?: number; load: () => unknown; whole?: unknown }>();
 
 /** `read()`, its reads of a card's shown fields answering a big list by its first rows. */
 export function previewed<T>(read: () => T): T {
@@ -27,15 +28,20 @@ export function listLength(v: readonly unknown[]): number {
   return previews.get(v)?.total ?? v.length;
 }
 
+/** A frame's row count, a preview's whole frame's. */
+export function frameRows(f: { columns: { values: readonly unknown[] }[] }): number {
+  return previews.get(f)?.total ?? f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+}
+
 /** A table's width, a preview's whole table's. */
 export function tableWidth(v: readonly unknown[]): number {
   return previews.get(v)?.width ?? ((v[0] as unknown[] | undefined)?.length ?? 0);
 }
 
-/** The whole list a preview stands for, read once; any other value as it is. */
+/** The whole list or frame a preview stands for, read once; any other value as it is. */
 export function fullList<T>(v: T): T {
   const p = v !== null && typeof v === "object" ? previews.get(v) : undefined;
   if (!p) return v;
-  const whole = (p.whole ??= p.load() as unknown[]);
-  return (Array.isArray(whole) ? whole : v) as T;
+  const whole = (p.whole ??= p.load());
+  return (whole !== null && typeof whole === "object" ? whole : v) as T;
 }

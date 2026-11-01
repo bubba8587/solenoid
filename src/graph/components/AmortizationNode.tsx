@@ -4,6 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
+import { previewed } from "../listPreview";
 
 const TIMING = (Object.keys(PAYMENT_TIMING_META) as PaymentTiming[]).map((t) => ({ value: t, label: PAYMENT_TIMING_META[t] }));
 
@@ -13,7 +14,7 @@ export function AmortizationComponent({ data, emit }: NodeProps<AmortizationNode
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <ArgSelect value={timing} onChange={setTiming} options={TIMING} />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

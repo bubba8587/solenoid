@@ -28,6 +28,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
+import { previewed } from "../listPreview";
 
 // Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
@@ -220,7 +221,7 @@ export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType
   return (
     <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
-      {!collapsed && <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />}
+      {!collapsed && <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />}
       <div className="solenoid-node__collapsed-only solenoid-node__mini-value">
         {typeof time === "string" ? <>
           <span className="solenoid-node__mini-label">{String(place ?? "")}</span>

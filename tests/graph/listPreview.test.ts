@@ -8,7 +8,9 @@ import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { CastNode } from "../../src/graph/nodes/cast";
-import { previewed, listLength, tableWidth, fullList } from "../../src/graph/listPreview";
+import { previewed, listLength, tableWidth, frameRows, fullList } from "../../src/graph/listPreview";
+import { DecomposeNode } from "../../src/graph/nodes/stats";
+import type { FrameValue } from "../../src/graph/frame";
 
 async function texts(count: number) {
   const editor = new GraphEditor<Schemes>();
@@ -58,6 +60,27 @@ describe("a box's preview of a big list", () => {
     expect(listLength(rows)).toBe(20_000);
     expect(tableWidth(rows)).toBe(6);
     expect((fullList(rows) as number[][])[19_999]).toHaveLength(6);
+    editor.dispose();
+  });
+
+  it("cuts a big frame to its first rows, every column kept, counting its rows whole", async () => {
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const s = new SeriesNode({ op: "sequence" });
+    (s as unknown as { literals: Record<string, number> }).literals = { count: 20_000 };
+    const build = new DecomposeNode();
+    (build as unknown as { literals: Record<string, number> }).literals = { period: 7 };
+    await editor.addNode(s as never);
+    await editor.addNode(build as never);
+    await editor.addConnection(new GraphConnection(s, "list", build, "values") as never);
+    await editor.engine!.pass(undefined, undefined, false);
+    const f = previewed(() => build.cachedResult) as FrameValue;
+    expect(f.columns.length).toBeGreaterThan(1);
+    for (const c of f.columns) expect(c.values).toHaveLength(4);
+    expect(frameRows(f)).toBe(20_000);
+    const plain = build.cachedResult as FrameValue;
+    expect(fullList(f).columns[0].values).toHaveLength(20_000);
+    expect(plain.columns[0].values).toHaveLength(20_000);
     editor.dispose();
   });
 

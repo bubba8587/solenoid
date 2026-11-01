@@ -4,6 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
+import { previewed } from "../listPreview";
 
 const METHODS = (Object.keys(OUTLIER_METHOD_META) as OutlierMethod[]).map((m) => ({
   value: m, label: OUTLIER_METHOD_META[m].label, title: OUTLIER_METHOD_META[m].description,
@@ -16,7 +17,7 @@ export function OutliersComponent({ data, emit }: NodeProps<OutliersNodeType>) {
       <ArgSelect value={method} onChange={setMethod} options={METHODS} />
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

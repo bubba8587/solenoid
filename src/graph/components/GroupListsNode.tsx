@@ -4,6 +4,7 @@ import { NodeShell, ArgSelect, useNodeField, type NodeProps, type OpOption } fro
 import type { GroupByOp } from "../nodeClasses";
 import { GROUP_BY_OP_META } from "../nodeClasses";
 import { FrameDisplay } from "./FrameDisplay";
+import { previewed } from "../listPreview";
 
 // Derived from GROUP_BY_OP_META — the table the search rows read too.
 const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = (Object.keys(GROUP_BY_OP_META) as GroupByOp[])
@@ -16,7 +17,7 @@ export function GroupListsComponent({ data: node, emit }: NodeProps<GroupListsNo
       <InlineInputs node={node} emit={emit} />
       <ArgSelect value={agg} onChange={setAgg} options={GROUP_BY_OPTIONS} />
       <div className="solenoid-node__section-divider" />
-      <FrameDisplay frame={node.cachedResult} label={node.label} />
+      <FrameDisplay frame={previewed(() => node.cachedResult)} label={node.label} />
     </NodeShell>
   );
 }

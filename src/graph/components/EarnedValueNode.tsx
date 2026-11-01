@@ -12,6 +12,7 @@ import { displayMagnitudeOf } from "../unitBridge";
 import { CardSection, useRowsInUse } from "./CardSection";
 import { EARNED_VALUE_DEFAULT_LITERALS } from "../nodes/earnedValue";
 import { collapseStore } from "../collapseStore";
+import { previewed } from "../listPreview";
 
 // A ratio reads to two places; an index of 1.0 is on plan. Blank when undefined (a 0 denominator).
 function ratioText(v: OutputRowValue): OutputRowValue {
@@ -41,7 +42,7 @@ export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeTy
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
           </div>
         </MeasuredSocketRow>
       )}

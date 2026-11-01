@@ -1,9 +1,10 @@
 // [[C118]] formatTravelsWithValue, [[E9]] errorsKeepOrigin
 import { useSyncExternalStore } from "react";
+import { frameRows, fullList } from "../listPreview";
 import { FrameChip } from "./FrameChip";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndexOf } from "../categoryColor";
-import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
+import { formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
 import type { SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -32,7 +33,7 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
   return formatScalar(c);
 }
 
-export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
+export function FrameDisplay({ frame: given, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
   peek?: boolean;
@@ -47,6 +48,8 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
   lambdaOptions?: string[];
   formLayout?: string;
 }) {
+  // A big frame a card's box shows is its first rows (`listPreview.ts`); a full table takes the whole.
+  const frame = full && given && !isSolError(given) ? fullList(given) : given;
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
@@ -80,7 +83,7 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
     }
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
-  const rows = frameRowCount(frame);
+  const rows = frameRows(frame);
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, previewRows ?? 3);
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;

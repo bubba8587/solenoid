@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { tablePopup, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
+import { frameRows, fullList } from "../listPreview";
 import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -90,7 +91,8 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
 }) {
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
-  const rows = frameRowCount(value);
+  // A big frame a card's box shows is its first rows (`listPreview.ts`): the chip counts the whole, the popup opens on it.
+  const rows = frameRows(value);
   const cols = value.columns.length;
   const totalRows = value.__totalRows ?? rows;
   const approx = value.__approx != null;
@@ -103,7 +105,7 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSaveSource ? "Edit" : "View"}.`}
       onClick={(e) => {
         e.stopPropagation();
-        openFrameChipPopup(e.currentTarget, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides });
+        openFrameChipPopup(e.currentTarget, { value: fullList(value), label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides });
       }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}

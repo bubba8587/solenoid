@@ -47,6 +47,7 @@ import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getOwningView } from "../activeGraph";
 import { FX_MODE_META, type FxMode } from "../nodeClasses";
+import { previewed } from "../listPreview";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -143,7 +144,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -196,7 +197,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           />
         </label>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -319,7 +320,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+            <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
           </div>
         </MeasuredSocketRow>
       )}
@@ -411,7 +412,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField node={data} />
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+        <FrameDisplay frame={previewed(() => data.cachedResult)} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
