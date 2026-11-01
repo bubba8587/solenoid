@@ -30,19 +30,18 @@ impl Normalize {
     }
 }
 
-/// `Array.prototype.sort` over a numeric comparator, exact for V8 below 64 items.
+/// A stable sort over a comparator answering a difference: its sign orders, and NaN is a tie.
 pub(crate) fn sort_by_num<T: Clone>(v: &mut Vec<T>, mut cmp: impl FnMut(&T, &T) -> f64) {
-    if crate::js_sort::v8_sort_short(v, &mut cmp).is_none() {
-        crate::js_sort::js_sort_by(v, |a, b| {
-            if cmp(a, b) < 0.0 {
-                Ordering::Less
-            } else if cmp(a, b) > 0.0 {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
-        });
-    }
+    crate::sort::stable_sort_by(v, |a, b| {
+        let d = cmp(a, b);
+        if d < 0.0 {
+            Ordering::Less
+        } else if d > 0.0 {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    });
 }
 
 fn finite(v: &FrameCell) -> Option<f64> {

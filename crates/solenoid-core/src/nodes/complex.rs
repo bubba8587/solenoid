@@ -187,11 +187,7 @@ fn poly_roots(c: &mut Call) -> Answer {
                     .collect(),
                 _ => Vec::new(),
             };
-            if crate::js_sort::v8_sort_short(&mut real, |x, y| x - y).is_none() {
-                crate::js_sort::js_sort_by(&mut real, |x, y| {
-                    (x - y).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
-                });
-            }
+            crate::sort::stable_sort_by(&mut real, |x, y| crate::sort::num_order(*x, *y));
             done(c, rs, list(real.into_iter().map(V::Num).collect()))
         }
     }

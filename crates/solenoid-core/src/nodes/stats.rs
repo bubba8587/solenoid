@@ -184,14 +184,9 @@ fn answer(c: &mut Call, result: V) -> Answer {
     Ok(vec![("result".into(), Cv::from(result))])
 }
 
-/// A JS sort with a numeric comparator `(a, b) => a - b` on the values JS's `-` reads.
+/// Values in numeric order (as `js_num` reads them), NaN last.
 pub(crate) fn sort_numeric(v: &mut Vec<V>) {
-    let cmp = |a: &V, b: &V| js_num(a) - js_num(b);
-    if crate::js_sort::v8_sort_short(v, cmp).is_none() {
-        crate::js_sort::js_sort_by(v, |a, b| {
-            (js_num(a) - js_num(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
-        });
-    }
+    crate::sort::stable_sort_by(v, |a, b| crate::sort::num_order(js_num(a), js_num(b)));
 }
 
 // ─── Order statistics ──────────────────────────────────────────────────────────

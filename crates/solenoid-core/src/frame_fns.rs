@@ -366,7 +366,7 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, f6
         let stat = |op: Stat| num_or_none(crate::excel_functions::aggregate(op, &finite));
         let number = ty == FrameColType::Number;
         let mut sorted = if number { finite.clone() } else { Vec::new() };
-        crate::js_sort::js_sort_by(&mut sorted, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        crate::sort::stable_sort_by(&mut sorted, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let pct = |p: f64| {
             if sorted.is_empty() {
                 return None;

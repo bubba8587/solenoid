@@ -593,7 +593,7 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
         }
     }
     let mut order: Vec<usize> = (0..n).collect();
-    crate::js_sort::js_sort_by(&mut order, |&i, &j| {
+    crate::sort::stable_sort_by(&mut order, |&i, &j| {
         let d = a[j][j] - a[i][i];
         if d < 0.0 {
             std::cmp::Ordering::Less
@@ -725,7 +725,7 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
     let xs = present_numbers(data);
     let mut sorted: Vec<(f64, usize)> =
         bins.iter().enumerate().filter_map(|(i, b)| finite_num(b).map(|b| (b, i))).collect();
-    crate::js_sort::js_sort_by(&mut sorted, |a, c| {
+    crate::sort::stable_sort_by(&mut sorted, |a, c| {
         let d = a.0 - c.0;
         if d < 0.0 {
             std::cmp::Ordering::Less

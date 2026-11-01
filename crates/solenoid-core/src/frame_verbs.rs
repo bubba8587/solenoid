@@ -19,10 +19,10 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{
     frame_row_count, make_headers, same_column_unit, ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue,
 };
-use crate::js_sort::js_sort_by;
 use crate::jsnum::{
     compare_utf16, js_lower, js_string, js_trim, math_round, number_to_string, to_number, trunc_count, truthy,
 };
+use crate::sort::stable_sort_by;
 use crate::spelled::{spelled, Wire};
 use crate::string_order::compare_strings;
 use crate::unit_catalog::fc_unit_to_unit;
@@ -849,7 +849,7 @@ fn raw_aggregate(nums: &[f64], op: AggOp) -> Option<f64> {
         AggOp::Product => Some(nums.iter().fold(1.0, |a, b| a * b)),
         AggOp::Median => {
             let mut s = nums.to_vec();
-            js_sort_by(&mut s, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+            stable_sort_by(&mut s, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
             let m = s.len() >> 1;
             Some(if s.len() % 2 == 1 { s[m] } else { (s[m - 1] + s[m]) / 2.0 })
         }
@@ -1178,7 +1178,9 @@ fn asof_pairs(
             sorted_right.push(Keyed { key, idx: j });
         }
     }
-    js_sort_by(&mut sorted_right, |a, b| a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx)));
+    stable_sort_by(&mut sorted_right, |a, b| {
+        a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx))
+    });
     let direction = opts.asof_direction.unwrap_or(AsofDirection::Backward);
     Ok((0..frame_row_count(left))
         .map(|i| match asof_key(lk.cell_at(i)) {
@@ -1438,7 +1440,7 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
         let cmp = comparator_for(cols[sf].ty);
         let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
         let mut ordered = cell_by_enc[sf].clone();
-        js_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+        stable_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Greater,
             (false, true) => Ordering::Less,
@@ -1458,7 +1460,7 @@ fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: 
     let ranks: Vec<Vec<usize>> =
         first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
     let mut order: Vec<usize> = (0..first_seen.len()).collect();
-    js_sort_by(&mut order, |&a, &b| ranks[a].cmp(&ranks[b]));
+    stable_sort_by(&mut order, |&a, &b| ranks[a].cmp(&ranks[b]));
     order.into_iter().map(|i| first_seen[i].clone()).collect()
 }
 
@@ -1650,7 +1652,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
             Vec::new()
         };
         let mut perm: Vec<usize> = (0..scores.len()).collect();
-        js_sort_by(&mut perm, |&x, &y| {
+        stable_sort_by(&mut perm, |&x, &y| {
             let d = match (&scores[x], &scores[y]) {
                 (Score::Null, Score::Null) => return Ordering::Equal,
                 (Score::Null, _) => return Ordering::Greater,
@@ -2367,7 +2369,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                 let desc = spec.order_dir == Some(SortDir::Desc);
                 let (mut keyed, blanks): (Vec<usize>, Vec<usize>) =
                     rows.iter().partition(|&&i| !blank_key(oc.cell_at(i)));
-                js_sort_by(&mut keyed, |&i, &j| {
+                stable_sort_by(&mut keyed, |&i, &j| {
                     let c = window_cmp(oc.cell_at(i), oc.cell_at(j));
                     if desc {
                         c.reverse()

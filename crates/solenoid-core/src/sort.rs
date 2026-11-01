@@ -1,11 +1,10 @@
 // [[C130]] rustCore
-//! `Array.prototype.sort` with a comparator: stable, and total over any comparator. A comparator
-//! that isn't a strict weak order (a NaN, mixed kinds compared as text) must not panic the engine,
-//! as `slice::sort_by` may.
+//! A stable sort that never panics: a comparator that isn't a strict weak order (a NaN, mixed kinds compared as
+//! text) must not panic the engine, as `slice::sort_by` may.
 
 use std::cmp::Ordering;
 
-pub fn js_sort_by<T: Clone>(v: &mut Vec<T>, mut cmp: impl FnMut(&T, &T) -> Ordering) {
+pub fn stable_sort_by<T: Clone>(v: &mut Vec<T>, mut cmp: impl FnMut(&T, &T) -> Ordering) {
     let n = v.len();
     if n < 2 {
         return;
@@ -49,49 +48,12 @@ pub fn js_sort_by<T: Clone>(v: &mut Vec<T>, mut cmp: impl FnMut(&T, &T) -> Order
     }
 }
 
-/// V8's sort below 64 items, exact for any comparator (a NaN reads as 0): one run found by `CountAndMakeRun`, the
-/// rest placed by binary insertion. None at 64 or more, where V8 merges runs.
-pub fn v8_sort_short<T>(v: &mut [T], mut cmp: impl FnMut(&T, &T) -> f64) -> Option<()> {
-    let n = v.len();
-    if n >= 64 {
-        return None;
+/// Numbers in order, NaN last: a total order to sort numbers by.
+pub fn num_order(a: f64, b: f64) -> Ordering {
+    match (a.is_nan(), b.is_nan()) {
+        (false, false) => a.partial_cmp(&b).unwrap_or(Ordering::Equal),
+        (x, y) => x.cmp(&y),
     }
-    if n < 2 {
-        return Some(());
-    }
-    let mut c = |a: &T, b: &T| {
-        let o = cmp(a, b);
-        if o.is_nan() {
-            0.0
-        } else {
-            o
-        }
-    };
-    let descending = c(&v[1], &v[0]) < 0.0;
-    let mut run = 2;
-    while run < n {
-        let o = c(&v[run], &v[run - 1]);
-        if if descending { o >= 0.0 } else { o < 0.0 } {
-            break;
-        }
-        run += 1;
-    }
-    if descending {
-        v[..run].reverse();
-    }
-    for start in run..n {
-        let (mut left, mut right) = (0, start);
-        while left < right {
-            let mid = left + ((right - left) >> 1);
-            if c(&v[start], &v[mid]) < 0.0 {
-                right = mid
-            } else {
-                left = mid + 1
-            }
-        }
-        v[left..=start].rotate_right(1);
-    }
-    Some(())
 }
 
 #[cfg(test)]
@@ -101,9 +63,9 @@ mod tests {
     #[test]
     fn stable_and_total() {
         let mut v: Vec<(i32, usize)> = (0..1000).map(|i| ((i * 7919 % 13) as i32, i)).collect();
-        js_sort_by(&mut v, |a, b| a.0.cmp(&b.0));
+        stable_sort_by(&mut v, |a, b| a.0.cmp(&b.0));
         assert!(v.windows(2).all(|w| w[0].0 < w[1].0 || (w[0].0 == w[1].0 && w[0].1 < w[1].1)));
         let mut w: Vec<f64> = (0..500).map(|i| if i % 3 == 0 { f64::NAN } else { (i % 17) as f64 }).collect();
-        js_sort_by(&mut w, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+        stable_sort_by(&mut w, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
     }
 }

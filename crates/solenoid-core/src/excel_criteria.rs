@@ -169,25 +169,26 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
     if !b.windows(4).any(ascii_digits) {
         return DateReading::NotADate;
     }
-    // ISO date-only goes through `new Date`, read as UTC: `^[+-]?\d{4,6}-(\d{2})(?:-(\d{2}))?$`.
-    let unsigned = b.strip_prefix(b"+").or_else(|| b.strip_prefix(b"-")).unwrap_or(b);
+    // ISO date-only, `YYYY-MM` or `YYYY-MM-DD`, with four to six year digits and an optional sign.
+    let (sign, unsigned) = match b.first() {
+        Some(b'+') => (1, &b[1..]),
+        Some(b'-') => (-1, &b[1..]),
+        _ => (0, b),
+    };
     let year_len = unsigned.iter().take_while(|c| c.is_ascii_digit()).count();
     let rest = &unsigned[year_len..];
     let two = |r: &[u8]| r.len() >= 3 && r[0] == b'-' && ascii_digits(&r[1..3]);
     if (4..=6).contains(&year_len) && two(rest) && (rest.len() == 3 || (rest.len() == 6 && two(&rest[3..]))) {
-        let ms = crate::date_parse::date_parse(t);
-        if ms.is_nan() {
+        let num = |r: &[u8]| u32::from(r[1] - b'0') * 10 + u32::from(r[2] - b'0');
+        let digits = std::str::from_utf8(&unsigned[..year_len]).unwrap_or("0");
+        let y = digits.parse::<i64>().unwrap_or(0) * if sign < 0 { -1 } else { 1 };
+        let (m, d) = (num(rest), if rest.len() == 6 { num(&rest[3..]) } else { 1 });
+        let days = crate::date_serial::days_from_civil(y, m.clamp(1, 12), d.max(1));
+        // A month past 12 or a day the month doesn't have rolls over: not a date.
+        if !(1..=12).contains(&m) || crate::date_serial::civil_from_days(days) != (y, m, d) {
             return DateReading::NotADate;
         }
-        let num = |r: &[u8]| u32::from(r[1] - b'0') * 10 + u32::from(r[2] - b'0');
-        let (_, m, d) = crate::date_serial::civil_from_days((ms / 86_400_000.0).floor() as i64);
-        // `new Date` rolls 2024-02-30 over to March: a day the month does not have is not a date.
-        let rolled = rest.len() == 6 && d != num(&rest[3..]);
-        return if rolled || m != num(rest) {
-            DateReading::NotADate
-        } else {
-            DateReading::Serial(ms / 86_400_000.0 + 25569.0)
-        };
+        return DateReading::Serial(days as f64 + 25569.0);
     }
     if let Some((a, rest)) = split_num(b, 1, 2)
         && let Some((bn, rest)) =

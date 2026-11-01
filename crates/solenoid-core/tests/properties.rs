@@ -6,8 +6,8 @@
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
-use solenoid_core::js_sort::js_sort_by;
 use solenoid_core::jsnum::{compare_utf16, math_round, number_to_string, string_to_number};
+use solenoid_core::sort::stable_sort_by;
 use std::cmp::Ordering;
 
 fn cases() -> u64 {
@@ -84,12 +84,12 @@ fn utf16_order_is_a_total_order() {
 }
 
 #[test]
-fn js_sort_is_a_stable_permutation_in_order() {
+fn stable_sort_is_a_stable_permutation_in_order() {
     let mut r = rng();
     for _ in 0..cases() / 20 {
         let items: Vec<(i32, usize)> = (0..r.usize(0..60)).map(|i| (r.i32(-5..5), i)).collect();
         let mut sorted = items.clone();
-        js_sort_by(&mut sorted, |a, b| a.0.cmp(&b.0));
+        stable_sort_by(&mut sorted, |a, b| a.0.cmp(&b.0));
         assert_eq!(sorted.len(), items.len());
         for w in sorted.windows(2) {
             assert!(w[0].0 < w[1].0 || (w[0].0 == w[1].0 && w[0].1 < w[1].1), "out of order or unstable: {w:?}");

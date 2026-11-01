@@ -2640,7 +2640,7 @@ fn finite_v(r: f64, inputs: &[f64]) -> V {
 
 fn sorted_nums(arr: &[f64]) -> Vec<f64> {
     let mut s = arr.to_vec();
-    crate::js_sort::js_sort_by(&mut s, |a, b| (a - b).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    crate::sort::stable_sort_by(&mut s, |a, b| (a - b).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
     s
 }
 
@@ -5444,7 +5444,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
 /// Ties share the mean of their places.
 pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     let mut idx: Vec<usize> = (0..arr.len()).collect();
-    crate::js_sort::js_sort_by(&mut idx, |&x, &y| {
+    crate::sort::stable_sort_by(&mut idx, |&x, &y| {
         (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
     });
     let mut ranks = vec![0.0; arr.len()];

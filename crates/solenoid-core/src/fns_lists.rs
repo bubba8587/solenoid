@@ -9,8 +9,8 @@ use std::rc::Rc;
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, to_num, to_str, Thrown, V};
-use crate::js_sort::js_sort_by;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_string};
+use crate::sort::stable_sort_by;
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, exp, log, sin};
 
@@ -213,7 +213,7 @@ fn slice_bound(x: f64, len: usize) -> usize {
 }
 
 fn sort_nums(xs: &mut Vec<f64>) {
-    js_sort_by(xs, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    stable_sort_by(xs, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 }
 
 fn percentile_of(sorted: &[f64], p: f64) -> f64 {
@@ -635,7 +635,7 @@ fn answer(name: &str, a: &[V]) -> V {
             let l = to_list(a0);
             let desc = is_true(arg(a, 1));
             let mut idx: Vec<usize> = (0..l.len()).collect();
-            js_sort_by(&mut idx, |&i, &j| {
+            stable_sort_by(&mut idx, |&i, &j| {
                 let (ti, tj) = (finite(&l[i]), finite(&l[j]));
                 let c = match (ti, tj) {
                     (None, None) => i as f64 - j as f64,
@@ -1246,7 +1246,7 @@ fn find_peaks(values: &[V], height: &V, distance: &V, prominence: &V) -> V {
         keep.iter().filter(|&&p| prominence.is_none_or(|pr| prominence_of(p) >= pr)).map(|&p| (p + 1, y(p))).collect();
     if let Some(d) = distance.filter(|d| *d > 1.0) {
         let mut by_height: Vec<usize> = (0..out.len()).collect();
-        js_sort_by(&mut by_height, |&a, &b| {
+        stable_sort_by(&mut by_height, |&a, &b| {
             let c = out[b].1 - out[a].1;
             let c = if c != 0.0 && !c.is_nan() { c } else { out[a].0 as f64 - out[b].0 as f64 };
             c.partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
@@ -2359,7 +2359,7 @@ fn fitdist(sample: &V, family: &V) -> V {
                 }
             }
         }
-        js_sort_by(&mut fits, |a, b| (a.1 - b.1).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+        stable_sort_by(&mut fits, |a, b| (a.1 - b.1).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
         return match fits.first() {
             Some((f, _)) => V::str(f),
             None => value("FITDIST needs 3+ values a family can fit"),
@@ -2413,7 +2413,9 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
         return e;
     }
     let q: Vec<f64> = q_raw.iter().map(|v| if blank(v) { f64::NAN } else { number(v) }).collect();
-    js_sort_by(&mut pairs, |a, b| (number(&a.0) - number(&b.0)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    stable_sort_by(&mut pairs, |a, b| {
+        (number(&a.0) - number(&b.0)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
+    });
     let (sx, sy): (Vec<V>, Vec<V>) = pairs.into_iter().unzip();
     let out: Vec<V> = q
         .iter()

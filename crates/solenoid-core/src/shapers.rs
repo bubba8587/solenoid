@@ -7,8 +7,8 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
-use crate::js_sort::js_sort_by;
 use crate::jsnum::{math_round, number_to_string};
+use crate::sort::stable_sort_by;
 use crate::string_order::compare_strings;
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -115,7 +115,7 @@ fn sorted_index_by_keys(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
 /// `sorted_index_by_keys` comparing the cells themselves.
 fn compared_order(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..n).collect();
-    js_sort_by(&mut idx, |&i, &j| {
+    stable_sort_by(&mut idx, |&i, &j| {
         for (vals, desc) in keys {
             let (ki, kj) = (vals.get(i).unwrap_or(&V::Null), vals.get(j).unwrap_or(&V::Null));
             let (ti, tj) = (sorts_last(ki), sorts_last(kj));

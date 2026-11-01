@@ -76,9 +76,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] The typed-date reader reads the wall clock as written, with no local round trip: today a DST gap or a year under 100 (`Date.UTC`'s 1900s) changes the answer by machine.
 
 **No visible change (delete the JS framing):**
-- [ ] `date_parse.rs` goes: its only caller reaches it only for ISO text.
 - [ ] `zone.rs`'s copy of V8's `Date.prototype` goes after the date path above; the host's local day stays (a platform need). IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree.
-- [ ] `js_sort.rs` to total comparators (NaN last) on `sort_by`; `v8_sort_short`, `sort_by_num` go.
 - [ ] Renames with no behavior change: `js_trim` (except TRIM), `js_lower`/`js_upper`, `math_*`, `js_sign`, `to_fixed`, `clamp_js`, `intl_usd`, the `compare_utf16` data sort to code-point order; `serial_to_js_date` to whole days. `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
 
 **Also:**
