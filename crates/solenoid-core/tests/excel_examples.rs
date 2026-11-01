@@ -181,3 +181,10 @@ fn arguments_read_as_excel_reads_them() {
     assert!(is_error("REPLACE(\"abc\", 0, 1, \"x\")"));
     assert!(is_error("REPLACE(\"abc\", 1, -1, \"x\")"));
 }
+
+#[test]
+fn trim_removes_only_spaces() {
+    assert_eq!(text("TRIM(\" First Quarter   Earnings \")"), "First Quarter Earnings");
+    assert_eq!(text("TRIM(CHAR(160) & \"a\")"), "\u{A0}a");
+    assert_eq!(text("TRIM(\"a\" & CHAR(9) & \" b\")"), "a\t b");
+}

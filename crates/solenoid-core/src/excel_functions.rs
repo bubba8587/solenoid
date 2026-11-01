@@ -407,41 +407,21 @@ fn upper_chars(s: &str) -> String {
     })
 }
 
-/// TRIM: each run of spaces inside one space, the ends trimmed; borrowing when nothing changes.
-fn js_trim_inner(t: &str) -> std::borrow::Cow<'_, str> {
-    let tidy = {
-        let mut prev_space = true;
-        let mut ok = true;
-        for c in t.chars() {
-            let sp = is_space_char(c);
-            if sp && (prev_space || c != ' ') {
-                ok = false;
-                break;
-            }
-            prev_space = sp;
-        }
-        ok && !prev_space || t.is_empty()
-    };
+/// Excel's TRIM: spaces (U+0020 only) off both ends, and each run of them inside down to one. Tabs, non-breaking
+/// spaces and other whitespace stay, as in Excel (CLEAN removes control characters).
+fn excel_trim(t: &str) -> std::borrow::Cow<'_, str> {
+    let tidy = !t.starts_with(' ') && !t.ends_with(' ') && !t.contains("  ");
     if tidy {
         return std::borrow::Cow::Borrowed(t);
     }
     let mut out = String::with_capacity(t.len());
-    let mut space = false;
-    for c in t.chars() {
-        if is_space_char(c) {
-            space = true;
-        } else {
-            if space {
-                out.push(' ');
-                space = false;
-            }
-            out.push(c);
+    for word in t.split(' ').filter(|w| !w.is_empty()) {
+        if !out.is_empty() {
+            out.push(' ');
         }
+        out.push_str(word);
     }
-    if space {
-        out.push(' ');
-    }
-    std::borrow::Cow::Owned(trim_space(&out).to_string())
+    std::borrow::Cow::Owned(out)
 }
 
 pub(crate) fn to_str(v: &V) -> String {
@@ -3966,7 +3946,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let out = match arm {
                 F::UPPER => upper_text(&t),
                 F::LOWER => lower_text(&t),
-                _ => js_trim_inner(&t),
+                _ => excel_trim(&t),
             };
             match out {
                 std::borrow::Cow::Borrowed(_) => same_or(v, t),

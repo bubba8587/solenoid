@@ -64,7 +64,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`js_string_of`, `parse_string`; `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
 - [ ] Number to text at Excel's 15 digits everywhere (`number_to_string`/`ryu_js` to `number_to_text`): Cast "general", Spell Number, Filter Frame text tests, error cells sorting as "[object Object]".
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
-- [ ] TRIM removes and collapses only U+0020. Text `<`/`>` in formulas ignores case, text above numbers.
+- [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
 - [ ] The Formula.js local-time date path (EDATE, ACCRINT, COUPDAYS, DISC, PRICEDISC, DATEDIF days) moves to the UTC day kernels: it brings back the 29 Feb 1900 [[C44]] dateSerials rules out, and answers JS `TypeError` text.
 - [ ] About 45 copied JS crash messages ("a is not iterable", "Invalid array length", "format.split is not a function") become plain `#VALUE!`/`#SHAPE!` messages (DESIGN.md §7), or the input is accepted.
 - [ ] Set functions compare nested lists by value, not `===`.
