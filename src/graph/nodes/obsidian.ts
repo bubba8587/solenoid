@@ -1,6 +1,6 @@
 // [[C101]] onePatchPath, [[B18]] safeToShare
 import { GraphNode } from "../graphModel";
-import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
+import { documentIn, strIn, strOut, cubeIn, frameOut, readTextInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
 import { NoteNode } from "./annotation";
@@ -121,7 +121,7 @@ export class WriteObsidianNode extends GraphNode {
 
   data(inputs: { in?: (DocumentValue | SolError)[]; path?: (string | null)[]; rows?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
     this.cachedDoc = inputs.in?.[0] ?? null;
-    this.resolvedPath = (readInput(inputs.path, this.stringLiterals?.path ?? "") ?? "").trim();
+    this.resolvedPath = readTextInput(inputs.path, this.stringLiterals?.path ?? "", "Path");
     const raw = inputs.rows?.[0] ?? null;
     const keys = this.stringLiterals.keys ?? "";
     if (raw !== this.cachedCube || keys !== this.plannedKeys) { // re-plan only on new rows or keys, because Preview mutates planRows
@@ -446,7 +446,7 @@ export class ImportObsidianNode extends NoteNode {
   private _seenGen = `${connectionStore.gen()}:${connectionStore.token(this.id)}`;
 
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
-    const wired = (readInput(inputs?.path, "") ?? "").trim();
+    const wired = readTextInput(inputs?.path, "", "Path");
     const readable = hasFs() || isDemoVaultPath(getVaultRoot());
     // A refresh (all connections, or this card's own timer) re-reads the note here, so a card that is not mounted refreshes too.
     connectionStore.autoRefresh(this.id, this.refreshMinutes);

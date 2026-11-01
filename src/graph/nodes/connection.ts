@@ -1,6 +1,6 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
-import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
+import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput, readTextInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
@@ -864,8 +864,8 @@ export class VaultFolderNode extends GraphNode {
 
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
-    const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
-    const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
+    const folder = readTextInput(inputs?.folder, this.folder, "Folder").replace(/^\/+|\/+$/g, "");
+    const glob = readTextInput(inputs?.glob, this.glob, "Filter");
     const vault = getVaultRoot();
     const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {

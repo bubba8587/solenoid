@@ -2,7 +2,7 @@
 import { GraphInput, GraphNode, GraphOutput, GraphSocket } from "../graphModel";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { applyRole, type InputRole } from "../inputRoles";
 import { type UnitCell, magnitudeOf } from "../unitValue";
 import { dimOf } from "../unitValue";
@@ -96,6 +96,15 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): GraphOu
 
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
+}
+
+/** A text input (a path, a folder, a pattern) read as `readInput` does and trimmed; a blank is "". Anything but text
+ *  throws `#TYPE!` "{label} takes text", which the error guard keeps as the card's answer ([[C10]] socketLattice). */
+export function readTextInput(wired: readonly unknown[] | undefined, literal: string, label: string): string {
+  const v = readInput(wired, literal);
+  if (v === null || v === undefined) return "";
+  if (typeof v !== "string") throw solError("#TYPE!", `${label} takes text`);
+  return v.trim();
 }
 
 /** A card's input roles: its class's, or for a card whose roles change with its op (Series), the current op's. */

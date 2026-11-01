@@ -414,16 +414,11 @@ fn is_array(v: &JsValue) -> bool {
     Array::is_array(v)
 }
 
-/// `v[key]` as JavaScript reads it: a property of an object or a string, a TypeError on null or undefined.
+/// `v[key]`: a property of an object or a string; a blank where a list belongs is an error in plain words.
 fn js_get(v: &JsValue, key: &JsValue) -> R<JsValue> {
     if v.is_null() || v.is_undefined() {
-        let what = if v.is_null() { "null" } else { "undefined" };
-        let k = key
-            .as_string()
-            .unwrap_or_else(|| key.as_f64().map(|n| format!("{n}")).unwrap_or_default());
         return Err(Thrown::Js(
-            js_sys::TypeError::new(&format!("Cannot read properties of {what} (reading '{k}')"))
-                .into(),
+            js_sys::TypeError::new("Expected a list here, got a blank").into(),
         ));
     }
     if v.is_object() || v.is_function() || v.is_string() {
@@ -1329,7 +1324,7 @@ fn run_data(object: &Object, data: Option<&Function>, coerced: &Object) -> R<Ans
             own = get(object, &keys().data)
                 .dyn_into::<Function>()
                 .map_err(|_| {
-                    Thrown::Js(js_sys::TypeError::new("node.data is not a function").into())
+                    Thrown::Js(js_sys::TypeError::new("This card has no compute function").into())
                 })?;
             &own
         }

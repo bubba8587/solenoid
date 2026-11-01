@@ -96,7 +96,7 @@ impl Host for Js {
             Ok(f) if f.is_function() => f.unchecked_into::<Function>(),
             _ => {
                 return ready(Err(thrown(
-                    js_sys::TypeError::new("node.data is not a function").into(),
+                    js_sys::TypeError::new("This card has no compute function").into(),
                 )));
             }
         };
