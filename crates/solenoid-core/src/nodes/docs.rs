@@ -770,11 +770,25 @@ fn template(c: &mut Call) -> Answer {
         }
     };
     let tokens = template_tokens(&template);
-    let value = |name: &str| first(c, name);
     let names: Vec<&str> = tokens
         .iter()
         .filter_map(|(_, t)| if let Some(Token::Placeholder(n, _)) = t { Some(n.as_str()) } else { None })
         .collect();
+    // Each placeholder has its own input: `varsMove` is the names the inputs move to, for `coreWatched`.
+    let mut needed: Vec<&str> = Vec::new();
+    for n in &names {
+        if !needed.contains(n) {
+            needed.push(n);
+        }
+    }
+    let side: Vec<&str> = match c.field("sideVars") {
+        Some(Json::Array(a)) => a.iter().filter_map(Json::as_str).collect(),
+        _ => Vec::new(),
+    };
+    let moved = needed.iter().any(|n| !side.contains(n)) || side.iter().any(|n| !needed.contains(n));
+    let shown = if moved { list(needed.iter().map(|n| V::str(n)).collect()) } else { V::Null };
+    c.show("varsMove", shown);
+    let value = |name: &str| first(c, name);
     let len = names.iter().filter_map(|n| if let V::List(l) = value(n) { Some(l.len()) } else { None }).max();
     let render = |at: Option<usize>| {
         let mut out = String::new();
@@ -1350,17 +1364,36 @@ fn run_column(
     }
 }
 
+/// Frame Input: its text's columns, then its formula columns; one calling TODAY or NOW makes the answer the
+/// recalculation's.
 fn frame_input(c: &mut Call) -> Answer {
+    let lams = keys_of(c, "lambdaKeys");
+    c.volatile = super::cube_source::calls_clock(c.field_str("frameText", ""))
+        || lams.iter().any(|k| match first(c, k) {
+            V::Lambda(l) => l.src.as_deref().is_some_and(super::cube_source::calls_clock),
+            _ => false,
+        });
+    let out = frame_input_columns(c)?;
+    if let Some((_, frame)) = out.first() {
+        c.show("cachedResult", frame.clone());
+    }
+    Ok(out)
+}
+
+fn keys_of(c: &Call, field: &str) -> Vec<String> {
+    c.field(field)
+        .and_then(Json::as_array)
+        .map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect())
+        .unwrap_or_default()
+}
+
+fn frame_input_columns(c: &mut Call) -> Answer {
     let source = parse_frame_source(c.field_str("frameText", "A, B\n1, 2\n3, 4"));
     let base: Vec<Column> = source.iter().map(derive_column).collect();
     if source.iter().all(|s| s.expr.is_none()) {
         return Ok(vec![("frame".into(), super::frames::frame_v(base))]);
     }
-    let keys: Vec<String> = c
-        .field("lambdaKeys")
-        .and_then(Json::as_array)
-        .map(|a| a.iter().filter_map(|k| k.as_str().map(String::from)).collect())
-        .unwrap_or_default();
+    let keys = keys_of(c, "lambdaKeys");
     let lam_by_name: Vec<(String, V)> = keys.iter().map(|k| (lambda_socket_name(k), first(c, k))).collect();
     let lam_of = |name: &str| lam_by_name.iter().find(|(n, _)| n == name).map(|(_, v)| v);
     let mut columns: Vec<Column> = base

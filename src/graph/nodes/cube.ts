@@ -2,11 +2,10 @@
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
-import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
-import { makeCube, recordsToCube, type CubeValue, type CubeColumn, type FrameValue } from "../frame";
+import { DEFAULT_CUBE_TEXT } from "../literalEditors";
+import type { CubeValue, FrameValue } from "../frame";
 import type { AggOp } from "../frameOps";
-import { solError, type SolError } from "../errorValue";
-import { volatileStamp } from "../volatileDates";
+import type { SolError } from "../errorValue";
 
 export class BuildCubeNode extends GraphNode {
   label: string;
@@ -156,20 +155,6 @@ export class CubeRollupNode extends GraphNode {
   }
 }
 
-/** A Cube Input's records as its formula columns read them: the records' cube in the source's column order, each
- *  formula column empty, beside each column's formula (null for a data column). The text's key order and the
- *  records' reading are JS's, shared with the Cube popup's editor ([[D90]] cubeTypesAtDepth). */
-function cubeSourceColumns(source: CubeSource): { cube: CubeValue; exprs: (string | null)[] } {
-  const data = recordsToCube(source.rows, sourcePicks(source), source.nested);
-  const keys = recordKeys(source.rows);
-  const rows = source.rows.length;
-  const cols: CubeColumn[] = source.columns.map((c) => {
-    const k = c.expr === undefined ? keys.indexOf(c.name) : -1;
-    return k >= 0 ? { ...data.columns[k], name: c.name } : { name: c.name, cells: Array.from({ length: rows }, () => null) };
-  });
-  return { cube: makeCube(cols), exprs: source.columns.map((c) => c.expr ?? null) };
-}
-
 export class CubeInputNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     cube: "One row per record. A list value is a list cell; a list of records nests a table or a cube.",
@@ -178,8 +163,6 @@ export class CubeInputNode extends GraphNode {
   cubeText: string;
   cachedResult: CubeValue | SolError | null = null;
   width = 240; height = 200;
-  private _builtFrom: string | undefined;
-  private _builtStamp = -1;
 
   constructor(init?: { label?: string; cubeText?: string }) {
     super("CubeInput");
@@ -188,22 +171,7 @@ export class CubeInputNode extends GraphNode {
     this.addOutput("cube", cubeOut("Cube"));
   }
 
-  data(): { cube: CubeValue | SolError | null } {
-    const stamp = volatileStamp(this.cubeText);
-    if (this.cachedResult && this._builtFrom === this.cubeText && this._builtStamp === stamp) return { cube: this.cachedResult };
-    const parsed = parseCubeSource(this.cubeText);
-    if ("error" in parsed) this.cachedResult = solError("#VALUE!", parsed.error);
-    else {
-      const { cube, exprs } = cubeSourceColumns(parsed.source);
-      this.cachedResult = this.body({ cube: [cube], exprs: [exprs] }).cube;
-    }
-    this._builtFrom = this.cubeText;
-    this._builtStamp = stamp;
-    return { cube: this.cachedResult };
-  }
-
-  /** The formula columns over the records' cube (`cubeSourceColumns`). */
-  body(inputs: Record<string, unknown[] | undefined>): { cube: CubeValue } {
-    return nodeOnCore(this, inputs) as { cube: CubeValue };
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
+    return nodeOnCore(this, inputs) as { cube: CubeValue | SolError | null };
   }
 }

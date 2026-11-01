@@ -3,14 +3,13 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  readInput, type CellResult, type BroadcastResult,
+  type CellResult, type BroadcastResult,
 } from "./shared";
 import { type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { type SolError } from "../errorValue";
 import { nodeOnCore } from "../nodeOnCore";
-import { templatePlaceholders } from "./textOps";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting, required } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
@@ -18,17 +17,6 @@ import { getOwningView } from "../activeGraph";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, PadSide } from "./textOps";
 export type { PadSide } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
-
-// ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
-
-function strScalar(
-  input: string[] | undefined,
-  node: { stringLiterals?: Record<string, string> },
-  key: string,
-  def = "",
-): string | null {
-  return readInput(input, node.stringLiterals?.[key] ?? def);
-}
 
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
 
@@ -596,12 +584,20 @@ export class TemplateNode extends GraphNode {
     this.addOutput("result", strComboOut("Text"));
   }
 
-  private _reconcile(needed: string[]): void {
-    const added = needed.filter((v) => !this.sideVars.includes(v));
-    const removed = this.sideVars.filter((v) => !needed.includes(v));
-    if (added.length === 0 && removed.length === 0) return;
-    this.sideVars = needed;
+  /** The placeholders' names when the body found them differ from `sideVars`, null while they stand. */
+  varsMove: string[] | null = null;
+
+  /** The inputs follow `varsMove` (`nodeOnCore`'s `coreWatch`), a departing input's cables pruned before it goes. */
+  static coreWatch = "varsMove";
+  coreWatched(): void {
+    const needed = this.varsMove;
+    if (needed === null) return;
     queueMicrotask(() => {
+      const added = needed.filter((v) => !this.sideVars.includes(v));
+      const removed = this.sideVars.filter((v) => !needed.includes(v));
+      if (added.length === 0 && removed.length === 0) return;
+      this.sideVars = [...needed];
+      this.edited();
       void (async () => {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed);
@@ -611,9 +607,7 @@ export class TemplateNode extends GraphNode {
     });
   }
 
-  data(inputs: { template?: string[] } & Record<string, unknown[] | undefined>): { result: CellResult<string> } {
-    const template = strScalar(inputs.template, this, "template");
-    if (typeof template === "string") this._reconcile(templatePlaceholders(template));
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellResult<string> } {
     return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }

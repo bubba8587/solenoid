@@ -15,7 +15,7 @@ Many nodes change their own sockets: a mode or op switch hides some inputs, a va
 `dropInputCables(nodeId, gone)` in `components/cablePrune.ts` removes every cable wired into the given input sockets of one node.
 
 - The `gone` argument tells `dropInputCables` which inputs to clear, in one of two ways: a list of socket keys, or a yes-or-no check it runs on each input. The check is simpler when a mode switch hides several inputs at once. It asks whether the new mode shows the input, and every input the new mode doesn't show loses its cables.
-- It works on the editor that owns the node (`getOwningEditor(nodeId)`), not the active one: a `data()`-time reconciler (Text, Computed Column, Report) can run for a main-canvas node while a drill-in is open, or for a drill-in node. A node inside a closed composite resolves too: `getOwningEditor` falls back to walking the composites' internal editors, at any depth.
+- It works on the editor that owns the node (`getOwningEditor(nodeId)`), not the active one: a reconciler that runs as its node computes (Computed Column, Report, a direct card's `coreWatched()` such as Template's) can run for a main-canvas node while a drill-in is open, or for a drill-in node. A node inside a closed composite resolves too: `getOwningEditor` falls back to walking the composites' internal editors, at any depth.
 - It filters the matching cables into their own list first (`getConnections()` already returns a fresh array), then removes them one at a time, awaiting each `removeConnection`.
 - It is async. Callers await it before they change the sockets.
 

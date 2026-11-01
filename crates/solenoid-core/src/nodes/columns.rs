@@ -1177,24 +1177,27 @@ fn place_on_ref(c: &mut Call) -> Answer {
 
 // ─── Cube Input ────────────────────────────────────────────────────────────────
 
+/// Cube Input: its source text's records (`cube_source`), text that isn't records its `#VALUE!`, then its formula
+/// columns.
+fn cube_input(c: &mut Call) -> Answer {
+    let text = c.field_str("cubeText", "").to_string();
+    c.volatile = super::cube_source::calls_clock(&text);
+    let out = match super::cube_source::source_cube(&text) {
+        Ok((cube, exprs)) => formula_columns(cube, &exprs)?,
+        Err(reason) => Cv::from(err(ErrorCode::Value, reason)),
+    };
+    c.show("cachedResult", out.clone());
+    Ok(vec![("cube".into(), out)])
+}
+
 /// Cube Input's formula columns over its records' cube, in the order their reads allow: a column reading another
 /// waits for it, and the ones still waiting when none can go form a cycle.
-fn cube_input(c: &mut Call) -> Answer {
-    let cube = match card(c, "cube") {
-        Cv::Cube(cb) => cb,
-        _ => Rc::new(Cube::default()),
-    };
-    let exprs: Vec<Option<String>> = match c.wired("exprs") {
-        Some([V::List(items), ..]) => {
-            items.iter().map(|e| if let V::Str(s) = e { Some(s.to_string()) } else { None }).collect()
-        }
-        _ => Vec::new(),
-    };
-    let mut cols: Vec<CubeColumn> = cube.columns.clone();
+fn formula_columns(cube: Cube, exprs: &[Option<String>]) -> Result<Cv, V> {
     let rows = super::frames::cube_row_count(&cube);
+    let mut cols: Vec<CubeColumn> = cube.columns;
     let mut pending: Vec<usize> = (0..cols.len()).filter(|&i| matches!(exprs.get(i), Some(Some(_)))).collect();
     if pending.is_empty() {
-        return Ok(vec![("cube".into(), cube_from_columns(cols))]);
+        return Ok(cube_from_columns(cols));
     }
     let fill = |cols: &mut Vec<CubeColumn>, i: usize, cell: V| {
         cols[i] = CubeColumn { name: cols[i].name.clone(), cells: vec![Cv::V(cell); rows], ty: None, format: None };
@@ -1289,5 +1292,5 @@ fn cube_input(c: &mut Call) -> Answer {
             fill(&mut cols, i, e.clone());
         }
     }
-    Ok(vec![("cube".into(), cube_from_columns(cols))])
+    Ok(cube_from_columns(cols))
 }

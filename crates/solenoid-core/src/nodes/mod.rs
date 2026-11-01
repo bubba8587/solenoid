@@ -14,6 +14,7 @@ pub mod columnar;
 mod columns;
 mod complex;
 mod control;
+mod cube_source;
 mod date;
 mod docs;
 mod finance;
@@ -80,6 +81,8 @@ pub struct Call {
     /// The draws the engine keeps for the card through one recalc generation (graph-core.md § Direct calls); `None`
     /// outside the engine, where every ask draws afresh.
     pub draws: Option<Draws>,
+    /// The body's answer read the clock (TODAY or NOW): a kept answer stands for the recalculation only.
+    pub volatile: bool,
 }
 
 /// A card's draws in one recalc generation: its uniform rolls, and the text it drew (UUID).
@@ -187,6 +190,7 @@ impl Call {
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
+            volatile: false,
         }
     }
 
@@ -206,6 +210,7 @@ impl Call {
             matrix_units_in,
             matrix_units_out: Vec::new(),
             draws: None,
+            volatile: false,
         }
     }
 
@@ -459,6 +464,7 @@ pub const DIRECT: &[&str] = &[
     "CovarianceNode",
     "CrossNode",
     "CubeColumnsNode",
+    "CubeInputNode",
     "CubeRollupNode",
     "CurveNode",
     "DateAddNode",
@@ -492,6 +498,7 @@ pub const DIRECT: &[&str] = &[
     "ExpectNode",
     "ExpressionNode",
     "FillNode",
+    "FilterNode",
     "FindPeaksNode",
     "FisherNode",
     "FitDistributionNode",
@@ -500,6 +507,7 @@ pub const DIRECT: &[&str] = &[
     "FormatControllerNode",
     "FormatDollarNode",
     "FrameFromListsNode",
+    "FrameInputNode",
     "FrequencyNode",
     "FuzzyMatchNode",
     "FvScheduleNode",
@@ -531,6 +539,7 @@ pub const DIRECT: &[&str] = &[
     "KpiNode",
     "LambdaNode",
     "LinestNode",
+    "ListIndexNode",
     "ListInputNode",
     "ListLengthNode",
     "LogisticNode",
@@ -626,6 +635,7 @@ pub const DIRECT: &[&str] = &[
     "TableUnitNode",
     "TakeDropNode",
     "TallyNode",
+    "TemplateNode",
     "TextAfterBeforeNode",
     "TextFindNode",
     "TextJoinNode",
@@ -667,7 +677,10 @@ pub fn is_direct(kind: &str) -> bool {
 /// Direct classes whose answer, over the same call and the same inputs, is the one they gave last, kept so it stays the
 /// same object: a frame they build would otherwise be a new one each full pass, which the frame backend uploads again
 /// (it keys an upload by identity), and a LAMBDA's consumers memo on its identity. A body that reads the clock or draws keeps no answer, so this is a list.
-pub const KEEPS_ANSWER: &[&str] = &["BuildFrameNode", "FrameFromListsNode", "LambdaNode"];
+/// One whose answer this call read the clock for (`Call::volatile`, a Frame or Cube Input text calling TODAY) keeps it
+/// for the recalculation only.
+pub const KEEPS_ANSWER: &[&str] =
+    &["BuildFrameNode", "CubeInputNode", "FrameFromListsNode", "FrameInputNode", "LambdaNode"];
 
 pub fn keeps_answer(kind: &str) -> bool {
     KEEPS_ANSWER.contains(&kind)

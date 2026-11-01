@@ -265,11 +265,14 @@ export class ListIndexNode extends GraphNode {
   static axisKeys(axes: "rowcol" | "position"): string[] { return axes === "position" ? ["position"] : ["index", "column"]; }
   static axisInput(key: string) { return numListIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
 
-  /** Value-driven ([[D85]] columnsStayColumns: a list is one row, walked by one position): runs in a microtask on the owning editor, prunes the departing inputs' cables before removing them, and carries the typed number across. A blank, an error or an empty array says nothing about shape. */
-  private reconcileAxes(v: unknown): void {
-    if (v == null || isSolError(v) || (Array.isArray(v) && v.length === 0)) return;
-    const want = Array.isArray(v) && !(v.length > 0 && Array.isArray(v[0])) ? "position" : "rowcol";
-    if (want === this.indexAxes) return;
+  /** The axes the body worked out from the wired value ([[D85]] columnsStayColumns), null while they stand. */
+  axesMove: "rowcol" | "position" | null = null;
+
+  /** The sockets follow `axesMove` (`nodeOnCore`'s `coreWatch`): in a microtask on the owning editor, the departing inputs' cables pruned before they go, the typed number carried across. */
+  static coreWatch = "axesMove";
+  coreWatched(): void {
+    const want = this.axesMove;
+    if (want === null || want === this.indexAxes) return;
     const departing = ListIndexNode.axisKeys(this.indexAxes);
     const carried = this.literals[want === "position" ? "index" : "position"];
     queueMicrotask(() => {
@@ -325,7 +328,6 @@ export class ListIndexNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    this.reconcileAxes(inputs.list?.[0] ?? null);
     return nodeOnCore(this, inputs) as { result: IndexResult };
   }
 }
@@ -785,10 +787,14 @@ export class FilterNode extends GraphNode {
     return Object.keys(this.inputs).filter((k) => k.startsWith("value"));
   }
 
-  /** The Column socket shows while a table is wired, and leaves (cables first) when a list replaces it; an empty array says nothing about shape. */
-  private reconcileColumn(raw: unknown): void {
-    if (Array.isArray(raw) && raw.length === 0) return;
-    const want = Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
+  /** Which way the body says the Column socket goes, null while it stands: it shows while a table is wired. */
+  columnMove: "add" | "drop" | null = null;
+
+  /** The Column socket follows `columnMove` (`nodeOnCore`'s `coreWatch`), its cables pruned before it leaves. */
+  static coreWatch = "columnMove";
+  coreWatched(): void {
+    if (this.columnMove === null) return;
+    const want = this.columnMove === "add";
     if (want === !!this.inputs.column) return;
     queueMicrotask(() => {
       void (async () => {
@@ -813,8 +819,6 @@ export class FilterNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const raw = inputs.list?.[0];
-    if (raw != null) this.reconcileColumn(raw);
     return nodeOnCore(this, inputs) as { result: unknown; dropped: unknown[] | null };
   }
 }

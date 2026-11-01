@@ -8,6 +8,10 @@ import { CubeInputNode } from "../../src/graph/nodeClasses";
 import { extractInit } from "../../src/graph/nodeInit";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
+import { GraphEditor } from "../../src/graph/graphEditor";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
+import { nextGeneration } from "../../src/graph/passSession";
+import type { Schemes } from "../../src/graph/schemes";
 
 // The literal inputs' shared editing helpers + the Cube Input node (the fourth literal
 // source beside Table / Frame / List Input).
@@ -196,9 +200,29 @@ describe("Cube Input typed and formula columns", () => {
     expect(col(c, "e").cells).toEqual([null, null]);
   });
 
-  it("an unchanged text returns the same cube", () => {
+  it("an unchanged text gives the same cube each pass; one calling TODAY a new one each recalculation", async () => {
+    // The engine keeps the card's answer while its call stands (`nodes::KEEPS_ANSWER`), for the recalculation alone
+    // when its text reads the clock.
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
     const n = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "n", expr: "1" }], rows: [{}] }) });
-    expect(n.data().cube).toBe(n.data().cube);
+    const today = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "d", expr: "TODAY()" }], rows: [{}] }) });
+    await editor.addNode(n as never);
+    await editor.addNode(today as never);
+    const pass = async () => {
+      await editor.engine!.pass(undefined, undefined, false);
+      return [editor.engine!.landed(n.id, "cube"), editor.engine!.landed(today.id, "cube")];
+    };
+    const [a, t] = await pass();
+    expect(isCubeValue(a)).toBe(true);
+    let [b, u] = await pass();
+    expect(b).toBe(a);
+    expect(u).toBe(t);
+    nextGeneration();
+    [b, u] = await pass();
+    expect(b).toBe(a);
+    expect(u).not.toBe(t);
+    editor.dispose();
   });
 });
 

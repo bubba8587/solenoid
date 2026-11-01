@@ -217,6 +217,9 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
     solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",
     lastRank: "Series: SEQUENCE list↔matrix runtime rank tracker",
+    columnMove: "FILTER: which way the body says the Column socket goes, re-derived each compute",
+    axesMove: "INDEX: the axes the body says the sockets go to, re-derived each compute",
+    varsMove: "Template: the placeholder inputs the body found, re-derived each compute",
     lastResultFamily: "Script: value-typed result socket, runtime family tracker",
     syntaxError: "Script: re-derived from expr by _rebuild",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──

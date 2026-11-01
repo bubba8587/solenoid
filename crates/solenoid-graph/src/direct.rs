@@ -73,8 +73,13 @@ pub(crate) struct Direct {
     draws: RefCell<Option<(u64, nodes::Draws)>>,
 }
 
-/// A card's answer and the call and inputs it answered.
-type Kept = (Rc<Header>, Vec<(String, Vec<Val>)>, Outputs<Val>);
+/// A card's answer and the call and inputs it answered, and the recalculation it stands for when it read the clock.
+type Kept = (
+    Rc<Header>,
+    Vec<(String, Vec<Val>)>,
+    Outputs<Val>,
+    Option<u64>,
+);
 
 /// One direct card in its editor: its object, what its class is, and how its fields reach its object.
 pub(crate) struct Card<'a> {
@@ -286,6 +291,8 @@ struct Run<'a> {
     ports: &'a classic::Node,
     host: Rc<BoundaryHost>,
     header: Option<Rc<Header>>,
+    /// The body's answer read the clock (`Call::volatile`).
+    volatile: Cell<bool>,
 }
 
 impl Run<'_> {
@@ -427,6 +434,7 @@ impl Run<'_> {
         if let Some(d) = c.draws.take().filter(|d| !d.is_empty()) {
             *self.card.direct.draws.borrow_mut() = Some((generation, d));
         }
+        self.volatile.set(c.volatile);
         let units = std::mem::take(&mut c.matrix_units_out);
         let display = std::mem::take(&mut c.display);
         match answer {
@@ -439,6 +447,7 @@ impl Run<'_> {
             }
             Some(Err(e)) => {
                 self.show(display, &[]);
+                self.watch(&header, watched);
                 self.thrown_out(Thrown::Value(e))
             }
             Some(Ok(outs)) => {
@@ -462,17 +471,22 @@ impl Run<'_> {
                     })
                     .collect();
                 self.show(display, &vals);
-                if let (Some(f), Some(before)) = (header.watch.as_deref(), watched)
-                    && before.differs(&self.field(f))
-                {
-                    let hook = Reflect::get(self.card.object, &"coreWatched".into())
-                        .ok()
-                        .and_then(|h| h.dyn_into::<Function>().ok());
-                    if let Some(hook) = hook {
-                        let _ = hook.call0(self.card.object);
-                    }
-                }
+                self.watch(&header, watched);
                 self.finish(&header, vals)
+            }
+        }
+    }
+
+    /// `coreWatched()` in TypeScript, where the body changed the field its class's `static coreWatch` names.
+    fn watch(&self, header: &Header, before: Option<Val>) {
+        if let (Some(f), Some(before)) = (header.watch.as_deref(), before)
+            && before.differs(&self.field(f))
+        {
+            let hook = Reflect::get(self.card.object, &"coreWatched".into())
+                .ok()
+                .and_then(|h| h.dyn_into::<Function>().ok());
+            if let Some(hook) = hook {
+                let _ = hook.call0(self.card.object);
             }
         }
     }
@@ -627,6 +641,7 @@ pub(crate) fn call<'a>(
         ports,
         host: h,
         header: header.as_ref().ok().cloned(),
+        volatile: Cell::new(false),
     };
     let raw: Vec<(String, Vec<Val>)> = inputs
         .iter()
@@ -653,17 +668,20 @@ pub(crate) fn call<'a>(
             .as_ref()
             .filter(|h| nodes::keeps_answer(&h.kind))
             .cloned();
+        let generation = || crate::wasm::session(|s| s.recalc_gen);
         if let Some(h) = &keeps
-            && let Some((kh, kin, kout)) = &*card.direct.kept.borrow()
+            && let Some((kh, kin, kout, kgen)) = &*card.direct.kept.borrow()
             && Rc::ptr_eq(kh, h)
             && same_inputs(kin, &raw)
+            && kgen.is_none_or(|g| g == generation())
         {
             timed(&run, t0);
             return ready(Ok(kout.clone()));
         }
         let out = run.run(&raw);
         if let Some(h) = keeps {
-            *card.direct.kept.borrow_mut() = Some((h, raw.clone(), out.clone()));
+            let kgen = run.volatile.get().then(generation);
+            *card.direct.kept.borrow_mut() = Some((h, raw.clone(), out.clone(), kgen));
         }
         timed(&run, t0);
         return ready(Ok(out));

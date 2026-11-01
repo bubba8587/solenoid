@@ -15,7 +15,6 @@ import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
-import { templatePlaceholders } from "../../../src/graph/nodes/textOps";
 import { inEditor } from "../cardPasses";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
@@ -743,8 +742,12 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
 
 describe("Template — str_glue / f-string placeholders", () => {
   const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
-  it("the placeholders are the distinct names in order, past {{ }} and a :spec", () => {
-    expect(templatePlaceholders("Hi {name}, {total:0.00} for {name} — {{literal}} {0}")).toEqual(["name", "total", "0"]);
+  it("the placeholders are the distinct names in order, past {{ }} and a :spec", async () => {
+    const n = new TemplateNode();
+    n.stringLiterals.template = "Hi {name}, {total:0.00} for {name} — {{literal}} {0}";
+    n.data({});
+    await Promise.resolve(); // the microtask that moves the inputs
+    expect(n.sideVars).toEqual(["name", "total", "0"]);
   });
   it("the node grows a socket per name, formats numbers through TEXT, broadcasts a list", async () => {
     const n = new TemplateNode();

@@ -8,14 +8,3 @@ export type SimilarityMethod = "ratio" | "levenshtein" | "damerau" | "jaro_winkl
 
 export type PadSide = "left" | "right" | "center";
 
-const TEMPLATE_TOKEN = /\{\{|\}\}|\{\s*([A-Za-z_][\w .-]*?|\d+)\s*(?::([^{}]*))?\}/g;
-
-export function templatePlaceholders(template: string): string[] {
-  const out: string[] = [];
-  for (const m of template.matchAll(TEMPLATE_TOKEN)) {
-    const name = m[1];
-    if (name !== undefined && !out.includes(name)) out.push(name);
-  }
-  return out;
-}
-

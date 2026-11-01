@@ -206,8 +206,6 @@ export class FrameInputNode extends GraphNode {
     }
   }
 
-  private _built: { text: string; lams: unknown[]; stamp: number } | null = null;
-
   private _parsed: { text: string; source: ReturnType<typeof parseFrameSource>; shape?: Shape } | null = null;
 
   private parsedSource() {
@@ -220,18 +218,8 @@ export class FrameInputNode extends GraphNode {
     return (parsed.shape ??= shapeOfFrameValue(frameFromInputText(this.frameText)));
   }
 
-  /** The frame, built again only when the text, a wired λ or a TODAY/NOW recalculation changes it. */
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
-    const stamp = volatileStamp([this.frameText, ...lams.map((l) => (isLambdaValue(l) ? l.expr : ""))].join("\n"));
-    const b = this._built;
-    if (this.cachedResult && b && b.text === this.frameText && b.stamp === stamp && b.lams.length === lams.length && b.lams.every((v, i) => Object.is(v, lams[i]))) {
-      return { frame: this.cachedResult };
-    }
-    const out = nodeOnCore(this, inputs) as { frame: FrameValue };
-    this.cachedResult = out.frame;
-    this._built = { text: this.frameText, lams, stamp };
-    return out;
+    return nodeOnCore(this, inputs) as { frame: FrameValue };
   }
 }
 

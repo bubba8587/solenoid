@@ -2,6 +2,7 @@
 import { GraphEditor } from "../../../src/graph/graphEditor";
 import { DataflowEngine } from "../../../src/graph/dataflowEngine";
 import type { Schemes } from "../../../src/graph/schemes";
+import { GraphConnection } from "../../../src/graph/graphModel";
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
@@ -802,7 +803,7 @@ describe("identity-stable outputs — the backend upload cache holds across pass
     expect(run(n, { ...sales })).not.toBe(r3);
   });
 
-  it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", () => {
+  it("a changed side value or binding busts the CC memo; Frame Input computed frames are stable per (text, λ identities)", async () => {
     const n = named("@price * (1 - disc)", "net");
     run(n, sales); // grows disc
     const r1 = run(n, sales, { disc: [0.1] }) as FrameValue;
@@ -821,12 +822,21 @@ describe("identity-stable outputs — the backend upload cache holds across pass
       lambdaKeys: ["fn1"],
     });
     const lam = new LambdaNode({ expr: "a + 1", params: "a" });
-    const fn = (lam.data({}) as { result: unknown }).result;
-    const f1 = fi.data({ fn1: [fn] }).frame as FrameValue;
-    expect(fi.data({ fn1: [fn] }).frame).toBe(f1);
-    // A new λ identity (an edit upstream) recomputes.
-    const fn2 = (new LambdaNode({ expr: "a + 2", params: "a" }).data({}) as { result: unknown }).result;
-    expect(fi.data({ fn1: [fn2] }).frame).not.toBe(f1);
+    // The engine keeps Frame Input's answer while its text and its λ stand (`nodes::KEEPS_ANSWER`).
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    await editor.addNode(lam as never);
+    await editor.addNode(fi as never);
+    await editor.addConnection(new GraphConnection(lam, "result", fi, "fn1") as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); return editor.engine!.landed(fi.id, "frame"); };
+    const f1 = await pass();
+    expect(getColumn(f1 as FrameValue, "c")!.values).toEqual([2, 3]);
+    expect(await pass()).toBe(f1);
+    // A new λ (an edit upstream) recomputes.
+    lam.expr = "a + 2";
+    lam.edited();
+    expect(await pass()).not.toBe(f1);
+    editor.dispose();
   });
 });
 

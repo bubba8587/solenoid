@@ -6,7 +6,9 @@ import { describe, expect, it, vi } from "vitest";
 import { directBodies, offCoreBodies } from "../../src/graph/engineWasm/solenoid_graph.js";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { GraphEditor } from "../../src/graph/graphEditor";
-import { GraphConnection } from "../../src/graph/graphModel";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../src/graph/graphModel";
+import { FilterNode, ListIndexNode } from "../../src/graph/nodes/list";
+import { TemplateNode } from "../../src/graph/nodes/text";
 import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import { ArithmeticNode, ValueInputNode } from "../../src/graph/nodeClasses";
 import type { Schemes } from "../../src/graph/schemes";
@@ -62,4 +64,32 @@ describe("direct cards", () => {
     await editor.addNode(b as unknown as Schemes["Node"]);
     expect((await engine.fetch(b.id)).result).toBe(42);
   });
+
+  it("move their own sockets from what their body worked out (coreWatch)", async () => {
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const table = new Src([[1, 2], [3, 4]]), list = new Src([5, 6, 7]);
+    const filter = new FilterNode(), index = new ListIndexNode(), template = new TemplateNode();
+    template.stringLiterals.template = "{a} and {b:0.0}";
+    for (const n of [table, list, filter, index, template]) await editor.addNode(n as never);
+    await editor.addConnection(new GraphConnection(table, "out", filter, "list") as never);
+    await editor.addConnection(new GraphConnection(list, "out", index, "list") as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); for (let i = 0; i < 4; i++) await Promise.resolve(); };
+    await pass();
+    expect(Object.keys(filter.inputs)).toContain("column");
+    expect(index.indexAxes).toBe("position");
+    expect(Object.keys(index.inputs)).toEqual(["list", "position"]);
+    expect(template.sideVars).toEqual(["a", "b"]);
+    expect(Object.keys(template.inputs)).toEqual(["template", "a", "b"]);
+    template.stringLiterals.template = "{b}";
+    template.edited();
+    await pass();
+    expect(Object.keys(template.inputs)).toEqual(["template", "b"]);
+    editor.dispose();
+  });
 });
+
+class Src extends GraphNode {
+  constructor(public out: unknown) { super("src"); this.addOutput("out", new GraphOutput(new GraphSocket("trueany"))); }
+  data() { return { out: this.out }; }
+}

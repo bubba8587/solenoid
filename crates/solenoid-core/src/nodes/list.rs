@@ -676,7 +676,7 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
 }
 
 /// A wired item read as the list's type; converts, never filters.
-fn list_item_of(ty: &str, v: &V) -> V {
+pub(crate) fn list_item_of(ty: &str, v: &V) -> V {
     if let V::Str(s) = v
         && ty != "string"
     {
@@ -782,7 +782,37 @@ fn condition_value(c: &Call, key: &str) -> String {
     }
 }
 
+/// What a wired value says of the sockets a card shows for it: a JavaScript array of rows, an array of anything else,
+/// or no array at all; a blank, an error or an empty list says nothing.
+#[derive(PartialEq)]
+enum Arrives {
+    Rows,
+    Flat,
+    NoList,
+}
+
+fn arrives(v: &Cv) -> Option<Arrives> {
+    let first_is = |rows: bool| Some(if rows { Arrives::Rows } else { Arrives::Flat });
+    match v {
+        Cv::V(V::Undef | V::Null | V::Err(_)) => None,
+        Cv::V(V::List(items)) => first_is(matches!(items.first()?, V::List(_))),
+        Cv::Cells(items) => first_is(matches!(items.first()?, Cv::V(V::List(_)))),
+        Cv::Json(j) => match j.as_ref() {
+            serde_json::Value::Array(a) => first_is(a.first()?.is_array()),
+            _ => Some(Arrives::NoList),
+        },
+        _ => Some(Arrives::NoList),
+    }
+}
+
 fn filter(c: &mut Call) -> Answer {
+    // The Column socket shows while a table is wired; `columnMove` says which way it goes, for `coreWatched`.
+    let has_column = c.sockets.iter().any(|s| s.key == "column");
+    match arrives(&c.raw_card("list")).map(|a| a == Arrives::Rows) {
+        Some(true) if !has_column => c.show("columnMove", V::str("add")),
+        Some(false) if has_column => c.show("columnMove", V::str("drop")),
+        _ => c.show("columnMove", V::Null),
+    }
     let raw = slot(c, "list");
     let done = |c: &mut Call, result: V, dropped: V| {
         c.show("cachedResult", result.clone());
@@ -1407,6 +1437,13 @@ fn list_index(c: &mut Call) -> Answer {
         Cv::V(V::Undef) => Cv::NULL,
         v => v,
     };
+    // [[D85]] columnsStayColumns: a list takes one Position, anything else a Row and a Column; `axesMove` names the
+    // axes the sockets move to, for `coreWatched`.
+    let want = arrives(&v).map(|a| if a == Arrives::Flat { "position" } else { "rowcol" });
+    match want {
+        Some(w) if w != c.field_str("indexAxes", "rowcol") => c.show("axesMove", V::str(w)),
+        _ => c.show("axesMove", V::Null),
+    }
     let has = |c: &Call, k: &str| c.sockets.iter().any(|s| s.key == k);
     let row = picks(
         &c.label(if has(c, "position") { "position" } else { "index" }),

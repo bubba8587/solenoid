@@ -1293,7 +1293,7 @@ thread_local! {
     static SESSION: RefCell<Session> = RefCell::new(Session::default());
 }
 
-fn session<T>(f: impl FnOnce(&mut Session) -> T) -> T {
+pub(crate) fn session<T>(f: impl FnOnce(&mut Session) -> T) -> T {
     SESSION.with(|s| f(&mut s.borrow_mut()))
 }
 

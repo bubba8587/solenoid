@@ -1,7 +1,7 @@
 // [[C28]] literalsIffEditable
 // Shared editing helpers for the literal inputs (Table, Frame, List and Cube Input all edit through the table popup).
 // Pure: text to records and back.
-import { isColumnType, readNestedTables, type ColumnTypes, type NestedTables } from "./cubeTypes";
+import { isColumnType, readNestedTables, type NestedTables } from "./cubeTypes";
 
 /** A cell is a scalar, a list of scalars, or a list of records (a nested table, or a nested cube). */
 export type CubeRecord = Record<string, unknown>;
@@ -74,10 +74,6 @@ export function cubeSourceToText(source: CubeSource): string {
   return JSON.stringify({ columns, rows: source.rows, ...(hasNested(source) ? { nested: source.nested } : {}) }, null, 2);
 }
 
-/** The top level's declared types; a formula column declares none. */
-export function sourcePicks(source: CubeSource): ColumnTypes {
-  return Object.fromEntries(source.columns.flatMap((c) => (c.type && c.expr === undefined ? [[c.name, c.type]] : [])));
-}
 
 /** Alternating row index and key, repeated per nesting level. */
 export type CubePath = (number | string)[];

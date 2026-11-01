@@ -167,6 +167,7 @@ export function nodeOnCore(node: GraphNode, inputs: Record<string, unknown[] | u
   const reply = invoke(node, inputs);
   if ("thrown" in reply) {
     for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
+    if (watch !== undefined && n[watch] !== before) (node as unknown as Watching).coreWatched();
     throw read(reply.thrown);
   }
   const out = outputs(reply, inputs);
