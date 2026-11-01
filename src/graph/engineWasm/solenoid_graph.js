@@ -704,6 +704,28 @@ export class GraphCore {
         }
     }
     /**
+     * What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length]` for a big list,
+     * `[value]` otherwise; `undefined` where it holds none.
+     * @param {string} id
+     * @param {string} field
+     * @returns {any}
+     */
+    shownPreview(id, field) {
+        let ptr0, len0, ptr1, len1;
+        try {
+            ptr0 = passStringToWasm0(id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            len0 = WASM_VECTOR_LEN;
+            ptr1 = passStringToWasm0(field, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            len1 = WASM_VECTOR_LEN;
+        } catch (e) {
+            if (ptr1) { wasm.__wbindgen_export3(ptr1, len1 * 1, 1); }
+            if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
+            throw e;
+        }
+        const ret = wasm.graphcore_shownPreview(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
+    /**
      * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
      * @param {string} id
      * @param {string} field
@@ -2221,7 +2243,7 @@ function __wbg_get_imports() {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wasm_bindgen_func_elem_8001(a, state0.b, arg0, arg1);
+                        return __wasm_bindgen_func_elem_8009(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -2332,7 +2354,7 @@ function __wbg_get_imports() {
         },
         __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 896, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_7999);
+            const ret = makeMutClosure(arg0, arg1, __wasm_bindgen_func_elem_8007);
             return ret;
         },
         __wbindgen_generic_0000000000000002: function(arg0) {
@@ -2360,14 +2382,14 @@ function __wbg_get_imports() {
     };
 }
 
-function __wasm_bindgen_func_elem_8001(arg0, arg1, arg2, arg3) {
-    wasm.__wasm_bindgen_func_elem_8001(arg0, arg1, arg2, arg3);
+function __wasm_bindgen_func_elem_8009(arg0, arg1, arg2, arg3) {
+    wasm.__wasm_bindgen_func_elem_8009(arg0, arg1, arg2, arg3);
 }
 
-function __wasm_bindgen_func_elem_7999(arg0, arg1, arg2) {
+function __wasm_bindgen_func_elem_8007(arg0, arg1, arg2) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-        wasm.__wasm_bindgen_func_elem_7999(retptr, arg0, arg1, arg2);
+        wasm.__wasm_bindgen_func_elem_8007(retptr, arg0, arg1, arg2);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         if (r1) {

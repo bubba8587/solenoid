@@ -34,6 +34,7 @@ import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation, type FormatStyle } from "../formatAnnotationStore";
 import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, cardStyleAnnotation, type DisplayValue } from "./valueDisplayFormat";
+import { fullList } from "../listPreview";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -520,12 +521,17 @@ export function ValueDisplay({
   const isDate = elemFam === "date";
   // Resolve a complex to a string here, after `ann`, so box, chip and clipboard all honor the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));
-  const cxResolved: Exclude<typeof rawValue, Cx> = isCx(rawValue)
-    ? cxFmt(rawValue)
-    : Array.isArray(rawValue) && rawValue.some(isCx)
-      ? (rawValue as unknown[]).map((c) => (isCx(c) ? cxFmt(c) : c)) as Exclude<typeof rawValue, Cx>
-      : rawValue as Exclude<typeof rawValue, Cx>;
-  const value = dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
+  const shown = (raw: DisplayValue) => {
+    const cxResolved: Exclude<typeof raw, Cx> = isCx(raw)
+      ? cxFmt(raw)
+      : Array.isArray(raw) && raw.some(isCx)
+        ? (raw as unknown[]).map((c) => (isCx(c) ? cxFmt(c) : c)) as Exclude<typeof raw, Cx>
+        : raw as Exclude<typeof raw, Cx>;
+    return dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
+  };
+  // A big list a standard box reads is its first rows (`listPreview.ts`): a list drawn inline takes the whole.
+  const listInline = shouldRenderListInline(full, !!ann);
+  const value = shown(listInline ? fullList(rawValue) : rawValue);
 
   // An empty string has no line box and collapses the card below its min height, so an empty array shows the placeholder.
   const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
@@ -534,7 +540,6 @@ export function ValueDisplay({
   const isList = Array.isArray(value);
   const listIsString = isList && typeof (value as unknown[])[0] === "string";
 
-  const listInline = shouldRenderListInline(full, !!ann);
 
   const fmtScalar = (v: number): string =>
     ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
@@ -563,6 +568,14 @@ export function ValueDisplay({
   }
 
   function getClipboardText(): string {
+    if (fullList(rawValue) !== rawValue) return clipboardText(shown(fullList(rawValue)));
+    return clipboardText(value);
+  }
+
+  function clipboardText(value: ReturnType<typeof shown>): string {
+    const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
+    const isString = typeof value === "string", isLogical = typeof value === "boolean", isList = Array.isArray(value);
+    const listIsString = isList && typeof (value as unknown[])[0] === "string";
     if (isEmpty) return "";
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);

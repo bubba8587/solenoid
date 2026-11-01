@@ -9,6 +9,7 @@ import { TableDisplay } from "./TableDisplay";
 import { RecalcButton } from "./RecalcButton";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
+import { previewed } from "../listPreview";
 import { nodeDisplayName } from "../catalogUtils";
 
 // Factories for the input-rows-then-one-result-box shape; a node needing more writes against NodeShell directly.
@@ -25,7 +26,7 @@ export function makeNodeComponent<N extends ShellNode & InlineNode>(
     return (
       <NodeShell node={data} emit={emit}>
         <InlineInputs node={data} emit={emit} />
-        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
+        <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />
         {opts.recalc != null && <RecalcButton title={opts.recalc} />}
       </NodeShell>
     );
@@ -43,7 +44,7 @@ export function makeOpNodeComponent<Op extends string, N extends ShellNode & Inl
       <NodeShell node={data} emit={emit}>
         <InlineInputs node={data} emit={emit} />
         <OpSelect value={op} onChange={setOp} options={options} />
-        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
+        <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />
       </NodeShell>
     );
   };
@@ -56,7 +57,7 @@ export function makeExtensibleNodeComponent<N extends ShellNode & ExtensibleNode
     return (
       <NodeShell node={data} emit={emit}>
         <ExtensibleInputs node={data} emit={emit} />
-        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
+        <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />
       </NodeShell>
     );
   };
@@ -84,7 +85,7 @@ export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V exte
         <InlineInputs node={data} emit={emit} />
         {opts.table
           ? <TableDisplay table={value(data) as Parameters<typeof TableDisplay>[0]["table"]} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
-          : <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />}
+          : <ResultDisplay value={previewed(() => value(data))} label={nodeDisplayName(data)} />}
       </NodeShell>
     );
   };

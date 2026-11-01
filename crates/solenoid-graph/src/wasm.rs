@@ -1075,6 +1075,17 @@ impl GraphCore {
             .map_or(JsValue::UNDEFINED, |v| v.js())
     }
 
+    /// What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length]` for a big list,
+    /// `[value]` otherwise; `undefined` where it holds none.
+    #[wasm_bindgen(js_name = shownPreview)]
+    pub fn shown_preview(&self, id: &str, field: &str) -> JsValue {
+        self.shared
+            .graph
+            .get_node(id)
+            .and_then(|n| n.object.direct.as_ref().and_then(|d| d.shown(field)))
+            .map_or(JsValue::UNDEFINED, |v| v.preview_js())
+    }
+
     /// JavaScript wrote a field the core holds for a direct card; `false` where it holds none for it.
     #[wasm_bindgen(js_name = setShown)]
     pub fn set_shown(&self, id: &str, field: &str, value: JsValue) -> bool {

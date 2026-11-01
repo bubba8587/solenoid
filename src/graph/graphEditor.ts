@@ -5,6 +5,7 @@
 import { GraphCore } from "./engineWasm/solenoid_graph.js";
 import { guarded, onCore, onWasmEngineReset, wasmEngineLoaded } from "./engineWasm";
 import type { DataflowEngine } from "./dataflowEngine";
+import { isPreviewing, markPreview } from "./listPreview";
 import type { GraphNode, GraphSchemes, PortListener } from "./graphModel";
 import type { Schemes } from "./schemes";
 
@@ -129,7 +130,13 @@ export class GraphEditor<S extends GraphSchemes = Schemes> implements PortListen
     Object.defineProperty(node, field, {
       configurable: true,
       enumerable: true,
-      get: () => onCore(() => guarded(() => editor.core().shown(node.id, field)), undefined),
+      // A standard box's read takes a big list's first rows (`listPreview.ts`); any other read takes it whole.
+      get: () => onCore(() => guarded(() => {
+        if (!isPreviewing()) return editor.core().shown(node.id, field);
+        const [v, total] = editor.core().shownPreview(node.id, field) as [unknown, number?] | undefined ?? [undefined];
+        if (total !== undefined && v && typeof v === "object") markPreview(v, total, () => editor.core().shown(node.id, field));
+        return v;
+      }), undefined),
       set: (value: unknown) => {
         if (!onCore(() => guarded(() => editor.core().setShown(node.id, field, value)), false)) plain(value);
       },

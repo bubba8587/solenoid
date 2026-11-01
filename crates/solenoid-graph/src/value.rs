@@ -19,7 +19,14 @@ use crate::boundary_core::{is_frame_ref, Arrived};
 struct Inner {
     js: OnceCell<JsValue>,
     core: OnceCell<Option<Arrived>>,
+    /// A big list's first rows for a card's box, `[rows, total]`, made once (`preview_js`).
+    preview: OnceCell<JsValue>,
 }
+
+/// A list this long is shown by its first rows (`preview_js`).
+const PREVIEW_FROM: usize = 10_000;
+/// The rows a box's preview holds: more than any box draws.
+const PREVIEW_ROWS: usize = 100;
 
 #[derive(Clone)]
 pub(crate) struct Val(Rc<Inner>);
@@ -29,6 +36,7 @@ impl Val {
         Val(Rc::new(Inner {
             js: OnceCell::from(v),
             core: OnceCell::new(),
+            preview: OnceCell::new(),
         }))
     }
 
@@ -36,6 +44,7 @@ impl Val {
         Val(Rc::new(Inner {
             js: OnceCell::new(),
             core: OnceCell::from(Some(a)),
+            preview: OnceCell::new(),
         }))
     }
 
@@ -52,6 +61,31 @@ impl Val {
                 _ => JsValue::UNDEFINED,
             })
             .clone()
+    }
+
+    /// What a card's box shows ([[C120]] linearWork, drawing stops at the screen): a big list the core made and
+    /// JavaScript hasn't taken whole as `[first rows, length]`, made once, so the box never takes the whole of it;
+    /// anything else as `[value]`, its JavaScript form.
+    pub(crate) fn preview_js(&self) -> JsValue {
+        if let Some(js) = self.0.js.get() {
+            return Array::of1(js).into();
+        }
+        match self.0.core.get() {
+            Some(Some(a)) if a.munit.is_none() => match &a.v {
+                Cv::V(V::List(items)) if items.len() >= PREVIEW_FROM => self
+                    .0
+                    .preview
+                    .get_or_init(|| {
+                        let rows = Arrived::bare(solenoid_core::nodes::list(
+                            items[..PREVIEW_ROWS].to_vec(),
+                        ));
+                        Array::of2(&to_js(&rows), &JsValue::from_f64(items.len() as f64)).into()
+                    })
+                    .clone(),
+                _ => Array::of1(&self.js()).into(),
+            },
+            _ => Array::of1(&self.js()).into(),
+        }
     }
 
     /// The JavaScript form where it was made or asked for already.

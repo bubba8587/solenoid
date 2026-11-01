@@ -154,6 +154,11 @@ export class GraphCore {
      */
     settleTypes(facts: string): string;
     /**
+     * What a card's box shows of a field the core holds (`Val::preview_js`): `[first rows, length]` for a big list,
+     * `[value]` otherwise; `undefined` where it holds none.
+     */
+    shownPreview(id: string, field: string): any;
+    /**
      * A field the core holds for a direct card (`cachedResult` and the rest); `undefined` where it holds none.
      */
     shown(id: string, field: string): any;
@@ -503,6 +508,7 @@ export interface InitOutput {
     readonly graphcore_setShown: (a: number, b: number, c: number, d: number, e: number, f: any) => number;
     readonly graphcore_settleTypes: (a: number, b: number, c: number, d: number) => void;
     readonly graphcore_shown: (a: number, b: number, c: number, d: number, e: number) => any;
+    readonly graphcore_shownPreview: (a: number, b: number, c: number, d: number, e: number) => any;
     readonly graphcore_typedSource: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly graphcore_unnest: (a: number, b: number, c: number) => void;
     readonly graphcore_useEngine: (a: number, b: number, c: number) => void;
@@ -538,8 +544,8 @@ export interface InitOutput {
     readonly textFormWrite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly uid: (a: number) => void;
     readonly unnamedEdits: (a: number) => void;
-    readonly __wasm_bindgen_func_elem_7999: (a: number, b: number, c: number, d: any) => void;
-    readonly __wasm_bindgen_func_elem_8001: (a: number, b: number, c: any, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8007: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_8009: (a: number, b: number, c: any, d: any) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
