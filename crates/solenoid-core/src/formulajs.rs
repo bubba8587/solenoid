@@ -149,6 +149,10 @@ fn with_places(result: String, places: &V) -> Result<V, Thrown> {
         return Ok(NUM);
     }
     let p = p.floor();
+    // Excel writes at most 10 characters.
+    if p > 10.0 {
+        return Ok(NUM);
+    }
     let len = result.len() as f64;
     Ok(if p >= len { V::str(&(rept("0", p - len)? + &result)) } else { NUM })
 }
@@ -221,8 +225,9 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             }
         }
         "DEC2BIN" | "DEC2HEX" | "DEC2OCT" => {
+            // A fraction is truncated, as Excel does.
             let n = match parse_number(number) {
-                V::Num(n) => n,
+                V::Num(n) => n.trunc() + 0.0,
                 e => return Ok(e),
             };
             let s = number_to_string(n);

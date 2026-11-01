@@ -200,3 +200,15 @@ fn dollar_formats_as_excel() {
     assert_eq!(text("DOLLAR(-0.001, 2)"), "($0.00)");
     assert_eq!(text("DOLLAR(2, 2.9)"), "$2.00");
 }
+
+#[test]
+fn dec2_truncates_and_bessel_matches_excel() {
+    assert_eq!(text("DEC2HEX(255.9)"), "FF");
+    assert_eq!(text("DEC2BIN(9.99, 4)"), "1001");
+    assert_eq!(text("DEC2OCT(-100.7)"), "7777777634");
+    // Excel's documented answer, which bessel.js's fit shares; the exact value is 0.3299257277.
+    close("BESSELJ(1.9, 2)", 0.329925829, 1e-9);
+    close("BESSELY(2.5, 1)", 0.145918138, 1e-9);
+    close("BESSELI(1.5, 1)", 0.981666428, 1e-7);
+    close("BESSELK(1.5, 1)", 0.277387804, 1e-7);
+}

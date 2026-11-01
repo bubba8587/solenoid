@@ -83,6 +83,36 @@ fn same(a: &Json, b: &Json) -> bool {
     }
 }
 
+/// Whether `FREEZE_NATIVE` (comma separated, or 1 for all) names the suite: its moved answers are written back.
+fn freezing(suite: &str) -> bool {
+    std::env::var("FREEZE_NATIVE").is_ok_and(|s| s.split(',').any(|x| x == suite || x == "1"))
+}
+
+/// `check` over the suite's own file; under `FREEZE_NATIVE` the cases whose answer moved take the new one and the
+/// file is rewritten, with no wasm build between a change and its fixtures. The wasm replay (`coreConformance.test.ts`)
+/// then holds the module to them.
+fn check_or_freeze(suite: &str, got: impl Fn(&Json) -> Json) {
+    if !freezing(suite) {
+        return check(suite, &load(suite), got);
+    }
+    let mut cases = load(suite);
+    let mut moved = 0;
+    for c in &mut cases {
+        let g = got(c);
+        if !same(&g, &c["want"]) {
+            c["want"] = g;
+            moved += 1;
+        }
+    }
+    if moved > 0 {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../fixtures/core/{suite}.json.gz"));
+        let mut gz = flate2::write::GzEncoder::new(std::fs::File::create(&path).unwrap(), flate2::Compression::best());
+        std::io::Write::write_all(&mut gz, serde_json::to_string(&cases).unwrap().as_bytes()).unwrap();
+        gz.finish().unwrap();
+    }
+    eprintln!("{suite}: {moved} re-answered");
+}
+
 /// Every case's `got` against its `want`; the suite fails with the first few that differ.
 fn check(suite: &str, cases: &[Json], got: impl Fn(&Json) -> Json) {
     if !runs(suite) {
@@ -488,7 +518,7 @@ fn engine_answer(name: &str, r: &Json) -> Json {
 
 #[test]
 fn function_bodies() {
-    check("function-bodies", &load("function-bodies"), |c| {
+    check_or_freeze("function-bodies", |c| {
         let name = c["name"].as_str().unwrap();
         let args: Vec<Json> = c["args"].as_array().unwrap().iter().map(wire).collect();
         let r = invoke("engine_call", &json!({ "name": name, "args": args, "clock": clock() })).unwrap();
@@ -498,7 +528,7 @@ fn function_bodies() {
 
 #[test]
 fn computed_columns() {
-    check("columns", &load("columns"), |c| {
+    check_or_freeze("columns", |c| {
         let undef = |v: &Json| v.is_null() || is_undef(v);
         let bare = c.get("bare").filter(|b| !undef(b));
         let lambdas: Map<String, Json> = c
@@ -619,7 +649,7 @@ fn op_wire(op: &Json) -> Json {
 
 #[test]
 fn table_verbs() {
-    check("verbs", &load("verbs"), |c| {
+    check_or_freeze("verbs", |c| {
         let run = || -> Result<String, solenoid_core::error_value::SolError> {
             if c["kind"] == "unary" {
                 let h = source(&c["frame"], true)?;
@@ -647,7 +677,7 @@ fn table_verbs() {
 
 #[test]
 fn frame_functions() {
-    check("frame-fns", &load("frame-fns"), |c| {
+    check_or_freeze("frame-fns", |c| {
         let none = json!({ "none": true });
         let Some(args) = c["args"].as_array().unwrap().iter().map(|a| core_value(a, false)).collect::<Option<Vec<_>>>()
         else {
@@ -687,12 +717,12 @@ fn eval_answer(c: &Json) -> Json {
 
 #[test]
 fn formulas_over_values() {
-    check("expressions", &load("expressions"), eval_answer);
+    check_or_freeze("expressions", eval_answer);
 }
 
 #[test]
 fn pack_functions() {
-    check("pack-calls", &load("pack-calls"), eval_answer);
+    check_or_freeze("pack-calls", eval_answer);
 }
 
 /// `parseFormula`: the core's tree, null for blank text or text that doesn't parse.
@@ -756,7 +786,7 @@ fn affine_weights() {
 
 #[test]
 fn formula_trees() {
-    check("formula-trees", &load("formula-trees"), |c| tree(c["src"].as_str().unwrap()));
+    check_or_freeze("formula-trees", |c| tree(c["src"].as_str().unwrap()));
 }
 
 #[test]
@@ -776,7 +806,7 @@ fn bodies_over_values_with_a_unit() {
 
 #[test]
 fn expression_unit_wrapper() {
-    check("expression-units", &load("expression-units"), |c| {
+    check_or_freeze("expression-units", |c| {
         let o = c["env"].as_object().unwrap();
         let env: Map<String, Json> = o.iter().map(|(k, v)| (k.clone(), core_value(v, true).unwrap())).collect();
         let r = invoke(
@@ -891,18 +921,16 @@ fn folds_over_values_with_a_unit() {
 
 #[test]
 fn typed_date_text() {
-    check("parse-date", &load("parse-date"), |c| {
-        match invoke("engine_parse_date", &json!({ "text": c["text"] })).unwrap() {
-            Json::Null => num_cell(f64::NAN),
-            Json::Number(n) => num_cell(n.as_f64().unwrap()),
-            r => json!({ "__err": "#AMBIGUOUS!", "msg": r["ambiguous"] }),
-        }
+    check_or_freeze("parse-date", |c| match invoke("engine_parse_date", &json!({ "text": c["text"] })).unwrap() {
+        Json::Null => num_cell(f64::NAN),
+        Json::Number(n) => num_cell(n.as_f64().unwrap()),
+        r => json!({ "__err": "#AMBIGUOUS!", "msg": r["ambiguous"] }),
     });
 }
 
 #[test]
 fn dimension_labels() {
-    check("dim-labels", &load("dim-labels"), |c| {
+    check_or_freeze("dim-labels", |c| {
         let dim: solenoid_core::unit_dims::Dim =
             serde_json::from_value(js_json(&c["dim"]).unwrap()).unwrap_or_default();
         json!(solenoid_core::unit_lists::format_dim(&dim))

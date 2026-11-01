@@ -6,9 +6,9 @@ import { isSolError } from "../../src/graph/errorValue";
 const ev = (src: string): unknown => compileEvaluator(src)!({});
 
 it("a body that fails answers #VALUE! as a value, with its reason, so IFERROR reads it", () => {
-  const r = ev("DEC2BIN(1, 5e9)");
-  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "That many characters is more than a text can hold"]);
-  expect(ev('IFERROR(DEC2BIN(1, 5e9), "fallback")')).toBe("fallback");
+  const r = ev("RANK(1, 5)");
+  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "RANK's ref takes a list"]);
+  expect(ev('IFERROR(RANK(1, 5), "fallback")')).toBe("fallback");
   expect(ev("ISERROR(ROMAN(1e12))")).toBe(true);
 });
 
