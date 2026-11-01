@@ -14,7 +14,7 @@ use crate::frame::{frame_row_count, get_column, FrameColumn, FrameValue};
 use crate::frame_ref::{Flushed, FrameRef};
 
 /// The rows a verb card's preview shows.
-pub const PREVIEW_ROWS: usize = 100;
+pub const PREVIEW_ROWS: usize = 5;
 
 thread_local! {
     /// Each frame value a verb planned over, as the core holds it, while the value lives.

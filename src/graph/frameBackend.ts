@@ -36,7 +36,7 @@ export async function readFrame(v: unknown): Promise<FrameValue | SolError | nul
   }
 }
 
-const CARD_PREVIEW_ROWS = 100;
+const CARD_PREVIEW_ROWS = 5;
 
 /** A lazy frame's first `n` rows, its row count as `__totalRows` and itself as `__ref`; the whole frame where it has
  *  no more. It throws the error its plan answers. */

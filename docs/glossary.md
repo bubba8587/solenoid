@@ -124,7 +124,7 @@ cables (the author, 2026-10-25).
   run, held in the core and planned on by each verb card. (`frame_ref.rs`)
 - **Materialization boundary**: the point where a lazy frame is read whole (a non-lazy card's
   input, a chart, an export). (`value::collected`, `boundary.rs`)
-- **Preview / collectPreview**: a verb card shows its first 100 rows, not the whole frame;
+- **Preview / collectPreview**: a verb card shows its first 5 rows, what its box draws, not the whole frame;
   `FrameValue.__totalRows` carries the true count and `__ref` the ref. (`refs::preview`)
 - **Cube**: the recursive nested-table container, a Frame whose cells can be Frames, for
   nested data without flattening it to one wide sheet. It has a cached depth and a drill-in popup. (`CubeValue` in

@@ -27,10 +27,10 @@ describe("reading a lazy frame", () => {
     expect(frameStats()).toMatchObject({ runs: 1, collects: 1 });
   });
 
-  it("previews its first 100 rows with the row count and the ref beside them", async () => {
+  it("previews its first 5 rows, what a box draws, with the row count and the ref beside them", async () => {
     const ref = planned(long, { kind: "sort", by: "i", dir: "desc" });
     const p = (await collectPreview(ref)) as FrameValue;
-    expect(p.columns[0].values).toHaveLength(100);
+    expect(p.columns[0].values).toHaveLength(5);
     expect(p.columns[0].values[0]).toBe(249);
     expect(p.__totalRows).toBe(250);
     expect(isFrameRef(p.__ref)).toBe(true);

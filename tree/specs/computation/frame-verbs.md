@@ -197,7 +197,7 @@ flowchart LR
     r2 --> mb{"a reader"}
     mb -->|"flush: runs op 2 on<br>ref 1's flush, once"| f["its frame"]
     f --> full["collect:<br>the whole frame"]
-    f --> prev["preview:<br>the first 100 rows"]
+    f --> prev["preview:<br>the first 5 rows"]
     f --> one["column / schema"]
 ```
 
@@ -212,7 +212,7 @@ A ref's flush runs once per sketch mode and is kept with the ref, so every reade
 | Reader | Call | Result |
 |---|---|---|
 | Whole frame | `refs::collect` (JS: `readFrame`, `frameRefRead`) | The frame, kept with the ref, so a ref fanned out to several readers collects once. |
-| Card preview | `refs::preview(r, 100)` (JS: `collectPreview`, `frameRefPreview`) | A frame of at most 100 rows is the whole one; a longer one is its first 100 rows with `total_rows` the true count and `source` (JS: `__ref`) the ref. |
+| Card preview | `refs::preview(r, 5)` (JS: `collectPreview`, `frameRefPreview`) | What a card's box draws: a frame of at most 5 rows is the whole one; a longer one is its first 5 rows with `total_rows` the true count and `source` (JS: `__ref`) the ref. |
 | Schema | `refs::schema` | Column names and types with no rows, and the row count (Table Size, Pivot). |
 | One column | `refs::column` | One column by `getColumn` rules (Get Column, SUMIFS, Pivot, Slicer). |
 
