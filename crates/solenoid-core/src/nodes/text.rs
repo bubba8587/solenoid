@@ -637,7 +637,7 @@ fn regex(c: &mut Call) -> Answer {
 
 // ─── Cast ───────────────────────────────────────────────────────────────────────
 
-/// TEXT's few formats a cast takes, `0.00` and `0.0%`; anything else the number as JS writes it.
+/// TEXT's few formats a cast takes, `0.00` and `0.0%`; anything else the number at Excel's 15 digits ("General").
 fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     let s = match format {
         V::Str(s) => s.to_string(),
@@ -648,7 +648,7 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
         crate::jsnum::fixed_text(x, d).ok_or_else(|| err(ErrorCode::Value, "A format shows at most 100 decimal places"))
     };
     if s.is_empty() || s == "general" {
-        return Ok(crate::jsnum::number_to_string(v));
+        return Ok(crate::excel_functions::number_to_text(v));
     }
     if s.strip_prefix('0').is_some_and(|r| {
         r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))
@@ -658,7 +658,7 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     if let Some(inner) = s.strip_suffix('%') {
         return Ok(fixed(v * 100.0, decimals(inner))? + "%");
     }
-    Ok(crate::jsnum::number_to_string(v))
+    Ok(crate::excel_functions::number_to_text(v))
 }
 
 /// A value in an FC unit reads with the FC's label, `$5` or `5 km`; any other unit by its dimension.

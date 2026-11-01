@@ -3,7 +3,7 @@
 //! and `new RegExp(p, "")` reads it by code unit, so the patterns (lowered by `js_regex`) run on `regress` in its
 //! non-Unicode mode over the text's code units.
 
-use crate::jsnum::{lower_text, number_to_string};
+use crate::jsnum::lower_text;
 use regress::{Match, Regex};
 
 fn utf16(s: &str) -> Vec<u16> {
@@ -414,10 +414,12 @@ pub fn spell_number(n: f64) -> Result<String, &'static str> {
         }
         groups.join(" ")
     };
-    // The digits after the point of `String(abs)`, at most 6; in exponent form an "e" or "-" reads as nothing.
-    let s = number_to_string(abs);
+    // The first 6 digits after the point of the number at Excel's 15 digits, written out in full; trailing zeros
+    // say nothing.
+    let t = crate::excel_functions::number_to_text(abs);
+    let s = t.parse::<f64>().map_or(t, |x| format!("{x}"));
     if let Some((_, frac)) = s.split_once('.') {
-        let frac: String = frac.chars().take(6).collect();
+        let frac: String = frac.chars().take(6).collect::<String>().trim_end_matches('0').to_string();
         if !frac.is_empty() {
             let spelled: Vec<&str> =
                 frac.chars().map(|d| d.to_digit(10).map_or("", |d| SPELL_ONES[d as usize])).collect();
