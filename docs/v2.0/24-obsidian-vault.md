@@ -162,7 +162,7 @@ predicate / sort key over the scalar column, on the eager JS branch (`isCubeValu
 lazy path; Polars never sees a nested cell; no `FrameOp`, `oneVerbCorpus` untouched.
 Aggregating / reshaping verbs (GROUPBY, PIVOTBY, Join, Append, Add Column…) stay frame-only —
 Cube Rollup / Nest Join / Unnest own nested semantics. The only list→text join is **Write
-File** CSV mode (`", "`). Tests: `cubeRowVerbs.test.ts` (rows selected; nested cells identical
+File** CSV mode (`", "`). Answers: the frozen Filter, Sort and Get Row cases (`fixtures/core/nodes/`) (rows selected; nested cells identical
 by reference; `__cube` brand out).
 
 **B. Write Properties** (sink, Add → Connections; Run-button only). Input `cube` (a frame
@@ -328,7 +328,7 @@ stats (Range, Stddev, Earliest/Latest, Checked/Unchecked) — `../backlog.md`, n
 | Node | Kind · menu | In | Out | Init (persisted) | Pure core · test |
 |---|---|---|---|---|---|
 | Vault Folder | connection · Connections | — | `cube` ("Notes") | vault, folder, glob, includeBody, nameFormat, refreshMinutes | `vaultCube.ts`, `mdbaseTypes.ts`, `obsidianTypes.ts`, `dailyNotesConfig.ts` · `vaultCube.test.ts` over `fixtures/vault/` |
-| Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `cubeRowVerbs.test.ts` |
+| Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `fixtures/core/nodes/` |
 | Get Column / Decision Matrix / H6 (exist) | — | table input → `cubeIn` | unchanged (list / ranking frame / the cube + 4 columns) | — | same test file |
 | Write Properties | sink · Connections | `cube` (frame widens) | `plan` frame | vault, keys, addMissing, stamp, writeBase | `frontmatterPatch.ts` · `frontmatterPatch.test.ts` (untouched bytes identical; cube → vault → cube equal) |
 | Write to Obsidian (exists) | sink | `document`, `path` (str) | — | + mode, subfolder | `managedBlock.ts` · `obsidianWriteModes.test.ts` |

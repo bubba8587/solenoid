@@ -271,4 +271,4 @@ Finish is inclusive on the cell in both modes: a cell is the value, Get Column r
 
 ## Tests
 
-The crate's `src/tests.rs` (the engine, the rules, Minutes mode, the regressions) and `tests/files.rs` (the file formats and the corpus in `tests/corpus/`), `tests/graph/corePlanReaders.test.ts` (the readers against the frozen TS answers), `packages/gantt-layout/src/*.test.ts`, `tests/graph/scheduleCpm.test.ts`, `tests/graph/nodes/schedule.test.ts`, `tests/graph/planImport.test.ts`, `tests/graph/ganttPayload.test.ts`, `tests/graph/nodes/gantt.test.ts` and `tests/graph/ganttBuilder.test.ts`.
+The crate's `src/tests.rs` (the engine, the rules, Minutes mode, the regressions) and `tests/files.rs` (the file formats and the corpus in `tests/corpus/`), `tests/graph/corePlanReaders.test.ts` (the readers against the frozen TS answers), `packages/gantt-layout/src/*.test.ts`, `tests/graph/scheduleCpm.test.ts`, `tests/graph/nodes/schedule.test.ts`, `tests/graph/planImport.test.ts`, `tests/graph/ganttPayload.test.ts` and the frozen Gantt cases (`fixtures/core/nodes/GanttNode.json.gz`).

@@ -5,6 +5,8 @@
 //   node scripts/freeze-nodes.mjs                 every class recorded
 //   node scripts/freeze-nodes.mjs ArithmeticNode  only these (the rest keep their bytes)
 //   node scripts/freeze-nodes.mjs --report        what was recorded, written nowhere
+//   node scripts/freeze-nodes.mjs --merge [...]   keeps every frozen case and adds each recorded call it doesn't hold, as
+//                                                 a test's calls are before the test goes (the cap applies to a refreeze)
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
@@ -18,6 +20,7 @@ const LAYOUT = new Set(["width", "height", "x", "y", "collapsed"]);
 
 const args = process.argv.slice(2);
 const reportOnly = args.includes("--report");
+const merge = args.includes("--merge");
 const only = new Set(args.filter((a) => !a.startsWith("--")));
 
 const byKind = new Map();
@@ -52,22 +55,35 @@ for (const file of fs.readdirSync(CALLS).filter((f) => f.endsWith(".jsonl"))) {
 const report = {};
 for (const [kind, k] of [...byKind].sort()) {
   let cases = [...k.cases.values()];
-  const written = new Set(cases.flatMap((c) => Object.keys(c.display)));
+  let frozenBefore = [];
+  if (merge && fs.existsSync(path.join(OUT, `${kind}.json.gz`))) {
+    frozenBefore = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(OUT, `${kind}.json.gz`))).toString("utf8"));
+  }
+  // A field is kept in `prior` where any case writes it, the frozen ones too when merging.
+  const written = new Set([...cases, ...frozenBefore].flatMap((c) => Object.keys(c.display ?? {})));
   for (const c of cases) c.prior = Object.fromEntries(Object.entries(c.prior ?? {}).filter(([f]) => written.has(f)));
   const unstable = cases.filter((c) => c.unstable).length;
-  if (cases.length > CAP) {
+  if (!merge && cases.length > CAP) {
     const step = cases.length / CAP;
     cases = Array.from({ length: CAP }, (_, i) => cases[Math.floor(i * step)]);
   }
-  report[kind] = { calls: k.calls, unique: k.cases.size, kept: cases.length, unstable, thrownJs: k.thrownJs, outRaw: k.outRaw, uncrossable: k.uncrossable };
-  if (reportOnly) continue;
-  fs.mkdirSync(OUT, { recursive: true });
   // Socket and input order is the card's (a row's place is its meaning), so they freeze as lists of pairs.
-  const frozen = cases.map(({ kind: _k, unstable: u, sockets, outputs, inputs, ...c }) => ({
+  let frozen = cases.map(({ kind: _k, unstable: u, sockets, outputs, inputs, ...c }) => ({
     ...c, sockets: Object.entries(sockets).map(([k, row]) => [k, ...row]),
     outputs: Object.entries(outputs).map(([k, row]) => [k, ...(Array.isArray(row) ? row : [row])]), inputs: Object.entries(inputs),
     ...(u ? { unstable: true } : {}),
   }));
+  let added = 0;
+  if (merge) {
+    const keyOf = (c) => JSON.stringify([c.init, c.literals, c.stringLiterals, c.sockets, c.outputs, c.inputs, c.ctx?.settings]);
+    const held = new Set(frozenBefore.map(keyOf));
+    const fresh = frozen.filter((c) => !held.has(keyOf(c)));
+    added = fresh.length;
+    frozen = [...frozenBefore, ...fresh];
+  }
+  report[kind] = { calls: k.calls, unique: k.cases.size, kept: frozen.length, ...(merge ? { added } : {}), unstable, thrownJs: k.thrownJs, outRaw: k.outRaw, uncrossable: k.uncrossable };
+  if (reportOnly || (merge && added === 0)) continue;
+  fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, `${kind}.json.gz`), zlib.gzipSync(JSON.stringify(frozen), { level: 9 }));
 }
 fs.mkdirSync(path.join(ROOT, ".dev"), { recursive: true });

@@ -1092,7 +1092,7 @@ The measurement reports:
 | The criteria grammar | `tests/graph/criteriaFamily.test.ts` |
 | Signatures and the parameter bar | `tests/graph/formulaSignatures.test.ts` |
 | The parity measurement and its ratchet | `tests/graph/formulaNodeParity.test.ts` |
-| Distribution kernels on both surfaces | `tests/graph/distributionFormula.test.ts`, `tests/graph/nodes/distributions.test.ts`, `distributionInvariants.test.ts` |
+| Distribution kernels on both surfaces | `tests/graph/distributionFormula.test.ts`, `tests/graph/nodes/distributions.test.ts`, the frozen Distributions cases (`fixtures/core/nodes/DistributionsNode.json.gz`) |
 | Finance kernels and the discount-rate solver | `tests/graph/nodes/finance.test.ts`, `financeInvariants.test.ts`, `financeIterative.test.ts` |
 | Date kernels and relative dates | `tests/graph/nodes/date.test.ts`, `dateParity.test.ts`, `relativeDates.test.ts` |
 | Text, signal and forecasting kernels | `tests/graph/nodes/textOps.test.ts`, `signalFormulas.test.ts`, `stlDecompose.test.ts` |
