@@ -4,8 +4,7 @@
 
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::jsnum::{
-    fixed_text, is_space_char, lower_text, number_to_string, round_half_up, string_to_number, to_exponential,
-    trim_space,
+    fixed_text, is_space_char, lower_text, number_to_string, round_half_up, to_exponential, trim_space,
 };
 use crate::unit_dims::{dim_equal, Dim};
 use serde_json::{json, Value as Json};
@@ -190,7 +189,7 @@ pub fn sci_from_setting(sci_above: Option<&str>) -> f64 {
     match sci_above {
         Some("off") => f64::INFINITY,
         s => {
-            let p = s.map_or(f64::NAN, string_to_number);
+            let p = s.map_or(f64::NAN, crate::value_kinds::decimal_from_text);
             if p.fract() == 0.0 {
                 libm::pow(10.0, p)
             } else {
@@ -1375,7 +1374,8 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
                     let named = m.map_or(head, |(n, _)| trim_space(n));
                     let title = named.starts_with('#');
                     let name = if title { trim_space(&named[1..]) } else { named };
-                    let span = m.map_or(1.0, |(_, d)| string_to_number(d).clamp(1.0, 12.0)) as usize;
+                    let span =
+                        m.map_or(1.0, |(_, d)| crate::value_kinds::decimal_from_text(d).clamp(1.0, 12.0)) as usize;
                     (0..span)
                         .map(move |i| Cell {
                             name: name.to_string(),

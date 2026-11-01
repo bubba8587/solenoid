@@ -7,7 +7,8 @@
 
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
-use solenoid_core::jsnum::{number_to_string, string_to_number};
+use solenoid_core::jsnum::number_to_string;
+use solenoid_core::value_kinds::decimal_from_text;
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
@@ -67,7 +68,7 @@ fn main() {
             "text to numbers",
             Box::new(|_| {
                 for t in &texts {
-                    black_box(string_to_number(t));
+                    black_box(decimal_from_text(t));
                 }
             }),
         ),

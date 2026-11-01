@@ -16,7 +16,7 @@ use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
 use crate::excel_functions::{value_less, value_text, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{lower_text, number_to_string, string_to_number, trim_space};
+use crate::jsnum::{lower_text, number_to_string, trim_space};
 use crate::unit_dims::{dim_equal, Dim, UnitCell};
 use serde_json::Value as Json;
 use std::collections::HashSet;
@@ -394,7 +394,7 @@ impl Allowed {
                         m.bools.insert(lower == "true");
                     }
                     m.texts.insert(lower);
-                    let n = if t.is_empty() { f64::NAN } else { string_to_number(t) };
+                    let n = if t.is_empty() { f64::NAN } else { crate::value_kinds::decimal_from_text(t) };
                     if n.is_finite() {
                         m.nums.insert(num_key(n));
                     } else if let crate::excel_criteria::DateReading::Serial(d) = crate::excel_criteria::parse_date(t)

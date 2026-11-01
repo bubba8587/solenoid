@@ -8,7 +8,7 @@ use std::rc::Rc;
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, FxError, SolError};
 use crate::frame::FrameCell;
-use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
+use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
 
@@ -5721,7 +5721,7 @@ fn template(a: &[V]) -> Result<V, Thrown> {
             Some(Token::Open) => out.push('{'),
             Some(Token::Close) => out.push('}'),
             Some(Token::Placeholder(n, spec)) => {
-                let k = string_to_number(n);
+                let k = crate::value_kinds::decimal_from_text(n);
                 let v = if k < values.len() as f64 { &values[k as usize] } else { &V::Null };
                 let spec = spec.as_deref().map(trim_space).filter(|s| !s.is_empty());
                 out.push_str(&template_format(v, spec)?);

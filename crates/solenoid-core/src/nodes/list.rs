@@ -1349,8 +1349,8 @@ pub(crate) fn js_number(v: &V) -> f64 {
         V::Num(n) => *n,
         V::Null => 0.0,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) => crate::jsnum::string_to_number(s),
-        V::List(_) => crate::jsnum::string_to_number(&value_text(v)),
+        V::Str(s) => crate::value_kinds::decimal_from_text(s),
+        V::List(_) => crate::value_kinds::decimal_from_text(&value_text(v)),
         _ => f64::NAN,
     }
 }
@@ -1762,7 +1762,7 @@ fn position_of(x: &V) -> V {
         V::Err(_) => return x.clone(),
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) if !trim_space(s).is_empty() => crate::jsnum::string_to_number(s),
+        V::Str(s) if !trim_space(s).is_empty() => crate::value_kinds::decimal_from_text(s),
         _ => f64::NAN,
     };
     if n.is_nan() {

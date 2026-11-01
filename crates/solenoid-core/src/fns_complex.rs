@@ -4,7 +4,7 @@
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{hypot_all, num_blank_zero, to_num, to_str, value_text, Thrown, V};
-use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
+use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, cosh, exp, log, sin, sinh};
 
@@ -174,7 +174,10 @@ fn parse_cx(text: &str) -> Option<Cx> {
             let e2 = scan_num(b, m).unwrap_or(m);
             if is_unit(e2) {
                 let im = if e2 > m { format!("{}{}", b[k] as char, &s[m..e2]) } else { format!("{}1", b[k] as char) };
-                return Some((string_to_number(&s[..e1]), string_to_number(&im)));
+                return Some((
+                    crate::value_kinds::decimal_from_text(&s[..e1]),
+                    crate::value_kinds::decimal_from_text(&im),
+                ));
             }
         }
     }
@@ -183,11 +186,11 @@ fn parse_cx(text: &str) -> Option<Cx> {
     if is_unit(e) {
         let sign = if start == 1 { &s[..1] } else { "" };
         let mag = if e > start { &s[start..e] } else { "1" };
-        return Some((0.0, string_to_number(&format!("{sign}{mag}"))));
+        return Some((0.0, crate::value_kinds::decimal_from_text(&format!("{sign}{mag}"))));
     }
     // `^[+-]?NUM$`
     if scan_num(b, start) == Some(b.len()) {
-        return Some((string_to_number(s), 0.0));
+        return Some((crate::value_kinds::decimal_from_text(s), 0.0));
     }
     None
 }

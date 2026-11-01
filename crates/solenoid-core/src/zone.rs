@@ -238,7 +238,7 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
                 }
                 _ => continue,
             };
-            p[slot] = crate::jsnum::string_to_number(&get("value"));
+            p[slot] = crate::value_kinds::decimal_from_text(&get("value"));
         }
         let year = if bc { 1.0 - p[0] } else { p[0] };
         Ok(wall_utc(year, p[1] - 1.0, p[2], p[3], p[4], p[5]) - utc_ms)

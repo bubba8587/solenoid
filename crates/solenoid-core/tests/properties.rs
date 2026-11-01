@@ -6,8 +6,9 @@
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
-use solenoid_core::jsnum::{compare_text, number_to_string, round_half_up, string_to_number};
+use solenoid_core::jsnum::{compare_text, number_to_string, round_half_up};
 use solenoid_core::sort::stable_sort_by;
+use solenoid_core::value_kinds::decimal_from_text;
 use std::cmp::Ordering;
 
 fn cases() -> u64 {
@@ -40,7 +41,7 @@ fn a_number_prints_and_parses_back_to_itself() {
         if x.is_nan() {
             continue;
         }
-        let back = string_to_number(&number_to_string(x));
+        let back = decimal_from_text(&number_to_string(x));
         assert!(back == x || (back == 0.0 && x == 0.0), "{x:e} printed {} and read back {back:e}", number_to_string(x));
     }
 }

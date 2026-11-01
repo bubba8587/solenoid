@@ -221,7 +221,7 @@ describe("Value Input outside dates", () => {
     expect(run("number", "")).toBe(0);
     expect(run("number", " 42 ")).toBe(42);
     expect(run("number", "1e3")).toBe(1000);
-    expect(run("number", "0x1F")).toBe(31);
+    expect(isSolError(run("number", "0x1F"))).toBe(true); // text, as in Excel ([[C58]] tableInputRawText)
     expect(isSolError(run("number", "abc"))).toBe(true);
     expect(isSolError(run("number", "Infinity"))).toBe(true);
     expect(isUnitCell(run("number", "2", "km"))).toBe(true);

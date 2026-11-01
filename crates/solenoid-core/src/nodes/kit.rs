@@ -120,7 +120,7 @@ pub fn num(v: &V) -> f64 {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
         V::Null => 0.0,
-        V::Str(s) => crate::jsnum::string_to_number(s),
+        V::Str(s) => crate::value_kinds::decimal_from_text(s),
         _ => f64::NAN,
     }
 }

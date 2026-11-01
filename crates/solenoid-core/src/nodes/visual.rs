@@ -9,7 +9,7 @@ use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{lower_text, number_to_string, round_half_up, string_to_number, trim_space};
+use crate::jsnum::{lower_text, number_to_string, round_half_up, trim_space};
 use serde_json::{json, Map, Value as Json};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -185,7 +185,7 @@ fn to_num(v: &str) -> Option<f64> {
     if t.is_empty() {
         return None;
     }
-    let n = string_to_number(t);
+    let n = crate::value_kinds::decimal_from_text(t);
     n.is_finite().then_some(n)
 }
 
@@ -431,7 +431,9 @@ fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
         .iter()
         .map(|v| match format_cell(col.ty, v, None) {
             V::Num(n) if n.is_finite() => Some(n),
-            V::Str(s) if !trim_space(&s).is_empty() => Some(string_to_number(&s)).filter(|n| n.is_finite()),
+            V::Str(s) if !trim_space(&s).is_empty() => {
+                Some(crate::value_kinds::decimal_from_text(&s)).filter(|n| n.is_finite())
+            }
             _ => None,
         })
         .collect()
@@ -476,7 +478,7 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
                 FrameColType::Number | FrameColType::Date => match c {
                     V::Num(_) => c.clone(),
                     V::Bool(b) => V::Num(f64::from(u8::from(*b))),
-                    V::Str(s) => V::Num(string_to_number(s)),
+                    V::Str(s) => V::Num(crate::value_kinds::decimal_from_text(s)),
                     _ => V::Num(f64::NAN),
                 },
             },
@@ -1840,7 +1842,7 @@ fn grid_axes(z: &V, xs: Option<&V>, ys: Option<&V>) -> Option<Axes> {
 /// `Number(v)` as `Math.round` reads its argument.
 fn to_number(v: &V) -> f64 {
     match v {
-        V::List(_) => string_to_number(&value_text(v)),
+        V::List(_) => crate::value_kinds::decimal_from_text(&value_text(v)),
         v => super::kit::num(v),
     }
 }

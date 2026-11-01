@@ -6,7 +6,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 
 use crate::frame::FrameCell;
-use crate::value_kinds::is_decimal_text;
 
 /// `String(x)` for a number: ECMAScript Number::toString.
 pub fn number_to_string(x: f64) -> String {
@@ -63,40 +62,13 @@ pub fn js_string(v: &FrameCell) -> Cow<'_, str> {
     }
 }
 
-/// `Number(s)`: ECMAScript StringToNumber.
-pub fn string_to_number(s: &str) -> f64 {
-    let t = trim_space(s);
-    if t.is_empty() {
-        return 0.0;
-    }
-    match t {
-        "Infinity" | "+Infinity" => return f64::INFINITY,
-        "-Infinity" => return f64::NEG_INFINITY,
-        _ => {}
-    }
-    for (prefix, radix) in [("0x", 16), ("0X", 16), ("0o", 8), ("0O", 8), ("0b", 2), ("0B", 2)] {
-        if let Some(digits) = t.strip_prefix(prefix) {
-            if digits.is_empty() || !digits.chars().all(|c| c.is_digit(radix)) {
-                return f64::NAN;
-            }
-            return digits.chars().fold(0.0, |acc, c| acc * radix as f64 + c.to_digit(radix).unwrap() as f64);
-        }
-    }
-    let body = t.strip_prefix(['+', '-']).unwrap_or(t);
-    if is_decimal_text(body) {
-        t.parse::<f64>().unwrap_or(f64::NAN)
-    } else {
-        f64::NAN
-    }
-}
-
 /// `Number(v)` for a cell.
 pub fn to_number(v: &FrameCell) -> f64 {
     match v {
         FrameCell::Num(n) => *n,
         FrameCell::Bool(b) => f64::from(u8::from(*b)),
         FrameCell::Null => 0.0,
-        FrameCell::Str(s) => string_to_number(s),
+        FrameCell::Str(s) => crate::value_kinds::decimal_from_text(s),
         FrameCell::Err(_) => f64::NAN,
     }
 }

@@ -12,8 +12,7 @@ use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_parse_float, num_blank_zero, value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{
-    fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, string_to_number,
-    trim_space,
+    fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space,
 };
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
@@ -103,7 +102,7 @@ fn value_input(c: &mut Call) -> Answer {
         "logical" => V::Bool(trim_space(&value).eq_ignore_ascii_case("true")),
         "number" => {
             let t = trim_space(&value);
-            let n = if t.is_empty() { 0.0 } else { string_to_number(t) };
+            let n = if t.is_empty() { 0.0 } else { crate::value_kinds::decimal_from_text(t) };
             if n.is_finite() {
                 fc_number(n, c.field_str("unit", "none"), c.field_str("customUnit", ""))
             } else {
@@ -338,7 +337,7 @@ impl<'a> Scan<'a> {
         }
         let t = &self.rest()[..i];
         self.at += i;
-        Some(string_to_number(t))
+        Some(crate::value_kinds::decimal_from_text(t))
     }
 
     fn end(&self) -> bool {
@@ -495,7 +494,7 @@ fn to_rgb_string(c: Rgba) -> String {
 fn channel(v: &V) -> Option<f64> {
     match v {
         V::Num(n) => Some(*n),
-        V::Str(s) if !s.is_empty() => Some(string_to_number(s)),
+        V::Str(s) if !s.is_empty() => Some(crate::value_kinds::decimal_from_text(s)),
         _ => None,
     }
 }
@@ -749,7 +748,7 @@ fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 + use<> {
 
 /// `Number(x.toFixed(6))`.
 fn fixed6(x: f64) -> f64 {
-    fixed_text(x, 6.0).map_or(f64::NAN, |t| string_to_number(&t))
+    fixed_text(x, 6.0).map_or(f64::NAN, |t| crate::value_kinds::decimal_from_text(&t))
 }
 
 fn curve(c: &mut Call) -> Answer {
@@ -787,7 +786,7 @@ fn grid_painter(c: &mut Call) -> Answer {
         let mut k = 0.0;
         while k < cols {
             let t = trim_space(cells.get(k as usize).copied().unwrap_or(""));
-            let n = string_to_number(t);
+            let n = crate::value_kinds::decimal_from_text(t);
             row.push(if !t.is_empty() && n.is_finite() { V::Num(n) } else { V::Null });
             k += 1.0;
         }
@@ -874,7 +873,7 @@ fn decode_entities(text: &str) -> String {
         let b = tail.as_bytes();
         let (body_len, decoded) = if b.first() == Some(&b'#') && b.get(1).is_some_and(u8::is_ascii_digit) {
             let n = b[1..].iter().take_while(|c| c.is_ascii_digit()).count();
-            (1 + n, Some(string_to_number(&tail[1..1 + n])))
+            (1 + n, Some(crate::value_kinds::decimal_from_text(&tail[1..1 + n])))
         } else if b.first() == Some(&b'#')
             && matches!(b.get(1), Some(b'x' | b'X'))
             && b.get(2).is_some_and(u8::is_ascii_hexdigit)

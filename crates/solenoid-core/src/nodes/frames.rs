@@ -1879,7 +1879,7 @@ fn xlookup(c: &mut Call) -> Answer {
             if fb.is_empty() {
                 return Ok(Cv::V(err(ErrorCode::NotAvailable, "No row matched the lookup value")));
             }
-            let n = crate::jsnum::string_to_number(&fb);
+            let n = crate::value_kinds::decimal_from_text(&fb);
             Ok(Cv::V(if n.is_nan() { V::str(&fb) } else { V::Num(n) }))
         };
         match &lookup_raw {

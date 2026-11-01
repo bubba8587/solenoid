@@ -774,7 +774,7 @@ fn parse_cx(s: &str) -> (f64, f64) {
             None => unsigned(s),
         }
     };
-    let n = crate::jsnum::string_to_number;
+    let n = crate::value_kinds::decimal_from_text;
     if t.is_empty() {
         return nan;
     }

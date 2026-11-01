@@ -9,7 +9,7 @@ use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{value_text, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{lower_text, nan_max, nan_min, string_to_number, trim_space};
+use crate::jsnum::{lower_text, nan_max, nan_min, trim_space};
 use serde_json::{json, Map, Value as Json};
 use solenoid_schedule::{
     self as engine, CalendarSpec, Dependency, LinkType, PlanTask, ScheduleOutput, ScheduledTask, TaskCalendar,
@@ -288,7 +288,7 @@ fn read_duration(v: Option<&V>, hours_per_day: f64, name: &str) -> Rd<f64> {
     }
     let d = match v {
         V::Num(n) if n.is_finite() => *n,
-        V::Str(s) => string_to_number(s),
+        V::Str(s) => crate::value_kinds::decimal_from_text(s),
         _ => f64::NAN,
     };
     if !d.is_finite() || d < 0.0 {
@@ -1198,7 +1198,7 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
         let key = lower_text(trim_space(&part[..eq])).into_owned();
         let val = trim_space(&part[eq + 1..]);
         let lower = lower_text(val).into_owned();
-        let n = string_to_number(val);
+        let n = crate::value_kinds::decimal_from_text(val);
         let int = n.is_finite() && n.fract() == 0.0;
         match key.as_str() {
             "layout" if lower == "gantt" || lower == "calendar" => {

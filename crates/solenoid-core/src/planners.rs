@@ -7,8 +7,7 @@ use crate::decision::sort_by_num;
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{
-    is_space_char, js_string, lower_text, nan_max, nan_min, number_to_string, round_half_up, string_to_number,
-    trim_space,
+    is_space_char, js_string, lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space,
 };
 
 type Res<T> = Result<T, SolError>;
@@ -396,7 +395,7 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
             FrameCell::Str(s) => {
                 let kept: String =
                     s.chars().filter(|&ch| !matches!(ch, ',' | '$' | '£' | '€') && !is_space_char(ch)).collect();
-                string_to_number(&kept)
+                crate::value_kinds::decimal_from_text(&kept)
             }
             _ => 0.0,
         };

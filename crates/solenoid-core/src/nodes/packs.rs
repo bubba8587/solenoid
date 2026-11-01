@@ -427,7 +427,7 @@ fn count_at(s: &[u16], i: usize) -> Option<(usize, f64)> {
             j += 1;
         }
     }
-    Some((j - i, crate::jsnum::string_to_number(&String::from_utf16_lossy(&s[i..j]))))
+    Some((j - i, crate::value_kinds::decimal_from_text(&String::from_utf16_lossy(&s[i..j]))))
 }
 
 fn unit_text(u: Option<&u16>) -> String {
