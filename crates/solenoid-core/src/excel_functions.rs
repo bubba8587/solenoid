@@ -4885,17 +4885,14 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if a.len() < 2 {
                 return V::Fx(FxError::NotAvailable);
             }
+            // Positions count UTF-16 units, as Excel's do; the search starts at `start` (1 by default).
             let (find, within) = (utf16(&to_str(&a[0])), utf16(&to_str(&a[1])));
-            let from = match start {
-                V::Undef => -1.0,
-                v => num_blank_zero(v) - 1.0,
-            };
-            let from = clamp_index(from, within.len());
+            let from = if matches!(start, V::Null | V::Undef) { 0 } else { to_num(start).trunc() as usize - 1 };
             let hit = (from..=within.len().saturating_sub(find.len()))
                 .find(|&i| i + find.len() <= within.len() && within[i..i + find.len()] == find[..]);
             match hit {
-                Some(i) if from <= within.len() => V::Num(i as f64 + 1.0),
-                _ => V::Fx(FxError::Value),
+                Some(i) => V::Num(i as f64 + 1.0),
+                None => V::err(sol_error(ErrorCode::Value, "FIND: the text isn't there")),
             }
         }
         F::XOR => {
