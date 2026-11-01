@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{call_function, to_f64_js, V};
+use crate::excel_functions::{call_function, num_blank_zero, V};
 use crate::frame::FrameCell;
 use crate::jsnum::trim_space;
 use crate::spelled::spelled;
@@ -633,7 +633,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
             "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE",
         ));
     }
-    let xy = || (to_f64_js(&na), to_f64_js(&nb));
+    let xy = || (num_blank_zero(&na), num_blank_zero(&nb));
     match op {
         BinOp::Add => {
             let (x, y) = xy();

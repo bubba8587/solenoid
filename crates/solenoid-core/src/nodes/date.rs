@@ -7,7 +7,7 @@ use super::values::{Column, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_less, to_f64_js, V};
+use crate::excel_functions::{js_less, num_blank_zero, V};
 use crate::frame::FrameColType;
 use crate::jsnum::trim_space;
 use crate::value_kinds::OVERFLOW_MESSAGE;
@@ -189,7 +189,7 @@ fn date_diff(c: &Call) -> V {
         match setting(c, "basis", V::Undef) {
             e @ V::Err(_) => return e,
             V::Undef => {}
-            raw => basis = to_f64_js(&raw).trunc(),
+            raw => basis = num_blank_zero(&raw).trunc(),
         }
     }
     let unit = match op {

@@ -246,15 +246,14 @@ pub fn set_row_number(n: Option<f64>) {
 
 // ─── JavaScript's coercions ─────────────────────────────────────────────────────
 
-/// A JS number operand as arithmetic reads it (`undefined` is NaN), except that text, and a list holding text, is
-/// never read as a number ([[C10]] socketLattice).
-pub fn to_f64_js(v: &V) -> f64 {
+/// A number, a logical as 1 or 0, a blank as 0 and a list of one as its item; anything else, text included, is NaN
+/// ([[C10]] socketLattice).
+pub fn num_blank_zero(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
         V::Null => 0.0,
-        // An array reads as its joined text.
-        V::List(_) if !holds_text(v) => string_to_number(&js_string_of(v)),
+        V::List(items) if items.len() == 1 => num_blank_zero(&items[0]),
         _ => f64::NAN,
     }
 }
@@ -278,7 +277,7 @@ pub fn js_less(a: &V, b: &V) -> bool {
     match (prim(a), prim(b)) {
         (Some(x), Some(y)) => crate::jsnum::compare_utf16(&x, &y) == std::cmp::Ordering::Less,
         (x, y) => {
-            let num = |p: Option<String>, v: &V| p.map_or_else(|| to_f64_js(v), |t| string_to_number(&t));
+            let num = |p: Option<String>, v: &V| p.map_or_else(|| num_blank_zero(v), |t| string_to_number(&t));
             num(x, a) < num(y, b)
         }
     }
@@ -1331,7 +1330,7 @@ impl JsSum {
         match self {
             JsSum::Str(s) => JsSum::Str(s + &js_string_of(v)),
             JsSum::Num(x) if texty => JsSum::Str(number_to_string(x) + &js_string_of(v)),
-            JsSum::Num(x) => JsSum::Num(x + to_f64_js(v)),
+            JsSum::Num(x) => JsSum::Num(x + num_blank_zero(v)),
         }
     }
 
@@ -4249,7 +4248,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::CEILING_MATH | F::FLOOR_MATH => {
             let raw_sig = arg(a, 1);
             let sig = match raw_sig {
-                V::Undef if arm == F::CEILING_MATH => V::Num(if to_f64_js(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
+                V::Undef if arm == F::CEILING_MATH => V::Num(if num_blank_zero(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
                 V::Undef => V::Num(1.0),
                 other => parse_number(other),
             };
@@ -4725,15 +4724,15 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
                 return V::Null;
             }
-            let tol = if matches!(arg(a, 2), V::Null | V::Undef) { 1e-9 } else { to_f64_js(arg(a, 2)) };
-            V::Bool((to_f64_js(x) - to_f64_js(y)).abs() <= tol)
+            let tol = if matches!(arg(a, 2), V::Null | V::Undef) { 1e-9 } else { num_blank_zero(arg(a, 2)) };
+            V::Bool((num_blank_zero(x) - num_blank_zero(y)).abs() <= tol)
         }
         F::HYPOTENUSE => {
             let (x, y) = (arg(a, 0), arg(a, 1));
             if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
                 return V::Null;
             }
-            V::Num(hypot_all(&[to_f64_js(x), to_f64_js(y)]))
+            V::Num(hypot_all(&[num_blank_zero(x), num_blank_zero(y)]))
         }
         F::NAND | F::NOR => {
             let and = arm == F::NAND;
@@ -4918,7 +4917,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let (find, within) = (utf16(&to_str(&a[0])), utf16(&to_str(&a[1])));
             let from = match start {
                 V::Undef => -1.0,
-                v => to_f64_js(v) - 1.0,
+                v => num_blank_zero(v) - 1.0,
             };
             let from = clamp_index(from, within.len());
             let hit = (from..=within.len().saturating_sub(find.len()))
@@ -5087,8 +5086,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                     _ => Err(()),
                 },
             };
-            let tails = if matches!(arg(a, 2), V::Null | V::Undef) { 2.0 } else { to_f64_js(arg(a, 2)) };
-            let ty = to_f64_js(arg(a, 3));
+            let tails = if matches!(arg(a, 2), V::Null | V::Undef) { 2.0 } else { num_blank_zero(arg(a, 2)) };
+            let ty = num_blank_zero(arg(a, 3));
             let kind = if ty == 1.0 {
                 TTestKind::Paired
             } else if ty == 2.0 {
@@ -5131,7 +5130,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::LOG2 => match arg(a, 0) {
             V::Null | V::Undef => V::Null,
             x => {
-                let n = to_f64_js(x);
+                let n = num_blank_zero(x);
                 if n <= 0.0 {
                     V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"))
                 } else {
@@ -5186,7 +5185,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             };
             V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
         }
-        F::SPELLNUMBER => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
+        F::SPELLNUMBER => match crate::text_ops::spell_number(num_blank_zero(arg(a, 0))) {
             Ok(words) => V::str(&words),
             Err(msg) => V::err(sol_error(ErrorCode::Domain, msg)),
         },
@@ -5484,8 +5483,8 @@ fn js_linear_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let y_mean = ys[..n].iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / n as f64;
     let (mut sxy, mut sxx) = (0.0, 0.0);
     for i in 0..n {
-        let dx = to_f64_js(&xs[i]) - x_mean;
-        sxy += dx * (to_f64_js(&ys[i]) - y_mean);
+        let dx = num_blank_zero(&xs[i]) - x_mean;
+        sxy += dx * (num_blank_zero(&ys[i]) - y_mean);
         sxx += dx * dx;
     }
     if sxx == 0.0 {
@@ -5573,11 +5572,11 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
     let mut prob = 0.0;
     let mut text = false;
     for (x, y) in pairs {
-        let x = to_f64_js(x);
+        let x = num_blank_zero(x);
         if x >= lo && x <= hi {
             match y {
                 V::Str(_) | V::Fx(_) | V::List(_) => text = true,
-                y => prob += to_f64_js(y),
+                y => prob += num_blank_zero(y),
             }
         }
     }
@@ -5600,12 +5599,12 @@ fn fx_edate(start: &V, months: &V) -> V {
         FxDate::Date(t) => t,
         FxDate::Err(e) => return V::Fx(e),
     };
-    if to_f64_js(months).is_nan() {
+    if num_blank_zero(months).is_nan() {
         return V::Fx(FxError::Value);
     }
     let mut stored = zone::get_date(date);
     date = zone::set_date(date, 1.0);
-    let m = to_f64_js(months).trunc();
+    let m = num_blank_zero(months).trunc();
     date = zone::set_month(date, zone::get_month(date) + m);
     let target = zone::get_month(date);
     if stored > 28.0 {
@@ -5634,7 +5633,7 @@ fn fx_edate(start: &V, months: &V) -> V {
 /// an encoder or a joined pair reads differently.
 /// Whether the match ignores case.
 fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
-    let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { to_f64_js(cs) };
+    let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { num_blank_zero(cs) };
     if v == 0.0 {
         Ok(false)
     } else if v == 1.0 {
@@ -5649,7 +5648,7 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
     if matches!(raw, V::Null | V::Undef) || matches!(raw, V::Str(s) if s.is_empty()) {
         return Some(0.0);
     }
-    let n = to_f64_js(raw).trunc();
+    let n = num_blank_zero(raw).trunc();
     n.is_finite().then_some(n)
 }
 
@@ -5675,7 +5674,7 @@ fn regex_call(name: &str, a: &[V]) -> V {
         }
     }
     if name == "REGEXEXTRACT" {
-        mode = if matches!(arg(a, 2), V::Null | V::Undef) { 0.0 } else { to_f64_js(arg(a, 2)) };
+        mode = if matches!(arg(a, 2), V::Null | V::Undef) { 0.0 } else { num_blank_zero(arg(a, 2)) };
         if mode != 0.0 && mode != 1.0 && mode != 2.0 {
             return V::err(sol_error(ErrorCode::Value, "REGEXEXTRACT: return_mode must be 0, 1 or 2"));
         }
@@ -5865,7 +5864,7 @@ fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
     };
     let out = match fx_round(&V::Num(number), &decimals) {
         V::Num(x) => {
-            let dn = to_f64_js(&decimals);
+            let dn = num_blank_zero(&decimals);
             let fd = if dn >= 0.0 { dn } else { 0.0 };
             if fd > 100.0 {
                 return Err(Thrown::value("minimumFractionDigits value is out of range."));
@@ -5893,7 +5892,7 @@ fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
 pub(crate) fn js_number_of(v: &V) -> f64 {
     match v {
         V::Null => 0.0,
-        other => to_f64_js(other),
+        other => num_blank_zero(other),
     }
 }
 
@@ -6163,7 +6162,7 @@ fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
 fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
     let ds = &dates[..n.min(dates.len())];
     let before = ds.iter().skip(1).any(|d| js_less(d, &ds[0]));
-    (ds.iter().map(to_f64_js).collect(), before)
+    (ds.iter().map(num_blank_zero).collect(), before)
 }
 
 /// `parseInt(x, 10)` of a number: the integer its `String` starts with.

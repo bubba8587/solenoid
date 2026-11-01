@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, to_f64_js, to_num, to_str, Thrown, V};
+use crate::excel_functions::{js_string_of, num_blank_zero, to_num, to_str, Thrown, V};
 use crate::jsnum::{lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space};
 use crate::sort::stable_sort_by;
 use crate::value_kinds::MAX_GENERATED;
@@ -121,7 +121,7 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
 
 /// `Number(v)`.
 fn number(v: &V) -> f64 {
-    to_f64_js(v)
+    num_blank_zero(v)
 }
 
 fn sq(x: f64) -> f64 {

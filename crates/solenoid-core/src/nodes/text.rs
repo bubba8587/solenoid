@@ -6,7 +6,7 @@ use super::kit::{broadcast_err, core_call};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, to_f64_js, V};
+use crate::excel_functions::{js_string_of, num_blank_zero, V};
 use crate::jsnum::trim_space;
 
 /// An input's raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
@@ -80,7 +80,7 @@ fn str_val(c: &Call, key: &str) -> V {
 
 /// `Math.floor(x)` on whatever JS hands it.
 pub(crate) fn js_floor(v: &V) -> f64 {
-    to_f64_js(v).floor()
+    num_blank_zero(v).floor()
 }
 
 /// `Math.max(a, b)`: NaN wins, and +0 beats -0.
@@ -234,7 +234,7 @@ fn wrap_text(c: &mut Call) -> Answer {
     if matches!(text, V::Null) {
         return done(c, "cachedResult", V::Null);
     }
-    if to_f64_js(&w) < 1.0 {
+    if num_blank_zero(&w) < 1.0 {
         return done(c, "cachedResult", err(ErrorCode::Domain, "Width must be at least 1"));
     }
     let r = core_call("WRAPTEXT", &[text, w]);

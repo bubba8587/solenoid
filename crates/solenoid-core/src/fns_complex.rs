@@ -52,7 +52,7 @@ fn arg(a: &[V], i: usize) -> &V {
 
 /// `Number(v)`, which never reads text ([[C10]] socketLattice).
 fn js_number(v: &V) -> f64 {
-    crate::excel_functions::to_f64_js(v)
+    crate::excel_functions::num_blank_zero(v)
 }
 
 fn is_nullish(v: &V) -> bool {

@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{holds_text, js_string_of, to_f64_js, V};
+use crate::excel_functions::{holds_text, js_string_of, num_blank_zero, V};
 use crate::jsnum::{lower_text, round_half_up, trim_space};
 use crate::nodes::packs as k;
 
@@ -173,7 +173,7 @@ fn err(code: ErrorCode, message: impl Into<String>) -> V {
 
 /// `Number(v)`, where it is finite.
 fn finite(v: &V) -> Option<f64> {
-    Some(to_f64_js(v)).filter(|n| n.is_finite())
+    Some(num_blank_zero(v)).filter(|n| n.is_finite())
 }
 
 /// `v == null ? dflt : String(v).toLowerCase()`.

@@ -399,7 +399,7 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
 
 /// `-x`, `+x`: JavaScript's unary coercion, which never reads text ([[C10]] socketLattice).
 fn js_unary(v: &V) -> f64 {
-    crate::excel_functions::to_f64_js(if matches!(v, V::Null) { &V::Undef } else { v })
+    crate::excel_functions::num_blank_zero(if matches!(v, V::Null) { &V::Undef } else { v })
 }
 
 /// The answer an operator gives text ([[C10]] socketLattice).

@@ -7,7 +7,7 @@ use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{to_f64_js, V};
+use crate::excel_functions::{num_blank_zero, V};
 use crate::jsnum::round_half_up;
 use libm::{exp, log};
 use std::rc::Rc;
@@ -77,7 +77,7 @@ pub(crate) fn items(v: &V) -> &[V] {
 
 /// JS `+v`.
 pub(crate) fn js_num(v: &V) -> f64 {
-    to_f64_js(v)
+    num_blank_zero(v)
 }
 
 /// `Number.isFinite(v)`, which doesn't coerce.
