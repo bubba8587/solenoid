@@ -3,7 +3,7 @@
 //! those of `@solenoid/gantt-layout`'s `payload.ts`) and Earned Value, and the LAMBDA hosts SCAN and ODE Integrate.
 
 use super::frames::{frame_v, json_num, tag_cell_unit, thrown};
-use super::list::{js_number, nullish, slot, truthy};
+use super::list::{js_number, nullish, present, slot};
 use super::Cv;
 use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
@@ -958,7 +958,7 @@ fn schedule_card(c: &mut Call) -> Answer {
     let critical = c.field_str("criticalPaths", "one").to_string();
     let split = c.field_str("progress", "split") != "move";
     let hpd = js_arith(&hours_in);
-    let hours = if truthy(&hours_in) && hpd > 0.0 {
+    let hours = if present(&hours_in) && hpd > 0.0 {
         Hours { n: hpd, is_num: matches!(hours_in, V::Num(_)) }
     } else {
         Hours { n: 8.0, is_num: true }

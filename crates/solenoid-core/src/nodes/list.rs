@@ -93,11 +93,10 @@ fn list_in(c: &Call, key: &str) -> V {
     or(slot(c, key), empty())
 }
 
-/// `x.length` of a value JS holds as an array (a string's UTF-16 length; anything else has none).
+/// A list's length; anything else is no list.
 fn length(v: &V) -> Option<usize> {
     match v {
         V::List(l) => Some(l.len()),
-        V::Str(s) => Some(s.encode_utf16().count()),
         _ => None,
     }
 }
@@ -110,12 +109,12 @@ fn required(c: &Call, key: &str) -> V {
     read_role(c, key, &Role::Required)
 }
 
-/// `Math.round(+v)`.
+/// A number rounded half up, a logical as 1 or 0.
 fn rounded(v: &V) -> f64 {
     round_half_up(super::kit::num(v))
 }
 
-/// `Number.isFinite(v)`: a number only, no coercion.
+/// A finite number, no coercion.
 fn finite(v: &V) -> bool {
     matches!(v, V::Num(n) if n.is_finite())
 }
@@ -260,9 +259,11 @@ fn strict_eq(a: &V, b: &V) -> bool {
 
 fn list_length(c: &mut Call) -> Answer {
     let arr = slot(c, "list");
-    let result = match length(&arr) {
-        Some(n) if !nullish(&arr) && !matches!(&arr, V::Str(s) if s.is_empty()) => V::Num(n as f64),
-        _ => V::Null,
+    // A single value is one item, as Excel's ROWS counts it; a blank or empty text is none.
+    let result = match &arr {
+        V::List(l) => V::Num(l.len() as f64),
+        v if nullish(v) || matches!(v, V::Str(s) if s.is_empty()) => V::Null,
+        _ => V::Num(1.0),
     };
     shown(c, "cachedResult", "result", result)
 }
@@ -527,15 +528,9 @@ fn pad(c: &mut Call) -> Answer {
     shown(c, "cachedList", "result", r)
 }
 
-/// A value's JS truthiness.
-pub(crate) fn truthy(v: &V) -> bool {
-    match v {
-        V::Undef | V::Null => false,
-        V::Bool(b) => *b,
-        V::Num(n) => *n != 0.0 && !n.is_nan(),
-        V::Str(s) => !s.is_empty(),
-        _ => true,
-    }
+/// Whether anything is wired or typed: not blank, nor empty text. A zero or a FALSE is a value.
+pub(crate) fn present(v: &V) -> bool {
+    !super::stats::blank(v)
 }
 
 fn weighted(c: &mut Call) -> Answer {
@@ -545,13 +540,13 @@ fn weighted(c: &mut Call) -> Answer {
         "wstdev" => "WSTDEV",
         _ => "WAVG",
     };
-    let r = if truthy(&values) && truthy(&weights) { core_call(name, &[values, weights]) } else { V::Null };
+    let r = if present(&values) && present(&weights) { core_call(name, &[values, weights]) } else { V::Null };
     shown(c, "cachedResult", "result", r)
 }
 
 fn fill(c: &mut Call) -> Answer {
     let arr = slot(c, "list");
-    if !truthy(&arr) {
+    if !present(&arr) {
         return shown(c, "cachedList", "result", empty());
     }
     let constant = c.read_num("value", 0.0);

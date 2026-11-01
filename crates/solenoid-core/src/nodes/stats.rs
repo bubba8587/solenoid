@@ -52,20 +52,14 @@ pub(crate) fn nullish(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
-/// JS `!v`.
-pub(crate) fn falsy(v: &V) -> bool {
-    match v {
-        V::Null | V::Undef => true,
-        V::Bool(b) => !b,
-        V::Num(n) => *n == 0.0 || n.is_nan(),
-        V::Str(s) => s.is_empty(),
-        _ => false,
-    }
+/// Blank: nothing wired or typed, or empty text. A 0 or a FALSE is a value.
+pub(crate) fn blank(v: &V) -> bool {
+    matches!(v, V::Null | V::Undef) || matches!(v, V::Str(s) if s.is_empty())
 }
 
-/// `!arr || arr.length === 0`.
+/// Blank, or an empty list.
 pub(crate) fn no_list(v: &V) -> bool {
-    falsy(v) || matches!(v, V::List(l) if l.is_empty())
+    blank(v) || matches!(v, V::List(l) if l.is_empty())
 }
 
 pub(crate) fn items(v: &V) -> &[V] {
@@ -368,7 +362,7 @@ fn frequency(c: &mut Call) -> Answer {
     let bins = first(c, "bins");
     // The FREQUENCY formula's body, so the card and the formula agree: counts in the bins' own order, blanks and text
     // skipped.
-    let result = if !falsy(&data) && len(&bins) > 0 { core_call("FREQUENCY", &[data, bins]) } else { list(Vec::new()) };
+    let result = if !blank(&data) && len(&bins) > 0 { core_call("FREQUENCY", &[data, bins]) } else { list(Vec::new()) };
     c.show("cachedList", result.clone());
     Ok(vec![("result".into(), Cv::from(result))])
 }
@@ -511,7 +505,7 @@ fn sample_var(xs: &[f64]) -> f64 {
 fn hypothesis_test(c: &mut Call) -> Answer {
     let op = c.field_str("op", "z").to_string();
     let a = first(c, "a");
-    let truthy = |v: &V| !falsy(v);
+    let present = |v: &V| !blank(v);
     let result = match op.as_str() {
         "anova" | "kruskal" => match groups_of(&first(c, "groups")) {
             Some(g) => core_call(if op == "anova" { "ANOVA" } else { "KRUSKAL" }, &g),
@@ -519,7 +513,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
         },
         "mannwhitney" | "wilcoxon" | "ks" => {
             let b = first(c, "b");
-            if truthy(&a) && truthy(&b) {
+            if present(&a) && present(&b) {
                 let name = match op.as_str() {
                     "mannwhitney" => "MANNWHITNEY",
                     "wilcoxon" => "WILCOXON",
@@ -588,7 +582,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
         "chisq" => {
             let ex = first(c, "b");
             let mut r = V::Null;
-            if truthy(&a) && truthy(&ex) && len(&a) >= 2 && len(&ex) >= len(&a) {
+            if present(&a) && present(&ex) && len(&a) >= 2 && len(&ex) >= len(&a) {
                 let (obs, exp_) = (items(&a), items(&ex));
                 let n = obs.len();
                 let mut chi2 = 0.0;
@@ -611,7 +605,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
         }
         _ => {
             let b = first(c, "b");
-            if truthy(&a) && truthy(&b) {
+            if present(&a) && present(&b) {
                 // The kernels read their lists as JS arithmetic does: a blank as 0, a logical as 0 or 1.
                 let as_js = |v: &V| match v {
                     V::List(l) => list(
@@ -804,7 +798,7 @@ fn linest(c: &mut Call) -> Answer {
                 let at = |i: usize| or(l.get(i).cloned().unwrap_or(V::Undef), V::Null);
                 Some((at(0), at(1), at(2)))
             }
-            other if !falsy(&other) => Some((V::Null, V::Null, V::Null)),
+            other if !blank(&other) => Some((V::Null, V::Null, V::Null)),
             _ => None,
         }
     };

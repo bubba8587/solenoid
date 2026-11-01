@@ -146,17 +146,6 @@ fn title(opts: &Obj, c: &Call, dflt: &str) -> String {
     }
 }
 
-/// JS truthiness of a wired value.
-fn truthy(v: &V) -> bool {
-    match v {
-        V::Undef | V::Null => false,
-        V::Num(n) => *n != 0.0 && !n.is_nan(),
-        V::Str(s) => !s.is_empty(),
-        V::Bool(b) => *b,
-        _ => true,
-    }
-}
-
 /// The options input, parsed: wired, anything but text or a blank is the crash `input.split` throws.
 fn read_options(c: &Call) -> Result<Obj, V> {
     let lit = match c.string_literal("options") {
@@ -165,7 +154,7 @@ fn read_options(c: &Call) -> Result<Obj, V> {
     };
     match c.read_input("options", lit) {
         V::Str(s) => Ok(parse_chart_options(&s)),
-        v if !truthy(&v) => Ok(Obj::new()),
+        V::Null | V::Undef => Ok(Obj::new()),
         _ => Err(super::err(crate::error_value::ErrorCode::Type, "Chart options take text")),
     }
 }

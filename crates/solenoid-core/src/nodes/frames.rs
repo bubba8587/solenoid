@@ -1509,7 +1509,7 @@ fn add_column(c: &mut Call) -> Answer {
     let raw = card(c, "frame");
     let values = first(c, "values");
     let name_raw = str_input(c, "name", "");
-    let blank = matches!(raw, Cv::V(V::Null)) || super::stats::falsy(&values) || matches!(name_raw, V::Null);
+    let blank = matches!(raw, Cv::V(V::Null)) || super::stats::blank(&values) || matches!(name_raw, V::Null);
     if blank {
         return shown_frame(c, "frame", V::Null);
     }

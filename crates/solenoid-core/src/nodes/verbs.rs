@@ -9,7 +9,7 @@ use super::frames::{
     matrix_cells_from_list, select_cube_rows, str_input, tag_cell_unit, thrown, to_core, to_json, trimmed,
     widen_to_frame, UnitTag,
 };
-use super::list::{frame_cell_of, infer_column, truthy};
+use super::list::{frame_cell_of, infer_column, present};
 use super::refs;
 use super::scalar::{read_role, Role};
 use super::Cv;
@@ -416,7 +416,7 @@ fn rename(c: &mut Call) -> Answer {
     let (from, to) = (indexed(&from), indexed(&to));
     let mut map = Map::new();
     for (a, b) in from.iter().zip(to.iter()) {
-        if truthy(a) && truthy(b) {
+        if present(a) && present(b) {
             map.insert(value_text(a), to_json(b));
         }
     }
@@ -702,7 +702,7 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
 fn get_column(c: &mut Call) -> Answer {
     let f = first(c, "frame");
     let name = str_input(c, "name", "");
-    if !f.v().is_none_or(truthy) || matches!(name, V::Null) || trimmed(&name, "The name")?.is_empty() {
+    if !f.v().is_none_or(present) || matches!(name, V::Null) || trimmed(&name, "The name")?.is_empty() {
         return values_answer(c, V::Null, V::Null);
     }
     let V::Str(name) = name else { return values_answer(c, V::Null, V::Null) };
