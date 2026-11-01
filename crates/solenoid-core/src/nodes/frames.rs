@@ -1014,7 +1014,7 @@ fn top_values(cells: &[V]) -> Json {
             }
         }
     }
-    counts.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| crate::jsnum::compare_utf16(&a.0, &b.0)));
+    counts.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| crate::jsnum::compare_text(&a.0, &b.0)));
     counts.truncate(TOP_VALUES);
     let shown: usize = counts.iter().map(|(_, n)| n).sum();
     let values: Vec<Json> = counts.into_iter().map(|(text, count)| json!({ "text": text, "count": count })).collect();

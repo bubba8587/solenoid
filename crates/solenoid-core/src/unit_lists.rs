@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::error_value::SolError;
 use crate::excel_functions::V;
 use crate::fns_lists::{running_plain, RunOp};
-use crate::jsnum::{compare_utf16, number_to_string, round_half_up};
+use crate::jsnum::{compare_text, number_to_string, round_half_up};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{to_precision, unit_error, READINGS_ADD};
 
@@ -39,7 +39,7 @@ const DERIVED_DISPLAY: [(&str, &[(&str, f64)]); 7] = [
 /// The keys of `dim` in JavaScript's default sort order.
 fn sorted_keys(dim: &Dim) -> Vec<&String> {
     let mut keys: Vec<&String> = dim.keys().collect();
-    keys.sort_by(|a, b| compare_utf16(a, b));
+    keys.sort_by(|a, b| compare_text(a, b));
     keys
 }
 

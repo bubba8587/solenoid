@@ -394,7 +394,7 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guard`. |
 | `&` | Both sides as text: numbers through `number_to_text`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
-| `<` `>` `<=` `>=` | Two numbers numerically; two strings by UTF-16 code unit (`compare_utf16`, `jsnum.rs`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
+| `<` `>` `<=` `>=` | Two numbers numerically; two strings by code point (`compare_text`, `jsnum.rs`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
 
 **Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filter's text ops. EXACT and the "Match case" option compare case-sensitively. Every identity operation respects case instead: Join keys, GROUPBY keys and Distinct ([[frame-verbs]]), since merging "Apple" and "apple" into one group or one match would destroy a distinction the data held, with nothing on screen to show it. Ordering goes by character code and so respects case too ([[C59]] byteStringOrder). A per-verb option to ignore case in keys would be an addition inside this rule.
 

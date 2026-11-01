@@ -71,7 +71,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 
 **No visible change (delete the JS framing):**
 - [ ] IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree (`zone.rs` reads `Intl` in wasm). The local-time date copies went 2026-11-01; the host's local day for TODAY stays (a platform need).
-- [ ] Left of the renames (2026-11-01 renamed the JS helpers: `trim_space`, `lower_text`, `round_half_up`, `nan_min`, `fixed_text`…): the `compare_utf16` data sort to code-point order (astral characters move); `serial_to_js_date` to whole days. `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
+- [ ] Left of the renames (2026-11-01 renamed the JS helpers: `trim_space`, `lower_text`, `round_half_up`, `nan_min`, `fixed_text`…): `serial_to_js_date` to whole days; data sorts compare by code point since 2026-11-01 (`compare_text`). `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
 
 **Also:**
 - [ ] DATEVALUE reads Excel's formats (`3/5/24` with the 2029 pivot, `Mar 5`, `March 2024`, `5-Mar-24`) with its own reader, apart from what typed entry takes ([[C58]] tableInputRawText, [[C44]] dateSerials stay as they are; author 2026-11-01).

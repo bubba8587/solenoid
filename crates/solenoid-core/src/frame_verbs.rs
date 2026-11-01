@@ -20,7 +20,7 @@ use crate::frame::{
     frame_row_count, make_headers, same_column_unit, ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue,
 };
 use crate::jsnum::{
-    compare_utf16, js_string, lower_text, number_to_string, round_half_up, to_number, trim_space, trunc_count, truthy,
+    compare_text, js_string, lower_text, number_to_string, round_half_up, to_number, trim_space, trunc_count, truthy,
 };
 use crate::sort::stable_sort_by;
 use crate::spelled::{spelled, Wire};
@@ -457,7 +457,7 @@ fn sorted_index_order<'a>(
             })
             .collect();
         pairs.sort_unstable_by(|a, b| {
-            let c = compare_utf16(a.0, b.0);
+            let c = compare_text(a.0, b.0);
             (if desc { c.reverse() } else { c }).then(a.1.cmp(&b.1))
         });
         pairs.into_iter().map(|(_, i)| i).collect()
@@ -2337,7 +2337,7 @@ fn window_cmp(a: &FrameCell, b: &FrameCell) -> Ordering {
         (FrameCell::Num(x), FrameCell::Num(y)) => compare_numbers(*x, *y),
         (FrameCell::Str(x), FrameCell::Str(y)) => compare_strings(x, y),
         (FrameCell::Bool(x), FrameCell::Bool(y)) => x.cmp(y),
-        _ => compare_utf16(&js_string(a), &js_string(b)),
+        _ => compare_text(&js_string(a), &js_string(b)),
     }
 }
 

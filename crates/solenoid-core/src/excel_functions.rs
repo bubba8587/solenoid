@@ -272,7 +272,7 @@ pub(crate) fn holds_text(v: &V) -> bool {
 /// different kinds are never less than each other ([[C10]] socketLattice).
 pub fn value_less(a: &V, b: &V) -> bool {
     match (a, b) {
-        (V::Str(x), V::Str(y)) => crate::jsnum::compare_utf16(x, y) == std::cmp::Ordering::Less,
+        (V::Str(x), V::Str(y)) => crate::jsnum::compare_text(x, y) == std::cmp::Ordering::Less,
         (V::Num(_) | V::Bool(_), V::Num(_) | V::Bool(_)) => to_num(a) < to_num(b),
         _ => false,
     }

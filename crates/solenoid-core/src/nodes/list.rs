@@ -1924,7 +1924,7 @@ fn shuffle(c: &mut Call) -> Answer {
 /// `a > b` as JS compares them: two texts by UTF-16 order, anything else as numbers.
 fn js_greater(a: &V, b: &V) -> bool {
     match (a, b) {
-        (V::Str(x), V::Str(y)) => crate::jsnum::compare_utf16(x, y) == std::cmp::Ordering::Greater,
+        (V::Str(x), V::Str(y)) => crate::jsnum::compare_text(x, y) == std::cmp::Ordering::Greater,
         _ => js_number(a) > js_number(b),
     }
 }

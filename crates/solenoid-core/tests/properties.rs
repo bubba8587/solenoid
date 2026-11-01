@@ -6,7 +6,7 @@
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
-use solenoid_core::jsnum::{compare_utf16, number_to_string, round_half_up, string_to_number};
+use solenoid_core::jsnum::{compare_text, number_to_string, round_half_up, string_to_number};
 use solenoid_core::sort::stable_sort_by;
 use std::cmp::Ordering;
 
@@ -75,10 +75,10 @@ fn utf16_order_is_a_total_order() {
     let mut r = rng();
     for _ in 0..cases() {
         let (a, b, c) = (any_text(&mut r), any_text(&mut r), any_text(&mut r));
-        assert_eq!(compare_utf16(&a, &a), Ordering::Equal);
-        assert_eq!(compare_utf16(&a, &b), compare_utf16(&b, &a).reverse(), "{a:?} vs {b:?}");
-        if compare_utf16(&a, &b) != Ordering::Greater && compare_utf16(&b, &c) != Ordering::Greater {
-            assert_ne!(compare_utf16(&a, &c), Ordering::Greater, "{a:?} <= {b:?} <= {c:?} but not {a:?} <= {c:?}");
+        assert_eq!(compare_text(&a, &a), Ordering::Equal);
+        assert_eq!(compare_text(&a, &b), compare_text(&b, &a).reverse(), "{a:?} vs {b:?}");
+        if compare_text(&a, &b) != Ordering::Greater && compare_text(&b, &c) != Ordering::Greater {
+            assert_ne!(compare_text(&a, &c), Ordering::Greater, "{a:?} <= {b:?} <= {c:?} but not {a:?} <= {c:?}");
         }
     }
 }

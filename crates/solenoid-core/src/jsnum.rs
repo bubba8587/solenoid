@@ -22,26 +22,10 @@ pub fn number_to_string(x: f64) -> String {
     ryu_js::Buffer::new().format(x).to_string()
 }
 
-/// JS string `<`: UTF-16 code-unit order. It differs from UTF-8 byte order only where an astral
-/// character meets one in U+E000..U+FFFF, so the bytes decide up to the first differing character.
-pub fn compare_utf16(a: &str, b: &str) -> Ordering {
-    let (ab, bb) = (a.as_bytes(), b.as_bytes());
-    let high = |x: &[u8]| x.iter().any(|&c| c >= 0xEE);
-    let bytes = ab.cmp(bb);
-    if bytes == Ordering::Equal || (!high(ab) && !high(bb)) {
-        return bytes;
-    }
-    let n = ab.iter().zip(bb).take_while(|(x, y)| x == y).count();
-    if n == ab.len() || n == bb.len() {
-        return ab.len().cmp(&bb.len());
-    }
-    let mut s = n;
-    while !a.is_char_boundary(s) {
-        s -= 1;
-    }
-    let (ca, cb) = (a[s..].chars().next().unwrap(), b[s..].chars().next().unwrap());
-    let (mut ua, mut ub) = ([0u16; 2], [0u16; 2]);
-    ca.encode_utf16(&mut ua).cmp(&cb.encode_utf16(&mut ub))
+/// Two texts by character code (code point), the same on every machine ([[C59]] byteStringOrder): UTF-8 bytes
+/// compare in code-point order.
+pub fn compare_text(a: &str, b: &str) -> Ordering {
+    a.cmp(b)
 }
 
 /// JS `toLowerCase`, borrowing when nothing changes.
