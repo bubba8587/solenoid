@@ -398,7 +398,7 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 **Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filter's text ops. EXACT and the "Match case" option compare case-sensitively. Every identity operation respects case instead: Join keys, GROUPBY keys and Distinct ([[frame-verbs]]), since merging "Apple" and "apple" into one group or one match would destroy a distinction the data held, with nothing on screen to show it. Ordering goes by character code and so respects case too ([[C59]] byteStringOrder). A per-verb option to ignore case in keys would be an addition inside this rule.
 
-`0^0` is 1, the JavaScript answer, not Excel's `#NUM!` ([[B16]] oneFormulaSurface).
+`0^0` is 1, as in Google Sheets, IEEE 754's `pow` and nearly every language, not Excel's `#NUM!`: the empty product is 1, and the formulas that rely on it (polynomials, series, `x^0` columns) shouldn't break at zero ([[B27]] computeAnswersToExcel, the better app where Excel's answer only gets in the way).
 
 `number_to_text(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e21 or more, or nonzero below 1e-4, are written Excel's way: `1E+21`, `1E-07` (uppercase E, signed, at least two exponent digits).
 

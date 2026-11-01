@@ -85,10 +85,9 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] `js_sort.rs` to total comparators (NaN last) on `sort_by`; `v8_sort_short`, `sort_by_num` go.
 - [ ] Renames with no behavior change: `js_trim` (except TRIM), `js_lower`/`js_upper`, `math_*`, `js_sign`, `to_fixed`, `clamp_js`, `intl_usd`, the `compare_utf16` data sort to code-point order; `serial_to_js_date` to whole days. `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
 
-**Author calls:**
-- [ ] DATEVALUE's formats: Excel takes `3/5/24` (2-digit year, pivot 2029), `Mar 5`, `March 2024`, `5-Mar-24`; Solenoid refuses them. Widening what reads as a date is [[C58]] tableInputRawText and [[C44]] dateSerials.
-- [ ] `0^0` is 1 and the spec calls it "the JavaScript answer"; Excel says `#NUM!`. Keep as a better-app call, or follow Excel.
-- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs, BESSEL, DB/DDB, NPV, DEC2HEX, FACT): each is Excel's or goes. Its MIN/MAX/SUM text entries contradict its own Text arguments section; [[formula-language]] says LEN counts code points, while the code (correctly, as Excel) counts UTF-16 units.
+**Also:**
+- [ ] DATEVALUE reads Excel's formats (`3/5/24` with the 2029 pivot, `Mar 5`, `March 2024`, `5-Mar-24`) with its own reader, apart from what typed entry takes ([[C58]] tableInputRawText, [[C44]] dateSerials stay as they are; author 2026-11-01).
+- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs, BESSEL, DB/DDB, NPV, DEC2HEX, FACT): each becomes Excel's or goes, case by case. Its MIN/MAX/SUM text entries contradict its own Text arguments section; [[formula-language]] says LEN counts code points, while the code (correctly, as Excel) counts UTF-16 units.
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
