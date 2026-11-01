@@ -437,6 +437,73 @@ pub(crate) fn to_str(v: &V) -> String {
     }
 }
 
+/// DATEVALUE's own reading of Excel's date text, month first as US Excel reads it (author 2026-11-01): `3/5/24` and
+/// `3/5/2024`, `3/5` (this year), `5-Mar-24` and `5 Mar 2024`, `Mar 5` (this year; two digits up to 31 are a day),
+/// `Mar 5, 2024`, and `March 2024` (the month's first day). A two-digit year 00 to 29 is 2000 to 2029, else
+/// 1930 to 1999. A time after the date is ignored. None for anything else, which the shared reader then tries.
+fn excel_datevalue(t: &str) -> Option<f64> {
+    fn month_of(w: &str) -> Option<u32> {
+        const NAMES: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const FULL: [&str; 12] = [
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+        ];
+        let w = w.to_ascii_lowercase();
+        let i = NAMES.iter().position(|n| *n == w).or_else(|| FULL.iter().position(|n| *n == w))?;
+        Some(i as u32 + 1)
+    }
+    enum Tok {
+        N(u32, usize),
+        M(u32),
+    }
+    let date_part = t.split_whitespace().take_while(|w| !w.contains(':')).collect::<Vec<_>>().join(" ");
+    let slashed = date_part.contains('/');
+    let mut toks = Vec::new();
+    for w in date_part.split(['/', '-', ' ', ',']).filter(|w| !w.is_empty()) {
+        if w.bytes().all(|b| b.is_ascii_digit()) {
+            toks.push(Tok::N(w.parse().ok()?, w.len()));
+        } else {
+            toks.push(Tok::M(month_of(w)?));
+        }
+    }
+    let year_of = |n: u32, digits: usize| -> i64 {
+        match digits {
+            1 | 2 => i64::from(if n < 30 { 2000 + n } else { 1900 + n }),
+            _ => i64::from(n),
+        }
+    };
+    let this_year = || -> Option<i64> {
+        let now = clock()?.now;
+        Some(crate::date_serial::civil_from_days((now - 25569.0).floor() as i64).0)
+    };
+    let (y, m, d) = match toks.as_slice() {
+        [Tok::N(y, 4), Tok::N(m, _), Tok::N(d, _)] => (i64::from(*y), *m, *d),
+        [Tok::N(m, _), Tok::N(d, _), Tok::N(y, yd)] if slashed => (year_of(*y, *yd), *m, *d),
+        [Tok::N(m, _), Tok::N(d, _)] if slashed => (this_year()?, *m, *d),
+        [Tok::N(d, _), Tok::M(m), Tok::N(y, yd)] | [Tok::M(m), Tok::N(d, _), Tok::N(y, yd)] => {
+            (year_of(*y, *yd), *m, *d)
+        }
+        [Tok::N(d, dd), Tok::M(m)] | [Tok::M(m), Tok::N(d, dd)] if *dd <= 2 && *d <= 31 => (this_year()?, *m, *d),
+        [Tok::M(m), Tok::N(y, yd)] => (year_of(*y, *yd), *m, 1),
+        _ => return None,
+    };
+    if !(1..=12).contains(&m) || d == 0 {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(y, m, d);
+    (crate::date_serial::civil_from_days(days) == (y, m, d)).then_some(days as f64 + 25569.0)
+}
+
 pub(crate) fn value_err(f: &str) -> V {
     V::err(sol_error(ErrorCode::Value, format!("{f} needs a number")))
 }
@@ -3375,7 +3442,6 @@ const REFUSED: &[(&str, Refused)] = &[
     ("LOG2", nums(&[0])),
     ("PPMT", every()),
     ("FUZZYMATCH", nums(&[2])),
-    ("CHISQ.TEST", nums(&[0, 1])),
     ("F.TEST", nums(&[0, 1])),
     ("WAVG", nums(&[0, 1])),
     ("WVAR", nums(&[0, 1])),
@@ -4552,6 +4618,9 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let t = trim_space(&raw);
             let bad = |what: &str| V::err(sol_error(ErrorCode::Value, format!("Cannot parse \"{t}\" as a {what}")));
             if arm == F::DATEVALUE {
+                if let Some(d) = excel_datevalue(t) {
+                    return V::Num(d);
+                }
                 return match parse_date(t) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
                     DateReading::Ambiguous(e) => V::err(e),

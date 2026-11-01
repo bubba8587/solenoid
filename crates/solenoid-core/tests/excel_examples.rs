@@ -89,7 +89,7 @@ fn radix_and_roman_functions() {
     assert_eq!(num("DECIMAL(\"ff\", 16)"), 255.0);
     assert_eq!(num("DECIMAL(111, 2)"), 7.0);
     assert_eq!(num("DECIMAL(\"zap\", 36)"), 45745.0);
-    assert!(is_error("DECIMAL(\"0x1F\", 16)"));
+    assert_eq!(num("DECIMAL(\"0x1F\", 16)"), 31.0);
     assert!(is_error("DECIMAL(\"12z\", 10)"));
     for (form, want) in ["CDXCIX", "LDVLIV", "XDIX", "VDIV", "ID"].iter().enumerate() {
         assert_eq!(text(&format!("ROMAN(499, {form})")), *want);
@@ -105,7 +105,7 @@ fn radix_and_roman_functions() {
     assert_eq!(num("ARABIC(\"mcmxii\")"), 1912.0);
     assert_eq!(num("ARABIC(\"-IV\")"), -4.0);
     assert_eq!(num("ARABIC(\"\")"), 0.0);
-    assert!(is_error("ARABIC(\"VV\")"));
+    assert_eq!(num("ARABIC(\"VV\")"), 10.0);
     assert!(is_error("ARABIC(\"ABC\")"));
     assert_eq!(num("PERMUTATIONA(3, 2)"), 9.0);
     assert_eq!(num("PERMUTATIONA(2.7, 2.9)"), 4.0);

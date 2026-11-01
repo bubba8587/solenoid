@@ -353,3 +353,30 @@ fn engineering() {
     let bad = run(&rows, &env());
     assert!(bad.is_empty(), "\n{}", bad.join("\n"));
 }
+
+/// Answers the author's Excel gave (US locale), 2026-11-01, for cases Excel's documentation leaves open.
+#[test]
+fn checked_in_excel() {
+    let mut e = env();
+    e.insert("cf".into(), list(&[3.0, 5.0, 2.0, 8.0]));
+    e.insert("cg".into(), V::List(vec![V::Num(2.0), V::Num(6.0), V::str("x"), V::Num(9.0)].into()));
+    e.insert("fk".into(), list(&[1.0, 3.0, 7.0, 12.0, 20.0]));
+    e.insert("fl".into(), V::List(vec![V::Num(2.0), V::Null, V::Num(10.0), V::Num(15.0)].into()));
+    let rows = [
+        ("CHISQ.TEST(cf, cg)", N(0.854774575, 1e-9)),
+        ("ARABIC(\"MMMM\")", N(4000.0, 0.0)),
+        ("ARABIC(\"VV\")", N(10.0, 0.0)),
+        ("ARABIC(\"IIII\")", N(4.0, 0.0)),
+        ("DECIMAL(\"0x1F\", 16)", N(31.0, 0.0)),
+        ("DECIMAL(\" 1F\", 16)", N(31.0, 0.0)),
+        ("INDEX(FREQUENCY(fk, fl), 2)", N(2.0, 0.0)),
+        ("BESSELJ(1.9, 2)", N(0.329925828669785, 1e-15)),
+        ("BESSELY(2.5, 1)", N(0.145918137508313, 1e-15)),
+        ("DB(1000000, 100000, 6, 7, 7)", N(15845.09847, 1e-5)),
+        ("DATEVALUE(\"3/5/24\")", N(45356.0, 0.0)),
+        ("DATEVALUE(\"March 2024\")", N(45352.0, 0.0)),
+        ("DATEVALUE(\"5-Mar-24\")", N(45356.0, 0.0)),
+    ];
+    let bad = run(&rows, &e);
+    assert!(bad.is_empty(), "\n{}", bad.join("\n"));
+}

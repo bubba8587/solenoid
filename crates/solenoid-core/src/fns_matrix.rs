@@ -723,6 +723,9 @@ fn frequency_bins(data: &[V], bins: &[V]) -> V {
         return e;
     }
     let xs = present_numbers(data);
+    // A bin that is no number (a blank) is dropped, as Excel's FREQUENCY drops it: one count per number, plus one.
+    let bins: Vec<V> = bins.iter().filter(|b| finite_num(b).is_some()).cloned().collect();
+    let bins = &bins[..];
     let mut sorted: Vec<(f64, usize)> =
         bins.iter().enumerate().filter_map(|(i, b)| finite_num(b).map(|b| (b, i))).collect();
     crate::sort::stable_sort_by(&mut sorted, |a, c| {

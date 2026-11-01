@@ -355,44 +355,29 @@ fn roman_text(n: u32, form: u32) -> String {
     out
 }
 
-/// ARABIC's reading: any case, spaces around, a leading "-"; every form ROMAN writes reads back, and a numeral
-/// that repeats or subtracts past what a value up to 3999 allows is `None` (LibreOffice's check).
+/// ARABIC's reading, as lenient as Excel's: any case, spaces around, a leading "-"; each numeral adds, or subtracts
+/// when a larger one follows, so IIII is 4, VV 10 and MMMM 4000. Only a character that is no numeral fails.
 fn arabic_value(text: &str) -> Option<f64> {
     let t = text.trim();
     let (negative, body) = match t.strip_prefix('-') {
-        Some(rest) => (true, rest),
+        Some(rest) => (true, rest.trim_start()),
         None => (false, t),
     };
-    let digits: Vec<(u32, bool)> = body
+    let values: Vec<u32> = body
         .chars()
-        .map(|c| {
-            let i = ROMAN_CHARS.iter().position(|&r| r == c.to_ascii_uppercase())?;
-            Some((ROMAN_VALUES[i], i % 2 == 0))
-        })
+        .map(|c| ROMAN_CHARS.iter().position(|&r| r == c.to_ascii_uppercase()).map(|i| ROMAN_VALUES[i]))
         .collect::<Option<_>>()?;
-    let (mut value, mut rest, mut i) = (0u32, 3999u32, 0);
-    while i < digits.len() {
-        let (d1, tens) = digits[i];
-        let d2 = digits.get(i + 1).map_or(0, |d| d.0);
-        if d1 >= d2 {
-            value += d1;
-            rest %= d1 * if tens { 5 } else { 2 };
-            rest = rest.checked_sub(d1)?;
-            i += 1;
-        } else if d1 * 2 != d2 {
-            let diff = d2 - d1;
-            value += diff;
-            if rest < diff {
-                return None;
-            }
-            rest = d1 - 1;
-            i += 2;
+    let mut total = 0i64;
+    for (i, &v) in values.iter().enumerate() {
+        let v = i64::from(v);
+        if values.get(i + 1).is_some_and(|&n| i64::from(n) > v) {
+            total -= v;
         } else {
-            return None;
+            total += v;
         }
     }
-    let v = f64::from(value);
-    Some(if negative { -v } else { v })
+    let total = total as f64;
+    Some(if negative { -total } else { total })
 }
 
 // ─── Error function and CHISQ.TEST's table ─────────────────────────────────────
@@ -408,10 +393,10 @@ fn erf_between(lower: f64, upper: f64) -> f64 {
     }
 }
 
-/// CHISQ.TEST's table: its rows, columns and numbers. A nested list is a row each (an array literal's
-/// `{1,2;3,4}`); a flat one is a column. A row of another length or a cell that is no number is `#VALUE!`, and an
-/// error cell is itself.
-fn chisq_table(v: &V) -> Result<(usize, usize, Vec<f64>), V> {
+/// CHISQ.TEST's table: its rows, columns and cells, a cell that is no number as None. A nested list is a row each (an
+/// array literal's `{1,2;3,4}`); a flat one is a column. A row of another length is `#VALUE!`, and an error cell is
+/// itself.
+fn chisq_table(v: &V) -> Result<(usize, usize, Vec<Option<f64>>), V> {
     let rows: Vec<&V> = match v {
         V::List(l) => l.iter().collect(),
         other => vec![other],
@@ -428,9 +413,9 @@ fn chisq_table(v: &V) -> Result<(usize, usize, Vec<f64>), V> {
         }
         for c in row {
             match c {
-                V::Num(n) => cells.push(*n),
+                V::Num(n) => cells.push(Some(*n)),
                 e @ (V::Fx(_) | V::Err(_)) => return Err(e.clone()),
-                _ => return Err(VALUE),
+                _ => cells.push(None),
             }
         }
     }
@@ -559,7 +544,13 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(e);
             }
             let Some(r) = num_of(&radix).map(f64::trunc) else { return Ok(VALUE) };
-            let text = if matches!(a[0], V::Null | V::Undef) { String::new() } else { value_text(&a[0]) };
+            let raw = if matches!(a[0], V::Null | V::Undef) { String::new() } else { value_text(&a[0]) };
+            // Spaces around are ignored, and base 16 takes a 0x prefix, as Excel's DECIMAL does.
+            let trimmed = raw.trim_matches(' ');
+            let text = match trimmed.get(..2) {
+                Some("0x" | "0X") if r == 16.0 => trimmed[2..].to_string(),
+                _ => trimmed.to_string(),
+            };
             if !(2.0..=36.0).contains(&r) || text.encode_utf16().count() > 255 {
                 return Ok(NUM);
             }
@@ -694,7 +685,10 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(NA);
             }
             let mut xsqr = 0.0;
+            // A pair with a cell that is no number adds nothing, while the degrees of freedom still count the table's
+            // shape, as Excel's do.
             for (x, e) in actual.iter().zip(&expected) {
+                let (Some(x), Some(e)) = (x, e) else { continue };
                 if *e <= 0.0 {
                     return Ok(if *e == 0.0 { V::Fx(FxError::DivZero) } else { NUM });
                 }
