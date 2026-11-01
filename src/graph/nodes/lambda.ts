@@ -1,5 +1,5 @@
 import { GraphNode } from "../graphModel";
-import { anyListIn, lambdaOut, readInput } from "./shared";
+import { anyListIn, lambdaOut } from "./shared";
 import { extractVariables, atColNames } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
@@ -85,24 +85,6 @@ export class LambdaNode extends GraphNode {
 
   /** An unchanged recompute returns the same LambdaValue object: consumers and the backend upload cache memo on identity. */
   data(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
-    const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
-    const descJson = JSON.stringify(this.varDescriptions);
-    const last = this._lastBuild;
-    if (
-      this.cachedValue && last && last.expr === this.expr && last.params === this.params &&
-      last.descJson === descJson && last.capturedVals.length === capturedVals.length &&
-      last.capturedVals.every((v, i) => Object.is(v, capturedVals[i]))
-    ) {
-      return { result: this.cachedValue };
-    }
-    const out = this.body(inputs);
-    this._lastBuild = this.cachedValue ? { expr: this.expr, params: this.params, descJson, capturedVals } : null;
-    return out;
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>): { result: LambdaValue | SolError | null } {
     return nodeOnCore(this, inputs) as { result: LambdaValue | SolError | null };
   }
-
-  private _lastBuild: { expr: string; params: string; descJson: string; capturedVals: unknown[] } | null = null;
 }

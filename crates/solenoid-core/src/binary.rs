@@ -140,7 +140,9 @@ impl<'a> Reader<'a> {
                 TAG_TRUE => FrameCell::Bool(true),
                 TAG_ERR_SAME => match &last {
                     Some(e) => FrameCell::Err(e.clone()),
-                    None => return Err(sol_error(ErrorCode::Error, "binary frame: a repeated error with none before it")),
+                    None => {
+                        return Err(sol_error(ErrorCode::Error, "binary frame: a repeated error with none before it"))
+                    }
                 },
                 tag @ (TAG_ERR | TAG_ERR_AT | TAG_ERR_AT_SLOT) => {
                     let code = ErrorCode::from_wire(self.cut.next()?);

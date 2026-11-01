@@ -1666,15 +1666,6 @@ export class ReconcileNode extends GraphNode {
 
 // ─── BUILD FRAME ───────────────────────────────────────────────────────────────
 
-/** What a builder card's frame was last built from. Identity-stable memo: a fresh FrameValue each pass would
- *  re-upload the frame to the backend. */
-const builtFrom = new WeakMap<object, readonly unknown[]>();
-
-function sameBuild(node: object, sig: readonly unknown[]): boolean {
-  const prev = builtFrom.get(node);
-  return !!prev && prev.length === sig.length && prev.every((v, i) => Object.is(v, sig[i]));
-}
-
 export class BuildFrameNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = {};
@@ -1689,14 +1680,8 @@ export class BuildFrameNode extends GraphNode {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: Record<string, unknown[] | undefined>) {
-    // Part of the memo key: a cable retyped between date and number must rebuild.
-    const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
-    const sig = [inputs.matrix?.[0], inputs.headers?.[0], dt];
-    if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
-    const out = nodeOnCore(this, inputs) as { frame: FrameValue | null };
-    builtFrom.set(this, sig);
-    return out;
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | null };
   }
 }
 
@@ -1761,15 +1746,8 @@ export class FrameFromListsNode extends GraphNode {
     return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })) };
   }
 
-  data(inputs: Record<string, unknown[] | undefined>) {
-    const sig = this.valuePairKeys().flatMap(([nameK, valsK]) => {
-      const sock = this.inputs[valsK]?.socket;
-      return [inputs[nameK]?.[0], this.stringLiterals[nameK], inputs[valsK]?.[0], sock instanceof SolenoidSocket ? sock.dataType : undefined];
-    });
-    if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
-    const out = nodeOnCore(this, inputs) as { frame: FrameValue | null };
-    builtFrom.set(this, sig);
-    return out;
+  data(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue | null } {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | null };
   }
 }
 

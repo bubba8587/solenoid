@@ -569,9 +569,7 @@ export class CurveNode extends GraphNode {
     return shapeOfFrameValue(curveToFrame([], []));
   }
 
-  /** The sample count is saved clamped, so it is written here before the body reads it. */
-  data(inputs: Record<string, unknown[] | undefined> = {}) {
-    this.literals.samples = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
+  data(inputs: Record<string, unknown[] | undefined> = {}): { result: FrameValue } {
     return nodeOnCore(this, inputs) as { result: FrameValue };
   }
 }
@@ -619,9 +617,7 @@ export class GridPainterNode extends GraphNode {
   }
 
   /** The size is saved clamped, so it is written here before the body reads it. */
-  data(inputs: Record<string, unknown[] | undefined> = {}) {
-    this.literals.rows = gridPainterDim(this.literals.rows ?? 6);
-    this.literals.cols = gridPainterDim(this.literals.cols ?? 8);
+  data(inputs: Record<string, unknown[] | undefined> = {}): { result: (number | null)[][] } {
     return nodeOnCore(this, inputs) as { result: (number | null)[][] };
   }
 }

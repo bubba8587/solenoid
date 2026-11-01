@@ -1,4 +1,7 @@
 // [[C22]], [[C25]] firstClassUnits
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import type { Schemes } from "../../../src/graph/schemes";
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
@@ -771,16 +774,21 @@ describe("binding pickers — explicit variable → column bindings", () => {
 });
 
 describe("identity-stable outputs — the backend upload cache holds across passes", () => {
-  it("an unchanged pass returns the SAME objects: λ value, CC frame", () => {
-    const lam = new LambdaNode({ expr: "qty * 2", params: "qty" });
-    const v1 = (lam.data({}) as { result: unknown }).result;
-    const v2 = (lam.data({}) as { result: unknown }).result;
-    expect(v2).toBe(v1);
-    // A changed capture input mints a new value.
-    const lam2 = new LambdaNode({ expr: "qty * k", params: "qty" });
-    const a = (lam2.data({ k: [2] }) as { result: unknown }).result;
-    const b = (lam2.data({ k: [3] }) as { result: unknown }).result;
-    expect(b).not.toBe(a);
+  it("an unchanged pass returns the SAME objects: λ value, CC frame", async () => {
+    // The engine keeps a LAMBDA's answer while its call and captures stand (`nodes::KEEPS_ANSWER`).
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const lam = new LambdaNode({ expr: "qty * k", params: "qty" });
+    (lam as unknown as { literals: Record<string, number> }).literals.k = 2;
+    await editor.addNode(lam as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); return editor.engine!.landed(lam.id, "result"); };
+    const v1 = await pass();
+    expect(await pass()).toBe(v1);
+    // A changed capture mints a new value.
+    (lam as unknown as { literals: Record<string, number> }).literals.k = 3;
+    lam.edited();
+    expect(await pass()).not.toBe(v1);
+    editor.dispose();
 
     const n = named("@price * @qty", "rev");
     const r1 = run(n, sales) as FrameValue;

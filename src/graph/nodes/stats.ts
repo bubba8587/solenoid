@@ -11,7 +11,6 @@ import type { DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
 import { FIT_FAMILIES } from "./fitOps";
 import type { FrameValue } from "../frame";
-import { carryMatrixUnit } from "../unitValue";
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
 
@@ -599,12 +598,7 @@ export class InterpolateNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | (number | null)[] | (number | null)[][] | SolError | null } {
-    const out = nodeOnCore(this, inputs) as { result: number | (number | null)[] | (number | null)[][] | SolError | null };
-    if (this.mode !== "grid") return out;
-    // A table's unit rides beside its numbers, off the wire, so the filled table takes it back here.
-    const z = inputs.z?.[0];
-    this.cachedResult = carryMatrixUnit(this.cachedResult, z);
-    return { result: carryMatrixUnit(out.result, z) };
+    return nodeOnCore(this, inputs) as { result: number | (number | null)[] | (number | null)[][] | SolError | null };
   }
 }
 

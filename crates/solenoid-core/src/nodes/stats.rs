@@ -674,7 +674,14 @@ fn hypothesis_test(c: &mut Call) -> Answer {
 
 fn interpolate(c: &mut Call) -> Answer {
     if c.field_str("mode", "list") == "grid" {
-        return interpolate_grid(c);
+        // The filled table is the z table's, its unit too.
+        let r = interpolate_grid(c);
+        if let (Ok(outs), Some(u)) = (&r, c.matrix_unit("z").cloned())
+            && outs.iter().any(|(k, v)| k == "result" && matches!(v, Cv::V(V::List(_))))
+        {
+            c.set_matrix_unit("result", u);
+        }
+        return r;
     }
     let (xs, ys) = match pair_present(&first(c, "xs"), &first(c, "ys")) {
         Ok(p) => p,

@@ -12,6 +12,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. A node's body, the work its cla
 
 - **Moves:** the body, everything `data()` computes from its inputs and saved fields, and the shared readers it leans on (`readInput`, the broadcasters, the non-finite guard, unit arithmetic).
 - **Stays TypeScript:** the class itself (sockets, saved fields, socket swaps, `formatCarry`, the component), and a node whose body needs the browser (a file, the network, the vault) or the canvas.
+- **A shell around a body** (a class whose `data()` does more than `return nodeOnCore(this, inputs)`, so the engine calls it in JavaScript) is only for what the core can't do: a draw (RAND and its kin, Promo), the browser (SVG Picker's scrub, a file, the network), the frame backend (the lazy and backend verbs, Record's and Table Size's collect, SUMIFS and Get Column over a ref), an alert (Alert, Expect), the class's own sockets (FILTER, INDEX, Template reconcile theirs) and a value that needs the app (Value Input's relative dates, Cube Input's source text, World Clock's clock). Defaults, clamps, units and identity memos are the body's or the engine's (`KEEPS_ANSWER`, [[graph-core]] § Direct calls).
 - **Around the body, not in it:** arrival coercion and the error guard, the graph core's input boundary (`boundary_core.rs` for a direct card, `boundary.rs` for a JavaScript one, [[compute-pass]] § The per-node wrappers).
 
 ## The call (`nodeOnCore.ts`, `engine_node`)

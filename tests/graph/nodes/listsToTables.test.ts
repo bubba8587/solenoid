@@ -7,6 +7,15 @@ import { isSolError } from "../../../src/graph/errorValue";
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { throughBoundary } from "../boundaryKit";
+import { GraphEditor } from "../../../src/graph/graphEditor";
+import { GraphConnection, GraphNode, GraphOutput, GraphSocket } from "../../../src/graph/graphModel";
+import { DataflowEngine } from "../../../src/graph/dataflowEngine";
+import type { Schemes } from "../../../src/graph/schemes";
+
+class Src extends GraphNode {
+  constructor(public out: unknown) { super("src"); this.addOutput("out", new GraphOutput(new GraphSocket("numlist"))); }
+  data() { return { out: this.out }; }
+}
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   it("two lists HSTACK into one long row", () => {
@@ -94,14 +103,21 @@ describe("Frame from Lists — the fast lists→Frame path", () => {
     expect(f.columns).toHaveLength(1);
   });
 
-  it("identity-stable across passes with unchanged inputs (backend cache contract)", () => {
-    const n = new FrameFromListsNode();
-    const cells = [1, 2, 3];
-    const a = n.data({ vals0: [cells] }).frame;
-    const b = n.data({ vals0: [cells] }).frame;
-    expect(b).toBe(a);
-    const c = n.data({ vals0: [[9]] }).frame;
-    expect(c).not.toBe(a);
+  it("identity-stable across passes with unchanged inputs (backend cache contract)", async () => {
+    // The engine keeps the card's answer while its call and inputs stand (`nodes::KEEPS_ANSWER`), so a full pass
+    // that recomputes everything hands on the same frame and the backend doesn't upload it again.
+    const editor = new GraphEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
+    const src = new Src([1, 2, 3]), n = new FrameFromListsNode();
+    await editor.addNode(src as never);
+    await editor.addNode(n as never);
+    await editor.addConnection(new GraphConnection(src, "out", n, "vals0") as never);
+    const pass = async () => { await editor.engine!.pass(undefined, undefined, false); return editor.engine!.landed(n.id, "frame"); };
+    const a = await pass();
+    expect(await pass()).toBe(a);
+    src.out = [9];
+    expect(await pass()).not.toBe(a);
+    editor.dispose();
   });
 
   it("valueKeys round-trip rebuilds the same pairs (persistence contract)", () => {

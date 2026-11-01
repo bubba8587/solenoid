@@ -1,10 +1,9 @@
 // [[B11]]
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { readRole, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn, strListIn } from "./shared";
+import { numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, frameOut, cubeAdoptIn, strListIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
-import { clamp } from "./mathUtils";
 import type {
   ChartValue, KpiPayload, ScalePayload, SankeyPayload, RecordPayload, XYPayload, ChartRef,
 } from "../chartValue";
@@ -346,10 +345,7 @@ export class HistogramNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
-    const out = nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
-    if (inputs.bins?.[0] === undefined) this.literals.bins = readRole<number>(this, "bins", undefined);
-    if (this.mode === "2d" && inputs.ybins?.[0] === undefined) this.literals.ybins = readRole<number>(this, "ybins", undefined);
-    return out;
+    return nodeOnCore(this, inputs) as { chart: ChartValue | SolError };
   }
 }
 
@@ -431,13 +427,7 @@ export class GaugeNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
-    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
-    if (inputs.value?.[0] === undefined) this.literals.value ??= 0;
-    if (this.mode === "bar") {
-      if (inputs.target?.[0] === undefined) this.literals.target ??= 0;
-      if (inputs.max?.[0] === undefined) this.literals.max ??= 100;
-    }
-    return out;
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
@@ -462,10 +452,7 @@ export class KpiNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
-    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
-    if (inputs.value?.[0] === undefined) this.literals.value ??= 0;
-    if (inputs.prev?.[0] === undefined) this.literals.prev ??= 0;
-    return out;
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 
@@ -640,9 +627,7 @@ export class SurfaceNode extends GraphNode {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue } {
-    const out = nodeOnCore(this, inputs) as { chart: ChartValue };
-    if (this.op === "contour" && inputs.levels?.[0] === undefined) this.literals.levels = clamp(Math.round(this.literals.levels ?? 8), 2, 24);
-    return out;
+    return nodeOnCore(this, inputs) as { chart: ChartValue };
   }
 }
 

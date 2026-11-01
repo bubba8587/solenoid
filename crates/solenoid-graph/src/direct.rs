@@ -67,7 +67,12 @@ pub(crate) struct Direct {
     adopted: RefCell<FxHashSet<String>>,
     /// Each output's frame as its format picks stamped it, kept while the frame and the picks stand.
     stamped: RefCell<FxHashMap<String, Stamped>>,
+    /// A `nodes::keeps_answer` card's last answer, with the call and the inputs it answered (`call`).
+    kept: RefCell<Option<Kept>>,
 }
+
+/// A card's answer and the call and inputs it answered.
+type Kept = (Rc<Header>, Vec<(String, Vec<Val>)>, Outputs<Val>);
 
 /// One direct card in its editor: its object, what its class is, and how its fields reach its object.
 pub(crate) struct Card<'a> {
@@ -631,7 +636,24 @@ pub(crate) fn call<'a>(
     let t0 = boundary::perf_on().then(|| boundary::now(&run.host));
     let lazy_refs = !card.facts.lazy && raw.iter().any(|(_, vs)| vs.iter().any(Val::is_frame_ref));
     if !lazy_refs {
+        // A card that keeps its answer gives the last one over the same call and the same inputs, the same objects.
+        let keeps = run
+            .header
+            .as_ref()
+            .filter(|h| nodes::keeps_answer(&h.kind))
+            .cloned();
+        if let Some(h) = &keeps
+            && let Some((kh, kin, kout)) = &*card.direct.kept.borrow()
+            && Rc::ptr_eq(kh, h)
+            && same_inputs(kin, &raw)
+        {
+            timed(&run, t0);
+            return ready(Ok(kout.clone()));
+        }
         let out = run.run(&raw);
+        if let Some(h) = keeps {
+            *card.direct.kept.borrow_mut() = Some((h, raw.clone(), out.clone()));
+        }
         timed(&run, t0);
         return ready(Ok(out));
     }
@@ -681,6 +703,14 @@ pub(crate) fn call<'a>(
         timed(&run, t0);
         Ok(out)
     })
+}
+
+/// Two calls' inputs as the change test reads them: the same keys, each value the same.
+fn same_inputs(a: &[(String, Vec<Val>)], b: &[(String, Vec<Val>)]) -> bool {
+    a.len() == b.len()
+        && a.iter().zip(b).all(|((ka, va), (kb, vb))| {
+            ka == kb && va.len() == vb.len() && va.iter().zip(vb).all(|(x, y)| !x.differs(y))
+        })
 }
 
 /// The perf probe's row for the call.

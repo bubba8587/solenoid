@@ -98,7 +98,9 @@ describe("CurveNode", () => {
     expect(cols.map((c) => c.name)).toEqual(["X", "Value"]);
     expect(cols[0].values).toEqual([]);
     expect(cols[1].values).toEqual([]);
-    expect(n.literals.samples).toBe(2); // clamped
+    // The body clamps the sample count it reads, so 0 samples a curve at its 2 ends.
+    const two = new CurveNode({ pointsText: "0, 0\n1, 1", samples: 0 }).data().result.columns[0].values;
+    expect(two).toHaveLength(2);
   });
 
   it("round-trips through the paste path", async () => {

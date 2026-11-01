@@ -360,6 +360,7 @@ pub const DIRECT: &[&str] = &[
     "BooleanOpNode",
     "BoxplotNode",
     "BuildCubeNode",
+    "BuildFrameNode",
     "ByAxisNode",
     "CableSwitchNode",
     "CalendarHeatmapNode",
@@ -397,6 +398,7 @@ pub const DIRECT: &[&str] = &[
     "CrossNode",
     "CubeColumnsNode",
     "CubeRollupNode",
+    "CurveNode",
     "DateAddNode",
     "DateConstructNode",
     "DateDiffNode",
@@ -433,16 +435,20 @@ pub const DIRECT: &[&str] = &[
     "ForecastNode",
     "FormatControllerNode",
     "FormatDollarNode",
+    "FrameFromListsNode",
     "FrequencyNode",
     "FuzzyMatchNode",
     "FvScheduleNode",
     "GCDNode",
     "GanttNode",
+    "GaugeNode",
     "GetRowNode",
+    "GridPainterNode",
     "GroupListsNode",
     "HashNode",
     "HeadersNode",
     "HeatmapNode",
+    "HistogramNode",
     "HrZonesNode",
     "HypothesisTestNode",
     "IFErrorNode",
@@ -450,6 +456,7 @@ pub const DIRECT: &[&str] = &[
     "IfNode",
     "IfsNode",
     "InterleaveNode",
+    "InterpolateNode",
     "IsCloseNode",
     "IsEvenOddNode",
     "IsInNode",
@@ -457,6 +464,8 @@ pub const DIRECT: &[&str] = &[
     "IsaAtmosphereNode",
     "IspmtNode",
     "KMeansNode",
+    "KpiNode",
+    "LambdaNode",
     "LinestNode",
     "ListInputNode",
     "ListLengthNode",
@@ -537,6 +546,7 @@ pub const DIRECT: &[&str] = &[
     "SubstituteNode",
     "SumProductNode",
     "SunriseSunsetNode",
+    "SurfaceNode",
     "SwitchNode",
     "TableDiagNode",
     "TableInputNode",
@@ -582,6 +592,15 @@ pub const DIRECT: &[&str] = &[
 
 pub fn is_direct(kind: &str) -> bool {
     DIRECT.binary_search(&kind).is_ok()
+}
+
+/// Direct classes whose answer, over the same call and the same inputs, is the one they gave last, kept so it stays the
+/// same object: a frame they build would otherwise be a new one each full pass, which the frame backend uploads again
+/// (it keys an upload by identity), and a LAMBDA's consumers memo on its identity. A body that reads the clock or draws keeps no answer, so this is a list.
+pub const KEEPS_ANSWER: &[&str] = &["BuildFrameNode", "FrameFromListsNode", "LambdaNode"];
+
+pub fn keeps_answer(kind: &str) -> bool {
+    KEEPS_ANSWER.contains(&kind)
 }
 
 /// Direct classes that hand on in TypeScript a value the core can't hold (a LAMBDA, an object the card wire doesn't
