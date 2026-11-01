@@ -191,23 +191,6 @@ fn negative_binary(n: f64) -> Result<V, Thrown> {
     Ok(V::str(&format!("1{}{b}", rept("0", 9.0 - b.len() as f64)?)))
 }
 
-/// The first Str's UTF-16 length, as `number.length` reads it; None for anything else.
-fn str_len(v: &V) -> Option<usize> {
-    if let V::Str(s) = v {
-        Some(s.encode_utf16().count())
-    } else {
-        None
-    }
-}
-
-fn first_char(v: &V) -> Option<char> {
-    if let V::Str(s) = v {
-        s.chars().next()
-    } else {
-        None
-    }
-}
-
 /// The base conversions.
 fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
     let s = value_text(number);
@@ -252,8 +235,7 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             match name {
                 "HEX2DEC" => V::Num(if decimal >= 549_755_813_888.0 { decimal - 1_099_511_627_776.0 } else { decimal }),
                 "HEX2BIN" => {
-                    let negative =
-                        str_len(number) == Some(10) && first_char(number).is_some_and(|c| c.eq_ignore_ascii_case(&'f'));
+                    let negative = s.len() == 10 && s.starts_with(['f', 'F']);
                     let decimal = if negative { decimal - 1_099_511_627_776.0 } else { decimal };
                     if !(-512.0..=511.0).contains(&decimal) {
                         return Ok(NUM);
@@ -283,7 +265,7 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             match name {
                 "OCT2DEC" => V::Num(if decimal >= 536_870_912.0 { decimal - 1_073_741_824.0 } else { decimal }),
                 "OCT2BIN" => {
-                    let negative = str_len(number) == Some(10) && first_char(number) == Some('7');
+                    let negative = s.len() == 10 && s.starts_with('7');
                     let decimal = if negative { decimal - 1_073_741_824.0 } else { decimal };
                     if !(-512.0..=511.0).contains(&decimal) {
                         return Ok(NUM);
