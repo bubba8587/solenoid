@@ -47,6 +47,7 @@ pub mod nodes;
 pub mod plan_files;
 pub mod planners;
 pub mod providers;
+pub mod relative_date;
 pub mod shapers;
 pub mod spelled;
 pub mod string_order;

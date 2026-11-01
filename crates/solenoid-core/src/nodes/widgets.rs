@@ -1,5 +1,5 @@
 //! [[C28]] literalsIffEditable, [[C44]] dateSerials, [[C118]] formatTravelsWithValue, [[C23]] calcModes
-//! calcModes, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input but its dates,
+//! calcModes, [[C103]] untrustedContentSeams. The input widgets' bodies (Value Input,
 //! Slider, Color Picker and Blend, Angle Dial, XY Pad, Curve, Grid Painter, Point Plotter, Date Range, Constant, Input
 //! Switch), RAND over the roll its shell drew, and SVG Picker over the markup its shell scrubbed. Colours read as
 //! `colord` with its names plugin reads them.
@@ -109,10 +109,65 @@ fn value_input(c: &mut Call) -> Answer {
                 err(ErrorCode::Value, format!("\"{t}\" isn't a number"))
             }
         }
+        "date" => value_input_date(c, &value),
         _ => V::Null,
     };
+    if c.field_str("op", "number") != "date" {
+        forget_relative(c);
+    }
     c.show("cachedValue", out.clone());
     Ok(vec![("value".into(), Cv::from(out))])
+}
+
+/// No relative phrase read: what was last read goes, so the phrase typed again later reads afresh.
+fn forget_relative(c: &mut Call) {
+    if c.field("lastRelativeText").is_some_and(|v| !v.is_null()) {
+        c.show("lastRelativeText", V::Null);
+        c.show("lastRelativeSerial", V::Null);
+    }
+}
+
+/// A typed date's serial. A relative phrase ([[C44]] dateSerials) reads at the pass's clock, when Settings allows
+/// them (`relativeDates`), and shows what it last read (`lastRelativeText`, `lastRelativeSerial`), so the same phrase
+/// landing on a new day shows the alert to raise (`alertKey`, `alertMessage`).
+fn value_input_date(c: &mut Call, value: &str) -> V {
+    use crate::excel_criteria::{parse_date, DateReading};
+    let text = js_trim(value).to_string();
+    let allowed = matches!(c.field("relativeDates"), Some(Json::Bool(true)));
+    if !(allowed && crate::relative_date::is_relative(&text)) {
+        forget_relative(c);
+        return match parse_date(&text) {
+            DateReading::Serial(s) if s.is_finite() => V::Num(s.floor()),
+            DateReading::Ambiguous(e) => V::err(e),
+            _ => V::Null,
+        };
+    }
+    let now = crate::excel_functions::clock_instant();
+    let read = crate::relative_date::relative_date(&text, now, crate::relative_date::Zone::Host);
+    let Ok(Some(serial)) = read else {
+        forget_relative(c);
+        return V::Null;
+    };
+    let serial = serial.floor();
+    let last_text = c.field("lastRelativeText").and_then(Json::as_str).map(str::to_string);
+    let last_serial = c.field("lastRelativeSerial").and_then(Json::as_f64);
+    let (key, message) = match (last_text, last_serial) {
+        (Some(t), Some(was)) if t == text && was != serial => {
+            let label = js_trim(c.field_str("label", "")).to_string();
+            let name = if label.is_empty() { "Value Input".to_string() } else { label };
+            let day = |s: f64| crate::date_serial::format_date_serial(s, "DD-MMM-YYYY");
+            (
+                V::str(&format!("{text}\u{1}{serial}")),
+                V::str(&format!("{name}: \"{text}\" now resolves to {} (was {})", day(serial), day(was))),
+            )
+        }
+        _ => (V::Null, V::Null),
+    };
+    c.show("alertKey", key);
+    c.show("alertMessage", message);
+    c.show("lastRelativeText", V::str(&text));
+    c.show("lastRelativeSerial", V::Num(serial));
+    V::Num(serial)
 }
 
 fn slider(c: &mut Call) -> Answer {

@@ -115,7 +115,7 @@ app already (`@fontsource-variable`), so loading them into the wasm side is a co
   canvas UI. It does not soften the plugin or the pixel bar.
 - **The JavaScript libraries with no drop-in Rust twin:** elkjs (Tidy; no Rust ELK exists), KaTeX
   (Typst's math layout is the nearest), pele/Mermaid, Recharts (plotters, or charts drawn directly with
-  vello), `knap` (23 files; the Obsidian note templating), chrono-node (natural-language dates) and the
+  vello), `knap` (23 files; the Obsidian note templating) and the
   `@anthropic-ai/sdk` client. Markdown is easy (pulldown-cmark or comrak).
 
 ## The two steps in more detail

@@ -9,11 +9,9 @@ import type { FrameShapeContext } from "./frameShapeHook";
 import type { FrameValue, FrameColType } from "../frame";
 import type { FrameRef } from "../frameBackend";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
-import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
-import { fireAlert } from "../alertStore";
-import { isGraphRebuilding } from "../process";
-import { isSolError, type SolError } from "../errorValue";
+import { raiseWatched } from "./display";
+import type { SolError } from "../errorValue";
 import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
@@ -117,31 +115,7 @@ export class AngleDialNode extends GraphNode {
   }
 }
 
-type LastRelative = { text: string; serial: number } | null;
-
 const relativeDatesAllowed = (): boolean => settingsStore.get("relativeDates");
-
-/** A typed date's serial; a relative phrase ([[C44]] dateSerials) alerts when it re-resolves to a new day. */
-function resolveDateText(
-  node: { id: string; label?: string },
-  raw: string,
-  last: LastRelative,
-): { result: number | SolError | null; last: LastRelative } {
-  const text = raw.trim();
-  const relative = isRelativeDateText(text) && relativeDatesAllowed();
-  const r = parseDate(text, relative ? { relative: true } : undefined);
-  if (isSolError(r)) return { result: r, last: null };
-  const serial = Number.isFinite(r) ? Math.floor(r) : null;
-  if (!relative || serial === null) return { result: serial, last: null };
-  if (last !== null && last.text === text && last.serial !== serial && !isGraphRebuilding()) {
-    const name = (node.label ?? "").trim() || "Value Input";
-    fireAlert({
-      nodeId: node.id, label: name, kind: "warning",
-      message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(last.serial, DEFAULT_DATE_FORMAT)})`,
-    });
-  }
-  return { result: serial, last: { text, serial } };
-}
 
 export type ValueInputOp = TableElemType;
 
@@ -176,8 +150,7 @@ export function carryValueText(text: string, to: ValueInputOp): string {
     case "number":  return Number.isFinite(n) ? t : isTrue ? "1" : "0";
     case "logical": return isTrue || (Number.isFinite(n) && n !== 0) ? "TRUE" : "FALSE";
     case "date": {
-      const relative = isRelativeDateText(t) && relativeDatesAllowed();
-      const d = parseDate(t, relative ? { relative: true } : undefined);
+      const d = parseDate(t, relativeDatesAllowed() ? { relative: true } : undefined);
       return typeof d === "number" && Number.isFinite(d) ? text : todayText();
     }
   }
@@ -209,7 +182,17 @@ export class ValueInputNode extends GraphNode {
   width = 180;
   height = 140;
   cachedValue: unknown = null;
-  private lastRelative: LastRelative = null;
+  /** The relative phrase the body last read and its day ([[C44]] dateSerials), and the alert it shows when the same
+   *  phrase lands on a new day; the body sets them, and reads the first two back. */
+  lastRelativeText: string | null = null;
+  lastRelativeSerial: number | null = null;
+  alertKey: string | null = null;
+  alertMessage: string | null = null;
+  static coreFields = ["relativeDates", "lastRelativeText", "lastRelativeSerial"] as const;
+  /** Settings ▸ Relative dates, read by the body on every call. */
+  get relativeDates(): boolean {
+    return relativeDatesAllowed();
+  }
   /** What was typed under each op this session, so switching away and back restores it; only the shown op's text is saved ([[C28]] literalsIffEditable). */
   private entryByOp: Partial<Record<ValueInputOp, string>> = {};
 
@@ -304,20 +287,13 @@ export class ValueInputNode extends GraphNode {
     };
   }
 
-  /** A date reads here, where a relative phrase alerts when it re-resolves to a new day; every other type is `body`. */
-  data(): { value: unknown } {
-    if (this.op !== "date") {
-      this.lastRelative = null;
-      return this.body();
-    }
-    const r = resolveDateText(this, this.value, this.lastRelative);
-    this.lastRelative = r.last;
-    this.cachedValue = r.result;
-    return { value: this.cachedValue };
+  data(inputs: Record<string, unknown[] | undefined> = {}): { value: unknown } {
+    return nodeOnCore(this, inputs) as { value: unknown };
   }
 
-  body(inputs: Record<string, unknown[] | undefined> = {}): { value: unknown } {
-    return nodeOnCore(this, inputs) as { value: unknown };
+  static coreWatch = "alertKey";
+  coreWatched(): void {
+    raiseWatched(this, "Value Input");
   }
 }
 

@@ -100,7 +100,7 @@ describe("DATE — numeric year is literal (no century guessing)", () => {
   });
 });
 
-describe("parseDate — wider formats, day-first, and #AMBIGUOUS! (chrono-backed)", () => {
+describe("parseDate — wider formats, day-first, and #AMBIGUOUS!", () => {
   const iso = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
   const ser = (s: string) => parseDate(s);
   it("parses ordinals and natural month-name forms", () => {

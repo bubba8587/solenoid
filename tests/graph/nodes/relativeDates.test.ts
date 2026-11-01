@@ -51,7 +51,8 @@ describe("Value Input's Date mode under the same opt-in", () => {
     const n = new ValueInputNode({ op: "date", value: "today" });
     const first = n.data().value as number;
     expect(first).toBe(Math.floor(parseDate("today", { relative: true }) as number));
-    (n as unknown as { lastRelative: { text: string; serial: number } }).lastRelative = { text: "today", serial: first - 1 };
+    expect([n.lastRelativeText, n.lastRelativeSerial]).toEqual(["today", first]);
+    n.lastRelativeSerial = first - 1;
     n.data();
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(1);
   });

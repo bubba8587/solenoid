@@ -1,6 +1,5 @@
 // [[C17]], [[C44]] dateSerials
-// Must not import a module that reaches the graph model; chrono-node, errorValue and the core's loader are headless.
-import * as chrono from "chrono-node";
+// Must not import a module that reaches the graph model; errorValue and the core's loader are headless.
 import { wasmInvokeSync, coreFormatDate } from "../engineWasm";
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -23,31 +22,36 @@ export function wallClockSerial(now: Date = new Date(), dateOnly = false): numbe
   return ms / 86400000 + 25569;
 }
 
-const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
-
-export function isRelativeDateText(s: string): boolean {
-  const t = s.trim();
-  return !/\d{4}/.test(t) && RELATIVE.test(t);
-}
-
 export interface ParseDateOptions {
   relative?: boolean;
   now?: Date;
 }
 
+type CoreDate = number | null | { ambiguous: string } | { relative: number | null | "throws" };
+
+/** Typed date text as a date entry reads it, and whether it read as a relative phrase ("next friday", [[C44]]
+ *  dateSerials), which only `relative` allows; the core reads both (`relative_date.rs`). */
+export function readDate(s: string, opts?: ParseDateOptions): { value: number | SolError; relative: boolean } {
+  const t = s.trim();
+  if (!t) return { value: NaN, relative: false };
+  const r = wasmInvokeSync<CoreDate>("engine_parse_date", {
+    text: t,
+    ...(opts?.relative ? { relative: true, now: (opts.now ?? new Date()).getTime() } : {}),
+  });
+  if (r !== null && typeof r === "object" && "relative" in r) {
+    return { value: typeof r.relative === "number" ? r.relative : NaN, relative: true };
+  }
+  return { value: r === null ? NaN : typeof r === "number" ? r : solError("#AMBIGUOUS!", r.ambiguous), relative: false };
+}
+
+/** Whether the text is a relative phrase, which a date entry reads only under Settings ▸ Relative dates. */
+export function isRelativeDateText(s: string): boolean {
+  return readDate(s, { relative: true }).relative;
+}
+
 /** Answers the serial, `#AMBIGUOUS!` when a numeric date reads as either D/M or M/D, or NaN when the text is not a date. */
 export function parseDate(s: string, opts?: ParseDateOptions): number | SolError {
-  const t = s.trim();
-  if (!t) return NaN;
-  if (isRelativeDateText(t)) {
-    if (!opts?.relative) return NaN;
-    const ref = opts.now ?? new Date();
-    const r = chrono.parse(t, ref, { forwardDate: !/\blast\b/i.test(t) })[0];
-    if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-    return wallClockSerial(r.start.date(), true);
-  }
-  const r = wasmInvokeSync<number | null | { ambiguous: string }>("engine_parse_date", { text: t });
-  return r === null ? NaN : typeof r === "number" ? r : solError("#AMBIGUOUS!", r.ambiguous);
+  return readDate(s, opts).value;
 }
 
 /** NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate`. */

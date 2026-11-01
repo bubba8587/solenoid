@@ -683,6 +683,7 @@ pub const DIRECT: &[&str] = &[
     "UnpivotNode",
     "UrlEncodeNode",
     "UuidNode",
+    "ValueInputNode",
     "WaterfallNode",
     "WeekInfoNode",
     "WeightedNode",

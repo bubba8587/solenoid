@@ -1,6 +1,6 @@
 // [[C44]] dateSerials, [[B19]] spreadsheetHabits
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { jsDateToSerial, readDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { isSolError } from "../errorValue";
 import { settingsStore } from "../settingsStore";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -16,8 +16,7 @@ export function DateEntry({ raw, onCommit }: { raw: string; onCommit: (text: str
   // Mirrors the node ([[C44]] dateSerials).
   const relativeAllowed = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("relativeDates"));
   const t = raw.trim();
-  const relative = relativeAllowed && isRelativeDateText(t);
-  const parsed = parseDate(t, relative ? { relative: true } : undefined);
+  const { value: parsed, relative } = readDate(t, relativeAllowed ? { relative: true } : undefined);
   const serial = typeof parsed === "number" && Number.isFinite(parsed) ? Math.floor(parsed) : null;
   const bad = isSolError(parsed) || (t !== "" && serial === null);
   // A relative phrase keeps its own text (it re-resolves each pass); an absolute date shows DD-MMM-YYYY.

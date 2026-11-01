@@ -10,7 +10,7 @@ import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
-export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
+export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, readDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 // ─── TODAY / NOW ──────────────────────────────────────────────────────────────
 
