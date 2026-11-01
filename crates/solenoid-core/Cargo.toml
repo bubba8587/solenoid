@@ -46,3 +46,7 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[[bench]]
+name = "core"
+harness = false
