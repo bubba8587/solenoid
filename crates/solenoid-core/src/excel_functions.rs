@@ -5720,24 +5720,6 @@ fn template(a: &[V]) -> Result<V, Thrown> {
     Ok(V::str(&out))
 }
 
-/// Formula.js ROUND (`roundBase` with `Math.round`): the shift by `num_digits` goes through the number's text.
-fn fx_round(number: &V, num_digits: &V) -> V {
-    let (n, d) = match (parse_number(number), parse_number(num_digits)) {
-        (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => return e,
-        (V::Num(n), V::Num(d)) => (n, d),
-        _ => return V::Fx(FxError::Value),
-    };
-    let sign = if n >= 0.0 { 1.0 } else { -1.0 };
-    // `(x + "e" + e).split("e")`, its first two parts read back as one number.
-    let shift = |x: f64, e: f64| {
-        let s = format!("{}e{}", number_to_string(x), number_to_string(e));
-        let mut parts = s.split('e');
-        string_to_number(&format!("{}e{}", parts.next().unwrap_or(""), parts.next().unwrap_or("")))
-    };
-    let shifted = round_half_up(shift(n.abs(), d));
-    V::Num(shift(shifted, -d) * sign)
-}
-
 /// `x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: fd, maximumFractionDigits: fd })`:
 /// ICU rounds the shortest round-trip digits half away from zero and groups by threes.
 pub(crate) fn usd_text(x: f64, fd: usize) -> String {
@@ -5806,44 +5788,24 @@ pub(crate) fn usd_text(x: f64, fd: usize) -> String {
 
 /// DOLLAR: ROUND's reading first (as FIXED's), then Formula.js DOLLAR, its negative form rewritten in parentheses.
 fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
+    // Excel's DOLLAR: rounded to `decimals` (truncated; below 0 rounds left of the point), grouped by threes, a
+    // negative amount in parentheses.
+    // Left out, `decimals` is 2; a blank one is 0, as Excel reads an empty cell ([[C80]] blankArgIsExcelBlank).
+    let d = match decimals {
+        V::Undef => 2.0,
+        other => num_blank_zero(other).trunc(),
+    };
     let n = to_num(value);
-    let d = opt_num(decimals, 2.0);
-    let pre = if n.is_nan() || d.is_nan() {
-        value.clone()
-    } else {
-        let r = round_digits(n, d, "round");
-        V::Num(if r == 0.0 { n } else { r })
-    };
-    // Formula.js DOLLAR(number, decimals = 2).
-    let decimals = if matches!(decimals, V::Undef) { V::Num(2.0) } else { decimals.clone() };
-    let number = match parse_number(&pre) {
-        V::Num(x) if !x.is_nan() => x,
-        _ => return Ok(V::Fx(FxError::Value)),
-    };
-    let out = match fx_round(&V::Num(number), &decimals) {
-        V::Num(x) => {
-            let dn = num_blank_zero(&decimals);
-            let fd = if dn >= 0.0 { dn } else { 0.0 };
-            if fd > 100.0 {
-                return Err(Thrown::value("DOLLAR shows at most 100 decimal places"));
-            }
-            let formatted = usd_text(x, fd.floor() as usize);
-            if x < 0.0 {
-                format!("$({})", formatted.get(2..).unwrap_or(""))
-            } else {
-                formatted
-            }
-        }
-        // An Error's toLocaleString is its toString.
-        other => js_string_of(&other),
-    };
-    Ok(V::str(&if let Some(rest) = out.strip_prefix("$(") {
-        format!("(${rest}")
-    } else if let Some(rest) = out.strip_prefix("-$") {
-        format!("(${rest})")
-    } else {
-        out
-    }))
+    if n.is_nan() || d.is_nan() {
+        return Ok(value_err("DOLLAR"));
+    }
+    if d > 100.0 {
+        return Err(Thrown::value("DOLLAR shows at most 100 decimal places"));
+    }
+    let r = round_digits(n, d, "round");
+    let text = usd_text(r.abs(), d.max(0.0) as usize);
+    // The sign is the number's, so a negative that rounds to zero still reads ($0.00), as in Excel.
+    Ok(V::str(&if n < 0.0 { format!("({text})") } else { text }))
 }
 
 /// `Number(v)` as `Math.abs` reads it.

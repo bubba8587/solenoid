@@ -188,3 +188,15 @@ fn trim_removes_only_spaces() {
     assert_eq!(text("TRIM(CHAR(160) & \"a\")"), "\u{A0}a");
     assert_eq!(text("TRIM(\"a\" & CHAR(9) & \" b\")"), "a\t b");
 }
+
+#[test]
+fn dollar_formats_as_excel() {
+    assert_eq!(text("DOLLAR(1234.567, 2)"), "$1,234.57");
+    assert_eq!(text("DOLLAR(1234.567, -2)"), "$1,200");
+    assert_eq!(text("DOLLAR(-1234.567, -2)"), "($1,200)");
+    assert_eq!(text("DOLLAR(-0.123, 4)"), "($0.1230)");
+    assert_eq!(text("DOLLAR(99.888)"), "$99.89");
+    assert_eq!(text("DOLLAR(0, 0.5)"), "$0");
+    assert_eq!(text("DOLLAR(-0.001, 2)"), "($0.00)");
+    assert_eq!(text("DOLLAR(2, 2.9)"), "$2.00");
+}
