@@ -3,7 +3,7 @@
 // an output connects to an input, what an adoptive input of that base takes up from that cable, and what an adoptive
 // output of that base shows for that type; per type, its rank, its element family and its forms at each rank.
 import { describe, expect, it } from "vitest";
-import { frozen, replay } from "./coreFixtures";
+import { freezes, frozen, readFrozen, replay } from "./coreFixtures";
 import {
   canConnect, adoptTypeForBase, projectTypeToBase, latticeRank, elementFamilyOf, typeAtRank, comboOfType,
   type SocketDataType,
@@ -31,9 +31,17 @@ function answer(c: Case): unknown {
       atRank: [typeAtRank(c.t, 0), typeAtRank(c.t, 1), typeAtRank(c.t, 2)],
     };
   }
-  // The settle's agreement vote is the core's alone now (`lattice.rs` `agree_types`, held to these cases natively).
-  return c.want;
+  // The settle's agreement vote is the core's alone now (`lattice.rs` `agree_types`, held to these cases natively), so a
+  // freeze, which makes the cases afresh, carries each vote over from the file instead of writing it blank.
+  return c.want ?? KEPT_VOTES.get(JSON.stringify(c.ts));
 }
+
+/** Read before `frozen` rewrites the file. */
+const KEPT_VOTES = new Map(
+  (freezes("lattice") ? readFrozen<Case>("lattice") : [])
+    .filter((c): c is Agree => c.kind === "agree")
+    .map((c) => [JSON.stringify(c.ts), c.want]),
+);
 
 describe("the socket lattice holds to its frozen answers", () => {
   const cases = frozen<Case>("lattice", () => {
