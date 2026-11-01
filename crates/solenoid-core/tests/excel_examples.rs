@@ -111,3 +111,73 @@ fn radix_and_roman_functions() {
     assert_eq!(num("PERMUTATIONA(2.7, 2.9)"), 4.0);
     assert!(is_error("PERMUTATIONA(-1, 2)"));
 }
+
+fn list(xs: &[f64]) -> V {
+    V::List(xs.iter().map(|&x| V::Num(x)).collect::<Vec<_>>().into())
+}
+
+/// `src` with each name bound to its list.
+fn eval_with(src: &str, names: &[(&str, V)]) -> V {
+    let mut env = Env::default();
+    for (k, v) in names {
+        env.insert((*k).into(), v.clone());
+    }
+    formula(src, env).expect("parses")
+}
+
+fn num_with(src: &str, names: &[(&str, V)]) -> f64 {
+    match eval_with(src, names) {
+        V::Num(n) => n,
+        other => panic!("{src} answered {other:?}"),
+    }
+}
+
+#[test]
+fn arguments_read_as_excel_reads_them() {
+    close("LOG(10)", 1.0, 1e-15);
+    close("LOG(8, 2)", 3.0, 1e-15);
+    close("LOG(86, 2.7182818)", 4.454347343, 1e-9);
+    assert!(is_error("LOG(10, 0)"), "a base of 0 is not a missing base");
+    assert!(is_error("LOG(10, 1)"));
+    assert!(is_error("LOG(-1)"));
+    assert!(is_error("LOG(\"8\")"));
+
+    let xs = list(&[6.0, 7.0, 9.0, 15.0, 21.0]);
+    let ys = list(&[20.0, 28.0, 31.0, 38.0, 40.0]);
+    let close_with = |src: &str, names: &[(&str, V)], want: f64, tol: f64| {
+        let got = num_with(src, names);
+        assert!((got - want).abs() <= tol, "{src}: got {got}, want {want}");
+    };
+    close_with("F.TEST(xs, ys)", &[("xs", xs.clone()), ("ys", ys)], 0.64831785, 1e-8);
+    assert!(matches!(eval_with("F.TEST(xs, one)", &[("xs", xs), ("one", list(&[1.0]))]), V::Err(_) | V::Fx(_)));
+
+    let t = list(&[4.0, 5.0, 6.0, 7.0, 2.0, 3.0, 4.0, 5.0, 1.0, 2.0, 3.0]);
+    close_with("TRIMMEAN(t, 0.2)", &[("t", t)], 3.777777778, 1e-9);
+    close("TRIMMEAN(5, 0)", 5.0, 0.0);
+
+    let sp = [("p", list(&[3.0, 4.0, 8.0, 6.0, 1.0, 9.0])), ("q", list(&[2.0, 7.0, 6.0, 7.0, 5.0, 3.0]))];
+    assert_eq!(num_with("SUMPRODUCT(p, q)", &sp), 156.0);
+    assert!(matches!(eval_with("SUMPRODUCT(p, s)", &[sp[0].clone(), ("s", list(&[1.0, 2.0]))]), V::Err(_) | V::Fx(_)));
+    let u = [("u", list(&[2.0, 3.0, 9.0, 1.0, 8.0, 7.0, 5.0])), ("v", list(&[6.0, 5.0, 11.0, 7.0, 5.0, 4.0, 4.0]))];
+    assert_eq!(num_with("SUMX2MY2(u, v)", &u), -55.0);
+    assert_eq!(num_with("SUMX2PY2(u, v)", &u), 521.0);
+    assert_eq!(num_with("SUMXMY2(u, v)", &u), 79.0);
+    assert!(matches!(eval_with("SUMXMY2(u, s)", &[u[0].clone(), ("s", list(&[1.0]))]), V::Err(_) | V::Fx(_)));
+    assert_eq!(num("SUMSQ(3, 4)"), 25.0);
+    assert!(is_error("SUMSQ(3, \"4\")"));
+
+    let z = [("z", list(&[3.0, 6.0, 7.0, 8.0, 6.0, 5.0, 4.0, 2.0, 1.0, 9.0]))];
+    close_with("Z.TEST(z, 4)", &z, 0.090574197, 1e-9);
+    close_with("Z.TEST(z, 4, 6)", &z, 0.281041305, 1e-9);
+
+    assert_eq!(num("TYPE(1)"), 1.0);
+    assert_eq!(num("TYPE(\"a\")"), 2.0);
+    assert_eq!(num("TYPE(TRUE)"), 4.0);
+    assert_eq!(num("TYPE(1/0)"), 16.0);
+
+    assert_eq!(text("REPLACE(\"abcdefghijk\", 6, 5, \"*\")"), "abcde*k");
+    assert_eq!(text("REPLACE(\"2009\", 3, 2, \"10\")"), "2010");
+    assert_eq!(text("REPLACE(\"abc\", 5, 1, \"x\")"), "abcx");
+    assert!(is_error("REPLACE(\"abc\", 0, 1, \"x\")"));
+    assert!(is_error("REPLACE(\"abc\", 1, -1, \"x\")"));
+}

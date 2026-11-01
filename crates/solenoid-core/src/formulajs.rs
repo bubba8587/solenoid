@@ -5,8 +5,8 @@
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
-use crate::error_value::FxError;
-use crate::excel_functions::{js_string_of, parse_number, truthy, Thrown, V};
+use crate::error_value::{sol_error, ErrorCode, FxError};
+use crate::excel_functions::{js_string_of, nums_of, parse_number, truthy, Thrown, V};
 use crate::jsnum::number_to_string;
 use libm::exp;
 use std::ops::{BitAnd, BitOr, BitXor};
@@ -94,10 +94,6 @@ fn flatten(v: &V) -> Vec<V> {
         V::List(items) => items.iter().flat_map(flatten).collect(),
         other => vec![other.clone()],
     }
-}
-
-fn flatten_args(a: &[V]) -> Vec<V> {
-    a.iter().flat_map(flatten).collect()
 }
 
 /// Each item parsed from the last, the first error met answering; an empty array is #VALUE!.
@@ -456,34 +452,6 @@ fn chisq_table(v: &V) -> Result<(usize, usize, Vec<f64>), V> {
 
 // ─── Statistics the tests read (Formula.js's own AVERAGE, VAR.S, NORM.S.DIST) ───
 
-/// Formula.js AVERAGE over numbers: a NaN mean is #NUM!.
-fn fx_average(xs: &[f64]) -> Result<f64, V> {
-    if xs.is_empty() {
-        return Err(V::Fx(FxError::DivZero));
-    }
-    let mut sum = 0.0;
-    let mut count = 0.0;
-    for &x in xs {
-        sum += x;
-        count += 1.0;
-    }
-    let r = sum / count;
-    if r.is_nan() {
-        Err(NUM)
-    } else {
-        Ok(r)
-    }
-}
-
-fn fx_var_s(xs: &[f64]) -> f64 {
-    let mean = fx_average(xs).unwrap_or(f64::NAN);
-    let mut sigma = 0.0;
-    for &x in xs {
-        sigma += libm::pow(x - mean, 2.0);
-    }
-    sigma / (xs.len() as f64 - 1.0)
-}
-
 /// The parsed numbers, or None where one is a Formula.js error (`anyIsError`).
 fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
     let mut out = [0.0; N];
@@ -491,30 +459,6 @@ fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
         *o = num_of(&parse_number(v))?;
     }
     Some(out)
-}
-
-/// JS `v[key]` on an argument: a list's item, a string's UTF-16 unit (a lone half reads as U+FFFD) or length,
-/// `undefined` on any other value, and the TypeError `null` and `undefined` throw. `list` reads a list's member.
-fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, Thrown> {
-    match v {
-        V::List(items) => Ok(list(items).unwrap_or(V::Undef)),
-        V::Str(s) => {
-            let units: Vec<u16> = s.encode_utf16().collect();
-            Ok(if key == "length" {
-                V::Num(units.len() as f64)
-            } else {
-                key.parse::<usize>()
-                    .ok()
-                    .and_then(|i| units.get(i))
-                    .map_or(V::Undef, |&u| V::str(&String::from_utf16_lossy(&[u])))
-            })
-        }
-        V::Null | V::Undef => {
-            let what = if matches!(v, V::Null) { "null" } else { "undefined" };
-            Err(Thrown::value(format!("Cannot read properties of {what} (reading '{key}')")))
-        }
-        _ => Ok(V::Undef),
-    }
 }
 
 // ─── Dispatch ──────────────────────────────────────────────────────────────────
@@ -526,70 +470,52 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             (V::Num(_), V::Num(_)) => NUM,
             _ => VALUE,
         },
-        "SUMSQ" => match parse_number_array(&flatten_args(a)) {
-            Ok(xs) => V::Num(xs.iter().fold(0.0, |r, &x| r + if x.is_finite() { x * x } else { 0.0 })),
-            Err(e) => e,
-        },
+        "SUMSQ" => {
+            let mut sum = 0.0;
+            for v in a {
+                match v {
+                    V::Str(_) => return Ok(crate::excel_functions::value_err("SUMSQ")),
+                    V::Fx(_) | V::Err(_) => return Ok(v.clone()),
+                    _ => sum += nums_of(std::slice::from_ref(v)).iter().fold(0.0, |s, x| s + x * x),
+                }
+            }
+            V::Num(sum)
+        }
+        "SUMPRODUCT" | "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" if a.iter().any(|v| matches!(v, V::Str(_))) => {
+            crate::excel_functions::value_err(name)
+        }
         "SUMPRODUCT" => {
             if a.is_empty() {
                 return Ok(VALUE);
             }
-            let at = |v: &V, i: usize| js_member(v, &i.to_string(), |items| items.get(i).cloned());
-            let mut result = 0.0;
-            let len = match js_member(&a[0], "length", |items| Some(V::Num(items.len() as f64)))? {
-                V::Num(n) => n as usize,
-                _ => 0,
-            };
-            let factor = |item: V| -> Result<f64, V> {
-                if let V::Fx(_) = item {
-                    return Err(item);
-                }
-                match parse_number(&item) {
-                    V::Num(n) => Ok(n),
-                    e => Err(e),
-                }
-            };
-            for i in 0..len {
-                if let V::List(inner) = at(&a[0], i)? {
-                    for j in 0..inner.len() {
-                        let mut product = 1.0;
-                        for v in a {
-                            match factor(at(&at(v, i)?, j)?) {
-                                Ok(n) => product *= n,
-                                Err(e) => return Ok(e),
-                            }
-                        }
-                        result += product;
-                    }
-                } else {
-                    let mut product = 1.0;
-                    for v in a {
-                        match factor(at(v, i)?) {
-                            Ok(n) => product *= n,
-                            Err(e) => return Ok(e),
-                        }
-                    }
-                    result += product;
-                }
+            // Each argument a list of cells (a value is one); every list the same length, and a cell that is no
+            // number counts as 0, as Excel's does.
+            let lists: Vec<Vec<V>> = a.iter().map(flatten).collect();
+            if lists.iter().any(|l| l.len() != lists[0].len()) {
+                return Ok(V::err(sol_error(ErrorCode::Value, "SUMPRODUCT's lists must be the same size")));
             }
-            V::Num(result)
+            if let Some(e) = lists.iter().flatten().find(|v| matches!(v, V::Fx(_) | V::Err(_))) {
+                return Ok(e.clone());
+            }
+            let cell = |v: &V| if let V::Num(n) = v { *n } else { 0.0 };
+            V::Num((0..lists[0].len()).fold(0.0, |s, i| s + lists.iter().map(|l| cell(&l[i])).product::<f64>()))
         }
         "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" => {
-            let (xs, ys) = (parse_number_array(&flatten(arg(a, 0))), parse_number_array(&flatten(arg(a, 1))));
-            let (Ok(xs), Ok(ys)) = (xs, ys) else { return Ok(VALUE) };
-            // SUMX2PY2 parses both again, and a NaN parses as an error: an error has no length, nor items.
-            let reparsed_nan = |v: &[f64]| name == "SUMX2PY2" && v.iter().any(|x| x.is_nan());
-            if reparsed_nan(&xs) {
-                return Ok(V::Num(0.0));
+            let (xs, ys) = (flatten(arg(a, 0)), flatten(arg(a, 1)));
+            if xs.len() != ys.len() {
+                return Ok(V::err(sol_error(
+                    ErrorCode::NotAvailable,
+                    format!("{name}'s two lists must be the same size"),
+                )));
             }
-            let ys = if reparsed_nan(&ys) { Vec::new() } else { ys };
             let mut result = 0.0;
-            for (i, &x) in xs.iter().enumerate() {
-                let y = ys.get(i).copied().unwrap_or(f64::NAN);
+            // A pair counts when both sides are numbers.
+            for (x, y) in xs.iter().zip(&ys) {
+                let (V::Num(x), V::Num(y)) = (x, y) else { continue };
                 result += match name {
                     "SUMX2MY2" => x * x - y * y,
                     "SUMX2PY2" => x * x + y * y,
-                    _ => libm::pow(x - y, 2.0),
+                    _ => (x - y) * (x - y),
                 };
             }
             V::Num(result)
@@ -732,28 +658,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             let n = num_of(&number).unwrap_or(f64::NAN);
             V::Num(if n >= js_number(&step) { 1.0 } else { 0.0 })
         }
-        "TYPE" => match arg(a, 0) {
-            V::Num(n) if n.is_finite() => V::Num(1.0),
-            V::Str(_) => V::Num(2.0),
-            V::Bool(_) => V::Num(4.0),
-            V::Num(_) => V::Num(16.0),
-            V::Fx(code)
-                if matches!(
-                    *code,
-                    FxError::Value
-                        | FxError::Ref
-                        | FxError::DivZero
-                        | FxError::Num
-                        | FxError::Name
-                        | FxError::Null
-                        | FxError::NotAvailable
-                ) =>
-            {
-                V::Num(16.0)
-            }
-            V::List(_) => V::Num(64.0),
-            _ => V::Undef,
-        },
+        "TYPE" => crate::excel_functions::excel_type(arg(a, 0)),
         "ERF" | "ERF.PRECISE" | "ERFC" | "ERFC.PRECISE" if matches!(arg(a, 0), V::Undef) => VALUE,
         "ERF" | "ERF.PRECISE" => {
             let Some(lower) = num_of(&parse_number(arg(a, 0))) else { return Ok(VALUE) };
@@ -775,16 +680,23 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             V::Num(libm::tgamma(n))
         }
         "Z.TEST" => {
-            let x = parse_number(arg(a, 1));
-            let (Some((n, mean, sd)), Some(x)) = (z_test_spread(arg(a, 0)), num_of(&x)) else { return Ok(VALUE) };
-            let sigma = if truthy(arg(a, 2)) {
-                match num_of(&parse_number(arg(a, 2))) {
-                    Some(s) => s,
-                    None => return Ok(VALUE),
-                }
-            } else {
-                sd
+            use crate::excel_functions::{to_num, value_err};
+            let x = to_num(arg(a, 1));
+            let given = !matches!(arg(a, 2), V::Undef | V::Null);
+            let sigma_in = to_num(arg(a, 2));
+            if matches!(arg(a, 0), V::Str(_)) || x.is_nan() || (given && sigma_in.is_nan()) {
+                return Ok(value_err("Z.TEST"));
+            }
+            let Some((n, mean, sd)) = z_test_spread(arg(a, 0)) else {
+                return Ok(V::err(sol_error(ErrorCode::NotAvailable, "Z.TEST needs at least one number")));
             };
+            let sigma = if given { sigma_in } else { sd };
+            if !(sigma > 0.0) {
+                return Ok(V::err(sol_error(
+                    ErrorCode::DivZero,
+                    "Z.TEST needs a spread above 0: give sigma, or two different numbers",
+                )));
+            }
             V::Num(0.5 * libm::erfc((mean - x) / (sigma / n.sqrt()) / std::f64::consts::SQRT_2))
         }
         "CHISQ.TEST" => {
@@ -847,9 +759,10 @@ pub(crate) fn forget_spread() {
 /// list: a computed column tests each row against the same column ([[C120]] linearWork).
 fn z_test_spread(list: &V) -> Option<(f64, f64, f64)> {
     let read = || {
-        parse_number_array(&flatten(list))
-            .ok()
-            .map(|array| (array.len() as f64, fx_average(&array).unwrap_or(f64::NAN), fx_var_s(&array).sqrt()))
+        let xs = nums_of(std::slice::from_ref(list));
+        let n = xs.len() as f64;
+        (n > 0.0)
+            .then(|| (n, xs.iter().fold(0.0, |s, x| s + x) / n, crate::excel_functions::sample_variance(&xs).sqrt()))
     };
     let V::List(l) = list else { return read() };
     if l.len() < 64 {

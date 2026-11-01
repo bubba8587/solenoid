@@ -6,9 +6,9 @@ import { isSolError } from "../../src/graph/errorValue";
 const ev = (src: string): unknown => compileEvaluator(src)!({});
 
 it("a function that fails inside JavaScript answers #VALUE! as a value, so IFERROR reads it", () => {
-  const r = ev("TRIMMEAN(5, 0.2)");
-  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "TRIMMEAN can't compute with these arguments"]);
-  expect(ev('IFERROR(TRIMMEAN(5, 0.2), "fallback")')).toBe("fallback");
+  const r = ev("DEC2BIN(1, 5e9)");
+  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "DEC2BIN can't compute with these arguments"]);
+  expect(ev('IFERROR(DEC2BIN(1, 5e9), "fallback")')).toBe("fallback");
   expect(ev("ISERROR(ROMAN(1e12))")).toBe(true);
 });
 

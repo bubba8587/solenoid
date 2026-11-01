@@ -807,21 +807,6 @@ fn strict_equals(x: &V, y: &V) -> bool {
     }
 }
 
-/// `String.prototype.substr` over UTF-16 units.
-fn js_substr(s: &[u16], start: f64, len: Option<f64>) -> Vec<u16> {
-    let size = s.len() as f64;
-    let int = |x: f64| if x.is_nan() { 0.0 } else { x.trunc() };
-    let mut st = int(start);
-    st = if st < 0.0 { (size + st).max(0.0) } else { st.min(size) };
-    let l = len.map_or(size, int);
-    let end = (st + l).min(size);
-    if st >= end {
-        Vec::new()
-    } else {
-        s[st as usize..end as usize].to_vec()
-    }
-}
-
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum MatchMode {
     Exact,
@@ -1371,35 +1356,6 @@ impl JsSum {
     }
 }
 
-/// `[...xs].sort((a, b) => a - b)`: `undefined` goes last unseen, as V8 does. None where V8's merge would decide
-/// an inconsistent comparator's order (64 or more items, not all numbers).
-pub(crate) fn js_numeric_sort(xs: &[V]) -> Vec<V> {
-    let (mut s, undef): (Vec<V>, Vec<V>) = xs.iter().cloned().partition(|v| !matches!(v, V::Undef));
-    if s.iter().all(|v| matches!(v, V::Num(n) if !n.is_nan())) {
-        crate::js_sort::js_sort_by(&mut s, |a, b| {
-            (to_f64_js(a) - to_f64_js(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal)
-        });
-    } else {
-        crate::decision::sort_by_num(&mut s, |a, b| to_f64_js(a) - to_f64_js(b));
-    }
-    s.extend(undef);
-    s
-}
-
-/// `(v ?? [])` as an array-like: its `length` (a string's in UTF-16 units; None where it is `undefined`) and what
-/// `[...v]` spreads (a string's code points; None where that throws).
-pub(crate) fn js_len_spread(v: &V) -> (Option<f64>, Option<Vec<V>>) {
-    match v {
-        V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
-        V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
-        V::Str(s) => (
-            Some(s.encode_utf16().count() as f64),
-            Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
-        ),
-        _ => (None, None),
-    }
-}
-
 /// `(v ?? [])[i]` for each index: a string's UTF-16 units (a lone half reads as U+FFFD, which no sum or number
 /// tells apart). None for a scalar, whose length is `undefined`.
 pub(crate) fn js_indexed(v: &V) -> Option<Vec<V>> {
@@ -1411,38 +1367,21 @@ pub(crate) fn js_indexed(v: &V) -> Option<Vec<V>> {
     }
 }
 
-/// `arr.reduce((a, b) => a + b, 0) / arr.length`.
-pub(crate) fn js_mean(arr: &[V]) -> f64 {
-    arr.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / arr.len() as f64
-}
-
-fn js_sample_var(arr: &[V]) -> f64 {
-    let m = js_mean(arr);
-    arr.iter().fold(0.0, |s, v| s + libm::pow(to_f64_js(v) - m, 2.0)) / (arr.len() as f64 - 1.0)
-}
-
-/// `Array.prototype.slice(start, end)`'s index.
-pub(crate) fn js_slice_index(k: f64, len: usize) -> usize {
-    let l = len as f64;
-    (if k < 0.0 { (l + k).max(0.0) } else { k.min(l) }) as usize
-}
-
-/// `values.length` is `n` (a string's UTF-16 length, None where it is `undefined`) and `items`
-/// what `[...values]` spreads (None where that throws).
-fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> Result<V, Thrown> {
-    let n = n.unwrap_or(f64::NAN);
-    if n == 0.0 || percent.is_nan() {
-        return Ok(value_err("TRIMMEAN"));
+/// Excel's TRIMMEAN: the mean once `floor(n · percent / 2)` numbers are dropped from each end.
+fn excel_trimmean(mut xs: Vec<f64>, percent: f64) -> V {
+    if percent.is_nan() {
+        return value_err("TRIMMEAN");
     }
-    let trim = ((n * percent) / 2.0).floor();
-    if trim * 2.0 >= n {
-        return Ok(V::err(sol_error(ErrorCode::Domain, "TRIMMEAN trimmed away every value")));
+    if !(0.0..1.0).contains(&percent) {
+        return V::err(sol_error(ErrorCode::Domain, "TRIMMEAN's percent runs from 0 up to, not including, 1"));
     }
-    let Some(items) = items else { return Err(Thrown::value("values is not iterable")) };
-    let s = js_numeric_sort(&items);
-    let (lo, hi) = (js_slice_index(trim, s.len()), js_slice_index(n - trim, s.len()));
-    let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
-    Ok(V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64))
+    if xs.is_empty() {
+        return V::err(sol_error(ErrorCode::Domain, "TRIMMEAN needs at least one number"));
+    }
+    xs.sort_by(f64::total_cmp);
+    let trim = ((xs.len() as f64 * percent) / 2.0).floor() as usize;
+    let kept = &xs[trim..xs.len() - trim];
+    V::Num(kept.iter().fold(0.0, |s, x| s + x) / kept.len() as f64)
 }
 
 /// Over the list's finite numbers, sorted (`sorted_of`, `Reading::PercentRank`).
@@ -2371,7 +2310,6 @@ fn to_list(v: &V) -> Rc<Vec<V>> {
     }
 }
 
-/// The weight sum adds as JS does, text joining; every other sum reads numbers.
 fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if let Some(e) = values.iter().chain(weights).find(|v| v.is_sol_error()) {
         return e.clone();
@@ -2379,14 +2317,15 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if values.is_empty() || weights.len() < values.len() {
         return V::Null;
     }
-    let pairs: Vec<(&V, &V)> =
-        values.iter().zip(weights).filter(|(v, w)| !matches!(v, V::Null) && !matches!(w, V::Null)).collect();
-    let w_sum = pairs.iter().fold(JsSum::Num(0.0), |a, (_, w)| a.add(w));
-    if pairs.is_empty() || matches!(w_sum, JsSum::Num(x) if x == 0.0) {
+    // A pair counts when both sides are numbers; text on either side drops it, as a blank does ([[C10]]
+    // socketLattice).
+    let is_num = |v: &V| matches!(v, V::Num(_) | V::Bool(_));
+    let pairs: Vec<(&V, &V)> = values.iter().zip(weights).filter(|(v, w)| is_num(v) && is_num(w)).collect();
+    let num = |v: &V| to_num(v);
+    let w_sum = pairs.iter().fold(0.0, |a, (_, w)| a + num(w));
+    if pairs.is_empty() || w_sum == 0.0 {
         return V::Null;
     }
-    let w_sum = w_sum.number();
-    let num = |v: &V| to_f64_js(v);
     let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + num(v) * num(w)) / w_sum;
     let mut result = Some(wavg);
     if name != "WAVG" {
@@ -2649,6 +2588,26 @@ pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
             (matches!(v, V::Num(_)) || !n.is_nan()).then_some(n)
         })
         .collect()
+}
+
+/// The sample variance; NaN under two values.
+pub(crate) fn sample_variance(xs: &[f64]) -> f64 {
+    let n = xs.len() as f64;
+    let mean = xs.iter().fold(0.0, |s, x| s + x) / n;
+    xs.iter().fold(0.0, |s, x| s + (x - mean) * (x - mean)) / (n - 1.0)
+}
+
+/// TYPE: 1 a number (or a blank, as an empty cell is), 2 text, 4 a logical, 16 an error, 64 a list, 128 a LAMBDA.
+pub(crate) fn excel_type(v: &V) -> V {
+    V::Num(match v {
+        V::Num(_) | V::Null | V::Unit(_) => 1.0,
+        V::Str(_) | V::Cx(..) => 2.0,
+        V::Bool(_) => 4.0,
+        V::Err(_) | V::Fx(_) => 16.0,
+        V::List(_) => 64.0,
+        V::Lambda(_) => 128.0,
+        V::Undef => return V::Fx(FxError::Value),
+    })
 }
 
 /// Two equal lists read in step, a position kept only when both sides are numbers to `nums_of`, so a text cell
@@ -3629,19 +3588,10 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             }
         }
         F::TRIMMEAN => {
-            if holds_text(arg(a, 0)) {
+            if matches!(arg(a, 0), V::Str(_)) {
                 return Ok(value_err("TRIMMEAN"));
             }
-            let (n, items) = match arg(a, 0) {
-                V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
-                V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
-                V::Str(s) => (
-                    Some(s.encode_utf16().count() as f64),
-                    Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect()),
-                ),
-                _ => (None, None),
-            };
-            excel_trimmean(n, items, to_num(arg(a, 1)))?
+            excel_trimmean(nums_of(std::slice::from_ref(arg(a, 0))), to_num(arg(a, 1)))
         }
         F::REPT => {
             let t = to_str(arg(a, 0));
@@ -3693,28 +3643,21 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             None => return Err(Thrown::value(format!("{name} reads the calculation's clock, and this call has none"))),
         },
         F::F_TEST => {
-            let ((na, sa), (nb, sb)) = (js_len_spread(arg(a, 0)), js_len_spread(arg(a, 1)));
-            // `a.length < 2` is false for an `undefined` length.
-            if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
-                return Ok(V::Null);
+            let (xs, ys) = (nums_of(std::slice::from_ref(arg(a, 0))), nums_of(std::slice::from_ref(arg(a, 1))));
+            let (v1, v2) = (sample_variance(&xs), sample_variance(&ys));
+            if !(v1 > 0.0 && v2 > 0.0) {
+                return Ok(V::err(sol_error(
+                    ErrorCode::DivZero,
+                    "F.TEST needs two numbers or more on each side, not all the same",
+                )));
             }
-            let unspread = if sa.is_none() { "a" } else { "b" };
-            let (Some(sa), Some(sb)) = (sa, sb) else {
-                return Err(Thrown::value(format!("{unspread} is not iterable")));
-            };
-            let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
-            if !(v1 > 0.0) || !(v2 > 0.0) {
-                return Ok(V::Null);
+            if !(v1.is_finite() && v2.is_finite()) {
+                return Ok(V::err(sol_error(ErrorCode::Overflow, "F.TEST's spread is too large to represent")));
             }
             let f = v1 / v2;
-            let (df1, df2) = (na.unwrap_or(f64::NAN) - 1.0, nb.unwrap_or(f64::NAN) - 1.0);
+            let (df1, df2) = (xs.len() as f64 - 1.0, ys.len() as f64 - 1.0);
             let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
-            let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
-            if p.is_finite() {
-                V::Num(p)
-            } else {
-                V::Null
-            }
+            V::Num(2.0 * p1.min(1.0 - p1))
         }
         F::TEMPLATE if !matches!(arg(a, 0), V::Null | V::Undef) => template(a)?,
         F::DOLLAR => dollar(arg(a, 0), arg(a, 1))?,
@@ -4165,19 +4108,17 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             })
         }
         F::LOG => {
-            let n = parse_number(arg(a, 0));
-            let base = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(10.0) };
-            match (n, base) {
-                (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => e,
-                (V::Num(n), V::Num(b)) => {
-                    if n == 0.0 || b == 0.0 {
-                        V::Fx(FxError::Num)
-                    } else {
-                        V::Num(libm::log(n) / libm::log(b))
-                    }
-                }
-                _ => V::Fx(FxError::Value),
+            let (n, base) = (to_num(arg(a, 0)), opt_num(arg(a, 1), 10.0));
+            if n.is_nan() || base.is_nan() {
+                return value_err("LOG");
             }
+            if n <= 0.0 || base <= 0.0 {
+                return V::err(sol_error(ErrorCode::Domain, "LOG takes a number and a base above 0"));
+            }
+            if base == 1.0 {
+                return V::err(sol_error(ErrorCode::DivZero, "LOG's base can't be 1"));
+            }
+            V::Num(libm::log(n) / libm::log(base))
         }
         F::ATAN2 => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
@@ -4353,18 +4294,26 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
         }
         F::REPLACE => {
-            // The pass-through maps only the arguments given: a missing new_text isn't a string.
             if a.len() < 4 {
                 return V::Fx(FxError::Value);
             }
             let (old, new) = (to_str(arg(a, 0)), to_str(arg(a, 3)));
-            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else {
-                return V::Fx(FxError::Value);
-            };
+            let (at, len) = (to_num(arg(a, 1)).trunc(), to_num(arg(a, 2)).trunc());
+            if at.is_nan() || len.is_nan() {
+                return value_err("REPLACE");
+            }
+            if at < 1.0 || len < 0.0 {
+                return V::err(sol_error(
+                    ErrorCode::Value,
+                    "REPLACE starts at 1 or later and replaces 0 or more characters",
+                ));
+            }
             let old = utf16(&old);
-            let mut out = js_substr(&old, 0.0, Some(at - 1.0));
+            let from = (at as usize - 1).min(old.len());
+            let to = (from as f64 + len).min(old.len() as f64) as usize;
+            let mut out = old[..from].to_vec();
             out.extend(utf16(&new));
-            out.extend(js_substr(&old, at - 1.0 + len, None));
+            out.extend_from_slice(&old[to..]);
             V::str(&from_utf16(&out))
         }
         F::DATEDIF => {
@@ -6083,6 +6032,9 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
         }
     };
     let value = arg(a, 0);
+    if name == "TYPE" {
+        return excel_type(value);
+    }
     // A list maps cell by cell: the fallback pairs with each value (`map_cells`), the tests walk the items.
     fn walk(v: &V, f: &dyn Fn(&V) -> V) -> V {
         match v {

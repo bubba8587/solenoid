@@ -84,7 +84,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
     ["SKEW below n=3", "SKEW(x)", { x: [1, 2] }, null],
     ["KURT below n=4", "KURT(x)", { x: [1, 2, 3] }, null],
     ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }, "#DOMAIN!"],
-    ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }, "#DOMAIN!"],
+    ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }, "#DIV/0!"],
   ];
   it("guards a range longer than a call can take as arguments", () => {
     const x = Array.from({ length: 200_000 }, (_, i) => i % 7);

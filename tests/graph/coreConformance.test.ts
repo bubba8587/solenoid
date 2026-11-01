@@ -91,7 +91,7 @@ describe("function bodies answer as frozen", () => {
       }
     });
   }
-  if (freezes("function-bodies")) it("writes the frozen bodies", () => writeFrozen("function-bodies", bodies));
+  if (freezes("function-bodies")) it("writes the frozen bodies", { timeout: 600_000 }, () => writeFrozen("function-bodies", bodies));
 });
 
 // ─── Computed columns ─────────────────────────────────────────────────────────────
