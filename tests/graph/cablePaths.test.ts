@@ -327,6 +327,36 @@ describe("spline", () => {
     expect(parseFloat(m[1])).toBeGreaterThan(parseFloat(m[2]));
   });
 
+  it("holds across every pair of Conduit angles and a grid of positions: finite, tangent-exact, continuous, no longer arms than before", () => {
+    const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const spots: Array<[number, number]> = [];
+    for (const tx of [-400, -150, -40, 0, 40, 150, 400]) for (const ty of [-600, -200, -30, 0, 30, 200, 600]) spots.push([tx, ty]);
+    const controls = (c: Cfg) => {
+      const m = /C\s*([-\d.eE]+),([-\d.eE]+)\s+([-\d.eE]+),([-\d.eE]+)/.exec(spline(c));
+      return m ? m.slice(1).map(parseFloat) : null;
+    };
+    const bad: string[] = [];
+    for (const sa of angles) for (const ta of angles) for (const [tx, ty] of spots) {
+      const c: Cfg = { sx: 0, sy: 0, tx, ty, sa, ta };
+      if (Math.hypot(tx, ty) < 15) continue;
+      const cu = parseCubic(spline(c));
+      const k = controls(c);
+      if (!cu || !k || k.some((v) => !Number.isFinite(v))) { bad.push(`no curve ${JSON.stringify(c)}`); continue; }
+      if (offGrid(cu.exitDeg - sa, 360) > TOL || offGrid(cu.entryDeg - ta, 360) > TOL) bad.push(`tangent ${JSON.stringify(c)}`);
+      // Arms never outgrow the old rule, max(40, 0.4 × distance).
+      const old = Math.max(40, Math.hypot(tx, ty) * 0.4);
+      const a1 = Math.hypot(k[0], k[1]), a2 = Math.hypot(k[2] - tx, k[3] - ty);
+      if (a1 > old + 1e-6 || a2 > old + 1e-6) bad.push(`longer arm ${JSON.stringify(c)}`);
+      // A half-pixel drag moves the control points by little: no jump anywhere on the grid.
+      for (const [ddx, ddy] of [[0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5]]) {
+        const k2 = controls({ ...c, tx: tx + ddx, ty: ty + ddy })!;
+        const jump = Math.max(...k.map((v, i) => Math.abs(v - k2[i])));
+        if (jump > 2) bad.push(`jump ${jump.toFixed(2)} ${JSON.stringify(c)} by ${ddx},${ddy}`);
+      }
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
+  });
+
   it("collapses to a straight line only when sockets nearly touch", () => {
     expect(spline({ sx: 0, sy: 0, tx: 10, ty: 4, sa: 0, ta: 270 }))
       .toMatch(/^M [-\d.eE]+,[-\d.eE]+ L [-\d.eE]+,[-\d.eE]+$/);
