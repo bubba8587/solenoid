@@ -67,7 +67,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
 - [ ] The Formula.js local-time date path (EDATE, ACCRINT, COUPDAYS, DISC, PRICEDISC, DATEDIF days) moves to the UTC day kernels: it brings back the 29 Feb 1900 [[C44]] dateSerials rules out, and answers JS `TypeError` text.
 - [ ] About 45 copied JS crash messages ("a is not iterable", "Invalid array length", "format.split is not a function") become plain `#VALUE!`/`#SHAPE!` messages (DESIGN.md §7), or the input is accepted.
-- [ ] Set functions compare nested lists by value, not `===`.
 
 **Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
 

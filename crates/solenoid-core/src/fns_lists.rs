@@ -1,7 +1,7 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 //! The list, set, series and signal bodies, the returns, and SPARKLINE's picture. A list cell arrives as
 //! the TS hands it over, raw, so the bodies keep JavaScript's coercions: `-` and `<` read a cell as `Number`
-//! reads it, `===` and a `Set` compare a nested list by reference.
+//! reads it. The set functions compare a nested list by its items.
 
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -180,7 +180,7 @@ fn strict_eq(a: &V, b: &V) -> bool {
     }
 }
 
-/// A `Set`'s key (SameValueZero): NaN is one key, -0 is 0, every object its own.
+/// A set member's key: NaN is one key, -0 is 0, a list keys by its items; a LAMBDA or unit value is only itself.
 #[derive(Hash, PartialEq, Eq, Clone)]
 enum Key {
     Num(u64),
@@ -188,6 +188,7 @@ enum Key {
     Bool(bool),
     Null,
     Undef,
+    List(Vec<Key>),
     Obj(usize),
 }
 
@@ -200,6 +201,8 @@ fn key_of(v: &V, id: usize) -> Key {
         V::Undef => Key::Undef,
         // A complex keys by its parts.
         V::Cx(re, im) => Key::Str(format!("\u{0}cx:{},{}", number_to_string(*re), number_to_string(*im)).into()),
+        // Two lists with the same items are one member.
+        V::List(items) => Key::List(items.iter().map(|x| key_of(x, id)).collect()),
         _ => Key::Obj(id),
     }
 }
