@@ -373,7 +373,11 @@ fn checked_in_excel() {
         ("BESSELJ(1.9, 2)", N(0.329925828669785, 1e-15)),
         ("BESSELY(2.5, 1)", N(0.145918137508313, 1e-15)),
         ("DB(1000000, 100000, 6, 7, 7)", N(15845.09847, 1e-5)),
-        ("DATEVALUE(\"3/5/24\")", N(45356.0, 0.0)),
+        // Excel reads 3/5/24 month first; Solenoid answers #AMBIGUOUS! for two numbers that could each be the month
+        // (author 2026-11-01), and reads one past 12 as the day.
+        ("DATEVALUE(\"3/5/24\")", E),
+        ("DATEVALUE(\"13/5/24\")", N(45425.0, 0.0)),
+        ("DATEVALUE(\"3/3/24\")", N(45354.0, 0.0)),
         ("DATEVALUE(\"March 2024\")", N(45352.0, 0.0)),
         ("DATEVALUE(\"5-Mar-24\")", N(45356.0, 0.0)),
     ];

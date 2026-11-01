@@ -63,7 +63,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] TEXT: an Excel format-code engine (dates, times, sections, `0.##`), likely shared with the FC format model (`TEXT(45000,"mmm d")` is "2023-03-15"). The largest item.
 - [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`parse_string`; `value_text` replaced `js_string_of`, `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
-- [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
+- [ ] A case setting on the cards and functions that order text (sorts, `<`/`>`), case-insensitive as Excel's when on; [[C59]] byteStringOrder stays the default and text against a number stays `#TYPE!` (author 2026-11-01).
 - [ ] The JS crash texts left: the Obsidian, Script and boundary cards' frozen `thrownJs` texts come from the graph side (`boundary.rs`, `wasm.rs`). The core's card and formula copies went 2026-11-01.
 
 **Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).

@@ -437,11 +437,11 @@ pub(crate) fn to_str(v: &V) -> String {
     }
 }
 
-/// DATEVALUE's own reading of Excel's date text, month first as US Excel reads it (author 2026-11-01): `3/5/24` and
-/// `3/5/2024`, `3/5` (this year), `5-Mar-24` and `5 Mar 2024`, `Mar 5` (this year; two digits up to 31 are a day),
+/// DATEVALUE's own reading of Excel's date text (author 2026-11-01): numbers with slashes are day and month in either
+/// order, `#AMBIGUOUS!` when both could be the month (`3/5/24`), else the one past 12 is the day (`13/5/24`, `5/13`), `5-Mar-24` and `5 Mar 2024`, `Mar 5` (this year; two digits up to 31 are a day),
 /// `Mar 5, 2024`, and `March 2024` (the month's first day). A two-digit year 00 to 29 is 2000 to 2029, else
 /// 1930 to 1999. A time after the date is ignored. None for anything else, which the shared reader then tries.
-fn excel_datevalue(t: &str) -> Option<f64> {
+fn excel_datevalue(t: &str) -> Option<Result<f64, SolError>> {
     fn month_of(w: &str) -> Option<u32> {
         const NAMES: [&str; 12] = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         const FULL: [&str; 12] = [
@@ -486,10 +486,27 @@ fn excel_datevalue(t: &str) -> Option<f64> {
         let now = clock()?.now;
         Some(crate::date_serial::civil_from_days((now - 25569.0).floor() as i64).0)
     };
+    // Two numbers that could each be the month are ambiguous, as typed entry reads them ([[C44]] dateSerials);
+    // otherwise the one past 12 is the day.
+    let day_month = |a: u32, b: u32| -> Option<Result<(u32, u32), SolError>> {
+        if a <= 12 && b <= 12 && a != b {
+            return Some(Err(sol_error(
+                ErrorCode::Ambiguous,
+                format!("\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"),
+            )));
+        }
+        Some(Ok(if a <= 12 { (a, b) } else { (b, a) }))
+    };
     let (y, m, d) = match toks.as_slice() {
         [Tok::N(y, 4), Tok::N(m, _), Tok::N(d, _)] => (i64::from(*y), *m, *d),
-        [Tok::N(m, _), Tok::N(d, _), Tok::N(y, yd)] if slashed => (year_of(*y, *yd), *m, *d),
-        [Tok::N(m, _), Tok::N(d, _)] if slashed => (this_year()?, *m, *d),
+        [Tok::N(a, _), Tok::N(b, _), Tok::N(y, yd)] if slashed => match day_month(*a, *b)? {
+            Ok((m, d)) => (year_of(*y, *yd), m, d),
+            Err(e) => return Some(Err(e)),
+        },
+        [Tok::N(a, _), Tok::N(b, _)] if slashed => match day_month(*a, *b)? {
+            Ok((m, d)) => (this_year()?, m, d),
+            Err(e) => return Some(Err(e)),
+        },
         [Tok::N(d, _), Tok::M(m), Tok::N(y, yd)] | [Tok::M(m), Tok::N(d, _), Tok::N(y, yd)] => {
             (year_of(*y, *yd), *m, *d)
         }
@@ -501,7 +518,7 @@ fn excel_datevalue(t: &str) -> Option<f64> {
         return None;
     }
     let days = crate::date_serial::days_from_civil(y, m, d);
-    (crate::date_serial::civil_from_days(days) == (y, m, d)).then_some(days as f64 + 25569.0)
+    (crate::date_serial::civil_from_days(days) == (y, m, d)).then_some(Ok(days as f64 + 25569.0))
 }
 
 pub(crate) fn value_err(f: &str) -> V {
@@ -4618,8 +4635,10 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let t = trim_space(&raw);
             let bad = |what: &str| V::err(sol_error(ErrorCode::Value, format!("Cannot parse \"{t}\" as a {what}")));
             if arm == F::DATEVALUE {
-                if let Some(d) = excel_datevalue(t) {
-                    return V::Num(d);
+                match excel_datevalue(t) {
+                    Some(Ok(d)) => return V::Num(d),
+                    Some(Err(e)) => return V::err(e),
+                    None => {}
                 }
                 return match parse_date(t) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
