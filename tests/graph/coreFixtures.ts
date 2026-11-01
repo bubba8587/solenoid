@@ -41,11 +41,12 @@ export function dec(v: unknown): unknown {
 
 const fileOf = (suite: string) => path.join(DIR, `${suite}.json.gz`);
 
-/** A suite's frozen cases. */
-export function readFrozen<C>(suite: string): C[] {
+/** A suite's frozen cases; with `keep`, only those it keeps (it reads each case as the file holds it). */
+export function readFrozen<C>(suite: string, keep?: (raw: unknown, i: number) => boolean): C[] {
   const file = fileOf(suite);
   if (!fs.existsSync(file)) throw new Error(`no frozen cases for ${suite}`);
-  return (JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8")) as unknown[]).map(dec) as C[];
+  const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8")) as unknown[];
+  return (keep ? raw.filter(keep) : raw).map(dec) as C[];
 }
 
 export function writeFrozen<C>(suite: string, cases: readonly C[]): void {

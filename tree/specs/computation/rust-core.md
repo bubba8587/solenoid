@@ -15,7 +15,7 @@ Serves [[C130]] rustCore and [[D99]] rustIsSpec. `crates/solenoid-core` is Solen
 - Moving a TS copy onto the core:
   1. Freeze: the TS's answers on its tests' inputs are written to fixture files (`fixtures/core/`).
   2. Cover: the core answers every case the copy's callers make.
-  3. Delete: the TS copy and its differential test go, and the fixtures stay as the test. `FREEZE_CORE=1` re-answers every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is how a deliberate change in behaviour moves a fixture.
+  3. Delete: the TS copy and its differential test go, and the fixtures stay as the test. `FREEZE_CORE=1 npx vitest run tests/graph` re-answers every suite's frozen cases on the core and writes them back (`FREEZE_CORE=frame-fns,columns` only those), which is how a deliberate change in behaviour moves a fixture. Freezing stays in the JS harness, since it is what turns a JS value into a case: a suite that freezes answers every case through the wasm build, where its replay otherwise takes a sample. `cargo test --release --test conformance` then holds the native build to the new files.
 
 ```mermaid
 flowchart LR
@@ -34,7 +34,7 @@ flowchart LR
   - A JS exception (a function that throws) ends the row's evaluation.
 - A function's dispatch facts, argument roles and empty-slot readings live in `data/call_traits.json` (first frozen from the TS's call table; the tests read it through `tests/graph/callTraits.ts`). The names the editor offers come from the core (`engine_function_names`); the TS keeps only each name's arity and signature hint (`excelFunctions.ts`, `formulaSignatureTable.ts`).
 - Correctness rests on the conformance checks, not review:
-  - `tests/graph/coreConformance.test.ts` replays the frozen answers in `fixtures/core/`: every function body on random and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines, 6k parser trees (checked against the TS parser on all 49k formulas the fixtures hold before it went), 3k pack calls; V8's `Math` is checked live, and `corePlatform.test.ts` holds UNACCENT to Node's NFD and a caseless backreference to V8.
+  - `crates/solenoid-core/tests/conformance.rs` replays the frozen answers in `fixtures/core/` natively, every case through the commands the wasm build reaches and compared as the JS compares it: every function body on random and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines, 26k frame functions, 6k parser trees (checked against the TS parser on all 49k formulas the fixtures hold before it went), 3k pack calls, formula dimensions and affine weights, the unit-aware bodies, wrappers and folds, typed date text and dimension labels. `tests/graph/coreConformance.test.ts` replays every 50th case of the same suites through the wasm build, which shows it answers as the native one; V8's `Math` is checked live there, and `corePlatform.test.ts` holds UNACCENT to Node's NFD and a caseless backreference to V8. The suites a TS caller builds the cases for (card shapes, verb shapes, FC tagging, column inference, the boundary's literals and throws) replay in JS only.
   - Every test file loads the core (`tests/setup/graphEngine.ts`), so the hand-written suite's formulas check the Rust evaluator too.
   - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively.
 

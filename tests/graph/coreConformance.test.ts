@@ -1,7 +1,9 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 // The Rust core against its frozen answers (coreFixtures.ts): the fixtures are the spec, and one changes only in the
-// commit that changes the behaviour, by FREEZE_CORE=<suite> answering the frozen cases again through the core.
-import { describe, it, expect, beforeAll, vi } from "vitest";
+// commit that changes the behaviour, by FREEZE_CORE=<suite> answering the frozen cases again through the core. Every
+// case replays natively (crates/solenoid-core/tests/conformance.rs); here a sample of each suite shows the wasm build
+// answers as the native one, and a suite that freezes answers every case.
+import { describe, it, expect, vi } from "vitest";
 import { isSolError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { parseFormula } from "../../src/graph/excelFormula";
@@ -20,8 +22,18 @@ import { readFrozen, replay, freezes, writeFrozen, enc } from "./coreFixtures";
 process.env.TZ = "UTC";
 vi.useFakeTimers({ toFake: ["Date"], now: Date.UTC(2026, 5, 15, 13, 45, 30, 250) });
 
-beforeAll(() => {
-});
+const SAMPLE = 50;
+/** A suite's every SAMPLE-th case (each name's, by `by`), or all of them while it freezes, so its file is written whole. */
+function sampleOf<C>(suite: string, by?: (raw: unknown) => string): C[] {
+  if (freezes(suite)) return readFrozen<C>(suite);
+  const seen = new Map<string, number>();
+  return readFrozen<C>(suite, (raw, i) => {
+    if (!by) return i % SAMPLE === 0;
+    const k = by(raw), n = seen.get(k) ?? 0;
+    seen.set(k, n + 1);
+    return n % SAMPLE === 0;
+  });
+}
 
 function mulberry32(seed: number): () => number {
   let a = seed;
@@ -75,7 +87,7 @@ const wireEnv = (env: Record<string, unknown>) => Object.fromEntries(Object.entr
 // ─── Function bodies ──────────────────────────────────────────────────────────────
 
 type FnCase = { name: string; args: unknown[]; want: unknown };
-const bodies = readFrozen<FnCase>("function-bodies");
+const bodies = sampleOf<FnCase>("function-bodies", (c) => (c as FnCase).name);
 
 describe("function bodies answer as frozen", () => {
   const byName = new Map<string, FnCase[]>();
@@ -139,7 +151,7 @@ const lamValue = (w: LamWire): LambdaValue => ({ __lambda: true, params: w.param
   fn: () => { throw new Error("a frozen LAMBDA runs on the core"); } } as LambdaValue);
 
 describe("computed columns answer as frozen", () => {
-  const columns = readFrozen<ColCase>("columns");
+  const columns = sampleOf<ColCase>("columns");
   it(`${columns.length} formulas`, { timeout: 600_000 }, () => {
     const bad = replay("columns", columns, (c) => {
       const lambdas = c.lambdas && Object.fromEntries(Object.entries(c.lambdas).map(([k, w]) => [k, lamValue(w)]));
@@ -165,7 +177,7 @@ function view(f: FrameValue): unknown {
 }
 
 describe("table verbs answer as frozen", () => {
-  const verbs = readFrozen<VerbCase>("verbs");
+  const verbs = sampleOf<VerbCase>("verbs");
   it(`${verbs.length} pipelines, joins, appends and binds`, { timeout: 600_000 }, async () => {
     const be = coreStore();
     const bad: unknown[] = [];
@@ -210,7 +222,7 @@ function fnOutcome(name: string, frames: FrameValue[], args: unknown[]): unknown
 }
 
 describe("frame functions answer as frozen", () => {
-  const frameFns = readFrozen<FrameFnCase>("frame-fns");
+  const frameFns = sampleOf<FrameFnCase>("frame-fns");
   it(`${frameFns.length} calls`, { timeout: 600_000 }, () => {
     expect(replay("frame-fns", frameFns, (c) => fnOutcome(c.name, c.frames, c.args), same)).toEqual([]);
   });
@@ -236,7 +248,7 @@ type ExprCase = { src: string; env: Record<string, unknown>; want: unknown };
 const evalAnswer = (c: ExprCase) => engineAnswer("", wasmInvokeSync("engine_eval", { src: c.src, env: wireEnv(c.env), clock: engineClock() }));
 
 describe("formulas over values answer as frozen", () => {
-  const expressions = readFrozen<ExprCase>("expressions");
+  const expressions = sampleOf<ExprCase>("expressions");
   it(`${expressions.length} formulas`, { timeout: 600_000 }, () => {
     expect(replay("expressions", expressions, evalAnswer, same)).toEqual([]);
   });
@@ -245,7 +257,7 @@ describe("formulas over values answer as frozen", () => {
 // ─── Pack functions (fns_packs.rs) ───────────────────────────────────────────────
 
 describe("pack functions answer as frozen", () => {
-  const packCalls = readFrozen<ExprCase>("pack-calls");
+  const packCalls = sampleOf<ExprCase>("pack-calls");
   it(`${packCalls.length} formulas`, { timeout: 600_000 }, () => {
     expect(replay("pack-calls", packCalls, evalAnswer, same)).toEqual([]);
   });
@@ -267,7 +279,7 @@ type DimFnsCase = DimCase & { fns: Record<string, [string[], string]> };
 const dimAnswer = (raw: { dim?: unknown; code?: unknown }) => (raw.dim ? { dim: raw.dim, code: raw.code } : raw);
 
 describe("formula dimensions answer as frozen", () => {
-  const unitDims = readFrozen<DimCase>("unit-dims");
+  const unitDims = sampleOf<DimCase>("unit-dims");
   it(`${unitDims.length} formulas, as text and as a tree`, () => {
     // As text, and as the tree a caller with no text (Equation's isolated side) sends.
     expect(replay("unit-dims", unitDims, (c) => dimAnswer(wasmInvokeSync("engine_dim_eval", { src: c.src, env: c.env, codes: c.codes })), same)).toEqual([]);
@@ -275,7 +287,7 @@ describe("formula dimensions answer as frozen", () => {
     expect(trees.slice(0, 5)).toEqual([]);
   });
 
-  const unitDimsFns = readFrozen<DimFnsCase>("unit-dims-fns");
+  const unitDimsFns = sampleOf<DimFnsCase>("unit-dims-fns");
   it(`${unitDimsFns.length} formulas through named LAMBDAs`, () => {
     expect(replay("unit-dims-fns", unitDimsFns, (c) => dimAnswer(wasmInvokeSync("engine_dim_eval", { src: c.src, env: c.env, codes: c.codes, fns: c.fns })), same)).toEqual([]);
     const trees = unitDimsFns.filter((c) => {
@@ -290,7 +302,7 @@ type AffCase = { src: string; points: string[]; lists: string[]; bare: string[];
 
 // The formula trees the editor's walkers read (variables, LaTeX, steps), first frozen from the TypeScript parser.
 describe("the parser answers its frozen trees", () => {
-  const trees = readFrozen<{ src: string; want: unknown }>("formula-trees");
+  const trees = sampleOf<{ src: string; want: unknown }>("formula-trees");
   const sorted = (v: unknown): unknown =>
     Array.isArray(v) ? v.map(sorted) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, sorted(x)])) : v;
   it(`${trees.length} formulas`, () => {
@@ -300,7 +312,7 @@ describe("the parser answers its frozen trees", () => {
 });
 
 describe("affine weights answer as frozen", () => {
-  const affineCases = readFrozen<AffCase>("affine-weights");
+  const affineCases = sampleOf<AffCase>("affine-weights");
   it(`${affineCases.length} formulas, as text and as a tree`, () => {
     const ask = (c: AffCase, formula: unknown, fns: unknown) => wasmInvokeSync<unknown>("engine_affine_weight", { ...(formula as object), points: c.points, lists: c.lists, bare: c.bare, fns });
     expect(replay("affine-weights", affineCases, (c) => ask(c, { src: c.src }, c.fns), same)).toEqual([]);
@@ -330,7 +342,7 @@ const unitCall = (c: UnitListCase) => {
 
 describe("bodies over values with a unit answer as frozen", () => {
   for (const [suite, what] of [["unit-lists", "the list movers"], ["unit-running", "RUNNING"], ["unit-shapers", "SORT, SORTBY, UNIQUE, TAKE and DROP"], ["unit-filters", "FILTER"]] as const) {
-    const cases = readFrozen<UnitListCase>(suite);
+    const cases = sampleOf<UnitListCase>(suite);
     it(`${what} (${cases.length})`, () => expect(replay(suite, cases, unitCall)).toEqual([]));
   }
 });
@@ -338,7 +350,7 @@ describe("bodies over values with a unit answer as frozen", () => {
 type ExprUnitCase = { src: string; env: Record<string, unknown>; want: unknown };
 
 describe("Expression's unit wrapper answers as frozen", () => {
-  const expressionUnits = readFrozen<ExprUnitCase>("expression-units");
+  const expressionUnits = sampleOf<ExprUnitCase>("expression-units");
   it(`${expressionUnits.length} formulas`, () => {
     expect(replay("expression-units", expressionUnits, (c) => {
       const env = Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, coreValue(v, true)]));
@@ -351,7 +363,7 @@ describe("Expression's unit wrapper answers as frozen", () => {
 type FoldCase = { kind: "reduce" | "row" | "col"; src: string; m: unknown; initial?: unknown; wrapped: boolean; want: unknown };
 
 describe("REDUCE, BYROW and BYCOL over values with a unit answer as frozen", () => {
-  const foldUnits = readFrozen<FoldCase>("fold-units");
+  const foldUnits = sampleOf<FoldCase>("fold-units");
   /** A table socket's reading: a list is one row, a scalar one cell. */
   const toAnyMatrix = (v: unknown) => (v == null ? null : !Array.isArray(v) ? [[v]] : v.length && !Array.isArray(v[0]) ? [v] : v);
   it(`${foldUnits.length} folds through the nodes' data()`, () => {
