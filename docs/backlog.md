@@ -202,6 +202,7 @@ Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item la
 - [ ] Drag on touch (long-press to lift); today touch moves through Move to….
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
+- [ ] **Custom logomarks on desktop** (author 2026-11-01): let a desktop user replace each of the app's logomarks (the wordmark, the mark in the menu bar and top bar, the app-menu trigger, the help dialogs' and the site nav's marks; `TopBar.tsx`, `MenuBar.tsx`, `HelpDialogs.tsx`, `siteNav.tsx`) with their own SVG of exactly the same size, refused when its box differs. Desktop only (it reads a local file); kept per install, with a way back to the default.
 - [ ] **Rename List Sort and List Filter to Sort and Filter**, beside Frame Sort and Frame Filter: both take tables now, so "List" no longer describes them. Update the seeds and the catalog.
 - [ ] **Collapsed-card rules, the stragglers**: the solver cards (TVM, Compound Growth, Effective Rate, Triangle Solver, Ohm's Law, dBm/W, Wavelength/Frequency, Ideal Gas, Moles/Mass, pH) collapse to a row per variable instead of one pill, since each variable is both input and output; Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color and Resistor keep settings visible when collapsed.
 - [ ] **Expanding a group never leaves an overlap** ([[C112]] noOverlapsEver): with "Auto-arrange groups on expand" off, the setting also turns off the overlap cleanup, so an expanded group can sit on its neighbors. Off should skip the big push but still move a covered card just clear.
