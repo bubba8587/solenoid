@@ -622,12 +622,21 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
         }
     };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
-    if op.text_label().is_some() {
+    if let Some(label) = op.text_label() {
         let needle = fold(&js_string(value));
         let ascii_fold = !match_case && needle.is_ascii();
         return Ok(Box::new(move |c| {
             if absent(c) {
                 return Ok(false);
+            }
+            // A text test reads text only; a number or logical in a text column is refused, never read as its
+            // digits ([[C10]] socketLattice).
+            if !matches!(c, FrameCell::Str(_)) {
+                let kind = if matches!(c, FrameCell::Bool(_)) { "true/false value" } else { "number" };
+                return Err(sol_error(
+                    ErrorCode::Type,
+                    format!("{label} reads text, and a cell holds a {kind}. Cast the column to Text first"),
+                ));
             }
             let raw = js_string(c);
             if ascii_fold && raw.is_ascii() {

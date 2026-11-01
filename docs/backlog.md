@@ -62,7 +62,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 **Wrong answers, to Excel's (start here):**
 - [ ] TEXT: an Excel format-code engine (dates, times, sections, `0.##`), likely shared with the FC format model (`TEXT(45000,"mmm d")` is "2023-03-15"). The largest item.
 - [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`parse_string`; `value_text` replaced `js_string_of`, `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
-- [ ] Filter Frame's text tests on a number cell read its exact digits (`value_text`); [[C10]] socketLattice says a text test on a number is an error instead. Cast "general" and Spell Number write Excel's 15 digits (2026-11-01).
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
 - [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
 - [ ] The JS crash texts left: the Obsidian, Script and boundary cards' frozen `thrownJs` texts come from the graph side (`boundary.rs`, `wasm.rs`). The core's card and formula copies went 2026-11-01.
