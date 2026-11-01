@@ -312,6 +312,21 @@ describe("spline", () => {
     }
   });
 
+  it("doesn't bend back when there is room sideways, and still does when there isn't", () => {
+    // With room, the control points stay between the sockets horizontally: the arms meet in the middle at most.
+    for (const ty of [150, 400, 900]) {
+      const d = spline({ sx: 0, sy: 0, tx: 220, ty, sa: null, ta: null });
+      const m = /C\s*([-\d.eE]+),[-\d.eE]+\s+([-\d.eE]+),/.exec(d)!;
+      const [c1x, c2x] = [parseFloat(m[1]), parseFloat(m[2])];
+      expect(c1x, `ty ${ty}`).toBeLessThanOrEqual(110 + 1e-9);
+      expect(c2x, `ty ${ty}`).toBeGreaterThanOrEqual(110 - 1e-9);
+    }
+    // Nearly in line sideways, each arm keeps its 40px lead, so the curve bends back to reach the socket.
+    const d = spline({ sx: 0, sy: 0, tx: 30, ty: 400, sa: null, ta: null });
+    const m = /C\s*([-\d.eE]+),[-\d.eE]+\s+([-\d.eE]+),/.exec(d)!;
+    expect(parseFloat(m[1])).toBeGreaterThan(parseFloat(m[2]));
+  });
+
   it("collapses to a straight line only when sockets nearly touch", () => {
     expect(spline({ sx: 0, sy: 0, tx: 10, ty: 4, sa: 0, ta: 270 }))
       .toMatch(/^M [-\d.eE]+,[-\d.eE]+ L [-\d.eE]+,[-\d.eE]+$/);

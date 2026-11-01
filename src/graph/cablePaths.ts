@@ -85,6 +85,9 @@ function entryDir(args: PathArgs): Pt {
   return { x: -out.x, y: -out.y };
 }
 
+/** The shortest a spline's control arm gets, so a cable still leaves its socket visibly along its direction. */
+const ARM_MIN = 40;
+
 function getAngleBezierPath(args: PathArgs): string {
   const dx = args.targetX - args.sourceX;
   const dy = args.targetY - args.sourceY;
@@ -94,11 +97,17 @@ function getAngleBezierPath(args: PathArgs): string {
   }
   const dS = exitDir(args);
   const dT = entryDir(args);
-  const arm = Math.max(40, dist * 0.4);
-  const c1x = args.sourceX + dS.x * arm;
-  const c1y = args.sourceY + dS.y * arm;
-  const c2x = args.targetX - dT.x * arm;
-  const c2y = args.targetY - dT.y * arm;
+  // Each arm runs along its socket's direction, at most half the way the cable travels that way, so the two arms
+  // meet in the middle rather than overshooting it: a target far below at a normal sideways gap gets an S, not a
+  // backward bulge. Nearly in line sideways, ARM_MIN still bends it back; a target behind travels negatively that
+  // way, so its arm grows with how far behind it is.
+  const armAlong = (d: Pt) => Math.max(ARM_MIN, Math.min(dist * 0.4, 0.5 * Math.abs(dx * d.x + dy * d.y)));
+  const armS = armAlong(dS);
+  const armT = armAlong(dT);
+  const c1x = args.sourceX + dS.x * armS;
+  const c1y = args.sourceY + dS.y * armS;
+  const c2x = args.targetX - dT.x * armT;
+  const c2y = args.targetY - dT.y * armT;
   return `M ${args.sourceX},${args.sourceY} C ${c1x},${c1y} ${c2x},${c2y} ${args.targetX},${args.targetY}`;
 }
 

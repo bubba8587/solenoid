@@ -42,6 +42,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
   else if (a === "--setting") { const [k, v] = argv[++i].split("="); (opt.settings ??= {})[k] = JSON.parse(v); }
+  else if (a === "--local") { const [k, ...v] = argv[++i].split("="); (opt.local ??= {})[k] = v.join("="); }
   else if (a === "--full") opt.full = true;
   else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
   else if (a === "--scale") opt.scale = Number(argv[++i]);
@@ -73,7 +74,7 @@ try {
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
-  await page.evaluateOnNewDocument((doc, palette, light, settings) => {
+  await page.evaluateOnNewDocument((doc, palette, light, settings, local) => {
     if (sessionStorage.getItem("shot-seeded")) return;
     sessionStorage.setItem("shot-seeded", "1");
     localStorage.clear();
@@ -82,7 +83,8 @@ try {
     if (palette) localStorage.setItem("solenoid.palette", palette);
     if (light) localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: "light" }));
     if (settings) localStorage.setItem("solenoid.settings", JSON.stringify(settings));
-  }, doc, opt.palette ?? null, !!opt.light, opt.settings ?? null);
+    for (const [k, v] of Object.entries(local ?? {})) localStorage.setItem(k, v);
+  }, doc, opt.palette ?? null, !!opt.light, opt.settings ?? null, opt.local ?? null);
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e?.message ?? e)));
   page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") pageErrors.push(m.text()); });
