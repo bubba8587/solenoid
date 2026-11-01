@@ -43,7 +43,6 @@ the production minify, and its "esbuild options ignored" warning is expected.
 ## Rust core ([[D99]] rustIsSpec)
 - [ ] **Layer the core**: five groups (formulas, values, tables, planners, cards), each relying only on those below; today it's a flat list and a couple of low-level pieces reach up into card code. Publishing the function library on its own needs it.
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before develop merges into main (the author's step): develop commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
-- [ ] **Watch:** `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Desktop hardening** (security review 2026-10-24): `src-tauri/capabilities/default.json` lets the webview write any `$HOME/**/*.json|md` (dot-dirs like `~/.claude`, `.vscode`, `.git` included), read `$HOME/**/*.json|csv|md|yaml`, fetch `http(s)://*:*` (localhost, LAN, 169.254.*) and `opener:allow-open-path` unscoped; deny dot-dirs and private ranges, scope fs to the folders the user picked. `read_parquet` should run off the main thread (`spawn_blocking`) with a size cap. A foreign document's `<img src=http…>` (Image node, Note markdown) loads before the network gate, and pasted cards lose the foreign flag. Script cards in a foreign document run without asking (`../tree/specs/computation/script-sandbox.md` assumes the author wrote them).
 - [ ] **Two Ruggine behaviors the graph core leans on** (Ruggine review 2026-10-24): a removed node's engine cache stays until a full pass (upstream does the same), so a deleted card's frame stays in memory until then; and the core never spawns `ruggine::future::background()`, so after a pass stops early, sibling runs waiting on JS promises resume only when something else polls the queue (Ruggine's `tree/specs/port` § Futures says the host spawns it once).
 - [ ] **Graph core leftovers** (fuzz run and named-edits review, 2026-10-24):
@@ -57,10 +56,9 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
 
-Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the TEXT, LOG and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
+Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the LOG and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
 
 **Wrong answers, to Excel's (start here):**
-- [ ] TEXT: an Excel format-code engine (dates, times, sections, `0.##`), likely shared with the FC format model (`TEXT(45000,"mmm d")` is "2023-03-15"). The largest item.
 - [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`parse_string`; `value_text` replaced `js_string_of`, `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
 - [ ] A case setting on the cards and functions that order text (sorts, `<`/`>`), case-insensitive as Excel's when on; [[C59]] byteStringOrder stays the default and text against a number stays `#TYPE!` (author 2026-11-01).
@@ -74,7 +72,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
 
 **Also:**
-- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs; BESSEL, DDB, NPV and FACT match Excel's documented examples, `tests/excel_examples.rs`): each becomes Excel's or goes, case by case.
+- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (the text pass-throughs; BESSEL, DDB, NPV and FACT match Excel's documented examples, `tests/excel_examples.rs`): each becomes Excel's or goes, case by case.
 
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".

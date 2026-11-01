@@ -19,6 +19,7 @@ pub mod dists;
 pub mod error_value;
 pub mod eval;
 pub mod excel_criteria;
+pub mod excel_format;
 pub mod excel_formula;
 pub mod excel_functions;
 pub mod finance_ops;

@@ -76,14 +76,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **DOLLAR**: Excel writes a negative in accounting form as `($1,234.57)`, the `$` inside the parentheses. Formula.js writes `$(1,234.57)`, and the override moves the `$`. A negative that rounds to zero keeps the form, `($0.00)`, where Formula.js writes `-$0.00`. `decimals` truncates, and a blank one is 0 (left out, 2). The DOLLAR card calls the same registration.
 - **FIXED, DOLLAR** round with `round_digits` first, so `FIXED(1.005, 2)` is "1.01" as in Excel; Formula.js's `toFixed` reads the binary 1.00499… and writes "1.00". A value that rounds to zero goes through unrounded, so its sign survives. The FIXED card calls the same registration.
 - **CONVERT** runs Solenoid's unit system on the Convert node's units, read by Excel code first (`"C"`, `"lbm"`, `"oz"` the fluid ounce) and by the node's unit id second (`convert_unit_key`, `convert_units.rs`). An unknown or cross-category unit is `#N/A`, as in Excel. Formula.js's CONVERT errors even on Celsius to Fahrenheit.
-- **TEXT** answers as Formula.js did, with its holes patched up front:
-  - text that is not a number passes through unchanged, where Formula.js throws;
-  - `@` and `General` use `number_to_text`;
-  - a code of only zeros (`000`) zero-pads the rounded magnitude;
-  - a scientific code (`0.00E+00`) writes `1.23E+06`;
-  - a date-shaped code (letters from `ymdhs`, once quoted literals are removed, and no `#`, `0` or `?`) formats the serial's UTC date, as Formula.js's formatter read it through UTC getters. Reading a local wall-clock date instead shifts the day twice on any machine outside UTC.
-
-  Three kinds of code stay broken on purpose and are not chased: section codes (`pos;neg`), fractions (`# ?/?`), and time tokens (`hh:mm` renders only the date part).
+- **TEXT** reads Excel's format codes (US English) in `excel_format.rs`, shared with Cast to Text: up to four sections (positive; negative, shown without its minus; zero; text), conditions (`[>100]`), digit placeholders `0 # ?`, grouping and scaling commas, `%`, scientific (`0.00E+00`, engineering with `##0.0E+0`), fractions (`# ?/?`, `# ?/8`), dates and times (`m` is minutes after an hour or before seconds; `[h]:mm` elapsed; `ss.00`; AM/PM shows in capitals), quoted and escaped literals, `_x` as a space, `*x` dropped, `[$€-…]` currency and colors ignored. A number is formatted from its 15 significant digits, rounded half up (`TEXT(1.005, "0.00")` is "1.01"), and a value that rounds to zero loses its minus. Text and a logical go through the text section and otherwise pass unchanged (`TEXT(TRUE, "0")` is "TRUE"; text is never read as a number, [[C10]] socketLattice). `#VALUE!`: digit placeholders mixed with date codes (`0 days`), a negative date, an unclosed quote or bracket, more than four sections, a missing format. Checked against the author's Excel, 2026-11-01 (`excel_format.rs` tests); the one gap is Excel cutting a typed number to 15 digits on entry, where Solenoid's literal keeps its double.
 
 ## Dates
 

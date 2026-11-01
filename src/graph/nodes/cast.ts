@@ -47,7 +47,7 @@ export class CastNode extends GraphNode {
   static fieldPlaceholders: Record<string, string> = { decimal_sep: ".", group_sep: "," };
   static socketDocs: Record<string, string> = {
     value: "A date keeps its date type, so casting it to text formats it as a date.",
-    format: "A pattern like 0.00, 0.00% or YYYY-MM-DD. Blank is the plain text. Excel: TEXT.",
+    format: "An Excel format code like 0.00, 0.0%, #,##0 or yyyy-mm-dd, read as TEXT reads it. Blank is the plain text.",
     decimal_sep: "Defaults to a period, so 1.234,56 reads with a comma here and a period as the group.",
     group_sep: "Defaults to a comma, or none when the decimal is a comma.",
     result: "A blank input stays blank rather than failing. A value that will not parse becomes #VALUE!, per cell in a list.",

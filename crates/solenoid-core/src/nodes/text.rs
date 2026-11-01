@@ -637,28 +637,17 @@ fn regex(c: &mut Call) -> Answer {
 
 // ─── Cast ───────────────────────────────────────────────────────────────────────
 
-/// TEXT's few formats a cast takes, `0.00` and `0.0%`; anything else the number at Excel's 15 digits ("General").
+/// A number as text through Excel's format codes, as TEXT writes it ([[C17]] shareImpl); a blank format is the
+/// number at Excel's 15 digits ("General").
 fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     let s = match format {
         V::Str(s) => s.to_string(),
         _ => return Err(err(ErrorCode::Type, "The format takes text")),
     };
-    let decimals = |f: &str| f.split('.').nth(1).map_or_default(|d| d.encode_utf16().count()) as f64;
-    let fixed = |x: f64, d: f64| {
-        crate::jsnum::fixed_text(x, d).ok_or_else(|| err(ErrorCode::Value, "A format shows at most 100 decimal places"))
-    };
-    if s.is_empty() || s == "general" {
+    if s.is_empty() {
         return Ok(crate::excel_functions::number_to_text(v));
     }
-    if s.strip_prefix('0').is_some_and(|r| {
-        r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))
-    }) {
-        return fixed(v, decimals(&s));
-    }
-    if let Some(inner) = s.strip_suffix('%') {
-        return Ok(fixed(v * 100.0, decimals(inner))? + "%");
-    }
-    Ok(crate::excel_functions::number_to_text(v))
+    crate::excel_format::format_number(v, &s).map_err(|m| err(ErrorCode::Value, m))
 }
 
 /// A value in an FC unit reads with the FC's label, `$5` or `5 km`; any other unit by its dimension.
@@ -839,11 +828,11 @@ fn cast_one(
             V::Str(_) => x.clone(),
             V::Num(n) if dateish => {
                 let pattern = match format {
-                    V::Str(s) if s.is_empty() => "DD-MMM-YYYY".to_string(),
+                    V::Str(s) if s.is_empty() => crate::date_serial::DEFAULT_DATE_FORMAT.to_string(),
                     V::Str(s) => s.to_string(),
                     other => value_text(other),
                 };
-                V::str(&crate::date_serial::format_date_serial(*n, &pattern))
+                V::str(&crate::excel_format::format_number(*n, &pattern).map_err(|m| err(ErrorCode::Value, m))?)
             }
             V::Num(n) => V::str(&format_number_pattern(*n, format)?),
             V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),

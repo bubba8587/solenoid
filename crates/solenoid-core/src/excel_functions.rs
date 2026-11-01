@@ -1482,124 +1482,23 @@ fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
     V::Num(acc)
 }
 
-/// TEXT: its patched codes up front and Formula.js's TEXT after.
+/// TEXT through Excel's format codes (`excel_format`): a number by its section, text and a logical through the text
+/// section ([[C10]] socketLattice: text is never read as a number).
 fn excel_text(value: &V, fmt: &V) -> Result<V, Thrown> {
+    if matches!(fmt, V::Undef) {
+        return Err(Thrown::value("TEXT needs a format code"));
+    }
+    if let Some(e) = value.as_error().or_else(|| fmt.as_error()) {
+        return Ok(e);
+    }
     let f = to_str(fmt);
-    let n = to_num(value);
-    if n.is_nan() {
-        return Ok(V::str(&to_str(value)));
-    }
-    if f == "@" || f.eq_ignore_ascii_case("general") {
-        return Ok(V::str(&number_to_text(n)));
-    }
-    if !f.is_empty() && f.bytes().all(|c| c == b'0') {
-        let digits = number_to_string(round_half_up(n.abs()));
-        let pad = f.len().saturating_sub(digits.encode_utf16().count());
-        return Ok(V::str(&format!("{}{}{digits}", if n < 0.0 { "-" } else { "" }, "0".repeat(pad))));
-    }
-    if let Some((frac, sign_ok, exp_zeros)) = sci_code(&f) {
-        let _ = sign_ok;
-        let Some(s) = crate::jsnum::to_exponential(n, frac as f64) else {
-            return Err(Thrown::value("A format shows at most 100 decimal places"));
-        };
-        let (mant, e) = match s.split_once('e') {
-            Some((m, e)) => (m.to_string(), e.parse::<f64>().unwrap_or(f64::NAN)),
-            None => (s.clone(), f64::NAN),
-        };
-        let exp_text = number_to_string(e.abs());
-        let pad = exp_zeros.saturating_sub(exp_text.len());
-        return Ok(V::str(&format!("{mant}E{}{}{exp_text}", if e < 0.0 { "-" } else { "+" }, "0".repeat(pad))));
-    }
-    let bare = strip_quoted(&f);
-    let dateish = bare.chars().any(|c| "ymdhsYMDHS".contains(c)) && !bare.chars().any(|c| "#0?".contains(c));
-    if dateish {
-        // Formula.js writes any Date as its ISO date, whatever the code.
-        return match serial_to_ms(n) {
-            Some(ms) => Ok(V::str(&iso_date(ms))),
-            None => Err(Thrown::value("The date is outside the calendar's range")),
-        };
-    }
-    fx_text_number(n, &f)
-}
-
-/// `/^0(?:\.(0+))?E([+-])(0+)$/i`: the fraction's zero count and the exponent's.
-fn sci_code(f: &str) -> Option<(usize, bool, usize)> {
-    let b = f.as_bytes();
-    if b.first() != Some(&b'0') {
-        return None;
-    }
-    let mut i = 1;
-    let mut frac = 0;
-    if b.get(i) == Some(&b'.') {
-        let z = b[i + 1..].iter().take_while(|&&c| c == b'0').count();
-        if z == 0 {
-            return None;
-        }
-        frac = z;
-        i += 1 + z;
-    }
-    if !matches!(b.get(i), Some(b'E' | b'e')) || !matches!(b.get(i + 1), Some(b'+' | b'-')) {
-        return None;
-    }
-    let rest = &b[i + 2..];
-    (!rest.is_empty() && rest.iter().all(|&c| c == b'0')).then_some((frac, true, rest.len()))
-}
-
-/// `f.replace(/"[^"]*"/g, "")`.
-fn strip_quoted(f: &str) -> String {
-    let mut out = String::with_capacity(f.len());
-    let mut rest = f;
-    while let Some(at) = rest.find('"') {
-        match rest[at + 1..].find('"') {
-            Some(close) => {
-                out.push_str(&rest[..at]);
-                rest = &rest[at + 1 + close + 1..];
-            }
-            None => break,
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-/// `new Date(ms).toISOString().slice(0, 10)`.
-fn iso_date(ms: f64) -> String {
-    let p = parts_of_ms(ms);
-    let year = if (0..=9999).contains(&p.year) {
-        format!("{:04}", p.year)
-    } else {
-        format!("{}{:06}", if p.year < 0 { "-" } else { "+" }, p.year.abs())
+    let r = match value {
+        V::Num(n) => crate::excel_format::format_number(*n, &f),
+        V::Bool(b) => crate::excel_format::format_text(if *b { "TRUE" } else { "FALSE" }, &f),
+        V::Null | V::Undef => crate::excel_format::format_number(0.0, &f),
+        other => crate::excel_format::format_text(&to_str(other), &f),
     };
-    let full = format!("{year}-{:02}-{:02}", p.month, p.day);
-    full.chars().take(10).collect()
-}
-
-/// Formula.js's TEXT on a number: `$` and `%` read, the zeros after the point counted, then FIXED.
-fn fx_text_number(n: f64, f: &str) -> Result<V, Thrown> {
-    let currency = if f.starts_with('$') { "$" } else { "" };
-    let percent = f.ends_with('%');
-    let code: String = f.chars().filter(|&c| c != '%' && c != '$').collect();
-    let places = match code.split('.').nth(1) {
-        Some(after) => match after.chars().filter(|&c| c == '0').count() {
-            0 => return Err(Thrown::value("TEXT doesn't read a format that ends in a bare decimal point yet")),
-            z => z as f64,
-        },
-        None => 0.0,
-    };
-    let no_commas = !code.contains(',');
-    let n = if percent { n * 100.0 } else { n };
-    let Some(fixed) = crate::jsnum::fixed_text(n, places) else {
-        return Err(Thrown::value("A format shows at most 100 decimal places"));
-    };
-    let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
-    let mut out = match fixed.strip_prefix('-') {
-        Some(rest) => format!("-{currency}{rest}"),
-        None => format!("{currency}{fixed}"),
-    };
-    if percent {
-        out.push('%');
-    }
-    Ok(V::str(&out))
+    r.map(|t| V::str(&t)).map_err(Thrown::value)
 }
 
 /// `parts[0].replace(/\B(?=(\d{3})+$)/g, ",")` on the text before the first point.

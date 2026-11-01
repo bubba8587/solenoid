@@ -172,11 +172,12 @@ describe("Cast reads what the card is set to", () => {
     (n as unknown as { sourceKind: () => string | null }).sourceKind = () => source;
     return n;
   };
-  it("a number casts to text through the format's decimals or percent", () => {
+  it("a number casts to text through Excel's format codes, as TEXT reads them", () => {
     expect(card("text", { format: "0.000" }).data({ value: [[1, 2.5, -0.0005]] }).result).toEqual(["1.000", "2.500", "-0.001"]);
     expect(card("text", { format: "0%" }).data({ value: [0.256] }).result).toBe("26%");
     expect(card("text", { format: "general" }).data({ value: [1e21] }).result).toBe("1E+21");
-    expect(card("text", { format: "#,##0" }).data({ value: [1234] }).result).toBe("1234");
+    expect(card("text", { format: "#,##0" }).data({ value: [1234] }).result).toBe("1,234");
+    expect(card("text", { format: "yyyy" }).data({ value: [45000] }).result).toBe("2023");
     expect(card("text", { format: "0.00" }).data({ value: [applyFcUnit(1.5, "km")] }).result).toBe("1.50 km");
   });
 });
