@@ -3553,13 +3553,24 @@ pub fn route(name: &str) -> Route {
 #[derive(Clone)]
 pub struct Resolved {
     refused: Option<&'static Refused>,
+    no_logicals: &'static [usize],
     flat_range: bool,
     route: Route,
+}
+
+/// The date arguments where Excel's Analysis ToolPak date functions refuse a logical with #VALUE!, as the author's
+/// Excel answers (2026-11-01); DAYS360, YEAR and their like read TRUE as 1 ([[B27]] computeAnswersToExcel).
+fn no_logicals(name: &str) -> &'static [usize] {
+    match name {
+        "EDATE" | "EOMONTH" | "YEARFRAC" | "WORKDAY" | "NETWORKDAYS" => &[0, 1],
+        _ => &[],
+    }
 }
 
 pub fn resolve(name: &str) -> Resolved {
     Resolved {
         refused: refused(name),
+        no_logicals: no_logicals(name),
         flat_range: crate::eval::traits(name)
             .is_some_and(|t| t.kind == crate::eval::Kind::Range && !t.fast.reads_lists),
         route: route(name),
@@ -3574,6 +3585,9 @@ pub fn call_function(name: &str, a: &[V]) -> Result<V, Thrown> {
 pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
     if let Some(e) = text_refused(name, r.refused, a) {
         return Ok(e);
+    }
+    if r.no_logicals.iter().any(|&i| matches!(a.get(i), Some(V::Bool(_)))) {
+        return Ok(value_err(name));
     }
     // A range body written for flat arguments reads a list or a table among them as its items.
     if r.flat_range && a.iter().any(|v| matches!(v, V::List(_))) {

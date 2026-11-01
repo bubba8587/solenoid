@@ -250,3 +250,18 @@ fn an_error_from_any_function_is_the_answer() {
         );
     }
 }
+
+/// The author's Excel, 2026-11-01: the Analysis ToolPak date functions refuse a logical date or month count.
+#[test]
+fn toolpak_dates_refuse_logicals() {
+    for src in [
+        "EDATE(TRUE, 1)",
+        "EOMONTH(TRUE, 1)",
+        "EDATE(45000, TRUE)",
+        "YEARFRAC(TRUE, 45000)",
+        "WORKDAY(TRUE, 1)",
+        "NETWORKDAYS(TRUE, 45000)",
+    ] {
+        assert!(matches!(eval(src), V::Err(e) if e.code == solenoid_core::error_value::ErrorCode::Value), "{src}");
+    }
+}
