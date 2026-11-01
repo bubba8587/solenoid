@@ -960,7 +960,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 ### Text kernels (`text_ops.rs`, `nodes/text.rs`, `excel_functions.rs`)
 
-Each kernel works on one string; the text nodes and the text formulas broadcast it. Lengths and positions count code points, not UTF-16 units.
+Each kernel works on one string; the text nodes and the text formulas broadcast it. The kernels below count code points; Excel's own text functions (LEN, LEFT, MID, RIGHT, FIND, SEARCH, REPLACE) count UTF-16 units, as Excel does, so `LEN("😀a")` is 3.
 
 - `split_text` (TEXTSPLIT(text, [col_delimiter], [row_delimiter], [ignore_empty], [match_mode], [pad_with])): an empty delimiter splits into characters. Without a row delimiter the answer is a list (one row); with one it splits into rows first and answers a table, short rows padded with `pad_with` or `#N/A`. A row delimiter alone answers one column, as Excel does (`TEXTSPLIT("a;b", , ";")`); neither is `#SYNTAX!`. `ignore_empty` drops empty parts; match_mode 1 matches case-insensitively.
 - `text_after_before` (TEXTAFTER, TEXTBEFORE(text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found])): the text after or before the `instance_num`-th occurrence of the delimiter, counted from the end when negative; 0 is `#VALUE!`. `match_end` 1 counts the end of the text (the start, from the end) as one more occurrence. An empty delimiter, or an occurrence the text does not have, answers `if_not_found` when given and otherwise null rather than Excel's `#N/A`. The formula's settings are declared roles ([[input-roles]]).
