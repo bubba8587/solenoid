@@ -44,9 +44,11 @@ pub fn compile(pattern: &str, icase: bool) -> Result<Rc<Regex>, String> {
 /// PCRE2's `$` (without the m flag) matches at the end and also just before a newline that ends the text; Rust's only
 /// at the end. Each `$` outside a class and not escaped takes that newline too; under `(?m)` the line end it already
 /// matches covers it.
+/// A class's own syntax is copied as it stands: a `]` first in it (after `[` or `[^`) is a literal, and a POSIX class
+/// (`[:alpha:]`) inside it doesn't end it.
 fn pcre2_dollar(pattern: &str) -> String {
     let mut out = String::with_capacity(pattern.len() + 8);
-    let mut chars = pattern.chars();
+    let mut chars = pattern.chars().peekable();
     let mut class = false;
     while let Some(c) = chars.next() {
         match c {
@@ -59,6 +61,23 @@ fn pcre2_dollar(pattern: &str) -> String {
             '[' if !class => {
                 class = true;
                 out.push(c);
+                if chars.peek() == Some(&'^') {
+                    out.extend(chars.next());
+                }
+                if chars.peek() == Some(&']') {
+                    out.extend(chars.next());
+                }
+            }
+            '[' if chars.peek() == Some(&':') => {
+                out.push(c);
+                let mut prev = '[';
+                for n in chars.by_ref() {
+                    out.push(n);
+                    if prev == ':' && n == ']' {
+                        break;
+                    }
+                    prev = n;
+                }
             }
             ']' if class => {
                 class = false;
@@ -260,6 +279,13 @@ mod tests {
         assert!(test(&re("a$"), "a\n").unwrap());
         assert!(!test(&re("a$"), "a\n\n").unwrap());
         assert!(test(&re("[$]"), "$").unwrap());
+        // The author's Excel, 2026-11-01: a `]` first in a class and a POSIX class inside one keep the class whole.
+        assert!(!test(&re("[]$]"), "?").unwrap());
+        assert!(test(&re("[]$]"), "$").unwrap());
+        assert!(!test(&re("[^]a]"), "a").unwrap());
+        assert!(!test(&re("[[:alpha:]$]"), "|").unwrap());
+        assert!(test(&re("[[:alpha:]$]"), "$").unwrap());
+        assert!(test(&re("[[:alpha:]]"), "a1").unwrap());
         assert_eq!(replace(&re("o"), "foo boo", "0", 2.0).unwrap(), "fo0 boo");
         assert_eq!(replace(&re("o"), "foo boo", "0", -1.0).unwrap(), "foo bo0");
         assert_eq!(replace(&re("x*"), "ab", "-", 0.0).unwrap(), "-a-b-");

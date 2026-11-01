@@ -585,11 +585,14 @@ fn same(a: &V, b: &V) -> bool {
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
 /// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
-/// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division.
+/// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. SWITCH's cases are read by
+/// its body, which answers an error case it reaches before the match. COUNT and COUNTA take every error to their body,
+/// which skips it and counts it (the author's Excel, 2026-11-01).
 fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
     match name {
-        "IF" | "CHOOSE" => Some(|i| i == 0),
+        "IF" | "CHOOSE" | "SWITCH" => Some(|i| i == 0),
         "IFS" => Some(|i| i % 2 == 0),
+        "COUNT" | "COUNTA" => Some(|_| false),
         _ => None,
     }
 }
@@ -841,10 +844,9 @@ impl Eval<'_> {
                 let V::Lambda(lam) = f else {
                     return V::err(sol_error(ErrorCode::Value, "Only a LAMBDA can be called like a function"));
                 };
-                let argv: Vec<V> = args.iter().map(|a| self.eta_or_eval(a, env)).collect();
-                if let Some(e) = argv.iter().find_map(V::as_error) {
-                    return e;
-                }
+                // An error argument is a value the body reads, so `LAMBDA(x, IFERROR(x, 0))(NA())` is 0.
+                let argv: Vec<V> =
+                    args.iter().map(|a| self.eta_or_eval(a, env)).map(|v| v.as_error().unwrap_or(v)).collect();
                 let p = lam.params.len();
                 if p > 0 && argv.len() != p {
                     return V::err(sol_error(
@@ -895,10 +897,7 @@ impl Eval<'_> {
     fn call(&self, raw: &str, args: &[Ast], env: &Rc<Env>) -> V {
         if let Some(V::Lambda(bound)) = env.get(raw) {
             let bound = bound.clone();
-            let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).collect();
-            if let Some(e) = argv.iter().find_map(V::as_error) {
-                return e;
-            }
+            let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).map(|v| v.as_error().unwrap_or(v)).collect();
             let p = bound.params.len();
             if p > 0 && argv.len() != p {
                 return V::err(sol_error(

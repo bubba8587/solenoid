@@ -236,14 +236,14 @@ flowchart TD
 ```
 
 
-1. **Lambda binding.** If `env[rawName]` (case-sensitive) is a `LambdaValue`, evaluate the arguments, return the first `SolError` among them, answer `#VALUE!` "{name} takes N arguments, not M" when the lambda declares parameters and the count differs, and otherwise call it.
+1. **Lambda binding.** If `env[rawName]` (case-sensitive) is a `LambdaValue`, evaluate the arguments (an error among them is a value the body reads, a Formula.js-style one as its `SolError`), answer `#VALUE!` "{name} takes N arguments, not M" when the lambda declares parameters and the count differs, and otherwise call it.
 2. **LAMBDA.** The special form (see *LAMBDA*).
 3. **Blocked.** A name whose call-table entry holds a `refusal` (the four tables above) answers it.
 4. **Unknown.** No implementation resolves: `#NAME?` "Unknown function {NAME}".
 5. **Evaluate arguments.** Each argument is evaluated. For a lambda host (`MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `GROUPBY`) a bare dispatchable name eta-expands instead (see *LAMBDA*).
 6. **Empty slots and input roles.** An empty slot reads as its parameter's Excel blank, and `apply_arg_roles` reads each other declared argument by its role in the call table ([[input-roles]]), so a blank setting is its default, a blank pick is dropped and a missing required one is `#SYNTAX!` (see *Blank and omitted arguments*).
 7. **Error handlers.** `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA`, `ERROR.TYPE` and `TYPE` receive their arguments as they are (see *Error-handling functions*).
-8. **Error propagation.** The first top-level argument that is an error is the answer, a Formula.js-style one (`NA()`, a body's own `#VALUE!`) read as its `SolError` (`V::as_error`), so `CONCAT(NA(), "a")` is `#N/A`, never the text "#N/Aa". Errors inside a list are not hoisted here; each route decides. IF, IFS and CHOOSE propagate only an error in what picks the branch (IF's condition, IFS's conditions, CHOOSE's index), here and cell by cell when they broadcast, so an error in a branch not taken isn't the answer, as in Excel: `IF(@qty = 0, 0, @total / @qty)` is 0 where qty is 0 (`branch_selector`).
+8. **Error propagation.** The first top-level argument that is an error is the answer, a Formula.js-style one (`NA()`, a body's own `#VALUE!`) read as its `SolError` (`V::as_error`), so `CONCAT(NA(), "a")` is `#N/A`, never the text "#N/Aa". Errors inside a list are not hoisted here; each route decides. IF, IFS, CHOOSE and SWITCH propagate only an error in what picks the branch (IF's condition, IFS's conditions, CHOOSE's index, SWITCH's value), here and cell by cell when they broadcast, so an error in a branch not taken isn't the answer, as in Excel: `IF(@qty = 0, 0, @total / @qty)` is 0 where qty is 0, and `SWITCH(1, 2, NA(), 9)` is 9 (`branch_selector`). SWITCH's body answers an error case it reaches before the match. COUNT and COUNTA take every error to their body, which COUNT skips and COUNTA counts (`COUNT(1, NA())` is 1, `COUNTA(1, NA())` 2; the author's Excel, 2026-11-01).
 9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `positional` one answers `#SHAPE!`; a range function flattens each matrix row-major and continues; a whole-list native, or a body taken from Formula.js (`known` false in the call table), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
 10. **Complex containment.** If any argument is or contains a complex value and the function is `checksCx`: `#TYPE!` "{NAME} doesn't compute on complex numbers, use the IM* family".
 11. **Route.** Whole-list native, else range function, else broadcast (see *Argument routing*).
@@ -461,7 +461,7 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[va
 
 A lambda is applied three ways:
 
-- **Application** `(lambda)(args)`: the callee expression must evaluate to a `LambdaValue`, or the answer is `#VALUE!` "Only a LAMBDA can be called like a function". Arguments are evaluated with eta expansion; the first `SolError` argument is the answer; a lambda that declares parameters and receives a different count answers `#VALUE!` "This LAMBDA takes N arguments, not M".
+- **Application** `(lambda)(args)`: the callee expression must evaluate to a `LambdaValue`, or the answer is `#VALUE!` "Only a LAMBDA can be called like a function". Arguments are evaluated with eta expansion; an error argument is a value the body reads, so `LAMBDA(x, IFERROR(x, 0))(NA())` is 0 (the author's Excel, 2026-11-01); a lambda that declares parameters and receives a different count answers `#VALUE!` "This LAMBDA takes N arguments, not M".
 - **By name**: a call whose name is bound to a lambda (a LAMBDA parameter, or a λ socket in a computed column) applies it, step 1 of the dispatch ladder.
 - **A host function** calls it directly (`call_lambda`).
 

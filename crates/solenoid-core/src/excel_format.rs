@@ -58,8 +58,8 @@ struct Section {
 }
 
 impl Section {
-    /// A date code has date or time tokens and no digit placeholders but its fractional seconds (`ss.00`); in a
-    /// number code the letters are literals (`0 days`).
+    /// A date code has date or time tokens and no digit placeholders but its fractional seconds (`ss.00`); a number
+    /// code with unquoted date letters (`0 days`) is refused.
     fn is_date(&self) -> bool {
         let t = &self.toks;
         if !t.iter().any(|x| matches!(x, Tok::Date(..) | Tok::AmPm(..) | Tok::Elapsed(..))) {
@@ -230,10 +230,7 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
     // Text-only sections don't take a number; the fourth section is text's.
     let numeric: Vec<&Section> = sections.iter().take(3).collect();
     let (section, signed) = pick(&numeric, x);
-    let section = match section {
-        Some(s) => s,
-        None => return Ok(String::new()),
-    };
+    let Some(section) = section else { return Err("No section of the format takes this number") };
     if section.toks.is_empty() {
         return Ok(String::new());
     }
@@ -247,19 +244,20 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
     format_plain(v, section)
 }
 
-/// The section a number takes, and whether it keeps its own minus sign.
+/// The section a number takes, and whether it keeps its own minus sign; none when no condition holds, which TEXT
+/// answers #VALUE! (the author's Excel, 2026-11-01: `TEXT(5, "[>10]0;[<0]0")`). A conditional section drops a
+/// negative number's sign as a second section does (`TEXT(-5, "[>10]0;[<0]-0")` is -5).
 fn pick<'a>(sections: &[&'a Section], x: f64) -> (Option<&'a Section>, bool) {
     let conditional = sections.iter().any(|s| s.cond.is_some());
     if conditional {
-        for (i, s) in sections.iter().enumerate() {
+        for s in sections {
             match s.cond {
-                Some(c) if holds(c, x) => return (Some(s), i > 0 || x >= 0.0 || !negative_section(sections)),
+                Some(c) if holds(c, x) => return (Some(s), x >= 0.0 || !negative_section(sections)),
                 None => return (Some(s), true),
                 _ => {}
             }
         }
-        // No section takes it: Excel fills the cell with #.
-        return (sections.last().copied(), true);
+        return (None, true);
     }
     match sections.len() {
         1 => (Some(sections[0]), true),
@@ -888,6 +886,9 @@ mod tests {
         assert_eq!(f(-150.0, "[>100]\"big\";0"), "-150");
         assert_eq!(f(5.0, "x0"), "x5");
         assert!(format_number(5.0, "0 days").is_err());
+        // The author's Excel, 2026-11-01.
+        assert_eq!(f(-5.0, "[>10]0;[<0]-0"), "-5");
+        assert!(format_number(5.0, "[>10]0;[<0]0").is_err());
         assert!(format_number(45000.0, "0.00 yyyy").is_err());
         assert!(format_number(-1.0, "yyyy").is_err());
         assert_eq!(f(-0.001, "0"), "0");

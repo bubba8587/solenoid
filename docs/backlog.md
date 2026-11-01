@@ -61,7 +61,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 **Wrong answers, to Excel's (start here):**
 - [ ] The rest of `excel_functions.rs`'s "JavaScript's coercions" (`parse_string`; `value_text` replaced `js_string_of`, `parse_number` and `num_blank_zero` lost their JavaScript list readings and `JsSum`/`js_less` went 2026-11-01): every formula body onto `to_num`/`opt_num`/`nums_of`/`value_err` ([[C10]] socketLattice), then the card bodies. Pass 1 (2026-11-01) fixed LOG, F.TEST, TRIMMEAN, SUMSQ, SUMPRODUCT, SUMX*, Z.TEST, WAVG, TYPE and REPLACE.
 - [ ] A case setting on the cards and functions that order text (sorts, `<`/`>`), case-insensitive as Excel's when on; [[C59]] byteStringOrder stays the default and text against a number stays `#TYPE!` (author 2026-11-01).
-- [ ] COUNT and COUNTA over an error argument: Excel skips it in COUNT (`COUNT(1, 1/0)` is 1) and counts it in COUNTA (2), where Solenoid answers the error by its first-error rule ([[formula-language]] step 8); a carve-out like the error handlers', the author's call (author's Excel 2026-11-01).
 
 **No visible change (delete the JS framing):**
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).

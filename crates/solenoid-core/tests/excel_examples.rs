@@ -275,3 +275,35 @@ fn upper_keeps_eszett_and_cuts_keep_characters_whole() {
     assert_eq!(text("MID(\"a😀b\", 3, 2)"), "😀b");
     assert_eq!(num("LEN(\"😀\")"), 2.0);
 }
+
+fn code(src: &str) -> String {
+    match eval(src) {
+        V::Err(e) => e.code.as_str().to_string(),
+        other => panic!("{src} answered {other:?}"),
+    }
+}
+
+/// The author's Excel, 2026-11-01: SWITCH answers an error only from the value or a case it reaches, a LAMBDA reads an
+/// error argument as a value, COUNT skips an error and COUNTA counts it.
+#[test]
+fn errors_reach_the_bodies_that_read_them() {
+    assert_eq!(num("SWITCH(1, 2, NA(), 9)"), 9.0);
+    assert_eq!(num("SWITCH(1, 2, 1/0, 9)"), 9.0);
+    assert_eq!(num("CHOOSE(2, NA(), 5)"), 5.0);
+    assert_eq!(num("LAMBDA(x, IFERROR(x, 0))(NA())"), 0.0);
+    assert_eq!(num("LAMBDA(x, IFERROR(x, 0))(1/0)"), 0.0);
+    assert!(matches!(eval("LAMBDA(x, ISNA(x))(NA())"), V::Bool(true)));
+    assert_eq!(num("COUNTA(1, NA())"), 2.0);
+    assert_eq!(num("COUNT(1, NA())"), 1.0);
+    assert_eq!(code("CONCAT(NA(), \"a\")"), "#N/A");
+    assert_eq!(code("ROWS(VSTACK(1, NA(), 3))"), "#N/A");
+    assert_eq!(code("INDEX(VSTACK(1, 1/0), 1)"), "#DIV/0!");
+}
+
+/// The author's Excel, 2026-11-01: conditional sections of a TEXT format.
+#[test]
+fn text_conditional_sections() {
+    assert_eq!(text("TEXT(-5, \"[>10]0;[<0]-0\")"), "-5");
+    assert!(is_error("TEXT(5, \"[>10]0;[<0]0\")"));
+    assert!(is_error("TEXT(5, \"0 days\")"));
+}

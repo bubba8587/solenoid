@@ -4219,7 +4219,16 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return V::Fx(FxError::Value);
             }
             let argc = a.len() - 1;
-            let hit = (0..argc / 2).find(|&i| strict_equals(&a[0], &a[i * 2 + 1]));
+            let mut hit = None;
+            for i in 0..argc / 2 {
+                if let Some(e) = a[i * 2 + 1].as_error() {
+                    return e;
+                }
+                if strict_equals(&a[0], &a[i * 2 + 1]) {
+                    hit = Some(i);
+                    break;
+                }
+            }
             match hit {
                 Some(i) => a[i * 2 + 2].clone(),
                 None if !argc.is_multiple_of(2) => a[a.len() - 1].clone(),
@@ -4890,6 +4899,13 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 }
             }
             result.map_or(V::Fx(FxError::Value), |r| V::Bool((r.abs().floor() as i64) & 1 == 1))
+        }
+        // An error argument is skipped by COUNT and counted by COUNTA (`branch_selector`), but a nested table read as a
+        // cell stays its #SHAPE!: that says the table can't stand there, not that a value is missing.
+        F::COUNT | F::COUNTA
+            if let Some(e) = a.iter().find(|v| matches!(v, V::Err(e) if e.code == ErrorCode::Shape)) =>
+        {
+            e.clone()
         }
         F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
         F::COUNTA | F::COUNTBLANK => {
