@@ -313,3 +313,32 @@ fn text_conditional_sections() {
     assert_eq!(text("TEXT(-5, \"[<0]-0;0\")"), "-5");
     assert_eq!(text("TEXT(-5, \"[>10]0;[>0]0;-0\")"), "--5");
 }
+
+/// The author's Excel, 2026-11-01: PCRE2 syntax the engine must read as Excel does. 1 and 0 are REGEXTEST's TRUE and
+/// FALSE; recursion and branch reset aren't run yet (backlog), so they're left out.
+#[test]
+fn regex_syntax_reads_as_excel() {
+    let n = |src: &str| num(src);
+    assert!(is_error("REGEXTEST(\"[\", \"[[]\")"));
+    assert_eq!(n("REGEXTEST(\"&\", \"[a&&b]\")"), 0.0);
+    assert_eq!(n("REGEXTEST(\"-\", \"[a--b]\")"), 0.0);
+    assert_eq!(n("REGEXTEST(\"~\", \"[a~~b]\")"), 0.0);
+    assert_eq!(n("REGEXTEST(\"a b\", \"a\\hb\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"a\" & CHAR(10) & \"b\", \"a\\Rb\")"), 1.0);
+    assert_eq!(text("REGEXREPLACE(\"foobar\", \"foo\\Kbar\", \"X\")"), "fooX");
+    assert_eq!(n("REGEXTEST(\"axb\", \"a\\Q.\\Eb\")"), 0.0);
+    assert_eq!(text("REGEXREPLACE(\"ab\", \"(?P<x>a)\", \"[${x}]\")"), "[a]b");
+    assert_eq!(text("REGEXREPLACE(\"ab\", \"(?'x'a)\", \"[${x}]\")"), "[a]b");
+    assert_eq!(n("REGEXTEST(\"A\", \"\\x{41}\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"A\", \"\\101\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"1\", \"[[:^alpha:]]\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"é\", \"^\\p{L}$\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"a\" & CHAR(10), \"a\\Z\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"a\" & CHAR(10), \"a\\z\")"), 0.0);
+    assert_eq!(n("REGEXTEST(\"a\" & CHAR(10) & \"b\", \"a.b\")"), 0.0);
+    assert_eq!(n("REGEXTEST(\"aB\", \"a(?i)b\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"é\", \"^\\w$\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"٣\", \"^\\d$\")"), 1.0);
+    assert_eq!(n("REGEXTEST(\"SS\", \"ß\", 1)"), 0.0);
+    assert_eq!(n("REGEXTEST(\"é\", \"\\bé\\b\")"), 1.0);
+}
