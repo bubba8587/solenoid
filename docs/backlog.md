@@ -63,8 +63,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] A case setting on the cards and functions that order text (sorts, `<`/`>`), case-insensitive as Excel's when on; [[C59]] byteStringOrder stays the default and text against a number stays `#TYPE!` (author 2026-11-01).
 - [ ] COUNT and COUNTA over an error argument: Excel skips it in COUNT (`COUNT(1, 1/0)` is 1) and counts it in COUNTA (2), where Solenoid answers the error by its first-error rule ([[formula-language]] step 8); a carve-out like the error handlers', the author's call (author's Excel 2026-11-01).
 
-**Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
-
 **No visible change (delete the JS framing):**
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
 

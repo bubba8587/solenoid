@@ -495,9 +495,8 @@ fn expect(c: &mut Call) -> Answer {
             V::Null => {}
             V::Str(p) if trim_space(p).is_empty() => {}
             V::Str(p) => {
-                let units: Vec<u16> = p.encode_utf16().collect();
-                if let crate::js_regex::Compiled::Ok(re) = crate::js_regex::compile(&units, false) {
-                    let fails = |s: &str| !crate::text_ops::regex_test(&re, &s.encode_utf16().collect::<Vec<_>>());
+                if let Ok(re) = crate::excel_regex::compile(p, false) {
+                    let fails = |s: &str| !crate::excel_regex::test(&re, s).unwrap_or(false);
                     if values.iter().any(|v| matches!(v, V::Str(s) if fails(s))) {
                         violations.push("regex");
                     }

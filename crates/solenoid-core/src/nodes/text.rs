@@ -502,17 +502,6 @@ fn text_after_before(c: &mut Call) -> Answer {
 
 // ─── Regex ──────────────────────────────────────────────────────────────────────
 
-/// What `!x` reads as false.
-fn js_falsy(v: &V) -> bool {
-    match v {
-        V::Null | V::Undef => true,
-        V::Str(s) => s.is_empty(),
-        V::Num(n) => *n == 0.0 || n.is_nan(),
-        V::Bool(b) => !b,
-        _ => false,
-    }
-}
-
 /// Blank is 0 (every match), a fraction truncates, a negative counts from the end; None when
 /// non-finite.
 fn regex_occurrence(raw: &V) -> Option<f64> {
@@ -524,47 +513,27 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
 }
 
 /// A pattern compiled with the card's flags.
-struct Pattern {
-    re: std::rc::Rc<regress::Regex>,
-    global: bool,
-    sticky: bool,
-    unicode: bool,
-}
-
-impl Pattern {
-    fn all(&self, t: &[u16]) -> Vec<regress::Match> {
-        crate::text_ops::matches_with(&self.re, t, self.sticky, self.unicode)
-    }
-
-    fn first(&self, t: &[u16]) -> Option<regress::Match> {
-        crate::text_ops::exec_from(&self.re, t, 0, self.sticky, self.unicode)
-    }
-}
-
-fn utf16(s: &str) -> Vec<u16> {
-    s.encode_utf16().collect()
-}
-
-fn text_of(t: &[u16]) -> V {
-    V::str(&String::from_utf16_lossy(t))
-}
-
-/// A regex op on one text: `match` with g answers every match, so the groups of a global pattern are the matches
-/// after the first, as in JS.
-fn regex_apply(op: &str, p: &Pattern, text: &[u16], replacement: &[u16]) -> V {
-    match op {
-        "test" => V::Num(if p.first(text).is_some() { 1.0 } else { 0.0 }),
-        "extract" => p.first(text).map_or_else(|| V::str(""), |m| text_of(&text[m.range])),
-        "extract_all" => list(p.all(text).into_iter().map(|m| text_of(&text[m.range])).collect()),
-        "extract_groups" if p.global => {
-            list(p.all(text).into_iter().skip(1).map(|m| text_of(&text[m.range])).collect())
+/// A regex op on one text, as the REGEX functions answer it ([[C17]] shareImpl): no match is #N/A for the extracts.
+fn regex_apply(op: &str, re: &fancy_regex::Regex, t: &str, replacement: &str, occurrence: f64) -> Result<V, String> {
+    use crate::excel_regex as rx;
+    let none = || err(ErrorCode::NotAvailable, "No match");
+    Ok(match op {
+        "test" => V::Num(if rx::test(re, t)? { 1.0 } else { 0.0 }),
+        "extract" => rx::first(re, t)?.map_or_else(none, |m| V::str(&t[m.range])),
+        "extract_all" => {
+            let all = rx::all(re, t)?;
+            if all.is_empty() {
+                none()
+            } else {
+                list(all.into_iter().map(|m| V::str(&t[m.range])).collect())
+            }
         }
-        "extract_groups" => list(match p.first(text) {
-            Some(m) => m.captures.iter().map(|g| g.clone().map_or_else(|| V::str(""), |r| text_of(&text[r]))).collect(),
-            None => Vec::new(),
-        }),
-        _ => text_of(&crate::text_ops::replace_matches(&p.all(text), text, replacement)),
-    }
+        "extract_groups" => match rx::first(re, t)? {
+            Some(m) => list(m.groups.iter().map(|g| V::str(g.as_ref().map_or("", |r| &t[r.clone()]))).collect()),
+            None => none(),
+        },
+        _ => V::str(&rx::replace(re, t, replacement, occurrence)?),
+    })
 }
 
 fn regex(c: &mut Call) -> Answer {
@@ -578,27 +547,19 @@ fn regex(c: &mut Call) -> Answer {
     if [&pattern, &replacement, &occurrence].iter().any(|v| matches!(v, V::Null)) {
         return blank(c);
     }
-    let flags = match c.string_literal("flags") {
-        V::Str(s) => s.to_string(),
-        _ => String::new(),
-    };
     let Some(occ) = regex_occurrence(&occurrence) else { return blank(c) };
-    if js_falsy(&pattern) {
+    let pattern_text = value_text(&pattern);
+    if pattern_text.is_empty() {
         return blank(c);
     }
-    let Some((jf, global, sticky)) = crate::js_regex::parse_flags(&flags) else { return blank(c) };
-    let re = match crate::js_regex::compile_with(&utf16(&value_text(&pattern)), jf) {
-        crate::js_regex::Compiled::Ok(re) => re,
-        crate::js_regex::Compiled::Invalid => return blank(c),
-        crate::js_regex::Compiled::Unsure => {
-            return done(
-                c,
-                "cachedResult",
-                err(ErrorCode::Value, "This pattern uses a feature the engine can't run yet"),
-            );
-        }
+    let match_case = c.field("matchCase").and_then(serde_json::Value::as_bool).unwrap_or(true);
+    let re = match crate::excel_regex::compile(&pattern_text, !match_case) {
+        Ok(re) => re,
+        Err(m) => return done(c, "cachedResult", err(ErrorCode::Value, m)),
     };
-    let p = Pattern { re, global, sticky, unicode: jf.unicode || jf.unicode_sets };
+    if replace && !matches!(replacement, V::Str(_)) {
+        return done(c, "cachedResult", err(ErrorCode::Type, "The replacement takes text"));
+    }
     let raw = match c.wired("text") {
         None => V::str(""),
         Some(w) => match w.first() {
@@ -606,31 +567,21 @@ fn regex(c: &mut Call) -> Answer {
             Some(v) => v.clone(),
         },
     };
-    let replacement_text = utf16(&value_text(&replacement));
-    let apply = |cell: &V| -> Result<V, V> {
+    let replacement_text = value_text(&replacement);
+    let apply = |cell: &V| -> V {
         if matches!(cell, V::Null | V::Undef) || cell.is_sol_error() {
-            return Ok(if cell.is_sol_error() { cell.clone() } else { V::Null });
+            return if cell.is_sol_error() { cell.clone() } else { V::Null };
         }
-        let t = utf16(&value_text(cell));
-        if replace && occ != 0.0 {
-            let all = p.all(&t);
-            let target = if occ < 0.0 { all.len() as f64 + occ + 1.0 } else { occ };
-            // `expand_replacement` calls the replacement's own `replace`, which only text has.
-            if target >= 1.0 && target <= all.len() as f64 && !matches!(replacement, V::Str(_)) {
-                return Err(err(ErrorCode::Type, "The replacement takes text"));
-            }
-            return Ok(text_of(&crate::text_ops::replace_nth_of(&all, &t, &replacement_text, occ)));
-        }
-        Ok(regex_apply(&op, &p, &t, &replacement_text))
+        regex_apply(&op, &re, &value_text(cell), &replacement_text, occ).unwrap_or_else(|m| err(ErrorCode::Value, m))
     };
     let result = match &raw {
         V::Null => V::Null,
         _ if op == "extract_all" || op == "extract_groups" => match &raw {
-            V::List(items) => apply(items.first().unwrap_or(&V::Undef))?,
-            other => apply(other)?,
+            V::List(items) => apply(items.first().unwrap_or(&V::Undef)),
+            other => apply(other),
         },
-        V::List(items) => list(items.iter().map(apply).collect::<Result<Vec<_>, _>>()?),
-        other => apply(other)?,
+        V::List(items) => list(items.iter().map(apply).collect()),
+        other => apply(other),
     };
     done(c, "cachedResult", result)
 }

@@ -5623,9 +5623,7 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
 }
 
 fn regex_call(name: &str, a: &[V]) -> V {
-    use crate::js_regex::{compile, Compiled};
-    use crate::text_ops::{match_all, regex_extract, regex_replace_all, regex_test, replace_nth};
-    let regress_first = |re: &regress::Regex, t: &[u16]| re.find_from_ucs2(t, 0).next();
+    use crate::excel_regex as rx;
     let cs = match name {
         "REGEXTEST" => arg(a, 2),
         "REGEXEXTRACT" => arg(a, 3),
@@ -5654,35 +5652,35 @@ fn regex_call(name: &str, a: &[V]) -> V {
         return V::Null;
     }
     let replacement = if name == "REGEXREPLACE" { to_str(arg(a, 2)) } else { String::new() };
-    let re = match compile(&utf16(&pattern), icase) {
-        Compiled::Ok(re) => re,
-        Compiled::Invalid => return V::Null,
-        Compiled::Unsure => {
-            return V::err(sol_error(
-                ErrorCode::Value,
-                format!("{name} can't run this pattern: a repeat count past 100,000 or a \\p{{…}} class"),
-            ));
-        }
+    let failed = |m: String| V::err(sol_error(ErrorCode::Value, format!("{name}: {m}")));
+    let re = match rx::compile(&pattern, icase) {
+        Ok(re) => re,
+        Err(m) => return failed(m),
     };
-    // Every match list (modes 1 and 2) is a list.
-    let t = utf16(&text);
-    match name {
-        "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),
-        "REGEXEXTRACT" if mode == 0.0 => V::str(&from_utf16(&regex_extract(&re, &t))),
-        "REGEXEXTRACT" if mode == 1.0 => {
-            V::List(Rc::new(match_all(&re, &t).into_iter().map(|m| V::str(&from_utf16(&t[m.range]))).collect()))
-        }
-        "REGEXEXTRACT" => V::List(Rc::new(match regress_first(&re, &t) {
-            Some(m) => m
-                .captures
-                .iter()
-                .map(|g| V::str(&g.as_ref().map_or_else(String::new, |r| from_utf16(&t[r.clone()]))))
-                .collect(),
-            None => Vec::new(),
-        })),
-        _ if occurrence == 0.0 => V::str(&from_utf16(&regex_replace_all(&re, &t, &utf16(&replacement)))),
-        _ => V::str(&from_utf16(&replace_nth(&re, &t, &utf16(&replacement), occurrence))),
-    }
+    let t = text.as_str();
+    let answer = match name {
+        "REGEXTEST" => rx::test(&re, t).map(|b| V::Num(if b { 1.0 } else { 0.0 })),
+        // Excel answers #N/A where nothing matches.
+        "REGEXEXTRACT" if mode == 0.0 => rx::first(&re, t).map(|m| match m {
+            Some(m) => V::str(&t[m.range]),
+            None => V::err(sol_error(ErrorCode::NotAvailable, "REGEXEXTRACT: no match")),
+        }),
+        "REGEXEXTRACT" if mode == 1.0 => rx::all(&re, t).map(|ms| {
+            if ms.is_empty() {
+                V::err(sol_error(ErrorCode::NotAvailable, "REGEXEXTRACT: no match"))
+            } else {
+                V::List(Rc::new(ms.into_iter().map(|m| V::str(&t[m.range])).collect()))
+            }
+        }),
+        "REGEXEXTRACT" => rx::first(&re, t).map(|m| match m {
+            Some(m) => {
+                V::List(Rc::new(m.groups.iter().map(|g| V::str(g.as_ref().map_or("", |r| &t[r.clone()]))).collect()))
+            }
+            None => V::err(sol_error(ErrorCode::NotAvailable, "REGEXEXTRACT: no match")),
+        }),
+        _ => rx::replace(&re, t, &replacement, occurrence).map(|s| V::str(&s)),
+    };
+    answer.unwrap_or_else(failed)
 }
 
 /// Numbers through TEXT.

@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-// Where the core ports a table the platform holds (V8's RegExp Canonicalize, Node's NFD), it is checked against the
-// platform itself, every unit or code point.
+// Where the core ports a table the platform holds (Node's NFD), it is checked against the platform itself, every
+// code point.
 import { it, expect } from "vitest";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
 
@@ -20,31 +20,4 @@ it("UNACCENT's NFD is this Node's, every code point after a letter and before a 
     if (call("UNACCENT", [t]).str !== want) bad.push(c.toString(16));
   }
   expect(bad.slice(0, 5)).toEqual([]);
-});
-
-/** Whether V8 finds a caseless backreference in `text`, as REGEXTEST(text, "(.)\1", 1) asks. */
-const v8Folds = (text: string) => /(.)\1/i.test(text);
-const coreFolds = (text: string) => {
-  const r = call("REGEXTEST", [text, "(.)\\1", 1]);
-  return r.bool ?? (r.num !== undefined && r.num !== "0");
-};
-
-it("a caseless backreference folds as V8's Canonicalize: never a non-ASCII unit to ASCII", () => {
-  for (const text of ["sſ", "ſs", "ſſ", "Ss", "ıI", "Iı", "ıı", "iI", "kK", "Kk", "ßß", "σΣ", "ςΣ"]) {
-    expect(coreFolds(text), text).toBe(v8Folds(text));
-  }
-  expect(coreFolds("sſ")).toBe(false);
-});
-
-it("a caseless backreference matches as V8's for every BMP unit beside its own upper and lower case", () => {
-  const bad: string[] = [];
-  for (let c = 0; c < 0x10000; c++) {
-    if (c >= 0xd800 && c < 0xe000) continue;
-    const ch = String.fromCharCode(c);
-    for (const other of new Set([ch.toUpperCase(), ch.toLowerCase()])) {
-      if (other.length !== 1 || other === ch) continue;
-      if (coreFolds(ch + other) !== v8Folds(ch + other)) bad.push(ch + other);
-    }
-  }
-  expect(bad).toEqual([]);
 });

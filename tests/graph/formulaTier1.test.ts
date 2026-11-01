@@ -145,11 +145,10 @@ describe("REGEXREPLACE occurrence", () => {
     expect(ev('REGEXREPLACE("cat cat", "^cat", "dog", 2)')).toBe("cat cat");
   });
 
-  it("expands $n, $<name>, $&, $$ and the context tokens from the nth match", () => {
+  it("expands $n, ${n}, ${name}, $0 and $$ from the nth match, as PCRE2 substitutes", () => {
     expect(ev('REGEXREPLACE("a1 b2", "(\\w)(\\d)", "$2$1", 2)')).toBe("a1 2b");
-    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "$<d>$<l>", 2)')).toBe("a1 2b");
-    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$&$$]", 2)')).toBe("a1 b[2$]");
-    expect(ev('REGEXREPLACE("ab", "b", "<$`|$\'>", 1)')).toBe("a<a|>");
+    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "${d}${l}", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$0$$]", 2)')).toBe("a1 b[2$]");
   });
 
   it("truncates a fractional occurrence and counts a negative one from the end, node and formula alike", () => {

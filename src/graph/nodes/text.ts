@@ -721,7 +721,7 @@ export class FixedNode extends GraphNode {
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
   test:           { label: "REGEXTEST",           description: "Returns `1` if text matches the pattern, else `0`, item by item on a List. Excel: `REGEXTEST`." },
-  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match in the text, or empty text if none; a List gives a List of first matches. Excel: `REGEXEXTRACT`." },
+  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match in the text, or `#N/A` if none; a List gives a List of first matches. Excel: `REGEXEXTRACT`." },
   extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: `REGEXEXTRACT` with `return_mode=1`." },
   extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: `REGEXEXTRACT` with `return_mode=2`." },
   replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement: all, or only the nth when Occurrence is set. A list broadcasts element-wise. Excel: `REGEXREPLACE`." },
@@ -730,22 +730,25 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
 export class RegexNode extends GraphNode {
   static inputRoles = { occurrence: setting(0) };
   static socketDocs: Record<string, string> = {
-    pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
-    replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
+    pattern: "Patterns follow Excel's regular expressions (PCRE2): (?m) and (?s) go inline. An invalid pattern is #VALUE!.",
+    replacement: "Only the replace operation reads this input. $1 or ${1} inserts the first capture group, ${name} a named one, $$ a dollar sign.",
     occurrence: "Only REGEXREPLACE reads this. Blank or 0 replaces every match; n replaces only the nth, and -n the nth from the end.",
   };
 
   label: string;
   op: RegexOp;
+  /** Excel's case_sensitivity 0; off is 1, ignoring case. */
+  matchCase: boolean;
   cachedResult: number | number[] | string | string[] | null = null;
-  stringLiterals: Record<string, string> = { pattern: "", replacement: "", flags: "" };
+  stringLiterals: Record<string, string> = { pattern: "", replacement: "" };
   literals: Record<string, number> = { occurrence: 0 };
   width = 180; height = 253;
 
-  constructor(init?: { label?: string; op?: RegexOp }) {
+  constructor(init?: { label?: string; op?: RegexOp; matchCase?: boolean }) {
     super("Regex");
     this.op    = init?.op    ?? "test";
     this.label = init?.label ?? "";
+    this.matchCase = init?.matchCase ?? true;
     this.addInput("text",        anyListIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
