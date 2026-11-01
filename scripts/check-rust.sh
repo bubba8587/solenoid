@@ -6,6 +6,10 @@
 #   bash scripts/check-rust.sh --test   and the tests
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# One build directory for every crate (their dependencies overlap), without debug info or incremental caches, as CI
+# builds (CARGO_INCREMENTAL=0): the checks need the compiler's verdict, not a debugger, and the disk is a fixed allowance.
+export CARGO_TARGET_DIR="${SOLENOID_CHECK_TARGET:-$HOME/.cache/solenoid-check}"
+export CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
 for c in solenoid-parquet solenoid-schedule solenoid-core solenoid-graph; do
   m="crates/$c/Cargo.toml"
   cargo fmt --manifest-path "$m" --check

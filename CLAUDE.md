@@ -45,6 +45,11 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
   shell whose command also says `vitest`): it kills your shell (exit 144). The dev server stops and restarts by
   PID: `node scripts/dev-up.mjs --stop | --restart`. Restart it after editing `src/` when a script that imports
   app modules (site-shots, shot-graph) sees a null editor: hot reload handed it a second copy of the module.
+- **The container's disk is a fixed allowance (about 40 GB), and a full disk crashes builds.** Keep Rust builds to the
+  release targets `npm run build:wasm` and the crates' `cargo test --release` use, plus `scripts/check-rust.sh`'s one
+  shared directory; don't leave another build (`src-tauri/target` after a port, a profile, a debug build) lying around.
+  Remove an agent's worktree as soon as its work is merged (`git worktree remove`), and check `df -h /` before a
+  step that builds a lot.
 - **Before pushing Rust, run `bash scripts/check-rust.sh`** (`--test` adds the tests): CI's engine checks as CI runs them, clippy for wasm and the dev profile included, which a native `--release` run misses.
 - **Never run `npm run build:wasm:opt` or install/run `wasm-opt`** (author's order): it costs half an hour. After a
   change to `crates/solenoid-core` or `crates/solenoid-graph`, rebuild with plain `npm run build:wasm`; the stamp
