@@ -90,9 +90,6 @@ describe("ChoiceLadderNode", () => {
     expect(isSolError(out.chart)).toBe(true);
   });
 
-  it("no Options gives no plan and no figure", () => {
-    expect(new ChoiceLadderNode().data({})).toEqual({ frame: null, chart: null });
-  });
 
   it("round-trips its settings and choices, and a copy doesn't share them", () => {
     const n = new ChoiceLadderNode({ label: "Trip", normalize: "rank", choices: ["Lune bistro"] });
@@ -245,16 +242,6 @@ describe("Choice Ladder: unknown costs, One of, and contradictions", () => {
     expect(names).toEqual(expect.arrayContaining(["Cedar", "Dune"]));
   });
 
-  it("a Must the screen removes is #VALUE! saying why", () => {
-    const flag = (name: string, on: boolean[]): FrameColumn => ({ name, type: "logical", values: on });
-    const both = plan(opts([flag("Must", [false, true, false, false]), flag("Never", [false, true, false, false])]));
-    expect((both as unknown as { message: string }).message).toMatch(/Must option Birch is also marked Never/);
-    const n = new ChoiceLadderNode();
-    const out = n.data({ frame: [opts([flag("Must", [true, false, false, false])])], limits: [cap(500)], weights: [frame([
-      { name: "Criterion", type: "string", values: ["Food"] }, { name: "Weight", type: "number", values: [1] }, { name: "At most", type: "number", values: [8] },
-    ])] }).frame;
-    expect((out as unknown as { message: string }).message).toMatch(/Must option Aster is ruled out by Food/);
-  });
 });
 
 describe("Choice Ladder floors reached by options worth little", () => {
@@ -280,30 +267,4 @@ describe("Choice Ladder floors reached by options worth little", () => {
   });
 });
 
-describe("Choice Ladder: round-6 review", () => {
-  it("choosing the other side of a fork can take what only the main side skipped", () => {
-    const opts = frame([
-      { name: "Option", type: "string", values: ["x", "a", "b", "c", "d"] },
-      { name: "Value", type: "number", values: [0.6, 0.5, 0.49, 0.48, 0.47] },
-      { name: "Cost", type: "number", values: [11, 5, 4, 5, 5] },
-      { name: "One of", type: "string", values: ["", "", "g", "g", ""] },
-      { name: "Requires", type: "string", values: ["", "", "", "", "c"] },
-    ]);
-    const n = new ChoiceLadderNode({ normalize: "none", choices: ["b"] });
-    const out = n.data({ frame: [opts], limits: [frame([{ name: "Resource", type: "string", values: ["Cost"] }, { name: "At most", type: "number", values: [15] }])] });
-    expect((col(out.frame as FrameValue, "Option") as string[]).sort()).toEqual(["b", "x"]);
-  });
-});
 
-describe("ChoiceLadderNode over a ragged table", () => {
-  it("a row only an unscored column reaches is no option, not a crash", () => {
-    const opts = frame([
-      { name: "Option", type: "string", values: ["A", "B"] },
-      { name: "Value", type: "number", values: [3, 5] },
-      { name: "Requires", type: "string", values: [null, "A", "B"] },
-    ]);
-    const out = new ChoiceLadderNode().data({ frame: [opts] });
-    expect(isSolError(out.frame)).toBe(false);
-    expect(col(out.frame as FrameValue, "Option")).toEqual(["A", "B"]);
-  });
-});

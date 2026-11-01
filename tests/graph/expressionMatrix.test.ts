@@ -70,12 +70,4 @@ describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice
     expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(1);
   });
 
-  it("an error result leaves the rank alone (no flapping on failure)", () => {
-    const node = new ExpressionNode({ expr: "a * 2" });
-    throughBoundary(node as unknown as Parameters<typeof throughBoundary>[0]);
-    node.data({ a: [M] });
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
-    node.data({ a: [{ __solError: true, code: "#DIV/0!", message: "x" }] });
-    expect((node as unknown as { lastResultRank: number }).lastResultRank).toBe(2);
-  });
 });

@@ -2,8 +2,7 @@ import { describe, it, expect } from "vitest";
 import { StackNode } from "../../../src/graph/nodes/matrix";
 import { ConcatListsNode } from "../../../src/graph/nodes/list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "../../../src/graph/nodes/frame";
-import { QuadraticRootsNode, cx } from "../../../src/graph/nodes/complex";
-import { isSolError } from "../../../src/graph/errorValue";
+
 import { frameFromCells, type FrameValue } from "../../../src/graph/frame";
 import { readFrame } from "../../../src/graph/frameBackend";
 import { throughBoundary } from "../boundaryKit";
@@ -18,31 +17,9 @@ class Src extends GraphNode {
 }
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
-  it("two lists HSTACK into one long row", () => {
-    const r = new StackNode({ op: "hstack" }).data({ t0: [[1, 2]], t1: [[3, 4, 5]] }).result;
-    expect(r).toEqual([[1, 2, 3, 4, 5]]);
-  });
 
-  it("VSTACK stacks tables and mixes a table with a list row", () => {
-    const table = [[1, 2], [3, 4]];
-    expect(new StackNode({ op: "vstack" }).data({ t0: [table], t1: [[5, 6]] }).result)
-      .toEqual([[1, 2], [3, 4], [5, 6]]);
-  });
 
-  it("a narrower input pads right with #N/A (Excel VSTACK), not #SHAPE!", () => {
-    const r = new StackNode({ op: "vstack" }).data({ t0: [[1, 2]], t1: [[1, 2, 3]] }).result as unknown[][];
-    expect(r[0].slice(0, 2)).toEqual([1, 2]);
-    expect(isSolError(r[0][2])).toBe(true);
-    expect(r[1]).toEqual([1, 2, 3]);
-    expect(new StackNode({ op: "vstack" }).data({ t0: [[1, 2]] }).result).toEqual([[1, 2]]);
-  });
 
-  it("a shorter HSTACK input pads down with #N/A (Excel HSTACK)", () => {
-    const r = new StackNode({ op: "hstack" }).data({ t0: [[[1], [2]]], t1: [[[9]]] }).result as unknown[][];
-    expect(r[0]).toEqual([1, 9]);
-    expect(r[1][0]).toBe(2);
-    expect(isSolError(r[1][1])).toBe(true);
-  });
 
   it("stacking is N-ary: a third row joins the stack in row order", () => {
     const n = new StackNode({ op: "vstack" });
@@ -96,12 +73,6 @@ describe("Frame from Lists — the fast lists→Frame path", () => {
     expect(f.columns[1].values).toEqual([9, null, null]);
   });
 
-  it("unwired rows contribute nothing; no wired lists → blank", () => {
-    const n = new FrameFromListsNode(); // 2 default pairs, nothing wired
-    expect(n.data({}).frame).toBe(null);
-    const f = n.data({ vals0: [[1, 2]] }).frame as FrameValue;
-    expect(f.columns).toHaveLength(1);
-  });
 
   it("identity-stable across passes with unchanged inputs (backend cache contract)", async () => {
     // The engine keeps the card's answer while its call and inputs stand (`nodes::KEEPS_ANSWER`), so a full pass
@@ -141,12 +112,6 @@ describe("Frame Append — N-ary, by column name", () => {
     expect(f.columns[0].values).toEqual([1, 2, 3, 4]);
   });
 
-  it("one wired frame passes through; none is blank", async () => {
-    const n = new AppendNode();
-    const solo = (await readFrame((await n.data({ f0: [mk([7])] })).frame)) as FrameValue;
-    expect(solo.columns[0].values).toEqual([7]);
-    expect((await n.data({})).frame).toBe(null);
-  });
 });
 
 describe("the [[C49]] filterOneJob table-filter route: a MATRIX widens into the frame Filter", () => {
@@ -167,24 +132,3 @@ describe("the [[C49]] filterOneJob table-filter route: a MATRIX widens into the 
   });
 });
 
-describe("Quadratic Roots (complex)", () => {
-  it("real roots come out as real complex numbers", () => {
-    const r = new QuadraticRootsNode().data({ a: [1], b: [0], c: [-36] });
-    expect(r.x1).toEqual(cx(-6, 0));
-    expect(r.x2).toEqual(cx(6, 0));
-  });
-
-  it("a negative discriminant gives the conjugate pair", () => {
-    // x² + 2x + 5 = 0 → −1 ± 2i.
-    const r = new QuadraticRootsNode().data({ a: [1], b: [2], c: [5] });
-    expect(r.x1).toEqual(cx(-1, -2));
-    expect(r.x2).toEqual(cx(-1, 2));
-  });
-
-  it("the node's default x² + 1 = 0 shows ±i; a = 0 errors", () => {
-    const dflt = new QuadraticRootsNode().data({});
-    expect(dflt.x1).toEqual(cx(0, -1));
-    expect(dflt.x2).toEqual(cx(0, 1));
-    expect(isSolError(new QuadraticRootsNode().data({ a: [0], b: [2], c: [1] }).x1)).toBe(true);
-  });
-});

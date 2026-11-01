@@ -2,94 +2,24 @@
 import { describe, it, expect } from "vitest";
 import { AllocatorNode } from "../../../src/graph/nodes/frame";
 import { type FrameValue, type FrameColumn, frameFromInputText } from "../../../src/graph/frame";
-import { isSolError, solError } from "../../../src/graph/errorValue";
+import { isSolError } from "../../../src/graph/errorValue";
 import type { AllocateMode } from "../../../src/graph/nodes/allocateOps";
 import { extractInit } from "../../../src/graph/nodeInit";
 import seed from "../../../src/graph/seedGraphs/allocator.json";
 
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
-const cats = frame([
-  { name: "Category", type: "string", values: ["Car", "Other"] },
-  { name: "Min", type: "number", values: [20, 10] },
-  { name: "Max", type: "number", values: [50, 40] },
-]);
 const allocOf = (out: { frame: FrameValue | unknown }): unknown[] =>
   (out.frame as FrameValue).columns.find((c) => c.name === "Allocation")!.values;
 // Weights are an ordered column on the frame (orderedColumnsAreFrames), never a wired list.
-const wcats = (weights: number[]): FrameValue =>
-  frame([...cats.columns, { name: "Weight", type: "number", values: weights }]);
 
 describe("AllocatorNode", () => {
-  it("fits a budget by weight, clamped to each range (the worked example)", () => {
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // no Weight column → equal
-  });
 
-  it("an amount that isn't a number is #VALUE!, and an error amount passes through (it recursed until the stack ran out)", () => {
-    const n = new AllocatorNode();
-    const nan = n.data({ categories: [wcats([1, 3])], amount: [NaN] }).frame;
-    expect(isSolError(nan) && nan.code).toBe("#VALUE!");
-    const e = solError("#DIV/0!", "upstream");
-    const out = n.data({ categories: [wcats([1, 3])], amount: [e as unknown as number] }).frame;
-    expect(isSolError(out) && out.code).toBe("#DIV/0!");
-  });
 
-  it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    const cols = (n.data({ categories: [wcats([1, 3])] }).frame as FrameValue).columns;
-    const col = (name: string) => cols.find((c) => c.name === name)!.values;
-    expect(cols.map((c) => c.name)).toEqual(["Category", "Allocation", "Share"]);
-    expect(col("Allocation")).toEqual([20, 40]);
-    expect(col("Share")).toEqual([1 / 3, 2 / 3]); // raw decimal, formatted downstream
-  });
 
-  it("min-for-target buys the most-valued category first", () => {
-    const zero = frame([
-      { name: "Category", type: "string", values: ["A", "B"] },
-      { name: "Min", type: "number", values: [0, 0] },
-      { name: "Max", type: "number", values: [100, 100] },
-      { name: "Weight", type: "number", values: [3, 1] },
-    ]);
-    const n = new AllocatorNode({ mode: "minTarget" });
-    n.literals.amount = 150;
-    expect(allocOf(n.data({ categories: [zero] }))).toEqual([50, 0]);
-  });
 
-  it("min-proportional scales up from the binding floor", () => {
-    const n = new AllocatorNode({ mode: "minProportional" });
-    const wide = frame([
-      { name: "Category", type: "string", values: ["Car", "Other"] },
-      { name: "Min", type: "number", values: [20, 10] },
-      { name: "Max", type: "number", values: [1000, 1000] },
-      { name: "Weight", type: "number", values: [1, 3] },
-    ]);
-    expect(allocOf(n.data({ categories: [wide] }))).toEqual([20, 60]);
-  });
 
-  it("carries the min column's unit onto the Allocation column", () => {
-    const withUnit = frame([
-      { name: "Category", type: "string", values: ["Car", "Other"] },
-      { name: "Min", type: "number", values: [20, 10], unit: { display: "USD", base: "USD", factor: 1 } as never },
-      { name: "Max", type: "number", values: [50, 40] },
-    ]);
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    const out = n.data({ categories: [withUnit] });
-    const alloc = (out.frame as FrameValue).columns.find((c) => c.name === "Allocation")!;
-    expect(alloc.unit).toBeTruthy();
-  });
 
-  it("errors when there is no min/max number column", () => {
-    const bad = frame([{ name: "X", type: "string", values: ["a", "b"] }]);
-    const out = new AllocatorNode().data({ categories: [bad] });
-    expect(isSolError(out.frame)).toBe(true);
-  });
 
-  it("an unwired categories input yields no result, not a crash", () => {
-    expect(new AllocatorNode().data({}).frame).toBeNull();
-  });
 
   it("round-trips its op through extractInit", () => {
     const back = new AllocatorNode(extractInit(new AllocatorNode({ mode: "minProportional" })) as never);

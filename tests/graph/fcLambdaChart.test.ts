@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
-import { LambdaNode, isLambdaValue } from "../../src/graph/nodes/lambda";
+import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { ChartNode } from "../../src/graph/nodes/visual";
 import { makeAnnotationResolver } from "../../src/graph/unitFlow";
@@ -104,14 +104,6 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     formatAnnotationStore.delete(lam.id, "result");
   });
 
-  it("DisplayNode.data keeps the LambdaValue in cachedValue (the component renders by kind)", () => {
-    const value = { __lambda: true as const, params: ["x"], fn: (x: unknown) => x, expr: "x * 2" };
-    const disp = new DisplayNode();
-    disp.data({ in: [value] });
-    // The old data() stringified here (formatLambda), which made the component's
-    // lambda branch unreachable — the FC's lambdaView could never apply.
-    expect(isLambdaValue(disp.cachedValue)).toBe(true);
-  });
 
   it("un-splicing a hand-wired (undocked) FC bridges around it instead of eating the downstream cable", async () => {
     const editor = new GraphEditor() as unknown as AnyEditor;

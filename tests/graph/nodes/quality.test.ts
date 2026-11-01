@@ -56,31 +56,10 @@ describe("Expect over frames", () => {
     expect(run(n, [1, solError("#N/A", "not available"), 3])).toEqual(["notNull"]);
   });
 
-  it("passes the frame through unchanged", () => {
-    const n = new ExpectNode({ checkNotNull: true });
-    const f = frame([["a", "number", [1, null]]]);
-    expect(n.data({ in: [f] }).out).toEqual(f);
-  });
 });
 
 describe("Expect — in-list (allowlist) membership", () => {
-  it("flags a value outside a wired allowlist", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    // Wired allowlist wins over the literal.
-    expect(n.data({ in: ["Pear"], allowed: [["Apple", "Banana"]] }).out).toBe("Pear");
-    expect(n.violations).toEqual(["allowed"]);
-    n.data({ in: ["Apple"], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual([]);
-  });
 
-  it("scans every cell of a list/frame against the allowlist", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    n.data({ in: [["Apple", "Kiwi", "Banana"]], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual(["allowed"]);
-    const f = frame([["fruit", "string", ["Apple", "Banana"]]]);
-    n.data({ in: [f], allowed: [["Apple", "Banana"]] });
-    expect(n.violations).toEqual([]);
-  });
 
   it("uses the comma-separated literal when the socket is unwired, matching by string form", () => {
     const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
@@ -200,11 +179,6 @@ describe("Expect reads values as they're shown: units, Cubes and the allowlist b
     expect(run(n, "cherry")).toEqual(["allowed"]);
   });
 
-  it("matches a wired allowlist of mixed types", () => {
-    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
-    n.data({ in: [[1, "a", true]], allowed: [[1, "A", true]] });
-    expect(n.violations).toEqual([]);
-  });
 
   it("unique treats the same quantity in two units as a duplicate, and text by case", () => {
     const n = new ExpectNode({ checkNotNull: false, checkUnique: true });

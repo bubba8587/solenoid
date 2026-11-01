@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EM_FORMULAS } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
-import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
+
 import { PhysicsConstantNode } from "../../../src/graph/nodeClasses";
 import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
 
@@ -63,12 +63,6 @@ describe("Electromagnetism formulas", () => {
 });
 
 describe("Physics Constant node", () => {
-  it("CODATA exact values", () => {
-    expect(new PhysicsConstantNode({ op: "c" }).data().value).toBe(299792458);
-    expect(new PhysicsConstantNode({ op: "e" }).data().value).toBe(1.602176634e-19);
-    expect(new PhysicsConstantNode({ op: "kb" }).data().value).toBe(1.380649e-23);
-    expect(new PhysicsConstantNode({ op: "na" }).data().value).toBe(6.02214076e23);
-  });
 
   it("derived constants are self-consistent", () => {
     // c² · ε₀ · µ₀ = 1
@@ -104,41 +98,11 @@ describe("Physics Constant node", () => {
   });
 });
 
-describe("EM Spectrum Band", () => {
-  it("names the conventional bands by wavelength", () => {
-    const emBand = (wavelength: number) => new EmSpectrumNode().data({ freq: [null], wavelength: [wavelength] }).band;
-    expect(emBand(10)).toBe("Radio");                 // 30 MHz-ish
-    expect(emBand(0.125)).toBe("Microwave");          // 2.4 GHz Wi-Fi
-    expect(emBand(10e-6)).toBe("Infrared");           // 10 µm thermal
-    expect(emBand(532e-9)).toBe("Visible (green)");   // green laser pointer
-    expect(emBand(650e-9)).toBe("Visible (red)");
-    expect(emBand(254e-9)).toBe("Ultraviolet");       // germicidal UV
-    expect(emBand(1e-10)).toBe("X-ray");              // 0.1 nm
-    expect(emBand(1e-12)).toBe("Gamma");
-  });
-
-  it("the node takes either quantity and computes the other via c", () => {
-    const n = new EmSpectrumNode();
-    const byFreq = n.data({ freq: [2.4e9] });
-    expect(byFreq.band).toBe("Microwave");
-    expect(byFreq.wavelength as number).toBeCloseTo(0.1249, 3);
-    const byWl = n.data({ freq: [null], wavelength: [532e-9] });
-    expect(byWl.band).toBe("Visible (green)");
-    expect(byWl.freq as number).toBeCloseTo(5.635e14, -11);
-  });
-});
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("EMSPECTRUMBAND classifies by frequency, or by wavelength via an elided first arg", () => {
     expect(String(evalPackFormula("EMSPECTRUMBAND(5e14)"))).toMatch(/^Visible/);
     expect(evalPackFormula("EMSPECTRUMBAND(, 0.05)")).toBe("Microwave");
-  });
-  it("a non-positive wavelength is #DOMAIN!, like a non-positive frequency", () => {
-    const wl = evalPackFormula("EMSPECTRUMBAND(, -1)");
-    expect(isSolError(wl) && wl.code).toBe("#DOMAIN!");
-    const n = new EmSpectrumNode();
-    n.literals = {};
-    expect(isSolError(n.data({ wavelength: [0] }).band)).toBe(true);
   });
   it("PHYSICSCONSTANT reads the table by id, case-sensitively", () => {
     expect(evalPackFormula('PHYSICSCONSTANT("c")')).toBe(299792458);

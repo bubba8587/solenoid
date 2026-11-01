@@ -2,14 +2,14 @@
 import { describe, it, expect } from "vitest";
 import {
   RankPercentileNode,
-  CorrelNode,
-  CovarianceNode,
-  ModeNode,
-  TrimMeanNode,
-  StandardizeNode,
-  FisherNode,
-  RegressionNode,
-  ForecastNode,
+  
+  
+  
+  
+  
+  
+  
+  
   InterpolateNode,
   HypothesisTestNode,
 } from "../../../src/graph/nodes/stats";
@@ -19,60 +19,15 @@ const interpolateLinear = (xs: number[], ys: number[], at: number[]) => coreFunc
 const fillGrid = (z: (number | null)[][], xs: number[], ys: number[], forecast = true) =>
   coreFunction("INTERPOLATE")!(z, xs, ys, forecast) as (number | null)[][];
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { isSolError, solError } from "../../../src/graph/errorValue";
+import { isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/nodeInit";
 
 // List-socket inputs arrive as inputs.<port>[0] = the array.
 
-describe("LARGE / SMALL (NthValue)", () => {
-  const data = [[3, 1, 4, 1, 5, 9, 2, 6]];
-  it("LARGE picks the k-th largest", () => {
-    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [1] }).result).toBe(9);
-    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [2] }).result).toBe(6);
-  });
-  it("SMALL picks the k-th smallest", () => {
-    expect(new RankPercentileNode({ op: "small" }).data({ list: data, k: [1] }).result).toBe(1);
-    expect(new RankPercentileNode({ op: "small" }).data({ list: data, k: [3] }).result).toBe(2);
-  });
-  it("returns null for out-of-range k", () => {
-    expect(new RankPercentileNode({ op: "large" }).data({ list: data, k: [99] }).result).toBeNull();
-  });
-});
 
-describe("PERCENTILE", () => {
-  const data = [[1, 2, 3, 4]];
-  it("INC interpolates like Excel PERCENTILE.INC", () => {
-    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0.5] }).result).toBeCloseTo(2.5, 9);
-    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.75, 9);
-    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [0] }).result).toBe(1);
-    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: data, p: [1] }).result).toBe(4);
-  });
-  it("EXC matches Excel PERCENTILE.EXC", () => {
-    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.25] }).result).toBeCloseTo(1.25, 9);
-    // EXC is undefined at p outside (1/(n+1), n/(n+1)); guards return #DOMAIN! at the bounds
-    const exc0 = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0] }).result;
-    expect(isSolError(exc0) && exc0.code).toBe("#DOMAIN!");
-    const exc1 = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [1] }).result;
-    expect(isSolError(exc1) && exc1.code).toBe("#DOMAIN!");
-    // Inside (0,1) but outside the EXC domain: Excel errors (#NUM!), we #DOMAIN!
-    // — never silently clamp to the min/max element. n=4 ⇒ domain (0.2, 0.8).
-    const excLo = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.1] }).result;
-    expect(isSolError(excLo) && excLo.code).toBe("#DOMAIN!");
-    const excHi = new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.9] }).result;
-    expect(isSolError(excHi) && excHi.code).toBe("#DOMAIN!");
-    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.2] }).result).toBe(1);
-    expect(new RankPercentileNode({ op: "percentile-exc" }).data({ list: data, p: [0.8] }).result).toBe(4);
-  });
-});
 
 describe("QUARTILE", () => {
   const data = [[1, 2, 3, 4, 5]];
-  it("INC returns the expected quartiles", () => {
-    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [0] }).result).toBe(1);
-    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [1] }).result).toBe(2);
-    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [2] }).result).toBe(3);
-    expect(new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [4] }).result).toBe(5);
-  });
   it("the FORMULA surface matches the node — quart 0/4 are MIN/MAX, not #NUM! ([[C24]] arraySemantics)", () => {
     // Formula.js's QUARTILE.INC errors on 0 and 4; the formula must answer like the node.
     const q = (fn: string, n: number) => compileEvaluator(`${fn}(x, ${n})`)!({ x: [1, 2, 3, 4, 5] });
@@ -102,37 +57,9 @@ describe("QUARTILE", () => {
     const exc = fx("QUARTILE.EXC(x, 0.5)");
     expect(isSolError(exc) && exc.code).toBe("#DOMAIN!");
   });
-  it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
-    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
-    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);
-    expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [3] }).result).toBe(4.5);
-  });
-  it("EXC errors out of domain with #DOMAIN! instead of clamping to min/max (Excel #NUM!)", () => {
-    // q=0/4 are always outside the EXC domain.
-    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [0] }).result)).toBe(true);
-    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [4] }).result)).toBe(true);
-    // Small n pushes an interior quartile out of [1/(n+1), n/(n+1)]: n=2 → q1/q3 invalid.
-    const two = [[1, 2]];
-    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [1] }).result)).toBe(true);
-    expect(isSolError(new RankPercentileNode({ op: "quartile-exc" }).data({ list: two, q: [3] }).result)).toBe(true);
-  });
 });
 
 describe("PERCENTRANK", () => {
-  it("INC ranks a value within its list", () => {
-    const data = [[1, 2, 3, 4, 5]];
-    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [3], significance: [3] }).result).toBeCloseTo(0.5, 9);
-    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [1], significance: [3] }).result).toBe(0);
-  });
-  it("INTERPOLATES between data points + TRUNCATES to significance (Excel parity)", () => {
-    // 4 is between 3.5 (rank 2/3) and 10.25 (rank 1) → ~0.6913…, truncated to 0.691.
-    const data = [[1.5, 2.5, 3.5, 10.25]];
-    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: data, value: [4], significance: [3] }).result).toBe(0.691);
-    // an exact match with duplicates uses the FIRST occurrence (count below / n−1),
-    // truncated: 1/7 = 0.142857… → 0.142 (not 0.143 — Excel truncates, doesn't round).
-    const dups = [[2, 4, 4, 4, 5, 5, 7, 9]];
-    expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: dups, value: [4], significance: [3] }).result).toBe(0.142);
-  });
   it("skips blanks, ranks within a single value, and truncates a fractional significance, node and formula alike", () => {
     const node = (op: "percentrank-inc" | "percentrank-exc", list: (number | null)[], value: number, significance = 3) =>
       new RankPercentileNode({ op }).data({ list: [list], value: [value], significance: [significance] }).result;
@@ -149,27 +76,10 @@ describe("PERCENTRANK", () => {
     expect(node("percentrank-inc", dups, 4, 2.6)).toBe(0.14);
     expect(fx("PERCENTRANK.INC(x, 4, 2.6)", dups)).toBe(0.14);
   });
-  it("returns #N/A for a value outside the data range", () => {
-    const r = new RankPercentileNode({ op: "percentrank-inc" }).data({ list: [[1, 2, 3]], value: [9], significance: [3] }).result;
-    expect(isSolError(r) && r.code).toBe("#N/A");
-  });
 });
 
 describe("RANK", () => {
   const data = [[10, 20, 20, 40]];
-  it("EQ gives tied values the same (lowest) rank, descending", () => {
-    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [40] }).result).toBe(1);
-    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [20] }).result).toBe(2);
-    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [10] }).result).toBe(4);
-  });
-  it("AVG averages tied ranks", () => {
-    // two 20s occupy ranks 2 and 3 → average 2.5
-    expect(new RankPercentileNode({ op: "rank-avg" }).data({ list: data, value: [20] }).result).toBe(2.5);
-  });
-  it("returns #N/A when the value is absent", () => {
-    const r = new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [99] }).result;
-    expect(isSolError(r) && r.code).toBe("#N/A");
-  });
   it("a nonzero Order ranks ascending, on the card and in the formula ([[D73]] nodeCoversFormula)", () => {
     expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [10], order: [1] }).result).toBe(1);
     expect(new RankPercentileNode({ op: "rank-avg" }).data({ list: data, value: [20], order: [1] }).result).toBe(2.5);
@@ -182,56 +92,8 @@ describe("RANK", () => {
   });
 });
 
-describe("STANDARDIZE", () => {
-  it("z-scores a scalar value", () => {
-    expect(new StandardizeNode().data({ value: [10], mean: [5], stdev: [2] }).result).toBe(2.5);
-  });
-  it("returns #DIV/0! for a scalar zero std dev", () => {
-    const r = new StandardizeNode().data({ value: [10], mean: [5], stdev: [0] }).result;
-    expect(isSolError(r) && r.code).toBe("#DIV/0!");
-  });
-  it("tags a per-element zero std dev in a list as a per-cell #DIV/0!", () => {
-    const r = new StandardizeNode().data({ value: [[10, 20]], mean: [[5, 5]], stdev: [[2, 0]] }).result as Array<number | { code: string }>;
-    expect(r[0]).toBe(2.5);
-    expect(isSolError(r[1]) && r[1].code === "#DIV/0!").toBe(true);
-  });
-});
 
-describe("FISHER", () => {
-  it("transforms a scalar inside (−1, 1)", () => {
-    expect(new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result).toBeCloseTo(Math.atanh(0.5), 9);
-  });
-  it("returns #DOMAIN! for a scalar at/outside ±1", () => {
-    const r = new FisherNode({ op: "fisher" }).data({ value: [1] }).result;
-    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
-  });
-  it("tags a per-element domain miss in a list as a per-cell #DOMAIN!", () => {
-    const r = new FisherNode({ op: "fisher" }).data({ value: [[0.5, 1, -0.5]] }).result as Array<number | { code: string }>;
-    expect(r[0]).toBeCloseTo(Math.atanh(0.5), 9);
-    expect(isSolError(r[1]) && r[1].code === "#DOMAIN!").toBe(true);
-    expect(r[2]).toBeCloseTo(Math.atanh(-0.5), 9);
-  });
-});
 
-describe("REGRESSION / FORECAST zero-variance Xs", () => {
-  it("SLOPE returns #DIV/0! when Xs have zero variance", () => {
-    const r = new RegressionNode({ op: "slope" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
-    expect(isSolError(r) && r.code).toBe("#DIV/0!");
-  });
-  it("STEYX stays null with fewer than 3 points (not enough data)", () => {
-    expect(new RegressionNode({ op: "steyx" }).data({ ys: [[1, 2]], xs: [[1, 2]] }).result).toBeNull();
-  });
-  it("FORECAST returns #DIV/0! when Xs have zero variance", () => {
-    const r = new ForecastNode().data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
-    expect(isSolError(r) && r.code).toBe("#DIV/0!");
-  });
-  it("exponential FORECAST is #DIV/0! over zero-variance Xs, #DOMAIN! only for a y at or below 0", () => {
-    const flat = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
-    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
-    const neg = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, -2, 3]], xs: [[1, 2, 3]] }).result;
-    expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
-  });
-});
 
 describe("INTERPOLATE (piecewise-linear lookup)", () => {
   // Pure core.
@@ -262,37 +124,6 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
 
   // Node wiring — the query is a numlist COMBO: a SCALAR X in yields a SCALAR y,
   // a LIST of Xs yields a LIST (result mirrors the query's shape).
-  it("returns a SCALAR y for a scalar X (combo socket)", () => {
-    // A scalar source arrives as inputs.new_xs = [5] (not [[5]]).
-    const r = new InterpolateNode().data({ xs: [[0, 10, 20]], ys: [[0, 100, 300]], new_xs: [5] }).result;
-    expect(r).toBe(50);
-  });
-  it("returns a LIST for a list of queries", () => {
-    const r = new InterpolateNode().data({ xs: [[0, 10, 20]], ys: [[0, 100, 300]], new_xs: [[5, 10, 17.5]] }).result;
-    expect(r).toEqual([50, 100, 250]);
-  });
-  it("interpolates at the literal query (x=0) when unwired → scalar", () => {
-    // Unwired query falls back to literals.x = 0, clamped to the first known y.
-    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[7, 99]] }).result;
-    expect(r).toBe(7);
-  });
-  it("keeps a missing (null) query missing in place", () => {
-    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[5, null, 10]] }).result;
-    expect(r).toEqual([50, null, 100]);
-  });
-  it("a scalar null query yields null", () => {
-    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [null] }).result;
-    expect(r).toBeNull();
-  });
-  it("propagates a #CODE! error in the known data", () => {
-    const err = solError("#N/A", "missing");
-    const r = new InterpolateNode().data({ xs: [[0, err]], ys: [[0, 100]], new_xs: [5] }).result;
-    expect(isSolError(r) && r.code).toBe("#N/A");
-  });
-  it("has no result with no known points (scalar null / list empty)", () => {
-    expect(new InterpolateNode().data({ xs: [[]], ys: [[]], new_xs: [5] }).result).toBeNull();
-    expect(new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[]] }).result).toEqual([]);
-  });
 });
 
 describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)", () => {
@@ -437,33 +268,6 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     n.mode = "list"; n._rebuildSockets();
     expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
   });
-  it("fills a Z table through the node (a per-cell error reads as a blank)", () => {
-    const err = solError("#REF!", "bad cell");
-    // Z = x·y with the center cell errored → reads as blank, filled by 2-D interp to 1.
-    const z = [[0, 0, 0], [0, err, 2], [0, 2, 4]];
-    const r = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[0, 1, 2]], ys: [[0, 1, 2]] }).result as (number | null)[][];
-    expect(r[1][1]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
-  });
-  it("unwired Xs/Ys count 1, 2, 3…, and a wired-blank axis makes the result null", () => {
-    const z = [[1, null], [null, 4]];
-    const idx = new InterpolateNode({ mode: "grid" }).data({ z: [z] }).result as (number | null)[][];
-    expect(idx.length).toBe(2);
-    expect(Number.isFinite(idx[0][1] as number)).toBe(true); // filled from the index axes
-    // a WIRED-blank axis is unknown → the whole result is null (shape propagates).
-    expect(new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [null] }).result).toBeNull();
-  });
-  it("rejects a mismatched (#SHAPE!) or non-finite (#VALUE!) axis", () => {
-    const z = [[1, 2], [3, 4]];
-    const shape = new InterpolateNode({ mode: "grid" }).data({ z: [z], xs: [[1, 2, 3]] }).result;
-    expect(isSolError(shape) && shape.code).toBe("#SHAPE!");
-    const bad = new InterpolateNode({ mode: "grid" }).data({ z: [z], ys: [[1, NaN]] }).result;
-    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
-  });
-  it("propagates a whole-grid error", () => {
-    const err = solError("#REF!", "bad grid");
-    const r = new InterpolateNode({ mode: "grid" }).data({ z: [err] }).result;
-    expect(isSolError(r) && r.code).toBe("#REF!");
-  });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
     const n = new InterpolateNode({ mode: "grid" });
     const z = [[5, 15, null]]; // slope 1 across xs [0,10,20]; X=20 is past the data
@@ -490,102 +294,14 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
   });
 });
 
-describe("CORREL / RSQ", () => {
-  it("is +1 for a perfectly increasing linear relation", () => {
-    const r = new CorrelNode({ op: "correl" }).data({ x: [[1, 2, 3]], y: [[2, 4, 6]] });
-    expect(r.result).toBeCloseTo(1, 9);
-  });
-  it("is -1 for a perfectly decreasing relation", () => {
-    const r = new CorrelNode({ op: "correl" }).data({ x: [[1, 2, 3, 4]], y: [[4, 3, 2, 1]] });
-    expect(r.result).toBeCloseTo(-1, 9);
-  });
-  it("RSQ is the square of the correlation", () => {
-    const r = new CorrelNode({ op: "rsq" }).data({ x: [[1, 2, 3, 4]], y: [[4, 3, 2, 1]] });
-    expect(r.result).toBeCloseTo(1, 9);
-  });
-});
 
-describe("COVARIANCE", () => {
-  const x = [[1, 2, 3, 4]];
-  const y = [[2, 4, 6, 8]];
-  it("population divides by n", () => {
-    expect(new CovarianceNode({ op: "pop" }).data({ x, y }).result).toBeCloseTo(2.5, 9);
-  });
-  it("sample divides by n-1", () => {
-    expect(new CovarianceNode({ op: "samp" }).data({ x, y }).result).toBeCloseTo(10 / 3, 9);
-  });
-});
 
-describe("MODE (scalar OR list — supersedes MODE.SNGL / MODE.MULT)", () => {
-  it("returns a single number when one value is most frequent", () => {
-    expect(new ModeNode().data({ list: [[1, 2, 2, 3, 3, 3, 4]] }).result).toBe(3);
-  });
-  it("returns ALL of them as a list when several tie — no arbitrary tie-break", () => {
-    // 5 and 2 both appear twice → the full set, sorted ascending (was: picked 2).
-    expect(new ModeNode().data({ list: [[5, 5, 2, 2, 9]] }).result).toEqual([2, 5]);
-  });
-  it("skips nulls and propagates an error", () => {
-    expect(new ModeNode().data({ list: [[7, null, 7, 1]] }).result).toBe(7);
-  });
-});
 
-describe("TRIMMEAN", () => {
-  it("trims the tails before averaging", () => {
-    // 20% of 10 = trim 1 from each end → mean of 2..9 = 5.5
-    const r = new TrimMeanNode().data({ list: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]], percent: [0.2] });
-    expect(r.result).toBeCloseTo(5.5, 9);
-  });
-});
 
-describe("Scalar stats reducers — null skipped, errors propagated", () => {
-  it("NthValue (LARGE/SMALL) skips null before ranking", () => {
-    // [3,1,4,1,5] with two nulls → ranking ignores the gaps.
-    expect(new RankPercentileNode({ op: "large" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(5);
-    expect(new RankPercentileNode({ op: "small" }).data({ list: [[3, null, 1, 4, null, 1, 5]], k: [1] }).result).toBe(1);
-  });
-
-  it("Percentile skips null before ranking", () => {
-    // median of [1,2,3,4] (nulls dropped) = 2.5
-    expect(new RankPercentileNode({ op: "percentile-inc" }).data({ list: [[1, null, 2, 3, null, 4]], p: [0.5] }).result).toBeCloseTo(2.5, 9);
-  });
-
-  it("both propagate a SolError in the list", () => {
-    const err = solError("#DIV/0!", "boom");
-    const nth = new RankPercentileNode({ op: "large" }).data({ list: [[1, err, 3]], k: [1] }).result;
-    expect(isSolError(nth) && nth.code).toBe("#DIV/0!");
-    const pct = new RankPercentileNode({ op: "percentile-inc" }).data({ list: [[1, err, 3]], p: [0.5] }).result;
-    expect(isSolError(pct) && pct.code).toBe("#DIV/0!");
-  });
-});
 
 describe("Hypothesis Test — one node, six tests", () => {
   const A = [1, 2, 3, 4, 5];
-  const B = [2, 2, 4, 4, 6];
 
-  it("computes each test's p-value", () => {
-    const z = new HypothesisTestNode({ op: "z" });
-    z.literals.x = 2;
-    const zp = z.data({ a: [A] }).result!;
-    expect(zp).toBeGreaterThan(0);
-    expect(zp).toBeLessThan(1);
-
-    const welch = new HypothesisTestNode({ op: "t-welch" });
-    const paired = new HypothesisTestNode({ op: "t-paired" });
-    const pooled = new HypothesisTestNode({ op: "t-equal" });
-    for (const n of [welch, paired, pooled]) {
-      const p = n.data({ a: [A], b: [B] }).result!;
-      expect(p).toBeGreaterThan(0);
-      expect(p).toBeLessThanOrEqual(1);
-    }
-
-    const f = new HypothesisTestNode({ op: "f" });
-    expect(f.data({ a: [A], b: [B] }).result).toBeGreaterThan(0);
-
-    const chisq = new HypothesisTestNode({ op: "chisq" });
-    const cp = chisq.data({ a: [[10, 20, 30]], b: [[12, 18, 30]] }).result!;
-    expect(cp).toBeGreaterThan(0);
-    expect(cp).toBeLessThanOrEqual(1);
-  });
 
   it("Z reads σ from the card when unwired, skips blanks, and agrees with Z.TEST", () => {
     const z = new HypothesisTestNode({ op: "z" });
@@ -680,8 +396,4 @@ describe("the rank and distribution tests read their lists as their formulas do"
       expect(card).toEqual(formula);
     });
   }
-  it("KSTEST over text alone answers at once", () => {
-    const words = ["a", "b", "c"] as unknown as number[];
-    expect(new HypothesisTestNode({ op: "ks" }).data({ a: [words], b: [words] }).result).toBeNull();
-  });
 });

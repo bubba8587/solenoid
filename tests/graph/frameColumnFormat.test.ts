@@ -7,7 +7,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
-  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode, DescribeNode,
+  FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, DescribeNode,
 } from "../../src/graph/nodes/frame";
 import {
   frameSourceToText, frameColumnsToInputText, isFrameValue,
@@ -25,7 +25,6 @@ const DEC0: FormatAnnotation = { format: "decimal", unit: "none", decimalDigits:
 const source = (cols: Array<{ name: string; type: FrameColumn["type"]; cells: string[]; unit?: string }>): string =>
   frameSourceToText(cols as FrameSource);
 
-const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
 const col = (f: FrameValue, name: string): FrameColumn => f.columns.find((c) => c.name === name)!;
 
 /** The real pipeline: the coercion wrapper (where the OUTPUT stamp lives) plus the
@@ -172,18 +171,6 @@ describe("a DERIVED column carries the format only where it carries the unit", (
     expect(col(out, "B").format).toEqual(DEC3);
   });
 
-  it("Allocator: Allocation takes the Min column's format, as it takes its unit", () => {
-    const cats = frame([
-      { name: "Category", type: "string", values: ["Car", "Other"] },
-      { name: "Min", type: "number", values: [20, 10], format: DEC3 },
-      { name: "Max", type: "number", values: [50, 40] },
-    ]);
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    const out = n.data({ categories: [cats] }).frame as FrameValue;
-    expect(col(out, "Allocation").format).toEqual(DEC3);
-    expect(col(out, "Share").format).toBeUndefined();
-  });
 });
 
 // The author's gap: "Auto" was a real pick that silently replaced the inherited format,

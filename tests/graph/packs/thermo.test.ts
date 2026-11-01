@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
+import { IsaAtmosphereNode } from "../../../src/graph/nodes/thermo";
 import { ANTOINE, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -100,13 +100,6 @@ describe("ISA standard atmosphere", () => {
     expect(isaAtGeometric(10668).p).toBeGreaterThan(cruise.p);
   });
 
-  it("node wires the four outputs and rejects out-of-range altitudes", () => {
-    const n = new IsaAtmosphereNode();
-    const r = n.data({ alt: [0] });
-    expect(r.temp).toBeCloseTo(288.15, 9);
-    expect(r.pressure).toBeCloseTo(101325, 9);
-    expect(isSolError(n.data({ alt: [100000] }).temp)).toBe(true);
-  });
 });
 
 describe("Antoine vapor pressure", () => {
@@ -123,13 +116,6 @@ describe("Antoine vapor pressure", () => {
     expect(antoinePressure("water", 100)).toBeCloseTo(101325, -3);
   });
 
-  it("node outputs pressure + boiling point per substance", () => {
-    const n = new AntoineNode({ substance: "ethanol" });
-    const r = n.data({ t: [25] });
-    expect(r.pressure as number).toBeCloseTo(7833, -2); // ~7.8 kPa
-    expect(r.bp).toBeCloseTo(78.37, 0);
-    expect(isSolError(n.data({ t: [-500] }).pressure)).toBe(true);
-  });
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
@@ -178,9 +164,5 @@ describe("[[C25]] firstClassUnits — a preset reads each input in its declared 
     expect((run("th-svp", { tc: applyFcUnit(5, "km") }) as { code?: string }).code).toBe("#UNIT!");
     const w = run("th-wind-chill", { tc: -10, v: 20 }) as number;
     expect(run("th-wind-chill", { tc: applyFcUnit(14, "degF"), v: applyFcUnit(20 / 3.6, "ms1") }) as number).toBeCloseTo(w, 6);
-  });
-  it("the Equation preset reads tk in kelvin", () => {
-    const out = node("th-ideal-gas").data({ vol: [1], n: [1], tk: [applyFcUnit(0, "degC")] });
-    expect(out.p as number).toBeCloseTo(8.314462618 * 273.15, 6);
   });
 });

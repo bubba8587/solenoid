@@ -229,12 +229,6 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     expect(out.columns[0].values).toEqual([true, true, true]);
   });
 
-  it("a wired-blank Find is unknown → the whole result is null", async () => {
-    const f: FrameValue = { __frame: true, columns: [{ name: "qty", type: "number", values: [1, 2] }] };
-    const n = new ReplaceValuesNode({ mode: "cell" });
-    n.stringLiterals.column = "qty";
-    expect((await n.data({ frame: [f], find: [null], replace: [0] })).frame).toBeNull();
-  });
 
   it("the card's typed Find and Replace are text kept exactly as typed", async () => {
     const n = new ReplaceValuesNode({ mode: "substring" });

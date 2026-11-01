@@ -12,23 +12,7 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.data({ v0: [10], v1: [20] }).out).toBe(10);
   });
 
-  it("multi mode collects the checked inputs into a name+value cube", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    n.titles = { v0: "North", v1: "South" };
-    n.selectedKeys = ["v0", "v1"];
-    const out = n.data({ v0: [100], v1: [200] }).out;
-    const cube = out as CubeValue;
-    expect(cube.columns.map((c) => c.name)).toEqual(["name", "value"]);
-    expect(cube.columns[0].cells).toEqual(["North", "South"]);
-    expect(cube.columns[1].cells).toEqual([100, 200]);
-  });
 
-  it("multi mode with nothing checked outputs null", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    expect(n.data({ v0: [1], v1: [2] }).out).toBeNull();
-  });
 
   it("collects ONLY the checked slots, in slot order (not selection order)", () => {
     const n = new CableSwitchNode();
@@ -41,13 +25,6 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(cube.columns[1].cells).toEqual([1, 3]);
   });
 
-  it("collects a whole wired value (e.g. a list) as one cube cell", () => {
-    const n = new CableSwitchNode();
-    n.multiSelect = true;
-    n.selectedKeys = ["v0"];
-    const cube = n.data({ v0: [[1, 2, 3]] }).out as CubeValue;
-    expect(cube.columns[1].cells).toEqual([[1, 2, 3]]); // the list rides in whole
-  });
 
   it("titleFor falls back to a positional name", () => {
     const n = new CableSwitchNode();

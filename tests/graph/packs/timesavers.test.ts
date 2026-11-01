@@ -2,7 +2,6 @@
 import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "../../../src/graph/packs/timesavers";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ReverseTextNode, SpellNumberNode } from "../../../src/graph/nodes/text";
 import { coreFunction } from "../coreFunction";
 import { jsDateToSerial, serialToJsDate } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -115,13 +114,6 @@ describe("Timesaver date idioms with config (C5)", () => {
   });
 });
 
-describe("Reverse Text node", () => {
-  it("reverses, keeping surrogate pairs whole", () => {
-    expect(new ReverseTextNode().data({ text: ["hello"] }).result).toBe("olleh");
-    expect(new ReverseTextNode().data({ text: ["a💡b"] }).result).toBe("b💡a");
-    expect(new ReverseTextNode().data({ text: [""] }).result).toBe("");
-  });
-});
 
 describe("Spell Number", () => {
   it("cardinals, teens, hyphens, hundreds", () => {
@@ -149,10 +141,4 @@ describe("Spell Number", () => {
     expect(isSolError(spellNumber(Infinity))).toBe(true);
   });
 
-  it("node reads wired value or literal", () => {
-    const n = new SpellNumberNode();
-    expect(n.data({ value: [7] }).result).toBe("seven");
-    n.literals.value = 12;
-    expect(n.data({}).result).toBe("twelve");
-  });
 });

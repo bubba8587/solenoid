@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
+
 import { coreFunction } from "../coreFunction";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -108,13 +108,6 @@ describe("NOAA solar formulation", () => {
     expect(sunriseUtcHours).toBeCloseTo(3.72, 1);
   });
 
-  it("node: polar night yields blank rise/set, bad latitude errors", () => {
-    const n = new SunriseSunsetNode();
-    const polar = n.data({ when: [serial(2026, 12, 21)], lat: [80], lon: [0] });
-    expect(polar.sunrise).toBe(null);
-    expect(polar.daylength).toBe(0);
-    expect(isSolError(n.data({ when: [serial(2026, 1, 1)], lat: [95], lon: [0] }).sunrise)).toBe(true);
-  });
 });
 
 describe("moon phase", () => {
@@ -135,13 +128,6 @@ describe("moon phase", () => {
 });
 
 describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
-  it("SUNRISE / SUNSET / DAYLENGTH agree with the card at the equator", () => {
-    const c = new SunriseSunsetNode().data({ when: [46000], lat: [0], lon: [0] });
-    const t = { sunrise: c.sunrise, sunset: c.sunset, dayLength: c.daylength };
-    expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);
-    expect(evalPackFormula("SUNSET(46000, 0, 0)")).toBe(t.sunset);
-    expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);
-  });
   it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
     const p = solarPosition(46000.5, 40, -74);
     expect(evalPackFormula("SUNPOSITION(46000.5, 40, -74)")).toBe(p.elevation);

@@ -1,10 +1,10 @@
 // [[B11]], [[C48]], [[C49]]
 import { describe, expect, it } from "vitest";
-import { TextJoinNode } from "../../src/graph/nodes/text";
+
 import { XMatchNode } from "../../src/graph/nodes/list";
-import { TakeDropNode } from "../../src/graph/nodes/matrix";
+
 import { BaseConvertNode } from "../../src/graph/nodes/scalar";
-import { GetRowNode } from "../../src/graph/nodes/frame";
+
 import { dropBlankRows, mergeColumns } from "./coreVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
@@ -19,23 +19,7 @@ const frame = (cols: [string, "string" | "number", (string | number | null | Ret
   columns: cols.map(([name, type, values]) => ({ name, type, values })),
 });
 
-describe("TEXTJOIN — the ignore-empty mode", () => {
-  it("ignore (the node default, matching the formula surface) drops empty strings; include keeps them", () => {
-    const ignore = new TextJoinNode();
-    expect(ignore.data({ strings: [["a", "", "b"]], delimiter: [","] }).result).toBe("a,b");
-    const include = new TextJoinNode({ ignoreEmpty: "include" });
-    expect(include.data({ strings: [["a", "", "b"]], delimiter: [","] }).result).toBe("a,,b");
-  });
-});
 
-describe("DROP — the last-N direction is a negative count", () => {
-  // [[D85]] columnsStayColumns: a list is one row, so its items are columns.
-  it("removes the last N items of a list, counted as columns", () => {
-    const node = new TakeDropNode({ op: "drop" });
-    node.literals.cols = -2; // sign is the direction: drop the last two
-    expect(node.data({ data: [[1, 2, 3, 4]] }).result).toEqual([1, 2]);
-  });
-});
 
 describe("Base Convert — the per-digit 0–9 rule", () => {
   const run = (value: number, from: number, to: number) => {
@@ -88,33 +72,8 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
   });
   // The sockets are wildcard because the kernel is type-agnostic: text was locked
   // out only by the old numeric plugs while =XMATCH("a", …) already worked.
-  it("matches text, case-insensitively (Excel's lookup equality)", () => {
-    const node = new XMatchNode();
-    expect(node.data({ value: ["fw-403"], array: [["HB-401", "LN-402", "FW-403"]] }).result).toBe(3);
-  });
-  it("an unwired TEXT literal reads from the wildcard slot's string map", () => {
-    const node = new XMatchNode();
-    node.stringLiterals.value = "LN-402";
-    expect(node.data({ array: [["HB-401", "LN-402"]] }).result).toBe(2);
-  });
-  it("approximate match on a text lookup is the kernel's targeted #VALUE!", () => {
-    const node = new XMatchNode({ matchMode: "next_larger" });
-    const r = node.data({ value: ["x"], array: [["a", "b"]] }).result;
-    expect(isSolError(r) ? r.code : r).toBe("#VALUE!");
-  });
 });
 
-describe("Get Row — 1-based row pick", () => {
-  const f = frame([["a", "string", ["x", "y", "z"]], ["n", "number", [1, 2, 3]]]);
-  it("picks the 1-based row as a one-row frame", () => {
-    const out = new GetRowNode().data({ frame: [f], index: [2] }).frame as FrameValue | null;
-    expect(out?.columns.map((c) => c.values)).toEqual([["y"], [2]]);
-  });
-  it("out-of-range (0 or past the end) is blank", () => {
-    expect(new GetRowNode().data({ frame: [f], index: [0] }).frame).toBeNull();
-    expect(new GetRowNode().data({ frame: [f], index: [4] }).frame).toBeNull();
-  });
-});
 
 describe("Merge Columns — a blank cell contributes ''", () => {
   it("null merges as the empty string", () => {

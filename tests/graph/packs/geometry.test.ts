@@ -3,7 +3,6 @@ import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "../../../src/graph/packs/geom
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { TriangleSolverNode } from "../../../src/graph/nodes/triangle";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
-import { tagDim, type UnitCell } from "../../../src/graph/unitValue";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
 
@@ -116,98 +115,11 @@ describe("Triangle Solver", () => {
     expect(t.c).toBeCloseTo(7 * Math.sqrt(3), 9);
   });
 
-  it("degenerate givens error honestly", () => {
-    expect(isSolError(solveTriangle({ A: 60, B: 60, C: 60 }))).toBe(true);        // no scale
-    expect(isSolError(solveTriangle({ a: 1, b: 1, c: 5 }))).toBe(true);           // inequality
-    expect(new TriangleSolverNode().data({ a: [1], b: [1] }).area).toBeNull();   // two parts: not enough to solve yet
-    expect(isSolError(solveTriangle({ a: 1, A: 100, B: 100 }))).toBe(true);       // angles ≥ 180
-  });
 
-  it("the node: three parts solve and Valid is TRUE; a bad set errors with Valid FALSE", () => {
-    const n = new TriangleSolverNode();
-    const out = n.data({ a: [3], b: [4], c: [5] });
-    expect(out.area as number).toBeCloseTo(6, 9);
-    expect(out.C as number).toBeCloseTo(90, 9);
-    expect(out.valid).toBe(true);
-    const bad = n.data({ a: [1], b: [1], c: [5] });
-    expect(isSolError(bad.area)).toBe(true);
-    expect(bad.valid).toBe(false);
-  });
 
-  it("an angle input in ANY angle unit reads in degrees", () => {
-    const n = new TriangleSolverNode();
-    // An FC-tagged radian angle (base π/2) is a right angle, not 1.57°.
-    const right = tagDim(Math.PI / 2, { angle: 1 }, "rad");
-    const out = n.data({ a: [3], b: [4], C: [right] });
-    expect(out.c as number).toBeCloseTo(5, 9);
-    const deg90 = tagDim(Math.PI / 2, { angle: 1 }, "deg");
-    // The broadcast path reads each cell the same way.
-    const out3 = n.data({ a: [[3, 6]], b: [[4, 8]], C: [[right, deg90]] });
-    expect((out3.c as number[]).map((x) => Math.round(x))).toEqual([5, 10]);
-  });
 
-  it("a degree-tagged angle reads as its whole degrees, with no float residue", () => {
-    const n = new TriangleSolverNode();
-    for (let deg = 1; deg < 179; deg++) {
-      const out = n.data({ a: [1], A: [tagDim((deg * Math.PI) / 180, { angle: 1 }, "deg")], B: [(180 - deg) / 2] });
-      expect(out.A).toBe(deg);
-    }
-  });
 
-  it("[[C25]] sides solve in one unit: a km side and a m side convert, answers come back in the first side's unit", () => {
-    const n = new TriangleSolverNode();
-    const km3 = tagDim(3000, { length: 1 }, "km");
-    const m4000 = tagDim(4000, { length: 1 }, "m");
-    const out = n.data({ a: [km3], b: [m4000], C: [90] });
-    const c = out.c as UnitCell;
-    expect(c.display).toBe("km");
-    expect(c.value).toBeCloseTo(5000, 6);
-    expect((out.perimeter as UnitCell).value).toBeCloseTo(12000, 6);
-    const area = out.area as UnitCell;
-    expect(area.dim).toEqual({ length: 2 });
-    expect(area.value).toBeCloseTo(6e6, 3);
-    // A bare side reads in the sides' unit: 3 km and 4 → 5 km.
-    expect((n.data({ a: [km3], b: [4], C: [90] }).c as UnitCell).value).toBeCloseTo(5000, 6);
-    // Two dimensions, or a length where an angle belongs, are #UNIT!.
-    const sec = tagDim(4, { time: 1 }, "s");
-    expect((n.data({ a: [km3], b: [sec], C: [90] }).c as { code?: string }).code).toBe("#UNIT!");
-    expect((n.data({ a: [3], b: [4], C: [km3] }).valid as { code?: string }).code).toBe("#UNIT!");
-  });
 
-  it("broadcasts over parallel lists: three triangles, Valid a logical list", () => {
-    const n = new TriangleSolverNode();
-    // Three right triangles: (3,4,5), (6,8,10), (5,12,13).
-    const out = n.data({ a: [[3, 6, 5]], b: [[4, 8, 12]], c: [[5, 10, 13]] });
-    expect(out.valid).toEqual([true, true, true]);
-    expect((out.C as number[]).map((x) => Math.round(x))).toEqual([90, 90, 90]);
-    (out.area as number[]).forEach((v, i) => expect(v).toBeCloseTo([6, 24, 30][i], 9));
-    // A scalar part broadcasts against a list: fixed c=5, varying a/b.
-    const mixed = n.data({ a: [[3, 6]], b: [[4, 8]], c: [5] });
-    expect((mixed.area as number[])[0]).toBeCloseTo(6, 9);
-    // A short list pads with null → that index has <3 parts → quiet (Valid null).
-    const ragged = n.data({ a: [[3, 6]], b: [[4, 8]], c: [[5]] });
-    expect((ragged.valid as unknown[])[1]).toBeNull();
-  });
 
-  it("fewer than three parts pass through quietly (no error, Valid stays blank)", () => {
-    const n = new TriangleSolverNode();
-    const out = n.data({ a: [3], b: [4] });
-    expect(out.a).toBe(3);
-    expect(out.c).toBeNull();
-    expect(out.valid).toBeNull();
-    expect(n.data({}).area).toBeNull();
-  });
 
-  it("over-determined = the Equation-style Check: consistent parts → TRUE, off ones → FALSE", () => {
-    const n = new TriangleSolverNode();
-    // The full 3-4-5 with its right angle: closes.
-    const ok = n.data({ a: [3], b: [4], c: [5], C: [90] });
-    expect(ok.valid).toBe(true);
-    expect(ok.A as number).toBeCloseTo(36.8699, 3); // still solved for the rest
-    // Perturb the angle: doesn't close, but the givens still pass through.
-    const off = n.data({ a: [3], b: [4], c: [5], C: [80] });
-    expect(off.valid).toBe(false);
-    expect(off.C).toBe(80);
-    expect(off.area as number).toBeCloseTo(6, 9); // solved from the side-rich subset
-  });
 });

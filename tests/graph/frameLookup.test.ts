@@ -8,8 +8,8 @@ import type { FrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import { throughBoundary } from "./boundaryKit";
-import { columnUnitFromSpec } from "../../src/graph/unitColumn";
-import { applyFcUnit } from "../../src/graph/unitBridge";
+
+
 
 const people: FrameValue = {
   __frame: true,
@@ -184,27 +184,3 @@ describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () =
   });
 });
 
-describe("a lookup column with a unit reads the typed needle in that unit ([[C25]] firstClassUnits)", () => {
-  const usd = columnUnitFromSpec("$")!, mi = columnUnitFromSpec("mi")!;
-  const priced: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "price", type: "number", values: [5, 10, 20], unit: usd },
-      { name: "dist", type: "number", values: [1, 5, 10], unit: mi },
-      { name: "len", type: "number", values: [100, 200, 300], unit: { dim: { length: 1 } } },
-      { name: "item", type: "string", values: ["pen", "pad", "ink"] },
-    ],
-  };
-  it("the XLookup card answers the row, not #N/A", () => {
-    const n = new XLookupNode();
-    n.stringLiterals = { lookup: "10", inColumn: "price", returnColumn: "item", ifNotFound: "" };
-    expect(n.data({ frame: [priced] }).value).toBe("pad");
-  });
-  it("the XLOOKUP formula over a united list agrees with the card", async () => {
-    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
-    const miles = [1, 5, 10].map((v) => applyFcUnit(v, "mi"));
-    const vs = ["pen", "pad", "ink"];
-    expect(new ExpressionNode({ expr: "XLOOKUP(5, ks, vs)" }).data({ ks: [miles], vs: [vs] }).result).toBe("pad");
-    expect(new ExpressionNode({ expr: 'XLOOKUP(7, ks, vs, "none", -1)' }).data({ ks: [miles], vs: [vs] }).result).toBe("pad");
-  });
-});

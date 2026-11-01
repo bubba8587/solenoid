@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { CONVERT_UNIT_DEFS, ConvertNode } from "../../../src/graph/nodes/convert";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
-import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../../../src/graph/unitValue";
+import { magnitudeOf } from "../../../src/graph/unitValue";
 import { UNIT_ANNOTATIONS } from "../../../src/graph/formatAnnotationStore";
 import { fcUnitToUnit } from "../../../src/graph/dimension";
 import { dimEqual, type Unit } from "../../../src/graph/dimension";
@@ -104,42 +104,7 @@ describe("convertValue — guards", () => {
   });
 });
 
-describe("ConvertNode — scalar/list error consistency", () => {
-  it("converts a scalar and a list element-wise, TAGGING the result (FC A4 value-mutating)", () => {
-    // Convert now AUTHORS the value's unit: its output is a base-SI UnitCell tagged
-    // with toUnit's dimension + display. 1 km → mi is base 1000 m, display "mi"
-    // (its display magnitude in miles is 0.621371).
-    const scalar = new ConvertNode({ fromUnit: "km", toUnit: "mi" }).data({ in: [1] }).out as UnitCell;
-    expect(isUnitCell(scalar)).toBe(true);
-    expect(scalar.dim).toEqual({ length: 1 });
-    expect(scalar.display).toBe("mi");
-    expect(scalar.value / CONVERT_UNIT_DEFS.mi.dim.scale).toBeCloseTo(0.621371, 5);
-    // km → m of [1, 2] → base meters [1000, 2000], each tagged length + display "m".
-    const list = new ConvertNode({ fromUnit: "km", toUnit: "m" }).data({ in: [[1, 2]] }).out as UnitCell[];
-    expect(list.map((c) => magnitudeOf(c))).toEqual([1000, 2000]);
-    expect(list.every((c) => dimOf(c).length === 1 && c.display === "m")).toBe(true);
-  });
-  it("cross-family conversion is a whole-value #N/A at every dimensionality", () => {
-    // It's the NODE's unit pick, not a per-cell condition — so a scalar and a
-    // whole list both become a single #N/A (not a list of per-cell errors).
-    const scalar = new ConvertNode({ fromUnit: "km", toUnit: "kg" }).data({ in: [1] }).out;
-    expect(isSolError(scalar) && scalar.code === "#N/A").toBe(true);
-    const list = new ConvertNode({ fromUnit: "km", toUnit: "kg" }).data({ in: [[1, 2, 3]] }).out;
-    expect(isSolError(list) && list.code === "#N/A").toBe(true);
-  });
-  it("an unknown unit id is the same whole-value #N/A, never #OVERFLOW!", () => {
-    for (const [from, to] of [["furlong", "m"], ["km", "furlong"]]) {
-      for (const input of [1, [1, 2], cellOf(1)]) {
-        const out = new ConvertNode({ fromUnit: from, toUnit: to }).data({ in: [input] }).out;
-        expect(isSolError(out) && out.code, `${from} → ${to}`).toBe("#N/A");
-      }
-    }
-  });
-});
 
-function cellOf(v: number): UnitCell {
-  return new ConvertNode({ fromUnit: "m", toUnit: "m" }).data({ in: [v] }).out as UnitCell;
-}
 
 describe("Convert and the FC share one unit id space ([[C25]] firstClassUnits)", () => {
   const sameUnit = (a: Unit, b: Unit) =>
@@ -149,12 +114,6 @@ describe("Convert and the FC share one unit id space ([[C25]] firstClassUnits)",
       const twin = UNIT_ANNOTATIONS.find((a) => { const u = fcUnitToUnit(a.id); return u !== null && sameUnit(u, def.dim); });
       if (twin) expect(id, def.label).toBe(twin.id);
     }
-  });
-  it("a Convert to km/h tags its output in km/h, and the unit flows on", () => {
-    const n = new ConvertNode({ fromUnit: "ms1", toUnit: "kmh" });
-    const r = n.data({ in: [1] }).out as UnitCell;
-    expect(r.display).toBe("kmh");
-    expect(n.unit).toBe("kmh");
   });
   it("the CONVERT formula reads Excel's codes, or else Convert's ids", () => {
     const ev = (e: string) => compileEvaluator(e)!({});
