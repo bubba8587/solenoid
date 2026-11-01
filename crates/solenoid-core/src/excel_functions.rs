@@ -511,33 +511,21 @@ pub(crate) fn js_parse_float(s: &str) -> f64 {
     t[..end].parse::<f64>().unwrap_or(f64::NAN)
 }
 
-/// Formula.js `parseNumber`.
+/// A number argument for the bodies ported from Formula.js: a number or logical, a blank as 0, a list of one as its item;
+/// anything else is `#VALUE!`, an error itself.
 pub(crate) fn parse_number(v: &V) -> V {
     match v {
-        V::Fx(_) => v.clone(),
+        V::Fx(_) | V::Err(_) => v.clone(),
         V::Undef | V::Null => V::Num(0.0),
         V::Bool(b) => V::Num(f64::from(u8::from(*b))),
-        // `parseFloat(String(n))` gives n back for every number but -0, which reads as 0.
-        V::Num(n) => {
-            if n.is_nan() {
-                V::Fx(FxError::Value)
-            } else {
-                V::Num(*n + 0.0)
-            }
-        }
+        V::Num(n) if n.is_nan() => V::Fx(FxError::Value),
+        // -0 reads as 0, as these bodies always have.
+        V::Num(n) => V::Num(*n + 0.0),
         // Text is never read as a number ([[C10]] socketLattice).
         V::Str(_) => V::Fx(FxError::Value),
-        V::List(_) if holds_text(v) => V::Fx(FxError::Value),
-        // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
-        V::List(_) => {
-            let s = js_string_of(v);
-            if string_to_number(&s).is_nan() {
-                V::Fx(FxError::Value)
-            } else {
-                V::Num(js_parse_float(&s))
-            }
-        }
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => V::Fx(FxError::Value),
+        // A list of one is its item; a longer one is no single number.
+        V::List(items) if items.len() == 1 => parse_number(&items[0]),
+        V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => V::Fx(FxError::Value),
     }
 }
 

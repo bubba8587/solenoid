@@ -42,7 +42,7 @@ These match the Math node's own compute.
 
 ## Text arguments
 
-- Formula.js's `parseNumber` read numeric text as a number (`ABS("5")` was 5, `SUMSQ` summed `"5"`), its `parseDate` read date text (`EDATE("2024-01-31", 1)`), and its SUM `parseFloat`ed a text argument. Every body ported from it answers `#VALUE!` for text where it needs a number or a date, and SUM skips text ([[C10]] socketLattice, [[formula-language#Text is text]]).
+- Formula.js's number reader read numeric text as a number (`ABS("5")` was 5, `SUMSQ` summed `"5"`), its `parseDate` read date text (`EDATE("2024-01-31", 1)`), and its SUM `parseFloat`ed a text argument. Every body ported from it answers `#VALUE!` for text where it needs a number or a date, and SUM skips text ([[C10]] socketLattice, [[formula-language#Text is text]]).
 
 ## Statistics
 
