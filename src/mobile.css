@@ -124,7 +124,11 @@ html.is-mobile {
     top: calc(92px + env(safe-area-inset-top));
     gap: 2px;
     padding: 3px;
+    /* A sideways swipe tucks it into the edge handle; the browser mustn't take the gesture. */
+    touch-action: none;
   }
+  /* Level with the pill it stands in for, and as tall (30px buttons + 2·3 padding + 2·1 border). */
+  .solenoid-nav-handle { top: calc(92px + env(safe-area-inset-top)); height: 38px; }
   .solenoid-nav__btn--zoomin,
   .solenoid-nav__btn--zoomout,
   .solenoid-nav__btn--flourish { display: none; }

@@ -119,6 +119,7 @@ The tool is modal: while it is armed, a full-window sheet sits over the pane, an
 | Gesture | Config | Action | Where |
 |---|---|---|---|
 | Touch action buttons | mobile: bottom bar; tablet: top bar | Palette, undo, redo, select mode, group, delete, and on mobile ➕. Each action has one definition shared by both bars, which differ only in placement and size: undo is a synthetic Ctrl+Z through the canvas key handler and group runs the same `G` shortcut. The palette's glyph is Lucide's terminal (`>_`), since its search covers finding a node too; select mode's glyph is a dashed marquee. | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
+| Swipe the nav pill right | mobile | Tucks the pill (Fit, Lock, Fullscreen) into a half-pill handle on the right edge; a tap or a swipe left on the handle brings it back. The swipe follows the finger once it moves 8px sideways, tucks past 40px, and never presses the button it started on. Kept per viewer (`solenoid.navTucked`). | `NavMenu.tsx` |
 | Taps in pop-ups and overlays | all | Normal UI; `stopDragStart` guards chrome that sits over the canvas. | per component |
 
 ## Enforcement

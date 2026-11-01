@@ -76,3 +76,42 @@
 .solenoid-nav__seed-select:focus {
   border-color: var(--accent);
 }
+
+/* The phone's nav pill swiped off to the right edge: a half-pill handle, rounded on the left and flat against the
+   screen edge, with a chevron pointing back in. A tap or a swipe left brings the pill back (layout-chrome § Mobile). */
+.solenoid-nav-handle {
+  position: absolute;
+  top: calc(var(--chrome-top, 66px) + 14px);
+  right: 0;
+  width: 22px;
+  height: 34px;
+  padding: 0 0 0 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-right: none;
+  border-radius: 999px 0 0 999px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: none;
+  z-index: 5;
+  animation: solenoid-nav-handle-in 140ms ease-out;
+}
+/* The touch target reaches the platform's 44px without growing the drawn handle. */
+.solenoid-nav-handle::before {
+  content: "";
+  position: absolute;
+  inset: -5px 0 -5px -18px;
+}
+@keyframes solenoid-nav-handle-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+.solenoid-nav--settling { transition: transform 140ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-nav-handle { animation: none; }
+  .solenoid-nav--settling { transition: none; }
+}
