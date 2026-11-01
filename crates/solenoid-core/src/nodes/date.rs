@@ -7,7 +7,7 @@ use super::values::{Column, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_less, num_blank_zero, V};
+use crate::excel_functions::{num_blank_zero, value_less, V};
 use crate::frame::FrameColType;
 use crate::jsnum::trim_space;
 use crate::value_kinds::OVERFLOW_MESSAGE;
@@ -205,7 +205,7 @@ fn date_diff(c: &Call) -> V {
             "days" => core_call("DAYS", &[e, s]),
             "days360" => core_call("DAYS360", &[s, e, V::Bool(basis != 0.0)]),
             "yearfrac" => core_call("YEARFRAC", &[s, e, V::Num(basis)]),
-            _ if js_less(&e, &s) => V::Null,
+            _ if value_less(&e, &s) => V::Null,
             _ => core_call("DATEDIF", &[s, e, V::str(unit)]),
         }
     })

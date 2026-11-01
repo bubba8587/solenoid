@@ -363,37 +363,12 @@ fn trim_mean(c: &mut Call) -> Answer {
     answer(c, r)
 }
 
-/// JS `a <= b`.
-fn js_le(a: &V, b: &V) -> bool {
-    let text = |v: &V| matches!(v, V::Str(_) | V::List(_) | V::Err(_));
-    if text(a) && text(b) {
-        return !crate::excel_functions::js_less(b, a);
-    }
-    let (x, y) = (
-        if text(a) { crate::jsnum::string_to_number(&crate::excel_functions::js_string_of(a)) } else { js_num(a) },
-        if text(b) { crate::jsnum::string_to_number(&crate::excel_functions::js_string_of(b)) } else { js_num(b) },
-    );
-    x <= y
-}
-
 fn frequency(c: &mut Call) -> Answer {
     let data = first(c, "data");
     let bins = first(c, "bins");
-    let mut result = Vec::new();
-    if !falsy(&data) && len(&bins) > 0 {
-        let mut sorted = items(&bins).to_vec();
-        sort_numeric(&mut sorted);
-        let k = sorted.len();
-        let mut counts = vec![0.0; k + 1];
-        for v in items(&data) {
-            match sorted.iter().position(|b| js_le(v, b)) {
-                Some(i) => counts[i] += 1.0,
-                None => counts[k] += 1.0,
-            }
-        }
-        result = counts.into_iter().map(V::Num).collect();
-    }
-    let result = list(result);
+    // The FREQUENCY formula's body, so the card and the formula agree: counts in the bins' own order, blanks and text
+    // skipped.
+    let result = if !falsy(&data) && len(&bins) > 0 { core_call("FREQUENCY", &[data, bins]) } else { list(Vec::new()) };
     c.show("cachedList", result.clone());
     Ok(vec![("result".into(), Cv::from(result))])
 }

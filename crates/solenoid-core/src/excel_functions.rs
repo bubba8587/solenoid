@@ -268,18 +268,22 @@ pub(crate) fn holds_text(v: &V) -> bool {
     }
 }
 
-/// JS `a < b`: two texts (a list reads as its joined text) compare by UTF-16 units, anything else as numbers.
-pub fn js_less(a: &V, b: &V) -> bool {
-    let prim = |v: &V| match v {
-        V::Str(_) | V::List(_) | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) => Some(js_string_of(v)),
-        _ => None,
-    };
-    match (prim(a), prim(b)) {
-        (Some(x), Some(y)) => crate::jsnum::compare_utf16(&x, &y) == std::cmp::Ordering::Less,
-        (x, y) => {
-            let num = |p: Option<String>, v: &V| p.map_or_else(|| num_blank_zero(v), |t| string_to_number(&t));
-            num(x, a) < num(y, b)
-        }
+/// `a < b` for two values of one kind: numbers (a logical as 1 or 0) by value, texts by UTF-16 unit. Values of
+/// different kinds are never less than each other ([[C10]] socketLattice).
+pub fn value_less(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::Str(x), V::Str(y)) => crate::jsnum::compare_utf16(x, y) == std::cmp::Ordering::Less,
+        (V::Num(_) | V::Bool(_), V::Num(_) | V::Bool(_)) => to_num(a) < to_num(b),
+        _ => false,
+    }
+}
+
+/// `a <= b` for two values of one kind, as `value_less` reads them.
+pub fn value_le(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::Str(_), V::Str(_)) => !value_less(b, a),
+        (V::Num(_) | V::Bool(_), V::Num(_) | V::Bool(_)) => to_num(a) <= to_num(b),
+        _ => false,
     }
 }
 
@@ -980,7 +984,7 @@ fn forecast_fit(ys: &V, xs: &V) -> Option<Option<(f64, f64)>> {
     // A scalar's length is `undefined`, so the fit finds no spread.
     let fit = || {
         (!holds_text(ys) && !holds_text(xs))
-            .then(|| js_indexed(xs).zip(js_indexed(ys)).and_then(|(x, y)| js_linear_fit(&x, &y)))
+            .then(|| js_indexed(xs).zip(js_indexed(ys)).and_then(|(x, y)| linear_fit(&x, &y)))
     };
     let (V::List(yl), V::List(xl)) = (ys, xs) else { return fit() };
     if yl.len().max(xl.len()) < 64 {
@@ -1315,32 +1319,6 @@ fn excel_rank(value: f64, refs: &V, avg: bool, ascending: bool) -> V {
         return V::err(sol_error(ErrorCode::NotAvailable, "Value not found in the list"));
     }
     V::Num(if avg { above + 1.0 + (equal - 1.0) / 2.0 } else { above + 1.0 })
-}
-
-/// JS `acc + v`: text on either side joins as text, otherwise numbers add.
-#[derive(Clone)]
-pub(crate) enum JsSum {
-    Num(f64),
-    Str(String),
-}
-
-impl JsSum {
-    pub(crate) fn add(self, v: &V) -> JsSum {
-        let texty = matches!(v, V::Str(_) | V::List(_) | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_));
-        match self {
-            JsSum::Str(s) => JsSum::Str(s + &js_string_of(v)),
-            JsSum::Num(x) if texty => JsSum::Str(number_to_string(x) + &js_string_of(v)),
-            JsSum::Num(x) => JsSum::Num(x + num_blank_zero(v)),
-        }
-    }
-
-    pub(crate) fn number(&self) -> f64 {
-        match self {
-            JsSum::Num(x) => *x,
-            // Text joined into the sum is never read back as a number ([[C10]] socketLattice).
-            JsSum::Str(_) => f64::NAN,
-        }
-    }
 }
 
 /// `(v ?? [])[i]` for each index: a string's UTF-16 units (a lone half reads as U+FFFD, which no sum or number
@@ -5473,14 +5451,14 @@ fn raw_numbers(v: &V) -> Result<Option<Vec<f64>>, ()> {
     }
 }
 
-/// The means add as JS does, text joining.
-fn js_linear_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
+/// The least-squares line through the pairs; text reads as NaN, so no line.
+fn linear_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return None;
     }
-    let x_mean = xs[..n].iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / n as f64;
-    let y_mean = ys[..n].iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / n as f64;
+    let x_mean = xs[..n].iter().fold(0.0, |acc, v| acc + num_blank_zero(v)) / n as f64;
+    let y_mean = ys[..n].iter().fold(0.0, |acc, v| acc + num_blank_zero(v)) / n as f64;
     let (mut sxy, mut sxx) = (0.0, 0.0);
     for i in 0..n {
         let dx = num_blank_zero(&xs[i]) - x_mean;
@@ -6161,7 +6139,7 @@ fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
 /// The first `n` dates as numbers; None where one isn't.
 fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
     let ds = &dates[..n.min(dates.len())];
-    let before = ds.iter().skip(1).any(|d| js_less(d, &ds[0]));
+    let before = ds.iter().skip(1).any(|d| value_less(d, &ds[0]));
     (ds.iter().map(num_blank_zero).collect(), before)
 }
 

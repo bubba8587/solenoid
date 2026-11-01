@@ -14,7 +14,7 @@ use super::{err, list, Answer, Call, Column};
 use crate::error_value::ErrorCode;
 use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
-use crate::excel_functions::{js_less, js_string_of, V};
+use crate::excel_functions::{js_string_of, value_less, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{lower_text, number_to_string, string_to_number, trim_space};
 use crate::unit_dims::{dim_equal, Dim, UnitCell};
@@ -130,9 +130,9 @@ fn alert_status(c: &Call) -> Result<V, V> {
                 return Ok(V::Null);
             }
             broadcast(&[v, lo, hi], |o| {
-                if js_less(o[0], o[1]) {
+                if value_less(o[0], o[1]) {
                     1.0
-                } else if js_less(o[2], o[0]) {
+                } else if value_less(o[2], o[0]) {
                     2.0
                 } else {
                     0.0
@@ -483,7 +483,8 @@ fn expect(c: &mut Call) -> Answer {
     let (has_min, has_max) = (!matches!(min, V::Null), !matches!(max, V::Null));
     if on("checkRange") && (has_min || has_max) {
         let bad = values.iter().any(|v| {
-            matches!(v, V::Num(n) if n.is_finite()) && ((has_min && js_less(v, &min)) || (has_max && js_less(&max, v)))
+            matches!(v, V::Num(n) if n.is_finite())
+                && ((has_min && value_less(v, &min)) || (has_max && value_less(&max, v)))
         });
         if bad {
             violations.push("range");
