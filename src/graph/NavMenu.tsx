@@ -118,11 +118,19 @@ export function NavMenu() {
     el.classList.toggle("solenoid-nav--settling", animate && !prefersReducedMotion());
     el.style.transform = x === 0 ? "" : `translateX(${x}px)`;
   };
+  const slide = useRef<number | undefined>(undefined);
   const settle = (tuck: boolean) => {
     place(tuck ? tuckedAt() : 0, true);
-    window.setTimeout(() => { setDragging(false); setTucked(tuck); }, prefersReducedMotion() ? 0 : SLIDE_MS);
+    window.clearTimeout(slide.current);
+    slide.current = window.setTimeout(() => { setDragging(false); setTucked(tuck); }, prefersReducedMotion() ? 0 : SLIDE_MS);
   };
+  useEffect(() => () => window.clearTimeout(slide.current), []);
   useLayoutEffect(() => { place(mobile && tucked ? tuckedAt() : 0, false); }, [mobile, tucked]);
+  // Tucked off the screen, the pill's own buttons leave the tab order and the screen reader; only its handle stays.
+  useLayoutEffect(() => {
+    const off = mobile && tucked;
+    for (const el of pill.current?.querySelectorAll<HTMLElement>(":scope > :not(.solenoid-nav__handle)") ?? []) el.inert = off;
+  }, [mobile, tucked]);
   const pillSwipe = useSideSwipe(
     (dx) => {
       setDragging(true);
