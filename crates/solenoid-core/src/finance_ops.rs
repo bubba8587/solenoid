@@ -276,7 +276,7 @@ pub fn oddf_price(
         }
     }
     let Some(&(_, next_qc)) = periods.iter().find(|&&(_, qe)| qe > settle) else {
-        return Err("Cannot read properties of undefined (reading '1')".into());
+        return Err("The settlement date falls after every coupon period".into());
     };
     let dsc = days30_360(settle, next_qc);
     let nq = periods.iter().filter(|&&(qs, _)| qs >= next_qc).count() as f64;

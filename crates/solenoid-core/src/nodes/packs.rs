@@ -159,7 +159,7 @@ fn e_series(c: &mut Call) -> Answer {
                 let n = nearest_e_series(v, &table);
                 (V::Num(n), V::Num(((n - v) / v) * 100.0))
             }
-            None => return Err(err(ErrorCode::Error, "E_SERIES[series] is not iterable")),
+            None => return Err(err(ErrorCode::Value, "Unknown E series")),
         },
         Some(_) => {
             let e = domain("A component value must be a positive number");
@@ -404,8 +404,9 @@ pub(crate) fn element(symbol: &str) -> Option<(f64, f64)> {
 }
 
 fn element_node(c: &mut Call) -> Answer {
-    let Some((n, mass)) = element(c.field_str("symbol", "H")) else {
-        return Err(super::frames::thrown("Cannot read properties of undefined (reading 'mass')"));
+    let symbol = c.field_str("symbol", "H").to_string();
+    let Some((n, mass)) = element(&symbol) else {
+        return Err(err(ErrorCode::Value, format!("No element has the symbol {symbol}")));
     };
     Ok(vec![("mass".into(), Cv::from(V::Num(mass))), ("number".into(), Cv::from(V::Num(n)))])
 }

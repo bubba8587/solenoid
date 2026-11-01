@@ -117,11 +117,11 @@ pub(crate) fn thrown(message: &str) -> V {
     err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
 
-/// A text input trimmed: text trims, anything else throws as JS's `trim` does.
-pub(crate) fn trimmed(v: &V, name: &str) -> Result<String, V> {
+/// A text setting trimmed; anything but text is `#TYPE!`, naming the setting by `label` ("The column").
+pub(crate) fn trimmed(v: &V, label: &str) -> Result<String, V> {
     match v {
         V::Str(s) => Ok(trim_space(s).to_string()),
-        _ => Err(thrown(&format!("{name}.trim is not a function"))),
+        _ => Err(err(ErrorCode::Type, format!("{label} takes text"))),
     }
 }
 
@@ -498,7 +498,7 @@ fn decompose(c: &mut Call) -> Answer {
     let p = super::kit::num(&period);
     let model = c.field_str("model", "additive").to_string();
     if p.is_nan() {
-        return Err(thrown("Invalid array length"));
+        return Err(err(ErrorCode::Value, "The period needs a number"));
     }
     let d = if model == "stl" {
         crate::fns_lists::stl_decompose(&nums, p)
@@ -565,7 +565,7 @@ fn logistic(c: &mut Call) -> Answer {
     let f = frame_in(c, "frame");
     let target = str_input(c, "target", "");
     let (Some(f), false) = (f, matches!(target, V::Null)) else { return blank(c, Cv::NULL) };
-    let t = trimmed(&target, "target")?;
+    let t = trimmed(&target, "The target")?;
     if t.is_empty() {
         return blank(c, Cv::NULL);
     }
@@ -1513,7 +1513,7 @@ fn add_column(c: &mut Call) -> Answer {
     if blank {
         return shown_frame(c, "frame", V::Null);
     }
-    let name = trimmed(&name_raw, "nameRaw")?;
+    let name = trimmed(&name_raw, "The name")?;
     let name = if name.is_empty() { "Col".to_string() } else { name };
     let ty = match c.field_str("addAs", "number") {
         "text" => FrameColType::String,
@@ -1785,11 +1785,11 @@ fn xlookup(c: &mut Call) -> Answer {
     if [&lookup_raw, &in_raw, &ret_raw, &fb_raw].iter().any(|v| matches!(v, V::Null)) {
         return shown_value(c, V::Null);
     }
-    let in_col = trimmed(&in_raw, "inColRaw")?;
-    let ret_col = trimmed(&ret_raw, "retColRaw")?;
+    let in_col = trimmed(&in_raw, "The lookup column")?;
+    let ret_col = trimmed(&ret_raw, "The return column")?;
     let scalar_blank = match &lookup_raw {
         V::List(_) => false,
-        other => trimmed(other, "lookupRaw")?.is_empty(),
+        other => trimmed(other, "The lookup value")?.is_empty(),
     };
     if matches!(raw, Cv::V(V::Null)) || in_col.is_empty() || ret_col.is_empty() || scalar_blank {
         return shown_value(c, V::Null);
@@ -1817,7 +1817,7 @@ fn xlookup(c: &mut Call) -> Answer {
         _ => Cube::default(),
     };
     let whole_row = ret_col == "*";
-    let fb = trimmed(&fb_raw, "fallbackRaw")?;
+    let fb = trimmed(&fb_raw, "The fallback")?;
     let (mm, sm) = (c.field_str("matchMode", "exact").to_string(), c.field_str("searchMode", "first").to_string());
     let as_text = |v: &V| {
         if super::list::nullish(v) {
@@ -1968,7 +1968,7 @@ fn nest(c: &mut Call) -> Answer {
     if keys.is_empty() {
         return shown_cube(c, V::Null);
     }
-    let name = trimmed(&name_raw, "nameRaw")?;
+    let name = trimmed(&name_raw, "The name")?;
     let name = if name.is_empty() { "items".to_string() } else { name };
     let out = nest_frame(&f, &keys, &name).unwrap_or_else(Cv::V);
     shown_cube(c, out)
@@ -2124,7 +2124,7 @@ fn unnest(c: &mut Call) -> Answer {
     };
     let col_raw = str_input(c, "column", "");
     let (Some(cube), false) = (cube, matches!(col_raw, V::Null)) else { return shown_frame(c, "frame", V::Null) };
-    let col = trimmed(&col_raw, "colRaw")?;
+    let col = trimmed(&col_raw, "The column")?;
     if col.is_empty() {
         return shown_frame(c, "frame", V::Null);
     }
@@ -2164,7 +2164,7 @@ fn build_cube(c: &mut Call) -> Answer {
     if matches!(name_raw, V::Null) {
         return shown_cube(c, V::Null);
     }
-    let name = trimmed(&name_raw, "nameRaw")?;
+    let name = trimmed(&name_raw, "The name")?;
     let name = if name.is_empty() { "Items".to_string() } else { name };
     let out = cube_from_columns(vec![CubeColumn { name, cells, ty: None, format: None }]);
     shown_cube(c, out)
@@ -2194,7 +2194,7 @@ fn cube_columns(c: &mut Call) -> Answer {
         };
         match item {
             V::Null | V::Undef => Ok(String::new()),
-            other => trimmed(&other, "(names[i] ?? \"\")"),
+            other => trimmed(&other, "Each name"),
         }
     };
     let mut cols = Vec::new();
@@ -2384,8 +2384,8 @@ fn nest_join(c: &mut Call) -> Answer {
     if matches!(key_raw, V::Null) || matches!(name_raw, V::Null) {
         return shown_cube(c, V::Null);
     }
-    let key = trimmed(&key_raw, "keyRaw")?;
-    let name = trimmed(&name_raw, "nameRaw")?;
+    let key = trimmed(&key_raw, "The key")?;
+    let name = trimmed(&name_raw, "The name")?;
     let Some(child) = child.filter(|_| !key.is_empty()) else { return shown_cube(c, V::Null) };
     let out = match &parent {
         Cv::Cube(k) => relate_cube(k, &child, &key, &name),
@@ -2461,9 +2461,9 @@ fn cube_rollup(c: &mut Call) -> Answer {
     if [&nested_raw, &col_raw, &as_raw].iter().any(|v| matches!(v, V::Null)) {
         return shown_frame(c, "frame", V::Null);
     }
-    let nested_name = trimmed(&nested_raw, "nestedRaw")?;
-    let col = trimmed(&col_raw, "colRaw")?;
-    let out_name = trimmed(&as_raw, "asRaw")?;
+    let nested_name = trimmed(&nested_raw, "The nested column")?;
+    let col = trimmed(&col_raw, "The column")?;
+    let out_name = trimmed(&as_raw, "The output name")?;
     let out_name = if out_name.is_empty() { "Total".to_string() } else { out_name };
     let at = cube.columns.iter().position(|k| k.name == nested_name);
     if nested_name.is_empty() || col.is_empty() {
@@ -3229,10 +3229,10 @@ fn reconcile(c: &mut Call) -> Answer {
     if [&key_raw, &price_raw, &qty_raw].iter().any(|v| matches!(v, V::Null)) {
         return blank(c);
     }
-    let key = trimmed(&key_raw, "keyRaw")?;
+    let key = trimmed(&key_raw, "The key")?;
     let column = |s: String| if s.is_empty() { V::Undef } else { V::str(&s) };
-    let price = column(trimmed(&price_raw, "priceRaw")?);
-    let qty = column(trimmed(&qty_raw, "qtyRaw")?);
+    let price = column(trimmed(&price_raw, "The price column")?);
+    let qty = column(trimmed(&qty_raw, "The quantity column")?);
     let (Cv::Frame(l), Cv::Frame(r)) = (&left, &right) else { return blank(c) };
     if key.is_empty() {
         return blank(c);

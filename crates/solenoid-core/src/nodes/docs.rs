@@ -53,11 +53,6 @@ fn pass_on(c: &mut Call, from: &str, to: &str, v: Cv) -> (String, Cv) {
     (to.to_string(), v)
 }
 
-/// What the error guard answers for a TypeError a body throws.
-fn crashed(message: &str) -> V {
-    err(ErrorCode::Error, format!("This node failed to compute: {message}"))
-}
-
 fn missing(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
@@ -167,7 +162,12 @@ fn alert_status(c: &Call) -> Result<V, V> {
             let hit = match &text {
                 V::Str(t) => t.contains(js_string_of(&needle).as_str()),
                 V::List(items) => items.iter().any(|x| same_value_zero(x, &needle)),
-                _ => return Err(crashed("text.includes is not a function")),
+                _ => {
+                    return Err(super::err(
+                        crate::error_value::ErrorCode::Type,
+                        "The text to search takes text or a list",
+                    ))
+                }
             };
             V::Num(f64::from(u8::from(hit)))
         }
@@ -503,7 +503,7 @@ fn expect(c: &mut Call) -> Answer {
                     }
                 }
             }
-            _ => return Err(crashed("pattern.trim is not a function")),
+            _ => return Err(super::err(crate::error_value::ErrorCode::Type, "The pattern takes text")),
         }
     }
     if on("checkAllowed") {

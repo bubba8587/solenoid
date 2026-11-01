@@ -982,13 +982,9 @@ fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
             V::List(_) => vec![v.clone()],
             other => vec![list(vec![other.clone()])],
         };
-        // A row is read as JS indexes it: a list by its items, text by its UTF-16 units; a blank row throws.
-        if let Some(x) = block.iter().find(|x| nullish(x)) {
-            let what = if matches!(x, V::Undef) { "undefined" } else { "null" };
-            return Err(err(
-                ErrorCode::Error,
-                format!("This node failed to compute: Cannot read properties of {what} (reading 'length')"),
-            ));
+        // A row is a list's items, text's UTF-16 units; a blank row is refused.
+        if block.iter().any(nullish) {
+            return Err(err(ErrorCode::Value, "A row of the matrix is blank"));
         }
         let block: Vec<Option<Vec<V>>> = block
             .iter()

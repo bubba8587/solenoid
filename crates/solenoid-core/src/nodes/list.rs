@@ -1411,8 +1411,10 @@ fn find_peaks(c: &mut Call) -> Answer {
     let (height, distance, prominence) =
         (setting_or(c, "height", V::Undef), setting_or(c, "distance", V::Undef), setting_or(c, "prominence", V::Undef));
     let args = [arr.clone(), opt(height), opt(distance), opt(prominence)];
-    let V::List(positions) = core_call("FINDPEAKS", &args) else {
-        return Err(err(ErrorCode::Error, "This node failed to compute: positions.map is not a function"));
+    let positions = match core_call("FINDPEAKS", &args) {
+        V::List(p) => p,
+        e if e.is_sol_error() => return Err(e),
+        _ => return Err(err(ErrorCode::Value, "Find Peaks needs a list of numbers")),
     };
     let height = positions
         .iter()

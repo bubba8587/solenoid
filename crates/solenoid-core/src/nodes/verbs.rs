@@ -77,7 +77,7 @@ pub(crate) fn nullish(v: &V) -> bool {
 pub(crate) fn plan(f: &Cv, op: Json) -> Cv {
     match refs::planned(f) {
         Some(r) => Cv::Ref(r.then(op)),
-        None => Cv::V(thrown("r.__plan is not iterable")),
+        None => Cv::V(super::err(crate::error_value::ErrorCode::Type, "This takes a table")),
     }
 }
 
@@ -105,7 +105,7 @@ pub(crate) fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V>
         V::List(items) => {
             Ok(Some(items.iter().filter_map(|v| if let V::Str(s) = v { Some(s.to_string()) } else { None }).collect()))
         }
-        _ => Err(thrown("v.filter is not a function")),
+        _ => Err(super::err(crate::error_value::ErrorCode::Type, "The columns take a list of names")),
     }
 }
 
@@ -186,7 +186,7 @@ fn sort(c: &mut Call) -> Answer {
     if f.is_nullish() || matches!(col, V::Null) {
         return one(V::Null);
     }
-    let col = trimmed(&col, "col")?;
+    let col = trimmed(&col, "The column")?;
     let dir = c.field_str("dir", "asc").to_string();
     if let Cv::Cube(k) = &f {
         let r = if col.is_empty() { Ok(f.clone()) } else { sort_cube(k, &col, &dir) };
@@ -281,7 +281,7 @@ fn group_by(c: &mut Call) -> Answer {
     let keys = column_list(c, "keys")?;
     let col = str_input(c, "column", "");
     let Some(keys) = keys.filter(|_| !raw.is_nullish() && !matches!(col, V::Null)) else { return one(V::Null) };
-    let col = trimmed(&col, "colRaw")?;
+    let col = trimmed(&col, "The column")?;
     let grouped = !keys.is_empty() && !col.is_empty();
     // A Cube groups its flat columns.
     let f = match &raw {
@@ -432,7 +432,7 @@ fn split_column(c: &mut Call) -> Answer {
     else {
         return one(V::Null);
     };
-    let column = trimmed(&column, "columnRaw")?;
+    let column = trimmed(&column, "The column")?;
     one(if column.is_empty() {
         pass(&f)
     } else {
@@ -450,7 +450,7 @@ fn add_index(c: &mut Call) -> Answer {
     if f.is_nullish() || matches!(name, V::Null) {
         return one(V::Null);
     }
-    let name = trimmed(&name, "nameRaw")?;
+    let name = trimmed(&name, "The name")?;
     let name = if name.is_empty() { "Index".to_string() } else { name };
     one(plan(&f, json!({ "kind": "addIndex", "name": name, "start": to_json(&start) })))
 }
@@ -569,7 +569,7 @@ fn window_column_name(agg: &str, name: &str, column: &str) -> Result<String, V> 
         return Ok(name.to_string());
     }
     let Some((_, label)) = WINDOW_LABELS.iter().find(|(k, _)| *k == agg) else {
-        return Err(thrown("Cannot read properties of undefined (reading 'label')"));
+        return Err(super::err(crate::error_value::ErrorCode::Value, format!("Unknown window function {agg}")));
     };
     let mut slug = String::new();
     for ch in lower_text(label).chars() {
@@ -598,16 +598,18 @@ fn window(c: &mut Call) -> Answer {
         return one(V::Null);
     }
     let agg = c.field_str("agg", "cumsum").to_string();
-    let column = trimmed(&column, "column")?;
+    let column = trimmed(&column, "The column")?;
     if WINDOW_NEEDS_COLUMN.contains(&agg.as_str()) && column.is_empty() {
         if matches!(f, Cv::Cube(_)) {
             return cube_answer(c, Ok(f.clone()));
         }
         return one(pass(&f));
     }
-    let V::Str(name) = &name else { return Err(thrown("name.trim is not a function")) };
+    let V::Str(name) = &name else {
+        return Err(super::err(crate::error_value::ErrorCode::Type, "The name takes text"));
+    };
     let out_name = window_column_name(&agg, name, &column)?;
-    let order_by = trimmed(&order_by, "orderBy")?;
+    let order_by = trimmed(&order_by, "The sort column")?;
     let n = WINDOW_NEEDS_N.contains(&agg.as_str()).then_some(n);
     if let Cv::Cube(k) = &f {
         return cube_answer(c, window_cube(k, &keys, &order_by, &agg, &column, &out_name, n.as_ref()));
@@ -700,7 +702,7 @@ fn read_column(c: &mut Call, col: &Column) -> Answer {
 fn get_column(c: &mut Call) -> Answer {
     let f = first(c, "frame");
     let name = str_input(c, "name", "");
-    if !f.v().is_none_or(truthy) || matches!(name, V::Null) || trimmed(&name, "name")?.is_empty() {
+    if !f.v().is_none_or(truthy) || matches!(name, V::Null) || trimmed(&name, "The name")?.is_empty() {
         return values_answer(c, V::Null, V::Null);
     }
     let V::Str(name) = name else { return values_answer(c, V::Null, V::Null) };

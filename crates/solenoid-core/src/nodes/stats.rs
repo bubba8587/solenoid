@@ -903,7 +903,7 @@ fn distributions(c: &mut Call) -> Answer {
     let op = c.field_str("op", "normal").to_string();
     let form = c.field_str("form", "cdf").to_string();
     let Some((x_key, params)) = dist_keys(&op) else {
-        return Err(super::frames::thrown("Cannot read properties of undefined (reading 'params')"));
+        return Err(err(ErrorCode::Value, format!("Unknown distribution {op}")));
     };
     let read = |c: &Call, k: &str| c.read_input(k, c.literal(k));
     let ps: Vec<V> = params.iter().map(|k| read(c, k)).collect();

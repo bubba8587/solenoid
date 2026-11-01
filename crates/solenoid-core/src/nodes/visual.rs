@@ -113,11 +113,6 @@ fn opt_nums(items: &[Option<f64>]) -> Json {
     Json::Array(items.iter().map(|n| jopt(*n)).collect())
 }
 
-/// What the error guard answers for a TypeError a body throws.
-fn crashed(message: &str) -> V {
-    err(ErrorCode::Error, format!("This node failed to compute: {message}"))
-}
-
 // ─── Reading the card ───────────────────────────────────────────────────────────
 
 /// `inputs[key]?.[0] ?? null`.
@@ -171,7 +166,7 @@ fn read_options(c: &Call) -> Result<Obj, V> {
     match c.read_input("options", lit) {
         V::Str(s) => Ok(parse_chart_options(&s)),
         v if !truthy(&v) => Ok(Obj::new()),
-        _ => Err(crashed("input.split is not a function or its return value is not iterable")),
+        _ => Err(super::err(crate::error_value::ErrorCode::Type, "Chart options take text")),
     }
 }
 
@@ -882,7 +877,7 @@ fn chart(c: &mut Call) -> Answer {
         };
         if let Some(xy) = &xy {
             let Some(s0) = xy["series"].as_array().and_then(|s| s.first()) else {
-                return Err(crashed("Cannot read properties of undefined (reading 'points')"));
+                return Err(super::err(crate::error_value::ErrorCode::Value, "This chart has no series to draw"));
             };
             let ys = s0["points"]
                 .as_array()
@@ -2041,7 +2036,9 @@ fn chart_builder(c: &mut Call) -> Answer {
                     parts.push(format!("{k}={}", trim_space(&s)));
                 }
             }
-            Some(_) => return Err(crashed("v.trim is not a function")),
+            Some(_) => {
+                return Err(super::err(crate::error_value::ErrorCode::Type, format!("The {k} setting takes text")))
+            }
         }
     }
     let shown = |n: Option<f64>| n.map(number_to_string).unwrap_or_default();

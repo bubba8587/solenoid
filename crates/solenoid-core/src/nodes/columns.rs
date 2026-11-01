@@ -874,10 +874,10 @@ fn name_and_after(c: &Call) -> Result<Option<(String, String)>, V> {
     if matches!(name_raw, V::Null) {
         return Ok(None);
     }
-    let name = trimmed(&name_raw, "nameRaw")?;
+    let name = trimmed(&name_raw, "The name")?;
     let after = match str_input(c, "after", "") {
         V::Null => String::new(),
-        v => trimmed(&v, "(afterRaw ?? \"\")")?,
+        v => trimmed(&v, "The column to insert after")?,
     };
     Ok(Some((if name.is_empty() { "computed".into() } else { name }, after)))
 }

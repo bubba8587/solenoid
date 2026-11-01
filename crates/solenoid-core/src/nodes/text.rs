@@ -424,7 +424,7 @@ fn fuzzy_best(needle: &V, cands: &[V], method: &V, threshold: f64) -> Result<Opt
     for cand in cands {
         // `text_similarity` spreads its text into code points; anything else isn't iterable.
         if !matches!(needle, V::Str(_)) {
-            return Err(err(ErrorCode::Error, "This node failed to compute: a is not iterable"));
+            return Err(err(ErrorCode::Type, "The text to match takes text"));
         }
         let score = super::list::js_number(&core_call("SIMILARITY", &[needle.clone(), cand.clone(), method.clone()]));
         if score >= threshold && best.as_ref().is_none_or(|(_, b)| score > *b) {
@@ -440,10 +440,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
         V::List(items) => items.iter().filter(|v| matches!(v, V::Str(_))).cloned().collect(),
         V::Null | V::Undef => Vec::new(),
         _ => {
-            return Err(err(
-                ErrorCode::Error,
-                "This node failed to compute: ((intermediate value) ?? []).filter is not a function",
-            ));
+            return Err(err(ErrorCode::Type, "The candidates take a list of text"));
         }
     };
     let threshold = match setting(c, "threshold", V::Undef) {
@@ -620,7 +617,7 @@ fn regex(c: &mut Call) -> Answer {
             let target = if occ < 0.0 { all.len() as f64 + occ + 1.0 } else { occ };
             // `expand_replacement` calls the replacement's own `replace`, which only text has.
             if target >= 1.0 && target <= all.len() as f64 && !matches!(replacement, V::Str(_)) {
-                return Err(super::frames::thrown("replacement.replace is not a function"));
+                return Err(err(ErrorCode::Type, "The replacement takes text"));
             }
             return Ok(text_of(&crate::text_ops::replace_nth_of(&all, &t, &replacement_text, occ)));
         }
@@ -644,23 +641,11 @@ fn regex(c: &mut Call) -> Answer {
 fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     let s = match format {
         V::Str(s) => s.to_string(),
-        // `format` is a list here, whose `split` and `endsWith` aren't functions.
-        other => {
-            let s = js_string_of(other);
-            let zeros = s.strip_prefix('0').is_some_and(|r| {
-                r.is_empty() || r.strip_prefix('.').is_some_and(|z| !z.is_empty() && z.bytes().all(|b| b == b'0'))
-            });
-            return Err(super::frames::thrown(if zeros {
-                "format.split is not a function"
-            } else {
-                "format.endsWith is not a function"
-            }));
-        }
+        _ => return Err(err(ErrorCode::Type, "The format takes text")),
     };
     let decimals = |f: &str| f.split('.').nth(1).map_or_default(|d| d.encode_utf16().count()) as f64;
     let fixed = |x: f64, d: f64| {
-        crate::jsnum::fixed_text(x, d)
-            .ok_or_else(|| super::frames::thrown("toFixed() digits argument must be between 0 and 100"))
+        crate::jsnum::fixed_text(x, d).ok_or_else(|| err(ErrorCode::Value, "A format shows at most 100 decimal places"))
     };
     if s.is_empty() || s == "general" {
         return Ok(crate::jsnum::number_to_string(v));

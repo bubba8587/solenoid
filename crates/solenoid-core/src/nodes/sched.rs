@@ -1593,7 +1593,7 @@ fn earned_value_card(c: &mut Call) -> Answer {
         },
     ) {
         V::Null | V::Undef => String::new(),
-        v => super::frames::trimmed(&v, "(intermediate value)")?,
+        v => super::frames::trimmed(&v, "The value")?,
     };
     const TASK: [&str; 3] = ["task", "name", "title"];
     const COST: [&str; 3] = ["cost", "budget", "bac"];

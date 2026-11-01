@@ -81,8 +81,8 @@ fn join(c: &mut Call) -> Answer {
     if [&lk, &rk, &tolerance].iter().any(|v| matches!(v, V::Null)) {
         return one("frame", V::Null);
     }
-    let lk = trimmed(&lk, "lkRaw")?;
-    let rk = trimmed(&rk, "rkRaw")?;
+    let lk = trimmed(&lk, "The left key")?;
+    let rk = trimmed(&rk, "The right key")?;
     let rk = if rk.is_empty() { lk.clone() } else { rk };
     if left.is_nullish() || right.is_nullish() || (lk.is_empty() && how != "cross") {
         return one("frame", V::Null);
