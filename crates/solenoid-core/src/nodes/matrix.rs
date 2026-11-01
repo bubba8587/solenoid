@@ -15,7 +15,7 @@ use crate::excel_formula::{parse_formula, Ast};
 use crate::excel_functions::js_string_of;
 use crate::excel_functions::V;
 use crate::frame::FrameCell;
-use crate::jsnum::{js_trim, math_round, number_to_string};
+use crate::jsnum::{number_to_string, round_half_up, trim_space};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, is_dimensionless, Dim};
 use crate::unit_expression::display_magnitude_of;
@@ -193,7 +193,7 @@ fn table_unit(c: &mut Call) -> Answer {
     } else if zero && matches!(n, V::Num(_)) {
         core_call("MUNIT", &[n])
     } else {
-        let k = math_round(num(&n));
+        let k = round_half_up(num(&n));
         if k < 1.0 {
             list(Vec::new())
         } else if let Some(cap) = cell_cap("MUNIT", k, k) {
@@ -333,7 +333,7 @@ pub(crate) fn syntax_hint(expr: &str) -> Option<String> {
             quoted.push(ch);
         }
     }
-    let s = js_trim(&quoted).to_string();
+    let s = trim_space(&quoted).to_string();
     let count = |t: &str, ch: char| t.chars().filter(|&c| c == ch).count();
     if s.contains(['{', '}']) {
         return Some("Braces { } aren't formula syntax. Remove them: array literals aren't supported, so wire a List or Table input instead".into());
@@ -416,7 +416,7 @@ pub(crate) fn resolve(c: &Call, fallback: &str, vars: &[&str]) -> Result<Body, S
         return Ok(Body::Lambda(lam, order));
     }
     let inline = match c.string_literal("formula") {
-        V::Str(s) if !js_trim(&s).is_empty() => s.to_string(),
+        V::Str(s) if !trim_space(&s).is_empty() => s.to_string(),
         _ => fallback.to_string(),
     };
     let Some(ast) = parse_formula(&inline) else {
@@ -692,10 +692,12 @@ fn result(c: &mut Call, r: V, unit: Option<Json>) -> Answer {
 fn table_raw_cells(text: &str) -> Vec<Vec<String>> {
     let raw = super::list::csv_rows(text);
     let mut cols = raw.iter().map(Vec::len).max().unwrap_or(0);
-    while cols > 1 && raw.iter().all(|r| r.get(cols - 1).is_none_or(|x| js_trim(x).is_empty())) {
+    while cols > 1 && raw.iter().all(|r| r.get(cols - 1).is_none_or(|x| trim_space(x).is_empty())) {
         cols -= 1;
     }
-    raw.iter().map(|r| (0..cols).map(|j| js_trim(r.get(j).map_or("", String::as_str)).to_string()).collect()).collect()
+    raw.iter()
+        .map(|r| (0..cols).map(|j| trim_space(r.get(j).map_or("", String::as_str)).to_string()).collect())
+        .collect()
 }
 
 fn table_input(c: &mut Call) -> Answer {
@@ -930,7 +932,7 @@ fn table_select(c: &mut Call) -> Answer {
 fn rounded_setting(c: &Call, key: &str) -> f64 {
     match read_role(c, key, &Role::Setting(V::Undef)) {
         V::Undef => 0.0,
-        v => math_round(js_number(&v)),
+        v => round_half_up(js_number(&v)),
     }
 }
 
@@ -967,7 +969,7 @@ fn set_cells(m: &[Vec<V>], writes: &[(V, V, V)]) -> Result<V, V> {
         Ok(err(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))))
     };
     for (r, k, v) in writes {
-        let (r, k) = (math_round(js_number(r)), math_round(js_number(k)));
+        let (r, k) = (round_half_up(js_number(r)), round_half_up(js_number(k)));
         if !r.is_finite() {
             return Ok(err(ErrorCode::Value, "Row must be a number"));
         }

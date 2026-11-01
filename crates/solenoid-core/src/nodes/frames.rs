@@ -9,7 +9,7 @@ use crate::error_value::{ErrorCode, SolError};
 use crate::excel_functions::V;
 use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{agg_unit, agg_unit_plan, aggregate_group, AggOp};
-use crate::jsnum::{js_trim, math_max, math_round};
+use crate::jsnum::{nan_max, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
@@ -120,7 +120,7 @@ pub(crate) fn thrown(message: &str) -> V {
 /// A text input trimmed: text trims, anything else throws as JS's `trim` does.
 pub(crate) fn trimmed(v: &V, name: &str) -> Result<String, V> {
     match v {
-        V::Str(s) => Ok(js_trim(s).to_string()),
+        V::Str(s) => Ok(trim_space(s).to_string()),
         _ => Err(thrown(&format!("{name}.trim is not a function"))),
     }
 }
@@ -332,9 +332,9 @@ fn ets_forecast(c: &mut Call) -> Answer {
     if y.len() < 3 {
         return blank(c, Cv::NULL);
     }
-    let h = math_max(1.0, math_round(super::kit::num(&horizon)));
+    let h = nan_max(1.0, round_half_up(super::kit::num(&horizon)));
     let s = super::kit::num(&season);
-    let m = if s == 1.0 { crate::fns_lists::detect_season(&y) as f64 } else { math_max(1.0, math_round(s)) };
+    let m = if s == 1.0 { crate::fns_lists::detect_season(&y) as f64 } else { nan_max(1.0, round_half_up(s)) };
     let fit =
         crate::fns_lists::fit_ets(&y, m).or_else(|| if m > 1.0 { crate::fns_lists::fit_ets(&y, 1.0) } else { None });
     let Some(fit) = fit else { return blank(c, Cv::NULL) };
@@ -411,7 +411,7 @@ fn fit_names_and_ks(family: &str, p: &[f64], sorted: &[f64]) -> (&'static [&'sta
     let mut d = 0.0;
     for (i, &x) in sorted.iter().enumerate() {
         let f = cdf(x);
-        d = math_max(math_max(d, (f - (i as f64 + 1.0) / n).abs()), (f - i as f64 / n).abs());
+        d = nan_max(nan_max(d, (f - (i as f64 + 1.0) / n).abs()), (f - i as f64 / n).abs());
     }
     (names, d)
 }
@@ -601,7 +601,7 @@ fn logistic(c: &mut Call) -> Answer {
 
 /// `c.name.trim().toLowerCase()` is one of `names`.
 fn named(col: &Column, names: &[&str]) -> bool {
-    names.contains(&crate::jsnum::js_lower(js_trim(&col.name)).as_ref())
+    names.contains(&crate::jsnum::lower_text(trim_space(&col.name)).as_ref())
 }
 
 fn by_name(f: &Frame, names: &[&str]) -> Option<usize> {
@@ -1086,7 +1086,7 @@ fn settle_split(out: FrameValue, unit: Option<Json>, format: Option<Json>) -> Op
 }
 
 fn settle_name_key(s: &str) -> String {
-    crate::jsnum::js_lower(js_trim(s)).into_owned()
+    crate::jsnum::lower_text(trim_space(s)).into_owned()
 }
 
 /// A cube cell as a column unit's JSON: the cell's dimension, and its display unit where it names one.
@@ -1344,7 +1344,7 @@ const CURRENCY_SYMBOL: [(&str, &str); 4] = [("$", "usd"), ("€", "eur"), ("£",
 
 /// A currency symbol, or a display unit's id once the format's digits are stripped.
 pub(crate) fn column_unit_from_spec(spec: &str) -> Option<Json> {
-    let s = js_trim(spec);
+    let s = trim_space(spec);
     for (sym, id) in CURRENCY_SYMBOL {
         if s.contains(sym) {
             let u = crate::unit_catalog::fc_unit_to_unit(id)?;
@@ -1361,7 +1361,7 @@ pub(crate) fn column_unit_from_spec(spec: &str) -> Option<Json> {
 
 /// `Price (usd)` is the column `Price` in usd; a header with no unit reads whole.
 pub(crate) fn parse_column_unit_from_header(header: &str) -> (String, Option<Json>) {
-    let name = js_trim(header);
+    let name = trim_space(header);
     // /^(.*?)\s*\(([^)]+)\)\s*$/
     let Some(body) = name.strip_suffix(')') else { return (name.to_string(), None) };
     let Some(open) = body.rfind('(') else { return (name.to_string(), None) };
@@ -1369,7 +1369,7 @@ pub(crate) fn parse_column_unit_from_header(header: &str) -> (String, Option<Jso
     if spec.is_empty() || spec.contains(')') {
         return (name.to_string(), None);
     }
-    let clean = js_trim(&body[..open]);
+    let clean = trim_space(&body[..open]);
     match column_unit_from_spec(spec) {
         Some(u) => (if clean.is_empty() { name.to_string() } else { clean.to_string() }, Some(u)),
         None => (name.to_string(), None),
@@ -1573,7 +1573,7 @@ fn get_row(c: &mut Call) -> Answer {
     if matches!(raw, Cv::V(V::Null)) {
         return shown_frame(c, "frame", V::Null);
     }
-    let i = math_round(super::kit::num(&idx)) - 1.0;
+    let i = round_half_up(super::kit::num(&idx)) - 1.0;
     if let Cv::Cube(cube) = &raw {
         if i < 0.0 || i >= cube_row_count(cube) as f64 {
             return shown_frame(c, "frame", V::Null);
@@ -1823,7 +1823,7 @@ fn xlookup(c: &mut Call) -> Answer {
         if super::list::nullish(v) {
             String::new()
         } else {
-            js_trim(&crate::excel_functions::js_string_of(v)).to_string()
+            trim_space(&crate::excel_functions::js_string_of(v)).to_string()
         }
     };
     let result = (|| -> Result<Cv, V> {
@@ -2221,7 +2221,7 @@ fn cube_columns(c: &mut Call) -> Answer {
 
 /// By name, or by a 1-based position written as digits.
 fn card_column<'a>(f: &'a Frame, name: &str) -> Option<&'a Column> {
-    let key = js_trim(name);
+    let key = trim_space(name);
     if let Some(col) = f.columns.iter().find(|c| c.name == key) {
         return Some(col);
     }
@@ -2249,8 +2249,7 @@ fn key_id(v: &V) -> String {
                 .and_then(crate::unit_catalog::fc_unit_to_unit)
                 .and_then(|x| x.offset)
                 .unwrap_or(0.0);
-            let key =
-                crate::unit_value::round_at_larger_term(u.value, math_max((u.value - offset).abs(), offset.abs()));
+            let key = crate::unit_value::round_at_larger_term(u.value, nan_max((u.value - offset).abs(), offset.abs()));
             let cur = if cur.is_empty() { String::new() } else { format!(":{cur}") };
             format!("~u:{}{cur}:{}", crate::unit_lists::format_dim(&u.dim), crate::jsnum::number_to_string(key))
         }
@@ -2317,7 +2316,7 @@ fn relate_frames(parent: &Frame, child: &Cv, key: &str, nested_name: &str) -> Op
         }
     }
     let p_rows = parent.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
-    let nested = js_trim(nested_name);
+    let nested = trim_space(nested_name);
     let mut names: Vec<String> = parent.columns.iter().map(|c| c.name.clone()).collect();
     names.push(if nested.is_empty() { "items".into() } else { nested.to_string() });
     let names = crate::frame::make_headers(&names, parent.columns.len() + 1);
@@ -2551,7 +2550,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
 use crate::decision::{Normalize, Resolved};
 
 fn round4(n: f64) -> f64 {
-    let r = math_round(n * 1e4) / 1e4;
+    let r = round_half_up(n * 1e4) / 1e4;
     if r == 0.0 {
         0.0
     } else {
@@ -3200,8 +3199,8 @@ fn frame_from_lists(c: &mut Call) -> Answer {
         }
         let name = match str_input(c, name_k, "") {
             V::Null => return shown_frame(c, "frame", V::Null),
-            V::Str(s) => js_trim(&s).to_string(),
-            other => js_trim(&crate::excel_functions::js_string_of(&other)).to_string(),
+            V::Str(s) => trim_space(&s).to_string(),
+            other => trim_space(&crate::excel_functions::js_string_of(&other)).to_string(),
         };
         names.push(V::str(&name));
         lists.push(if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) });
@@ -3266,7 +3265,7 @@ fn reconcile(c: &mut Call) -> Answer {
 
 /// `n.toLocaleString("en-US", { maximumFractionDigits: fd })`.
 fn locale_number(n: f64, fd: usize) -> String {
-    let s = crate::excel_functions::intl_usd(n, fd).replacen('$', "", 1);
+    let s = crate::excel_functions::usd_text(n, fd).replacen('$', "", 1);
     match s.split_once('.') {
         Some((int, frac)) => {
             let frac = frac.trim_end_matches('0');

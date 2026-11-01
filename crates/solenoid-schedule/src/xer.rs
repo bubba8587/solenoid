@@ -3,7 +3,7 @@
 
 use crate::calendar::{CalendarSpec, Interval};
 use crate::files::{day_list, dedupe, iso_to_serial, seven_day_week, weekend_code, PlanFile, UniqueNames};
-use crate::num::{js_trim, math_round, string_to_number};
+use crate::num::{round_half_up, string_to_number, trim_space};
 use crate::{Dependency, LinkType, PlanTask};
 use std::collections::{HashMap, HashSet};
 
@@ -105,7 +105,8 @@ pub fn read_xer(text: &str) -> PlanFile {
     let mut arena: Vec<Node> = Vec::new();
     let mut nodes: HashMap<&str, usize> = HashMap::new();
     let mut roots: Vec<usize> = Vec::new();
-    let named = |r: &Row, keys: [&str; 3]| keys.iter().find_map(|k| r.get(*k)).map_or("", |s| js_trim(s)).to_string();
+    let named =
+        |r: &Row, keys: [&str; 3]| keys.iter().find_map(|k| r.get(*k)).map_or("", |s| trim_space(s)).to_string();
     for w in &wbs {
         let name = names.name(&named(w, ["wbs_name", "wbs_short_name", "wbs_id"]));
         nodes.insert(field(Some(w), "wbs_id").unwrap_or(""), arena.len());
@@ -134,7 +135,7 @@ pub fn read_xer(text: &str) -> PlanFile {
             duration: Some(if matches!(kind, Some("TT_Mile" | "TT_FinMile")) {
                 0.0
             } else {
-                math_round(hours / hours_per_day * 1000.0) / 1000.0
+                round_half_up(hours / hours_per_day * 1000.0) / 1000.0
             }),
             ..PlanTask::default()
         };
@@ -178,7 +179,7 @@ pub fn read_xer(text: &str) -> PlanFile {
         arena[to].task.predecessors.push(Dependency {
             task,
             ty: link_type(field(Some(p), "pred_type")),
-            lag: math_round(lag / hours_per_day * 1000.0) / 1000.0,
+            lag: round_half_up(lag / hours_per_day * 1000.0) / 1000.0,
             elapsed: None,
         });
     }

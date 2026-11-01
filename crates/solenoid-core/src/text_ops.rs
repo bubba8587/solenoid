@@ -3,7 +3,7 @@
 //! and `new RegExp(p, "")` reads it by code unit, so the patterns (lowered by `js_regex`) run on `regress` in its
 //! non-Unicode mode over the text's code units.
 
-use crate::jsnum::{js_lower, number_to_string};
+use crate::jsnum::{lower_text, number_to_string};
 use regress::{Match, Regex};
 
 fn utf16(s: &str) -> Vec<u16> {
@@ -476,7 +476,7 @@ pub fn unaccent(t: &str) -> String {
 
 /// `slugify`.
 pub fn slugify(t: &str, sep: &str) -> String {
-    let lower = utf16(&js_lower(&unaccent(t)));
+    let lower = utf16(&lower_text(&unaccent(t)));
     let sep16 = utf16(sep);
     let keep = |u: u16| u < 0x80 && matches!(u as u8, b'a'..=b'z' | b'0'..=b'9');
     // `.replace(/[^a-z0-9]+/g, sep)`: the separator is a replacement pattern, read with no groups.

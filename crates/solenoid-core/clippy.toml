@@ -25,6 +25,6 @@ disallowed-methods = [
   { path = "f64::acosh", reason = "use libm::acosh" },
   { path = "f64::atanh", reason = "use libm::atanh" },
   { path = "f64::cbrt", reason = "use libm::cbrt" },
-  { path = "f64::hypot", reason = "use crate::excel_functions::math_hypot (n arguments)" },
+  { path = "f64::hypot", reason = "use crate::excel_functions::hypot_all (n arguments)" },
   { path = "f64::sin_cos", reason = "use libm::sin and cos" },
 ]

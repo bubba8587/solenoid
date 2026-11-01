@@ -4,7 +4,8 @@
 
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::jsnum::{
-    is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number, to_exponential, to_fixed,
+    fixed_text, is_space_char, lower_text, number_to_string, round_half_up, string_to_number, to_exponential,
+    trim_space,
 };
 use crate::unit_dims::{dim_equal, Dim};
 use serde_json::{json, Value as Json};
@@ -220,7 +221,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
     if n.fract() == 0.0 {
         return number_to_string(n);
     }
-    let s = to_fixed(n, d.decimals).unwrap_or_default();
+    let s = fixed_text(n, d.decimals).unwrap_or_default();
     if !s.contains('.') {
         return if s == "-0" { "0".into() } else { s };
     }
@@ -427,7 +428,7 @@ pub fn date_annotation_pattern(ann: &Annotation) -> &str {
 }
 
 /// `Math.max(lo, Math.min(hi, x))` with NaN carried, as the clamps of the digit counts read.
-fn clamp_js(x: f64, lo: f64, hi: f64) -> f64 {
+fn clamp_nan(x: f64, lo: f64, hi: f64) -> f64 {
     if x.is_nan() {
         x
     } else {
@@ -437,11 +438,11 @@ fn clamp_js(x: f64, lo: f64, hi: f64) -> f64 {
 
 fn format_precise(n: f64, digits: f64, sigfigs: bool, grouping: bool) -> String {
     if sigfigs {
-        let r = math_round(digits);
-        let s = clamp_js(if r == 0.0 || r.is_nan() { 1.0 } else { r }, 1.0, 21.0);
+        let r = round_half_up(digits);
+        let s = clamp_nan(if r == 0.0 || r.is_nan() { 1.0 } else { r }, 1.0, 21.0);
         return locale_significant(n, s as usize, grouping);
     }
-    let d = clamp_js(math_round(digits), 0.0, 20.0);
+    let d = clamp_nan(round_half_up(digits), 0.0, 20.0);
     locale_fixed(n, if d.is_nan() { 0 } else { d as usize }, grouping)
 }
 
@@ -590,7 +591,7 @@ fn dms(n: f64) -> String {
     let deg = n.abs();
     let mut d = deg.floor();
     let mut m = ((deg - d) * 60.0).floor();
-    let mut s = math_round((deg - d - m / 60.0) * 3600.0);
+    let mut s = round_half_up((deg - d - m / 60.0) * 3600.0);
     if s == 60.0 {
         s = 0.0;
         m += 1.0;
@@ -611,12 +612,12 @@ fn apply_format_style(n: f64, ann: &Annotation, grouping: bool, d: NumberDisplay
     match ann.format.as_str() {
         "decimal" => format_precise(n, digits, sigfigs, grouping),
         "percent" => format!("{}%", format_precise(n * 100.0, digits, sigfigs, grouping)),
-        "integer" => locale_fixed(math_round(n), 0, grouping),
+        "integer" => locale_fixed(round_half_up(n), 0, grouping),
         "fraction" => to_fraction(n, d),
         "fraction_adv" => to_fraction_advanced(n, d),
         "scientific" => {
-            let r = math_round(digits);
-            let places = clamp_js(if sigfigs { r - 1.0 } else { r }, 0.0, 20.0);
+            let r = round_half_up(digits);
+            let places = clamp_nan(if sigfigs { r - 1.0 } else { r }, 0.0, 20.0);
             to_exponential(n, places).unwrap_or_default()
         }
         "custom" => custom_pattern(n, ann.custom_pattern.as_deref().unwrap_or("0.00")),
@@ -760,12 +761,12 @@ fn http_rest(t: &str) -> Option<&str> {
 fn is_url(t: &str) -> bool {
     let Some(rest) = http_rest(t) else { return false };
     let mut chars = rest.chars();
-    matches!(chars.next(), Some(c) if !is_js_space(c) && !"/$.?#".contains(c)) && chars.all(|c| !is_js_space(c))
+    matches!(chars.next(), Some(c) if !is_space_char(c) && !"/$.?#".contains(c)) && chars.all(|c| !is_space_char(c))
 }
 
 /// `^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]+$`.
 fn is_email(t: &str) -> bool {
-    let ok = |c: char| !is_js_space(c) && !"@<>()".contains(c);
+    let ok = |c: char| !is_space_char(c) && !"@<>()".contains(c);
     let Some((local, domain)) = t.split_once('@') else { return false };
     if local.is_empty() || !local.chars().all(ok) || !domain.chars().all(ok) {
         return false;
@@ -779,7 +780,7 @@ fn is_data_image(t: &str) -> bool {
 
 /// An http(s) URL as it is, an email address as `mailto:`.
 pub fn link_href(text: &str) -> Option<String> {
-    let t = js_trim(text);
+    let t = trim_space(text);
     if is_url(t) {
         Some(t.to_string())
     } else if is_email(t) {
@@ -791,12 +792,12 @@ pub fn link_href(text: &str) -> Option<String> {
 
 /// A `data:image` URL, or an http(s) URL with an image extension.
 pub fn record_image_src(text: &str) -> Option<String> {
-    let t = js_trim(text);
+    let t = trim_space(text);
     if is_data_image(t) {
         return Some(t.to_string());
     }
     let rest = http_rest(t)?;
-    if rest.chars().any(is_js_space) {
+    if rest.chars().any(is_space_char) {
         return None;
     }
     let ends = std::iter::once(rest.len()).chain(rest.char_indices().filter(|(_, c)| *c == '?').map(|(i, _)| i));
@@ -826,7 +827,7 @@ fn profile(col: &CardColumn) -> (Profile, bool) {
     let (mut min, mut max) = (f64::INFINITY, f64::NEG_INFINITY);
     let number = col.ty == "number";
     for r in 0..n {
-        let t = js_trim(&col.cells[r]);
+        let t = trim_space(&col.cells[r]);
         if t.is_empty() {
             counting = false;
             continue;
@@ -849,7 +850,7 @@ fn profile(col: &CardColumn) -> (Profile, bool) {
                 urls += 1;
             }
         }
-        let s = js_trim(col.shown.as_ref().and_then(|sh| sh.get(r)).map_or(t, String::as_str));
+        let s = trim_space(col.shown.as_ref().and_then(|sh| sh.get(r)).map_or(t, String::as_str));
         if !s.ends_with('%') {
             shown_percent = false;
         }
@@ -917,7 +918,7 @@ pub fn name_words(name: &str) -> Vec<String> {
             i += 1;
         }
     }
-    js_lower(&humped)
+    lower_text(&humped)
         .split(|c: char| !(c.is_ascii_lowercase() || c.is_ascii_digit() || c == '#'))
         .filter(|w| !w.is_empty())
         .map(String::from)
@@ -1333,8 +1334,8 @@ impl Placement {
 /// `/^(.*?)\s*\*\s*(\d+)$/`: the name before a span and the span's digits.
 fn span_of(head: &str) -> Option<(&str, &str)> {
     head.char_indices().map(|(i, _)| i).chain(std::iter::once(head.len())).find_map(|i| {
-        let rest = head[i..].trim_start_matches(is_js_space);
-        let rest = rest.strip_prefix('*')?.trim_start_matches(is_js_space);
+        let rest = head[i..].trim_start_matches(is_space_char);
+        let rest = rest.strip_prefix('*')?.trim_start_matches(is_space_char);
         (!rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit())).then(|| (&head[..i], rest))
     })
 }
@@ -1365,15 +1366,15 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
         .map(|line| {
             line.split('|')
                 .flat_map(|raw| {
-                    let cell = js_trim(raw);
+                    let cell = trim_space(raw);
                     let (head, hint) = match cell.find(':') {
-                        Some(ci) => (js_trim(&cell[..ci]), js_trim(&cell[ci + 1..])),
+                        Some(ci) => (trim_space(&cell[..ci]), trim_space(&cell[ci + 1..])),
                         None => (cell, ""),
                     };
                     let m = span_of(head);
-                    let named = m.map_or(head, |(n, _)| js_trim(n));
+                    let named = m.map_or(head, |(n, _)| trim_space(n));
                     let title = named.starts_with('#');
-                    let name = if title { js_trim(&named[1..]) } else { named };
+                    let name = if title { trim_space(&named[1..]) } else { named };
                     let span = m.map_or(1.0, |(_, d)| string_to_number(d).clamp(1.0, 12.0)) as usize;
                     (0..span)
                         .map(move |i| Cell {
@@ -1395,7 +1396,7 @@ pub fn parse_record_layout(text: &str) -> Vec<Placement> {
             if cell.name.is_empty() || cell.name == "." {
                 continue;
             }
-            let key = js_lower(&cell.name).into_owned();
+            let key = lower_text(&cell.name).into_owned();
             cells_of.entry(key.clone()).or_default().push((r, c));
             match rects.get_mut(&key) {
                 None => {

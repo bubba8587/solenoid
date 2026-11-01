@@ -320,7 +320,7 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
         if n.fract() == 0.0 && n.is_finite() {
             crate::jsnum::number_to_string(n)
         } else {
-            let s = crate::jsnum::to_fixed(n, 4.0).unwrap_or_default();
+            let s = crate::jsnum::fixed_text(n, 4.0).unwrap_or_default();
             // `.replace(/\.?0+$/, "")`
             let t = s.trim_end_matches('0');
             if t.len() < s.len() {

@@ -10,7 +10,7 @@ use serde_json::{json, Value as Json};
 use crate::binary::{Columnar, TAG_FALSE, TAG_NULL, TAG_NUM, TAG_STR, TAG_TRUE};
 use crate::excel_criteria::DateReading;
 use crate::frame::{make_headers, FrameColType};
-use crate::jsnum::{is_js_space, js_trim};
+use crate::jsnum::{is_space_char, trim_space};
 
 /// The delimiters the guess chooses among, in its order.
 const GUESSES: [u8; 6] = [b',', b'\t', b'|', b';', 0x1e, 0x1f];
@@ -88,7 +88,7 @@ impl Rows {
 
     /// The row's fields joined trim to nothing.
     fn blank(&self, i: usize) -> bool {
-        self.row(i).all(|f| f.chars().all(is_js_space))
+        self.row(i).all(|f| f.chars().all(is_space_char))
     }
 }
 
@@ -254,7 +254,7 @@ pub(crate) fn iso_date_text(t: &str) -> bool {
 
 /// ISO date text as its serial.
 pub(crate) fn date_text_serial(s: &str) -> Option<f64> {
-    let t = js_trim(s);
+    let t = trim_space(s);
     if let Some(serial) = plain_date_serial(t) {
         return Some(serial);
     }
@@ -286,7 +286,7 @@ fn plain_date_serial(t: &str) -> Option<f64> {
 }
 
 fn logical_text(s: &str) -> Option<bool> {
-    let t = js_trim(s);
+    let t = trim_space(s);
     if t.eq_ignore_ascii_case("true") {
         Some(true)
     } else if t.eq_ignore_ascii_case("false") {
@@ -298,7 +298,7 @@ fn logical_text(s: &str) -> Option<bool> {
 
 /// An integer of at most 15 digits, read without the float parser: exact either way.
 fn short_integer(s: &str) -> Option<f64> {
-    let t = js_trim(s);
+    let t = trim_space(s);
     let (neg, digits) = match t.strip_prefix('-') {
         Some(d) => (true, d),
         None => (false, t),
@@ -332,7 +332,7 @@ impl Typed {
 /// The one type every filled cell reads as (number, then logical, then an ISO date), text
 /// otherwise or when none is filled.
 pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clone) -> Typed {
-    let blank = |c: Option<&str>| c.is_none_or(|s| js_trim(s).is_empty());
+    let blank = |c: Option<&str>| c.is_none_or(|s| trim_space(s).is_empty());
     if cells.clone().all(blank) {
         return Typed::String;
     }
@@ -357,7 +357,7 @@ pub fn infer_text_column<'s>(cells: impl Iterator<Item = Option<&'s str>> + Clon
 
 /// The header row's names and the body's width: `make_headers` over the trimmed first row, as wide as the widest row.
 fn header_names(rows: &Rows) -> Vec<String> {
-    let headers: Vec<String> = rows.row(0).map(|h| js_trim(h).to_string()).collect();
+    let headers: Vec<String> = rows.row(0).map(|h| trim_space(h).to_string()).collect();
     let ncols = (1..rows.len()).map(|i| rows.row_len(i)).max().unwrap_or(0).max(headers.len());
     make_headers(&headers, ncols)
 }
@@ -375,7 +375,7 @@ pub fn source_columns(text: &str) -> Vec<(String, FrameColType, Vec<String>)> {
         .enumerate()
         .map(|(j, name)| {
             let cells: Vec<String> =
-                (1..rows.len()).map(|i| js_trim(rows.get(i, j).unwrap_or("")).to_string()).collect();
+                (1..rows.len()).map(|i| trim_space(rows.get(i, j).unwrap_or("")).to_string()).collect();
             let ty = infer_text_column(cells.iter().map(|c| Some(c.as_str()))).ty();
             (name, ty, cells)
         })
@@ -420,7 +420,7 @@ pub fn frame_columnar(text: &str) -> (Columnar, usize) {
             }
             Typed::String => {
                 for c in cells.clone() {
-                    let t = js_trim(c.unwrap_or(""));
+                    let t = trim_space(c.unwrap_or(""));
                     if t.is_empty() {
                         push(&mut out, TAG_NULL, 0.0);
                     } else {
@@ -434,7 +434,7 @@ pub fn frame_columnar(text: &str) -> (Columnar, usize) {
         out.schema.push(json!({ "name": name, "type": "string", "len": body, "raw": true }));
         for c in cells {
             push(&mut out, TAG_STR, 0.0);
-            out.push_str(js_trim(c.unwrap_or("")));
+            out.push_str(trim_space(c.unwrap_or("")));
         }
     }
     (out, body)

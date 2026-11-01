@@ -7,9 +7,9 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{
-    js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, to_num, Thrown, V,
+    hypot_all, js_number_of as js_number, js_string_of, logical_or_type_error, to_num, Thrown, V,
 };
-use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
+use crate::jsnum::{lower_text, nan_max, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 
 /// The names this module answers.
@@ -116,7 +116,7 @@ fn js_max(a: f64, b: f64) -> f64 {
     }
 }
 
-fn js_sign(x: f64) -> f64 {
+fn sign_or_zero(x: f64) -> f64 {
     if x.is_nan() || x == 0.0 {
         x
     } else if x > 0.0 {
@@ -211,7 +211,7 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
 
 /// An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork).
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
-    (math_max(rows, 1.0) * math_max(cols, 1.0) > MAX_GENERATED).then(|| {
+    (nan_max(rows, 1.0) * nan_max(cols, 1.0) > MAX_GENERATED).then(|| {
         err(
             ErrorCode::Overflow,
             format!(
@@ -571,7 +571,7 @@ pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
                 }
                 let theta = (a[q][q] - a[p][p]) / (2.0 * a[p][q]);
                 let th1 = if theta == 0.0 || theta.is_nan() { 1.0 } else { theta };
-                let t = js_sign(th1) / (theta.abs() + (theta * theta + 1.0).sqrt());
+                let t = sign_or_zero(th1) / (theta.abs() + (theta * theta + 1.0).sqrt());
                 let c = 1.0 / (t * t + 1.0).sqrt();
                 let s = t * c;
                 for k in 0..n {
@@ -770,7 +770,7 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> Result<V, Thrown> {
         }
     }
     let n = px.len();
-    let d = js_max(0.0, math_round(degree));
+    let d = js_max(0.0, round_half_up(degree));
     if n == 0 {
         return Ok(list(xs.iter().map(|_| V::Null).collect()));
     }
@@ -863,7 +863,7 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
             let qr = (pr * dr + pi * di) / den;
             let qi = (pi * dr - pr * di) / den;
             roots[i] = (zr - qr, zi - qi);
-            max_step = js_max(max_step, math_hypot(&[qr, qi]));
+            max_step = js_max(max_step, hypot_all(&[qr, qi]));
         }
         if max_step < 1e-15 {
             break;
@@ -889,7 +889,7 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
             }
             let qr = (pr * dr + pi * di) / den;
             let qi = (pi * dr - pr * di) / den;
-            if !qr.is_finite() || !qi.is_finite() || math_hypot(&[qr, qi]) > 1e-3 * js_max(1.0, math_hypot(&[zr, zi])) {
+            if !qr.is_finite() || !qi.is_finite() || hypot_all(&[qr, qi]) > 1e-3 * js_max(1.0, hypot_all(&[zr, zi])) {
                 break;
             }
             zr -= qr;
@@ -901,7 +901,7 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
         roots
             .into_iter()
             .map(|(r, i)| {
-                let scale = js_max(1.0, math_hypot(&[r, i]));
+                let scale = js_max(1.0, hypot_all(&[r, i]));
                 (if r.abs() < 1e-12 * scale { 0.0 } else { r }, if i.abs() < 1e-7 * scale { 0.0 } else { i })
             })
             .collect(),
@@ -1225,7 +1225,8 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         }
         "XSTACK" => {
             let axis = arg(a, 0);
-            let ax = if nullish(axis) { String::new() } else { js_lower(js_trim(&js_string_of(axis))).to_string() };
+            let ax =
+                if nullish(axis) { String::new() } else { lower_text(trim_space(&js_string_of(axis))).to_string() };
             if ax != "v" && ax != "h" {
                 return Ok(err(ErrorCode::Value, "XSTACK axis must be \"v\" or \"h\""));
             }
@@ -1252,7 +1253,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         }
         "EXPAND" => {
             let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
-            let count = |v: &V| if nullish(v) { 0.0 } else { math_round(js_number(v)) };
+            let count = |v: &V| if nullish(v) { 0.0 } else { round_half_up(js_number(v)) };
             let fill = if nullish(arg(a, 3)) { V::Null } else { arg(a, 3).clone() };
             expand_mat(&m, count(arg(a, 1)), count(arg(a, 2)), fill)
         }
@@ -1269,7 +1270,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nullish(n) {
                 return Ok(V::Null);
             }
-            let k = math_round(js_number(n));
+            let k = round_half_up(js_number(n));
             if k < 1.0 || k.is_nan() {
                 return Ok(list(vec![]));
             }

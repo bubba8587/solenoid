@@ -11,7 +11,7 @@ use crate::excel_functions::{
     average_ranks, holds_text, js_parse_float, js_string_of, mean_of, nums_of, parse_number, ssd, sum, to_f64_js,
     to_num, Thrown, V,
 };
-use crate::jsnum::{math_max, math_min, math_round, number_to_string};
+use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up};
 use crate::zone;
 use libm::{cos, exp, log, sin};
 
@@ -230,7 +230,7 @@ fn answer(name: &str, a: &[V]) -> V {
             if !count.is_finite() {
                 return V::err(sol_error(ErrorCode::Value, "GEOMETRIC needs a number"));
             }
-            let k = math_round(count);
+            let k = round_half_up(count);
             if k > crate::value_kinds::MAX_GENERATED {
                 let msg = format!(
                     "GEOMETRIC count {} exceeds the {} element limit",
@@ -240,7 +240,7 @@ fn answer(name: &str, a: &[V]) -> V {
                 return V::err(sol_error(ErrorCode::Overflow, msg));
             }
             let (mut v, ratio) = (number(arg(a, 0)), number(arg(a, 1)));
-            let n = math_max(0.0, k) as usize;
+            let n = nan_max(0.0, k) as usize;
             let mut out = Vec::with_capacity(n);
             for _ in 0..n {
                 out.push(V::Num(v));
@@ -249,7 +249,7 @@ fn answer(name: &str, a: &[V]) -> V {
             V::List(out.into())
         }
         "FIBONACCI" => {
-            let n = math_min(78.0, math_max(0.0, math_round(number(arg(a, 0)))));
+            let n = nan_min(78.0, nan_max(0.0, round_half_up(number(arg(a, 0)))));
             if n == 0.0 {
                 return V::List(Vec::new().into());
             }
@@ -525,7 +525,7 @@ fn besselj1(x: f64) -> f64 {
 
 /// `besselj`; None where its downward recurrence would never end (an infinite order). A NaN order skips it.
 fn besselj(x: f64, n: f64) -> Option<f64> {
-    let n = math_round(n);
+    let n = round_half_up(n);
     if !x.is_finite() {
         return Some(if x.is_nan() { x } else { 0.0 });
     }
@@ -650,7 +650,7 @@ fn besseli1(x: f64) -> f64 {
 }
 
 fn besseli(x: f64, n: f64) -> Option<f64> {
-    let n = math_round(n);
+    let n = round_half_up(n);
     if n == 0.0 {
         return Some(besseli0(x));
     }
@@ -667,7 +667,7 @@ fn besseli(x: f64, n: f64) -> Option<f64> {
         return Some(f64::INFINITY);
     }
     let (mut ret, tox, mut bip, mut bi) = (0.0, 2.0 / x.abs(), 0.0, 1.0);
-    let m = 2.0 * math_round((n + math_round((40.0 * n).sqrt())) / 2.0);
+    let m = 2.0 * round_half_up((n + round_half_up((40.0 * n).sqrt())) / 2.0);
     if m.is_infinite() {
         return None;
     }
@@ -747,7 +747,7 @@ fn anova_p(gs: &[Vec<f64>]) -> Option<f64> {
         return if ssb == 0.0 { None } else { Some(0.0) };
     }
     let f = (ssb / (k - 1.0)) / (ssw / (n - k));
-    Some(math_min(1.0, math_max(0.0, 1.0 - f_cdf(f, k - 1.0, n - k))))
+    Some(nan_min(1.0, nan_max(0.0, 1.0 - f_cdf(f, k - 1.0, n - k))))
 }
 
 fn mann_whitney_p(a: &[f64], b: &[f64]) -> Option<f64> {
@@ -760,14 +760,14 @@ fn mann_whitney_p(a: &[f64], b: &[f64]) -> Option<f64> {
     let ranks = average_ranks(&all);
     let r1 = ranks[..a.len()].iter().fold(0.0, |x, y| x + y);
     let u1 = r1 - (n1 * (n1 + 1.0)) / 2.0;
-    let u = math_min(u1, n1 * n2 - u1);
+    let u = nan_min(u1, n1 * n2 - u1);
     let mean_u = (n1 * n2) / 2.0;
     let var_u = ((n1 * n2) / 12.0) * ((big_n + 1.0) - tie_term(&all) / (big_n * (big_n - 1.0)));
     if var_u <= 0.0 {
         return None;
     }
     let z = ((u - mean_u).abs() - 0.5) / var_u.sqrt();
-    Some(math_min(1.0, two_sided_z(math_max(0.0, z))))
+    Some(nan_min(1.0, two_sided_z(nan_max(0.0, z))))
 }
 
 fn wilcoxon_p(a: &[f64], b: &[f64]) -> Option<f64> {
@@ -780,14 +780,14 @@ fn wilcoxon_p(a: &[f64], b: &[f64]) -> Option<f64> {
     let abs: Vec<f64> = d.iter().map(|v| v.abs()).collect();
     let ranks = average_ranks(&abs);
     let w_plus = d.iter().enumerate().fold(0.0, |acc, (i, v)| acc + if *v > 0.0 { ranks[i] } else { 0.0 });
-    let t = math_min(w_plus, (n * (n + 1.0)) / 2.0 - w_plus);
+    let t = nan_min(w_plus, (n * (n + 1.0)) / 2.0 - w_plus);
     let mean_t = (n * (n + 1.0)) / 4.0;
     let var_t = (n * (n + 1.0) * (2.0 * n + 1.0)) / 24.0 - tie_term(&abs) / 48.0;
     if var_t <= 0.0 {
         return None;
     }
     let z = ((t - mean_t).abs() - 0.5) / var_t.sqrt();
-    Some(math_min(1.0, two_sided_z(math_max(0.0, z))))
+    Some(nan_min(1.0, two_sided_z(nan_max(0.0, z))))
 }
 
 fn kruskal_p(gs: &[Vec<f64>]) -> Option<f64> {
@@ -810,7 +810,7 @@ fn kruskal_p(gs: &[Vec<f64>]) -> Option<f64> {
         return None;
     }
     h /= corr;
-    Some(math_min(1.0, math_max(0.0, 1.0 - chi_sq_cdf(h, k - 1.0))))
+    Some(nan_min(1.0, nan_max(0.0, 1.0 - chi_sq_cdf(h, k - 1.0))))
 }
 
 fn ks_two_sample_p(a: &[f64], b: &[f64]) -> Option<f64> {
@@ -825,14 +825,14 @@ fn ks_two_sample_p(a: &[f64], b: &[f64]) -> Option<f64> {
     sb.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     let (mut i, mut j, mut d_int) = (0, 0, 0.0);
     while i < n1 && j < n2 {
-        let v = math_min(sa[i], sb[j]);
+        let v = nan_min(sa[i], sb[j]);
         while i < n1 && sa[i] <= v {
             i += 1;
         }
         while j < n2 && sb[j] <= v {
             j += 1;
         }
-        d_int = math_max(d_int, (i as f64 * f2 - j as f64 * f1).abs());
+        d_int = nan_max(d_int, (i as f64 * f2 - j as f64 * f1).abs());
     }
     if d_int == 0.0 {
         return Some(1.0);
@@ -863,7 +863,7 @@ fn ks_two_sample_p(a: &[f64], b: &[f64]) -> Option<f64> {
         }
         prob = next;
     }
-    Some(math_min(1.0, math_max(0.0, 1.0 - prob[n2])))
+    Some(nan_min(1.0, nan_max(0.0, 1.0 - prob[n2])))
 }
 
 // ─── Formula.js's date-reading finance bodies ───────────────────────────────────

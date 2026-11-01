@@ -8,7 +8,7 @@ use crate::eval::{variables, Env};
 use crate::excel_formula::{parse_formula, Ast};
 use crate::excel_formula::{BinOp, UnaryOp};
 use crate::excel_functions::{fx_error_to_sol, V};
-use crate::jsnum::{js_trim, number_to_string};
+use crate::jsnum::{number_to_string, trim_space};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_eval_with_code, is_dimensionless, Codes, Dim};
 use crate::unit_lists::tag_dim;
@@ -187,7 +187,7 @@ fn expression_done(c: &mut Call, result: V, error: Option<&str>, ranked: bool) -
 fn expression(c: &mut Call) -> Answer {
     let expr = c.field_str("expr", "").to_string();
     let Some(ast) = parse_formula(&expr) else {
-        if js_trim(&expr).is_empty() {
+        if trim_space(&expr).is_empty() {
             return expression_done(c, V::Null, None, false);
         }
         let hint = syntax_hint(&expr);
@@ -725,7 +725,7 @@ impl Solved {
 /// `EquationNode.data()` for the relation `expr` over the card's inputs.
 fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
     let mut s = Solved { values: Vec::new(), holds: V::Null, solved_for: None, error: None };
-    if js_trim(expr).is_empty() {
+    if trim_space(expr).is_empty() {
         return s;
     }
     let names = parse_formula(expr).map(|a| variables(&a)).unwrap_or_default();
@@ -931,7 +931,7 @@ fn equation_done(c: &mut Call, s: Solved, names: &[String], extra: Option<(&str,
 }
 
 fn variable_names(expr: &str) -> Vec<String> {
-    if js_trim(expr).is_empty() {
+    if trim_space(expr).is_empty() {
         return Vec::new();
     }
     parse_formula(expr).map(|a| variables(&a)).unwrap_or_default()

@@ -9,7 +9,7 @@ use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{js_lower, js_trim, math_round, number_to_string, string_to_number};
+use crate::jsnum::{lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use serde_json::{json, Map, Value as Json};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -178,7 +178,7 @@ fn read_options(c: &Call) -> Result<Obj, V> {
 // ─── Chart options ──────────────────────────────────────────────────────────────
 
 fn to_bool(v: &str) -> Option<bool> {
-    match js_lower(js_trim(v)).as_ref() {
+    match lower_text(trim_space(v)).as_ref() {
         "on" | "true" | "1" | "yes" | "y" => Some(true),
         "off" | "false" | "0" | "no" | "n" => Some(false),
         _ => None,
@@ -186,7 +186,7 @@ fn to_bool(v: &str) -> Option<bool> {
 }
 
 fn to_num(v: &str) -> Option<f64> {
-    let t = js_trim(v);
+    let t = trim_space(v);
     if t.is_empty() {
         return None;
     }
@@ -195,7 +195,7 @@ fn to_num(v: &str) -> Option<f64> {
 }
 
 fn to_pie_labels(v: &str) -> Option<&'static str> {
-    let s = js_lower(js_trim(v));
+    let s = lower_text(trim_space(v));
     match s.as_ref() {
         "inside" | "center" | "on-chart" => Some("inside"),
         "outside" | "leader" => Some("outside"),
@@ -204,7 +204,7 @@ fn to_pie_labels(v: &str) -> Option<&'static str> {
 }
 
 fn to_radar_scale(v: &str) -> Option<&'static str> {
-    match js_lower(js_trim(v)).as_ref() {
+    match lower_text(trim_space(v)).as_ref() {
         "axis" | "normalize" | "normalized" | "independent" => Some("axis"),
         "shared" | "raw" | "absolute" => Some("shared"),
         _ => None,
@@ -212,7 +212,7 @@ fn to_radar_scale(v: &str) -> Option<&'static str> {
 }
 
 fn to_line_style(v: &str) -> Option<&'static str> {
-    match js_lower(js_trim(v)).as_ref() {
+    match lower_text(trim_space(v)).as_ref() {
         "-" | "solid" => Some("solid"),
         "--" | "dashed" => Some("dashed"),
         ":" | "dotted" => Some("dotted"),
@@ -229,17 +229,17 @@ const CMAPS: [&str; 21] = [
 
 /// A map's own spelling, `_r` kept for a reversed one.
 fn normalize_cmap(text: &str) -> Option<String> {
-    let s = js_trim(text);
+    let s = trim_space(text);
     let reversed = s.len() >= 2 && s.is_char_boundary(s.len() - 2) && s[s.len() - 2..].eq_ignore_ascii_case("_r");
     let stem = if reversed { &s[..s.len() - 2] } else { s };
-    let lower = js_lower(stem);
-    let base = CMAPS.iter().find(|m| js_lower(m) == lower)?;
+    let lower = lower_text(stem);
+    let base = CMAPS.iter().find(|m| lower_text(m) == lower)?;
     Some(if reversed { format!("{base}_r") } else { base.to_string() })
 }
 
 /// `^(\+)?(,)?(?:\.(\d{1,2}))?([fFeEgGd%])?$` on the trimmed text.
 fn is_number_spec(spec: &str) -> bool {
-    let s = js_trim(spec);
+    let s = trim_space(spec);
     if s.is_empty() {
         return false;
     }
@@ -265,8 +265,8 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
     };
     for part in input.split(';') {
         let Some(eq) = part.find('=') else { continue };
-        let key = js_lower(js_trim(&part[..eq])).into_owned();
-        let val = js_trim(&part[eq + 1..]);
+        let key = lower_text(trim_space(&part[..eq])).into_owned();
+        let val = trim_space(&part[eq + 1..]);
         let text = |o: &mut Obj, k: &str| {
             if !val.is_empty() {
                 o.insert(k.into(), Json::String(val.to_string()));
@@ -300,7 +300,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             }
             "ymin" | "ymax" | "xmin" | "xmax" | "vmin" | "vmax" | "center" => put_num(&mut o, &key, to_num(val)),
             "aspect" => {
-                let s = js_lower(js_trim(val));
+                let s = lower_text(trim_space(val));
                 word(
                     &mut o,
                     "aspect",
@@ -315,7 +315,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "yscale" => word(
                 &mut o,
                 "yscale",
-                match js_lower(val).as_ref() {
+                match lower_text(val).as_ref() {
                     "linear" => Some("linear"),
                     "log" => Some("log"),
                     _ => None,
@@ -325,7 +325,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "y" => {
                 let names: Vec<Json> = val
                     .split(',')
-                    .map(js_trim)
+                    .map(trim_space)
                     .filter(|t| !t.is_empty())
                     .map(|t| Json::String(t.to_string()))
                     .collect();
@@ -346,7 +346,7 @@ pub(crate) fn parse_chart_options(input: &str) -> Obj {
             "origin" => word(
                 &mut o,
                 "origin",
-                match js_lower(val).as_ref() {
+                match lower_text(val).as_ref() {
                     "upper" => Some("upper"),
                     "lower" => Some("lower"),
                     _ => None,
@@ -436,7 +436,7 @@ fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
         .iter()
         .map(|v| match format_cell(col.ty, v, None) {
             V::Num(n) if n.is_finite() => Some(n),
-            V::Str(s) if !js_trim(&s).is_empty() => Some(string_to_number(&s)).filter(|n| n.is_finite()),
+            V::Str(s) if !trim_space(&s).is_empty() => Some(string_to_number(&s)).filter(|n| n.is_finite()),
             _ => None,
         })
         .collect()
@@ -475,7 +475,7 @@ fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType
                 FrameColType::Logical => match c {
                     V::Bool(_) => c.clone(),
                     V::Num(n) => V::Bool(*n != 0.0),
-                    V::Str(s) => V::Bool(js_lower(js_trim(s)) == "true"),
+                    V::Str(s) => V::Bool(lower_text(trim_space(s)) == "true"),
                     _ => V::Bool(false),
                 },
                 FrameColType::Number | FrameColType::Date => match c {
@@ -553,10 +553,10 @@ fn sparkline(c: &mut Call) -> Answer {
 /// A References table's rows as reference marks, its columns found by name.
 fn read_chart_refs(f: &Cv) -> Vec<Json> {
     let Cv::Frame(f) = f else { return Vec::new() };
-    let col = |name: &str| f.columns.iter().find(|c| js_lower(js_trim(&c.name)) == name);
+    let col = |name: &str| f.columns.iter().find(|c| lower_text(trim_space(&c.name)) == name);
     let n = |v: &V| finite(v).map(jn);
     let t = |v: &V| match v {
-        V::Str(s) if !js_trim(s).is_empty() => Some(Json::String(js_trim(s).to_string())),
+        V::Str(s) if !trim_space(s).is_empty() => Some(Json::String(trim_space(s).to_string())),
         _ => None,
     };
     let nx = |v: &V| n(v).or_else(|| t(v));
@@ -619,8 +619,8 @@ fn build_xy(op: &str, raw: &Cv, opts: &Obj) -> Result<Option<Obj>, V> {
         return Ok(None);
     }
     let find = |name: &str, role: &str| -> Result<usize, V> {
-        let key = js_lower(js_trim(name)).into_owned();
-        cols.iter().position(|c| js_lower(js_trim(&c.name)) == key).ok_or_else(|| {
+        let key = lower_text(trim_space(name)).into_owned();
+        cols.iter().position(|c| lower_text(trim_space(&c.name)) == key).ok_or_else(|| {
             err(ErrorCode::Ref, format!("The options name a {role} column \"{name}\", which the data doesn't have"))
         })
     };
@@ -1865,7 +1865,7 @@ fn surface(c: &mut Call) -> Answer {
     if c.field_str("op", "surface") == "contour" {
         let levels = match c.read_input("levels", literal_or(c, "levels", V::Num(8.0))) {
             V::Null => 0.0,
-            v => math_round(to_number(&v)).clamp(2.0, 24.0),
+            v => round_half_up(to_number(&v)).clamp(2.0, 24.0),
         };
         let payload = json!({ "kind": "contour", "xs": nums(&xs), "ys": nums(&ys), "z": z, "levels": jn(levels) });
         return figure(c, "contour", Json::Null, payload, opts, "Contour");
@@ -2037,8 +2037,8 @@ fn chart_builder(c: &mut Call) -> Answer {
         match text(k) {
             None => {}
             Some(V::Str(s)) => {
-                if !js_trim(&s).is_empty() {
-                    parts.push(format!("{k}={}", js_trim(&s)));
+                if !trim_space(&s).is_empty() {
+                    parts.push(format!("{k}={}", trim_space(&s)));
                 }
             }
             Some(_) => return Err(crashed("v.trim is not a function")),
@@ -2117,7 +2117,7 @@ fn chart_cuts(chart: &Json, by_x: bool) -> Json {
             }
             // Each end runs on along its own segment's direction.
             let out = |(x, y): (f64, f64), (dx, dy): (f64, f64)| {
-                let len = crate::excel_functions::math_hypot(&[dx, dy]);
+                let len = crate::excel_functions::hypot_all(&[dx, dy]);
                 if len > 0.0 {
                     (x + dx / len * reach, y + dy / len * reach)
                 } else {
@@ -2242,7 +2242,7 @@ fn segment_distance(s: &[f64], x: f64, y: f64) -> f64 {
     let (dx, dy) = (s[2] - s[0], s[3] - s[1]);
     let len2 = dx * dx + dy * dy;
     let t = if len2 > 0.0 { (((x - s[0]) * dx + (y - s[1]) * dy) / len2).clamp(0.0, 1.0) } else { 0.0 };
-    crate::excel_functions::math_hypot(&[x - s[0] - t * dx, y - s[1] - t * dy])
+    crate::excel_functions::hypot_all(&[x - s[0] - t * dx, y - s[1] - t * dy])
 }
 
 /// The keys of the regions a point on a line touches, found a hair away from it on every side; none off the lines.
@@ -2301,7 +2301,7 @@ fn flip_pieces(c: &Cuts, read: ReadMark, reach: f64, hair: f64) -> Vec<Piece> {
     let mut ts: Vec<f64> = Vec::new();
     let mut cut = |a: &[f64; 4], long: bool, ts: &mut Vec<f64>| {
         let (dx, dy) = (a[2] - a[0], a[3] - a[1]);
-        let len = crate::excel_functions::math_hypot(&[dx, dy]);
+        let len = crate::excel_functions::hypot_all(&[dx, dy]);
         if len == 0.0 {
             return;
         }

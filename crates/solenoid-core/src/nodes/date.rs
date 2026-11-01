@@ -9,7 +9,7 @@ use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_less, to_f64_js, V};
 use crate::frame::FrameColType;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use crate::value_kinds::OVERFLOW_MESSAGE;
 use crate::zone;
 use std::rc::Rc;
@@ -89,7 +89,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
                 raw => {
                     let text = match raw {
                         V::Null => String::new(),
-                        v => crate::jsnum::js_trim(&crate::excel_functions::js_string_of(&v)).to_string(),
+                        v => crate::jsnum::trim_space(&crate::excel_functions::js_string_of(&v)).to_string(),
                     };
                     if text.is_empty() {
                         V::Null
@@ -125,7 +125,7 @@ fn time_zone_convert(c: &Call) -> V {
     let serial = c.read_input("datetime", V::Num(f64::NAN));
     let from = c.read_input("from", typed("from"));
     let to = c.read_input("to", typed("to"));
-    let named = |v: &V| matches!(v, V::Str(s) if !js_trim(s).is_empty());
+    let named = |v: &V| matches!(v, V::Str(s) if !trim_space(s).is_empty());
     if !matches!(serial, V::Num(n) if n.is_finite()) || !named(&from) || !named(&to) {
         return V::Null;
     }
@@ -148,7 +148,7 @@ fn world_clock(c: &Call) -> Cv {
     let (mut places, mut times) = (Vec::new(), Vec::new());
     for raw in &zones {
         let zone = match raw {
-            V::Str(s) => js_trim(s).to_string(),
+            V::Str(s) => trim_space(s).to_string(),
             _ => String::new(),
         };
         if zone.is_empty() {

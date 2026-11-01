@@ -9,7 +9,7 @@ use super::{list, Answer, Call, Column, Cube, CubeColumn, Frame};
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{js_lower, js_trim, math_max, math_min, string_to_number};
+use crate::jsnum::{lower_text, nan_max, nan_min, string_to_number, trim_space};
 use serde_json::{json, Map, Value as Json};
 use solenoid_schedule::{
     self as engine, CalendarSpec, Dependency, LinkType, PlanTask, ScheduleOutput, ScheduledTask, TaskCalendar,
@@ -43,7 +43,7 @@ fn weekend_checked(code: f64, who: &str) -> Result<f64, SolError> {
 }
 
 fn norm(s: &str) -> String {
-    js_lower(js_trim(s)).into_owned()
+    lower_text(trim_space(s)).into_owned()
 }
 
 /// `String(v ?? "")`.
@@ -131,7 +131,7 @@ fn read_logical(v: Option<&V>) -> bool {
 fn is_inactive(v: Option<&V>) -> bool {
     match v {
         None | Some(V::Null) => false,
-        Some(V::Str(s)) if js_trim(s).is_empty() => false,
+        Some(V::Str(s)) if trim_space(s).is_empty() => false,
         v => !read_logical(v),
     }
 }
@@ -156,7 +156,7 @@ fn link_type(raw: Option<&V>) -> String {
         None | Some(V::Null) => "FS".to_string(),
         Some(v) => js_string_of(v),
     };
-    js_trim(&s).to_uppercase()
+    trim_space(&s).to_uppercase()
 }
 
 // ─── Schedule ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -226,12 +226,12 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
     match v {
         Cv::V(V::List(items)) => Ok(items
             .iter()
-            .map(|x| if nullish(x) { String::new() } else { js_trim(&js_string_of(x)).to_string() })
+            .map(|x| if nullish(x) { String::new() } else { trim_space(&js_string_of(x)).to_string() })
             .filter(|s| !s.is_empty())
             .map(|t| Dependency::fs(&t))
             .collect()),
         Cv::V(V::Str(s)) => {
-            let t = js_trim(s);
+            let t = trim_space(s);
             Ok(if t.is_empty() { Vec::new() } else { vec![Dependency::fs(t)] })
         }
         Cv::Cube(_) | Cv::Frame(_) => {
@@ -248,7 +248,7 @@ fn read_predecessors(v: Option<&Cv>, task_name: &str) -> Rd<Vec<Dependency>> {
             };
             let mut out = Vec::new();
             for i in 0..rows_of(&t) {
-                let task = js_trim(&js_str(cell(Some(name_col), i))).to_string();
+                let task = trim_space(&js_str(cell(Some(name_col), i))).to_string();
                 if task.is_empty() {
                     continue;
                 }
@@ -332,7 +332,7 @@ fn check_active(v: Option<&V>, task: &str) -> Rd<()> {
         Some(V::Num(n)) if n.is_finite() => Ok(()),
         Some(V::Err(e)) => Err(sol_error(e.code, format!("Schedule: task \"{task}\" has an Active that is an error"))),
         Some(V::Str(s))
-            if js_trim(s).is_empty()
+            if trim_space(s).is_empty()
                 || ["true", "yes", "y", "1", "on", "false", "no", "n", "0", "off"].contains(&norm(s).as_str()) =>
         {
             Ok(())
@@ -479,7 +479,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
     let mut names = Vec::new();
     let mut inactive = Vec::new();
     for i in 0..rows_of(&c) {
-        let name = js_trim(&js_str(at(Some(task), i))).to_string();
+        let name = trim_space(&js_str(at(Some(task), i))).to_string();
         if name.is_empty() {
             return Err(value_err(format!("Schedule: row {} has no task name", i + 1)));
         }
@@ -561,7 +561,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         } else if has_duration || work_cell.is_none() {
             read_duration(at(duration, i), task_hours, &name)?
         } else {
-            work_cell.unwrap_or(0.0) / (math_max(0.01, units_cell.unwrap_or(1.0)) * task_hours)
+            work_cell.unwrap_or(0.0) / (nan_max(0.01, units_cell.unwrap_or(1.0)) * task_hours)
         };
         let predecessors = if generated {
             Vec::new()
@@ -575,7 +575,7 @@ fn read_level(c: Rc<Cube>, hours: Hours) -> Rd<(Level, Vec<PlanTask>)> {
         let deadline = read_date(at(cols.deadline, i), &name, "Deadline")?;
         let group = at(cols.group, i)
             .filter(|g| !nullish(g))
-            .map(|g| js_trim(&js_string_of(g)).to_string())
+            .map(|g| trim_space(&js_string_of(g)).to_string())
             .filter(|g| !g.is_empty());
         let actual_start = read_date(at(cols.actual, i), &name, "Actual start")?;
         tasks.push(PlanTask {
@@ -663,12 +663,12 @@ fn apply_links_frame(tasks: &mut [PlanTask], links: &Frame, inactive: &HashSet<S
     };
     let rows = links.columns.iter().map(|c| c.values.len()).max().unwrap_or(0);
     for i in 0..rows {
-        let succ = js_trim(&js_str(value(Some(succ_col), i))).to_string();
-        let pred = js_trim(&js_str(value(Some(pred_col), i))).to_string();
+        let succ = trim_space(&js_str(value(Some(succ_col), i))).to_string();
+        let pred = trim_space(&js_str(value(Some(pred_col), i))).to_string();
         if succ.is_empty() || pred.is_empty() {
             continue;
         }
-        let key = js_lower(&succ).into_owned();
+        let key = lower_text(&succ).into_owned();
         let Some(path) = by_name.get(&key) else {
             if inactive.contains(&key) {
                 continue;
@@ -711,7 +711,7 @@ fn write_level(
         .names
         .iter()
         .zip(&level.inactive)
-        .map(|(n, off)| if *off { None } else { by_name.get(&js_lower(n).into_owned()).copied() })
+        .map(|(n, off)| if *off { None } else { by_name.get(&lower_text(n).into_owned()).copied() })
         .collect();
     let cells = |f: &dyn Fn(&ScheduledTask) -> V| -> Vec<V> { rows.iter().map(|t| t.map_or(V::Null, f)).collect() };
     let date_format =
@@ -990,7 +990,7 @@ fn schedule_card(c: &mut Call) -> Answer {
         };
         let out = engine::schedule(&input).map_err(|e| value_err(format!("Schedule: {}", e.message)))?;
         let by_name: HashMap<String, &ScheduledTask> =
-            out.tasks.iter().map(|t| (js_lower(&t.name).into_owned(), t)).collect();
+            out.tasks.iter().map(|t| (lower_text(&t.name).into_owned(), t)).collect();
         let nested = out.tasks.iter().any(|t| t.summary);
         let cube = write_level(&level, &by_name, nested, minutes, links.is_some());
         let none: Vec<Option<f64>> = Vec::new();
@@ -1062,7 +1062,7 @@ fn deps_of(v: Option<&Cv>) -> Vec<Dependency> {
             let (type_col, lag_col) = (gantt_col(&t, TYPE_NAMES), gantt_col(&t, LAG_NAMES));
             let mut out = Vec::new();
             for i in 0..rows_of(&t) {
-                let task = js_trim(&js_str(cell(Some(name_col), i))).to_string();
+                let task = trim_space(&js_str(cell(Some(name_col), i))).to_string();
                 if task.is_empty() {
                     continue;
                 }
@@ -1131,7 +1131,7 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
     });
     let active = gantt_col(c, ACTIVE_NAMES);
     for i in 0..rows_of(c) {
-        let name = js_trim(&js_str(cell(Some(task), i))).to_string();
+        let name = trim_space(&js_str(cell(Some(task), i))).to_string();
         if name.is_empty() || is_inactive(cell(active, i)) {
             continue;
         }
@@ -1151,7 +1151,7 @@ fn gantt_flatten(c: &Cube, level: f64, out: &mut Vec<Row>) -> Result<(), SolErro
 fn gantt_date(v: Option<&V>) -> Rd<Option<f64>> {
     match v {
         Some(V::Num(n)) if n.is_finite() => Ok(Some(*n)),
-        Some(V::Str(s)) if !js_trim(s).is_empty() => Ok(Some(parse_date_text(s)?).filter(|d| d.is_finite())),
+        Some(V::Str(s)) if !trim_space(s).is_empty() => Ok(Some(parse_date_text(s)?).filter(|d| d.is_finite())),
         _ => Ok(None),
     }
 }
@@ -1179,7 +1179,7 @@ fn link_violated(d: &Dependency, pred: &Row, succ: &Row) -> bool {
 }
 
 fn to_bool(v: &str) -> Option<bool> {
-    let s = js_lower(js_trim(v)).into_owned();
+    let s = lower_text(trim_space(v)).into_owned();
     if ["on", "true", "1", "yes", "y"].contains(&s.as_str()) {
         Some(true)
     } else if ["off", "false", "0", "no", "n"].contains(&s.as_str()) {
@@ -1195,9 +1195,9 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
     let Some(input) = input.filter(|s| !s.is_empty()) else { return Ok(v) };
     for part in input.split(';') {
         let Some(eq) = part.find('=') else { continue };
-        let key = js_lower(js_trim(&part[..eq])).into_owned();
-        let val = js_trim(&part[eq + 1..]);
-        let lower = js_lower(val).into_owned();
+        let key = lower_text(trim_space(&part[..eq])).into_owned();
+        let val = trim_space(&part[eq + 1..]);
+        let lower = lower_text(val).into_owned();
         let n = string_to_number(val);
         let int = n.is_finite() && n.fract() == 0.0;
         match key.as_str() {
@@ -1224,7 +1224,8 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
             }
             "window" => {
                 let parts: Vec<&str> = val.split(',').collect();
-                let read = |s: Option<&&str>| -> Rd<Option<f64>> { s.map(|s| parse_date_text(js_trim(s))).transpose() };
+                let read =
+                    |s: Option<&&str>| -> Rd<Option<f64>> { s.map(|s| parse_date_text(trim_space(s))).transpose() };
                 let (a, b) = (read(parts.first())?, read(parts.get(1))?);
                 if let (Some(a), Some(b)) = (a, b)
                     && a.is_finite()
@@ -1238,7 +1239,7 @@ fn gantt_view_options(input: Option<&str>) -> Rd<Map<String, Json>> {
                 const COLUMNS: [&str; 7] = ["name", "start", "finish", "duration", "float", "complete", "predecessors"];
                 let cols: Vec<Json> = val
                     .split(',')
-                    .map(|s| js_lower(js_trim(s)).into_owned())
+                    .map(|s| lower_text(trim_space(s)).into_owned())
                     .filter(|s| COLUMNS.contains(&s.as_str()))
                     .map(Json::String)
                     .collect();
@@ -1307,7 +1308,7 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
         t.insert("milestone".into(), Json::Bool(!summary && (dur == Some(0.0) || (dur.is_none() && start == finish))));
         t.insert("start".into(), json_num(start));
         t.insert("finish".into(), json_num(finish));
-        t.insert("complete".into(), json_num(math_max(0.0, math_min(100.0, complete))));
+        t.insert("complete".into(), json_num(nan_max(0.0, nan_min(100.0, complete))));
         t.insert("critical".into(), Json::Bool(read_logical(r.get("critical"))));
         t.insert("late".into(), Json::Bool(read_logical(r.get("late"))));
         t.insert("violated".into(), Json::Bool(fl.is_some_and(|f| f < 0.0)));
@@ -1336,20 +1337,20 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             t.insert("deadline".into(), json_num(d.floor()));
         }
         if let Some(g) = r.first(&["project", "section", "group"]) {
-            let g = js_trim(&js_string_of(g)).to_string();
+            let g = trim_space(&js_string_of(g)).to_string();
             if !g.is_empty() {
                 t.insert("group".into(), Json::String(g));
             }
         }
         if let Some(V::Str(color)) = r.get("color")
-            && !js_trim(color).is_empty()
+            && !trim_space(color).is_empty()
         {
-            t.insert("color".into(), Json::String(js_trim(color).to_string()));
+            t.insert("color".into(), Json::String(trim_space(color).to_string()));
         }
         if let Some(V::Str(res)) = r.first(&["resource", "who", "owner", "assignee"])
-            && !js_trim(res).is_empty()
+            && !trim_space(res).is_empty()
         {
-            t.insert("resource".into(), Json::String(js_trim(res).to_string()));
+            t.insert("resource".into(), Json::String(trim_space(res).to_string()));
             t.insert("units".into(), json_num(r.num("units").filter(|u| *u >= 0.0).unwrap_or(1.0)));
         }
         if let Some(b) = base_by_key.get(&norm(&r.name)).map(|&k| &base_rows[k])
@@ -1383,9 +1384,9 @@ fn gantt_payload(cube: &Cube, o: &GanttInputs) -> Rd<Json> {
             }));
         }
     }
-    let project_start = if starts.is_empty() { o.today } else { starts.iter().copied().fold(f64::INFINITY, math_min) };
+    let project_start = if starts.is_empty() { o.today } else { starts.iter().copied().fold(f64::INFINITY, nan_min) };
     let project_finish =
-        if finishes.is_empty() { project_start } else { finishes.iter().copied().fold(f64::NEG_INFINITY, math_max) };
+        if finishes.is_empty() { project_start } else { finishes.iter().copied().fold(f64::NEG_INFINITY, nan_max) };
     let spec = CalendarSpec {
         working_days: true,
         weekend_code: Some(o.weekend_code),
@@ -1557,7 +1558,7 @@ fn planned_fraction(start: Option<f64>, finish: Option<f64>, status: f64, cal: &
     if total <= 0.0 {
         return Ok(1.0);
     }
-    Ok(math_min(1.0, cal.count_between(s, status)? / total))
+    Ok(nan_min(1.0, cal.count_between(s, status)? / total))
 }
 
 fn earned_value_card(c: &mut Call) -> Answer {
@@ -1627,16 +1628,16 @@ fn earned_value_card(c: &mut Call) -> Answer {
     let date_of = |v: Option<&V>| num(v);
     let mut tasks = Vec::new();
     for i in 0..rows_of(&scube) {
-        let name = js_trim(&js_str(cell(Some(task_col), i))).to_string();
+        let name = trim_space(&js_str(cell(Some(task_col), i))).to_string();
         if name.is_empty() {
             continue;
         }
         let bi = base_idx.get(&norm(&name)).copied();
         let base_cost = bi.and_then(|bi| b_cost.map(|bc| magnitude(cell(Some(bc), bi))));
         let cost = base_cost.unwrap_or_else(|| cost_col.map_or_default(|cc| magnitude(cell(Some(cc), i))));
-        let complete = math_max(
+        let complete = nan_max(
             0.0,
-            math_min(
+            nan_min(
                 100.0,
                 complete_col.map_or_default(|cc| {
                     let v = cell(Some(cc), i);
@@ -1773,7 +1774,7 @@ fn rk4(f: &dyn Fn(f64, f64) -> Option<f64>, y0: f64, t0: f64, t1: f64, steps: f6
         return None;
     }
     let s = steps.floor();
-    let n = math_max(1.0, math_min(100_000.0, if s.is_nan() || s == 0.0 { 1.0 } else { s }));
+    let n = nan_max(1.0, nan_min(100_000.0, if s.is_nan() || s == 0.0 { 1.0 } else { s }));
     let h = (t1 - t0) / n;
     let (mut ts, mut ys) = (vec![t0], vec![y0]);
     let (mut t, mut y) = (t0, y0);

@@ -12,7 +12,7 @@ pub fn number_to_string(x: f64) -> String {
     ryu_js::Buffer::new().format(x).to_string()
 }
 
-pub fn js_lower(s: &str) -> Cow<'_, str> {
+pub fn lower_text(s: &str) -> Cow<'_, str> {
     if s.bytes().all(|b| b.is_ascii() && !b.is_ascii_uppercase()) {
         Cow::Borrowed(s)
     } else if s.is_ascii() {
@@ -23,7 +23,7 @@ pub fn js_lower(s: &str) -> Cow<'_, str> {
 }
 
 /// JS WhiteSpace + LineTerminator, what `trim` strips and `\s` matches.
-pub fn is_js_space(c: char) -> bool {
+pub fn is_space_char(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{B}' | '\u{C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'
@@ -31,8 +31,8 @@ pub fn is_js_space(c: char) -> bool {
     )
 }
 
-pub fn js_trim(s: &str) -> &str {
-    s.trim_matches(is_js_space)
+pub fn trim_space(s: &str) -> &str {
+    s.trim_matches(is_space_char)
 }
 
 fn all_digits(s: &str) -> bool {
@@ -53,7 +53,7 @@ fn is_decimal_text(b: &str) -> bool {
 
 /// `Number(s)`: ECMAScript StringToNumber.
 pub fn string_to_number(s: &str) -> f64 {
-    let t = js_trim(s);
+    let t = trim_space(s);
     if t.is_empty() {
         return 0.0;
     }
@@ -78,7 +78,7 @@ pub fn string_to_number(s: &str) -> f64 {
     }
 }
 
-pub fn math_round(x: f64) -> f64 {
+pub fn round_half_up(x: f64) -> f64 {
     if !x.is_finite() || x == x.trunc() {
         return x;
     }
@@ -91,7 +91,7 @@ pub fn math_round(x: f64) -> f64 {
 }
 
 /// `Math.min` of two: a NaN wins and -0 is below 0.
-pub fn math_min(a: f64, b: f64) -> f64 {
+pub fn nan_min(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
@@ -106,7 +106,7 @@ pub fn math_min(a: f64, b: f64) -> f64 {
 }
 
 /// `Math.max` of two: a NaN wins and 0 is above -0.
-pub fn math_max(a: f64, b: f64) -> f64 {
+pub fn nan_max(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {

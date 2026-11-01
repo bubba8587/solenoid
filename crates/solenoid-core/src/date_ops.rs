@@ -5,7 +5,7 @@
 
 use crate::date_serial::{date_utc, days_from_civil, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::jsnum::{math_max as js_max, math_min as js_min, math_round};
+use crate::jsnum::{nan_max as js_max, nan_min as js_min, round_half_up};
 
 type Date = Option<f64>;
 
@@ -58,7 +58,7 @@ pub enum DiffOp {
 }
 
 pub fn date_diff_op_for_unit(unit: &str) -> Option<DiffOp> {
-    Some(match crate::jsnum::js_trim(unit).to_uppercase().as_str() {
+    Some(match crate::jsnum::trim_space(unit).to_uppercase().as_str() {
         "D" => DiffOp::Days,
         "Y" => DiffOp::Years,
         "M" => DiffOp::Months,
@@ -151,7 +151,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
     };
     let behind = |cond: bool| if cond { 1.0 } else { 0.0 };
     Ok(Some(match op {
-        DiffOp::Days => math_round((time(ed) - time(sd)) / MS_PER_DAY),
+        DiffOp::Days => round_half_up((time(ed) - time(sd)) / MS_PER_DAY),
         DiffOp::Years => ep.y - sp.y - behind(ep.m < sp.m || (ep.m == sp.m && ep.d < sp.d)),
         DiffOp::Months => (ep.y - sp.y) * 12.0 + (ep.m - sp.m) - behind(ep.d < sp.d),
         DiffOp::Ym => ((ep.y - sp.y) * 12.0 + (ep.m - sp.m) - behind(ep.d < sp.d)) % 12.0,
@@ -162,7 +162,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
                 // Day 0 is the last of the previous month.
                 let prev_len = parts(date_utc(ep.y, ep.m, 0.0)).d;
                 let anchor = utc(ep.y, ep.m - 1.0, js_min(sp.d, prev_len));
-                math_round((time(ed) - anchor) / MS_PER_DAY)
+                round_half_up((time(ed) - anchor) / MS_PER_DAY)
             }
         }
         DiffOp::Yd => {
@@ -174,7 +174,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
                 let bp = parts(base);
                 base = date_utc(ep.y - 1.0, bp.m, bp.d);
             }
-            math_round((time(ed) - time(base)) / MS_PER_DAY)
+            round_half_up((time(ed) - time(base)) / MS_PER_DAY)
         }
         DiffOp::Days360 => thirty360(if basis != 0.0 { Rule::Euro } else { Rule::Us }),
         DiffOp::YearFrac => {
@@ -209,7 +209,7 @@ pub enum TruncUnit {
 }
 
 pub fn date_trunc_unit_for(text: &str) -> Option<TruncUnit> {
-    Some(match crate::jsnum::js_lower(crate::jsnum::js_trim(text)).as_ref() {
+    Some(match crate::jsnum::lower_text(crate::jsnum::trim_space(text)).as_ref() {
         "d" | "day" | "days" => TruncUnit::Day,
         "w" | "week" | "weeks" | "week_mon" | "monday" => TruncUnit::Week,
         "week_sun" | "sunday" => TruncUnit::WeekSun,
@@ -270,7 +270,7 @@ impl Weekend {
 
 /// Excel's weekend code.
 pub fn weekend_days(code: f64) -> Option<Weekend> {
-    let days: &[u8] = match math_round(code) {
+    let days: &[u8] = match round_half_up(code) {
         1.0 => &[6, 0],
         2.0 => &[0, 1],
         3.0 => &[1, 2],

@@ -7,7 +7,7 @@ use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 
 /// An input's raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
 pub(crate) fn role_value(c: &Call, key: &str) -> V {
@@ -383,7 +383,7 @@ fn arabic(raw: &V) -> V {
         return V::err(sol_error(ErrorCode::Value, "ARABIC needs text"));
     };
     let upper = s.to_uppercase();
-    let text = crate::jsnum::js_trim(&upper);
+    let text = crate::jsnum::trim_space(&upper);
     if text.is_empty() {
         return V::Null;
     }
@@ -659,7 +659,7 @@ fn format_number_pattern(v: f64, format: &V) -> Result<String, V> {
     };
     let decimals = |f: &str| f.split('.').nth(1).map_or_default(|d| d.encode_utf16().count()) as f64;
     let fixed = |x: f64, d: f64| {
-        crate::jsnum::to_fixed(x, d)
+        crate::jsnum::fixed_text(x, d)
             .ok_or_else(|| super::frames::thrown("toFixed() digits argument must be between 0 and 100"))
     };
     if s.is_empty() || s == "general" {
@@ -740,11 +740,11 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     if g == Some(d) {
         return f64::NAN;
     }
-    let mut t = js_trim(text).to_string();
+    let mut t = trim_space(text).to_string();
     let mut pct = 0;
     while let Some(rest) = t.strip_suffix('%') {
         pct += 1;
-        t = js_trim(rest).to_string();
+        t = trim_space(rest).to_string();
     }
     // `/^\(.*\)$/`: `.` stops at a line terminator.
     let mut neg = false;
@@ -754,7 +754,7 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
         && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}'])
     {
         neg = true;
-        t = js_trim(&t[1..t.len() - 1]).to_string();
+        t = trim_space(&t[1..t.len() - 1]).to_string();
     }
     let sign_len = usize::from(t.starts_with(['+', '-']));
     if t[sign_len..].starts_with('$') {
@@ -784,7 +784,7 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
 
 /// `a`, `bi`, `a+bi`, `a-bi`, `i` and `-i`, with j for i, spaces anywhere; else NaN parts.
 fn parse_cx(s: &str) -> (f64, f64) {
-    let t: String = js_trim(s).chars().filter(|&c| !crate::jsnum::is_js_space(c)).collect();
+    let t: String = trim_space(s).chars().filter(|&c| !crate::jsnum::is_space_char(c)).collect();
     let nan = (f64::NAN, f64::NAN);
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
     // `\d+(?:\.\d*)?|\.\d+`

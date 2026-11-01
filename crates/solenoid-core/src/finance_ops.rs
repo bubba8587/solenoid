@@ -7,7 +7,7 @@
 
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::jsnum::{math_max, math_min, math_round};
+use crate::jsnum::{nan_max, nan_min, round_half_up};
 use libm::{exp, log};
 
 /// A body's answer: a number, a SolError, null, or a JS exception (its message).
@@ -55,7 +55,7 @@ fn utc_month(d: Date) -> f64 {
 
 /// A serial as epoch milliseconds, NaN past a JS Date's range.
 fn serial_to_js_date(serial: f64) -> Date {
-    crate::date_serial::time_clip(math_round((serial - 25569.0) * MS_PER_DAY)).unwrap_or(f64::NAN)
+    crate::date_serial::time_clip(round_half_up((serial - 25569.0) * MS_PER_DAY)).unwrap_or(f64::NAN)
 }
 
 fn js_date_to_serial(d: Date) -> f64 {
@@ -66,7 +66,7 @@ pub fn coup_add_months(d: Date, months: f64) -> Date {
     let (y, m0, day) = ymd(d);
     let m = m0 + months;
     let last = utc_date(utc(y, m + 1.0, 0.0));
-    utc(y, m, math_min(day, last))
+    utc(y, m, nan_min(day, last))
 }
 
 fn is_month_end(d: Date) -> bool {
@@ -87,7 +87,7 @@ pub fn coupon_date(anchor: Date, months: f64) -> Date {
 fn coupons_back_start(after: Date, maturity: Date, step: f64) -> f64 {
     const MS_PER_MONTH: f64 = MS_PER_DAY * 365.2425 / 12.0;
     let guess = ((maturity - after) / MS_PER_MONTH / step).floor() - 2.0;
-    let mut k = if guess.is_finite() { math_max(0.0, guess) } else { 0.0 };
+    let mut k = if guess.is_finite() { nan_max(0.0, guess) } else { 0.0 };
     while k > 0.0 && coupon_date(maturity, -k * step) <= after {
         k -= 1.0;
     }
@@ -117,7 +117,7 @@ pub fn days30_360(d1: Date, d2: Date) -> f64 {
 }
 
 pub fn actual_days(d1: Date, d2: Date) -> f64 {
-    math_round((d2 - d1) / 86_400_000.0)
+    round_half_up((d2 - d1) / 86_400_000.0)
 }
 
 pub fn basis_days(basis: f64) -> f64 {
@@ -197,7 +197,7 @@ pub fn solve_yield(price_at: impl Fn(f64) -> f64, target: f64, coupon_rate: f64)
         if delta.abs() < 1e-10 {
             break;
         }
-        yld = math_max(-0.9999, math_min(100.0, yld));
+        yld = nan_max(-0.9999, nan_min(100.0, yld));
     }
     yld
 }
@@ -317,7 +317,7 @@ pub fn oddl_price(
 /// switches to straight-line once that is larger.
 pub fn vdb_book_value(cost: f64, salvage: f64, life: f64, period_end: f64, factor: f64, no_switch: bool) -> f64 {
     let mut book = cost;
-    let n = math_min(period_end.floor(), life);
+    let n = nan_min(period_end.floor(), life);
     let frac = period_end - period_end.floor();
     let mut p = 0.0;
     while p < n && book > salvage {
@@ -327,8 +327,8 @@ pub fn vdb_book_value(cost: f64, salvage: f64, life: f64, period_end: f64, facto
         }
         let ddb = (book * factor) / life;
         let sl = (book - salvage) / rem_life;
-        let mut depr = if no_switch { ddb } else { math_max(ddb, sl) };
-        depr = math_min(depr, math_max(0.0, book - salvage));
+        let mut depr = if no_switch { ddb } else { nan_max(ddb, sl) };
+        depr = nan_min(depr, nan_max(0.0, book - salvage));
         book -= depr;
         p += 1.0;
     }
@@ -337,8 +337,8 @@ pub fn vdb_book_value(cost: f64, salvage: f64, life: f64, period_end: f64, facto
         if rem_life > 0.0 {
             let ddb = (book * factor) / life;
             let sl = (book - salvage) / rem_life;
-            let mut depr = (if no_switch { ddb } else { math_max(ddb, sl) }) * frac;
-            depr = math_min(depr, math_max(0.0, book - salvage));
+            let mut depr = (if no_switch { ddb } else { nan_max(ddb, sl) }) * frac;
+            depr = nan_min(depr, nan_max(0.0, book - salvage));
             book -= depr;
         }
     }
@@ -355,7 +355,7 @@ pub fn vdb(cost: f64, salvage: f64, life: f64, start: f64, end: f64, factor: f64
     if end > MAX_PERIODS {
         return Fin::Err(domain("vdb", "an end period of at most 1,000,000"));
     }
-    let result = math_max(
+    let result = nan_max(
         0.0,
         vdb_book_value(cost, salvage, life, start, factor, no_switch)
             - vdb_book_value(cost, salvage, life, end, factor, no_switch),
@@ -391,7 +391,7 @@ impl CouponOp {
 }
 
 pub fn coupon_value(op: CouponOp, settle_serial: f64, maturity_serial: f64, freq: f64, basis: f64) -> Fin {
-    let (f, b) = (math_round(freq), math_round(basis));
+    let (f, b) = (round_half_up(freq), round_half_up(basis));
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }
@@ -440,8 +440,8 @@ pub fn accrint(issue_serial: f64, settle_serial: f64, rate: f64, par: f64, frequ
     if !issue_serial.is_finite() || !settle_serial.is_finite() {
         return Fin::Null;
     }
-    let freq = math_round(frequency);
-    let b = math_round(basis);
+    let freq = round_half_up(frequency);
+    let b = round_half_up(basis);
     if let Some(e) = accrual_error("accrint", issue_serial, settle_serial, rate, par, Some(freq), b) {
         return Fin::Err(e);
     }
@@ -461,7 +461,7 @@ pub fn accrint_m(issue_serial: f64, settle_serial: f64, rate: f64, par: f64, bas
     if !issue_serial.is_finite() || !settle_serial.is_finite() {
         return Fin::Null;
     }
-    let b = math_round(basis);
+    let b = round_half_up(basis);
     if let Some(e) = accrual_error("accrintm", issue_serial, settle_serial, rate, par, None, b) {
         return Fin::Err(e);
     }
@@ -504,11 +504,11 @@ pub fn tbill(op: TBillOp, settle_serial: f64, maturity_serial: f64, x: f64) -> F
     }
     let (y, m, d) = ymd(serial_to_js_date(settle_serial));
     let last_day = utc_date(utc(y + 1.0, m + 1.0, 0.0));
-    let year_on = js_date_to_serial(utc(y + 1.0, m, math_min(d, last_day)));
+    let year_on = js_date_to_serial(utc(y + 1.0, m, nan_min(d, last_day)));
     if maturity_serial > year_on {
         return Fin::Err(domain(name, "the maturity date within one year of settlement"));
     }
-    let dsm = math_round(maturity_serial - settle_serial);
+    let dsm = round_half_up(maturity_serial - settle_serial);
     Fin::Num(match op {
         TBillOp::Tbillprice => 100.0 * (1.0 - x * dsm / 360.0),
         TBillOp::Tbillyield => ((100.0 - x) / x) * (360.0 / dsm),
@@ -540,7 +540,7 @@ pub fn security_disc(op: SecurityDiscOp, settle_serial: f64, maturity_serial: f6
         SecurityDiscOp::Intrate => ("intrate", "an investment and redemption above 0"),
         SecurityDiscOp::Received => ("received", "an investment and discount above 0"),
     };
-    let basis_code = math_round(basis);
+    let basis_code = round_half_up(basis);
     if let Some(e) = args_error(name, settle_serial, maturity_serial, None, Some(basis_code)) {
         return Fin::Err(e);
     }
@@ -576,7 +576,7 @@ pub fn price_disc(
         return Fin::Null;
     }
     let name = if pricedisc { "pricedisc" } else { "yielddisc" };
-    let b = math_round(basis);
+    let b = round_half_up(basis);
     if let Some(e) = args_error(name, settle_serial, maturity_serial, None, Some(b)) {
         return Fin::Err(e);
     }
@@ -610,7 +610,7 @@ pub fn price_mat(
         return Fin::Null;
     }
     let name = if pricemat { "pricemat" } else { "yieldmat" };
-    let b = math_round(basis);
+    let b = round_half_up(basis);
     if let Some(e) = args_error(name, settle_serial, maturity_serial, None, Some(b)) {
         return Fin::Err(e);
     }
@@ -652,7 +652,7 @@ pub fn duration_value(
     freq: f64,
     basis: f64,
 ) -> Fin {
-    let (f, b) = (math_round(freq), math_round(basis));
+    let (f, b) = (round_half_up(freq), round_half_up(basis));
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }
@@ -707,7 +707,7 @@ pub fn bond_price_yield(
     redemption: f64,
     freq: f64,
 ) -> Fin {
-    let f = math_round(freq);
+    let f = round_half_up(freq);
     if !settle_serial.is_finite() || !maturity_serial.is_finite() {
         return Fin::Null;
     }
@@ -756,7 +756,7 @@ pub fn odd_coupon(
         OddCouponOp::Oddlprice => "oddlprice",
         OddCouponOp::Oddlyield => "oddlyield",
     };
-    let f = math_round(freq);
+    let f = round_half_up(freq);
     if ![settle_serial, maturity_serial, fl_serial].iter().all(|x| x.is_finite()) {
         return Fin::Null;
     }
@@ -850,7 +850,7 @@ fn newton_discount_rate(values: &[f64], exponents: &[f64]) -> Option<f64> {
             return None;
         }
         let raw = r - f / df;
-        let next = math_max(RATE_FLOOR, raw);
+        let next = nan_max(RATE_FLOOR, raw);
         if next == raw && (next - r).abs() < 1e-12 * (1.0 + r.abs()) {
             return next.is_finite().then_some(next);
         }
@@ -1001,7 +1001,7 @@ fn drawdowns(prices: &[Cell]) -> Result<Vec<Option<f64>>, SolError> {
             return Err(e.clone());
         }
         out.push(finite(p).map(|p| {
-            peak = math_max(peak, p);
+            peak = nan_max(peak, p);
             if peak > 0.0 {
                 p / peak - 1.0
             } else {
@@ -1065,7 +1065,7 @@ fn excess_stats(returns: &[Cell], rf: f64) -> Result<Option<(f64, f64, f64)>, So
     let n = xs.len() as f64;
     let mean = xs.iter().fold(0.0, |a, b| a + b) / n;
     let sd = (xs.iter().fold(0.0, |a, b| a + libm::pow(b - mean, 2.0)) / (n - 1.0)).sqrt();
-    let downside = (xs.iter().fold(0.0, |a, &b| a + libm::pow(math_min(b, 0.0), 2.0)) / n).sqrt();
+    let downside = (xs.iter().fold(0.0, |a, &b| a + libm::pow(nan_min(b, 0.0), 2.0)) / n).sqrt();
     Ok(Some((mean, sd, downside)))
 }
 
@@ -1097,8 +1097,8 @@ pub fn returns_op(op: ReturnsOp, series: &[Cell], rf: f64, periods_per_year: f64
 
 /// CUMIPMT (`cumipmt`) and CUMPRINC: the interest or principal paid over periods start…end of a level-payment loan.
 pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_raw: f64, end_raw: f64, ty: f64) -> Fin {
-    let start = math_round(start_raw);
-    let end = math_round(end_raw);
+    let start = round_half_up(start_raw);
+    let end = round_half_up(end_raw);
     if !(rate > 0.0 && nper > 0.0 && pv > 0.0 && start >= 1.0 && end >= start && end <= nper) {
         return Fin::Err(sol_error(
             ErrorCode::Domain,

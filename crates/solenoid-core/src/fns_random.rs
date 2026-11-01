@@ -7,7 +7,7 @@ use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;
 use crate::error_value::{ErrorCode, FxError};
 use crate::excel_functions::{js_number_of as js_number, js_string_of, parse_number, to_num, V};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string};
+use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use std::rc::Rc;
 
@@ -44,7 +44,7 @@ fn is_true(v: &V) -> bool {
         V::Bool(b) => *b,
         V::Num(n) => *n == 1.0,
         V::Str(s) => {
-            let t = js_trim(s);
+            let t = trim_space(s);
             t.eq_ignore_ascii_case("true") || t == "1"
         }
         _ => false,
@@ -271,12 +271,13 @@ fn randdist(a: &[V]) -> V {
         v => js_string_of(v),
     };
     // `.trim().toLowerCase().replace(/\s+/g, "-")`.
-    let key = js_lower(js_trim(&family)).split(is_js_space).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-");
+    let key =
+        lower_text(trim_space(&family)).split(is_space_char).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-");
     let Some(&(name, continuous, inverse, defaults)) = FAMILIES.iter().find(|(k, ..)| *k == key) else {
         let names: Vec<&str> = FAMILIES.iter().map(|(k, ..)| *k).collect();
         return err(ErrorCode::Domain, format!("RANDDIST family must be one of {}", names.join(", ")));
     };
-    let r = math_round(to_num(arg(a, 1)));
+    let r = round_half_up(to_num(arg(a, 1)));
     let count = if r.is_nan() { f64::NAN } else { r.clamp(0.0, 100_000.0) };
     if !count.is_finite() {
         return crate::excel_functions::value_err("RANDDIST");

@@ -3,7 +3,7 @@
 
 use crate::calendar::{CalendarSpec, Interval};
 use crate::files::{day_list, dedupe, iso_to_serial, seven_day_week, weekend_code, PlanFile, UniqueNames};
-use crate::num::{js_lower, js_trim, math_min, math_round, string_to_number};
+use crate::num::{lower_text, nan_min, round_half_up, string_to_number, trim_space};
 use crate::xml::{self, XmlNode};
 use crate::{Dependency, LinkType, PlanTask, ScheduleError, TaskCalendar};
 use std::collections::HashMap;
@@ -66,7 +66,7 @@ fn component(rest: &mut &str, unit: char) -> f64 {
 
 /// An XSD duration (`PT8H0M0S`, `P1DT4H`) in hours; a leading minus is read past.
 pub fn xsd_duration_to_hours(s: Option<&str>) -> Option<f64> {
-    let t = js_trim(s.filter(|s| !s.is_empty())?);
+    let t = trim_space(s.filter(|s| !s.is_empty())?);
     let mut rest = t.strip_prefix('-').unwrap_or(t).strip_prefix('P')?;
     let d = component(&mut rest, 'D');
     let (mut h, mut m, mut sec) = (0.0, 0.0, 0.0);
@@ -85,11 +85,11 @@ fn num(s: Option<&str>) -> Option<f64> {
 }
 
 fn flag(s: Option<&str>) -> Option<bool> {
-    s.map(|s| s == "1" || js_lower(s) == "true")
+    s.map(|s| s == "1" || lower_text(s) == "true")
 }
 
 fn clock_minutes(s: Option<&str>) -> Option<f64> {
-    let b = js_trim(s?).as_bytes();
+    let b = trim_space(s?).as_bytes();
     let digits = |r: &[u8]| r.iter().fold(0.0, |n, c| n * 10.0 + f64::from(c - b'0'));
     [2, 1].into_iter().find_map(|k| {
         let (h, rest) = (b.get(..k)?, b.get(k..)?);
@@ -176,7 +176,7 @@ fn read_calendar(root: &XmlNode, unsupported: &mut Vec<String>, want_uid: Option
 }
 
 fn slack_days(s: Option<&str>, hours_per_day: f64) -> Option<f64> {
-    num(s).map(|v| math_round(v / 10.0 / 60.0 / hours_per_day))
+    num(s).map(|v| round_half_up(v / 10.0 / 60.0 / hours_per_day))
 }
 
 struct Rec {
@@ -200,7 +200,7 @@ pub fn read_mspdi(text: &str) -> Result<MspdiPlan, ScheduleError> {
     for el in root.child("Tasks").into_iter().flat_map(|t| t.children("Task")) {
         let text = |f: &str| el.text_of(f);
         let uid = text("UID").unwrap_or("");
-        let given = js_trim(text("Name").unwrap_or(""));
+        let given = trim_space(text("Name").unwrap_or(""));
         let given = if given.is_empty() { format!("Task {uid}") } else { given.to_string() };
         let level = num(text("OutlineLevel")).unwrap_or(1.0);
         if level == 0.0 || text("IsNull") == Some("1") {
@@ -285,7 +285,7 @@ pub fn read_mspdi(text: &str) -> Result<MspdiPlan, ScheduleError> {
             task.predecessors.push(Dependency {
                 task: link.text_of("PredecessorUID").unwrap_or("").to_string(),
                 ty: link_type(link.text_of("Type").unwrap_or("1")),
-                lag: math_round(lag * 1000.0) / 1000.0,
+                lag: round_half_up(lag * 1000.0) / 1000.0,
                 elapsed: elapsed.then_some(true),
             });
         }
@@ -317,7 +317,7 @@ pub fn read_mspdi(text: &str) -> Result<MspdiPlan, ScheduleError> {
             }
         });
     }
-    let start = start.or_else(|| golden.iter().filter_map(|g| g.start).reduce(math_min)).unwrap_or(0.0);
+    let start = start.or_else(|| golden.iter().filter_map(|g| g.start).reduce(nan_min)).unwrap_or(0.0);
     let title = root.text_of("Title").or(root.text_of("Name")).unwrap_or("").to_string();
     let tasks = nest(recs);
     Ok(MspdiPlan {

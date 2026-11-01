@@ -45,7 +45,7 @@ pub fn compare_utf16(a: &str, b: &str) -> Ordering {
 }
 
 /// JS `toLowerCase`, borrowing when nothing changes.
-pub fn js_lower(s: &str) -> Cow<'_, str> {
+pub fn lower_text(s: &str) -> Cow<'_, str> {
     if s.bytes().all(|b| b.is_ascii() && !b.is_ascii_uppercase()) {
         Cow::Borrowed(s)
     } else if s.is_ascii() {
@@ -56,7 +56,7 @@ pub fn js_lower(s: &str) -> Cow<'_, str> {
 }
 
 /// JS WhiteSpace + LineTerminator, what `String.prototype.trim` strips.
-pub fn is_js_space(c: char) -> bool {
+pub fn is_space_char(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{B}' | '\u{C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'
@@ -64,8 +64,8 @@ pub fn is_js_space(c: char) -> bool {
     )
 }
 
-pub fn js_trim(s: &str) -> &str {
-    s.trim_matches(is_js_space)
+pub fn trim_space(s: &str) -> &str {
+    s.trim_matches(is_space_char)
 }
 
 /// `String(v)` for a cell.
@@ -81,7 +81,7 @@ pub fn js_string(v: &FrameCell) -> Cow<'_, str> {
 
 /// `Number(s)`: ECMAScript StringToNumber.
 pub fn string_to_number(s: &str) -> f64 {
-    let t = js_trim(s);
+    let t = trim_space(s);
     if t.is_empty() {
         return 0.0;
     }
@@ -129,7 +129,7 @@ pub fn truthy(v: &FrameCell) -> bool {
 }
 
 /// `Math.round`: half rounds toward +∞, and what rounds to zero from below is -0.
-pub fn math_round(x: f64) -> f64 {
+pub fn round_half_up(x: f64) -> f64 {
     if !x.is_finite() || x == x.trunc() {
         return x;
     }
@@ -153,7 +153,7 @@ pub fn trunc_count(x: f64) -> usize {
 }
 
 /// `Math.min` of two: a NaN wins and -0 is below 0.
-pub fn math_min(a: f64, b: f64) -> f64 {
+pub fn nan_min(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
@@ -168,7 +168,7 @@ pub fn math_min(a: f64, b: f64) -> f64 {
 }
 
 /// `Math.max` of two: a NaN wins and 0 is above -0.
-pub fn math_max(a: f64, b: f64) -> f64 {
+pub fn nan_max(a: f64, b: f64) -> f64 {
     if a.is_nan() || b.is_nan() {
         f64::NAN
     } else if a == b {
@@ -183,7 +183,7 @@ pub fn math_max(a: f64, b: f64) -> f64 {
 }
 
 /// `x.toFixed(f)`: None where JS throws (f past 100). An exact tie rounds up, where Rust's formatting rounds to even.
-pub fn to_fixed(x: f64, f: f64) -> Option<String> {
+pub fn fixed_text(x: f64, f: f64) -> Option<String> {
     let f = if f.is_nan() { 0.0 } else { f.trunc() };
     if !(0.0..=100.0).contains(&f) {
         return None;

@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{holds_text, js_string_of, to_f64_js, V};
-use crate::jsnum::{js_lower, js_trim, math_round};
+use crate::jsnum::{lower_text, round_half_up, trim_space};
 use crate::nodes::packs as k;
 
 pub const NAMES: &[&str] = &[
@@ -181,7 +181,7 @@ fn lower_or(v: &V, dflt: &str) -> String {
     if nullish(v) {
         dflt.to_string()
     } else {
-        js_lower(&js_string_of(v)).into_owned()
+        lower_text(&js_string_of(v)).into_owned()
     }
 }
 
@@ -241,7 +241,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             v if nullish(v) => V::Null,
             v => {
                 let s = js_string_of(v);
-                if js_trim(&s).is_empty() {
+                if trim_space(&s).is_empty() {
                     V::Null
                 } else {
                     k::molar_mass(&s)
@@ -327,7 +327,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if a.iter().any(nullish) {
                 return V::Null;
             }
-            let c: Vec<Option<String>> = a.iter().map(|b| Some(js_lower(&js_string_of(b)).into_owned())).collect();
+            let c: Vec<Option<String>> = a.iter().map(|b| Some(lower_text(&js_string_of(b)).into_owned())).collect();
             let band = |i: usize| c.get(i).cloned().flatten();
             let r = if c.len() == 5 {
                 k::decode_resistor(&[band(0), band(1), band(2)], band(3), band(4))
@@ -395,7 +395,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return err(ErrorCode::Domain, "Needs max HR > 0 and resting HR below it");
             }
             let at = |pct: f64| {
-                V::Num(math_round(match r {
+                V::Num(round_half_up(match r {
                     Some(r) => r + pct * (m - r),
                     None => pct * m,
                 }))

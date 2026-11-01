@@ -12,7 +12,7 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{Stat, V};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{cell_key, unmatchable_key, CellKey};
-use crate::jsnum::{js_lower, js_string, js_trim};
+use crate::jsnum::{js_string, lower_text, trim_space};
 use crate::planners;
 use rustc_hash::FxHashMap;
 
@@ -284,7 +284,7 @@ fn promote_headers(f: &FrameValue) -> FrameValue {
         .iter()
         .map(|c| match c.values.first() {
             None | Some(FrameCell::Null) | Some(FrameCell::Err(_)) => String::new(),
-            Some(v) => js_trim(&crate::frame_verbs::format_frame_cell(c.ty, v)).to_string(),
+            Some(v) => trim_space(&crate::frame_verbs::format_frame_cell(c.ty, v)).to_string(),
         })
         .collect();
     let unique = make_headers(&names, f.columns.len());
@@ -757,7 +757,7 @@ fn nest_groups(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
             }
         }
     }
-    let nested = js_trim(&nested);
+    let nested = trim_space(&nested);
     let mut header = keys.clone();
     header.push(if nested.is_empty() { "items".to_string() } else { nested.to_string() });
     let names = make_headers(&header, keys.len() + 1);
@@ -789,7 +789,7 @@ fn lookup_needle(lookup: &str, ty: FrameColType) -> Res<V> {
             Err(e) => return Err(FrameOut::Error(e)),
         },
         FrameColType::Date => {
-            let t = js_trim(lookup);
+            let t = trim_space(lookup);
             if plain_decimal(t) {
                 V::Num(t.parse::<f64>().unwrap_or(f64::NAN))
             } else {
@@ -873,7 +873,7 @@ fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let name = str_arg(args, 0)?;
     let values: Vec<FrameCell> = list_arg(args, 1)?.iter().map(v_cell).collect::<Res<_>>()?;
     let ty: FrameColType = str_arg(args, 2)?.parse().map_err(|_| bad())?;
-    let clean = js_trim(&name);
+    let clean = trim_space(&name);
     let mut columns = f.columns.clone();
     let at = match f.columns.iter().position(|c| c.name == clean) {
         Some(i) => {
@@ -950,7 +950,7 @@ pub(crate) fn typed_column(
                 },
                 FrameColType::Logical => match c {
                     FrameCell::Bool(_) => c.clone(),
-                    other => FrameCell::Bool(js_lower(js_trim(&js_string(other))) == "true"),
+                    other => FrameCell::Bool(lower_text(trim_space(&js_string(other))) == "true"),
                 },
                 _ => match c {
                     FrameCell::Num(_) => c.clone(),

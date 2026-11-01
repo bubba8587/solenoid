@@ -3,7 +3,7 @@
 
 use super::{Dependency, Diagnostic, LinkType, ScheduleLink, ScheduleOutput, ScheduledTask};
 use crate::dates::iso;
-use crate::num::{is_js_space, js_lower, js_trim, math_round, number_to_string};
+use crate::num::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use std::collections::{HashMap, HashSet};
 
 const HIGH_FLOAT_DAYS: f64 = 44.0;
@@ -18,7 +18,7 @@ pub fn diagnose(
     let mut push = |check: &str, task: &str, detail: String| {
         out.push(Diagnostic { check: check.into(), task: task.into(), detail })
     };
-    let lower = |s: &str| js_lower(s).into_owned();
+    let lower = |s: &str| lower_text(s).into_owned();
     // Each task's parent, the nearest earlier task at a lower level, found in one pass with a stack of open levels.
     let mut parent: Vec<Option<usize>> = vec![None; tasks.len()];
     let mut open: Vec<usize> = Vec::new();
@@ -127,7 +127,7 @@ fn label(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut space = false;
     for c in s.chars() {
-        if matches!(c, ':' | '#' | ';' | ',') || is_js_space(c) {
+        if matches!(c, ':' | '#' | ';' | ',') || is_space_char(c) {
             space = true;
         } else {
             if space {
@@ -137,7 +137,7 @@ fn label(s: &str) -> String {
             out.push(c);
         }
     }
-    let t = js_trim(&out);
+    let t = trim_space(&out);
     if t.is_empty() {
         "task".into()
     } else {
@@ -269,16 +269,16 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
         let day = (serial + 1e-9).floor();
         let frac = serial - day;
         if opts.minutes && frac > 0.0 {
-            let mins = math_round(frac * 1440.0);
+            let mins = round_half_up(frac * 1440.0);
             return format!("{}T{}:{}:00", iso(day), pad2((mins / 60.0).floor()), pad2(mins % 60.0));
         }
         let on_day = if opts.minutes && end && frac == 0.0 { day - 1.0 } else { day };
         format!("{}T{}", iso(on_day), if end { "17:00:00" } else { "08:00:00" })
     };
-    let dur = |days: f64| format!("PT{}H0M0S", number_to_string(math_round(days * h)));
+    let dur = |days: f64| format!("PT{}H0M0S", number_to_string(round_half_up(days * h)));
     let mut uid_of: HashMap<String, usize> = HashMap::new();
     for (i, t) in out.tasks.iter().enumerate() {
-        uid_of.insert(js_lower(&t.name).into_owned(), i + 1);
+        uid_of.insert(lower_text(&t.name).into_owned(), i + 1);
     }
     let title = esc(opts.title.unwrap_or("Schedule"));
     let mut lines: Vec<String> = vec![
@@ -318,7 +318,7 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
     ));
     for (i, t) in out.tasks.iter().enumerate() {
         let uid = i + 1;
-        let tenths = |days: f64| number_to_string(math_round(days * h * 60.0 * 10.0));
+        let tenths = |days: f64| number_to_string(round_half_up(days * h * 60.0 * 10.0));
         let constraint = if t.alap {
             1
         } else if t.manual {
@@ -347,7 +347,7 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
             format!("<TotalSlack>{}</TotalSlack>", tenths(t.float)),
             format!("<FreeSlack>{}</FreeSlack>", tenths(t.free_float)),
             format!("<Critical>{}</Critical>", u8::from(t.critical)),
-            format!("<PercentComplete>{}</PercentComplete>", number_to_string(math_round(t.complete))),
+            format!("<PercentComplete>{}</PercentComplete>", number_to_string(round_half_up(t.complete))),
             format!("<ConstraintType>{constraint}</ConstraintType>"),
         ];
         if let (false, false, Some(floor)) = (t.alap, t.manual, t.start_floor) {
@@ -358,9 +358,9 @@ pub fn write_mspdi(out: &ScheduleOutput, opts: &MspdiOptions) -> String {
             f.push(format!("<Deadline>{}</Deadline>", stamp(d, true)));
         }
         for d in &t.predecessors {
-            let Some(puid) = uid_of.get(js_lower(&d.task).as_ref()) else { continue };
+            let Some(puid) = uid_of.get(lower_text(&d.task).as_ref()) else { continue };
             let elapsed = d.elapsed == Some(true);
-            let lag_tenths = math_round(d.lag * if elapsed { 24.0 } else { h } * 60.0 * 10.0);
+            let lag_tenths = round_half_up(d.lag * if elapsed { 24.0 } else { h } * 60.0 * 10.0);
             f.push(format!(
                 "<PredecessorLink><PredecessorUID>{puid}</PredecessorUID><Type>{}</Type><CrossProject>0</CrossProject><LinkLag>{}</LinkLag><LagFormat>{}</LagFormat></PredecessorLink>",
                 link_code(d.ty),

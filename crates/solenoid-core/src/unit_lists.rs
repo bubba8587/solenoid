@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::error_value::SolError;
 use crate::excel_functions::V;
 use crate::fns_lists::{running_plain, RunOp};
-use crate::jsnum::{compare_utf16, math_round, number_to_string};
+use crate::jsnum::{compare_utf16, number_to_string, round_half_up};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{to_precision, unit_error, READINGS_ADD};
 
@@ -214,7 +214,7 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
         })
         .collect();
     let out = running_plain(op, &mags, window);
-    let w = window.map(math_round).filter(|&w| w >= 1.0).map_or(usize::MAX, |w| w.min(usize::MAX as f64) as usize);
+    let w = window.map(round_half_up).filter(|&w| w >= 1.0).map_or(usize::MAX, |w| w.min(usize::MAX as f64) as usize);
     let counted: Vec<usize> = mags.iter().map(|v| usize::from(matches!(v, V::Num(n) if n.is_finite()))).collect();
     let display =
         if is_affine && op == RunOp::Stdev { None } else { prep.display.as_ref().and_then(|d| d.display.clone()) };

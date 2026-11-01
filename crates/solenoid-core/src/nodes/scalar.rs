@@ -6,7 +6,7 @@ use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
-use crate::jsnum::{math_round, number_to_string};
+use crate::jsnum::{number_to_string, round_half_up};
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
@@ -148,8 +148,8 @@ fn base_convert(c: &mut Call) -> Answer {
     if matches!(raw, V::Null) {
         return done(c, V::Null, V::Null);
     }
-    let from = math_round(num(&from_raw));
-    let to = math_round(num(&to_raw));
+    let from = round_half_up(num(&from_raw));
+    let to = round_half_up(num(&to_raw));
     if from < 2.0 || from > 36.0 || to < 2.0 || to > 36.0 {
         return done(c, V::Null, V::Null);
     }
@@ -391,7 +391,7 @@ fn series_sum(c: &mut Call) -> Answer {
 fn multinomial(c: &mut Call) -> Answer {
     let result = match first(c, "values") {
         V::List(vals) if !vals.is_empty() => {
-            let ns: Vec<f64> = vals.iter().map(|v| math_round(num(v))).collect();
+            let ns: Vec<f64> = vals.iter().map(|v| round_half_up(num(v))).collect();
             if ns.iter().any(|&v| v < 0.0) {
                 V::Null
             } else {
@@ -399,7 +399,7 @@ fn multinomial(c: &mut Call) -> Answer {
                 let ln = crate::dists::ln_gamma(total + 1.0)
                     - ns.iter().fold(0.0, |s, v| s + crate::dists::ln_gamma(v + 1.0));
                 let ops: Vec<&V> = vals.iter().collect();
-                guard_finite(math_round(libm::exp(ln)), &ops)
+                guard_finite(round_half_up(libm::exp(ln)), &ops)
             }
         }
         _ => V::Null,

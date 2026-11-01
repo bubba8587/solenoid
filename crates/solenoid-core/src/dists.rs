@@ -3,7 +3,7 @@
 // The constants' digits are as written; a range test has to let a NaN through.
 #![allow(clippy::excessive_precision, clippy::manual_range_contains)]
 
-use crate::jsnum::{math_max, math_min};
+use crate::jsnum::{nan_max, nan_min};
 use libm::{exp, log, pow, sin};
 use std::f64::consts::PI;
 
@@ -64,7 +64,7 @@ pub fn regularized_gamma(a: f64, x: f64) -> f64 {
         if !converged {
             return f64::NAN;
         }
-        math_min(1.0, sum * exp(-x + a * log(x) - ln_gamma(a)))
+        nan_min(1.0, sum * exp(-x + a * log(x) - ln_gamma(a)))
     } else {
         let mut b = x + 1.0 - a;
         let mut c = 1.0 / 1e-30;
@@ -428,13 +428,13 @@ fn binom_cdf(k: f64, n: f64, p: f64) -> Option<f64> {
         return Some(0.0);
     }
     let r = regularized_beta(1.0 - p, n - k, k + 1.0);
-    r.is_finite().then(|| math_min(1.0, math_max(0.0, r)))
+    r.is_finite().then(|| nan_min(1.0, nan_max(0.0, r)))
 }
 
 fn hypgeom_pmf(k: f64, n: f64, m: f64, big_n: f64) -> Option<f64> {
     let (k, n, m, big_n) = (k.floor(), n.floor(), m.floor(), big_n.floor());
-    let lo = math_max(0.0, n + m - big_n);
-    let hi = math_min(n, m);
+    let lo = nan_max(0.0, n + m - big_n);
+    let hi = nan_min(n, m);
     if k < lo || k > hi || big_n <= 0.0 || m < 0.0 || n < 0.0 || m > big_n || n > big_n {
         return None;
     }
@@ -662,7 +662,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                 Some(1.0)
             } else {
                 let r = 1.0 - regularized_gamma(ki + 1.0, lv);
-                r.is_finite().then(|| math_min(1.0, math_max(0.0, r)))
+                r.is_finite().then(|| nan_min(1.0, nan_max(0.0, r)))
             }
         }
         "hypgeom" => {
@@ -670,8 +670,8 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             if form == Form::Pmf {
                 hypgeom_pmf(ki, ni, mi, big)
             } else {
-                let lo = math_max(0.0, ni + mi - big);
-                let hi = math_min(ni, mi);
+                let lo = nan_max(0.0, ni + mi - big);
+                let hi = nan_min(ni, mi);
                 if ![ki, ni, mi, big].iter().all(|x| x.is_finite())
                     || big <= 0.0
                     || mi < 0.0
@@ -685,11 +685,11 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                 } else {
                     // Hoeffding bounds each pmf by exp(-2(j - mean)^2 / n): past sqrt(400n) from the mean it is below
                     // e^-800, so exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[C120]] linearWork).
-                    let (mut from, mut top) = (lo, math_min(ki, hi));
+                    let (mut from, mut top) = (lo, nan_min(ki, hi));
                     if top - from > 10_000.0 {
                         let (mean, reach) = (ni * mi / big, (400.0 * ni).sqrt().ceil() + 1.0);
-                        from = math_max(lo, mean.floor() - reach);
-                        top = math_min(top, mean.ceil() + reach);
+                        from = nan_max(lo, mean.floor() - reach);
+                        top = nan_min(top, mean.ceil() + reach);
                     }
                     if top - from > LOOP_CAP {
                         return Err(TooLong);
@@ -710,7 +710,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                     if bad {
                         None
                     } else {
-                        sum.is_finite().then(|| math_min(1.0, math_max(0.0, sum)))
+                        sum.is_finite().then(|| nan_min(1.0, nan_max(0.0, sum)))
                     }
                 }
             }
@@ -724,7 +724,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                 Some(exp(ln_combin(ki + ri - 1.0, ki) + ri * log(pv) + ki * log(1.0 - pv)))
             } else {
                 let r = regularized_beta(pv, ri, ki + 1.0);
-                r.is_finite().then(|| math_min(1.0, math_max(0.0, r)))
+                r.is_finite().then(|| nan_min(1.0, nan_max(0.0, r)))
             }
         }
         "phi" => Some(exp(-v * v / 2.0) / sqrt_2pi),

@@ -20,7 +20,7 @@ use crate::frame::{
     frame_row_count, make_headers, same_column_unit, ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue,
 };
 use crate::jsnum::{
-    compare_utf16, js_lower, js_string, js_trim, math_round, number_to_string, to_number, trunc_count, truthy,
+    compare_utf16, js_string, lower_text, number_to_string, round_half_up, to_number, trim_space, trunc_count, truthy,
 };
 use crate::sort::stable_sort_by;
 use crate::spelled::{spelled, Wire};
@@ -618,7 +618,7 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
         if match_case {
             s.to_string()
         } else {
-            js_lower(s).into_owned()
+            lower_text(s).into_owned()
         }
     };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
@@ -638,7 +638,7 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
                     _ => h.len() >= n.len() && h[h.len() - n.len()..].eq_ignore_ascii_case(n),
                 });
             }
-            let hay: Cow<str> = if match_case { raw } else { Cow::Owned(js_lower(&raw).into_owned()) };
+            let hay: Cow<str> = if match_case { raw } else { Cow::Owned(lower_text(&raw).into_owned()) };
             Ok(match op {
                 FilterOp::Contains => hay.contains(needle.as_str()),
                 FilterOp::StartsWith => hay.starts_with(needle.as_str()),
@@ -656,7 +656,7 @@ pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, 
             } else if raw.is_ascii() && folded.is_ascii() {
                 raw.as_bytes().eq_ignore_ascii_case(folded.as_bytes())
             } else {
-                js_lower(&raw) == folded.as_str()
+                lower_text(&raw) == folded.as_str()
             }
         };
         return Ok(match op {
@@ -1580,7 +1580,8 @@ enum Score {
 pub type PivotLayoutJson = Json;
 
 pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLayoutJson)> {
-    let keep = |names: &[String]| -> Vec<String> { names.iter().filter(|s| !js_trim(s).is_empty()).cloned().collect() };
+    let keep =
+        |names: &[String]| -> Vec<String> { names.iter().filter(|s| !trim_space(s).is_empty()).cloned().collect() };
     let row_fields = keep(&spec.row_fields);
     let col_fields = keep(&spec.col_fields);
     let value_names = keep(&spec.values);
@@ -2053,7 +2054,7 @@ pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: FillDir) -> Res<Fram
 
 /// `undefined` (the column stays as it is) is `None`.
 fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
-    let s = js_trim(text);
+    let s = trim_space(text);
     if s.is_empty() {
         return Some(FrameCell::Null);
     }
@@ -2084,7 +2085,7 @@ pub fn replace_values(
     if find.is_empty() {
         return Ok(f.clone());
     }
-    let target = js_trim(column);
+    let target = trim_space(column);
     let targets: HashSet<String> = if target.is_empty() {
         f.columns.iter().map(|c| c.name.clone()).collect()
     } else {
@@ -2194,7 +2195,7 @@ fn with_unique_names(mut out: Vec<FrameColumn>) -> FrameValue {
 }
 
 pub fn add_index_column(f: &FrameValue, name: &str, start: f64) -> FrameValue {
-    let nm = match js_trim(name) {
+    let nm = match trim_space(name) {
         "" => "Index",
         t => t,
     };
@@ -2228,7 +2229,7 @@ pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option
         texts.iter().map(|t| t.as_deref().map_or_default(|t| t.split(delimiter).collect())).collect();
     let n = parts.iter().map(Vec::len).max().unwrap_or(0);
     let new_cols = (0..n).map(|k| {
-        let name = match names.and_then(|ns| ns.get(k)).map(|s| js_trim(s)) {
+        let name = match names.and_then(|ns| ns.get(k)).map(|s| trim_space(s)) {
             Some(t) if !t.is_empty() => t.to_string(),
             _ => format!("{column} {}", k + 1),
         };
@@ -2261,7 +2262,7 @@ pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: 
     let kept: Vec<&FrameColumn> = f.columns.iter().filter(|c| !drop.contains(c.name.as_str())).collect();
     let kept_before = f.columns[..at].iter().filter(|c| !drop.contains(c.name.as_str())).count();
     let merged = FrameColumn::new(
-        match js_trim(name) {
+        match trim_space(name) {
             "" => "Merged",
             t => t,
         },
@@ -2359,7 +2360,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     };
     let val_col =
         if func.reads_column() { Some(require_column(f, spec.column.as_deref().unwrap_or(""))?) } else { None };
-    let big_n = math_round(spec.n.unwrap_or(1.0)).max(1.0);
+    let big_n = round_half_up(spec.n.unwrap_or(1.0)).max(1.0);
     let big_n = if spec.n.is_some_and(f64::is_nan) { f64::NAN } else { big_n };
     let parts = buckets_of(n, &key_cols);
     let mut out: Vec<FrameCell> = vec![FrameCell::Null; n];
@@ -2570,7 +2571,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         Some(vc) if matches!(func, WindowFn::Lag | WindowFn::Lead | WindowFn::First | WindowFn::Last) => vc.ty,
         _ => FrameColType::Number,
     };
-    let trimmed = js_trim(&spec.as_);
+    let trimmed = trim_space(&spec.as_);
     let name = if trimmed.is_empty() { func.as_str().to_string() } else { trimmed.to_string() };
     let delta = if func == WindowFn::Diff { Some(1) } else { None };
     let plan = match val_col {

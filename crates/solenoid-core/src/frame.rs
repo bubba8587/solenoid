@@ -6,7 +6,7 @@ use std::rc::Rc;
 use serde_json::{json, Value as Json};
 
 use crate::error_value::SolError;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use crate::spelled::spelled;
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, Dim};
@@ -146,7 +146,7 @@ pub fn frame_row_count(f: &FrameValue) -> usize {
 pub fn make_headers(names: &[String], ncols: usize) -> Vec<String> {
     let raw: Vec<String> = (0..ncols)
         .map(|i| {
-            let trimmed = names.get(i).map(|s| js_trim(s)).unwrap_or("");
+            let trimmed = names.get(i).map(|s| trim_space(s)).unwrap_or("");
             if trimmed.is_empty() {
                 format!("Col{}", i + 1)
             } else {
@@ -172,7 +172,7 @@ pub fn make_headers(names: &[String], ncols: usize) -> Vec<String> {
 }
 
 pub fn get_column<'a>(f: &'a FrameValue, name: &str) -> Option<&'a FrameColumn> {
-    let key = js_trim(name);
+    let key = trim_space(name);
     if let Some(c) = f.columns.iter().find(|c| c.name == key) {
         return Some(c);
     }

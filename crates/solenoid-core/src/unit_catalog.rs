@@ -119,7 +119,7 @@ fn unit_pow(a: &Unit, n: f64) -> Option<Unit> {
 
 /// A symbol, with a power as `^n` or trailing digits.
 fn parse_factor(tok: &str) -> Option<Unit> {
-    let t = crate::jsnum::js_trim(tok);
+    let t = crate::jsnum::trim_space(tok);
     if t.is_empty() {
         return None;
     }
@@ -158,7 +158,7 @@ fn parse_factor(tok: &str) -> Option<Unit> {
 }
 
 fn parse_product(s: &str) -> Option<Unit> {
-    let factors: Vec<&str> = s.split(['*', '·']).map(crate::jsnum::js_trim).filter(|f| !f.is_empty()).collect();
+    let factors: Vec<&str> = s.split(['*', '·']).map(crate::jsnum::trim_space).filter(|f| !f.is_empty()).collect();
     if factors.is_empty() {
         return None;
     }
@@ -170,7 +170,7 @@ fn parse_product(s: &str) -> Option<Unit> {
 }
 
 pub fn parse_unit(expr: &str) -> Option<Unit> {
-    let s = crate::jsnum::js_trim(expr);
+    let s = crate::jsnum::trim_space(expr);
     if s.is_empty() {
         return None;
     }

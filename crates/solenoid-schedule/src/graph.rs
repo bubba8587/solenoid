@@ -4,11 +4,11 @@
 
 use super::calendar::{hours_per_day_of, CalendarSpec};
 use super::{Dependency, LinkType, PlanTask, ScheduleError, Sr, TaskCalendar};
-use crate::num::{js_lower, js_trim, math_max, math_min, number_to_string};
+use crate::num::{lower_text, nan_max, nan_min, number_to_string, trim_space};
 use std::collections::{HashMap, VecDeque};
 
 pub fn name_key(name: &str) -> String {
-    js_lower(js_trim(name)).into_owned()
+    lower_text(trim_space(name)).into_owned()
 }
 
 pub struct FlatTask {
@@ -66,7 +66,7 @@ fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
         out: &mut Vec<FlatTask>,
         seen: &mut HashMap<String, usize>,
     ) -> Sr<usize> {
-        let name = js_trim(&t.name).to_string();
+        let name = trim_space(&t.name).to_string();
         let row = t.row.unwrap_or((out.len() + 1) as f64);
         if name.is_empty() {
             return Err(ScheduleError::new(format!("row {} has no task name", number_to_string(row))));
@@ -78,7 +78,7 @@ fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
         let intervals = t.calendar.as_ref().and_then(|c| c.intervals.as_deref()).or(calendar.intervals.as_deref());
         let hours_per_day = hours_per_day_of(intervals);
         let from_work =
-            t.work.filter(|w| w.is_finite()).map(|w| w / (math_max(0.01, t.units.unwrap_or(1.0)) * hours_per_day));
+            t.work.filter(|w| w.is_finite()).map(|w| w / (nan_max(0.01, t.units.unwrap_or(1.0)) * hours_per_day));
         let dur = match t.duration {
             None => from_work.unwrap_or(0.0),
             Some(d) => d,
@@ -88,7 +88,7 @@ fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
         }
         let complete = match t.complete {
             None => 0.0,
-            Some(c) => math_max(0.0, math_min(100.0, c)),
+            Some(c) => nan_max(0.0, nan_min(100.0, c)),
         };
         if !complete.is_finite() {
             return Err(ScheduleError::new(format!("task \"{name}\" has a Complete that is not a number")));
@@ -118,7 +118,7 @@ fn flatten(plan: &[PlanTask], calendar: &CalendarSpec) -> Sr<Vec<FlatTask>> {
                 .predecessors
                 .iter()
                 .map(|p| Dependency {
-                    task: js_trim(&p.task).to_string(),
+                    task: trim_space(&p.task).to_string(),
                     ty: p.ty,
                     lag: if p.lag.is_finite() { p.lag } else { 0.0 },
                     elapsed: Some(p.elapsed == Some(true)),

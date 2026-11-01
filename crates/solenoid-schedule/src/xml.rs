@@ -2,7 +2,7 @@
 //! The small XML reader the plan files need: elements, attributes, text, CDATA, comments and entities, with no
 //! dependencies. A close tag that does not match its element is an error.
 
-use crate::num::{is_js_space, js_trim};
+use crate::num::{is_space_char, trim_space};
 use crate::ScheduleError;
 
 #[derive(Clone, Debug, Default)]
@@ -24,7 +24,7 @@ impl XmlNode {
 
     /// The trimmed text of the first child called `name`.
     pub fn text_of(&self, name: &str) -> Option<&str> {
-        self.child(name).map(|c| js_trim(&c.text))
+        self.child(name).map(|c| trim_space(&c.text))
     }
 
     /// The last value given for the attribute `name`.
@@ -94,15 +94,15 @@ fn tag_end(src: &str, from: usize) -> Option<usize> {
 fn attributes(mut rest: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     loop {
-        rest = rest.trim_start_matches(is_js_space);
+        rest = rest.trim_start_matches(is_space_char);
         if rest.is_empty() {
             return out;
         }
-        let name_end = rest.find(|c: char| c == '=' || is_js_space(c)).unwrap_or(rest.len());
+        let name_end = rest.find(|c: char| c == '=' || is_space_char(c)).unwrap_or(rest.len());
         let name = &rest[..name_end];
-        rest = rest[name_end..].trim_start_matches(is_js_space);
+        rest = rest[name_end..].trim_start_matches(is_space_char);
         let Some(after) = rest.strip_prefix('=') else { continue };
-        rest = after.trim_start_matches(is_js_space);
+        rest = after.trim_start_matches(is_space_char);
         match rest.chars().next() {
             Some(q @ ('"' | '\'')) => {
                 let close = rest[1..].find(q).map_or(rest.len(), |k| k + 1);
@@ -111,7 +111,7 @@ fn attributes(mut rest: &str) -> Vec<(String, String)> {
                 }
                 rest = rest.get(close + 1..).unwrap_or("");
             }
-            _ => rest = &rest[rest.find(is_js_space).unwrap_or(rest.len())..],
+            _ => rest = &rest[rest.find(is_space_char).unwrap_or(rest.len())..],
         }
     }
 }
@@ -145,10 +145,10 @@ pub fn parse(src: &str) -> Result<XmlNode, ScheduleError> {
             continue;
         }
         let Some(gt) = tag_end(src, lt + 1) else { break };
-        let raw = js_trim(&src[lt + 1..gt]);
+        let raw = trim_space(&src[lt + 1..gt]);
         i = gt + 1;
         if let Some(close) = raw.strip_prefix('/') {
-            let name = js_trim(close);
+            let name = trim_space(close);
             if stack.len() < 2 || stack.last().unwrap().name != name {
                 return Err(ScheduleError::new(format!("XML: unexpected </{name}>")));
             }
@@ -158,7 +158,7 @@ pub fn parse(src: &str) -> Result<XmlNode, ScheduleError> {
         }
         let self_closing = raw.ends_with('/');
         let body = if self_closing { &raw[..raw.len() - 1] } else { raw };
-        let name_end = body.find(is_js_space).unwrap_or(body.len());
+        let name_end = body.find(is_space_char).unwrap_or(body.len());
         let node =
             XmlNode { name: body[..name_end].to_string(), attrs: attributes(&body[name_end..]), ..XmlNode::default() };
         if self_closing {

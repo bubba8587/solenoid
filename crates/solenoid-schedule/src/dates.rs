@@ -35,7 +35,7 @@ pub fn serial(y: i64, m: u32, d: u32) -> f64 {
 
 /// A serial's date and clock, to the minute, rounded to the millisecond first; `None` past the representable range.
 pub fn parts(serial: f64) -> Option<(i64, u32, u32, u32, u32)> {
-    let ms = crate::num::math_round((serial - UNIX_EPOCH) * MS_PER_DAY);
+    let ms = crate::num::round_half_up((serial - UNIX_EPOCH) * MS_PER_DAY);
     if !ms.is_finite() || ms.abs() > 8.64e15 {
         return None;
     }

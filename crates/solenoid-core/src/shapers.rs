@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
-use crate::jsnum::{math_round, number_to_string};
+use crate::jsnum::{number_to_string, round_half_up};
 use crate::sort::stable_sort_by;
 use crate::string_order::compare_strings;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -280,7 +280,7 @@ fn drop_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
 
 /// `Math.round(Number(v))`.
 fn rounded(v: &V) -> f64 {
-    math_round(js_number_of(v))
+    round_half_up(js_number_of(v))
 }
 
 /// UNIQUE's row key: `JSON.stringify` of the row, an error as `\0err:<code>`; NaN and the infinities read as null.

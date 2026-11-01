@@ -9,7 +9,7 @@ use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::V;
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::format_frame_cell;
-use crate::jsnum::{js_trim, math_max, math_min, math_round, number_to_string};
+use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up, trim_space};
 
 type Res<T> = Result<T, SolError>;
 
@@ -44,7 +44,7 @@ struct Pri {
 
 fn priorities(opts: &[Opt], res: &[Resource]) -> Vec<Pri> {
     let rough: Vec<usize> = (0..res.len()).filter(|&k| is_rough(&res[k])).collect();
-    let scale: Vec<f64> = rough.iter().map(|&k| opts.iter().fold(EPS, |m, o| math_max(m, o.costs[k].abs()))).collect();
+    let scale: Vec<f64> = rough.iter().map(|&k| opts.iter().fold(EPS, |m, o| nan_max(m, o.costs[k].abs()))).collect();
     opts.iter()
         .map(|o| {
             if rough.is_empty() {
@@ -75,7 +75,7 @@ fn is_close(a: Pri, b: Pri, gap: f64) -> bool {
     if a.tier != b.tier {
         return false;
     }
-    let hi = math_max(a.p.abs(), b.p.abs());
+    let hi = nan_max(a.p.abs(), b.p.abs());
     hi <= EPS || (a.p - b.p).abs() / hi <= gap + EPS
 }
 
@@ -91,7 +91,7 @@ fn spend(left: &[Option<f64>], o: &Opt) -> Vec<Option<f64>> {
 }
 
 fn meet(need: &[f64], o: &Opt) -> Vec<f64> {
-    need.iter().enumerate().map(|(r, &x)| math_max(0.0, x - o.costs[r])).collect()
+    need.iter().enumerate().map(|(r, &x)| nan_max(0.0, x - o.costs[r])).collect()
 }
 
 fn clash(opts: &[Opt], i: usize, taken: impl IntoIterator<Item = usize>) -> bool {
@@ -148,14 +148,14 @@ fn best_plan(
     let n = open.len();
     let mut tail = vec![0.0; n + 1];
     for i in (0..n).rev() {
-        tail[i] = tail[i + 1] + math_max(0.0, opts[open[i]].score);
+        tail[i] = tail[i + 1] + nan_max(0.0, opts[open[i]].score);
     }
     let need0: Vec<f64> = if need.is_empty() { vec![0.0; left.len()] } else { need.to_vec() };
     let reach: Vec<Vec<f64>> = (0..need0.len())
         .map(|r| {
             let mut t = vec![0.0; n + 1];
             for i in (0..n).rev() {
-                t[i] = t[i + 1] + math_max(0.0, opts[open[i]].costs[r]);
+                t[i] = t[i + 1] + nan_max(0.0, opts[open[i]].costs[r]);
             }
             t
         })
@@ -165,7 +165,7 @@ fn best_plan(
         .iter()
         .map(|&r| {
             let mut ks: Vec<usize> = (0..n).filter(|&k| opts[open[k]].score > 0.0).collect();
-            let ratio = |k: usize| opts[open[k]].score / math_max(EPS, opts[open[k]].costs[r]);
+            let ratio = |k: usize| opts[open[k]].score / nan_max(EPS, opts[open[k]].costs[r]);
             sort_by_num(&mut ks, |&x, &y| ratio(y) - ratio(x));
             ks
         })
@@ -240,11 +240,11 @@ impl Search<'_> {
                 if room <= EPS {
                     continue;
                 }
-                let f = math_min(1.0, room / c);
+                let f = nan_min(1.0, room / c);
                 sum += o.score * f;
                 room -= c * f;
             }
-            b = math_min(b, sum);
+            b = nan_min(b, sum);
         }
         b
     }
@@ -453,7 +453,7 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
             .iter()
             .map(|&i| if opts[i].requires.iter().all(|r| has.contains(r) || open.contains(r)) { '1' } else { '0' })
             .collect();
-        let num = |v: Option<f64>| v.map_or_default(|v| number_to_string(math_round(v * 1e6)));
+        let num = |v: Option<f64>| v.map_or_default(|v| number_to_string(round_half_up(v * 1e6)));
         let join = |xs: Vec<String>| xs.join(",");
         format!(
             "{}|{}|{}|{}",
@@ -591,7 +591,7 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
                     });
                 }
                 Some(b) if ends + next.len() + (level.len() - li) < MAX_ENDS => {
-                    let (pa, pb) = (math_max(EPS, opts[a].score), math_max(EPS, opts[b].score));
+                    let (pa, pb) = (nan_max(EPS, opts[a].score), nan_max(EPS, opts[b].score));
                     picks.push((a, (s.share * pa) / (pa + pb), Kind::Close));
                     picks.push((b, (s.share * pb) / (pa + pb), Kind::Close));
                 }
@@ -720,7 +720,7 @@ fn ladder_resources(f: &FrameValue, limits: Option<&FrameValue>) -> Res<Vec<Limi
     let mut seen = HashSet::new();
     for (i, v) in name_col.values.iter().enumerate() {
         let FrameCell::Str(v) = v else { continue };
-        if js_trim(v).is_empty() || seen.contains(&crit_key(v)) {
+        if trim_space(v).is_empty() || seen.contains(&crit_key(v)) {
             continue;
         }
         seen.insert(crit_key(v));
@@ -729,7 +729,7 @@ fn ladder_resources(f: &FrameValue, limits: Option<&FrameValue>) -> Res<Vec<Limi
         }) else {
             return Err(sol_error(
                 ErrorCode::Value,
-                format!("Choice Ladder: no Options number column is named {}", js_trim(v)),
+                format!("Choice Ladder: no Options number column is named {}", trim_space(v)),
             ));
         };
         let limit = num(hi_col, i)?;
@@ -885,7 +885,7 @@ fn ladder_inner(
         Ok(finite(v).unwrap_or(cost_median[k]))
     };
     let group_of = |i: usize| match cell(one_of_col, i) {
-        FrameCell::Str(v) if !js_trim(v).is_empty() => Some(crit_key(v)),
+        FrameCell::Str(v) if !trim_space(v).is_empty() => Some(crit_key(v)),
         _ => None,
     };
     let res: Vec<Resource> = resources.iter().map(|r| Resource { limit: r.limit, floor: r.floor }).collect();
@@ -897,12 +897,12 @@ fn ladder_inner(
             (0..ds.criteria.len())
                 .map(|j| {
                     let ws = ds.weight_share[j];
-                    math_max(0.0, if ws >= 0.0 { ds.contrib[j][k] } else { -ws + ds.contrib[j][k] })
+                    nan_max(0.0, if ws >= 0.0 { ds.contrib[j][k] } else { -ws + ds.contrib[j][k] })
                 })
                 .collect(),
         );
         let costs = (0..resources.len())
-            .map(|r| cost_of(r, i).map(|c| if is_rough(&res[r]) { c } else { math_max(0.0, c) }))
+            .map(|r| cost_of(r, i).map(|c| if is_rough(&res[r]) { c } else { nan_max(0.0, c) }))
             .collect::<Res<Vec<f64>>>()?;
         let mut excludes = listed(excludes_col, i);
         if let Some(g) = group_of(i) {
@@ -939,7 +939,7 @@ fn ladder_inner(
     }
     for (k, r) in resources.iter().enumerate() {
         if let Some(floor) = r.floor
-            && opts.iter().fold(0.0, |s, o| s + math_max(0.0, o.costs[k])) < floor - 1e-9
+            && opts.iter().fold(0.0, |s, o| s + nan_max(0.0, o.costs[k])) < floor - 1e-9
         {
             return Err(sol_error(
                 ErrorCode::Value,
@@ -1172,7 +1172,7 @@ mod tests {
         let n = 3 + r.below(6);
         let mut opts: Vec<Opt> = (0..n)
             .map(|_| {
-                let score = math_round((r.next() * 1.2 - 0.2) * 100.0) / 100.0;
+                let score = round_half_up((r.next() * 1.2 - 0.2) * 100.0) / 100.0;
                 let c0 = 1.0 + r.below(5) as f64;
                 let c1 = if r.next() < 0.4 { 1.0 } else { 0.0 };
                 opt(score, &[c0, c1], &[], &[])

@@ -10,13 +10,13 @@ use serde_json::Value as Json;
 use crate::excel_criteria::{parse_date, DateReading};
 use crate::excel_functions::V;
 use crate::frame::{ColumnUnit, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{js_trim, math_round, number_to_string};
+use crate::jsnum::{number_to_string, round_half_up, trim_space};
 use crate::unit_catalog::fc_unit_to_unit;
 
 /// An ISO date as a serial; NaN for text that isn't one. The APIs write machine dates (YYYY-MM-DD), so none is
 /// ambiguous.
 fn date_serial(s: &str) -> f64 {
-    match parse_date(js_trim(s)) {
+    match parse_date(trim_space(s)) {
         DateReading::Serial(d) => d,
         _ => f64::NAN,
     }
@@ -123,7 +123,7 @@ pub fn weather(text: &str, unit: &str) -> (FrameValue, V, V) {
 /// dropped.
 pub fn holidays(text: &str, region: &str, today: f64) -> (FrameValue, V) {
     let root = body(text);
-    let region = js_trim(region);
+    let region = trim_space(region);
     let mut rows: Vec<(f64, &str, &str)> = Vec::new();
     for o in root.as_array().into_iter().flatten() {
         let Some(serial) = o["date"].as_str().map(date_serial).filter(|s| s.is_finite()) else { continue };
@@ -134,7 +134,7 @@ pub fn holidays(text: &str, region: &str, today: f64) -> (FrameValue, V) {
         rows.push((serial, o["name"].as_str().unwrap_or(""), o["localName"].as_str().unwrap_or("")));
     }
     let text = |s: &str| if s.is_empty() { FrameCell::Null } else { FrameCell::Str(s.into()) };
-    let next = rows.iter().map(|r| math_round(r.0 - today)).filter(|d| *d >= 0.0).reduce(f64::min);
+    let next = rows.iter().map(|r| round_half_up(r.0 - today)).filter(|d| *d >= 0.0).reduce(f64::min);
     let columns = vec![
         column("Date", FrameColType::Date, rows.iter().map(|r| FrameCell::Num(r.0)).collect()),
         column("Name", FrameColType::String, rows.iter().map(|r| text(r.1)).collect()),
@@ -149,14 +149,14 @@ pub fn fx_rate(text: &str, to: &str) -> (String, f64, V) {
     let root = body(text);
     let date = root["date"].as_str().unwrap_or("").to_string();
     let serial = if date.is_empty() { f64::NAN } else { date_serial(&date) };
-    let rate = root["rates"][js_trim(to).to_uppercase()].as_f64().map_or(V::Null, V::Num);
+    let rate = root["rates"][trim_space(to).to_uppercase()].as_f64().map_or(V::Null, V::Num);
     (date, serial, rate)
 }
 
 /// Frankfurter's rates of `to` over a range: a Date and a Rate column, by date; a day with no rate gives no row.
 pub fn fx_series(text: &str, to: &str) -> FrameValue {
     let root = body(text);
-    let sym = js_trim(to).to_uppercase();
+    let sym = trim_space(to).to_uppercase();
     let mut pts: Vec<(f64, f64)> = match &root["rates"] {
         Json::Object(days) => {
             days.iter().filter_map(|(date, day)| Some((date_serial(date), day[&sym].as_f64()?))).collect()

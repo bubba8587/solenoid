@@ -12,7 +12,8 @@ use crate::error_value::ErrorCode;
 use crate::excel_functions::{js_number_of, js_parse_float, js_string_of, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{
-    is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string, string_to_number, to_fixed,
+    fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, string_to_number,
+    trim_space,
 };
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
@@ -84,9 +85,9 @@ fn frame_of(columns: Vec<Column>) -> Cv {
 
 /// One typed number in the FC's unit: its base value, a custom unit its own dimension.
 fn fc_number(n: f64, unit: &str, custom: &str) -> V {
-    let custom = js_trim(custom);
+    let custom = trim_space(custom);
     if unit == "custom" && !custom.is_empty() {
-        let dim = std::iter::once((format!("custom:{}", js_lower(js_trim(custom))), 1.0)).collect();
+        let dim = std::iter::once((format!("custom:{}", lower_text(trim_space(custom))), 1.0)).collect();
         return super::units::from_unit(n, &crate::unit_catalog::Unit { dim, scale: 1.0, offset: None }, None);
     }
     match crate::unit_catalog::fc_unit_to_unit(unit) {
@@ -99,9 +100,9 @@ fn value_input(c: &mut Call) -> Answer {
     let value = c.field_str("value", "").to_string();
     let out = match c.field_str("op", "number") {
         "string" => V::str(&value),
-        "logical" => V::Bool(js_trim(&value).eq_ignore_ascii_case("true")),
+        "logical" => V::Bool(trim_space(&value).eq_ignore_ascii_case("true")),
         "number" => {
-            let t = js_trim(&value);
+            let t = trim_space(&value);
             let n = if t.is_empty() { 0.0 } else { string_to_number(t) };
             if n.is_finite() {
                 fc_number(n, c.field_str("unit", "none"), c.field_str("customUnit", ""))
@@ -132,7 +133,7 @@ fn forget_relative(c: &mut Call) {
 /// landing on a new day shows the alert to raise (`alertKey`, `alertMessage`).
 fn value_input_date(c: &mut Call, value: &str) -> V {
     use crate::excel_criteria::{parse_date, DateReading};
-    let text = js_trim(value).to_string();
+    let text = trim_space(value).to_string();
     let allowed = matches!(c.field("relativeDates"), Some(Json::Bool(true)));
     if !(allowed && crate::relative_date::is_relative(&text)) {
         forget_relative(c);
@@ -152,7 +153,7 @@ fn value_input_date(c: &mut Call, value: &str) -> V {
     let last_serial = c.field("lastRelativeSerial").and_then(Json::as_f64);
     let (key, message) = match (last_text, last_serial) {
         (Some(t), Some(was)) if t == text && was != serial => {
-            let label = js_trim(c.field_str("label", "")).to_string();
+            let label = trim_space(c.field_str("label", "")).to_string();
             let name = if label.is_empty() { "Value Input".to_string() } else { label };
             let day = |s: f64| crate::date_serial::format_date_serial(s, "DD-MMM-YYYY");
             (
@@ -184,7 +185,7 @@ fn slider(c: &mut Call) -> Answer {
     }
     let step = finite(c.read_input("step", lit_step.clone()), &lit_step);
     let step = if step > 0.0 { step } else { js_number_of(&lit_step) };
-    let value = math_min(math_max(js_number_of(&init_v(c, "value")), lo), hi);
+    let value = nan_min(nan_max(js_number_of(&init_v(c, "value")), lo), hi);
     c.show("effectiveMin", V::Num(lo));
     c.show("effectiveMax", V::Num(hi));
     c.show("effectiveStep", V::Num(step));
@@ -208,7 +209,7 @@ const BLACK: Rgba = Rgba { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 /// colord's `round(n, digits)`: `Math.round(10^d·n)/10^d + 0`.
 fn round_to(n: f64, digits: i32) -> f64 {
     let p = libm::pow(10.0, f64::from(digits));
-    math_round(p * n) / p + 0.0
+    round_half_up(p * n) / p + 0.0
 }
 
 /// colord's `clamp(n, lo, hi)`: NaN reads as `lo`.
@@ -308,7 +309,7 @@ impl<'a> Scan<'a> {
 
     fn ws(&mut self) -> usize {
         let start = self.at;
-        while let Some(ch) = self.rest().chars().next().filter(|&ch| is_js_space(ch)) {
+        while let Some(ch) = self.rest().chars().next().filter(|&ch| is_space_char(ch)) {
             self.at += ch.len_utf8();
         }
         self.at - start
@@ -453,14 +454,14 @@ fn parse_hsl(s: &str, spaced: bool) -> Option<Rgba> {
 
 /// `colord(text)`: the parsers in colord's order, the names plugin's last; None where none reads it.
 fn parse_color(text: &str) -> Option<Rgba> {
-    let s = js_trim(text);
+    let s = trim_space(text);
     parse_hex(s)
         .or_else(|| parse_rgb(s, false))
         .or_else(|| parse_rgb(s, true))
         .or_else(|| parse_hsl(s, false))
         .or_else(|| parse_hsl(s, true))
         .or_else(|| {
-            let name = js_lower(s);
+            let name = lower_text(s);
             let hex = if name == "transparent" {
                 Some("#0000")
             } else {
@@ -551,8 +552,8 @@ fn blend(mode: &str, a: f64, b: f64) -> f64 {
                 1.0 - 2.0 * (1.0 - a) * (1.0 - b)
             }
         }
-        "darken" => math_min(a, b),
-        "lighten" => math_max(a, b),
+        "darken" => nan_min(a, b),
+        "lighten" => nan_max(a, b),
         "difference" => (a - b).abs(),
         "exclusion" => a + b - 2.0 * a * b,
         "dodge" => {
@@ -561,7 +562,7 @@ fn blend(mode: &str, a: f64, b: f64) -> f64 {
             } else if b >= 1.0 {
                 1.0
             } else {
-                math_min(1.0, a / (1.0 - b))
+                nan_min(1.0, a / (1.0 - b))
             }
         }
         "burn" => {
@@ -570,7 +571,7 @@ fn blend(mode: &str, a: f64, b: f64) -> f64 {
             } else if b <= 0.0 {
                 0.0
             } else {
-                1.0 - math_min(1.0, (1.0 - a) / b)
+                1.0 - nan_min(1.0, (1.0 - a) / b)
             }
         }
         _ => f64::NAN,
@@ -591,7 +592,7 @@ fn color_blend(c: &mut Call) -> Answer {
             return Some(Err(raw));
         }
         let text = js_string_of(&raw);
-        let s = js_trim(&text);
+        let s = trim_space(&text);
         Some(parse_color(s).ok_or_else(|| err(ErrorCode::Value, format!("{label} isn't a color: \"{s}\""))))
     };
     let (a, b) = (parse(c, "a", "Color A"), parse(c, "b", "Color B"));
@@ -601,7 +602,7 @@ fn color_blend(c: &mut Call) -> Answer {
             let mode = c.field_str("mode", "mix");
             let (a, b) = (round_rgba(a), round_rgba(b));
             let ch =
-                |x: f64, y: f64| math_round(math_min(1.0, math_max(0.0, blend(mode, x / 255.0, y / 255.0))) * 255.0);
+                |x: f64, y: f64| round_half_up(nan_min(1.0, nan_max(0.0, blend(mode, x / 255.0, y / 255.0))) * 255.0);
             V::str(&to_hex(clamp_rgba(Rgba { r: ch(a.r, b.r), g: ch(a.g, b.g), b: ch(a.b, b.b), a: 1.0 })))
         }
         _ => V::Null,
@@ -748,16 +749,16 @@ fn monotone_cubic(xs: &[f64], ys: &[f64]) -> impl Fn(f64) -> f64 + use<> {
 
 /// `Number(x.toFixed(6))`.
 fn fixed6(x: f64) -> f64 {
-    to_fixed(x, 6.0).map_or(f64::NAN, |t| string_to_number(&t))
+    fixed_text(x, 6.0).map_or(f64::NAN, |t| string_to_number(&t))
 }
 
 fn curve(c: &mut Call) -> Answer {
-    let samples = clamp(math_round(literal_num(c, "samples", 32.0)), 2.0, 1000.0);
+    let samples = clamp(round_half_up(literal_num(c, "samples", 32.0)), 2.0, 1000.0);
     let (xmin, xmax) = (literal_num(c, "xmin", 0.0), literal_num(c, "xmax", 1.0));
     let pts = curve_points(c.field_str("pointsText", "0, 0\n1, 1"));
     let (mut xs, mut values) = (Vec::new(), Vec::new());
     if !pts.is_empty() {
-        let n = clamp(math_round(samples), 2.0, 1000.0);
+        let n = clamp(round_half_up(samples), 2.0, 1000.0);
         let f =
             monotone_cubic(&pts.iter().map(|p| p.0).collect::<Vec<_>>(), &pts.iter().map(|p| p.1).collect::<Vec<_>>());
         let mut i = 0.0;
@@ -775,7 +776,7 @@ fn curve(c: &mut Call) -> Answer {
 }
 
 fn grid_painter(c: &mut Call) -> Answer {
-    let dim = |v: f64| clamp(math_round(v), 1.0, 64.0);
+    let dim = |v: f64| clamp(round_half_up(v), 1.0, 64.0);
     let (rows, cols) = (dim(literal_num(c, "rows", 6.0)), dim(literal_num(c, "cols", 8.0)));
     let lines: Vec<&str> = c.field_str("tableText", "").split('\n').collect();
     let mut out = Vec::new();
@@ -785,7 +786,7 @@ fn grid_painter(c: &mut Call) -> Answer {
         let mut row = Vec::new();
         let mut k = 0.0;
         while k < cols {
-            let t = js_trim(cells.get(k as usize).copied().unwrap_or(""));
+            let t = trim_space(cells.get(k as usize).copied().unwrap_or(""));
             let n = string_to_number(t);
             row.push(if !t.is_empty() && n.is_finite() { V::Num(n) } else { V::Null });
             k += 1.0;
@@ -812,7 +813,7 @@ fn cable_switch(c: &mut Call) -> Answer {
             Cv::NULL
         } else {
             let title = |i: usize, k: &str| {
-                let t = c.field("titles").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", js_trim);
+                let t = c.field("titles").and_then(|t| t.get(k)).and_then(Json::as_str).map_or("", trim_space);
                 if t.is_empty() {
                     format!("Input {}", i + 1)
                 } else {
@@ -925,7 +926,7 @@ fn source_has_layer(source: &str, name: &str) -> bool {
     let mut i = 0;
     while let Some(ch) = source[i..].chars().next() {
         let next = i + ch.len_utf8();
-        if !is_js_space(ch) {
+        if !is_space_char(ch) {
             i = next;
             continue;
         }
@@ -945,7 +946,7 @@ fn source_has_layer(source: &str, name: &str) -> bool {
                     && let Some(close) = p.rest()[1..].find(q)
                 {
                     let value = &p.rest()[1..1 + close];
-                    if js_trim(&decode_entities(value)) == name {
+                    if trim_space(&decode_entities(value)) == name {
                         return true;
                     }
                     i = p.at + close + 2;

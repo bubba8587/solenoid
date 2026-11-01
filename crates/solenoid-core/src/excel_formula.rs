@@ -10,7 +10,7 @@ use serde_json::{json, Value as Json};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{call_function, to_f64_js, V};
 use crate::frame::FrameCell;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use crate::spelled::spelled;
 use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
@@ -276,7 +276,7 @@ fn tokenize(src: &str) -> Option<Vec<Tok>> {
                 name = slice(j, e);
                 j = e + 1;
             }
-            let name = js_trim(&name).to_string();
+            let name = trim_space(&name).to_string();
             if name.is_empty() {
                 return None;
             }
@@ -508,7 +508,7 @@ impl Parser {
 }
 
 pub fn parse_formula(expr: &str) -> Option<Ast> {
-    if js_trim(expr).is_empty() {
+    if trim_space(expr).is_empty() {
         return None;
     }
     let toks = tokenize(expr)?;

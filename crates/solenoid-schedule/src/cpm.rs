@@ -5,7 +5,7 @@ use super::calendar::{calendar_key, day_key, Calendar, CalendarSpec};
 use super::graph::{build_graph, Edge, FlatTask};
 use super::report::diagnose;
 use super::{LinkType, ScheduleInput, ScheduleLink, ScheduleOutput, ScheduledTask, Sr};
-use crate::num::{math_max, math_min, math_round};
+use crate::num::{nan_max, nan_min, round_half_up};
 use std::collections::HashMap;
 
 const LONG_TASK_DAYS: f64 = 44.0;
@@ -29,11 +29,11 @@ struct Pass {
 }
 
 fn min_of(xs: impl Iterator<Item = f64>) -> f64 {
-    xs.fold(f64::INFINITY, math_min)
+    xs.fold(f64::INFINITY, nan_min)
 }
 
 fn max_of(xs: impl Iterator<Item = f64>) -> f64 {
-    xs.fold(f64::NEG_INFINITY, math_max)
+    xs.fold(f64::NEG_INFINITY, nan_max)
 }
 
 struct Ctx<'a> {
@@ -58,7 +58,7 @@ impl Ctx<'_> {
 
     fn units(&self, i: usize, days: f64) -> f64 {
         if self.cal(i).minutes {
-            math_round(days * self.u(i))
+            round_half_up(days * self.u(i))
         } else {
             (days - 1e-9).ceil()
         }
@@ -66,9 +66,9 @@ impl Ctx<'_> {
 
     fn lag_units(&self, e: &Edge) -> f64 {
         if self.cal(e.to).minutes {
-            math_round(e.lag * self.u(e.to))
+            round_half_up(e.lag * self.u(e.to))
         } else {
-            math_round(e.lag)
+            round_half_up(e.lag)
         }
     }
 
@@ -89,7 +89,7 @@ impl Ctx<'_> {
         if t.summary {
             let mut m = f64::INFINITY;
             for &c in &t.children {
-                m = math_min(m, self.start_instant(p, c)?);
+                m = nan_min(m, self.start_instant(p, c)?);
             }
             return Ok(m);
         }
@@ -101,7 +101,7 @@ impl Ctx<'_> {
         if t.summary {
             let mut m = f64::NEG_INFINITY;
             for &c in &t.children {
-                m = math_max(m, self.end_instant(p, c)?);
+                m = nan_max(m, self.end_instant(p, c)?);
             }
             return Ok(m);
         }
@@ -214,13 +214,13 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
                 let mut s = f64::INFINITY;
                 let mut en = f64::NEG_INFINITY;
                 for &c in &t.children {
-                    s = math_min(s, cx.start_instant(p, c)?);
+                    s = nan_min(s, cx.start_instant(p, c)?);
                 }
                 for &c in &t.children {
-                    en = math_max(en, cx.end_instant(p, c)?);
+                    en = nan_max(en, cx.end_instant(p, c)?);
                 }
                 p.es[i] = cx.project().index_ceil(s)?;
-                p.ef[i] = math_max(p.es[i], cx.project().index_ceil(en)?);
+                p.ef[i] = nan_max(p.es[i], cx.project().index_ceil(en)?);
                 p.dur[i] = p.ef[i] - p.es[i];
                 continue;
             }
@@ -233,7 +233,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             if let (true, Some(start)) = (t.manual, t.start) {
                 let es = cx.cal(i).index_ceil(start)?;
                 let d = match t.finish {
-                    Some(f) => math_max(0.0, cx.cal(i).index_floor(f)? + 1.0 - es),
+                    Some(f) => nan_max(0.0, cx.cal(i).index_floor(f)? + 1.0 - es),
                     None => full,
                 };
                 p.es[i] = es;
@@ -276,7 +276,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             }
             let mut ef = es + full;
             if let (true, true, Some(s_idx)) = (started, rest > 0.0, s_idx) {
-                let rest_start = math_max(es + done, s_idx + 1.0);
+                let rest_start = nan_max(es + done, s_idx + 1.0);
                 if rest_start > es + done {
                     if split_in_progress && done > 0.0 {
                         p.split[i] = Some(Split { done_end: es + done, rest_start });
@@ -301,14 +301,14 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         let end_all = if n > 0 {
             let mut m = f64::NEG_INFINITY;
             for &i in order {
-                m = math_max(m, cx.end_instant(p, i)?);
+                m = nan_max(m, cx.end_instant(p, i)?);
             }
             m
         } else {
             cx.project().exclusive_end(-1.0)?
         };
         for i in 0..n {
-            p.lf[i] = math_max(p.ef[i], cx.cal(i).index_ceil(end_all)?);
+            p.lf[i] = nan_max(p.ef[i], cx.cal(i).index_ceil(end_all)?);
         }
         if input.multiple_critical_paths {
             for i in 0..n {
@@ -321,15 +321,15 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         for &i in order.iter().rev() {
             let t = &tasks[i];
             if let Some(f) = t.finish {
-                p.lf[i] = math_min(p.lf[i], cx.cal(i).index_floor(f)? + 1.0);
+                p.lf[i] = nan_min(p.lf[i], cx.cal(i).index_floor(f)? + 1.0);
             }
             if let Some(d) = t.deadline {
-                p.lf[i] = math_min(p.lf[i], cx.cal(i).index_floor(d)? + 1.0);
+                p.lf[i] = nan_min(p.lf[i], cx.cal(i).index_floor(d)? + 1.0);
             }
             if t.summary {
                 let inst = cx.end_after(i, p.lf[i])?;
                 for &c in &t.children {
-                    p.lf[c] = math_min(p.lf[c], cx.cal(c).index_ceil(inst)?);
+                    p.lf[c] = nan_min(p.lf[c], cx.cal(c).index_ceil(inst)?);
                 }
                 p.ls[i] = p.lf[i] - p.dur[i];
                 continue;
@@ -346,7 +346,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
                     LinkType::SF => bound_start = Some(cx.back_lag(i, p.lf[i], e, false)?),
                 }
                 if let (true, Some(bs)) = (tasks[from].summary, bound_start) {
-                    summary_ls[from] = math_min(summary_ls[from], cx.project().index_floor_start(bs)?);
+                    summary_ls[from] = nan_min(summary_ls[from], cx.project().index_floor_start(bs)?);
                     continue;
                 }
                 let lf_bound = match (bound_end, bound_start) {
@@ -377,15 +377,15 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         backward(&mut p, &mut summary_ls)?;
     }
 
-    let days = |i: usize, u: f64| if cx.cal(i).minutes { math_round(u / cx.u(i) * 1000.0) / 1000.0 } else { u };
-    let float_of = |i: usize| math_min(p.ls[i] - p.es[i], p.lf[i] - p.ef[i]);
+    let days = |i: usize, u: f64| if cx.cal(i).minutes { round_half_up(u / cx.u(i) * 1000.0) / 1000.0 } else { u };
+    let float_of = |i: usize| nan_min(p.ls[i] - p.es[i], p.lf[i] - p.ef[i]);
     let mut total_days: Vec<f64> = (0..n).map(|i| if tasks[i].summary { 0.0 } else { days(i, float_of(i)) }).collect();
     let mut critical = vec![false; n];
     for &i in order {
         let t = &tasks[i];
         if t.summary {
             total_days[i] =
-                math_min(min_of(t.children.iter().map(|&c| total_days[c])), days(i, summary_ls[i] - p.es[i]));
+                nan_min(min_of(t.children.iter().map(|&c| total_days[c])), days(i, summary_ls[i] - p.es[i]));
             critical[i] = t.children.iter().any(|&c| critical[c]) || total_days[i] <= crit_limit_days;
         } else {
             critical[i] = (total_days[i] <= crit_limit_days || t.alap) && t.complete < 100.0;
@@ -395,7 +395,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         let end_all = if n > 0 {
             let mut m = f64::NEG_INFINITY;
             for &i in order {
-                m = math_max(m, cx.end_instant(&p, i)?);
+                m = nan_max(m, cx.end_instant(&p, i)?);
             }
             m
         } else {
@@ -433,14 +433,14 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
         } else if t.complete >= 100.0 {
             0.0
         } else if out_edges[i].is_empty() {
-            math_max(0.0, total_days[i])
+            nan_max(0.0, total_days[i])
         } else {
             let mut m = f64::INFINITY;
             for &k in &out_edges[i] {
                 let e = &edges[k];
-                m = math_min(m, days(e.to, p.es[e.to] - cx.link_early_start(&p, e, p.dur[e.to])?));
+                m = nan_min(m, days(e.to, p.es[e.to] - cx.link_early_start(&p, e, p.dur[e.to])?));
             }
-            math_max(0.0, math_min(m, total_days[i]))
+            nan_max(0.0, nan_min(m, total_days[i]))
         });
     }
 
@@ -518,7 +518,7 @@ pub fn schedule(input: &ScheduleInput) -> Sr<ScheduleOutput> {
             late_start: if zero && !t.summary { milestone_at(i, p.ls[i], start)? } else { cx.start_at(i, p.ls[i])? },
             late_finish: if zero {
                 if t.summary {
-                    cx.end_of(i, math_max(p.lf[i] - 1.0, p.ls[i]))?
+                    cx.end_of(i, nan_max(p.lf[i] - 1.0, p.ls[i]))?
                 } else {
                     milestone_at(i, p.ls[i], start)?
                 }

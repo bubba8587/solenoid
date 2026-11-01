@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::excel_functions::{js_string_of, V};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_max as js_max, math_min as js_min};
+use crate::jsnum::{is_space_char, lower_text, nan_max as js_max, nan_min as js_min, trim_space};
 use crate::string_order::compare_strings;
 use crate::value_kinds::decimal_from_text;
 
@@ -163,7 +163,7 @@ fn ascii_digits(s: &[u8]) -> bool {
 
 /// `parseDate` (dateSerial.ts) up to its chrono-node step, with no relative reading.
 pub(crate) fn parse_date(s: &str) -> DateReading {
-    let t = js_trim(s);
+    let t = trim_space(s);
     let b = t.as_bytes();
     // A relative phrase reads NaN without `relative`, as text with no four-digit run does: either way, not a date.
     if !b.windows(4).any(ascii_digits) {
@@ -330,12 +330,12 @@ fn iso_date_time(t: &str) -> Option<DateReading> {
     if word(i) {
         return None;
     }
-    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_js_space(c));
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_space_char(c));
     let mut rest = &t[i..];
     if clock.is_none() && !tail(rest) {
-        let gap = rest.trim_start_matches(is_js_space);
+        let gap = rest.trim_start_matches(is_space_char);
         let gap =
-            gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_js_space);
+            gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_space_char);
         if gap.len() == rest.len() {
             return None;
         }
@@ -658,7 +658,7 @@ fn slash_date_time(t: &str) -> Option<DateReading> {
     if crate::date_serial::civil_from_days(days).1 != month {
         return None;
     }
-    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_js_space(c));
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_space_char(c));
     if !tail(after) && year_month_day_overtakes(&t[y0 + 1..], year_end) {
         return None;
     }
@@ -680,7 +680,7 @@ fn slash_date_time(t: &str) -> Option<DateReading> {
 fn year_month_day_overtakes(s: &str, date_len: usize) -> bool {
     let mut it = s.char_indices().skip(4);
     let Some((_, c)) = it.next() else { return false };
-    if !(matches!(c, '-' | '.' | '/') || is_js_space(c)) {
+    if !(matches!(c, '-' | '.' | '/') || is_space_char(c)) {
         return false;
     }
     let b = &s.as_bytes()[4 + c.len_utf8()..];
@@ -690,7 +690,7 @@ fn year_month_day_overtakes(s: &str, date_len: usize) -> bool {
         return false;
     }
     let Some(sep) = s[s.len() - b.len() + mn..].chars().next() else { return false };
-    if !(matches!(sep, '-' | '.' | '/') || is_js_space(sep)) {
+    if !(matches!(sep, '-' | '.' | '/') || is_space_char(sep)) {
         return false;
     }
     let d = &b[mn + sep.len_utf8()..];
@@ -737,7 +737,7 @@ fn time_expression(s: &str) -> Option<(f64, &str)> {
         return None;
     }
     let time_end = i;
-    let spaced = s[i..].trim_start_matches(is_js_space);
+    let spaced = s[i..].trim_start_matches(is_space_char);
     let low = spaced.get(..4).map(str::to_ascii_lowercase).unwrap_or_default();
     let mark = if low == "a.m." || low == "p.m." {
         Some((low.as_bytes()[0], 4))
@@ -849,7 +849,7 @@ fn parse_criterion(raw: &V, numeric_range: bool) -> Parsed {
     let wild =
         if matches!(op, Op::Eq | Op::Neq) { wildcard_pattern(&rest.encode_utf16().collect::<Vec<_>>()) } else { None };
     let text = unescape(rest);
-    let lowered = js_lower(&text).into_owned();
+    let lowered = lower_text(&text).into_owned();
     Parsed::Crit(Criterion { op, value: Value::Str(text), wild, lowered })
 }
 
@@ -899,7 +899,7 @@ fn criterion_matches(cell: &V, crit: &Criterion) -> bool {
         let hit = wild_matches(w, &s.encode_utf16().collect::<Vec<_>>());
         return if crit.op == Op::Eq { hit } else { !hit };
     }
-    let (a, b) = (js_lower(s), crit.lowered.as_str());
+    let (a, b) = (lower_text(s), crit.lowered.as_str());
     match crit.op {
         Op::Eq => a == b,
         Op::Neq => a != b,
@@ -1028,7 +1028,7 @@ impl Tally {
                     t.nums.push(*n);
                     t.num_rows.entry((n + 0.0).to_bits()).or_default().push(i);
                 }
-                V::Str(s) if !s.is_empty() => t.text_rows.entry(js_lower(s).into_owned()).or_default().push(i),
+                V::Str(s) if !s.is_empty() => t.text_rows.entry(lower_text(s).into_owned()).or_default().push(i),
                 V::Err(_) => t.errs += 1,
                 V::Bool(_) => t.bools += 1,
                 _ => {}

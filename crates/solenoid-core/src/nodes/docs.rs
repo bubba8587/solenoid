@@ -16,7 +16,7 @@ use crate::eval::LambdaV;
 use crate::excel_formula::Ast;
 use crate::excel_functions::{js_less, js_string_of, V};
 use crate::frame::FrameColType;
-use crate::jsnum::{js_lower, js_trim, number_to_string, string_to_number};
+use crate::jsnum::{lower_text, number_to_string, string_to_number, trim_space};
 use crate::unit_dims::{dim_equal, Dim, UnitCell};
 use serde_json::Value as Json;
 use std::collections::HashSet;
@@ -192,7 +192,7 @@ fn status_text(v: &V) -> String {
 
 /// The card's name in what it raises: its label, else `dflt`.
 fn alert_name(c: &Call, dflt: &str) -> String {
-    match js_trim(c.field_str("label", "")) {
+    match trim_space(c.field_str("label", "")) {
         "" => dflt.to_string(),
         name => name.to_string(),
     }
@@ -388,8 +388,8 @@ impl Allowed {
                 }
                 _ => {
                     let s = js_string_of(a);
-                    let t = js_trim(&s);
-                    let lower = js_lower(t).into_owned();
+                    let t = trim_space(&s);
+                    let lower = lower_text(t).into_owned();
                     if lower == "true" || lower == "false" {
                         m.bools.insert(lower == "true");
                     }
@@ -412,7 +412,7 @@ impl Allowed {
         match cell {
             V::Bool(b) => self.bools.contains(b) || self.texts.contains(if *b { "true" } else { "false" }),
             V::Num(n) => self.nums.contains(&num_key(*n)) || self.texts.contains(&number_to_string(*n)),
-            other => self.texts.contains(js_lower(js_trim(&js_string_of(other))).as_ref()),
+            other => self.texts.contains(lower_text(trim_space(&js_string_of(other))).as_ref()),
         }
     }
 }
@@ -492,7 +492,7 @@ fn expect(c: &mut Call) -> Answer {
     if on("checkRegex") {
         match &pattern {
             V::Null => {}
-            V::Str(p) if js_trim(p).is_empty() => {}
+            V::Str(p) if trim_space(p).is_empty() => {}
             V::Str(p) => {
                 let units: Vec<u16> = p.encode_utf16().collect();
                 if let crate::js_regex::Compiled::Ok(re) = crate::js_regex::compile(&units, false) {
@@ -512,7 +512,7 @@ fn expect(c: &mut Call) -> Answer {
                     V::Str(s) => s.to_string(),
                     _ => String::new(),
                 };
-                Some(lit.split(',').map(js_trim).filter(|s| !s.is_empty()).map(V::str).collect())
+                Some(lit.split(',').map(trim_space).filter(|s| !s.is_empty()).map(V::str).collect())
             }
             Some([first, ..]) => match first {
                 V::Null | V::Undef => None,
@@ -599,9 +599,9 @@ pub enum TableUnit {
 /// grid already carries.
 pub fn tag_fc_unit(value: V, id: &str, custom_unit: &str, held: Option<UnitParts>) -> (V, TableUnit) {
     use crate::unit_lists::format_dim;
-    let custom = id == "custom" && !js_trim(custom_unit).is_empty();
+    let custom = id == "custom" && !trim_space(custom_unit).is_empty();
     let unit = if custom {
-        let dim: Dim = [(format!("custom:{}", js_lower(js_trim(custom_unit))), 1.0)].into_iter().collect();
+        let dim: Dim = [(format!("custom:{}", lower_text(trim_space(custom_unit))), 1.0)].into_iter().collect();
         Some(crate::unit_catalog::Unit { dim, scale: 1.0, offset: None })
     } else {
         crate::unit_catalog::fc_unit_to_unit(id)
@@ -803,7 +803,7 @@ fn template(c: &mut Call) -> Answer {
                         (V::List(items), Some(i)) => items.get(i).filter(|x| !missing(x)).cloned().unwrap_or(V::Null),
                         (v, _) => v,
                     };
-                    let spec = spec.as_deref().map(js_trim).filter(|s| !s.is_empty());
+                    let spec = spec.as_deref().map(trim_space).filter(|s| !s.is_empty());
                     let is_date = c.input_type(name).is_some_and(|t| t.starts_with("date"));
                     out.push_str(&template_format(&v, spec, is_date));
                 }
@@ -847,7 +847,7 @@ fn json_text(x: &Json, logical_upper: bool) -> String {
 /// The JSON columns a save writes, else CSV with a header row, each column's type read off its
 /// cells.
 fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
-    let trimmed = js_trim(text);
+    let trimmed = trim_space(text);
     if trimmed.starts_with('[')
         && let Ok(Json::Array(raw)) = serde_json::from_str::<Json>(trimmed)
     {
@@ -870,7 +870,7 @@ fn parse_frame_source(text: &str) -> Vec<SourceColumn> {
                     _ => Vec::new(),
                 };
                 let unit = c.get("unit").and_then(Json::as_str).filter(|u| !u.is_empty()).map(String::from);
-                let expr = c.get("expr").and_then(Json::as_str).filter(|e| !js_trim(e).is_empty()).map(String::from);
+                let expr = c.get("expr").and_then(Json::as_str).filter(|e| !trim_space(e).is_empty()).map(String::from);
                 SourceColumn { name, ty, cells, unit, expr }
             })
             .collect();
@@ -916,7 +916,7 @@ fn record_rows(picked: &V, total: usize) -> Vec<usize> {
             if !p.is_finite() {
                 return None;
             }
-            let n = crate::jsnum::math_round(*p);
+            let n = crate::jsnum::round_half_up(*p);
             let at = if n < 0.0 { total as f64 + n } else { n - 1.0 };
             (at >= 0.0 && at < total as f64).then_some(at as usize)
         })
@@ -942,12 +942,12 @@ fn picks(v: V) -> V {
 /// `(?:^|;)\s*key\s*=\s*` followed by one of `values` and a word boundary, caseless: the value matched.
 fn option_word<'a>(opts: &str, key: &str, values: &[&'a str]) -> Option<&'a str> {
     opts.split(';').find_map(|seg| {
-        let seg = seg.trim_start_matches(crate::jsnum::is_js_space);
+        let seg = seg.trim_start_matches(crate::jsnum::is_space_char);
         let rest = seg.get(..key.len()).filter(|h| h.eq_ignore_ascii_case(key)).map(|_| &seg[key.len()..])?;
         let rest = rest
-            .trim_start_matches(crate::jsnum::is_js_space)
+            .trim_start_matches(crate::jsnum::is_space_char)
             .strip_prefix('=')?
-            .trim_start_matches(crate::jsnum::is_js_space);
+            .trim_start_matches(crate::jsnum::is_space_char);
         values.iter().copied().find(|w| {
             rest.get(..w.len()).is_some_and(|h| h.eq_ignore_ascii_case(w))
                 && !rest[w.len()..].chars().next().is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
@@ -1147,7 +1147,7 @@ fn record(c: &mut Call) -> Answer {
             V::Undef | V::Null => 1.0,
             v => super::kit::num(&v),
         };
-        index = crate::jsnum::math_round(page).clamp(1.0, total as f64) as usize;
+        index = crate::jsnum::round_half_up(page).clamp(1.0, total as f64) as usize;
     }
     let lit = |c: &Call, key: &str| match c.string_literal(key) {
         V::Undef => V::Null,
@@ -1171,20 +1171,20 @@ fn record(c: &mut Call) -> Answer {
     let by_col: Option<&Column> = if op == "board" {
         let by = c.read_input("by", text_literal(c, "by", ""));
         let key = match &by {
-            V::Str(s) => js_lower(js_trim(s)).into_owned(),
+            V::Str(s) => lower_text(trim_space(s)).into_owned(),
             _ => String::new(),
         };
         if key.is_empty() {
             None
         } else {
-            cols.iter().find(|col| js_lower(js_trim(&col.name)) == key)
+            cols.iter().find(|col| lower_text(trim_space(&col.name)) == key)
         }
     } else {
         None
     };
-    let by_name = |name: &str| cols.iter().rev().find(|col| js_lower(js_trim(&col.name)) == js_lower(name));
+    let by_name = |name: &str| cols.iter().rev().find(|col| lower_text(trim_space(&col.name)) == lower_text(name));
     let placed = match &lay {
-        V::Str(s) if !js_trim(s).is_empty() => crate::card_helpers::parse_record_layout(s),
+        V::Str(s) if !trim_space(s).is_empty() => crate::card_helpers::parse_record_layout(s),
         _ => Vec::new(),
     };
     let stack: Vec<&Column> =
@@ -1414,7 +1414,7 @@ fn frame_input_columns(c: &mut Call) -> Answer {
         progress = false;
         for i in remaining.clone() {
             let expr = source[i].expr.as_deref().unwrap_or("");
-            let bare = lam_of(js_trim(expr)).is_some();
+            let bare = lam_of(trim_space(expr)).is_some();
             let ast = if bare { None } else { crate::excel_formula::parse_formula(expr) };
             let vars = ast.as_ref().map(crate::eval::variables).unwrap_or_default();
             let refs: Vec<String> = match &ast {
@@ -1432,7 +1432,7 @@ fn frame_input_columns(c: &mut Call) -> Answer {
                 }
             };
             let used: Vec<String> = if bare {
-                vec![js_trim(expr).to_string()]
+                vec![trim_space(expr).to_string()]
             } else {
                 refs.into_iter().filter(|n| lam_of(n).is_some() && index_of(n).is_none()).collect()
             };

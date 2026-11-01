@@ -4,7 +4,7 @@
 
 use crate::calendar::CalendarSpec;
 use crate::dates;
-use crate::num::{is_js_space, js_lower, js_trim};
+use crate::num::{is_space_char, lower_text, trim_space};
 use crate::PlanTask;
 use std::collections::HashSet;
 
@@ -27,11 +27,11 @@ pub enum PlanFormat {
 }
 
 fn skip_space(s: &str) -> &str {
-    s.trim_start_matches(is_js_space)
+    s.trim_start_matches(is_space_char)
 }
 
 fn opens_project(s: &str) -> bool {
-    skip_space(s).strip_prefix("<Project").and_then(|r| r.chars().next()).is_some_and(|c| c == '>' || is_js_space(c))
+    skip_space(s).strip_prefix("<Project").and_then(|r| r.chars().next()).is_some_and(|c| c == '>' || is_space_char(c))
 }
 
 /// `(<!--…-->\s*)*<Project[\s>]`: one comment may as well run to the last `-->` before the element, since a comment's
@@ -65,7 +65,7 @@ fn is_gan(text: &str) -> bool {
     lower
         .match_indices("<project")
         .find_map(|(k, _)| {
-            lower[k + 8..].chars().next().filter(|c| *c == '>' || is_js_space(*c)).map(|c| k + 8 + c.len_utf8())
+            lower[k + 8..].chars().next().filter(|c| *c == '>' || is_space_char(*c)).map(|c| k + 8 + c.len_utf8())
         })
         .is_some_and(|at| lower[at..].contains("<tasks"))
 }
@@ -85,7 +85,7 @@ pub fn sniff(text: &str) -> Option<PlanFormat> {
 
 /// The serial of the `YYYY-MM-DD` a timestamp starts with.
 pub fn iso_to_serial(s: Option<&str>) -> Option<f64> {
-    let b = js_trim(s.filter(|s| !s.is_empty())?).as_bytes();
+    let b = trim_space(s.filter(|s| !s.is_empty())?).as_bytes();
     let digits = |r: std::ops::Range<usize>| {
         b.get(r.clone())
             .filter(|d| d.iter().all(u8::is_ascii_digit))
@@ -105,11 +105,11 @@ impl UniqueNames {
     pub fn name(&mut self, n: &str) -> String {
         let mut k = n.to_string();
         let mut i = 2;
-        while self.0.contains(js_lower(&k).as_ref()) {
+        while self.0.contains(lower_text(&k).as_ref()) {
             k = format!("{n} ({i})");
             i += 1;
         }
-        self.0.insert(js_lower(&k).into_owned());
+        self.0.insert(lower_text(&k).into_owned());
         k
     }
 }

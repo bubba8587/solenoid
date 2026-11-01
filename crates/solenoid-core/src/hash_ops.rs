@@ -66,7 +66,7 @@ const BODY: GeneralPurpose =
 pub fn base64_decode(text: &str) -> Option<String> {
     let clean: String = text
         .chars()
-        .filter(|&c| !crate::jsnum::is_js_space(c))
+        .filter(|&c| !crate::jsnum::is_space_char(c))
         .map(|c| match c {
             '-' => '+',
             '_' => '/',

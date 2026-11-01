@@ -4,7 +4,7 @@
 
 use crate::calendar::CalendarSpec;
 use crate::files::{day_list, dedupe, iso_to_serial, seven_day_week, weekend_code, PlanFile, UniqueNames};
-use crate::num::{js_trim, number_to_string, string_to_number};
+use crate::num::{number_to_string, string_to_number, trim_space};
 use crate::xml::{self, XmlNode};
 use crate::{Dependency, LinkType, PlanTask, ScheduleError};
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ impl Reader {
     fn task(&mut self, el: &XmlNode) -> usize {
         let id = el.attr("id").unwrap_or("").to_string();
         let given = el.attr("name").map_or_else(|| format!("Task {id}"), str::to_string);
-        let name = self.names.name(js_trim(&given));
+        let name = self.names.name(trim_space(&given));
         let days = number(el, "duration");
         let complete = number(el, "complete");
         let mut t = PlanTask {

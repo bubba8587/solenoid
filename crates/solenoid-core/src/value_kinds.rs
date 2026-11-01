@@ -3,7 +3,7 @@
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::FrameCell;
-use crate::jsnum::{js_string, js_trim};
+use crate::jsnum::{js_string, trim_space};
 
 /// The most elements a generated list or grid may hold: a count past it is an error naming the limit, never a
 /// hang ([[C120]] linearWork).
@@ -54,7 +54,7 @@ fn is_grouped_text(b: &str) -> bool {
 }
 
 pub fn decimal_from_text(text: &str) -> f64 {
-    let t = js_trim(text);
+    let t = trim_space(text);
     let body = t.strip_prefix(['+', '-']).unwrap_or(t);
     if is_decimal_text(body) {
         return t.parse::<f64>().unwrap_or(f64::NAN);
@@ -89,7 +89,7 @@ pub fn coerce_logical(v: &FrameCell) -> Logical {
             }
         }
         FrameCell::Str(s) => {
-            let t = js_trim(s).to_lowercase();
+            let t = trim_space(s).to_lowercase();
             if t.is_empty() {
                 return Logical::Blank;
             }

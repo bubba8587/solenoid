@@ -6,7 +6,7 @@
 use solenoid_core::date_serial::{civil_from_days, days_from_civil};
 use solenoid_core::eval::{formula, Env};
 use solenoid_core::excel_functions::V;
-use solenoid_core::jsnum::{compare_utf16, math_round, number_to_string, string_to_number};
+use solenoid_core::jsnum::{compare_utf16, number_to_string, round_half_up, string_to_number};
 use solenoid_core::sort::stable_sort_by;
 use std::cmp::Ordering;
 
@@ -64,7 +64,7 @@ fn math_round_rounds_half_up_to_the_nearest_whole() {
         if !x.is_finite() || x.abs() >= 4_503_599_627_370_496.0 {
             continue;
         }
-        let y = math_round(x);
+        let y = round_half_up(x);
         assert_eq!(y, y.trunc(), "Math.round({x:e}) = {y:e} isn't whole");
         assert!(x - y >= -0.5 && x - y < 0.5, "Math.round({x:e}) = {y:e} is more than half away");
     }

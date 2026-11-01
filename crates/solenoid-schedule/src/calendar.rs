@@ -2,7 +2,7 @@
 //! The working calendar and its unit index space.
 
 use super::{ScheduleError, Sr};
-use crate::num::{math_max, math_min, math_round};
+use crate::num::{nan_max, nan_min, round_half_up};
 use std::cell::RefCell;
 use std::collections::HashSet;
 
@@ -27,7 +27,7 @@ pub fn day_of_week(serial: f64) -> f64 {
 }
 
 pub fn weekend_days(code: Option<f64>) -> Vec<f64> {
-    let r = math_round(code.unwrap_or(1.0));
+    let r = round_half_up(code.unwrap_or(1.0));
     let pair = |a: f64, b: f64| vec![a, b];
     match r {
         2.0 => pair(SUNDAY, 1.0),
@@ -46,17 +46,17 @@ pub type Interval = (f64, f64);
 pub const DEFAULT_INTERVALS: [Interval; 2] = [(480.0, 720.0), (780.0, 1020.0)];
 
 pub fn intervals_for_hours(hours: f64) -> Vec<Interval> {
-    let minutes = math_max(1.0, math_min(MINUTES_PER_DAY, math_round(hours * 60.0)));
+    let minutes = nan_max(1.0, nan_min(MINUTES_PER_DAY, round_half_up(hours * 60.0)));
     if minutes > 240.0 && minutes <= 480.0 {
         return vec![(480.0, 720.0), (780.0, 780.0 + minutes - 240.0)];
     }
-    let start = math_min(480.0, MINUTES_PER_DAY - minutes);
+    let start = nan_min(480.0, MINUTES_PER_DAY - minutes);
     vec![(start, start + minutes)]
 }
 
 fn work_intervals(intervals: Option<&[Interval]>) -> Vec<Interval> {
     let given = intervals.filter(|iv| !iv.is_empty()).unwrap_or(&DEFAULT_INTERVALS);
-    let clamp = |x: f64| math_max(0.0, math_min(MINUTES_PER_DAY, x));
+    let clamp = |x: f64| nan_max(0.0, nan_min(MINUTES_PER_DAY, x));
     let mut iv: Vec<Interval> = given.iter().map(|&(a, b)| (clamp(a), clamp(b))).filter(|(a, b)| b > a).collect();
     iv.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
     if iv.is_empty() {
@@ -248,7 +248,7 @@ impl Calendar {
     }
 
     fn clock(serial: f64) -> f64 {
-        math_round((serial - day_key(serial)) * MINUTES_PER_DAY)
+        round_half_up((serial - day_key(serial)) * MINUTES_PER_DAY)
     }
 
     pub fn index_ceil(&self, serial: f64) -> Sr<f64> {
@@ -317,7 +317,7 @@ impl Calendar {
         if day_key(b) < day_key(a) {
             return Ok(0.0);
         }
-        Ok(math_max(0.0, self.index_floor(b)? - self.index_ceil(a)? + 1.0))
+        Ok(nan_max(0.0, self.index_floor(b)? - self.index_ceil(a)? + 1.0))
     }
 
     fn clock_of(&self, o: f64) -> f64 {

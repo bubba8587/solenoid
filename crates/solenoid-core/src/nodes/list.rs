@@ -12,7 +12,7 @@ use crate::excel_criteria::DateReading;
 use crate::excel_functions::{js_string_of, MatchMode, Matcher, V};
 use crate::frame::{FrameCell, FrameColType};
 use crate::frame_verbs::FilterOp;
-use crate::jsnum::{js_trim, math_round, number_to_string};
+use crate::jsnum::{number_to_string, round_half_up, trim_space};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
 use crate::value_kinds::MAX_GENERATED;
@@ -112,7 +112,7 @@ fn required(c: &Call, key: &str) -> V {
 
 /// `Math.round(+v)`.
 fn rounded(v: &V) -> f64 {
-    math_round(super::kit::num(v))
+    round_half_up(super::kit::num(v))
 }
 
 /// `Number.isFinite(v)`: a number only, no coercion.
@@ -172,7 +172,7 @@ fn series(c: &mut Call) -> Answer {
                         ErrorCode::Overflow,
                         format!(
                             "Range of {} elements exceeds the {} element limit",
-                            number_to_string(math_round(n)),
+                            number_to_string(round_half_up(n)),
                             number_to_string(MAX_GENERATED)
                         ),
                     )
@@ -623,7 +623,7 @@ fn smooth(c: &mut Call) -> Answer {
 
 /// A typed row's items, trimmed, the empty ones dropped.
 pub(crate) fn literal_items(csv: &str) -> Vec<String> {
-    csv_line(csv).into_iter().map(|s| js_trim(&s).to_string()).filter(|s| !s.is_empty()).collect()
+    csv_line(csv).into_iter().map(|s| trim_space(&s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
 /// The first CSV row of the text (comma-delimited, blank rows skipped), or one empty
@@ -654,7 +654,7 @@ pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
     }
-    let s = js_trim(raw);
+    let s = trim_space(raw);
     if s.is_empty() {
         return V::Null;
     }
@@ -863,7 +863,7 @@ fn filter(c: &mut Call) -> Answer {
         let op: FilterOp =
             spelled.parse().map_err(|_| err(ErrorCode::Value, format!("Unknown filter condition \"{spelled}\"")))?;
         let value = condition_value(c, key);
-        if !op.is_valueless() && js_trim(&value).is_empty() {
+        if !op.is_valueless() && trim_space(&value).is_empty() {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -1113,7 +1113,7 @@ fn xmatch(c: &mut Call) -> Answer {
 fn blank(v: &V) -> bool {
     match v {
         V::Null | V::Undef => true,
-        V::Str(s) => js_trim(s).is_empty(),
+        V::Str(s) => trim_space(s).is_empty(),
         _ => false,
     }
 }
@@ -1191,7 +1191,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
             V::Err(e) => Rc::from(e.code.as_str()),
             V::Null | V::Undef => empty.clone(),
             V::Str(s) => {
-                let t = js_trim(s);
+                let t = trim_space(s);
                 if t.is_empty() {
                     empty.clone()
                 } else if t.len() == s.len() {
@@ -1200,7 +1200,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
                     Rc::from(t)
                 }
             }
-            c => Rc::from(js_trim(&js_string_of(c))),
+            c => Rc::from(trim_space(&js_string_of(c))),
         })
         .collect();
     let filled = || cells.iter().filter(|c| !blank(c) && !c.is_sol_error());
@@ -1252,7 +1252,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
     } else if any_filled
         && filled().all(|c| match c {
             V::Bool(_) => true,
-            V::Str(s) => matches!(crate::jsnum::js_lower(js_trim(s)).as_ref(), "true" | "false"),
+            V::Str(s) => matches!(crate::jsnum::lower_text(trim_space(s)).as_ref(), "true" | "false"),
             _ => false,
         })
     {
@@ -1262,7 +1262,7 @@ pub(crate) fn infer_cells(name: &str, cells: &[V]) -> (Column, Vec<Rc<str>>) {
                 if let V::Bool(_) = c {
                     c.clone()
                 } else {
-                    V::Bool(crate::jsnum::js_lower(&raw[i]) == "true")
+                    V::Bool(crate::jsnum::lower_text(&raw[i]) == "true")
                 }
             }),
             None,
@@ -1760,7 +1760,7 @@ fn position_of(x: &V) -> V {
         V::Err(_) => return x.clone(),
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
-        V::Str(s) if !js_trim(s).is_empty() => crate::jsnum::string_to_number(s),
+        V::Str(s) if !trim_space(s).is_empty() => crate::jsnum::string_to_number(s),
         _ => f64::NAN,
     };
     if n.is_nan() {

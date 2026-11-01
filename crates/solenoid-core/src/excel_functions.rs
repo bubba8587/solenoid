@@ -8,7 +8,7 @@ use std::rc::Rc;
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, FxError, SolError};
 use crate::frame::FrameCell;
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
+use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
 
@@ -363,7 +363,7 @@ fn same_or(v: &V, t: std::borrow::Cow<'_, str>) -> V {
 }
 
 /// JS `toUpperCase`, borrowing when nothing changes.
-fn js_upper(s: &str) -> std::borrow::Cow<'_, str> {
+fn upper_text(s: &str) -> std::borrow::Cow<'_, str> {
     if s.bytes().all(|b| b.is_ascii() && !b.is_ascii_lowercase()) {
         std::borrow::Cow::Borrowed(s)
     } else if s.is_ascii() {
@@ -410,7 +410,7 @@ fn js_trim_inner(t: &str) -> std::borrow::Cow<'_, str> {
         let mut prev_space = true;
         let mut ok = true;
         for c in t.chars() {
-            let sp = is_js_space(c);
+            let sp = is_space_char(c);
             if sp && (prev_space || c != ' ') {
                 ok = false;
                 break;
@@ -425,7 +425,7 @@ fn js_trim_inner(t: &str) -> std::borrow::Cow<'_, str> {
     let mut out = String::with_capacity(t.len());
     let mut space = false;
     for c in t.chars() {
-        if is_js_space(c) {
+        if is_space_char(c) {
             space = true;
         } else {
             if space {
@@ -438,7 +438,7 @@ fn js_trim_inner(t: &str) -> std::borrow::Cow<'_, str> {
     if space {
         out.push(' ');
     }
-    std::borrow::Cow::Owned(js_trim(&out).to_string())
+    std::borrow::Cow::Owned(trim_space(&out).to_string())
 }
 
 pub(crate) fn to_str(v: &V) -> String {
@@ -470,7 +470,7 @@ pub fn fx_error_to_sol(code: FxError) -> SolError {
 
 /// JS `parseFloat`: the longest decimal (or `Infinity`) prefix after leading space.
 pub(crate) fn js_parse_float(s: &str) -> f64 {
-    let t = s.trim_start_matches(is_js_space);
+    let t = s.trim_start_matches(is_space_char);
     let b = t.as_bytes();
     let mut i = 0;
     if i < b.len() && (b[i] == b'+' || b[i] == b'-') {
@@ -855,7 +855,7 @@ fn x_search_mode(v: &V) -> Result<bool, V> {
 /// Text compares without case, anything else strictly.
 fn lookup_eq(a: &V, b: &V) -> bool {
     match (a, b) {
-        (V::Str(x), V::Str(y)) => crate::jsnum::js_lower(x) == crate::jsnum::js_lower(y),
+        (V::Str(x), V::Str(y)) => crate::jsnum::lower_text(x) == crate::jsnum::lower_text(y),
         _ => strict_equals(a, b),
     }
 }
@@ -907,7 +907,7 @@ enum ExactKey {
 /// `Some(None)` for a value that equals nothing (NaN), `None` for one the index doesn't hold (a list, an error).
 fn exact_key(v: &V) -> Option<Option<ExactKey>> {
     Some(match v {
-        V::Str(s) => Some(ExactKey::Str(crate::jsnum::js_lower(s).into_owned())),
+        V::Str(s) => Some(ExactKey::Str(crate::jsnum::lower_text(s).into_owned())),
         V::Num(n) if n.is_nan() => None,
         V::Num(n) => Some(ExactKey::Num((n + 0.0).to_bits())),
         V::Bool(b) => Some(ExactKey::Bool(*b)),
@@ -1148,7 +1148,7 @@ pub(crate) fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
 }
 
 /// `Math.sign`.
-fn js_sign(x: f64) -> f64 {
+fn sign_or_zero(x: f64) -> f64 {
     if x.is_nan() || x == 0.0 {
         x
     } else {
@@ -1242,7 +1242,7 @@ pub(crate) fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     } else {
         for i in 0..n {
             for j in i + 1..n {
-                let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
+                let (dx, dy) = (sign_or_zero(xs[i] - xs[j]), sign_or_zero(ys[i] - ys[j]));
                 if dx == 0.0 && dy == 0.0 {
                     continue;
                 }
@@ -1295,7 +1295,7 @@ fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
     let r = match op {
         "SLOPE" => slope,
         "INTERCEPT" => y_mean - slope * x_mean,
-        _ if n >= 3 => (crate::jsnum::math_max(0.0, syy - slope * sxy) / (n - 2) as f64).sqrt(),
+        _ if n >= 3 => (crate::jsnum::nan_max(0.0, syy - slope * sxy) / (n - 2) as f64).sqrt(),
         _ => return V::Null,
     };
     finite_of(r, xs, ys)
@@ -1404,7 +1404,7 @@ fn excel_percent_rank(s: &[f64], x: f64, sig: f64, exc: bool) -> V {
     };
     let nf = n as f64;
     let rank = if exc { (pos + 1.0) / (nf + 1.0) } else { pos / (nf - 1.0) };
-    let f = libm::pow(10.0, crate::jsnum::math_max(0.0, sig.trunc()));
+    let f = libm::pow(10.0, crate::jsnum::nan_max(0.0, sig.trunc()));
     V::Num((rank * f).trunc() / f)
 }
 
@@ -1452,7 +1452,7 @@ fn excel_text(value: &V, fmt: &V) -> Result<V, Thrown> {
         return Ok(V::str(&number_to_text(n)));
     }
     if !f.is_empty() && f.bytes().all(|c| c == b'0') {
-        let digits = number_to_string(math_round(n.abs()));
+        let digits = number_to_string(round_half_up(n.abs()));
         let pad = f.len().saturating_sub(digits.encode_utf16().count());
         return Ok(V::str(&format!("{}{}{digits}", if n < 0.0 { "-" } else { "" }, "0".repeat(pad))));
     }
@@ -1547,7 +1547,7 @@ fn fx_text_number(n: f64, f: &str) -> Result<V, Thrown> {
     };
     let no_commas = !code.contains(',');
     let n = if percent { n * 100.0 } else { n };
-    let Some(fixed) = crate::jsnum::to_fixed(n, places) else {
+    let Some(fixed) = crate::jsnum::fixed_text(n, places) else {
         return Err(Thrown::value("toFixed() digits argument must be between 0 and 100"));
     };
     let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
@@ -1584,7 +1584,7 @@ fn group_thousands(s: &str) -> String {
 }
 
 /// V8's `Math.hypot`: the largest magnitude scales a Kahan-compensated sum of squares.
-pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
+pub(crate) fn hypot_all(xs: &[f64]) -> f64 {
     let mut max: f64 = 0.0;
     let mut nan = false;
     let abs: Vec<f64> = xs.iter().map(|x| x.abs()).collect();
@@ -1677,7 +1677,7 @@ fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, ca
     }
     let t16 = utf16(text);
     let (hay, needle) = if caseless {
-        (utf16(&crate::jsnum::js_lower(text)), utf16(&crate::jsnum::js_lower(delimiter)))
+        (utf16(&crate::jsnum::lower_text(text)), utf16(&crate::jsnum::lower_text(delimiter)))
     } else {
         (t16.clone(), utf16(delimiter))
     };
@@ -1714,7 +1714,7 @@ fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, ca
 /// Counts code points.
 fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
     let chars: Vec<char> = t.chars().collect();
-    let w = crate::jsnum::math_max(0.0, width.floor());
+    let w = crate::jsnum::nan_max(0.0, width.floor());
     let fill: Vec<char> = if fill.is_empty() { vec![' '] } else { fill.chars().collect() };
     if chars.len() as f64 >= w {
         return V::str(t);
@@ -1744,7 +1744,7 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
 /// Counts code points.
 fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
     let chars: Vec<char> = t.chars().collect();
-    let w = crate::jsnum::math_max(0.0, width.floor());
+    let w = crate::jsnum::nan_max(0.0, width.floor());
     if (chars.len() as f64) <= w {
         return t.to_string();
     }
@@ -1753,7 +1753,7 @@ fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
         return ellipsis.to_string();
     }
     let e: Vec<char> = ellipsis.chars().collect();
-    let keep = crate::jsnum::math_max(0.0, w - e.len() as f64) as usize;
+    let keep = crate::jsnum::nan_max(0.0, w - e.len() as f64) as usize;
     if keep == 0 {
         e.iter().take(w as usize).collect()
     } else {
@@ -1776,7 +1776,7 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     if g == Some(d) {
         return bad();
     }
-    let mut s: Vec<u16> = utf16(&text.chars().filter(|&c| !is_js_space(c)).collect::<String>());
+    let mut s: Vec<u16> = utf16(&text.chars().filter(|&c| !is_space_char(c)).collect::<String>());
     if s.is_empty() {
         return V::Num(0.0);
     }
@@ -1816,7 +1816,7 @@ fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bo
             return from_utf16(t).chars().map(|c| utf16(&c.to_string())).collect();
         }
         let (hay, needle) =
-            if caseless { (utf16(&js_lower(&from_utf16(t))), utf16(&js_lower(d))) } else { (t.to_vec(), utf16(d)) };
+            if caseless { (utf16(&lower_text(&from_utf16(t))), utf16(&lower_text(d))) } else { (t.to_vec(), utf16(d)) };
         let slice = |from: usize, to: usize| t[from.min(t.len())..to.clamp(from.min(t.len()), t.len())].to_vec();
         let d_len = d.encode_utf16().count();
         let mut parts = Vec::new();
@@ -1853,11 +1853,11 @@ fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bo
 
 /// Words split on JS whitespace, a word's length in code points. A NaN width wraps every word.
 fn wrap_text(t: &str, width: f64) -> Vec<String> {
-    let w = crate::jsnum::math_max(1.0, width.floor());
+    let w = crate::jsnum::nan_max(1.0, width.floor());
     let mut lines = Vec::new();
     let mut line = String::new();
     let mut line_len = 0.0;
-    for word in t.split(is_js_space).filter(|s| !s.is_empty()) {
+    for word in t.split(is_space_char).filter(|s| !s.is_empty()) {
         let word_len = word.chars().count() as f64;
         if line.is_empty() {
             line = word.to_string();
@@ -2274,7 +2274,7 @@ fn clock_time(t: &str) -> Option<(f64, f64, f64, Option<bool>)> {
     }
     let mut meridiem = None;
     let mut j = i;
-    while j < b.len() && is_js_space(b[j]) {
+    while j < b.len() && is_space_char(b[j]) {
         j += 1;
     }
     if let Some(&c) = b.get(j)
@@ -2459,7 +2459,7 @@ fn epoch_unit(u: &V) -> Option<bool> {
         return Some(false);
     }
     let text = js_string_of(u);
-    let t = js_trim(&text);
+    let t = trim_space(&text);
     if t.eq_ignore_ascii_case("ms") {
         Some(true)
     } else if t.eq_ignore_ascii_case("s") {
@@ -2534,11 +2534,11 @@ fn proper_case(t: &str) -> V {
 
 /// VALUE's reading, with the US separators.
 fn parse_value_text(text: &str) -> f64 {
-    let mut t = js_trim(text);
+    let mut t = trim_space(text);
     let mut pct = 0;
     while let Some(rest) = t.strip_suffix('%') {
         pct += 1;
-        t = js_trim(rest);
+        t = trim_space(rest);
     }
     // `/^\(.*\)$/`: `.` stops at a line terminator.
     let mut neg = false;
@@ -2549,7 +2549,7 @@ fn parse_value_text(text: &str) -> f64 {
         && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}'])
     {
         neg = true;
-        t = js_trim(&t[1..t.len() - 1]);
+        t = trim_space(&t[1..t.len() - 1]);
     }
     let unsigned = t.strip_prefix(['+', '-']).unwrap_or(t);
     if let Some(after) = unsigned.strip_prefix('$') {
@@ -2736,7 +2736,7 @@ pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     let n = sorted.len() as f64;
     let i = if exc { p * (n + 1.0) - 1.0 } else { p * (n - 1.0) };
     let lo = i.floor();
-    let hi = if exc { crate::jsnum::math_min(n - 1.0, i.ceil()) } else { i.ceil() };
+    let hi = if exc { crate::jsnum::nan_min(n - 1.0, i.ceil()) } else { i.ceil() };
     let at = |k: f64| (k >= 0.0 && k < n && k.fract() == 0.0).then(|| sorted[k as usize]);
     let t = i - lo;
     match (at(lo), at(hi)) {
@@ -2857,7 +2857,7 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     let clear = if mode == "round" { (frac - 0.5).abs() > tol } else { frac > tol && 1.0 - frac > tol };
     let m = if clear { raw } else { to_precision(raw, 15) };
     let r = match mode {
-        "round" => math_round(m),
+        "round" => round_half_up(m),
         "roundup" => m.ceil(),
         _ => m.floor(),
     };
@@ -3621,7 +3621,7 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             if n.is_nan() || d.is_nan() {
                 return Ok(value_err("FIXED"));
             }
-            let dd = crate::jsnum::math_min(d.trunc(), 100.0);
+            let dd = crate::jsnum::nan_min(d.trunc(), 100.0);
             // ROUND's reading first, unless it rounds to 0, which keeps the value as given.
             let r = round_digits(n, dd, "round");
             let x = if r == 0.0 { n } else { r } + 0.0;
@@ -3629,9 +3629,9 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             // Formula.js FIXED: a negative count rounds to tens and writes the number as it is.
             let text = if dd < 0.0 {
                 let factor = libm::pow(10.0, -dd);
-                number_to_string(math_round(x / factor) * factor)
+                number_to_string(round_half_up(x / factor) * factor)
             } else {
-                match crate::jsnum::to_fixed(x, dd) {
+                match crate::jsnum::fixed_text(x, dd) {
                     Some(t) => t,
                     None => return Err(Thrown::value("toFixed() digits argument must be between 0 and 100")),
                 }
@@ -3999,8 +3999,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let v = arg(a, 0);
             let t = text_of(v);
             let out = match arm {
-                F::UPPER => js_upper(&t),
-                F::LOWER => js_lower(&t),
+                F::UPPER => upper_text(&t),
+                F::LOWER => lower_text(&t),
                 _ => js_trim_inner(&t),
             };
             match out {
@@ -4193,7 +4193,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 let p = parts_of_ms(ms);
                 date_utc(p.year as f64, f64::from(p.month - 1) + m.trunc() + 1.0, 0.0)
             });
-            V::Num(eom.map_or(f64::NAN, |ms| math_round(ms / MS_PER_DAY + 25569.0)))
+            V::Num(eom.map_or(f64::NAN, |ms| round_half_up(ms / MS_PER_DAY + 25569.0)))
         }
         F::WEEKDAY | F::WEEKNUM | F::ISOWEEKNUM => {
             let n = to_num(arg(a, 0));
@@ -4225,7 +4225,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return value_err("DAYS");
             }
             V::Num(match (serial_to_ms(s), serial_to_ms(e)) {
-                (Some(sd), Some(ed)) => math_round((ed - sd) / MS_PER_DAY),
+                (Some(sd), Some(ed)) => round_half_up((ed - sd) / MS_PER_DAY),
                 _ => f64::NAN,
             })
         }
@@ -4255,7 +4255,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 F::FLOOR => V::Num((n / sig).floor() * sig),
                 _ if n * sig == 0.0 => V::Num(0.0),
                 _ if n * sig < 0.0 => V::Fx(FxError::Num),
-                _ => V::Num(math_round(n / sig) * sig),
+                _ => V::Num(round_half_up(n / sig) * sig),
             }
         }
         F::CEILING_MATH | F::FLOOR_MATH => {
@@ -4601,7 +4601,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::DATEVALUE | F::TIMEVALUE => {
             use crate::excel_criteria::{parse_date, DateReading};
             let raw = to_str(arg(a, 0));
-            let t = js_trim(&raw);
+            let t = trim_space(&raw);
             let bad = |what: &str| V::err(sol_error(ErrorCode::Value, format!("Cannot parse \"{t}\" as a {what}")));
             if arm == F::DATEVALUE {
                 return match parse_date(t) {
@@ -4722,7 +4722,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if n.is_nan() || lo.is_nan() || hi.is_nan() {
                 return value_err("CLAMP");
             }
-            V::Num(crate::jsnum::math_min(crate::jsnum::math_max(n, lo), hi))
+            V::Num(crate::jsnum::nan_min(crate::jsnum::nan_max(n, lo), hi))
         }
         F::BETWEEN => {
             let (n, lo, hi) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
@@ -4745,7 +4745,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
                 return V::Null;
             }
-            V::Num(math_hypot(&[to_f64_js(x), to_f64_js(y)]))
+            V::Num(hypot_all(&[to_f64_js(x), to_f64_js(y)]))
         }
         F::NAND | F::NOR => {
             let and = arm == F::NAND;
@@ -4839,7 +4839,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             let side = if matches!(side, V::Null | V::Undef) {
                 "right".to_string()
             } else {
-                crate::jsnum::js_lower(crate::jsnum::js_trim(&js_string_of(side))).replacen("both", "center", 1)
+                crate::jsnum::lower_text(crate::jsnum::trim_space(&js_string_of(side))).replacen("both", "center", 1)
             };
             if !matches!(side.as_str(), "left" | "right" | "center") {
                 return V::err(sol_error(ErrorCode::Domain, "PADTEXT side must be left, right or center"));
@@ -5177,9 +5177,9 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         F::HASH => {
             let alg: String = match arg(a, 1) {
                 V::Null | V::Undef => "sha256".into(),
-                v => js_lower(js_trim(&js_string_of(v)))
+                v => lower_text(trim_space(&js_string_of(v)))
                     .chars()
-                    .filter(|&c| c != '-' && c != '_' && !is_js_space(c))
+                    .filter(|&c| c != '-' && c != '_' && !is_space_char(c))
                     .collect(),
             };
             match crate::hash_ops::hash_text(&to_str(arg(a, 0)), &alg) {
@@ -5313,7 +5313,7 @@ fn product(from: f64, to: f64, step: f64) -> f64 {
 
 /// `combinations`: n choose k over the smaller side, exact while it fits.
 fn combinations(n: f64, k: f64) -> f64 {
-    let m = crate::jsnum::math_min(k, n - k);
+    let m = crate::jsnum::nan_min(k, n - k);
     let mut r: f64 = 1.0;
     let mut i = 1.0;
     // Each step divides `i`'s common factor out of the running value first, so no product passes 2^53 while the
@@ -5328,7 +5328,7 @@ fn combinations(n: f64, k: f64) -> f64 {
         i += 1.0;
     }
     if r < 9_007_199_254_740_992.0 {
-        math_round(r)
+        round_half_up(r)
     } else {
         r
     }
@@ -5375,7 +5375,7 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
 
 fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     use crate::dists::ln_combin;
-    let cells = [a, b, c, d].map(math_round);
+    let cells = [a, b, c, d].map(round_half_up);
     if cells.iter().any(|&v| v < 0.0 || !v.is_finite()) {
         return Ok(None);
     }
@@ -5385,7 +5385,7 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
         return Ok(None);
     }
     let pmf = |x: f64| libm::exp(ln_combin(col1, x) + ln_combin(n - col1, row1 - x) - ln_combin(n, row1));
-    let (lo, hi) = (crate::jsnum::math_max(0.0, row1 - (n - col1)), crate::jsnum::math_min(row1, col1));
+    let (lo, hi) = (crate::jsnum::nan_max(0.0, row1 - (n - col1)), crate::jsnum::nan_min(row1, col1));
     if hi - lo + 1.0 > MAX_OUTCOMES {
         return Err(exact_test_too_large());
     }
@@ -5397,7 +5397,7 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
             p += px;
         }
     }
-    Ok(Some(crate::jsnum::math_min(1.0, p)))
+    Ok(Some(crate::jsnum::nan_min(1.0, p)))
 }
 
 fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
@@ -5413,7 +5413,7 @@ fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
 }
 
 fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
-    let (k, n) = (math_round(k), math_round(n));
+    let (k, n) = (round_half_up(k), round_half_up(n));
     if n.is_nan() || n < 1.0 || k < 0.0 || k > n || !(0.0..=1.0).contains(&p0) {
         return Ok(None);
     }
@@ -5438,7 +5438,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
         }
         x += 1.0;
     }
-    Ok(Some(crate::jsnum::math_min(1.0, p)))
+    Ok(Some(crate::jsnum::nan_min(1.0, p)))
 }
 
 /// Ties share the mean of their places.
@@ -5631,13 +5631,13 @@ fn fx_edate(start: &V, months: &V) -> V {
         } else {
             [31.0, 28.0, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0][target as usize]
         };
-        stored = crate::jsnum::math_min(stored, dim);
+        stored = crate::jsnum::nan_min(stored, dim);
     }
     date = zone::set_date(date, stored);
     if date.is_nan() {
         return V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"));
     }
-    V::Num(crate::jsnum::math_round(date / 86_400_000.0 + 25569.0))
+    V::Num(crate::jsnum::round_half_up(date / 86_400_000.0 + 25569.0))
 }
 
 // ─── Regex and text utilities ───────────────────────────────────────────────────
@@ -5766,7 +5766,7 @@ fn template(a: &[V]) -> Result<V, Thrown> {
             Some(Token::Placeholder(n, spec)) => {
                 let k = string_to_number(n);
                 let v = if k < values.len() as f64 { &values[k as usize] } else { &V::Null };
-                let spec = spec.as_deref().map(js_trim).filter(|s| !s.is_empty());
+                let spec = spec.as_deref().map(trim_space).filter(|s| !s.is_empty());
                 out.push_str(&template_format(v, spec)?);
             }
             None => {}
@@ -5789,13 +5789,13 @@ fn fx_round(number: &V, num_digits: &V) -> V {
         let mut parts = s.split('e');
         string_to_number(&format!("{}e{}", parts.next().unwrap_or(""), parts.next().unwrap_or("")))
     };
-    let shifted = math_round(shift(n.abs(), d));
+    let shifted = round_half_up(shift(n.abs(), d));
     V::Num(shift(shifted, -d) * sign)
 }
 
 /// `x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: fd, maximumFractionDigits: fd })`:
 /// ICU rounds the shortest round-trip digits half away from zero and groups by threes.
-pub(crate) fn intl_usd(x: f64, fd: usize) -> String {
+pub(crate) fn usd_text(x: f64, fd: usize) -> String {
     if x.is_nan() {
         return "$NaN".into();
     }
@@ -5882,7 +5882,7 @@ fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
             if fd > 100.0 {
                 return Err(Thrown::value("minimumFractionDigits value is out of range."));
             }
-            let formatted = intl_usd(x, fd.floor() as usize);
+            let formatted = usd_text(x, fd.floor() as usize);
             if x < 0.0 {
                 format!("$({})", formatted.get(2..).unwrap_or(""))
             } else {
@@ -6403,7 +6403,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 return V::Num(0.0);
             }
             // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
-            let rate = crate::jsnum::to_fixed(1.0 - libm::pow(salvage / cost, 1.0 / life), 3.0)
+            let rate = crate::jsnum::fixed_text(1.0 - libm::pow(salvage / cost, 1.0 / life), 3.0)
                 .map_or(f64::NAN, |t| string_to_number(&t));
             let initial = (cost * rate * month) / 12.0;
             let mut total = initial;
@@ -6445,7 +6445,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             let (mut total, mut current) = (0.0, 0.0);
             let mut i = 1.0;
             while i <= period {
-                current = crate::jsnum::math_min((cost - total) * (factor / life), cost - salvage - total);
+                current = crate::jsnum::nan_min((cost - total) * (factor / life), cost - salvage - total);
                 total += current;
                 i += 1.0;
             }
@@ -6507,7 +6507,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             }
             result += ((dollar % 1.0) * libm::pow(10.0, digits)) / fraction;
             let power = libm::pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
-            V::Num(math_round(result * power) / power)
+            V::Num(round_half_up(result * power) / power)
         }
         "ISPMT" => {
             let vals = [p(0), p(1), p(2), p(3)];

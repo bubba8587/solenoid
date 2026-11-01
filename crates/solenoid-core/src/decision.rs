@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::error_value::{sol_error, ErrorCode, SolError};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string};
+use crate::jsnum::{is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space};
 
 type Res<T> = Result<T, SolError>;
 
@@ -88,7 +88,7 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
     match mode {
         Normalize::None => vals,
         Normalize::Max => {
-            let denom = vals.iter().fold(0.0, |m, v| math_max(m, v.abs()));
+            let denom = vals.iter().fold(0.0, |m, v| nan_max(m, v.abs()));
             if denom == 0.0 {
                 vals.iter().map(|_| 0.0).collect()
             } else {
@@ -124,7 +124,7 @@ fn normalize_column(vals: Vec<f64>, mode: Normalize) -> Vec<f64> {
 }
 
 pub(crate) fn round4(n: f64) -> f64 {
-    let r = math_round(n * 1e4) / 1e4;
+    let r = round_half_up(n * 1e4) / 1e4;
     if r == 0.0 {
         0.0
     } else {
@@ -142,7 +142,7 @@ pub(crate) fn decision_columns(f: &FrameValue) -> (Option<usize>, Vec<usize>) {
 }
 
 pub(crate) fn crit_key(s: &str) -> String {
-    js_lower(js_trim(s)).into_owned()
+    lower_text(trim_space(s)).into_owned()
 }
 
 pub(crate) fn criterion_row_index(f: &FrameValue) -> HashMap<String, usize> {
@@ -169,7 +169,7 @@ pub(crate) fn num_or_null(v: &FrameCell) -> Option<f64> {
 
 fn parse_normalize(v: &FrameCell) -> Option<Normalize> {
     let FrameCell::Str(s) = v else { return None };
-    let s: String = js_lower(js_trim(s)).chars().filter(|&c| c != '÷' && !is_js_space(c)).collect();
+    let s: String = lower_text(trim_space(s)).chars().filter(|&c| c != '÷' && !is_space_char(c)).collect();
     match s.as_str() {
         "raw" | "none" => Some(Normalize::None),
         "max" | "divmax" => Some(Normalize::Max),
@@ -283,7 +283,7 @@ pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> R
 
 /// `v.toLocaleString("en-US", { maximumFractionDigits: 4 })`.
 fn plain_number(v: f64) -> String {
-    let s = crate::excel_functions::intl_usd(v, 4).replacen('$', "", 1);
+    let s = crate::excel_functions::usd_text(v, 4).replacen('$', "", 1);
     match s.split_once('.') {
         Some((int, frac)) => {
             let frac = frac.trim_end_matches('0');
@@ -551,10 +551,10 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
                     let t = (a[win] - a[i]) / de;
                     let at_zero = t.abs() < 1e-9 && w[j] != 0.0;
                     if de > 0.0 && t <= hi && !at_zero && above.is_none_or(|x| t < x.t) {
-                        above = Some(Flip { t: math_max(t, w[j]), who: i });
+                        above = Some(Flip { t: nan_max(t, w[j]), who: i });
                     }
                     if de < 0.0 && t >= lo && !at_zero && below.is_none_or(|x| t > x.t) {
-                        below = Some(Flip { t: math_min(t, w[j]), who: i });
+                        below = Some(Flip { t: nan_min(t, w[j]), who: i });
                     }
                 }
             }
@@ -584,7 +584,7 @@ pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize
             r.2
         }
     };
-    let at = |f: Option<Flip>| f.map_or(FrameCell::Null, |f| FrameCell::Num(math_round(f.t * 100.0) / 100.0));
+    let at = |f: Option<Flip>| f.map_or(FrameCell::Null, |f| FrameCell::Num(round_half_up(f.t * 100.0) / 100.0));
     let who = |f: Option<Flip>| if n == 0 { FrameCell::Null } else { labels[pass[f.map_or(win, |f| f.who)]].clone() };
     Ok(FrameValue {
         columns: vec![
@@ -605,7 +605,7 @@ fn sum(xs: &[f64]) -> f64 {
 }
 
 fn clamp_range(v: f64, lo: f64, hi: f64) -> f64 {
-    math_min(hi, math_max(lo, v))
+    nan_min(hi, nan_max(lo, v))
 }
 
 fn read_weights(weights: &[f64]) -> Vec<f64> {
@@ -716,7 +716,7 @@ fn allocate_proportional(mins: &[f64], maxs: &[f64], weights: &[f64]) -> Vec<f64
     let mut k = 0.0;
     for i in 0..mins.len() {
         if w[i] > 0.0 {
-            k = math_max(k, mins[i] / w[i]);
+            k = nan_max(k, mins[i] / w[i]);
         }
     }
     (0..mins.len()).map(|i| clamp_range(if w[i] > 0.0 { k * w[i] } else { mins[i] }, mins[i], maxs[i])).collect()
@@ -735,7 +735,8 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
         return Err(sol_error(ErrorCode::Value, "Allocator: the amount must be a number"));
     }
     let rows = frame_row_count(f);
-    let by_name = |names: &[&str]| f.columns.iter().position(|c| names.contains(&js_lower(js_trim(&c.name)).as_ref()));
+    let by_name =
+        |names: &[&str]| f.columns.iter().position(|c| names.contains(&lower_text(trim_space(&c.name)).as_ref()));
     let nums: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == FrameColType::Number).collect();
     let weight_col = by_name(&["weight", "weights", "value"]);
     let price: Vec<usize> = nums.iter().copied().filter(|&i| Some(i) != weight_col).collect();
@@ -767,8 +768,8 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
             Some(v) => v.clone(),
         });
     }
-    let lo: Vec<f64> = (0..rows).map(|i| math_min(mins[i], maxs[i])).collect();
-    let hi: Vec<f64> = (0..rows).map(|i| math_max(maxs[i], mins[i])).collect();
+    let lo: Vec<f64> = (0..rows).map(|i| nan_min(mins[i], maxs[i])).collect();
+    let hi: Vec<f64> = (0..rows).map(|i| nan_max(maxs[i], mins[i])).collect();
     let alloc = match mode {
         "budget" => allocate_budget(&lo, &hi, &weights, amount),
         "minTarget" => allocate_min_target(&lo, &hi, &weights, amount)?,

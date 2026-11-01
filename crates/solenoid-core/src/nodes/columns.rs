@@ -16,7 +16,7 @@ use crate::eval::{LambdaV, RowColumn};
 use crate::excel_formula::Ast;
 use crate::excel_functions::V;
 use crate::frame::FrameColType;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use crate::unit_dims::{dim_equal, Dim};
 use serde_json::Value as Json;
 use std::rc::Rc;
@@ -1008,7 +1008,7 @@ fn computed_column(c: &mut Call) -> Answer {
     let expr = c.field_str("expr", "").to_string();
     let ast = if lam.is_none() { crate::excel_formula::parse_formula(&expr) } else { None };
     if lam.is_none() {
-        if js_trim(&expr).is_empty() {
+        if trim_space(&expr).is_empty() {
             return empty(
                 c,
                 match (&cube, &frame) {
@@ -1155,7 +1155,7 @@ fn computed_column(c: &mut Call) -> Answer {
 /// value with a unit, a plan that rescales, or a formula the column runner refuses.
 fn on_ref(c: &mut Call, r: &Rc<crate::frame_ref::FrameRef>) -> Result<Option<Vec<(String, Cv)>>, V> {
     let expr = c.field_str("expr", "").to_string();
-    if matches!(first(c, "fn"), V::Lambda(_)) || !bindings(c).is_empty() || js_trim(&expr).is_empty() {
+    if matches!(first(c, "fn"), V::Lambda(_)) || !bindings(c).is_empty() || trim_space(&expr).is_empty() {
         return Ok(None);
     }
     let Some((name, after)) = name_and_after(c)? else { return Ok(None) };
@@ -1269,7 +1269,7 @@ fn formula_columns(cube: Cube, exprs: &[Option<String>]) -> Result<Cv, V> {
     let compiled: Vec<Option<(Ast, Vec<String>)>> = exprs
         .iter()
         .map(|e| {
-            let e = e.as_deref().filter(|e| !js_trim(e).is_empty())?;
+            let e = e.as_deref().filter(|e| !trim_space(e).is_empty())?;
             let ast = crate::excel_formula::parse_formula(e)?;
             let mut names = crate::eval::variables(&ast);
             names.extend(crate::eval::row_refs(&ast));
@@ -1288,7 +1288,7 @@ fn formula_columns(cube: Cube, exprs: &[Option<String>]) -> Result<Cv, V> {
             }
             pending.retain(|&p| p != i);
             progress = true;
-            if js_trim(expr).is_empty() {
+            if trim_space(expr).is_empty() {
                 fill(&mut cols, i, V::Null);
                 continue;
             }

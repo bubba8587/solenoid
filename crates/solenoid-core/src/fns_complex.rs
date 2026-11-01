@@ -3,8 +3,8 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_string_of, math_hypot, to_num, to_str, Thrown, V};
-use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
+use crate::excel_functions::{hypot_all, js_string_of, to_num, to_str, Thrown, V};
+use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, cosh, exp, log, sin, sinh};
 
@@ -88,7 +88,7 @@ fn cx_div(a: Cx, b: Cx) -> Cx {
     ((a.0 * b.0 + a.1 * b.1) / d, (a.1 * b.0 - a.0 * b.1) / d)
 }
 fn cx_abs(z: Cx) -> f64 {
-    math_hypot(&[z.0, z.1])
+    hypot_all(&[z.0, z.1])
 }
 fn cx_arg(z: Cx) -> f64 {
     atan2(z.1, z.0)
@@ -154,7 +154,7 @@ fn scan_num(b: &[u8], i: usize) -> Option<usize> {
 
 fn skip_space(s: &str, mut i: usize) -> usize {
     while let Some(c) = s[i..].chars().next() {
-        if !is_js_space(c) {
+        if !is_space_char(c) {
             break;
         }
         i += c.len_utf8();
@@ -163,7 +163,7 @@ fn skip_space(s: &str, mut i: usize) -> usize {
 }
 
 fn parse_cx(text: &str) -> Option<Cx> {
-    let s = js_trim(text);
+    let s = trim_space(text);
     if s.is_empty() {
         return None;
     }
@@ -316,8 +316,10 @@ fn sim_method(m: &V) -> Option<Sim> {
     if is_nullish(m) {
         return Some(Sim::Ratio);
     }
-    let k: String =
-        js_lower(js_trim(&js_string_of(m))).chars().map(|c| if c == '-' || is_js_space(c) { '_' } else { c }).collect();
+    let k: String = lower_text(trim_space(&js_string_of(m)))
+        .chars()
+        .map(|c| if c == '-' || is_space_char(c) { '_' } else { c })
+        .collect();
     match k.as_str() {
         "ratio" => Some(Sim::Ratio),
         "damerau" => Some(Sim::Damerau),
@@ -394,7 +396,7 @@ fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {
     if !count.is_finite() {
         return V::err(sol_error(ErrorCode::Value, format!("{name} needs a number")));
     }
-    let k = math_round(count);
+    let k = round_half_up(count);
     if k > MAX_GENERATED {
         return V::err(sol_error(
             ErrorCode::Overflow,
@@ -409,7 +411,7 @@ fn capped(name: &str, count: f64, make: impl FnOnce() -> Vec<V>) -> V {
 }
 
 fn pad_list(arr: Vec<V>, n: f64, fill: V, left: bool) -> Vec<V> {
-    let target = math_round(n);
+    let target = round_half_up(n);
     if arr.len() as f64 >= target {
         return arr;
     }
@@ -444,7 +446,7 @@ fn convert_zone(serial: f64, from: &str, to: &str) -> Result<V, Thrown> {
     if !serial.is_finite() {
         return Ok(V::err(sol_error(ErrorCode::Value, "The date/time input is empty.")));
     }
-    let (from, to) = (js_trim(from), js_trim(to));
+    let (from, to) = (trim_space(from), trim_space(to));
     if !is_valid_zone(from) {
         return Ok(V::err(sol_error(
             ErrorCode::Value,
@@ -513,7 +515,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         }
         "REPEAT" => {
             let n = js_number(arg(a, 1));
-            capped(name, n, || vec![arg(a, 0).clone(); math_round(n).max(0.0) as usize])
+            capped(name, n, || vec![arg(a, 0).clone(); round_half_up(n).max(0.0) as usize])
         }
         "BIN" => V::List(std::rc::Rc::new(bin_index(&to_list(arg(a, 0)), &to_list(arg(a, 1))))),
         "TIMEZONECONVERT" => {

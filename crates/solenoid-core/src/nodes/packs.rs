@@ -10,7 +10,7 @@ use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
 use crate::frame::FrameColType;
-use crate::jsnum::{math_max, math_min, math_round};
+use crate::jsnum::{nan_max, nan_min, round_half_up};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{round_at_larger_term, to_precision, unit_error};
@@ -512,7 +512,7 @@ fn hydrate_segments(s: &[u16]) -> Vec<&[u16]> {
 /// Each hydrate segment's leading multiplier times its formula's mass.
 pub(crate) fn molar_mass(input: &str) -> V {
     let s: Vec<u16> =
-        input.chars().filter(|&ch| !crate::jsnum::is_js_space(ch)).collect::<String>().encode_utf16().collect();
+        input.chars().filter(|&ch| !crate::jsnum::is_space_char(ch)).collect::<String>().encode_utf16().collect();
     if s.is_empty() {
         return err(ErrorCode::Value, "Type a chemical formula, such as H2O");
     }
@@ -539,7 +539,7 @@ fn molar_mass_node(c: &mut Call) -> Answer {
     let result = match c.read_input("formula", lit) {
         V::List(_) => err(ErrorCode::Value, "Molar Mass reads one formula, not a list"),
         e if e.is_sol_error() => e,
-        V::Str(f) if !crate::jsnum::js_trim(&f).is_empty() => molar_mass(&f),
+        V::Str(f) if !crate::jsnum::trim_space(&f).is_empty() => molar_mass(&f),
         _ => V::Null,
     };
     c.show("cachedResult", result.clone());
@@ -637,7 +637,7 @@ pub(crate) fn solar_position_of(serial: f64, lat: f64, lon: f64) -> [f64; 3] {
         }
     } else {
         let az_rad = (sin(RAD * lat) * cos(RAD * zenith) - sin(RAD * declination)) / az_denom;
-        let a = DEG * acos(math_min(1.0, math_max(-1.0, az_rad)));
+        let a = DEG * acos(nan_min(1.0, nan_max(-1.0, az_rad)));
         if hour_angle > 0.0 {
             (a + 180.0) % 360.0
         } else {
@@ -938,7 +938,7 @@ pub(crate) const ZONES: [(&str, f64, f64); 5] = [
 /// A row per zone, its low and high beat rates by the Karvonen reserve where a resting rate is given.
 fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> Cv {
     let at = |pct: f64| {
-        V::Num(math_round(match resting {
+        V::Num(round_half_up(match resting {
             Some(r) => r + pct * (max_hr - r),
             None => pct * max_hr,
         }))
@@ -1323,7 +1323,7 @@ pub(crate) fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleR
             Vec::new(),
         );
     };
-    let agrees = |got: f64, want: f64| (got - want).abs() <= 1e-6 * math_max(1.0, want.abs());
+    let agrees = |got: f64, want: f64| (got - want).abs() <= 1e-6 * nan_max(1.0, want.abs());
     let valid = given_keys.iter().all(|&k| agrees(s.parts[k], given[k].unwrap_or(f64::NAN)));
     done(
         std::array::from_fn(|k| V::Num(given[k].unwrap_or(s.parts[k]))),

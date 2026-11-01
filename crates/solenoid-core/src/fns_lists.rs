@@ -9,7 +9,7 @@ use std::rc::Rc;
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{js_string_of, to_f64_js, to_num, to_str, Thrown, V};
-use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_string};
+use crate::jsnum::{lower_text, nan_max, nan_min, number_to_string, round_half_up, trim_space};
 use crate::sort::stable_sort_by;
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, exp, log, sin};
@@ -151,7 +151,7 @@ fn is_true(v: &V) -> bool {
 
 /// `String(v).trim().toLowerCase()`.
 fn lower_key(v: &V) -> String {
-    js_lower(js_trim(&js_string_of(v))).into_owned()
+    lower_text(trim_space(&js_string_of(v))).into_owned()
 }
 
 /// Numbers and logicals, one level of lists spread; text is skipped ([[C10]] socketLattice).
@@ -263,7 +263,7 @@ fn median_of_sorted(sorted: &[f64]) -> f64 {
 /// A window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
 /// what the sliding path would with the whole list as its window.
 pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
-    if let Some(w) = window.map(math_round).filter(|&w| w >= 1.0) {
+    if let Some(w) = window.map(round_half_up).filter(|&w| w >= 1.0) {
         let w = w.min(usize::MAX as f64) as usize;
         return (0..arr.len())
             .map(|i| {
@@ -373,13 +373,13 @@ fn answer(name: &str, a: &[V]) -> V {
         }
         "SLICE" => {
             let l = to_list(a0);
-            let start = math_max(0.0, math_round(number(arg(a, 1))) - 1.0);
+            let start = nan_max(0.0, round_half_up(number(arg(a, 1))) - 1.0);
             let s = slice_bound(start, l.len());
-            let e = if blank(arg(a, 2)) { l.len() } else { slice_bound(math_round(number(arg(a, 2))), l.len()) };
+            let e = if blank(arg(a, 2)) { l.len() } else { slice_bound(round_half_up(number(arg(a, 2))), l.len()) };
             list(if s < e { l[s..e].to_vec() } else { Vec::new() })
         }
         "NTHELEMENT" => {
-            let step = math_max(1.0, math_round(number(arg(a, 1))));
+            let step = nan_max(1.0, round_half_up(number(arg(a, 1))));
             list(to_list(a0).into_iter().enumerate().filter(|(i, _)| *i as f64 % step == 0.0).map(|(_, v)| v).collect())
         }
         "INTERLEAVE" => {
@@ -441,7 +441,7 @@ fn answer(name: &str, a: &[V]) -> V {
             if n == 0 {
                 return list(Vec::new());
             }
-            let s = math_round(number(arg(a, 1)));
+            let s = round_half_up(number(arg(a, 1)));
             let nf = n as f64;
             if is_true(arg(a, 2)) {
                 let m = ((s % nf) + nf) % nf;
@@ -601,7 +601,7 @@ fn answer(name: &str, a: &[V]) -> V {
             }
             let shown = js_string_of(op);
             if !matches!(
-                js_trim(&shown).to_uppercase().as_str(),
+                trim_space(&shown).to_uppercase().as_str(),
                 "SUM" | "AVERAGE" | "AVG" | "MIN" | "MAX" | "MEDIAN" | "PRODUCT" | "STDEV"
             ) {
                 return value(&format!(
@@ -620,7 +620,7 @@ fn answer(name: &str, a: &[V]) -> V {
                 }
                 Some(n)
             };
-            let op = match js_trim(&shown).to_uppercase().as_str() {
+            let op = match trim_space(&shown).to_uppercase().as_str() {
                 "SUM" => RunOp::Sum,
                 "AVERAGE" | "AVG" => RunOp::Avg,
                 "MIN" => RunOp::Min,
@@ -677,7 +677,7 @@ fn answer(name: &str, a: &[V]) -> V {
                 return e;
             }
             let (start, end) = (number(a0), number(arg(a, 1)));
-            let n = math_round(count);
+            let n = round_half_up(count);
             if n <= 0.0 {
                 return list(Vec::new());
             }
@@ -776,7 +776,7 @@ fn capped(f: &str, count: f64) -> Option<V> {
     if !count.is_finite() {
         return Some(value(&format!("{f} needs a number")));
     }
-    let k = math_round(count);
+    let k = round_half_up(count);
     (k > MAX_GENERATED).then(|| {
         V::err(sol_error(
             ErrorCode::Overflow,
@@ -800,7 +800,7 @@ fn range_count(start: f64, stop: Option<f64>, step: f64) -> f64 {
 
 fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
     let n = arr.len();
-    let kk = math_round(k);
+    let kk = round_half_up(k);
     if kk < 0.0 {
         return value("Choose count must be zero or more");
     }
@@ -816,7 +816,7 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
             count *= (n - i) as f64;
         }
     }
-    let count = math_round(count);
+    let count = round_half_up(count);
     if count > 10_000.0 {
         let kind = if combos { "combinations" } else { "permutations" };
         return V::err(sol_error(
@@ -866,7 +866,7 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
 
 /// Each value's bin over sorted edges, right-inclusive, then NTILE's 1-based bucket.
 fn ntile(arr: &[V], n: f64) -> V {
-    let k = math_round(n);
+    let k = round_half_up(n);
     if !(k >= 1.0) {
         return value("NTILE needs at least one bucket");
     }
@@ -1185,7 +1185,7 @@ fn returns(op: &str, s: &[V]) -> V {
                             return p.clone();
                         }
                         let Some(p) = finite(p) else { return V::Null };
-                        peak = math_max(peak, p);
+                        peak = nan_max(peak, p);
                         V::Num(if peak > 0.0 { p / peak - 1.0 } else { 0.0 })
                     })
                     .collect(),
@@ -1239,7 +1239,7 @@ fn find_peaks(values: &[V], height: &V, distance: &V, prominence: &V) -> V {
                 right_min = v;
             }
         }
-        yp - math_max(left_min, right_min)
+        yp - nan_max(left_min, right_min)
     };
     // (position, value), in position order; prominence only when it filters.
     let mut out: Vec<(usize, f64)> =
@@ -1395,7 +1395,7 @@ fn savgol_problem(n: usize, window: f64, order: f64) -> Option<&'static str> {
     if !whole(order) {
         return Some("Order must be a whole number");
     }
-    let m = math_max(1.0, window);
+    let m = nan_max(1.0, window);
     if m % 2.0 == 0.0 {
         return Some("Window must be odd");
     }
@@ -1410,7 +1410,7 @@ fn savgol_problem(n: usize, window: f64, order: f64) -> Option<&'static str> {
 
 fn savgol(values: &[V], window: f64, order: f64) -> Result<V, Thrown> {
     let n = values.len() as f64;
-    let m = math_max(1.0, window.floor());
+    let m = nan_max(1.0, window.floor());
     let h = if m.is_nan() { 0.0 } else { ((m as i64 - 1) >> 1) as f64 };
     let mut out = Vec::with_capacity(values.len());
     for (i, v) in values.iter().enumerate() {
@@ -1422,7 +1422,7 @@ fn savgol(values: &[V], window: f64, order: f64) -> Result<V, Thrown> {
             out.push(V::Null);
             continue;
         }
-        let start = math_max(0.0, math_min(i as f64 - h, n - m));
+        let start = nan_max(0.0, nan_min(i as f64 - h, n - m));
         let (mut xs, mut ys, mut ws) = (Vec::new(), Vec::new(), Vec::new());
         if !start.is_nan() {
             let mut j = start;
@@ -1463,7 +1463,7 @@ fn lowess(values: &[V], frac: f64, iterations: usize) -> Vec<V> {
         }
         return out;
     }
-    let r = math_min(n as f64, math_max(2.0, (math_max(0.0, math_min(1.0, frac)) * n as f64).ceil()));
+    let r = nan_min(n as f64, nan_max(2.0, (nan_max(0.0, nan_min(1.0, frac)) * n as f64).ceil()));
     let xs: Vec<f64> = idx.iter().map(|&i| i as f64).collect();
     let mut robust = vec![1.0; n];
     let mut fitted = vec![0.0; n];
@@ -1721,7 +1721,7 @@ fn flat(v: &V, out: &mut Vec<V>) {
 
 /// `String(Math.round(x * 10) / 10)`.
 fn r1(x: f64) -> String {
-    number_to_string(math_round(x * 10.0) / 10.0)
+    number_to_string(round_half_up(x * 10.0) / 10.0)
 }
 
 fn sparkline(range: &V, ty: &V) -> V {
@@ -1736,7 +1736,7 @@ fn sparkline(range: &V, ty: &V) -> V {
     let op = if blank(ty) || matches!(ty, V::Str(s) if s.is_empty()) {
         "line".to_string()
     } else {
-        js_lower(js_trim(&to_str(ty))).into_owned()
+        lower_text(trim_space(&to_str(ty))).into_owned()
     };
     if !matches!(op.as_str(), "line" | "column" | "winloss") {
         return value("SPARKLINE type is \"line\", \"column\" or \"winloss\"");
@@ -1763,8 +1763,8 @@ fn sparkline(range: &V, ty: &V) -> V {
     let (gold, green, vermilion) = ("#f5b914", "#00b862", "#e0473a");
     let body = if op == "line" {
         let pts = if ys.len() == 1 { vec![ys[0], ys[0]] } else { ys };
-        let lo = pts.iter().copied().fold(f64::INFINITY, math_min);
-        let hi = pts.iter().copied().fold(f64::NEG_INFINITY, math_max);
+        let lo = pts.iter().copied().fold(f64::INFINITY, nan_min);
+        let hi = pts.iter().copied().fold(f64::NEG_INFINITY, nan_max);
         let pad = 1.5;
         let y = |v: f64| if hi == lo { 10.0 } else { pad + ((hi - v) / (hi - lo)) * (20.0 - 2.0 * pad) };
         let step = (80.0 - 2.0 * pad) / (pts.len() - 1) as f64;
@@ -1778,8 +1778,8 @@ fn sparkline(range: &V, ty: &V) -> V {
         )
     } else {
         let signed = op == "winloss";
-        let lo = if signed { -1.0 } else { ys.iter().copied().fold(0.0, math_min) };
-        let hi0 = if signed { 1.0 } else { ys.iter().copied().fold(0.0, math_max) };
+        let lo = if signed { -1.0 } else { ys.iter().copied().fold(0.0, nan_min) };
+        let hi0 = if signed { 1.0 } else { ys.iter().copied().fold(0.0, nan_max) };
         let hi = if hi0 == lo { lo + 1.0 } else { hi0 };
         let y = |v: f64| ((hi - v) / (hi - lo)) * 20.0;
         let slot = 80.0 / ys.len() as f64;
@@ -1802,8 +1802,8 @@ fn sparkline(range: &V, ty: &V) -> V {
             if v == 0.0 {
                 continue;
             }
-            let top = math_min(y(v), base);
-            let h = math_max((y(v) - base).abs(), 0.5);
+            let top = nan_min(y(v), base);
+            let h = nan_max((y(v) - base).abs(), 0.5);
             let d = format!("M{} {}h{w}v{}h-{w}z", r1(i as f64 * slot + gap / 2.0), r1(top), r1(h));
             if v > 0.0 || !signed {
                 pos += &d
@@ -1870,7 +1870,7 @@ pub(crate) type Decomposition = [Vec<Option<f64>>; 3];
 
 pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool) -> Option<Decomposition> {
     let n = y.len();
-    let m = math_round(period);
+    let m = round_half_up(period);
     if m < 2.0 || (n as f64) < 2.0 * m {
         return None;
     }
@@ -1962,14 +1962,14 @@ pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool)
 
 pub(crate) fn stl_decompose(y: &[Option<f64>], period: f64) -> Option<Decomposition> {
     let n = y.len();
-    let m = math_round(period);
+    let m = round_half_up(period);
     if m < 2.0 || (n as f64) < 2.0 * m {
         return None;
     }
     let data: Vec<f64> = y.iter().copied().collect::<Option<Vec<f64>>>()?;
     let mf = m;
     let m = m as usize;
-    let trend_frac = math_min(1.0, (1.5 * mf) / n as f64);
+    let trend_frac = nan_min(1.0, (1.5 * mf) / n as f64);
     let mut trend = vec![0.0; n];
     let mut seasonal = vec![0.0; n];
     for _ in 0..15 {
@@ -2081,7 +2081,7 @@ fn run_hw(y: &[f64], m: usize, alpha: f64, beta: f64, gamma: f64) -> (f64, EtsFi
 
 pub(crate) fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
     let n = y.len();
-    let m = math_max(1.0, math_round(season));
+    let m = nan_max(1.0, round_half_up(season));
     if n < 3 || (m > 1.0 && (n as f64) < 2.0 * m) {
         return None;
     }
@@ -2115,9 +2115,9 @@ pub(crate) fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
                 (0.0, 0.0, step),
                 (0.0, 0.0, -step),
             ] {
-                let a = math_min(1.0, math_max(0.0, alpha + da));
-                let b = math_min(1.0, math_max(0.0, beta + db));
-                let g = math_min(1.0, math_max(0.0, gamma + dg));
+                let a = nan_min(1.0, nan_max(0.0, alpha + da));
+                let b = nan_min(1.0, nan_max(0.0, beta + db));
+                let g = nan_min(1.0, nan_max(0.0, gamma + dg));
                 if m == 1 && dg != 0.0 {
                     continue;
                 }
@@ -2154,7 +2154,7 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
     if !(step > 0.0) || tgt.is_nan() {
         return Ok(None);
     }
-    let h = math_round((tgt - t[t.len() - 1]) / step);
+    let h = round_half_up((tgt - t[t.len() - 1]) / step);
     if !(h >= 1.0) {
         return Ok(None);
     }
@@ -2162,8 +2162,8 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
     if h > 1_000_000.0 {
         return Err(domain(&format!("{name} takes a target at most 1,000,000 steps past the timeline's end")));
     }
-    let s_arg = if blank(seasonality) { 1.0 } else { math_round(to_num(seasonality)) };
-    let m = if s_arg == 1.0 { detect_season(&y) as f64 } else { math_max(1.0, s_arg) };
+    let s_arg = if blank(seasonality) { 1.0 } else { round_half_up(to_num(seasonality)) };
+    let m = if s_arg == 1.0 { detect_season(&y) as f64 } else { nan_max(1.0, s_arg) };
     Ok(fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None }).map(|fit| (fit, h)))
 }
 
@@ -2334,7 +2334,7 @@ pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, 
             Some((vec![a, b], ll))
         }
         _ => {
-            if x.iter().any(|&v| v < 0.0 || math_round(v) != v) {
+            if x.iter().any(|&v| v < 0.0 || round_half_up(v) != v) {
                 return None;
             }
             let lam = m;
@@ -2565,8 +2565,7 @@ fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: b
                                 continue;
                             };
                             let (x0, x1, y0, y1) = (col_xs[cl], col_xs[ch], row_ys[rl], row_ys[rh]);
-                            let (xa, xb, ya, yb) =
-                                (math_min(x0, x1), math_max(x0, x1), math_min(y0, y1), math_max(y0, y1));
+                            let (xa, xb, ya, yb) = (nan_min(x0, x1), nan_max(x0, x1), nan_min(y0, y1), nan_max(y0, y1));
                             let (degen_row, degen_col) = (rl == rh, cl == ch);
                             let contested = known.iter().any(|&(px, py, pi, pj, _)| {
                                 if (pi == rl || pi == rh) && (pj == cl || pj == ch) {

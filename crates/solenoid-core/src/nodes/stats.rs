@@ -8,7 +8,7 @@ use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::{to_f64_js, V};
-use crate::jsnum::math_round;
+use crate::jsnum::round_half_up;
 use libm::{exp, log};
 use std::rc::Rc;
 
@@ -488,7 +488,7 @@ fn binom_dist_range(c: &mut Call) -> Answer {
             k += 1.0;
         }
         if sum.is_finite() {
-            result = V::Num(crate::jsnum::math_min(1.0, crate::jsnum::math_max(0.0, sum)));
+            result = V::Num(crate::jsnum::nan_min(1.0, crate::jsnum::nan_max(0.0, sum)));
         }
     }
     answer(c, result)
@@ -944,7 +944,7 @@ fn distributions(c: &mut Call) -> Answer {
                 },
                 v => crate::excel_functions::js_number_of(v),
             };
-            let n = crate::jsnum::math_min(100_000.0, crate::jsnum::math_max(0.0, math_round(head(&count))));
+            let n = crate::jsnum::nan_min(100_000.0, crate::jsnum::nan_max(0.0, round_half_up(head(&count))));
             let nums: Vec<f64> = ps.iter().map(head).collect();
             // A frozen call's seed, else one drawn and held until the generation advances.
             let seed = match c.field("sampleSeed").and_then(serde_json::Value::as_f64) {

@@ -10,7 +10,7 @@ use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env, LambdaV};
 use crate::excel_formula::{constant_value, parse_formula, Ast};
 use crate::excel_functions::V;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
@@ -46,7 +46,7 @@ fn at_col_names(ast: &Ast, out: &mut Vec<String>) {
 
 fn lambda(c: &mut Call) -> Answer {
     let params: Vec<String> =
-        c.field_str("params", "x").split(',').map(js_trim).filter(|p| !p.is_empty()).map(String::from).collect();
+        c.field_str("params", "x").split(',').map(trim_space).filter(|p| !p.is_empty()).map(String::from).collect();
     let expr = c.field_str("expr", "").to_string();
     let refuse = |c: &mut Call, shown: Option<String>, result: V| {
         c.show("cachedValue", V::Null);
@@ -76,7 +76,7 @@ fn lambda(c: &mut Call) -> Answer {
         );
     }
     let Some(ast) = parse_formula(&expr) else {
-        if js_trim(&expr).is_empty() {
+        if trim_space(&expr).is_empty() {
             return refuse(c, None, V::Null);
         }
         let hint = super::matrix::syntax_hint(&expr);

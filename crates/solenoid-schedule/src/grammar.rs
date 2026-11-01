@@ -1,7 +1,7 @@
 // [[C70]] oneScheduleRule
 //! The predecessor grammar a plan's import border reads: `3FS+2d, 5SS-1w`.
 
-use crate::num::{is_js_space, js_trim, math_round};
+use crate::num::{is_space_char, round_half_up, trim_space};
 use crate::{Dependency, LinkType};
 
 struct Tail {
@@ -11,7 +11,7 @@ struct Tail {
 }
 
 fn ws(s: &str) -> &str {
-    s.trim_start_matches(is_js_space)
+    s.trim_start_matches(is_space_char)
 }
 
 fn link_type(s: &str) -> Option<(LinkType, &str)> {
@@ -55,9 +55,9 @@ fn lag(s: &str) -> Option<(f64, bool, &str)> {
 fn tail(s: &str, glued: bool) -> Option<Tail> {
     let mut r = s;
     let mut ty = LinkType::FS;
-    if (glued || r.starts_with(is_js_space))
+    if (glued || r.starts_with(is_space_char))
         && let Some((t, rest)) = link_type(ws(r))
-        && (rest.is_empty() || rest.starts_with(|c: char| is_js_space(c) || c == '+' || c == '-'))
+        && (rest.is_empty() || rest.starts_with(|c: char| is_space_char(c) || c == '+' || c == '-'))
     {
         ty = t;
         r = rest;
@@ -67,7 +67,7 @@ fn tail(s: &str, glued: bool) -> Option<Tail> {
         Some(l) => l,
         None => (0.0, false, r),
     };
-    ws(r).is_empty().then(|| Tail { ty, lag: math_round(lag * 1000.0) / 1000.0, elapsed })
+    ws(r).is_empty().then(|| Tail { ty, lag: round_half_up(lag * 1000.0) / 1000.0, elapsed })
 }
 
 /// Splits a cell at commas and semicolons. A row number resolves through the 1-based `names`, any other reference
@@ -76,7 +76,7 @@ pub fn parse_predecessor_text(text: &str, names: &[String]) -> (Vec<Dependency>,
     let mut deps = Vec::new();
     let mut errors = Vec::new();
     for raw in text.split([',', ';']) {
-        let token = js_trim(raw);
+        let token = trim_space(raw);
         if token.is_empty() {
             continue;
         }
@@ -97,7 +97,7 @@ pub fn parse_predecessor_text(text: &str, names: &[String]) -> (Vec<Dependency>,
                 let split =
                     token.char_indices().skip(1).map(|(i, _)| i).find_map(|i| tail(&token[i..], false).map(|t| (i, t)));
                 match split {
-                    Some((i, t)) => (js_trim(&token[..i]).to_string(), t),
+                    Some((i, t)) => (trim_space(&token[..i]).to_string(), t),
                     None => (token.to_string(), Tail { ty: LinkType::FS, lag: 0.0, elapsed: false }),
                 }
             }

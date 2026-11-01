@@ -21,7 +21,7 @@ use crate::frame_verbs::{
     apply_verb, compile_filter, format_frame_cell, pivot_frame, require_text_column, slice_bounds, FilterOp, PivotSpec,
     SliceMode, TaggedOp,
 };
-use crate::jsnum::{js_lower, js_trim};
+use crate::jsnum::{lower_text, trim_space};
 use serde_json::{json, Map, Value as Json};
 use std::rc::Rc;
 
@@ -111,7 +111,7 @@ pub(crate) fn column_list(c: &Call, key: &str) -> Result<Option<Vec<String>>, V>
 
 /// The names a list setting gives, each trimmed, the blank ones dropped.
 fn trimmed_names(names: Vec<String>) -> Vec<String> {
-    names.iter().map(|s| js_trim(s).to_string()).filter(|s| !s.is_empty()).collect()
+    names.iter().map(|s| trim_space(s).to_string()).filter(|s| !s.is_empty()).collect()
 }
 
 /// A wired value as text, an error as its code; a blank wire is none.
@@ -223,8 +223,8 @@ fn conditions(c: &Call, default_op: &str) -> Vec<Cond> {
         let cfg = config.get(id);
         let op = cfg.and_then(|o| o.get("op")).and_then(Json::as_str).unwrap_or(default_op).to_string();
         let val = filter_value(c, &format!("value{id}")).unwrap_or_default();
-        let col = js_trim(&col).to_string();
-        if col.is_empty() || (!VALUELESS.contains(&op.as_str()) && js_trim(&val).is_empty()) {
+        let col = trim_space(&col).to_string();
+        if col.is_empty() || (!VALUELESS.contains(&op.as_str()) && trim_space(&val).is_empty()) {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(Json::as_bool).unwrap_or(false);
@@ -564,7 +564,7 @@ const WINDOW_NEEDS_N: [&str; 7] = ["lag", "lead", "rolling_sum", "rolling_avg", 
 
 /// The new column's name: as set, else the function's label as a slug, after the Value column's name.
 fn window_column_name(agg: &str, name: &str, column: &str) -> Result<String, V> {
-    let name = js_trim(name);
+    let name = trim_space(name);
     if !name.is_empty() {
         return Ok(name.to_string());
     }
@@ -572,7 +572,7 @@ fn window_column_name(agg: &str, name: &str, column: &str) -> Result<String, V> 
         return Err(thrown("Cannot read properties of undefined (reading 'label')"));
     };
     let mut slug = String::new();
-    for ch in js_lower(label).chars() {
+    for ch in lower_text(label).chars() {
         if ch.is_ascii_lowercase() || ch.is_ascii_digit() {
             slug.push(ch);
         } else if !slug.ends_with('_') {
@@ -582,7 +582,7 @@ fn window_column_name(agg: &str, name: &str, column: &str) -> Result<String, V> 
     if slug.ends_with('_') {
         slug.pop();
     }
-    let column = js_trim(column);
+    let column = trim_space(column);
     Ok(if column.is_empty() { slug } else { format!("{slug}_{column}") })
 }
 
@@ -626,7 +626,7 @@ fn window(c: &mut Call) -> Answer {
 
 /// By name, else by a 1-based position.
 pub(crate) fn column_named<'a>(columns: &'a [Column], name: &str) -> Option<&'a Column> {
-    let key = js_trim(name);
+    let key = trim_space(name);
     if let Some(c) = columns.iter().find(|c| c.name == key) {
         return Some(c);
     }
@@ -796,11 +796,11 @@ fn sum_ifs(c: &mut Call) -> Answer {
                 }
             };
             for s in c.sockets.iter().filter(|s| s.key.starts_with("column")) {
-                want(js_trim(&filter_value(c, &s.key).unwrap_or_default()));
+                want(trim_space(&filter_value(c, &s.key).unwrap_or_default()));
             }
             let vn = str_input(c, "values", "");
             if !matches!(vn, V::Null | V::Undef) {
-                want(js_trim(&js_string_of(&vn)));
+                want(trim_space(&js_string_of(&vn)));
             }
             let mut columns = Vec::new();
             for n in &names {
@@ -847,9 +847,9 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
     let mut crits = Vec::new();
     for ((col_key, _, op_name, match_case), val) in pairs.iter().zip(&values) {
         let name = filter_value(c, col_key).unwrap_or_default();
-        let name = js_trim(&name);
+        let name = trim_space(&name);
         let valueless = op_name == "isblank" || op_name == "notblank";
-        let blank_value = matches!(val, FrameCell::Str(v) if js_trim(v).is_empty());
+        let blank_value = matches!(val, FrameCell::Str(v) if trim_space(v).is_empty());
         if name.is_empty() || (!valueless && blank_value) {
             continue;
         }
@@ -890,7 +890,7 @@ fn sum_ifs_over(c: &Call, src: &Source) -> Result<V, V> {
         return Ok(V::Null);
     }
     let vname = js_string_of(&vname);
-    let vname = js_trim(&vname);
+    let vname = trim_space(&vname);
     if vname.is_empty() {
         return Ok(V::Null);
     }
@@ -1112,11 +1112,11 @@ struct ListCond<'a> {
 
 impl<'a> ListCond<'a> {
     fn new(op: &'a str, value: &str, match_case: bool) -> Self {
-        let fold = |s: &str| if match_case { s.to_string() } else { js_lower(s).into_owned() };
+        let fold = |s: &str| if match_case { s.to_string() } else { lower_text(s).into_owned() };
         let needles = if op == "listContains" {
-            vec![fold(js_trim(value))]
+            vec![fold(trim_space(value))]
         } else {
-            value.split(',').map(js_trim).filter(|s| !s.is_empty()).map(fold).collect()
+            value.split(',').map(trim_space).filter(|s| !s.is_empty()).map(fold).collect()
         };
         ListCond { op, needles, match_case }
     }
@@ -1140,7 +1140,7 @@ impl<'a> ListCond<'a> {
                     Cv::V(v) => js_string_of(v),
                     Cv::Json(_) | Cv::Ref(_) => "[object Object]".to_string(),
                 };
-                Some(if self.match_case { t } else { js_lower(&t).into_owned() })
+                Some(if self.match_case { t } else { lower_text(&t).into_owned() })
             })
             .collect();
         let has = |needle: &String| texts.iter().any(|t| t == needle);

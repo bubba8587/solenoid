@@ -7,7 +7,7 @@ use super::list::{frame_cell_of, infer_column, list_item_of};
 use super::{list, Column, Cube, CubeColumn, Cv, Frame};
 use crate::excel_functions::{js_string_of, V};
 use crate::frame::{make_headers, FrameColType};
-use crate::jsnum::{js_trim, number_to_string};
+use crate::jsnum::{number_to_string, trim_space};
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
@@ -125,7 +125,7 @@ fn pick(picks: &[(String, FrameColType)], key: &str) -> Option<FrameColType> {
 
 /// `parseCubeSource`: blank is no rows; anything but records is the reason it isn't.
 fn parse(text: &str) -> Result<Source, String> {
-    let t = js_trim(text);
+    let t = trim_space(text);
     if t.is_empty() {
         return Ok(Source { columns: Vec::new(), rows: Vec::new(), nested: Vec::new() });
     }
@@ -367,7 +367,7 @@ pub(crate) fn calls_clock(text: &str) -> bool {
             .find(|n| b[i..].len() >= n.len() && b[i..i + n.len()].eq_ignore_ascii_case(n.as_bytes()));
         let Some(n) = name else { return false };
         let rest = &text[i + n.len()..];
-        rest.trim_start_matches(crate::jsnum::is_js_space).starts_with('(')
+        rest.trim_start_matches(crate::jsnum::is_space_char).starts_with('(')
     })
 }
 

@@ -41,7 +41,7 @@ pub const MS_PER_DAY: f64 = 86_400_000.0;
 
 /// A serial as epoch milliseconds, `None` past a JS Date's range.
 pub fn serial_to_ms(serial: f64) -> Option<f64> {
-    time_clip(crate::jsnum::math_round((serial - 25569.0) * MS_PER_DAY))
+    time_clip(crate::jsnum::round_half_up((serial - 25569.0) * MS_PER_DAY))
 }
 
 /// ECMAScript TimeClip.
@@ -112,7 +112,7 @@ pub struct UtcParts {
 }
 
 pub fn serial_to_utc_parts(serial: f64) -> Option<UtcParts> {
-    let ms = crate::jsnum::math_round((serial - 25569.0) * 86_400_000.0);
+    let ms = crate::jsnum::round_half_up((serial - 25569.0) * 86_400_000.0);
     if !ms.is_finite() || ms.abs() > 8.64e15 {
         return None;
     }

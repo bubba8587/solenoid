@@ -127,7 +127,7 @@ fn sources_as_frozen() {
     let mut bad = Vec::new();
     for c in &cases {
         let text = c["text"].as_str().unwrap();
-        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::js_trim(text))
+        let got: Vec<(String, String, Vec<String>)> = source_columns(solenoid_core::jsnum::trim_space(text))
             .into_iter()
             .map(|(n, t, cells)| (n, t.as_str().to_string(), cells))
             .collect();

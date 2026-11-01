@@ -5,7 +5,7 @@ use super::Cv;
 use super::{err, Answer, Call};
 use crate::error_value::ErrorCode;
 use crate::excel_functions::V;
-use crate::jsnum::js_trim;
+use crate::jsnum::trim_space;
 use qrcodegen::{QrCode, QrCodeEcc, QrSegment, Version};
 use serde_json::{json, Value as Json};
 use std::rc::Rc;
@@ -41,7 +41,7 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
     match template {
         "wifi" => {
             let ssid = lit("ssid");
-            let ssid = js_trim(&ssid);
+            let ssid = trim_space(&ssid);
             if ssid.is_empty() {
                 return String::new();
             }
@@ -62,7 +62,7 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
                     .iter()
                     .filter_map(|(k, f)| {
                         let v = lit(f);
-                        let v = js_trim(&v);
+                        let v = trim_space(&v);
                         (!v.is_empty()).then(|| format!("{k}:{v}"))
                     })
                     .collect();
@@ -76,7 +76,7 @@ fn payload(template: &str, text: &str, lit: &dyn Fn(&str) -> String) -> String {
                 .collect::<Vec<_>>()
                 .join("\n")
         }
-        _ => js_trim(text).to_string(),
+        _ => trim_space(text).to_string(),
     }
 }
 
