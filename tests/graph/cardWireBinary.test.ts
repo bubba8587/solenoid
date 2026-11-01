@@ -61,10 +61,19 @@ describe("the card wire's buffers", () => {
     expect(sameJson(enc(readBinary("list", undefined, l[2] as Uint8Array, l[3] as Float64Array, l[4] as string, l[5] as Uint32Array)), enc(list))).toBe(true);
   });
 
-  it("leave small values, nested cells and errors with an origin to JSON", () => {
+  it("leave small values and nested cells to JSON", () => {
     expect(wireBinary(Array.from({ length: BINARY_MIN_CELLS - 1 }, () => 1))).toBeUndefined();
     expect(wireBinary([...Array.from({ length: 100 }, () => 1), [1, 2]])).toBeUndefined();
-    expect(wireBinary(Array.from({ length: 100 }, () => ({ ...solError("#N/A", "x"), origin: { nodeId: "a" } })))).toBeUndefined();
+  });
+
+  it("carry an error's origin, its input slot too, and read a run of one error back as one value", () => {
+    const at = { ...solError("#N/A", "x"), origin: { nodeId: "a1", nodeName: "Lookup" } };
+    const slot = { ...solError("#TYPE!", "y"), origin: { nodeId: "b2", nodeName: "Cast", inputSlot: "value" } };
+    const list: FrameCell[] = Array.from({ length: 100 }, (_, i) => (i % 10 === 3 ? slot : i > 50 ? at : i));
+    const l = wireBinary(list)!;
+    const back = readBinary("list", undefined, l[2] as Uint8Array, l[3] as Float64Array, l[4] as string, l[5] as Uint32Array) as FrameCell[];
+    expect(sameJson(enc(back), enc(list))).toBe(true);
+    expect(back[51]).toBe(back[52]);
   });
 
   it("answer as JSON does, into a card and back", () => {
@@ -82,8 +91,7 @@ describe("the card wire's buffers", () => {
   });
 
   it("answer as JSON does between a direct card and a JavaScript one", async () => {
-    // The odd cells' errors take the card's origin on the way out, so that answer crosses back as JSON; the numbers'
-    // crosses as buffers.
+    // The odd cells' errors take the card's origin on the way out, which crosses on the buffers beside them.
     for (const nums of [Array.from({ length: 640 }, (_, i) => cellAt(i)), Array.from({ length: 640 }, (_, i) => [0, -0, 1.5, 12345.678, -7][i % 5])]) {
       const whole = await product(nums, 2) as unknown[];
       const sliced: unknown[] = [];

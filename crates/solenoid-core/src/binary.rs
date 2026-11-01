@@ -2,7 +2,9 @@
 //! The columnar hand-off between JS and the engine, for the frames that cross in bulk (source,
 //! collect, column, preview). Every cell has a tag; numbers ride a dense `f64` buffer (so NaN,
 //! the infinities and -0 cross as themselves); text rides one string, cut by UTF-16 lengths.
-//! An error cell is its code and message in the text, its JS reference (or NaN) in the numbers.
+//! An error cell is its code and message in the text, its JS reference (or NaN) in the numbers; one that carries the
+//! node it started at ([[E9]] errorsKeepOrigin) has its own tag and the origin's node id, name and input slot after
+//! them, so a column with a few such errors still crosses as buffers.
 //! A column's unit and format ride in its schema entry.
 
 use std::rc::Rc;
@@ -19,6 +21,10 @@ pub const TAG_STR: u8 = 2;
 pub const TAG_FALSE: u8 = 3;
 pub const TAG_TRUE: u8 = 4;
 pub const TAG_ERR: u8 = 5;
+/// An error with its origin: node id and name after the message.
+pub const TAG_ERR_AT: u8 = 6;
+/// An error with its origin and the input slot it arrived on: node id, name and slot after the message.
+pub const TAG_ERR_AT_SLOT: u8 = 7;
 
 #[derive(Deserialize)]
 struct SchemaColumn {
@@ -122,17 +128,54 @@ impl<'a> Reader<'a> {
             return Err(sol_error(ErrorCode::Error, "binary frame: buffers shorter than the schema"));
         }
         let mut values = Vec::with_capacity(n);
+        // A run of the same error (a card's guard tags every bad cell alike) shares one value.
+        let mut last: Option<Rc<SolError>> = None;
         for i in self.at..end {
             values.push(f(match self.tags[i] {
                 TAG_NUM => FrameCell::Num(self.nums[i]),
                 TAG_STR => FrameCell::Str(Rc::from(self.cut.next()?)),
                 TAG_FALSE => FrameCell::Bool(false),
                 TAG_TRUE => FrameCell::Bool(true),
-                TAG_ERR => {
+                tag @ (TAG_ERR | TAG_ERR_AT | TAG_ERR_AT_SLOT) => {
                     let code = ErrorCode::from_wire(self.cut.next()?);
-                    let message = self.cut.next()?.to_string();
+                    let message = self.cut.next()?;
                     let reference = (!self.nums[i].is_nan()).then_some(self.nums[i] as u32);
-                    FrameCell::Err(Rc::new(SolError { code, message, reference, origin: None }))
+                    let origin = match tag {
+                        TAG_ERR => None,
+                        _ => {
+                            let (id, name) = (self.cut.next()?, self.cut.next()?);
+                            let slot = if tag == TAG_ERR_AT_SLOT { Some(self.cut.next()?) } else { None };
+                            Some((id, name, slot))
+                        }
+                    };
+                    let same = last.as_ref().filter(|e| {
+                        e.code == code
+                            && e.message == message
+                            && e.reference == reference
+                            && match (&e.origin, &origin) {
+                                (None, None) => true,
+                                (Some(o), Some((id, name, slot))) => {
+                                    o.node_id == *id && o.node_name == *name && o.input_slot.as_deref() == *slot
+                                }
+                                _ => false,
+                            }
+                    });
+                    let e = match same {
+                        Some(e) => e.clone(),
+                        None => {
+                            let origin = origin.map(|(id, name, slot)| {
+                                Rc::new(crate::error_value::Origin {
+                                    node_id: id.to_string(),
+                                    node_name: name.to_string(),
+                                    input_slot: slot.map(str::to_string),
+                                })
+                            });
+                            let e = Rc::new(SolError { code, message: message.to_string(), reference, origin });
+                            last = Some(e.clone());
+                            e
+                        }
+                    };
+                    FrameCell::Err(e)
                 }
                 _ => FrameCell::Null,
             }));
@@ -215,10 +258,22 @@ impl Columnar {
                     self.nums.push(0.0);
                 }
                 FrameCell::Err(e) => {
-                    self.tags.push(TAG_ERR);
+                    let o = e.origin.as_deref();
+                    self.tags.push(match o {
+                        None => TAG_ERR,
+                        Some(o) if o.input_slot.is_none() => TAG_ERR_AT,
+                        Some(_) => TAG_ERR_AT_SLOT,
+                    });
                     self.nums.push(e.reference.map_or(f64::NAN, f64::from));
                     self.push_str(e.code.as_str());
                     self.push_str(&e.message);
+                    if let Some(o) = o {
+                        self.push_str(&o.node_id);
+                        self.push_str(&o.node_name);
+                        if let Some(slot) = &o.input_slot {
+                            self.push_str(slot);
+                        }
+                    }
                 }
             }
         }

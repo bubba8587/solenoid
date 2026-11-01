@@ -3,13 +3,14 @@
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "./frame";
 import type { BinaryCells } from "./engineWasm";
 import { errorRef, errorFromCore } from "./coreValues";
-import { isSolError } from "./errorValue";
+import { isSolError, type SolError } from "./errorValue";
 
-const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5;
+const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5, TAG_ERR_AT = 6, TAG_ERR_AT_SLOT = 7;
 
 /** A frame's cells for the core, with each column's unit and format unless `meta` is false; any other object crosses as
- *  its text, or with `flatOnly` (a value the card wire carries as JSON then: undefined, an object, an error with its
- *  origin) the frame doesn't cross and the answer is undefined. */
+ *  its text, or with `flatOnly` (the card wire, which carries anything else as JSON: undefined, an object) the frame
+ *  doesn't cross and the answer is undefined. The card wire keeps an error's origin ([[E9]] errorsKeepOrigin); the
+ *  frame hand-offs don't carry it. */
 export function encodeBinary(frame: FrameValue, meta?: boolean): BinaryCells;
 export function encodeBinary(frame: FrameValue, meta: boolean, flatOnly: true): BinaryCells | undefined;
 export function encodeBinary(frame: FrameValue, meta = true, flatOnly = false): BinaryCells | undefined {
@@ -33,8 +34,14 @@ export function encodeBinary(frame: FrameValue, meta = true, flatOnly = false): 
       else if (typeof v === "boolean") tags[k] = v ? TAG_TRUE : TAG_FALSE;
       else if (v === null) tags[k] = TAG_NULL;
       else if (isSolError(v)) {
-        if (flatOnly && v.origin) return undefined;
-        tags[k] = TAG_ERR; nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message);
+        nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message);
+        const o = flatOnly ? v.origin : undefined;
+        if (!o) tags[k] = TAG_ERR;
+        else {
+          text(o.nodeId); text(o.nodeName);
+          if (o.inputSlot === undefined) tags[k] = TAG_ERR_AT;
+          else { tags[k] = TAG_ERR_AT_SLOT; text(o.inputSlot); }
+        }
       }
       else if (flatOnly) return undefined;
       else if (typeof v === "object") { tags[k] = TAG_STR; text(String(v)); }
@@ -53,6 +60,7 @@ export function encodeBinary(frame: FrameValue, meta = true, flatOnly = false): 
 
 export function decodeBinary(b: BinaryCells): FrameColumn[] {
   let k = 0, off = 0, li = 0;
+  let last: { code: string; message: string; ref: number; id?: string; name?: string; slot?: string; e: SolError } | undefined;
   const text = () => { const n = b.lens[li++]; const t = b.strs.slice(off, off + n); off += n; return t; };
   const out: FrameColumn[] = [];
   for (const c of b.schema) {
@@ -63,9 +71,19 @@ export function decodeBinary(b: BinaryCells): FrameColumn[] {
         case TAG_STR: values[i] = text(); break;
         case TAG_FALSE: values[i] = false; break;
         case TAG_TRUE: values[i] = true; break;
-        case TAG_ERR: {
-          const code = text(), message = text(), ref = b.nums[k];
-          values[i] = errorFromCore(code, message || "from the engine", ref);
+        case TAG_ERR: case TAG_ERR_AT: case TAG_ERR_AT_SLOT: {
+          const tag = b.tags[k], code = text(), message = text(), ref = b.nums[k];
+          const id = tag === TAG_ERR ? undefined : text(), name = tag === TAG_ERR ? undefined : text();
+          const slot = tag === TAG_ERR_AT_SLOT ? text() : undefined;
+          // A run of the same error (a card's guard tags every bad cell alike) shares one value.
+          if (last && last.code === code && last.message === message && Object.is(last.ref, ref) && last.id === id && last.name === name && last.slot === slot) {
+            values[i] = last.e;
+            break;
+          }
+          const origin = id === undefined ? undefined : { nodeId: id, nodeName: name!, ...(slot !== undefined ? { inputSlot: slot } : {}) };
+          const e = errorFromCore(code, message || "from the engine", ref, origin);
+          last = { code, message, ref, id, name, slot, e };
+          values[i] = e;
           break;
         }
         default: values[i] = null;

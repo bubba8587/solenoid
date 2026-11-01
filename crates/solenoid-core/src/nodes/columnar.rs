@@ -1,5 +1,5 @@
 //! [[C130]] rustCore, [[C120]] linearWork. A frame's or a list's cells on the card wire as the columnar hand-off
-//! carries them (`binary.rs`), where every cell is a number, text, a logical, a blank or an error with no origin: a
+//! carries them (`binary.rs`), where every cell is a number, text, a logical, a blank or an error (its origin too): a
 //! copy in place of JSON text. Anything else crosses as JSON (`values.rs`).
 
 use std::cell::{Cell, RefCell};
@@ -118,7 +118,7 @@ fn flat(v: &V) -> Option<FrameCell> {
         V::Num(n) => FrameCell::Num(*n),
         V::Str(s) => FrameCell::Str(s.clone()),
         V::Bool(b) => FrameCell::Bool(*b),
-        V::Err(e) if e.origin.is_none() => FrameCell::Err(e.clone()),
+        V::Err(e) => FrameCell::Err(e.clone()),
         _ => return None,
     })
 }
