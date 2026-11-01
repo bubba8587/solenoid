@@ -50,6 +50,8 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
   shared directory; don't leave another build (`src-tauri/target` after a port, a profile, a debug build) lying around.
   Remove an agent's worktree as soon as its work is merged (`git worktree remove`), and check `df -h /` before a
   step that builds a lot.
+  **Don't build the desktop shell (`src-tauri`) unless the author asks for something desktop-specific**: in the
+  Vercel workflow nothing needs it, and its build directory runs to gigabytes (`port.mjs` checks it only with `--desktop`).
 - **Before pushing Rust, run `bash scripts/check-rust.sh`** (`--test` adds the tests): CI's engine checks as CI runs them, clippy for wasm and the dev profile included, which a native `--release` run misses.
 - **Never run `npm run build:wasm:opt` or install/run `wasm-opt`** (author's order): it costs half an hour. After a
   change to `crates/solenoid-core` or `crates/solenoid-graph`, rebuild with plain `npm run build:wasm`; the stamp

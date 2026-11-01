@@ -1,6 +1,6 @@
 // Ports bleeding-edge findings onto the checked-out work branch, one commit each:
 //
-//   node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks]
+//   node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks] [--desktop]
 //
 // A finding is a commit on bleeding-edge whose subject starts `Edge:` or `Fix:`. Each is cherry-picked, and a `Fix:`
 // commit's `Upgrades: <package>@<version> ...` line moves those packages here (on bleeding-edge they're already moved, so
@@ -11,7 +11,9 @@
 // finding that fails them is taken back off, so the branch ends either with the port or as it began.
 //
 // --check ports onto a throwaway state and resets to where it started, printing a JSON line per finding (the
-// generator's port check). --no-checks skips the typecheck, the tests and the Rust checks.
+// generator's port check). --no-checks skips the typecheck, the tests and the Rust checks. --desktop also checks the
+// desktop shell (src-tauri) when a finding touches it; it is off by default, since that build is gigabytes and the web
+// app doesn't need it.
 //
 // Self-contained (no repo imports), so the generator can run it from a copy.
 import { spawnSync } from "node:child_process";
@@ -20,6 +22,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
 const CHECK = args.includes("--check");
 const NO_CHECKS = args.includes("--no-checks");
+const DESKTOP = args.includes("--desktop");
 const commits = args.filter((a) => !a.startsWith("--"));
 const FINDING = /^(Edge|Fix): /;
 const GENERATED = /(^|\/)(package-lock\.json|Cargo\.lock)$|^src\/graph\/engineWasm\/|^prerender\//;
@@ -36,7 +39,7 @@ const must = (cmd) => { const r = sh(cmd, { quiet: true }); if (!r.ok) throw new
 const tail = (s) => s.trimEnd().split("\n").slice(-60).join("\n");
 const lines = (s) => s.split("\n").filter(Boolean);
 
-if (!commits.length) { console.error("usage: node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks]"); process.exit(2); }
+if (!commits.length) { console.error("usage: node .github/bleeding-edge/port.mjs <commit>... [--check] [--no-checks] [--desktop]"); process.exit(2); }
 if (must("git status --porcelain --untracked-files=no")) { console.error("port: the working tree has changes; commit or stash them first"); process.exit(2); }
 const start = must("git rev-parse HEAD");
 
@@ -107,8 +110,12 @@ function rustChecks(changed) {
   const dirs = [...new Set(changed.map((f) => f.match(/^(crates\/solenoid-[a-z]+|src-tauri)\//)?.[1]).filter(Boolean))];
   for (const d of dirs) {
     if (!existsSync(`${d}/Cargo.toml`)) continue;
-    if (d === "src-tauri" && !sh("pkg-config --exists webkit2gtk-4.1", { quiet: true }).ok) continue;
-    const m = `--manifest-path ${d}/Cargo.toml`;
+    if (d === "src-tauri" && (!DESKTOP || !sh("pkg-config --exists webkit2gtk-4.1", { quiet: true }).ok)) continue;
+    // One shared build directory with no debug info, as scripts/check-rust.sh builds: the disk is a fixed allowance.
+    const m = `--manifest-path ${d}/Cargo.toml --target-dir ${process.env.HOME}/.cache/solenoid-check`;
+    process.env.CARGO_INCREMENTAL = "0";
+    process.env.CARGO_PROFILE_DEV_DEBUG = "0";
+    process.env.CARGO_PROFILE_TEST_DEBUG = "0";
     const steps = [["fmt", `cargo fmt ${m} --check`], ["clippy", `cargo clippy ${m} --all-targets -- -D warnings`]];
     if (WASM_CRATES.has(d)) steps.push(["wasm clippy", `cargo clippy ${m} --target wasm32-unknown-unknown -- -D warnings`]);
     steps.push(["tests", `cargo test ${m}`]);
