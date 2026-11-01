@@ -57,6 +57,23 @@ const THIS: Lowercase = Lowercase::literal("this");
 const AM: Lowercase = Lowercase::literal("am");
 const PM: Lowercase = Lowercase::literal("pm");
 const Z: Lowercase = Lowercase::literal("z");
+const AGO: Lowercase = Lowercase::literal("ago");
+const AT: Lowercase = Lowercase::literal("at");
+const TONIGHT: Lowercase = Lowercase::literal("tonight");
+const NIGHT: Lowercase = Lowercase::literal("night");
+const IN: Lowercase = Lowercase::literal("in");
+const A: Lowercase = Lowercase::literal("a");
+const AN: Lowercase = Lowercase::literal("an");
+const FROM: Lowercase = Lowercase::literal("from");
+const LATER: Lowercase = Lowercase::literal("later");
+const HENCE: Lowercase = Lowercase::literal("hence");
+const THE: Lowercase = Lowercase::literal("the");
+const DAY: Lowercase = Lowercase::literal("day");
+const AFTER: Lowercase = Lowercase::literal("after");
+const BEFORE: Lowercase = Lowercase::literal("before");
+const COMING: Lowercase = Lowercase::literal("coming");
+const UPCOMING: Lowercase = Lowercase::literal("upcoming");
+const WEEKEND: Lowercase = Lowercase::literal("weekend");
 
 impl<'a> DateParser<'a> {
     pub fn new(text: &'a str) -> DateParser<'a> {
@@ -131,28 +148,154 @@ impl<'a> DateParser<'a> {
         }
     }
 
+    // PATCH(3): the time unit after a count, then what follows it: 'ago' counts back; 'from now', 'later' and
+    // 'hence' count forward, as does nothing at all ('3 days'); an hour number starts the time.
+    fn unit_tail(&mut self, u: Interval, n: i32) -> DateResult<Option<DateSpec>> {
+        match self.s.next() {
+            Some(Ok(Tokens::Ident)) => match Lowercase::from(self.s.slice()) {
+                AGO => Ok(Some(DateSpec::Relative(u * -n))),
+                LATER | HENCE => Ok(Some(DateSpec::Relative(u * n))),
+                FROM => match self.s.next() {
+                    Some(Ok(Tokens::Ident)) if Lowercase::from(self.s.slice()) == NOW => {
+                        Ok(Some(DateSpec::Relative(u * n)))
+                    }
+                    Some(_) => Err(DateError::ExpectedToken(
+                        "'now' after 'from'",
+                        self.s.span(),
+                    )),
+                    None => Err(DateError::EndOfText("'now' after 'from'")),
+                },
+                _ => Err(DateError::ExpectedToken(
+                    "'ago', 'from now' or 'later'",
+                    self.s.span(),
+                )),
+            },
+            Some(Ok(Tokens::Number(h))) => {
+                self.maybe_time = Some((h, TimeKind::Unknown));
+                Ok(Some(DateSpec::Relative(u * n)))
+            }
+            _ => Ok(Some(DateSpec::Relative(u * n))),
+        }
+    }
+
+    // PATCH(4): 'a' or 'an' counts one: 'a month ago', 'an hour from now'.
+    fn counted_unit(&mut self, n: i32) -> DateResult<Option<DateSpec>> {
+        match self.s.next() {
+            Some(Ok(Tokens::Ident)) => match time_unit(Lowercase::from(self.s.slice())) {
+                Some(u) => self.unit_tail(u, n),
+                None => Err(DateError::ExpectedToken("a time unit", self.s.span())),
+            },
+            Some(_) => Err(DateError::ExpectedToken("a time unit", self.s.span())),
+            None => Err(DateError::EndOfText("a time unit")),
+        }
+    }
+
+    // PATCH(2): 'in 3 days', 'in a week': a count forward.
+    fn in_interval(&mut self) -> DateResult<Option<DateSpec>> {
+        let n = match self.s.next() {
+            Some(Ok(Tokens::Number(n))) => n as i32,
+            Some(Ok(Tokens::Ident)) if matches!(Lowercase::from(self.s.slice()), A | AN) => 1,
+            Some(_) => {
+                return Err(DateError::ExpectedToken(
+                    "a number after 'in'",
+                    self.s.span(),
+                ))
+            }
+            None => return Err(DateError::EndOfText("a number after 'in'")),
+        };
+        match self.s.next() {
+            Some(Ok(Tokens::Ident)) => match time_unit(Lowercase::from(self.s.slice())) {
+                Some(u) => Ok(Some(DateSpec::Relative(u * n))),
+                None => Err(DateError::ExpectedToken(
+                    "a time unit after the number",
+                    self.s.span(),
+                )),
+            },
+            Some(_) => Err(DateError::ExpectedToken(
+                "a time unit after the number",
+                self.s.span(),
+            )),
+            None => Err(DateError::EndOfText("a time unit after the number")),
+        }
+    }
+
+    // PATCH(6): '[the] day after tomorrow' is two days on, '[the] day before yesterday' two days back.
+    fn day_after_before(&mut self, saw_the: bool) -> DateResult<Option<DateSpec>> {
+        let word = |p: &mut Self, expected: &'static str| match p.s.next() {
+            Some(Ok(Tokens::Ident)) => Ok(Lowercase::from(p.s.slice())),
+            Some(_) => Err(DateError::ExpectedToken(expected, p.s.span())),
+            None => Err(DateError::EndOfText(expected)),
+        };
+        if saw_the && word(self, "'day' after 'the'")? != DAY {
+            return Err(DateError::ExpectedToken("'day' after 'the'", self.s.span()));
+        }
+        let after = match word(self, "'after' or 'before'")? {
+            AFTER => true,
+            BEFORE => false,
+            _ => {
+                return Err(DateError::ExpectedToken(
+                    "'after' or 'before'",
+                    self.s.span(),
+                ))
+            }
+        };
+        match word(self, "'tomorrow' or 'yesterday'")? {
+            TOMORROW if after => Ok(Some(DateSpec::Relative(Interval::Days(2)))),
+            YESTERDAY if !after => Ok(Some(DateSpec::Relative(Interval::Days(-2)))),
+            _ => Err(DateError::ExpectedToken(
+                "'tomorrow' or 'yesterday'",
+                self.s.span(),
+            )),
+        }
+    }
+
     fn parse_date(&mut self, dialect: Dialect) -> DateResult<Option<DateSpec>> {
-        let (sign, direct);
+        let (sign, mut direct);
+        // PATCH(7): '+3 days' counts forward, as '-3 days' counts back.
+        let mut plus = false;
         let token = match self.s.next() {
             Some(Ok(Tokens::Dash)) => {
                 sign = true;
                 direct = None;
                 self.s.next()
             }
+            Some(Ok(Tokens::Plus)) => {
+                sign = false;
+                plus = true;
+                direct = None;
+                self.s.next()
+            }
             Some(Ok(Tokens::Ident)) => {
                 sign = false;
                 direct = match Lowercase::from(self.s.slice()) {
-                    NOW | TODAY => return Ok(Some(DateSpec::Relative(Interval::Days(0)))),
+                    // PATCH(5): tonight is today.
+                    NOW | TODAY | TONIGHT => {
+                        return Ok(Some(DateSpec::Relative(Interval::Days(0))))
+                    }
                     YESTERDAY => return Ok(Some(DateSpec::Relative(Interval::Days(-1)))),
                     TOMORROW => return Ok(Some(DateSpec::Relative(Interval::Days(1)))),
+                    IN => return self.in_interval(),
+                    A | AN => return self.counted_unit(1),
+                    THE => return self.day_after_before(true),
+                    DAY => return self.day_after_before(false),
                     NEXT => Some(Direction::Next),
                     LAST => Some(Direction::Last),
-                    THIS => Some(Direction::Here),
+                    // PATCH(9): 'upcoming friday' is the coming one, as a bare 'friday' is, in either dialect.
+                    THIS | COMING | UPCOMING => Some(Direction::Here),
                     _ => None,
                 };
                 if direct.is_some() {
                     // consume
-                    self.s.next()
+                    let t = self.s.next();
+                    // PATCH(9): 'this coming friday' is the coming one too.
+                    if t == Some(Ok(Tokens::Ident))
+                        && matches!(Lowercase::from(self.s.slice()), COMING | UPCOMING)
+                    {
+                        direct = Some(Direction::Here);
+                        self.s.next()
+                    } else {
+                        t
+                    }
                 } else {
                     Some(Ok(Tokens::Ident))
                 }
@@ -190,11 +333,25 @@ impl<'a> DateParser<'a> {
                 "a number after '-'",
                 self.s.span(),
             )),
+            Some(Ok(Tokens::Ident)) if plus => Err(DateError::ExpectedToken(
+                "a number after '+'",
+                self.s.span(),
+            )),
             // {weekday} [{time}]
             // {month} [{day}, {year}] [{time}]
             // {month} [{day}] [{time}]
             Some(Ok(Tokens::Ident)) => {
                 let direct = direct.unwrap_or(Direction::Here);
+                let name = Lowercase::from(self.s.slice());
+                if direct == Direction::Last && name == NIGHT {
+                    // PATCH(5): last night is yesterday.
+                    return Ok(Some(DateSpec::Relative(Interval::Days(-1))));
+                }
+                if name == WEEKEND {
+                    // PATCH(8): a weekend is named by its Saturday, as a weekday is: 'this weekend' is the
+                    // coming one. Before this, 'weekend' read as the unit 'week'.
+                    return Ok(Some(DateSpec::FromName(ByName::WeekDay(5), direct)));
+                }
                 if let Some(month) = month_name(Lowercase::from(self.s.slice())) {
                     // {month} [{day}, {year}]
                     // {month} [{day}] [{time}]
@@ -244,7 +401,7 @@ impl<'a> DateParser<'a> {
             Some(Ok(Tokens::Number(n))) => {
                 match self.s.next() {
                     // if sign is set, we should expect something like '- 5 minutes'
-                    None if sign => Err(DateError::EndOfText("duration")),
+                    None if sign || plus => Err(DateError::EndOfText("duration")),
                     // we want a full date
                     Some(Ok(Tokens::Comma | Tokens::Plus | Tokens::Number(_)) | Err(())) => {
                         Err(DateError::ExpectedToken("date", self.s.span()))
@@ -283,22 +440,7 @@ impl<'a> DateParser<'a> {
                             if sign {
                                 Ok(Some(DateSpec::Relative(u * -n)))
                             } else {
-                                match self.s.next() {
-                                    Some(Ok(Tokens::Ident))
-                                        if Lowercase::from(self.s.slice())
-                                            == Lowercase::literal("ago") =>
-                                    {
-                                        Ok(Some(DateSpec::Relative(u * -n)))
-                                    }
-                                    Some(Ok(Tokens::Ident)) => {
-                                        Err(DateError::ExpectedToken("'ago'", self.s.span()))
-                                    }
-                                    Some(Ok(Tokens::Number(h))) => {
-                                        self.maybe_time = Some((h, TimeKind::Unknown));
-                                        Ok(Some(DateSpec::Relative(u * n)))
-                                    }
-                                    _ => Ok(Some(DateSpec::Relative(u * n))),
-                                }
+                                self.unit_tail(u, n)
                             }
                         } else if name == AM {
                             self.maybe_time = Some((n, TimeKind::Am));
@@ -464,14 +606,22 @@ impl<'a> DateParser<'a> {
             }))
         } else {
             let s = self.s.clone();
-            if self.s.next() != Some(Ok(Tokens::Ident)) || self.s.slice() != "T" {
-                // backtrack if we weren't able to consume a 'T' time separator
+            // PATCH(11): 'at' before the time reads as 'T' does: 'tomorrow at 5pm'.
+            let mut saw_at = false;
+            if self.s.next() != Some(Ok(Tokens::Ident))
+                || (self.s.slice() != "T" && {
+                    saw_at = Lowercase::from(self.s.slice()) == AT;
+                    !saw_at
+                })
+            {
+                // backtrack if we weren't able to consume a 'T' or 'at' time separator
                 self.s = s;
             }
 
             // we're parsing times so we should expect an hour number.
             // if we don't find one, then there's no time here
             let hour = match self.s.next() {
+                None if saw_at => return Err(DateError::EndOfText("an hour after 'at'")),
                 None => return Ok(None),
                 Some(Ok(Tokens::Number(n))) => n,
                 Some(_) => {
@@ -488,7 +638,8 @@ impl<'a> DateParser<'a> {
                 // hh.mm
                 Some(Ok(Tokens::Dot)) => self.informal_time(hour).map(Some),
                 // 9am
-                Some(Ok(Tokens::Ident)) => match Lowercase::literal(self.s.slice()) {
+                // PATCH(1): user text goes through `from`, which lowercases; `literal` asserts on '9 PM'.
+                Some(Ok(Tokens::Ident)) => match Lowercase::from(self.s.slice()) {
                     AM => Ok(Some(TimeSpec::new(hour, 0, 0, 0))),
                     PM => Ok(Some(TimeSpec::new(hour + 12, 0, 0, 0))),
                     _ => Err(DateError::ExpectedToken(

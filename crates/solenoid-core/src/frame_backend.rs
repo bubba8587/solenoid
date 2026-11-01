@@ -192,21 +192,14 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         }
         // Text read as a typed date input reads it ([[C58]] tableInputRawText): a serial, null when it isn't a date, or
         // `{ambiguous: message}` for `#AMBIGUOUS!`. With `relative`, a relative phrase ([[C44]] dateSerials) reads at
-        // `now` (an instant, else the call's clock) in the host's zone, or in `zone` where one is named:
-        // `{relative: serial}`, `{relative: null}` for no date, `{relative: "throws"}` where chrono-node threw.
+        // `now` (an instant, else the call's clock) in the host's zone: `{relative: serial}`, or `{relative: null}`.
         "engine_parse_date"
             if args.get("relative").and_then(Json::as_bool) == Some(true)
                 && crate::relative_date::is_relative(&parse::<String>(args, "text")?) =>
         {
-            use crate::relative_date::{relative_date, Zone};
             let text = parse::<String>(args, "text")?;
             let now = args.get("now").and_then(Json::as_f64).unwrap_or_else(crate::excel_functions::clock_instant);
-            let zone = args.get("zone").and_then(Json::as_str).map_or(Zone::Host, Zone::Named);
-            Ok(serde_json::json!({ "relative": match relative_date(&text, now, zone) {
-                Ok(Some(s)) => Json::from(s),
-                Ok(None) => Json::Null,
-                Err(_) => Json::from("throws"),
-            } }))
+            Ok(serde_json::json!({ "relative": crate::relative_date::relative_date(&text, now) }))
         }
         "engine_parse_date" => Ok(match crate::excel_criteria::parse_date(&parse::<String>(args, "text")?) {
             crate::excel_criteria::DateReading::Serial(d) => Json::from(d),

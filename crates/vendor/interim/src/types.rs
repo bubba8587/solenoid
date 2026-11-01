@@ -40,6 +40,7 @@ impl ByName {
         mut direct: Direction,
     ) -> Option<Dt> {
         let (tz, base_date, base_time) = base.split();
+        let timed = ts.is_some();
         let ts = ts.unwrap_or(TimeSpec::new(0, 0, 0, 0));
         let this_year = base_date.year();
         let date = match self {
@@ -66,7 +67,11 @@ impl ByName {
                 if extra_week {
                     date = date.offset_days(7)?;
                 }
-                if diff_days == 0 {
+                if diff_days == 0 && !timed && direct == Direction::Last {
+                    // PATCH(10): without a time, 'last <today's weekday>' is a week ago: midnight today is
+                    // already past, but nobody means earlier today.
+                    date = date.offset_days(-7)?;
+                } else if diff_days == 0 {
                     // same day - comparing times will determine which way we swing...
                     let this_time = <Dt::Time as Time>::from_hms(ts.hour, ts.min, ts.sec)?;
                     if let Some(correct) = next_last_direction(&this_time, &base_time, direct) {

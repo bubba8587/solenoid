@@ -72,10 +72,9 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] About 45 copied JS crash messages ("a is not iterable", "Invalid array length", "format.split is not a function") become plain `#VALUE!`/`#SHAPE!` messages (DESIGN.md §7), or the input is accepted.
 - [ ] Set functions compare nested lists by value, not `===`.
 
-**Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go. Waits on the relative-date redesign below, the other user of the engine.
+**Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
 
 **Redesigns:**
-- [ ] Relative dates: an owned day-level grammar (today/tomorrow/yesterday, [this/next/last] weekday, in N units, N units ago, next/last week/month/year) replacing `relative_date.rs`'s chrono-node clone; its time and zone reading never reaches the user (the answer is floored to a day). `relative-dates.json.gz`'s 46,885 chrono answers become a small hand-written table.
 - [ ] The typed-date reader reads the wall clock as written, with no local round trip: today a DST gap or a year under 100 (`Date.UTC`'s 1900s) changes the answer by machine.
 
 **No visible change (delete the JS framing):**
@@ -92,6 +91,8 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
 ## Tooling
+- [ ] **Upstream the interim patches** (`crates/vendor/interim/PATCHES.md`, 11 of them): file each as a pull request on conradludgate/interim, the three bug fixes (1, 8, 10) first; drop each from the list as it lands, and once all have and a release carries them, depend on the release and delete the vendored copy.
+- [ ] **chrono-node in Rust, as its own repository** (author 2026-11-01, the author sets it up): seed it from `relative_date.rs` and `fixtures/core/relative-dates.json.gz` as they stood before `relative_date.rs` moved to interim (git history), the fixture as its conformance suite. Solenoid moves to it only if it reads better than the patched interim.
 - [ ] **Renumber the tree once it is ratified** (author 2026-10-30): `python tools/renumber_tree.py` closes each ring's id gaps (131 of 136 change today) and rewrites the `[[ID]]` citations; run it as a commit of its own, then hand-check the bare id mentions it lists outside `docs/archive/`.
 - [ ] **IronCalc as a test oracle**, tests only, never shipped: check PRICE, YIELD, the COUP functions, WORKDAY and their like against an engine built to match Excel. Today they're checked only against answers frozen from Formula.js, and no Excel runs in CI.
 - [ ] **Name the behind-the-scenes processes** in `docs/glossary.md`, as LayoutFx and VaultBridge are: the Pass (one recalculation), the Dimension Pass, the Type Settle, the Rebuild, the Error Guard, and candidates such as the Reader and the Formatter. "Plan" alone has five meanings today.

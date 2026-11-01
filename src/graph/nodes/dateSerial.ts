@@ -27,7 +27,7 @@ export interface ParseDateOptions {
   now?: Date;
 }
 
-type CoreDate = number | null | { ambiguous: string } | { relative: number | null | "throws" };
+type CoreDate = number | null | { ambiguous: string } | { relative: number | null };
 
 /** Typed date text as a date entry reads it, and whether it read as a relative phrase ("next friday", [[C44]]
  *  dateSerials), which only `relative` allows; the core reads both (`relative_date.rs`). */

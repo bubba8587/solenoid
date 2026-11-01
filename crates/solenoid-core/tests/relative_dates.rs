@@ -1,51 +1,65 @@
-//! [[C44]] dateSerials, [[D99]] rustIsSpec: relative date phrases read as chrono-node read them for `parseDate`
-//! (`fixtures/core/relative-dates.json.gz`, frozen by `tests/graph/coreRelativeDates.test.ts`): the serial, `null`
-//! for no date, `"throws"` where chrono threw, `"absolute"` for text that isn't a relative phrase.
+//! [[C44]] dateSerials: relative date phrases as a date Value Input reads them (`relative_date.rs`, on the patched
+//! interim). Natively the host's zone is UTC; the reference is Wednesday 2026-11-04 at 15:00.
 
-use serde_json::Value as Json;
-use solenoid_core::relative_date::{is_relative, relative_date, Zone};
-use std::io::Read;
+use solenoid_core::relative_date::{is_relative, relative_date};
 
-fn load() -> Vec<Json> {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/core/relative-dates.json.gz");
-    let mut s = String::new();
-    flate2::read::GzDecoder::new(std::fs::File::open(path).unwrap()).read_to_string(&mut s).unwrap();
-    serde_json::from_str(&s).unwrap()
+const NOW: f64 = 1_793_804_400_000.0;
+
+fn day(text: &str) -> Option<String> {
+    relative_date(text, NOW).map(|s| solenoid_core::date_serial::format_date_serial(s, "YYYY-MM-DD"))
 }
 
-fn reading(text: &str, now: f64, zone: Zone) -> Json {
-    if text.trim().is_empty() || !is_relative(text) {
-        return Json::from("absolute");
-    }
-    match relative_date(text, now, zone) {
-        Err(_) => Json::from("throws"),
-        Ok(None) => Json::Null,
-        Ok(Some(s)) => Json::from(s),
+#[test]
+fn reads_the_phrases_people_type() {
+    for (text, want) in [
+        ("today", "2026-11-04"),
+        ("tonight", "2026-11-04"),
+        ("Tomorrow", "2026-11-05"),
+        ("yesterday", "2026-11-03"),
+        ("last night", "2026-11-03"),
+        ("the day after tomorrow", "2026-11-06"),
+        ("day before yesterday", "2026-11-02"),
+        ("friday", "2026-11-06"),
+        ("this friday", "2026-11-06"),
+        ("next friday", "2026-11-13"),
+        ("this coming friday", "2026-11-06"),
+        ("last friday", "2026-10-30"),
+        ("last wednesday", "2026-10-28"),
+        ("mon", "2026-11-09"),
+        ("next week", "2026-11-11"),
+        ("last week", "2026-10-28"),
+        ("next month", "2026-12-04"),
+        ("last month", "2026-10-04"),
+        ("next year", "2027-11-04"),
+        ("this weekend", "2026-11-07"),
+        ("next weekend", "2026-11-14"),
+        ("in 3 days", "2026-11-07"),
+        ("in a week", "2026-11-11"),
+        ("3 days from now", "2026-11-07"),
+        ("2 weeks later", "2026-11-18"),
+        ("3 days ago", "2026-11-01"),
+        ("a month ago", "2026-10-04"),
+        ("tomorrow at 5pm", "2026-11-05"),
+        ("next friday.", "2026-11-13"),
+    ] {
+        assert!(is_relative(text), "{text} is relative");
+        assert_eq!(day(text).as_deref(), Some(want), "{text}");
     }
 }
 
 #[test]
-fn reads_every_frozen_phrase() {
-    let cases = load();
-    assert!(cases.len() > 30_000);
-    let mut bad = Vec::new();
-    for c in &cases {
-        let text = c["text"].as_str().unwrap();
-        let zone = c["zone"].as_str().unwrap();
-        let now = c["now"].as_f64().unwrap();
-        let got = reading(text, now, Zone::Named(zone));
-        let same = match (&got, &c["want"]) {
-            (Json::Number(a), Json::Number(b)) => a.as_f64() == b.as_f64(),
-            (a, b) => a == b,
-        };
-        if !same {
-            bad.push(format!("{text:?} {zone} {now}: want {} got {got}", c["want"]));
-        }
-        // The host zone natively is UTC: the app's own path reads the UTC cases the same.
-        if zone == "UTC" && reading(text, now, Zone::Host) != got {
-            bad.push(format!("{text:?} {now}: the host zone reads differently"));
-        }
+fn reads_no_date_from_noise() {
+    for text in ["nonsense today foo", "today foo", "next blue", "in three days"] {
+        assert_eq!(day(text), None, "{text}");
     }
-    let shown: Vec<&String> = bad.iter().take(40).collect();
-    assert!(bad.is_empty(), "{} of {} differ:\n{shown:#?}", bad.len(), cases.len());
+}
+
+#[test]
+fn the_gate() {
+    for text in ["15 March 1996", "Monday, 16 March 2026", "2026-11-04", "3/5", "", "  "] {
+        assert!(!is_relative(text), "{text} is not relative");
+    }
+    for text in ["in 2 weeks", "an hour from now", "upcoming monday", "a year hence"] {
+        assert!(is_relative(text), "{text} is relative");
+    }
 }

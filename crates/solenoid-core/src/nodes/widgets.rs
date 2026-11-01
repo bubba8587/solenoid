@@ -143,8 +143,7 @@ fn value_input_date(c: &mut Call, value: &str) -> V {
         };
     }
     let now = crate::excel_functions::clock_instant();
-    let read = crate::relative_date::relative_date(&text, now, crate::relative_date::Zone::Host);
-    let Ok(Some(serial)) = read else {
+    let Some(serial) = crate::relative_date::relative_date(&text, now) else {
         forget_relative(c);
         return V::Null;
     };
