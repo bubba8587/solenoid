@@ -54,11 +54,12 @@ fn utc_month(d: Date) -> f64 {
 }
 
 /// A serial as epoch milliseconds, NaN past a JS Date's range.
-fn serial_to_js_date(serial: f64) -> Date {
-    crate::date_serial::time_clip(round_half_up((serial - 25569.0) * MS_PER_DAY)).unwrap_or(f64::NAN)
+/// A serial's day, its time dropped, as Excel truncates a settlement or maturity date.
+fn day_of_serial(serial: f64) -> Date {
+    crate::date_serial::time_clip((serial.floor() - 25569.0) * MS_PER_DAY).unwrap_or(f64::NAN)
 }
 
-fn js_date_to_serial(d: Date) -> f64 {
+fn serial_of_day(d: Date) -> f64 {
     d / MS_PER_DAY + 25569.0
 }
 
@@ -398,16 +399,16 @@ pub fn coupon_value(op: CouponOp, settle_serial: f64, maturity_serial: f64, freq
     if let Some(e) = args_error(op.name(), settle_serial, maturity_serial, Some(f), Some(b)) {
         return Fin::Err(e);
     }
-    let settle = serial_to_js_date(settle_serial);
-    let maturity = serial_to_js_date(maturity_serial);
+    let settle = day_of_serial(settle_serial);
+    let maturity = day_of_serial(maturity_serial);
     let (prev, next) = coup_dates(settle, maturity, f);
     let (e, dsc, dsbs) = coup_period_days(prev, next, settle, f, b);
     Fin::Num(match op {
         CouponOp::Coupdaybs => dsbs,
         CouponOp::Coupdays => e,
         CouponOp::Coupdaysnc => dsc,
-        CouponOp::Coupncd => js_date_to_serial(next),
-        CouponOp::Couppcd => js_date_to_serial(prev),
+        CouponOp::Coupncd => serial_of_day(next),
+        CouponOp::Couppcd => serial_of_day(prev),
         CouponOp::Coupnum => bond_coupon_count(next, maturity, f),
     })
 }
@@ -445,7 +446,7 @@ pub fn accrint(issue_serial: f64, settle_serial: f64, rate: f64, par: f64, frequ
     if let Some(e) = accrual_error("accrint", issue_serial, settle_serial, rate, par, Some(freq), b) {
         return Fin::Err(e);
     }
-    let (issue, settle) = (serial_to_js_date(issue_serial), serial_to_js_date(settle_serial));
+    let (issue, settle) = (day_of_serial(issue_serial), day_of_serial(settle_serial));
     let a = if b == 0.0 || b == 4.0 { days30_360(issue, settle) } else { actual_days(issue, settle) };
     let e = if b == 1.0 {
         actual_days(issue, coup_add_months(issue, 12.0 / freq))
@@ -465,7 +466,7 @@ pub fn accrint_m(issue_serial: f64, settle_serial: f64, rate: f64, par: f64, bas
     if let Some(e) = accrual_error("accrintm", issue_serial, settle_serial, rate, par, None, b) {
         return Fin::Err(e);
     }
-    let (issue, settle) = (serial_to_js_date(issue_serial), serial_to_js_date(settle_serial));
+    let (issue, settle) = (day_of_serial(issue_serial), day_of_serial(settle_serial));
     let a = day_count(b, issue, settle);
     let d = if b == 3.0 {
         365.0
@@ -502,9 +503,9 @@ pub fn tbill(op: TBillOp, settle_serial: f64, maturity_serial: f64, x: f64) -> F
             if op == TBillOp::Tbillyield { "a price above 0" } else { "a discount above 0" },
         ));
     }
-    let (y, m, d) = ymd(serial_to_js_date(settle_serial));
+    let (y, m, d) = ymd(day_of_serial(settle_serial));
     let last_day = utc_date(utc(y + 1.0, m + 1.0, 0.0));
-    let year_on = js_date_to_serial(utc(y + 1.0, m, nan_min(d, last_day)));
+    let year_on = serial_of_day(utc(y + 1.0, m, nan_min(d, last_day)));
     if maturity_serial > year_on {
         return Fin::Err(domain(name, "the maturity date within one year of settlement"));
     }
@@ -547,7 +548,7 @@ pub fn security_disc(op: SecurityDiscOp, settle_serial: f64, maturity_serial: f6
     if a <= 0.0 || b <= 0.0 {
         return Fin::Err(domain(name, positive));
     }
-    let dsm = day_count(basis_code, serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
+    let dsm = day_count(basis_code, day_of_serial(settle_serial), day_of_serial(maturity_serial));
     let bd = basis_days(basis_code);
     match op {
         SecurityDiscOp::Disc => Fin::Num(((b - a) / b) * (bd / dsm)),
@@ -586,7 +587,7 @@ pub fn price_disc(
             if pricedisc { "a discount and redemption above 0" } else { "a price and redemption above 0" },
         ));
     }
-    let (settle, maturity) = (serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
+    let (settle, maturity) = (day_of_serial(settle_serial), day_of_serial(maturity_serial));
     let dsm = day_count(b, settle, maturity);
     let bb = if b == 3.0 { 365.0 } else { 360.0 };
     Fin::Num(if pricedisc {
@@ -620,9 +621,9 @@ pub fn price_mat(
     if if pricemat { yld_or_price < 0.0 } else { yld_or_price <= 0.0 } {
         return Fin::Err(domain(name, if pricemat { "a yield of 0 or more" } else { "a price above 0" }));
     }
-    let settle = serial_to_js_date(settle_serial);
-    let maturity = serial_to_js_date(maturity_serial);
-    let issue = serial_to_js_date(issue_serial);
+    let settle = day_of_serial(settle_serial);
+    let maturity = day_of_serial(maturity_serial);
+    let issue = day_of_serial(issue_serial);
     let dim = day_count(b, issue, maturity);
     let dsm = day_count(b, settle, maturity);
     let a = day_count(b, issue, settle);
@@ -663,7 +664,7 @@ pub fn duration_value(
     if coupon < 0.0 || yld < 0.0 {
         return Fin::Err(domain(name, "a coupon and yield of 0 or more"));
     }
-    let (settle, maturity) = (serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
+    let (settle, maturity) = (day_of_serial(settle_serial), day_of_serial(maturity_serial));
     let (prev, next) = coup_dates(settle, maturity, f);
     let (pe, pdsc, _) = coup_period_days(prev, next, settle, f, b);
     let dsc = pdsc / pe;
@@ -717,7 +718,7 @@ pub fn bond_price_yield(
     {
         return Fin::Err(e);
     }
-    let (settle, maturity) = (serial_to_js_date(settle_serial), serial_to_js_date(maturity_serial));
+    let (settle, maturity) = (day_of_serial(settle_serial), day_of_serial(maturity_serial));
     let r = if price {
         bond_price(settle, maturity, rate, yld_or_price, redemption, f)
     } else {
@@ -763,9 +764,9 @@ pub fn odd_coupon(
     if !valid_freq(f) {
         return Fin::Err(domain(name, "a frequency of 1, 2 or 4"));
     }
-    let settle = serial_to_js_date(settle_serial);
-    let maturity = serial_to_js_date(maturity_serial);
-    let fl = serial_to_js_date(fl_serial);
+    let settle = day_of_serial(settle_serial);
+    let maturity = day_of_serial(maturity_serial);
+    let fl = day_of_serial(fl_serial);
     let is_first = matches!(op, OddCouponOp::Oddfprice | OddCouponOp::Oddfyield);
     let issue_at = if issue_serial.is_finite() { issue_serial } else { settle_serial };
     let ordered = if is_first {
@@ -787,7 +788,7 @@ pub fn odd_coupon(
     if let Some(e) = price_args_error(name, is_price, rate, yld_or_price, redemption) {
         return Fin::Err(e);
     }
-    let issue = if is_first { serial_to_js_date(issue_at) } else { settle };
+    let issue = if is_first { day_of_serial(issue_at) } else { settle };
     // A throw inside the solver ends the whole call: the first one is kept and every later price reads NaN.
     let thrown: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
     let price_at = |y: f64| -> f64 {
