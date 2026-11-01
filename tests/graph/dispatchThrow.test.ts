@@ -5,9 +5,9 @@ import { isSolError } from "../../src/graph/errorValue";
 
 const ev = (src: string): unknown => compileEvaluator(src)!({});
 
-it("a function that fails inside JavaScript answers #VALUE! as a value, so IFERROR reads it", () => {
+it("a body that fails answers #VALUE! as a value, with its reason, so IFERROR reads it", () => {
   const r = ev("DEC2BIN(1, 5e9)");
-  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "DEC2BIN can't compute with these arguments"]);
+  expect(isSolError(r) && [r.code, r.message]).toEqual(["#VALUE!", "That many characters is more than a text can hold"]);
   expect(ev('IFERROR(DEC2BIN(1, 5e9), "fallback")')).toBe("fallback");
   expect(ev("ISERROR(ROMAN(1e12))")).toBe(true);
 });

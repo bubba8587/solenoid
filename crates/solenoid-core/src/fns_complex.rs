@@ -469,8 +469,7 @@ fn convert_zone(serial: f64, from: &str, to: &str) -> Result<V, Thrown> {
     };
     match run() {
         Ok(n) => Ok(V::Num(n)),
-        // `formatToParts` of an Invalid Date is a RangeError.
-        Err(_) => Err(Thrown::value("Invalid time value")),
+        Err(_) => Err(Thrown::value("The date is outside what the time zones cover")),
     }
 }
 

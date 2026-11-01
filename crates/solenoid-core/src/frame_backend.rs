@@ -490,9 +490,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             for (&p, x) in at.iter().zip(item) {
                 argv[p] = arg_of(x);
             }
-            out.push(call_body(&name, &argv, scan).unwrap_or_else(|_| {
-                V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")))
-            }));
+            out.push(call_body(&name, &argv, scan).unwrap_or_else(|t| V::err(t.0)));
         }
         return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {

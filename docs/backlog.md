@@ -66,7 +66,7 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
 - [ ] Text `<`/`>` in formulas ignores case, text above numbers (against [[C59]] byteStringOrder and the `#TYPE!` for mixed kinds: the author's call).
 - [ ] The Formula.js local-time date path (EDATE, ACCRINT, COUPDAYS, DISC, PRICEDISC, DATEDIF days) moves to the UTC day kernels: it brings back the 29 Feb 1900 [[C44]] dateSerials rules out, and answers JS `TypeError` text.
-- [ ] The JS crash texts left: the formula bodies' `Thrown` messages ("Invalid array length" and kin; every catch shows "NAME can't compute with these arguments", so they're unseen) want plain wording and to be shown; the Obsidian, Script and boundary cards' frozen `thrownJs` texts come from the graph side (`boundary.rs`, `wasm.rs`). The card bodies' copies went 2026-11-01.
+- [ ] The JS crash texts left: the Obsidian, Script and boundary cards' frozen `thrownJs` texts come from the graph side (`boundary.rs`, `wasm.rs`). The core's card and formula copies went 2026-11-01.
 
 **Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
 

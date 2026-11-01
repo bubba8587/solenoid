@@ -1439,7 +1439,7 @@ fn savgol(values: &[V], window: f64, order: f64) -> Result<V, Thrown> {
             }
         }
         match poly_fit_w(&xs, &ys, &ws, order) {
-            Err(()) => return Err(Thrown::value("Invalid array length")),
+            Err(()) => return Err(Thrown::value("SAVGOL needs a polynomial order from 0 up")),
             Ok(c) => out.push(c.map_or(V::Null, |c| V::Num(c[0]))),
         }
     }
@@ -1704,12 +1704,12 @@ fn norm(m: &V) -> Result<V, Thrown> {
             // A string iterates its characters, each one text.
             V::Str(s) if !s.is_empty() => return Ok(text()),
             V::Str(_) => {}
-            _ => return Err(Thrown::value("row is not iterable")),
+            _ => return Err(Thrown::value("NORM reads numbers and lists of numbers")),
         }
     }
     let mut total = 0.0;
     for row in &rows {
-        let V::List(cells) = row else { return Err(Thrown::value("r.reduce is not a function")) };
+        let V::List(cells) = row else { return Err(Thrown::value("NORM reads numbers and lists of numbers")) };
         total += cells.iter().fold(0.0, |x, y| if let V::Num(y) = y { x + y * y } else { x });
     }
     Ok(V::Num(total.sqrt()))
@@ -1845,9 +1845,8 @@ fn decompose(l: &V, period: &V, component: &V, model: &V) -> Result<V, Thrown> {
         return Ok(domain("DECOMPOSE model must be additive, multiplicative or stl"));
     }
     let y: Vec<Option<f64>> = to_list(l).iter().map(finite).collect();
-    // A NaN period reaches `new Array(NaN)`, which throws.
     if to_num(period).is_nan() {
-        return Err(Thrown::value("Invalid array length"));
+        return Err(Thrown::value("DECOMPOSE's period needs a number"));
     }
     let d = if mdl == "stl" {
         stl_decompose(&y, to_num(period))

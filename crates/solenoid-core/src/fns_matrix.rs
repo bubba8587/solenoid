@@ -781,7 +781,7 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> Result<V, Thrown> {
         ));
     }
     if d.is_nan() {
-        return Err(Thrown::value("Invalid array length"));
+        return Err(Thrown::value("POLYFIT's degree needs a number"));
     }
     let m = d as usize + 1;
     let mut ata = vec![vec![0.0; m]; m];

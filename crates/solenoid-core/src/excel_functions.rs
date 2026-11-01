@@ -1404,7 +1404,7 @@ fn excel_text(value: &V, fmt: &V) -> Result<V, Thrown> {
     if let Some((frac, sign_ok, exp_zeros)) = sci_code(&f) {
         let _ = sign_ok;
         let Some(s) = crate::jsnum::to_exponential(n, frac as f64) else {
-            return Err(Thrown::value("toExponential() argument must be between 0 and 100"));
+            return Err(Thrown::value("A format shows at most 100 decimal places"));
         };
         let (mant, e) = match s.split_once('e') {
             Some((m, e)) => (m.to_string(), e.parse::<f64>().unwrap_or(f64::NAN)),
@@ -1420,7 +1420,7 @@ fn excel_text(value: &V, fmt: &V) -> Result<V, Thrown> {
         // Formula.js writes any Date as its ISO date, whatever the code.
         return match serial_to_ms(n) {
             Some(ms) => Ok(V::str(&iso_date(ms))),
-            None => Err(Thrown::value("Invalid time value")),
+            None => Err(Thrown::value("The date is outside the calendar's range")),
         };
     }
     fx_text_number(n, &f)
@@ -1485,7 +1485,7 @@ fn fx_text_number(n: f64, f: &str) -> Result<V, Thrown> {
     let code: String = f.chars().filter(|&c| c != '%' && c != '$').collect();
     let places = match code.split('.').nth(1) {
         Some(after) => match after.chars().filter(|&c| c == '0').count() {
-            0 => return Err(Thrown::value("Cannot read properties of null (reading 'length')")),
+            0 => return Err(Thrown::value("TEXT doesn't read a format that ends in a bare decimal point yet")),
             z => z as f64,
         },
         None => 0.0,
@@ -1493,7 +1493,7 @@ fn fx_text_number(n: f64, f: &str) -> Result<V, Thrown> {
     let no_commas = !code.contains(',');
     let n = if percent { n * 100.0 } else { n };
     let Some(fixed) = crate::jsnum::fixed_text(n, places) else {
-        return Err(Thrown::value("toFixed() digits argument must be between 0 and 100"));
+        return Err(Thrown::value("A format shows at most 100 decimal places"));
     };
     let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
     let mut out = match fixed.strip_prefix('-') {
@@ -3528,8 +3528,7 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             match arg(a, 1) {
                 refs @ (V::List(_) | V::Null | V::Undef) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
                 _ if value.is_nan() => value_err("RANK"),
-                // `ref.filter` on anything but a list is a TypeError.
-                _ => return Err(Thrown::value("ref.filter is not a function")),
+                _ => return Err(Thrown::value("RANK's ref takes a list")),
             }
         }
         F::TRIMMEAN => {
@@ -3554,8 +3553,9 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
                     "REPT's result would pass 32,767 characters, Excel's text limit",
                 )));
             }
+            // Only empty text repeats past the limit check without end, and it stays empty.
             if n.is_infinite() {
-                return Err(Thrown::value(format!("Invalid count value: {}", number_to_string(n))));
+                return Ok(V::str(""));
             }
             V::str(&t.repeat(n as usize))
         }
@@ -3578,7 +3578,7 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             } else {
                 match crate::jsnum::fixed_text(x, dd) {
                     Some(t) => t,
-                    None => return Err(Thrown::value("toFixed() digits argument must be between 0 and 100")),
+                    None => return Err(Thrown::value("FIXED shows at most 100 decimal places")),
                 }
             };
             V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
@@ -5825,7 +5825,7 @@ fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
             let dn = num_blank_zero(&decimals);
             let fd = if dn >= 0.0 { dn } else { 0.0 };
             if fd > 100.0 {
-                return Err(Thrown::value("minimumFractionDigits value is out of range."));
+                return Err(Thrown::value("DOLLAR shows at most 100 decimal places"));
             }
             let formatted = usd_text(x, fd.floor() as usize);
             if x < 0.0 {

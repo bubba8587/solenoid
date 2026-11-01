@@ -115,7 +115,7 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
 }
 
 fn invalid_array_length() -> Thrown {
-    Thrown::value("Invalid array length")
+    Thrown::value("That many characters is more than a text can hold")
 }
 
 /// `new Array(n).join(text)`: n − 1 copies, where n is a valid array length.
@@ -126,7 +126,7 @@ fn array_join(n: f64, text: &str) -> Result<String, Thrown> {
     // V8's longest string, in UTF-16 units.
     let units = text.encode_utf16().count() as f64;
     if (n - 1.0).max(0.0) * units > 536_870_888.0 {
-        return Err(Thrown::value("Invalid string length"));
+        return Err(invalid_array_length());
     }
     Ok(text.repeat((n as usize).saturating_sub(1)))
 }
@@ -524,18 +524,8 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             let (x, n, m) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)));
             let coefficients = match arg(a, 3) {
                 V::List(items) => parse_number_array(items).map(Some),
-                // Text parses from its last unit, then writing the number back into the string throws (strict mode).
-                V::Str(s) if !s.is_empty() => {
-                    let units: Vec<u16> = s.encode_utf16().collect();
-                    let last = String::from_utf16_lossy(&units[units.len() - 1..]);
-                    return match parse_number(&V::str(&last)) {
-                        V::Num(_) => Err(Thrown::value(format!(
-                            "Cannot assign to read only property '{}' of string '{s}'",
-                            units.len() - 1
-                        ))),
-                        _ => Ok(VALUE),
-                    };
-                }
+                // Coefficients are numbers ([[C10]] socketLattice).
+                V::Str(s) if !s.is_empty() => return Ok(VALUE),
                 // A truthy scalar has no length, so it parses as itself and reads `undefined` at [0].
                 v if truthy(v) => {
                     if let V::Fx(_) = v {

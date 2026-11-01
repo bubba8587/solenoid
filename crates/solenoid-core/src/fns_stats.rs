@@ -927,9 +927,9 @@ fn valid_basis(v: &V) -> Option<f64> {
     one_of(v, &[0.0, 1.0, 2.0, 3.0, 4.0])
 }
 
-/// A method called on the Error `parseDate` answers for an Invalid Date: a TypeError.
-fn not_a_function(method: &str) -> Thrown {
-    Thrown::value(format!("{method} is not a function"))
+/// A date argument that reads as no date.
+fn not_a_function(_method: &str) -> Thrown {
+    Thrown::value("A date argument isn't a date")
 }
 
 fn date_to_serial(t: f64) -> f64 {

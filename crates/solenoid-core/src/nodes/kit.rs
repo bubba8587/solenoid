@@ -3,7 +3,6 @@
 //! lists ([[C24]] arraySemantics).
 
 use super::list;
-use crate::error_value::ErrorCode;
 use crate::eval::Traits;
 use crate::excel_functions::{Resolved, V};
 use crate::value_kinds::guard_finite as guard_cells;
@@ -34,7 +33,7 @@ pub fn core_call(name: &str, args: &[V]) -> V {
         Some(e) => e,
         None => match crate::excel_functions::call_resolved(name, resolved, args) {
             Ok(v) => v,
-            Err(_) => return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments")),
+            Err(t) => return V::err(t.0),
         },
     };
     normalize(v)
