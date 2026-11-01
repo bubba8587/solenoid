@@ -194,31 +194,19 @@ fn money_card(c: &mut Call, name: &str, money: &[&str], money_out: bool, body: i
     Ok(vec![("result".into(), Cv::from(result))])
 }
 
-/// JS `ToInt32`.
-fn to_int32(x: f64) -> i32 {
-    if !x.is_finite() {
-        return 0;
-    }
-    let m = x.trunc().rem_euclid(4294967296.0);
-    (m as u32) as i32
-}
-
 fn bitwise(c: &mut Call) -> Answer {
-    let op = c.field_str("op", "bitand").to_string();
-    let (a_raw, b_raw) = (c.read_num("a", 0.0), c.read_num("b", 0.0));
-    if matches!(a_raw, V::Null) || matches!(b_raw, V::Null) {
+    let op = c.field_str("op", "bitand").to_ascii_uppercase();
+    let (a, b) = (c.read_num("a", 0.0), c.read_num("b", 0.0));
+    if matches!(a, V::Null) || matches!(b, V::Null) {
         return answer(c, V::Null);
     }
-    let (a, b) = (js_num(&a_raw).trunc(), js_num(&b_raw).trunc());
-    let (ia, ib) = (to_int32(a), to_int32(b));
-    let shift = (0.0..32.0).contains(&b);
-    let result = match op.as_str() {
-        "bitand" => V::Num(f64::from(ia & ib)),
-        "bitor" => V::Num(f64::from(ia | ib)),
-        "bitxor" => V::Num(f64::from(ia ^ ib)),
-        "bitlshift" if shift => V::Num(f64::from(ia.wrapping_shl((ib as u32) & 31))),
-        "bitrshift" if shift => V::Num(f64::from((ia as u32) >> ((ib as u32) & 31))),
-        _ => V::Null,
+    let result = match crate::formulajs::excel_bit(&op, js_num(&a), js_num(&b)) {
+        Some(n) => V::Num(n),
+        None if op.ends_with("SHIFT") => err(
+            ErrorCode::Domain,
+            "Takes a whole number from 0 to 2^48 − 1, shifted at most 53 places, and the answer must fit in 48 bits.",
+        ),
+        None => err(ErrorCode::Domain, "Takes whole numbers from 0 to 2^48 − 1."),
     };
     answer(c, result)
 }

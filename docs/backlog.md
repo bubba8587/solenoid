@@ -57,10 +57,9 @@ the production minify, and its "esbuild options ignored" warning is expected.
 
 ## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
 
-Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the BIT*, ERF, PERMUTATIONA, BASE, DECIMAL, ARABIC, ROMAN, TEXT, LOG, CONFIDENCE.NORM and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
+Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the ERF, PERMUTATIONA, BASE, DECIMAL, ARABIC, ROMAN, TEXT, LOG, CONFIDENCE.NORM and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
 
 **Wrong answers, to Excel's (start here):**
-- [ ] BITAND/BITOR/BITXOR/BITLSHIFT/BITRSHIFT on 48-bit integers, not JS's 32 (`BITAND(2^33,2^33)` is 0, `BITLSHIFT(1,40)` is 256).
 - [ ] ERF's upper limit (`ERF(0,1)` is 0). CHISQ.TEST: no 6-place rounding, 2-D tables, `dists`. CONFIDENCE.NORM/.T: `#NUM!` domains (`CONFIDENCE.NORM(0,1,10)` is 44.7), `dists::norm_s_inv` and the T.INV kernel; jStat's `erfcinv`, `ibetainv` and gamma kernels go.
 - [ ] BASE truncates and refuses negatives; DECIMAL is `#NUM!` on any bad digit or prefix; ROMAN takes `form` and stops at 3999; ARABIC ignores case and takes a leading "-"; PERMUTATIONA truncates. `js_radix.rs` goes.
 - [ ] TEXT: an Excel format-code engine (dates, times, sections, `0.##`), likely shared with the FC format model (`TEXT(45000,"mmm d")` is "2023-03-15"). The largest item.

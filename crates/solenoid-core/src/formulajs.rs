@@ -7,9 +7,10 @@
 
 use crate::error_value::FxError;
 use crate::excel_functions::{js_string_of, parse_number, truthy, Thrown, V};
-use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
+use crate::js_radix::{parse_int, to_int32, to_radix_string};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
 use libm::{exp, log, sin};
+use std::ops::{BitAnd, BitOr, BitXor};
 
 const VALUE: V = V::Fx(FxError::Value);
 const NUM: V = V::Fx(FxError::Num);
@@ -289,9 +290,34 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
     })
 }
 
-/// The BIT functions' checks: whole numbers from 0 to 2^48 − 1.
-fn bit_operand(x: f64) -> bool {
-    x >= 0.0 && x.floor() == x && x <= 281_474_976_710_655.0
+/// The BIT functions' operands: whole numbers from 0 to 2^48 − 1.
+fn bit_operand(x: f64) -> Option<u64> {
+    (x >= 0.0 && x.floor() == x && x <= BIT_MAX).then_some(x as u64)
+}
+
+const BIT_MAX: f64 = 281_474_976_710_655.0;
+
+/// BITAND, BITOR, BITXOR, BITLSHIFT and BITRSHIFT as Excel answers them, on 48 bits; `None` is `#NUM!`. A shift
+/// amount is truncated, at most 53 either way, and a negative one shifts the other way; a result past 48 bits is
+/// `#NUM!`. The Bitwise card runs on it too.
+pub fn excel_bit(name: &str, x: f64, y: f64) -> Option<f64> {
+    let x = bit_operand(x)?;
+    if let Some(op) = match name {
+        "BITAND" => Some(u64::bitand as fn(u64, u64) -> u64),
+        "BITOR" => Some(u64::bitor as fn(u64, u64) -> u64),
+        "BITXOR" => Some(u64::bitxor as fn(u64, u64) -> u64),
+        _ => None,
+    } {
+        return Some(op(x, bit_operand(y)?) as f64);
+    }
+    let shift = y.trunc();
+    if !(shift.abs() <= 53.0) {
+        return None;
+    }
+    let left = if name == "BITLSHIFT" { shift } else { -shift };
+    let by = left.abs() as u32;
+    let out = if left >= 0.0 { u128::from(x) << by } else { u128::from(x >> by) };
+    (out <= BIT_MAX as u128).then_some(out as f64)
 }
 
 /// `/^M*(?:D?C{0,3}|C[MD])(?:L?X{0,3}|X[CL])(?:V?I{0,3}|I[XV])$/`.
@@ -826,28 +852,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         "BITAND" | "BITOR" | "BITXOR" | "BITLSHIFT" | "BITRSHIFT" => {
             let (x, y) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
             let (Some(x), Some(y)) = (num_of(&x), num_of(&y)) else { return Ok(VALUE) };
-            let shift = matches!(name, "BITLSHIFT" | "BITRSHIFT");
-            if !bit_operand(x) || (!shift && !bit_operand(y)) {
-                return Ok(NUM);
-            }
-            let xi = to_int32(x);
-            V::Num(f64::from(match name {
-                "BITAND" => xi & to_int32(y),
-                "BITOR" => xi | to_int32(y),
-                "BITXOR" => xi ^ to_int32(y),
-                _ => {
-                    if y.abs() > 53.0 {
-                        return Ok(NUM);
-                    }
-                    let left = (name == "BITLSHIFT") == (y >= 0.0);
-                    let s = to_uint32(if y >= 0.0 { y } else { -y }) & 31;
-                    if left {
-                        xi.wrapping_shl(s)
-                    } else {
-                        xi >> s
-                    }
-                }
-            }))
+            excel_bit(name, x, y).map_or(NUM, V::Num)
         }
         "DELTA" => {
             let y = if matches!(arg(a, 1), V::Undef) { V::Num(0.0) } else { arg(a, 1).clone() };

@@ -14,11 +14,6 @@ pub fn to_int32(x: f64) -> i32 {
     (x.trunc().rem_euclid(4_294_967_296.0) as u64 as u32) as i32
 }
 
-/// ECMAScript `ToUint32`.
-pub fn to_uint32(x: f64) -> u32 {
-    to_int32(x) as u32
-}
-
 fn digit_of(c: u8, radix: u32) -> Option<u32> {
     let d = match c {
         b'0'..=b'9' => u32::from(c - b'0'),
