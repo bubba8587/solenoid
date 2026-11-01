@@ -55,6 +55,41 @@ the production minify, and its "esbuild options ignored" warning is expected.
   - Rolling windows (`frame_verbs.rs`) re-sum each window: rows × window. Prefix sums change the rounding, so they need the fixtures to agree first.
 - [ ] **Text-reading calls the no-text-guessing sweep left for the author** ([[C10]] socketLattice): AND, OR and XOR skip a text argument (`OR(FALSE, "TRUE")` is FALSE) while NAND, NOR and XNOR answer #TYPE! and NOT #VALUE!: one rule for the family? And `COALESCE(list, "n/a")` drops a text (or logical) fallback, as `../tree/specs/computation/formula-language.md` § COALESCE says ("any other fallback is ignored"); a silent drop reads as a bug, so confirm it's wanted.
 
+## JavaScript the core still imitates ([[B27]] computeAnswersToExcel, [[B7]] preAlphaBreakFreely)
+
+Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D99]] rustIsSpec). Checked in the live engine: the BIT*, ERF, PERMUTATIONA, BASE, DECIMAL, ARABIC, ROMAN, TEXT, LOG, CONFIDENCE.NORM and DATEVALUE examples below; the rest are read from the code, Excel's answers from its documentation.
+
+**Wrong answers, to Excel's (start here):**
+- [ ] BITAND/BITOR/BITXOR/BITLSHIFT/BITRSHIFT on 48-bit integers, not JS's 32 (`BITAND(2^33,2^33)` is 0, `BITLSHIFT(1,40)` is 256).
+- [ ] ERF's upper limit (`ERF(0,1)` is 0). CHISQ.TEST: no 6-place rounding, 2-D tables, `dists`. CONFIDENCE.NORM/.T: `#NUM!` domains (`CONFIDENCE.NORM(0,1,10)` is 44.7), `dists::norm_s_inv` and the T.INV kernel; jStat's `erfcinv`, `ibetainv` and gamma kernels go.
+- [ ] BASE truncates and refuses negatives; DECIMAL is `#NUM!` on any bad digit or prefix; ROMAN takes `form` and stops at 3999; ARABIC ignores case and takes a leading "-"; PERMUTATIONA truncates. `js_radix.rs` goes.
+- [ ] TEXT: an Excel format-code engine (dates, times, sections, `0.##`), likely shared with the FC format model (`TEXT(45000,"mmm d")` is "2023-03-15"). The largest item.
+- [ ] One Excel argument reader replacing `excel_functions.rs`'s "JavaScript's coercions" (`to_f64_js`, `js_string_of`, `JsSum`, `truthy`, `parse_number`/`parse_string`, `js_less`, `js_len_spread`, `js_mean`, `js_sample_var`): fixes F.TEST (`#DIV/0!`, not blank), TRIMMEAN (a scalar is fine; blanks and text skipped), SUMPRODUCT and SUMX* (text is 0, unequal sizes `#VALUE!`/`#N/A`), SUMSQ/Z.TEST, WAVG text weights, `LOG(x,0)` (now base 10), EDATE's months (`parseInt(String(m))`), TYPE of a blank, REPLACE's negative start.
+- [ ] Number to text at Excel's 15 digits everywhere (`number_to_string`/`ryu_js` to `number_to_text`): Cast "general", Spell Number, Filter Frame text tests, error cells sorting as "[object Object]".
+- [ ] One number reader: `string_to_number` (`Number(s)`: hex, `Infinity`, "" as 0) becomes the [[C58]] tableInputRawText reader.
+- [ ] TRIM removes and collapses only U+0020. Text `<`/`>` in formulas ignores case, text above numbers.
+- [ ] The Formula.js local-time date path (EDATE, ACCRINT, COUPDAYS, DISC, PRICEDISC, DATEDIF days) moves to the UTC day kernels: it brings back the 29 Feb 1900 [[C44]] dateSerials rules out, and answers JS `TypeError` text.
+- [ ] About 45 copied JS crash messages ("a is not iterable", "Invalid array length", "format.split is not a function") become plain `#VALUE!`/`#SHAPE!` messages (DESIGN.md §7), or the input is accepted.
+- [ ] Set functions compare nested lists by value, not `===`.
+
+**Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go. Waits on the relative-date redesign below, the other user of the engine.
+
+**Redesigns:**
+- [ ] Relative dates: an owned day-level grammar (today/tomorrow/yesterday, [this/next/last] weekday, in N units, N units ago, next/last week/month/year) replacing `relative_date.rs`'s chrono-node clone; its time and zone reading never reaches the user (the answer is floored to a day). `relative-dates.json.gz`'s 46,885 chrono answers become a small hand-written table.
+- [ ] The typed-date reader reads the wall clock as written, with no local round trip: today a DST gap or a year under 100 (`Date.UTC`'s 1900s) changes the answer by machine.
+
+**No visible change (delete the JS framing):**
+- [ ] `fdlibm.rs` becomes the `libm` crate (the same algorithms, the same on every target, so native and wasm still agree); the `clippy.toml` ban stays, aimed at it. Last-bit fixture churn in every suite.
+- [ ] `date_parse.rs` goes: its only caller reaches it only for ISO text.
+- [ ] `zone.rs`'s copy of V8's `Date.prototype` goes after the date path above; the host's local day stays (a platform need). IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree.
+- [ ] `js_sort.rs` to total comparators (NaN last) on `sort_by`; `v8_sort_short`, `sort_by_num` go.
+- [ ] Renames with no behavior change: `js_trim` (except TRIM), `js_lower`/`js_upper`, `math_*`, `js_sign`, `to_fixed`, `clamp_js`, `intl_usd`, the `compare_utf16` data sort to code-point order; `serial_to_js_date` to whole days. `V::Undef` stays (an omitted argument, [[C80]] blankArgIsExcelBlank) without its JS readings.
+
+**Author calls:**
+- [ ] DATEVALUE's formats: Excel takes `3/5/24` (2-digit year, pivot 2029), `Mar 5`, `March 2024`, `5-Mar-24`; Solenoid refuses them. Widening what reads as a date is [[C58]] tableInputRawText and [[C44]] dateSerials.
+- [ ] `0^0` is 1 and the spec calls it "the JavaScript answer"; Excel says `#NUM!`. Keep as a better-app call, or follow Excel.
+- [ ] [[formulajs-divergences]] keeps several answers "as Formula.js did" (TEXT, the text pass-throughs, BESSEL, DB/DDB, NPV, DEC2HEX, FACT): each is Excel's or goes. Its MIN/MAX/SUM text entries contradict its own Text arguments section; [[formula-language]] says LEN counts code points, while the code (correctly, as Excel) counts UTF-16 units.
+
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 
