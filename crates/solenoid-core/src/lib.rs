@@ -22,7 +22,6 @@ pub mod eval;
 pub mod excel_criteria;
 pub mod excel_formula;
 pub mod excel_functions;
-pub mod fdlibm;
 pub mod finance_ops;
 pub mod finance_units;
 pub mod fns_complex;

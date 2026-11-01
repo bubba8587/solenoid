@@ -7,9 +7,9 @@ use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_pow, to_f64_js, V};
-use crate::fdlibm::{exp, log};
+use crate::excel_functions::{to_f64_js, V};
 use crate::jsnum::math_round;
+use libm::{exp, log};
 use std::rc::Rc;
 
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
@@ -535,7 +535,7 @@ fn mean(xs: &[f64]) -> f64 {
 
 fn sample_var(xs: &[f64]) -> f64 {
     let m = mean(xs);
-    xs.iter().fold(0.0, |s, v| s + js_pow(v - m, 2.0)) / (xs.len() as f64 - 1.0)
+    xs.iter().fold(0.0, |s, v| s + libm::pow(v - m, 2.0)) / (xs.len() as f64 - 1.0)
 }
 
 fn hypothesis_test(c: &mut Call) -> Answer {
@@ -628,7 +628,7 @@ fn hypothesis_test(c: &mut Call) -> Answer {
                         chi2 = f64::NAN;
                         break;
                     }
-                    chi2 += js_pow(js_num(&obs[i]) - e, 2.0) / e;
+                    chi2 += libm::pow(js_num(&obs[i]) - e, 2.0) / e;
                 }
                 if chi2.is_finite() && chi2 >= 0.0 {
                     let p = 1.0 - regularized_gamma((n as f64 - 1.0) / 2.0, chi2 / 2.0);
@@ -802,7 +802,7 @@ fn exp_fit_r2(xs: &[f64], ys: &[f64]) -> Option<(f64, f64, f64)> {
         return None;
     }
     let slope = sxy / sxx;
-    let r2 = if sxx > 0.0 && syy > 0.0 { js_pow(sxy / (sxx * syy).sqrt(), 2.0) } else { 0.0 };
+    let r2 = if sxx > 0.0 && syy > 0.0 { libm::pow(sxy / (sxx * syy).sqrt(), 2.0) } else { 0.0 };
     Some((exp(slope), exp(ym - slope * xm), r2))
 }
 

@@ -294,7 +294,7 @@ fn combinatorics(c: &mut Call) -> Answer {
     let (tn, tk) = (num(&n).trunc(), num(&k).trunc());
     let result = if op == "permutationa" {
         if tn >= 0.0 && tk >= 0.0 {
-            V::Num(crate::excel_functions::js_pow(tn, tk))
+            V::Num(libm::pow(tn, tk))
         } else {
             domain()
         }
@@ -399,7 +399,7 @@ fn multinomial(c: &mut Call) -> Answer {
                 let ln = crate::dists::ln_gamma(total + 1.0)
                     - ns.iter().fold(0.0, |s, v| s + crate::dists::ln_gamma(v + 1.0));
                 let ops: Vec<&V> = vals.iter().collect();
-                guard_finite(math_round(crate::fdlibm::exp(ln)), &ops)
+                guard_finite(math_round(libm::exp(ln)), &ops)
             }
         }
         _ => V::Null,
@@ -459,12 +459,11 @@ fn math_fn_result_dim(op: &str, dim: &crate::unit_dims::Dim) -> Result<Option<cr
 /// The card's own kernel where the formula twin answers differently (last-digit noise, the ERF approximation, ACOTH
 /// at 1 and -1).
 fn own_kernel(op: &str, x: f64) -> Option<Option<f64>> {
-    use crate::fdlibm::{atanh, exp, tanh};
-    use crate::fns_complex::{cosh, sinh};
+    use libm::{atanh, cosh, exp, sinh, tanh};
     Some(match op {
         "tanh" => Some(tanh(x)),
         "sinh" => Some(sinh(x)),
-        "asinh" => Some(crate::fdlibm::asinh(x)),
+        "asinh" => Some(libm::asinh(x)),
         "coth" => (sinh(x) != 0.0).then(|| cosh(x) / sinh(x)),
         "csch" => (sinh(x) != 0.0).then(|| 1.0 / sinh(x)),
         "acoth" => ((x <= -1.0 || x >= 1.0) && x.abs() != 1.0).then(|| atanh(1.0 / x)),

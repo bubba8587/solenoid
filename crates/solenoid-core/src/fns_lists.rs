@@ -8,11 +8,11 @@ use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_pow, js_string_of, to_f64_js, to_num, to_str, Thrown, V};
-use crate::fdlibm::{atan2, cos, exp, log, sin};
+use crate::excel_functions::{js_string_of, to_f64_js, to_num, to_str, Thrown, V};
 use crate::js_sort::js_sort_by;
 use crate::jsnum::{js_lower, js_trim, math_max, math_min, math_round, number_to_string};
 use crate::value_kinds::MAX_GENERATED;
+use libm::{atan2, cos, exp, log, sin};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -125,7 +125,7 @@ fn number(v: &V) -> f64 {
 }
 
 fn sq(x: f64) -> f64 {
-    js_pow(x, 2.0)
+    libm::pow(x, 2.0)
 }
 
 fn num_or_null(x: Option<f64>) -> V {
@@ -1479,7 +1479,7 @@ fn lowess(values: &[V], frac: f64, iterations: usize) -> Vec<V> {
                 .enumerate()
                 .map(|(j, x)| {
                     let u = (x - x0).abs() / hmax;
-                    let tri = if u < 1.0 { js_pow(1.0 - js_pow(u, 3.0), 3.0) } else { 0.0 };
+                    let tri = if u < 1.0 { libm::pow(1.0 - libm::pow(u, 3.0), 3.0) } else { 0.0 };
                     tri * robust[j]
                 })
                 .collect();
@@ -2191,7 +2191,7 @@ fn fit_weibull(x: &[f64]) -> Option<(f64, f64)> {
     for _ in 0..100 {
         let (mut a, mut b, mut c) = (0.0, 0.0, 0.0);
         for i in 0..n {
-            let xk = js_pow(x[i], k);
+            let xk = libm::pow(x[i], k);
             a += xk;
             b += xk * lx[i];
             c += xk * lx[i] * lx[i];
@@ -2208,7 +2208,7 @@ fn fit_weibull(x: &[f64]) -> Option<(f64, f64)> {
         }
         k = next;
     }
-    let lambda = js_pow(x.iter().fold(0.0, |s, &v| s + js_pow(v, k)) / n as f64, 1.0 / k);
+    let lambda = libm::pow(x.iter().fold(0.0, |s, &v| s + libm::pow(v, k)) / n as f64, 1.0 / k);
     (k.is_finite() && lambda.is_finite() && k > 0.0).then_some((k, lambda))
 }
 
@@ -2227,8 +2227,8 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
             r -= 1.0 / a;
             a += 1.0;
         }
-        r + log(a) - 1.0 / (2.0 * a) - 1.0 / (12.0 * a * a) + 1.0 / (120.0 * js_pow(a, 4.0))
-            - 1.0 / (252.0 * js_pow(a, 6.0))
+        r + log(a) - 1.0 / (2.0 * a) - 1.0 / (12.0 * a * a) + 1.0 / (120.0 * libm::pow(a, 4.0))
+            - 1.0 / (252.0 * libm::pow(a, 6.0))
     };
     let trigamma = |mut a: f64| {
         let mut r = 0.0;
@@ -2236,8 +2236,8 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
             r += 1.0 / (a * a);
             a += 1.0;
         }
-        r + 1.0 / a + 1.0 / (2.0 * a * a) + 1.0 / (6.0 * js_pow(a, 3.0)) - 1.0 / (30.0 * js_pow(a, 5.0))
-            + 1.0 / (42.0 * js_pow(a, 7.0))
+        r + 1.0 / a + 1.0 / (2.0 * a * a) + 1.0 / (6.0 * libm::pow(a, 3.0)) - 1.0 / (30.0 * libm::pow(a, 5.0))
+            + 1.0 / (42.0 * libm::pow(a, 7.0))
     };
     let mut a = (3.0 - s + (sq(s - 3.0) + 24.0 * s).sqrt()) / (12.0 * s);
     for _ in 0..100 {
@@ -2307,8 +2307,9 @@ pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, 
         }
         "weibull" => {
             let (k, lambda) = fit_weibull(&x)?;
-            let ll =
-                x.iter().fold(0.0, |s, &v| s + log(k / lambda) + (k - 1.0) * log(v / lambda) - js_pow(v / lambda, k));
+            let ll = x
+                .iter()
+                .fold(0.0, |s, &v| s + log(k / lambda) + (k - 1.0) * log(v / lambda) - libm::pow(v / lambda, k));
             Some((vec![k, lambda], ll))
         }
         "uniform" => {

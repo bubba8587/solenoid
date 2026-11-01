@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::{
-    js_number_of as js_number, js_pow, js_string_of, logical_or_type_error, math_hypot, to_num, Thrown, V,
+    js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, to_num, Thrown, V,
 };
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string};
 use crate::value_kinds::MAX_GENERATED;
@@ -836,7 +836,7 @@ fn poly_roots(coeffs: &[f64]) -> Option<Vec<(f64, f64)>> {
     let mut roots: Vec<(f64, f64)> = (0..n)
         .map(|k| {
             let th = (2.0 * std::f64::consts::PI * k as f64) / n as f64 + 0.4;
-            (radius * crate::fdlibm::cos(th), radius * crate::fdlibm::sin(th))
+            (radius * libm::cos(th), radius * libm::sin(th))
         })
         .collect();
     for _ in 0..500 {
@@ -963,7 +963,7 @@ fn linear_fit(xs: &[V], ys: &[V], with_r2: bool) -> Option<(f64, f64, f64)> {
         return None;
     }
     let slope = sxy / sxx;
-    let r2 = if sxx > 0.0 && syy > 0.0 { js_pow(sxy / (sxx * syy).sqrt(), 2.0) } else { 0.0 };
+    let r2 = if sxx > 0.0 && syy > 0.0 { libm::pow(sxy / (sxx * syy).sqrt(), 2.0) } else { 0.0 };
     Some((slope, y_mean - slope * x_mean, r2))
 }
 
@@ -973,9 +973,9 @@ fn exp_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     if !ys[..n].iter().all(|y| js_number(y) > 0.0) {
         return None;
     }
-    let logs: Vec<V> = ys[..n].iter().map(|y| V::Num(crate::fdlibm::log(js_number(y)))).collect();
+    let logs: Vec<V> = ys[..n].iter().map(|y| V::Num(libm::log(js_number(y)))).collect();
     let (slope, intercept, _) = linear_fit(&xs[..n], &logs, false)?;
-    Some((crate::fdlibm::exp(slope), crate::fdlibm::exp(intercept)))
+    Some((libm::exp(slope), libm::exp(intercept)))
 }
 
 /// The present pairs, raw.
@@ -1066,9 +1066,9 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
     }
     if !nullish(konst) && !is_true(konst) {
         if growth {
-            let logs: Vec<f64> = py.iter().map(|y| crate::fdlibm::log(js_number(y))).collect();
+            let logs: Vec<f64> = py.iter().map(|y| libm::log(js_number(y))).collect();
             return match slope_through_origin(&px, &logs) {
-                Some(ln_m) => nums_v(targets.iter().map(|x| crate::fdlibm::exp(ln_m * x)).collect()),
+                Some(ln_m) => nums_v(targets.iter().map(|x| libm::exp(ln_m * x)).collect()),
                 None => list(vec![]),
             };
         }
@@ -1080,7 +1080,7 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
     }
     if growth {
         return match exp_fit(&px, &py) {
-            Some((m, b)) => nums_v(targets.iter().map(|&x| b * js_pow(m, x)).collect()),
+            Some((m, b)) => nums_v(targets.iter().map(|&x| b * libm::pow(m, x)).collect()),
             None => list(vec![]),
         };
     }

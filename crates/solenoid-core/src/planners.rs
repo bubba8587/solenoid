@@ -5,7 +5,6 @@
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::decision::sort_by_num;
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{
     is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, number_to_string, string_to_number,
@@ -489,15 +488,15 @@ pub fn amortization_frame(rate: f64, nper: f64, pv: f64, fv: f64, ty: f64) -> Op
     let pmt = if rate.abs() < 1e-12 {
         -(pv + fv) / n
     } else {
-        let rn = fdlibm::pow(1.0 + rate, n);
+        let rn = libm::pow(1.0 + rate, n);
         -(pv * rn + fv) * rate / ((1.0 + rate * ty) * (rn - 1.0))
     };
     let rbl = |k: f64| {
         if rate.abs() < 1e-12 {
             -(pv + pmt * (k - 1.0))
         } else {
-            -(pv * fdlibm::pow(1.0 + rate, k - 1.0)
-                + pmt * (1.0 + rate * ty) * (fdlibm::pow(1.0 + rate, k - 1.0) - 1.0) / rate)
+            -(pv * libm::pow(1.0 + rate, k - 1.0)
+                + pmt * (1.0 + rate * ty) * (libm::pow(1.0 + rate, k - 1.0) - 1.0) / rate)
         }
     };
     let mut rows: [Vec<f64>; 5] = Default::default();
@@ -564,7 +563,7 @@ pub(crate) fn mulberry32(seed: u32) -> impl FnMut() -> f64 {
 fn sq_dist(a: &[f64], b: &[f64]) -> f64 {
     let mut s = 0.0;
     for i in 0..a.len() {
-        s += fdlibm::pow(a[i] - b[i], 2.0);
+        s += libm::pow(a[i] - b[i], 2.0);
     }
     s
 }
@@ -737,7 +736,7 @@ pub fn pca_frame(f: &FrameValue, standardize: bool) -> Option<FrameValue> {
             if !standardize {
                 return 1.0;
             }
-            let v = points.iter().fold(0.0, |s, p| s + fdlibm::pow(p[j] - means[j], 2.0)) / (nf - 1.0);
+            let v = points.iter().fold(0.0, |s, p| s + libm::pow(p[j] - means[j], 2.0)) / (nf - 1.0);
             if v > 0.0 {
                 v.sqrt()
             } else {
@@ -775,7 +774,7 @@ pub fn pca_frame(f: &FrameValue, standardize: bool) -> Option<FrameValue> {
 }
 
 fn sigmoid(t: f64) -> f64 {
-    1.0 / (1.0 + fdlibm::exp(-t))
+    1.0 / (1.0 + libm::exp(-t))
 }
 
 fn weighted_cross(d: &[Vec<f64>], w: &[f64], p: usize) -> Vec<Vec<f64>> {

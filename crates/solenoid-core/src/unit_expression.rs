@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::eval::Env;
-use crate::excel_functions::{fx_error_to_sol, js_pow, V};
+use crate::excel_functions::{fx_error_to_sol, V};
 use crate::unit_dims::{
     affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, AffScope, Codes, Dim, NamedLambdas, UnitCell,
 };
@@ -291,9 +291,9 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
                         Some(1) => {
                             tag_dim(c * sh.unit.scale + sh.unit.offset, sh.unit.dim.clone(), Some(sh.id.clone()))
                         }
-                        Some(0) => tag_dim(c * js_pow(sh.unit.scale, k), d.clone(), None),
+                        Some(0) => tag_dim(c * libm::pow(sh.unit.scale, k), d.clone(), None),
                         _ => tag_dim(
-                            c * js_pow(sh.unit.scale, k),
+                            c * libm::pow(sh.unit.scale, k),
                             d.clone(),
                             if k == 1.0 { Some(sh.id.clone()) } else { None },
                         ),

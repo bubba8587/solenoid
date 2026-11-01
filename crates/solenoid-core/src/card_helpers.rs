@@ -191,7 +191,7 @@ pub fn sci_from_setting(sci_above: Option<&str>) -> f64 {
         s => {
             let p = s.map_or(f64::NAN, string_to_number);
             if p.fract() == 0.0 {
-                crate::fdlibm::pow(10.0, p)
+                libm::pow(10.0, p)
             } else {
                 1e9
             }
@@ -209,7 +209,7 @@ pub fn format_scalar(n: f64, d: NumberDisplay) -> String {
         return if n > 0.0 { "∞" } else { "-∞" }.into();
     }
     let a = n.abs();
-    if a >= d.sci_from || (a > 0.0 && a < crate::fdlibm::pow(10.0, -d.decimals)) {
+    if a >= d.sci_from || (a > 0.0 && a < libm::pow(10.0, -d.decimals)) {
         // `toExponential(4).replace(/\.?0+e/, "e")`.
         let s = to_exponential(n, 4.0).unwrap_or_default();
         let (m, e) = s.split_once('e').unwrap_or((&s, ""));

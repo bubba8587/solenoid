@@ -3,13 +3,9 @@
 // The constants' digits are as written; a range test has to let a NaN through.
 #![allow(clippy::excessive_precision, clippy::manual_range_contains)]
 
-use crate::fdlibm::{exp, log, sin};
 use crate::jsnum::{math_max, math_min};
+use libm::{exp, log, pow, sin};
 use std::f64::consts::PI;
-
-fn pow(x: f64, y: f64) -> f64 {
-    crate::excel_functions::js_pow(x, y)
-}
 
 pub fn ln_gamma(x: f64) -> f64 {
     if x <= 0.0 {

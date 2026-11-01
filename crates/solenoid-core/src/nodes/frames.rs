@@ -367,7 +367,7 @@ const FIT_LABELS: [(&str, &str); 8] = [
 /// A fit's parameter names and its Kolmogorov–Smirnov distance from the sorted sample.
 fn fit_names_and_ks(family: &str, p: &[f64], sorted: &[f64]) -> (&'static [&'static str], f64) {
     use crate::dists::{regularized_beta, regularized_gamma, std_norm_cdf};
-    use crate::fdlibm::{exp, log, pow};
+    use libm::{exp, log, pow};
     let cdf: Box<dyn Fn(f64) -> f64> = match family {
         "normal" => Box::new(move |v| std_norm_cdf((v - p[0]) / p[1])),
         "lognorm" => Box::new(move |v| if v <= 0.0 { 0.0 } else { std_norm_cdf((log(v) - p[0]) / p[1]) }),
@@ -976,7 +976,7 @@ fn describe_tiles(src: &Frame, summary: &Frame) -> Json {
 
 /// Sturges' bin count, kept between 5 and 20 so a tile's bars stay readable.
 fn tile_bins(n: usize) -> usize {
-    (crate::fdlibm::log2(n.max(1) as f64) + 1.0).ceil().clamp(5.0, 20.0) as usize
+    (libm::log2(n.max(1) as f64) + 1.0).ceil().clamp(5.0, 20.0) as usize
 }
 
 /// The numbers in row order, averaged into `TREND_POINTS` buckets past that many.

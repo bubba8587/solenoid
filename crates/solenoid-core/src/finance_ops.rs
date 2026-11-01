@@ -7,9 +7,8 @@
 
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, ErrorCode, SolError};
-use crate::excel_functions::js_pow;
-use crate::fdlibm::{exp, log};
 use crate::jsnum::{math_max, math_min, math_round};
+use libm::{exp, log};
 
 /// A body's answer: a number, a SolError, null, or a JS exception (its message).
 #[derive(Clone, Debug)]
@@ -223,10 +222,10 @@ pub fn bond_price(settle: Date, maturity: Date, coupon_rate: f64, yld: f64, rede
     if n == 1.0 {
         return (redemption + c) / (1.0 + (dsc / e) * y) - c * a / e;
     }
-    let mut dirty = redemption / js_pow(1.0 + y, n - 1.0 + dsc / e);
+    let mut dirty = redemption / libm::pow(1.0 + y, n - 1.0 + dsc / e);
     let mut k = 1.0;
     while k <= n {
-        dirty += c / js_pow(1.0 + y, k - 1.0 + dsc / e);
+        dirty += c / libm::pow(1.0 + y, k - 1.0 + dsc / e);
         k += 1.0;
     }
     dirty - c * a / e
@@ -284,11 +283,11 @@ pub fn oddf_price(
     let n = bond_coupon_count(coup_add_months(first_coupon, step), maturity, freq);
     let y = yld / freq;
     let c = coupon_rate / freq * 100.0;
-    let mut price = redemption / js_pow(1.0 + y, n + nq + dsc / e);
-    price += c * sum_dc / js_pow(1.0 + y, nq + dsc / e);
+    let mut price = redemption / libm::pow(1.0 + y, n + nq + dsc / e);
+    price += c * sum_dc / libm::pow(1.0 + y, nq + dsc / e);
     let mut k = 1.0;
     while k <= n {
-        price += c / js_pow(1.0 + y, k + nq + dsc / e);
+        price += c / libm::pow(1.0 + y, k + nq + dsc / e);
         k += 1.0;
     }
     price -= c * sum_a;
@@ -676,7 +675,7 @@ pub fn duration_value(
     while k <= n {
         let t = k - 1.0 + dsc;
         let cf = if k == n { c + 100.0 } else { c };
-        let pv = cf / js_pow(1.0 + y, t);
+        let pv = cf / libm::pow(1.0 + y, t);
         price += pv;
         dur_num += t * pv;
         k += 1.0;
@@ -843,7 +842,7 @@ fn newton_discount_rate(values: &[f64], exponents: &[f64]) -> Option<f64> {
         let (mut f, mut df) = (0.0, 0.0);
         for k in 0..values.len() {
             let e = exponents[k];
-            let disc = js_pow(1.0 + r, e);
+            let disc = libm::pow(1.0 + r, e);
             f += values[k] / disc;
             df -= (values[k] * e) / (disc * (1.0 + r));
         }
@@ -864,7 +863,7 @@ fn npv_at_rate(values: &[f64], exponents: &[f64], r: f64) -> f64 {
     let mut f = 0.0;
     let base = 1.0 + r;
     for k in 0..values.len() {
-        f += values[k] / js_pow(base, exponents[k]);
+        f += values[k] / libm::pow(base, exponents[k]);
     }
     f
 }
@@ -922,7 +921,7 @@ pub fn xnpv(rate: f64, values: &[f64], dates: &[f64], before_first: bool) -> Fin
     }
     let mut sum = 0.0;
     for i in 0..n {
-        sum += values[i] / js_pow(1.0 + rate, (dates[i] - d0) / 365.0);
+        sum += values[i] / libm::pow(1.0 + rate, (dates[i] - d0) / 365.0);
     }
     if sum.is_finite() {
         Fin::Num(sum)
@@ -956,9 +955,9 @@ pub fn mirr(cashflows: &[f64], finrate: f64, reinrate: f64) -> Fin {
     for (i, &cf) in cashflows.iter().enumerate() {
         let i = i as f64;
         if cf < 0.0 {
-            pv_neg += cf / js_pow(1.0 + finrate, i);
+            pv_neg += cf / libm::pow(1.0 + finrate, i);
         } else {
-            fv_pos += cf * js_pow(1.0 + reinrate, n - 1.0 - i);
+            fv_pos += cf * libm::pow(1.0 + reinrate, n - 1.0 - i);
         }
     }
     if pv_neg == 0.0 || fv_pos == 0.0 {
@@ -967,7 +966,7 @@ pub fn mirr(cashflows: &[f64], finrate: f64, reinrate: f64) -> Fin {
             "MIRR needs both a negative (investment) and a positive (return) cash flow",
         ));
     }
-    let r = js_pow(-fv_pos / pv_neg, 1.0 / (n - 1.0)) - 1.0;
+    let r = libm::pow(-fv_pos / pv_neg, 1.0 / (n - 1.0)) - 1.0;
     if r.is_finite() {
         Fin::Num(r)
     } else {
@@ -1046,7 +1045,7 @@ pub fn cagr(prices: &[Cell], periods_per_year: f64) -> Fin {
     if first <= 0.0 || last <= 0.0 {
         return Fin::Err(sol_error(ErrorCode::Domain, "CAGR needs positive prices"));
     }
-    Fin::Num(js_pow(last / first, periods_per_year / elapsed) - 1.0)
+    Fin::Num(libm::pow(last / first, periods_per_year / elapsed) - 1.0)
 }
 
 /// `{ mean, sd, downside }` of the excess returns, None under two.
@@ -1065,8 +1064,8 @@ fn excess_stats(returns: &[Cell], rf: f64) -> Result<Option<(f64, f64, f64)>, So
     }
     let n = xs.len() as f64;
     let mean = xs.iter().fold(0.0, |a, b| a + b) / n;
-    let sd = (xs.iter().fold(0.0, |a, b| a + js_pow(b - mean, 2.0)) / (n - 1.0)).sqrt();
-    let downside = (xs.iter().fold(0.0, |a, &b| a + js_pow(math_min(b, 0.0), 2.0)) / n).sqrt();
+    let sd = (xs.iter().fold(0.0, |a, b| a + libm::pow(b - mean, 2.0)) / (n - 1.0)).sqrt();
+    let downside = (xs.iter().fold(0.0, |a, &b| a + libm::pow(math_min(b, 0.0), 2.0)) / n).sqrt();
     Ok(Some((mean, sd, downside)))
 }
 
@@ -1113,7 +1112,7 @@ pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_ra
             format!("{} sums at most 1,000,000 periods", if cumipmt { "CUMIPMT" } else { "CUMPRINC" }),
         ));
     }
-    let r_n = js_pow(1.0 + rate, nper);
+    let r_n = libm::pow(1.0 + rate, nper);
     let pmt = -(pv * r_n) * rate / ((1.0 + rate * ty) * (r_n - 1.0));
     if !pmt.is_finite() {
         return Fin::Null;
@@ -1121,7 +1120,7 @@ pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_ra
     let mut sum = 0.0;
     let mut per = start;
     while per <= end {
-        let r_per1 = js_pow(1.0 + rate, per - 1.0);
+        let r_per1 = libm::pow(1.0 + rate, per - 1.0);
         let b = pv * r_per1 + pmt * (1.0 + rate * ty) * (r_per1 - 1.0) / rate;
         let ipmt = -(if ty == 0.0 { b * rate } else { (b - pmt) * rate });
         sum += if cumipmt { ipmt } else { pmt - ipmt };

@@ -6,10 +6,10 @@
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::FxError;
-use crate::excel_functions::{js_pow, js_string_of, parse_number, truthy, Thrown, V};
-use crate::fdlibm::{exp, log, sin};
+use crate::excel_functions::{js_string_of, parse_number, truthy, Thrown, V};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
+use libm::{exp, log, sin};
 
 const VALUE: V = V::Fx(FxError::Value);
 const NUM: V = V::Fx(FxError::Num);
@@ -547,7 +547,7 @@ fn fx_var_s(xs: &[f64]) -> f64 {
     let mean = fx_average(xs).unwrap_or(f64::NAN);
     let mut sigma = 0.0;
     for &x in xs {
-        sigma += js_pow(x - mean, 2.0);
+        sigma += libm::pow(x - mean, 2.0);
     }
     sigma / (xs.len() as f64 - 1.0)
 }
@@ -653,7 +653,7 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, Th
 pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
     Ok(match name {
         "PERMUTATIONA" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
-            (V::Num(n), V::Num(k)) => V::Num(js_pow(n, k)),
+            (V::Num(n), V::Num(k)) => V::Num(libm::pow(n, k)),
             _ => VALUE,
         },
         "SUMSQ" => match parse_number_array(&flatten_args(a)) {
@@ -719,7 +719,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 result += match name {
                     "SUMX2MY2" => x * x - y * y,
                     "SUMX2PY2" => x * x + y * y,
-                    _ => js_pow(x - y, 2.0),
+                    _ => libm::pow(x - y, 2.0),
                 };
             }
             V::Num(result)
@@ -754,9 +754,9 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 return Ok(VALUE);
             };
             let Some(cs) = cs else { return Ok(V::Num(f64::NAN)) };
-            let mut result = cs[0] * js_pow(x, n);
+            let mut result = cs[0] * libm::pow(x, n);
             for (i, c) in cs.iter().enumerate().skip(1) {
-                result += c * js_pow(x, n + i as f64 * m);
+                result += c * libm::pow(x, n + i as f64 * m);
             }
             V::Num(result)
         }
@@ -951,7 +951,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             let mut xsqr = 0.0;
             for (x, e) in actual.iter().zip(expected.iter()) {
                 let e = js_number(e);
-                xsqr += js_pow(js_number(x) - e, 2.0) / e;
+                xsqr += libm::pow(js_number(x) - e, 2.0) / e;
             }
             V::Num(math_round(chi_sq(xsqr, dof)? * 1_000_000.0) / 1_000_000.0)
         }

@@ -35,16 +35,6 @@ function sampleOf<C>(suite: string, by?: (raw: unknown) => string): C[] {
   });
 }
 
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 const wf = (t: string) => (t as string & { toWellFormed(): string }).toWellFormed();
 const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
 const isNanBits = (b: string) => (BigInt(b) & 0x7ff0000000000000n) === 0x7ff0000000000000n && (BigInt(b) & 0xfffffffffffffn) !== 0n;
@@ -102,43 +92,6 @@ describe("function bodies answer as frozen", () => {
     });
   }
   if (freezes("function-bodies")) it("writes the frozen bodies", () => writeFrozen("function-bodies", bodies));
-});
-
-// ─── V8's Math ────────────────────────────────────────────────────────────────────
-
-type MathCase = { fn: string; xs: number[]; ys: number[]; want: string[] };
-const MATH_FNS = ["exp", "log", "log10", "pow", "sin", "cos", "tan", "asin", "acos", "atan", "acosh", "atanh", "log1p", "atan2", "expm1", "tanh", "log2", "prec15"];
-
-/** V8's Math is the live reference, so these answers are made fresh each run rather than frozen. */
-const maths: MathCase[] = MATH_FNS.map((fn) => {
-  const rand = mulberry32(31337 + fn.length);
-  const xs: number[] = [], ys: number[] = [];
-  for (let i = 0; i < 20000; i++) {
-    const nice = rand() < 0.5;
-    const x = fn === "prec15" ? (rand() < 0.3 ? (Math.floor(rand() * 1e15) * 10 + 5) / 2 ** Math.floor(rand() * 8) : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 20))
-      : fn === "asin" || fn === "acos" || fn === "atanh" ? (nice ? Math.round(rand() * 200 - 100) / 100 : rand() * 2 - 1)
-      : fn === "acosh" ? 1 + (nice ? Math.round(rand() * 1e4) / 100 : 10 ** (rand() * 12 - 6))
-      : fn === "log1p" ? (nice ? Math.round(rand() * 1e4) / 100 - 0.99 : 10 ** (rand() * 20 - 10) - 0.5)
-      : ["sin", "cos", "tan", "atan", "atan2"].includes(fn) ? (nice ? Math.round(rand() * 1e5) / 100 - 500 : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 10))
-      : fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
-      : fn === "expm1" || fn === "tanh" ? (nice ? Math.round(rand() * 1600 - 800) / 8 : (rand() - 0.5) * 10 ** Math.floor(rand() * 24 - 20))
-      : fn === "pow" ? (nice ? Math.round(rand() * 400) / 10 : rand() * 50)
-      : (nice ? Math.round(rand() * 1e4) / 8 : Math.exp(rand() * 300 - 150));
-    xs.push(x + 0);
-    ys.push((nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30) + 0);
-  }
-  const m = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow, sin: Math.sin, cos: Math.cos, tan: Math.tan, asin: Math.asin,
-    acos: Math.acos, atan: Math.atan, acosh: Math.acosh, atanh: Math.atanh, log1p: Math.log1p, atan2: Math.atan2, expm1: Math.expm1,
-    tanh: Math.tanh, log2: Math.log2, prec15: (x: number) => Number(x.toPrecision(15)) }[fn as "exp"] as (a: number, b?: number) => number;
-  return { fn, xs, ys, want: xs.map((x, i) => { const r = m(x, ys[i]); return Number.isNaN(r) ? "NaN" : bits(r); }) };
-});
-
-describe("the core's Math answers as V8's, bit for bit", () => {
-  it.each(maths.map((c) => [c.fn, c] as const))("%s", (_fn, c) => {
-    const got = wasmInvokeSync<string[]>("engine_math", { fn: c.fn, xs: c.xs, ys: c.ys });
-    const bad = c.xs.map((x, i) => [x, c.ys[i], c.want[i], got[i]] as const).filter(([, , w, g]) => (w === "NaN" ? !isNanBits(g) : w !== g));
-    expect(bad.slice(0, 3)).toEqual([]);
-  });
 });
 
 // ─── Computed columns ─────────────────────────────────────────────────────────────

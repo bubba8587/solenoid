@@ -778,7 +778,7 @@ fn parse_value_text(text: &str, decimal: &str, group: &str) -> f64 {
     if n.is_nan() {
         f64::NAN
     } else {
-        (if neg { -n } else { n }) / crate::excel_functions::js_pow(100.0, f64::from(pct))
+        (if neg { -n } else { n }) / libm::pow(100.0, f64::from(pct))
     }
 }
 

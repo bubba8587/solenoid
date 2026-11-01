@@ -43,7 +43,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 ## Rust core ([[D99]] rustIsSpec)
 - [ ] **Layer the core**: five groups (formulas, values, tables, planners, cards), each relying only on those below; today it's a flat list and a couple of low-level pieces reach up into card code. Publishing the function library on its own needs it.
 - [ ] **Build the shipping module with `npm run build:wasm:opt`** before develop merges into main (the author's step): develop commits it unoptimized (`wasm-opt` is opt-in), about 6% bigger raw.
-- [ ] **Watch:** `ferrigura-jsmath` (V8's Math in Rust; would replace `fdlibm.rs` once mature), `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
+- [ ] **Watch:** `ssf-rs` (SheetJS's format engine, if TEXT moves to real Excel format codes).
 - [ ] **Desktop hardening** (security review 2026-10-24): `src-tauri/capabilities/default.json` lets the webview write any `$HOME/**/*.json|md` (dot-dirs like `~/.claude`, `.vscode`, `.git` included), read `$HOME/**/*.json|csv|md|yaml`, fetch `http(s)://*:*` (localhost, LAN, 169.254.*) and `opener:allow-open-path` unscoped; deny dot-dirs and private ranges, scope fs to the folders the user picked. `read_parquet` should run off the main thread (`spawn_blocking`) with a size cap. A foreign document's `<img src=http…>` (Image node, Note markdown) loads before the network gate, and pasted cards lose the foreign flag. Script cards in a foreign document run without asking (`../tree/specs/computation/script-sandbox.md` assumes the author wrote them).
 - [ ] **Two Ruggine behaviors the graph core leans on** (Ruggine review 2026-10-24): a removed node's engine cache stays until a full pass (upstream does the same), so a deleted card's frame stays in memory until then; and the core never spawns `ruggine::future::background()`, so after a pass stops early, sibling runs waiting on JS promises resume only when something else polls the queue (Ruggine's `tree/specs/port` § Futures says the host spawns it once).
 - [ ] **Graph core leftovers** (fuzz run and named-edits review, 2026-10-24):
@@ -79,7 +79,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] The typed-date reader reads the wall clock as written, with no local round trip: today a DST gap or a year under 100 (`Date.UTC`'s 1900s) changes the answer by machine.
 
 **No visible change (delete the JS framing):**
-- [ ] `fdlibm.rs` becomes the `libm` crate (the same algorithms, the same on every target, so native and wasm still agree); the `clippy.toml` ban stays, aimed at it. Last-bit fixture churn in every suite.
 - [ ] `date_parse.rs` goes: its only caller reaches it only for ISO text.
 - [ ] `zone.rs`'s copy of V8's `Date.prototype` goes after the date path above; the host's local day stays (a platform need). IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree.
 - [ ] `js_sort.rs` to total comparators (NaN last) on `sort_by`; `v8_sort_short`, `sort_by_num` go.

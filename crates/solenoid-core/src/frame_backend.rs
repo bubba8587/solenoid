@@ -374,39 +374,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 }
             }
         }
-        "engine_math" => {
-            let xs = parse::<Vec<f64>>(args, "xs")?;
-            let ys = parse::<Option<Vec<f64>>>(args, "ys")?.unwrap_or_default();
-            let f = parse::<String>(args, "fn")?;
-            Ok(Json::Array(
-                xs.iter()
-                    .enumerate()
-                    .map(|(i, &x)| {
-                        let r = match f.as_str() {
-                            "exp" => crate::fdlibm::exp(x),
-                            "log" => crate::fdlibm::log(x),
-                            "log10" => crate::fdlibm::log10(x),
-                            "prec15" => crate::unit_value::to_precision(x, 15),
-                            "sin" => crate::fdlibm::sin(x),
-                            "cos" => crate::fdlibm::cos(x),
-                            "tan" => crate::fdlibm::tan(x),
-                            "asin" => crate::fdlibm::asin(x),
-                            "acos" => crate::fdlibm::acos(x),
-                            "atan" => crate::fdlibm::atan(x),
-                            "acosh" => crate::fdlibm::acosh(x),
-                            "atanh" => crate::fdlibm::atanh(x),
-                            "log1p" => crate::fdlibm::log1p(x),
-                            "expm1" => crate::fdlibm::expm1(x),
-                            "tanh" => crate::fdlibm::tanh(x),
-                            "log2" => crate::fdlibm::log2(x),
-                            "atan2" => crate::fdlibm::atan2(x, ys.get(i).copied().unwrap_or(f64::NAN)),
-                            _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
-                        };
-                        json!(r.to_bits().to_string())
-                    })
-                    .collect(),
-            ))
-        }
         "engine_assemble" => {
             #[derive(Deserialize)]
             struct Part {

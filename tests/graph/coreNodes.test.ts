@@ -1,12 +1,14 @@
 // [[D99]] rustIsSpec, [[C130]] rustCore
 // Every card body on the core, through the wasm module the app runs, answers its frozen cases (fixtures/core/nodes/,
 // frozen by scripts/freeze-nodes.mjs). `crates/solenoid-core/tests/nodes.rs` holds the native build to the same cases.
+// FREEZE_CORE=nodes answers every frozen case again through the core and rewrites the outputs and shown fields that
+// changed, as the recorder writes them: a change in behavior the cases' tests are gone for ([[D99]] rustIsSpec).
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
-import { nodeUnwire, readNodeReply, jsonDec } from "../../src/graph/nodeWire";
+import { nodeUnwire, nodeWire, readNodeReply, jsonDec, jsonEnc } from "../../src/graph/nodeWire";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, matrixUnitOf, withMatrixUnit, type ColumnUnit } from "../../src/graph/unitValue";
 import { isCx } from "../../src/graph/cxValue";
@@ -18,8 +20,21 @@ import "../../src/graph/nodeBoundary";
 const frozen = (v: unknown): unknown => (isFrameRef(v) ? JSON.parse(frameRefWire(v) ?? "null") : v);
 
 const DIR = path.resolve(__dirname, "../../fixtures/core/nodes");
-type Case = { init: unknown; inputs: [string, unknown[]][]; result: { out?: Record<string, unknown>; thrown?: unknown }; ctx: { clock: unknown }; unstable?: true };
-type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; matrixUnits?: Record<string, unknown> };
+type Case = { init: unknown; inputs: [string, unknown[]][]; result: { out?: Record<string, unknown>; thrown?: unknown }; ctx: { clock: unknown };
+  display?: Record<string, unknown>; prior?: Record<string, unknown>; unstable?: true };
+type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; matrixUnits?: Record<string, unknown>; display?: Record<string, unknown> };
+
+const REFREEZE = ["1", "nodes"].some((s) => (process.env.FREEZE_CORE ?? "").split(",").includes(s));
+/** A value as the recorder freezes it (`tests/setup/nodeRecorder.ts`). */
+const wireOf = (v: unknown): unknown => (isFrameRef(v) ? frozen(v) : JSON.parse(JSON.stringify(nodeWire(v) ?? null, (k, x) => (k === "ref" ? undefined : x))));
+/** A shown field as the recorder freezes it. */
+function shownWire(r: unknown, out: Record<string, unknown>): unknown {
+  const o = r as { undef?: true; output?: string } | null;
+  if (o && typeof o === "object" && o.undef === true) return { __undef: 1 };
+  const v = o && typeof o === "object" && typeof o.output === "string" ? out[o.output] : readNodeReply(r)?.value;
+  const w = nodeWire(v);
+  return w === undefined ? { __json: jsonEnc(v) } : wireOf(v);
+}
 
 /** The frozen wire value as the TS held it: errors by code and message, unit cells by what crosses back. */
 function same(got: unknown, want: unknown): boolean {
@@ -51,9 +66,12 @@ describe("card bodies on the core answer as frozen", () => {
     if (cases.length === 0 || call(cases[0]).none) continue;
     it(kind, () => {
       const bad: string[] = [];
+      let rewritten = 0;
       for (const c of cases) {
         if (c.unstable) continue;
         const r = call(c);
+        const asFrozen = c.result;
+        let moved = false;
         // A JS exception froze as its text; the error guard shows it as this error (`fromThrown`).
         const js = (c.result as { thrownJs?: string }).thrownJs;
         if (js !== undefined) {
@@ -67,13 +85,32 @@ describe("card bodies on the core answer as frozen", () => {
             const got = from ? nodeUnwire(c.inputs.find(([key]) => key === from[0])?.[1][from[1]])
               : r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
             if (r.matrixUnits?.[k]) withMatrixUnit(got, jsonDec(r.matrixUnits[k]) as ColumnUnit);
-            if (isFrameRef(got) ? !same(frozen(got), w) : !same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
+            if (isFrameRef(got) ? !same(frozen(got), w) : !same(got, nodeUnwire(w))) {
+              if (REFREEZE) { c.result.out[k] = wireOf(got); moved = true; rewritten++; } else bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
+            }
           }
         } else if (c.result.thrown !== undefined) {
           const got = r.thrown === undefined ? "(no throw)" : readNodeReply(r.thrown)?.value;
-          if (!same(got, nodeUnwire(c.result.thrown))) bad.push(`thrown ${JSON.stringify(got)} vs ${JSON.stringify(c.result.thrown)}`);
+          if (!same(got, nodeUnwire(c.result.thrown))) {
+            if (REFREEZE) { c.result = { thrown: wireOf(got) }; moved = true; rewritten++; } else bad.push(`thrown ${JSON.stringify(got)} vs ${JSON.stringify(c.result.thrown)}`);
+          }
+        }
+        if (REFREEZE) {
+          // A thrown JS text stays as frozen unless the answer moved.
+          if (!moved) c.result = asFrozen;
+          // A shown field moves with the answer (`cachedResult`): rewrite those the case froze, on a case whose answer moved.
+          const out = Object.fromEntries(Object.entries(r.out ?? {}).map(([k, v]) => [k, readNodeReply(v)?.value]));
+          for (const [field, v] of moved ? Object.entries(r.display ?? {}) : []) {
+            const want = c.display?.[field];
+            if (want === undefined || (typeof want === "object" && want !== null && "__deleted" in want)) continue;
+            const got = shownWire(v, out);
+            if (JSON.stringify(nodeUnwire(want)) !== JSON.stringify(nodeUnwire(got))) c.display![field] = got;
+          }
         }
         if (bad.length >= 5) break;
+      }
+      if (REFREEZE && rewritten) {
+        fs.writeFileSync(path.join(DIR, file), zlib.gzipSync(JSON.stringify(cases), { level: 9 }));
       }
       expect(bad).toEqual([]);
     });

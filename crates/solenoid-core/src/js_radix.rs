@@ -117,7 +117,7 @@ fn power_of_two_int(digits: &[u8], log2: u32) -> f64 {
         }
         i += 1;
     }
-    (number as f64) * crate::fdlibm::pow(2.0, f64::from(exponent))
+    (number as f64) * libm::pow(2.0, f64::from(exponent))
 }
 
 /// V8's generic radix loop: parts of up to 32 bits, each folded in with one multiply and add.

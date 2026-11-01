@@ -8,13 +8,13 @@ use crate::date_serial::parts_of_ms;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
-    average_ranks, holds_text, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum,
-    to_f64_js, to_num, Thrown, V,
+    average_ranks, holds_text, js_parse_float, js_string_of, mean_of, nums_of, parse_number, ssd, sum, to_f64_js,
+    to_num, Thrown, V,
 };
-use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
 use crate::jsnum::{math_max, math_min, math_round, number_to_string};
 use crate::zone;
+use libm::{cos, exp, log, pow, sin};
 
 /// `LEGACY_ALIASES`: a blocked name and the function that replaces it.
 const BLOCKED: &[(&str, &str)] = &[
@@ -715,7 +715,7 @@ fn tie_term(values: &[f64]) -> f64 {
             None => counts.push((v, 1.0)),
         }
     }
-    counts.iter().filter(|(_, c)| *c > 1.0).fold(0.0, |t, (_, c)| t + (js_pow(*c, 3.0) - c))
+    counts.iter().filter(|(_, c)| *c > 1.0).fold(0.0, |t, (_, c)| t + (libm::pow(*c, 3.0) - c))
 }
 
 fn anova_p(gs: &[Vec<f64>]) -> Option<f64> {
@@ -728,7 +728,7 @@ fn anova_p(gs: &[Vec<f64>]) -> Option<f64> {
     let (mut ssb, mut ssw) = (0.0, 0.0);
     for g in gs {
         let m = mean_of(g);
-        ssb += g.len() as f64 * js_pow(m - grand, 2.0);
+        ssb += g.len() as f64 * libm::pow(m - grand, 2.0);
         ssw += ssd(g, m);
     }
     if ssw == 0.0 {
@@ -793,7 +793,7 @@ fn kruskal_p(gs: &[Vec<f64>]) -> Option<f64> {
         off += g.len();
     }
     h = (12.0 / (n * (n + 1.0))) * h - 3.0 * (n + 1.0);
-    let corr = 1.0 - tie_term(&all) / (js_pow(n, 3.0) - n);
+    let corr = 1.0 - tie_term(&all) / (libm::pow(n, 3.0) - n);
     if corr <= 0.0 {
         return None;
     }

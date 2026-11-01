@@ -1870,7 +1870,7 @@ fn weighted_shuffle_key(u: f64, weight: f64) -> f64 {
     } else {
         u
     };
-    -crate::fdlibm::log(uu) / weight
+    -libm::log(uu) / weight
 }
 
 fn shuffle(c: &mut Call) -> Answer {

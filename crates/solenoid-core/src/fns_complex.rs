@@ -3,10 +3,10 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{js_pow, js_string_of, math_hypot, to_num, to_str, Thrown, V};
-use crate::fdlibm::{atan2, cos, exp, expm1, log, sin};
+use crate::excel_functions::{js_string_of, math_hypot, to_num, to_str, Thrown, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::value_kinds::MAX_GENERATED;
+use libm::{atan2, cos, cosh, exp, log, sin, sinh};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -71,64 +71,6 @@ fn to_list(v: &V) -> Vec<V> {
 
 type Cx = (f64, f64);
 
-/// V8's `Math.sinh` (fdlibm).
-pub fn sinh(x: f64) -> f64 {
-    const KSINH_OVERFLOW: f64 = 710.4758600739439;
-    const TWO_M28: f64 = 3.725290298461914e-9;
-    const LOG_MAXD: f64 = 709.7822265625;
-    let h = if x < 0.0 { -0.5 } else { 0.5 };
-    let ax = x.abs();
-    if ax < 22.0 {
-        if ax < TWO_M28 {
-            return x;
-        }
-        let t = expm1(ax);
-        if ax < 1.0 {
-            return h * (2.0 * t - t * t / (t + 1.0));
-        }
-        return h * (t + t / (t + 1.0));
-    }
-    if ax < LOG_MAXD {
-        return h * exp(ax);
-    }
-    if ax <= KSINH_OVERFLOW {
-        let w = exp(0.5 * ax);
-        let t = h * w;
-        return t * w;
-    }
-    x * 1.0e307
-}
-
-/// V8's `Math.cosh` (fdlibm).
-pub fn cosh(x: f64) -> f64 {
-    const KCOSH_OVERFLOW: f64 = 710.4758600739439;
-    let ix = ((x.to_bits() >> 32) as u32 & 0x7fff_ffff) as i32;
-    if ix < 0x3fd6_2e43 {
-        let t = expm1(x.abs());
-        let w = 1.0 + t;
-        if ix < 0x3c80_0000 {
-            return w;
-        }
-        return 1.0 + (t * t) / (w + w);
-    }
-    if ix < 0x4036_0000 {
-        let t = exp(x.abs());
-        return 0.5 * t + 0.5 / t;
-    }
-    if ix < 0x4086_2e42 {
-        return 0.5 * exp(x.abs());
-    }
-    if x.abs() <= KCOSH_OVERFLOW {
-        let w = exp(0.5 * x.abs());
-        let t = 0.5 * w;
-        return t * w;
-    }
-    if ix >= 0x7ff0_0000 {
-        return x * x;
-    }
-    f64::INFINITY
-}
-
 fn cx_add(a: Cx, b: Cx) -> Cx {
     (a.0 + b.0, a.1 + b.1)
 }
@@ -139,7 +81,7 @@ fn cx_mul(a: Cx, b: Cx) -> Cx {
     (a.0 * b.0 - a.1 * b.1, a.0 * b.1 + a.1 * b.0)
 }
 fn cx_div(a: Cx, b: Cx) -> Cx {
-    let d = js_pow(b.0, 2.0) + js_pow(b.1, 2.0);
+    let d = libm::pow(b.0, 2.0) + libm::pow(b.1, 2.0);
     if d == 0.0 {
         return (f64::NAN, f64::NAN);
     }
@@ -162,7 +104,7 @@ fn cx_pow(z: Cx, n: f64) -> Cx {
     if z.0 == 0.0 && z.1 == 0.0 {
         return (0.0, 0.0);
     }
-    let r = js_pow(cx_abs(z), n);
+    let r = libm::pow(cx_abs(z), n);
     let a = cx_arg(z) * n;
     (r * cos(a), r * sin(a))
 }

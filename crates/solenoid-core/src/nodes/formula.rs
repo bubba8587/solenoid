@@ -7,7 +7,7 @@ use crate::error_value::ErrorCode;
 use crate::eval::{variables, Env};
 use crate::excel_formula::{parse_formula, Ast};
 use crate::excel_formula::{BinOp, UnaryOp};
-use crate::excel_functions::{fx_error_to_sol, js_pow, V};
+use crate::excel_functions::{fx_error_to_sol, V};
 use crate::jsnum::{js_trim, number_to_string};
 use crate::unit_catalog::fc_unit_to_unit;
 use crate::unit_dims::{dim_equal, dim_eval_with_code, is_dimensionless, Codes, Dim};
@@ -505,7 +505,7 @@ fn solve_linear(q: &Quad) -> Option<f64> {
 fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
     let mut grid = vec![0.0];
     for k in -6..=12 {
-        let p = js_pow(10.0, f64::from(k));
+        let p = libm::pow(10.0, f64::from(k));
         grid.push(p);
         grid.push(-p);
     }

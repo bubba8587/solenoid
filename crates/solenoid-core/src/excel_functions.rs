@@ -246,14 +246,6 @@ pub fn set_row_number(n: Option<f64>) {
 
 // ─── JavaScript's coercions ─────────────────────────────────────────────────────
 
-/// `Math.pow`: unlike IEEE `pow`, 1 to an infinite power and anything to NaN are NaN.
-pub fn js_pow(x: f64, y: f64) -> f64 {
-    if y.is_nan() || (x.abs() == 1.0 && y.is_infinite()) {
-        return f64::NAN;
-    }
-    crate::fdlibm::pow(x, y)
-}
-
 /// A JS number operand as arithmetic reads it (`undefined` is NaN), except that text, and a list holding text, is
 /// never read as a number ([[C10]] socketLattice).
 pub fn to_f64_js(v: &V) -> f64 {
@@ -599,7 +591,7 @@ pub(crate) fn sum(a: &[f64]) -> f64 {
 }
 
 pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
-    a.iter().fold(0.0, |x, y| x + js_pow(y - m, 2.0))
+    a.iter().fold(0.0, |x, y| x + libm::pow(y - m, 2.0))
 }
 
 fn fold_min(arr: &[f64]) -> f64 {
@@ -691,7 +683,7 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if arr.iter().any(|&v| v <= 0.0) {
                     V::err(sol_error(ErrorCode::Domain, "GEOMEAN needs every value > 0"))
                 } else {
-                    V::Num(crate::fdlibm::exp(arr.iter().fold(0.0, |a, &b| a + crate::fdlibm::log(b)) / n as f64))
+                    V::Num(libm::exp(arr.iter().fold(0.0, |a, &b| a + libm::log(b)) / n as f64))
                 }
             }
             Stat::HarMean => {
@@ -716,7 +708,7 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if sd == 0.0 {
                     return V::Null;
                 }
-                let cubes = arr.iter().fold(0.0, |a, &b| a + js_pow((b - m) / sd, 3.0));
+                let cubes = arr.iter().fold(0.0, |a, &b| a + libm::pow((b - m) / sd, 3.0));
                 let nf = n as f64;
                 V::Num(if sample { (nf / ((nf - 1.0) * (nf - 2.0))) * cubes } else { cubes / nf })
             }
@@ -729,11 +721,11 @@ pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
                 if sd == 0.0 {
                     return V::Null;
                 }
-                let sum4 = arr.iter().fold(0.0, |a, &b| a + js_pow((b - m) / sd, 4.0));
+                let sum4 = arr.iter().fold(0.0, |a, &b| a + libm::pow((b - m) / sd, 4.0));
                 let nf = n as f64;
                 V::Num(
                     ((nf * (nf + 1.0)) / ((nf - 1.0) * (nf - 2.0) * (nf - 3.0))) * sum4
-                        - (3.0 * js_pow(nf - 1.0, 2.0)) / ((nf - 2.0) * (nf - 3.0)),
+                        - (3.0 * libm::pow(nf - 1.0, 2.0)) / ((nf - 2.0) * (nf - 3.0)),
                 )
             }
             Stat::Ptp => V::Num(fold_max(arr) - fold_min(arr)),
@@ -1426,7 +1418,7 @@ pub(crate) fn js_mean(arr: &[V]) -> f64 {
 
 fn js_sample_var(arr: &[V]) -> f64 {
     let m = js_mean(arr);
-    arr.iter().fold(0.0, |s, v| s + js_pow(to_f64_js(v) - m, 2.0)) / (arr.len() as f64 - 1.0)
+    arr.iter().fold(0.0, |s, v| s + libm::pow(to_f64_js(v) - m, 2.0)) / (arr.len() as f64 - 1.0)
 }
 
 /// `Array.prototype.slice(start, end)`'s index.
@@ -1473,7 +1465,7 @@ fn excel_percent_rank(s: &[f64], x: f64, sig: f64, exc: bool) -> V {
     };
     let nf = n as f64;
     let rank = if exc { (pos + 1.0) / (nf + 1.0) } else { pos / (nf - 1.0) };
-    let f = js_pow(10.0, crate::jsnum::math_max(0.0, sig.trunc()));
+    let f = libm::pow(10.0, crate::jsnum::math_max(0.0, sig.trunc()));
     V::Num((rank * f).trunc() / f)
 }
 
@@ -1872,7 +1864,7 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     if n.is_nan() {
         bad()
     } else {
-        V::Num(n / js_pow(100.0, f64::from(pct)))
+        V::Num(n / libm::pow(100.0, f64::from(pct)))
     }
 }
 
@@ -2402,7 +2394,7 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
         let denom = w_sum - w_sum2 / w_sum;
         result = None;
         if denom > 0.0 {
-            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + num(w) * js_pow(num(v) - wavg, 2.0)) / denom;
+            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + num(w) * libm::pow(num(v) - wavg, 2.0)) / denom;
             result = Some(if name == "WVAR" { wvar } else { wvar.sqrt() });
         }
     }
@@ -2452,7 +2444,7 @@ fn fx_pmt(rate: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     let result = if rate == 0.0 {
         (pv + fv) / nper
     } else {
-        let term = js_pow(1.0 + rate, nper);
+        let term = libm::pow(1.0 + rate, nper);
         let base = (fv * rate) / (term - 1.0) + (pv * rate) / (1.0 - 1.0 / term);
         if ty == 1.0 {
             base / (1.0 + rate)
@@ -2476,7 +2468,7 @@ fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
     let result = if rate == 0.0 {
         value + payment * nper
     } else {
-        let term = js_pow(1.0 + rate, nper);
+        let term = libm::pow(1.0 + rate, nper);
         if ty == 1.0 {
             value * term + (payment * (1.0 + rate) * (term - 1.0)) / rate
         } else {
@@ -2641,7 +2633,7 @@ fn parse_value_text(text: &str) -> f64 {
     if n.is_nan() {
         return f64::NAN;
     }
-    (if neg { -n } else { n }) / js_pow(100.0, f64::from(pct))
+    (if neg { -n } else { n }) / libm::pow(100.0, f64::from(pct))
 }
 
 /// Numbers and logicals, lists flattened; text is skipped ([[C10]] socketLattice).
@@ -2888,10 +2880,10 @@ fn mode_single(arr: &[f64]) -> V {
 
 fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     let d = digits.trunc();
-    if v != 0.0 && v.is_finite() && d + crate::fdlibm::log10(v.abs()).floor() >= 15.0 {
+    if v != 0.0 && v.is_finite() && d + libm::log10(v.abs()).floor() >= 15.0 {
         return v;
     }
-    let scale = js_pow(10.0, d.abs());
+    let scale = libm::pow(10.0, d.abs());
     if !scale.is_finite() {
         return if d > 0.0 { v } else { 0.0 };
     }
@@ -3686,7 +3678,7 @@ pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
             let no_commas = !matches!(arg(a, 2), V::Null | V::Undef) && truthy(arg(a, 2));
             // Formula.js FIXED: a negative count rounds to tens and writes the number as it is.
             let text = if dd < 0.0 {
-                let factor = js_pow(10.0, -dd);
+                let factor = libm::pow(10.0, -dd);
                 number_to_string(math_round(x / factor) * factor)
             } else {
                 match crate::jsnum::to_fixed(x, dd) {
@@ -3824,7 +3816,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => e,
                 (V::Num(n), V::Num(d)) => {
                     let sign = if n > 0.0 { 1.0 } else { -1.0 };
-                    let p = js_pow(10.0, d);
+                    let p = libm::pow(10.0, d);
                     V::Num((sign * (n.abs() * p).floor()) / p)
                 }
                 _ => V::Fx(FxError::Value),
@@ -3854,7 +3846,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return V::Fx(FxError::Error);
             }
             match parse_number(&a[0]) {
-                V::Num(n) => V::Num(crate::fdlibm::exp(n)),
+                V::Num(n) => V::Num(libm::exp(n)),
                 e => e,
             }
         }
@@ -3877,7 +3869,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if n <= 0.0 {
                 return V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"));
             }
-            V::Num(if arm == F::LN { crate::fdlibm::log(n) } else { crate::fdlibm::log10(n) })
+            V::Num(if arm == F::LN { libm::log(n) } else { libm::log10(n) })
         }
         F::MOD => {
             let (x, y) = (to_num(arg(a, 0)), opt_num(arg(a, 1), 0.0));
@@ -3898,7 +3890,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if x == 0.0 && y < 0.0 {
                 V::err(sol_error(ErrorCode::DivZero, "Zero to a negative power divides by zero"))
             } else {
-                V::Num(js_pow(x, y))
+                V::Num(libm::pow(x, y))
             }
         }
         F::QUOTIENT => {
@@ -4112,7 +4104,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 }),
             }
         }
-        // Formula.js's trig: parseNumber, then V8's Math (fdlibm: ours, or the libm crate where it matches V8 bit for bit).
+        // The trig and hyperbolic functions, on libm.
         F::SIN
         | F::COS
         | F::TAN
@@ -4130,7 +4122,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
         | F::CSCH
         | F::DEGREES
         | F::RADIANS => {
-            use crate::fdlibm::{cos, exp, log, sin};
+            use libm::{cos, exp, log, sin};
             let n = match parse_number(arg(a, 0)) {
                 V::Num(n) => n,
                 e => return e,
@@ -4139,8 +4131,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             V::Num(match arm {
                 F::SIN => sin(n),
                 F::COS => cos(n),
-                F::TAN => crate::fdlibm::tan(n),
-                F::ATAN => crate::fdlibm::atan(n),
+                F::TAN => libm::tan(n),
+                F::ATAN => libm::atan(n),
                 F::SINH => (exp(n) - exp(-n)) / 2.0,
                 F::COSH => (exp(n) + exp(-n)) / 2.0,
                 F::TANH => {
@@ -4149,7 +4141,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 }
                 F::ASINH => log(n + (n * n + 1.0).sqrt()),
                 F::COT if n == 0.0 => return div0,
-                F::COT => 1.0 / crate::fdlibm::tan(n),
+                F::COT => 1.0 / libm::tan(n),
                 F::COTH if n == 0.0 => return div0,
                 F::COTH => {
                     let e2 = exp(2.0 * n);
@@ -4181,7 +4173,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                     if n == 0.0 || b == 0.0 {
                         V::Fx(FxError::Num)
                     } else {
-                        V::Num(crate::fdlibm::log(n) / crate::fdlibm::log(b))
+                        V::Num(libm::log(n) / libm::log(b))
                     }
                 }
                 _ => V::Fx(FxError::Value),
@@ -4192,7 +4184,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("ATAN2");
             }
-            V::Num(crate::fdlibm::atan2(y, x))
+            V::Num(libm::atan2(y, x))
         }
         // Excel's ACOT lies in (0, π), and GAMMALN refuses x <= 0 as Excel's #NUM! does.
         F::ACOT | F::GAMMALN | F::GAMMALN_PRECISE => {
@@ -4203,9 +4195,9 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if arm == F::ACOT {
                 // atan(1/x) keeps the digits π/2 − atan(x) cancels away as x grows.
                 return V::Num(if x > 0.0 {
-                    crate::fdlibm::atan(1.0 / x)
+                    libm::atan(1.0 / x)
                 } else if x < 0.0 {
-                    std::f64::consts::PI + crate::fdlibm::atan(1.0 / x)
+                    std::f64::consts::PI + libm::atan(1.0 / x)
                 } else {
                     std::f64::consts::FRAC_PI_2
                 });
@@ -4231,10 +4223,10 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
             V::Num(match arm {
                 F::SQRTPI => (x * std::f64::consts::PI).sqrt(),
-                F::ASIN => crate::fdlibm::asin(x),
-                F::ACOS => crate::fdlibm::acos(x),
-                F::ACOSH => crate::fdlibm::acosh(x),
-                _ => crate::fdlibm::atanh(x),
+                F::ASIN => libm::asin(x),
+                F::ACOS => libm::acos(x),
+                F::ACOSH => libm::acosh(x),
+                _ => libm::atanh(x),
             })
         }
         F::HOUR | F::MINUTE | F::SECOND => {
@@ -4736,7 +4728,8 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             V::Num(if rate == 0.0 {
                 -pmt * per - fv
             } else {
-                (((1.0 - js_pow(1.0 + rate, per)) / rate) * pmt * (1.0 + rate * ty) - fv) / js_pow(1.0 + rate, per)
+                (((1.0 - libm::pow(1.0 + rate, per)) / rate) * pmt * (1.0 + rate * ty) - fv)
+                    / libm::pow(1.0 + rate, per)
             })
         }
         F::NPER => {
@@ -4754,7 +4747,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             } else {
                 let num = pmt * (1.0 + rate * ty) - fv * rate;
                 let den = pv * rate + pmt * (1.0 + rate * ty);
-                crate::fdlibm::log(num / den) / crate::fdlibm::log(1.0 + rate)
+                libm::log(num / den) / libm::log(1.0 + rate)
             })
         }
         F::IPMT => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
@@ -4846,7 +4839,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if x <= -1.0 || x >= 1.0 {
                 return V::err(sol_error(ErrorCode::Domain, "FISHER requires \u{2212}1 < x < 1"));
             }
-            V::Num(crate::fdlibm::atanh(x))
+            V::Num(libm::atanh(x))
         }
         F::SLN => {
             let l = to_num(arg(a, 2));
@@ -5195,7 +5188,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 value_err("FISHERINV")
             } else {
-                V::Num(crate::fdlibm::tanh(n))
+                V::Num(libm::tanh(n))
             }
         }
         F::LOG2 => match arg(a, 0) {
@@ -5205,7 +5198,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 if n <= 0.0 {
                     V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"))
                 } else {
-                    V::Num(crate::fdlibm::log2(n))
+                    V::Num(libm::log2(n))
                 }
             }
         },
@@ -5423,11 +5416,9 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
         let k = lo + step as f64;
         let c = combinations(n, k);
         sum += if c.is_finite() {
-            c * js_pow(p, k) * js_pow(1.0 - p, n - k)
+            c * libm::pow(p, k) * libm::pow(1.0 - p, n - k)
         } else {
-            crate::fdlibm::exp(
-                crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p),
-            )
+            libm::exp(crate::dists::ln_combin(n, k) + k * libm::log(p) + (n - k) * libm::log1p(-p))
         };
     }
     V::Num(sum)
@@ -5444,7 +5435,7 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     if n == 0.0 {
         return Ok(None);
     }
-    let pmf = |x: f64| crate::fdlibm::exp(ln_combin(col1, x) + ln_combin(n - col1, row1 - x) - ln_combin(n, row1));
+    let pmf = |x: f64| libm::exp(ln_combin(col1, x) + ln_combin(n - col1, row1 - x) - ln_combin(n, row1));
     let (lo, hi) = (crate::jsnum::math_max(0.0, row1 - (n - col1)), crate::jsnum::math_min(row1, col1));
     if hi - lo + 1.0 > MAX_OUTCOMES {
         return Err(exact_test_too_large());
@@ -5486,8 +5477,8 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
     if n + 1.0 > MAX_OUTCOMES {
         return Err(exact_test_too_large());
     }
-    let (lp, lq) = (crate::fdlibm::log(p0), crate::fdlibm::log(1.0 - p0));
-    let pmf = |x: f64| crate::fdlibm::exp(crate::dists::ln_combin(n, x) + x * lp + (n - x) * lq);
+    let (lp, lq) = (libm::log(p0), libm::log(1.0 - p0));
+    let pmf = |x: f64| libm::exp(crate::dists::ln_combin(n, x) + x * lp + (n - x) * lq);
     let p_obs = pmf(k);
     let mut p = 0.0;
     let mut x = 0.0;
@@ -5573,7 +5564,7 @@ fn arr_mean(arr: &[f64]) -> f64 {
 
 fn arr_sample_var(arr: &[f64]) -> f64 {
     let m = arr_mean(arr);
-    arr.iter().fold(0.0, |s, v| s + js_pow(v - m, 2.0)) / (arr.len() as f64 - 1.0)
+    arr.iter().fold(0.0, |s, v| s + libm::pow(v - m, 2.0)) / (arr.len() as f64 - 1.0)
 }
 
 fn clamp01(v: f64) -> f64 {
@@ -5619,7 +5610,7 @@ fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
                 return None;
             }
             let t = (arr_mean(a) - arr_mean(b)) / sum.sqrt();
-            (t, js_pow(sum, 2.0) / (js_pow(v1n, 2.0) / (n1 - 1.0) + js_pow(v2n, 2.0) / (n2 - 1.0)))
+            (t, libm::pow(sum, 2.0) / (libm::pow(v1n, 2.0) / (n1 - 1.0) + libm::pow(v2n, 2.0) / (n2 - 1.0)))
         }
     };
     if df.is_nan() || df <= 0.0 || !t.is_finite() || !df.is_finite() {
@@ -6388,7 +6379,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
     let p = |i: usize| parse_number(arg(a, i));
     // `x === undefined ? d : x`: only a left-out argument takes the default.
     let undef_or = |i: usize, d: f64| if matches!(arg(a, i), V::Undef) { V::Num(d) } else { parse_number(arg(a, i)) };
-    let log = crate::fdlibm::log;
+    let log = libm::log;
     match name {
         "NPV" => {
             // `parseNumberArray(flatten(arguments))`, which reads from the end.
@@ -6406,7 +6397,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             let rate = nums[0];
             let mut value = 0.0;
             for (j, x) in nums.iter().enumerate().skip(1) {
-                value += x / js_pow(1.0 + rate, j as f64);
+                value += x / libm::pow(1.0 + rate, j as f64);
             }
             V::Num(value)
         }
@@ -6423,7 +6414,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 let y = if rate.abs() < eps_max {
                     pv * (1.0 + nper * rate) + pmt * (1.0 + rate * ty) * nper + fv
                 } else {
-                    let f = js_pow(1.0 + rate, nper);
+                    let f = libm::pow(1.0 + rate, nper);
                     pv * f + pmt * (1.0 / rate + ty) * (f - 1.0) + fv
                 };
                 if y.abs() < eps_max {
@@ -6432,8 +6423,8 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 let dy = if rate.abs() < eps_max {
                     pv * nper + pmt * ty * nper
                 } else {
-                    let f = js_pow(1.0 + rate, nper);
-                    let df = nper * js_pow(1.0 + rate, nper - 1.0);
+                    let f = libm::pow(1.0 + rate, nper);
+                    let df = nper * libm::pow(1.0 + rate, nper - 1.0);
                     pv * df + pmt * (1.0 / rate + ty) * df + pmt * (-1.0 / (rate * rate)) * (f - 1.0)
                 };
                 rate -= y / dy;
@@ -6457,7 +6448,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
                 return V::Num(0.0);
             }
             // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
-            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0)
+            let rate = crate::jsnum::to_fixed(1.0 - libm::pow(salvage / cost, 1.0 / life), 3.0)
                 .map_or(f64::NAN, |t| string_to_number(&t));
             let initial = (cost * rate * month) / 12.0;
             let mut total = initial;
@@ -6522,9 +6513,9 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             }
             let npery = parse_int_of(npery);
             V::Num(if name == "EFFECT" {
-                js_pow(1.0 + rate / npery, npery) - 1.0
+                libm::pow(1.0 + rate / npery, npery) - 1.0
             } else {
-                (js_pow(rate + 1.0, 1.0 / npery) - 1.0) * npery
+                (libm::pow(rate + 1.0, 1.0 / npery) - 1.0) * npery
             })
         }
         "PDURATION" => {
@@ -6541,7 +6532,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             if nper == 0.0 || pv == 0.0 {
                 return V::Fx(FxError::Num);
             }
-            V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
+            V::Num(libm::pow(fv / pv, 1.0 / nper) - 1.0)
         }
         "DOLLARDE" | "DOLLARFR" => {
             let vals = [p(0), p(1)];
@@ -6556,11 +6547,11 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             let mut result = parse_int_of(dollar);
             let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
             if name == "DOLLARFR" {
-                result += (dollar % 1.0) * js_pow(10.0, -digits) * fraction;
+                result += (dollar % 1.0) * libm::pow(10.0, -digits) * fraction;
                 return V::Num(result);
             }
-            result += ((dollar % 1.0) * js_pow(10.0, digits)) / fraction;
-            let power = js_pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
+            result += ((dollar % 1.0) * libm::pow(10.0, digits)) / fraction;
+            let power = libm::pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
             V::Num(math_round(result * power) / power)
         }
         "ISPMT" => {

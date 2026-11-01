@@ -372,7 +372,7 @@ fn const_num(node: &Ast) -> Option<f64> {
                 BinOp::Sub => Some(l - r),
                 BinOp::Mul => Some(l * r),
                 BinOp::Div => (r != 0.0).then(|| l / r),
-                BinOp::Pow => Some(crate::excel_functions::js_pow(l, r)),
+                BinOp::Pow => Some(libm::pow(l, r)),
                 BinOp::Concat | BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => None,
             }
         }

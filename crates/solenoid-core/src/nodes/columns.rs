@@ -766,7 +766,7 @@ pub(crate) fn plan_column_units(
             let id_of = |axis: &str| axis.trim_start_matches('⟨').trim_end_matches('⟩').to_string();
             for (axis, e) in &axes {
                 let Some(u) = crate::unit_catalog::fc_unit_to_unit(&id_of(axis)) else { continue };
-                scale *= crate::fdlibm::pow(u.scale, *e);
+                scale *= libm::pow(u.scale, *e);
                 dim = dim_mul(&dim, &dim_pow(&u.dim, *e));
             }
             let id = match &dr {

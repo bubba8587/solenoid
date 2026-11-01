@@ -114,7 +114,7 @@ fn unit_mul(a: &Unit, b: &Unit) -> Option<Unit> {
 }
 
 fn unit_pow(a: &Unit, n: f64) -> Option<Unit> {
-    linear(a).then(|| Unit { dim: dim_pow(&a.dim, n), scale: crate::excel_functions::js_pow(a.scale, n), offset: None })
+    linear(a).then(|| Unit { dim: dim_pow(&a.dim, n), scale: libm::pow(a.scale, n), offset: None })
 }
 
 /// A symbol, with a power as `^n` or trailing digits.

@@ -7,7 +7,7 @@ use super::stats::{finite_num, first, js_num, nullish, or, read_role, Role};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_pow, V};
+use crate::excel_functions::V;
 use crate::finance_ops::{self as f, Cell, CouponOp, Fin, SecurityDiscOp};
 use crate::finance_units::currency_clash;
 use crate::unit_dims::{dim_equal, is_dimensionless, Dim, UnitCell};
@@ -369,8 +369,8 @@ fn dollar(c: &mut Call) -> Answer {
         let d = js_num(&dollar);
         let int_part = d.trunc();
         let dec_part = d - int_part;
-        let digits = if fraction == 1.0 { 0.0 } else { crate::fdlibm::log10(fraction).ceil() };
-        let mult = js_pow(10.0, digits);
+        let digits = if fraction == 1.0 { 0.0 } else { libm::log10(fraction).ceil() };
+        let mult = libm::pow(10.0, digits);
         let r = if de { int_part + (dec_part * mult) / fraction } else { int_part + (dec_part * fraction) / mult };
         if r.is_finite() {
             result = V::Num(r);
@@ -514,7 +514,7 @@ fn payment_breakdown(c: &mut Call, op: &str) -> V {
                 0.0
             }
         } else {
-            let r_n = js_pow(1.0 + rate, nper);
+            let r_n = libm::pow(1.0 + rate, nper);
             -(pv * r_n + fv) * rate / ((1.0 + rate * ty) * (r_n - 1.0))
         };
         if !pmt.is_finite() {

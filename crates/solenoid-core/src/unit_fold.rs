@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
 use crate::eval::{Env, Eval};
-use crate::excel_functions::{fx_error_to_sol, js_pow, V};
+use crate::excel_functions::{fx_error_to_sol, V};
 use crate::unit_dims::{
     affine_weight, dim_equal, dim_eval_with_code, holds_unit, is_dimensionless, AffScope, Codes, Dim, NamedLambdas,
 };
@@ -93,7 +93,7 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
     match (u, point) {
         (Some(u), Some(1)) => tag_dim(n * u.scale + u.offset, u.dim.clone(), elem.display.clone()),
         (Some(u), Some(0)) => {
-            tag_dim(n * js_pow(u.scale, dim_power_of(dr, &elem.dim).unwrap_or(1.0)), dr.clone(), None)
+            tag_dim(n * libm::pow(u.scale, dim_power_of(dr, &elem.dim).unwrap_or(1.0)), dr.clone(), None)
         }
         _ => {
             let display = if dim_equal(dr, &elem.dim) { elem.display.clone() } else { None };
@@ -104,7 +104,7 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
                         ErrorCode::Unit,
                         "The fold's result unit can't be read back from the list's unit.",
                     )),
-                    Some(k) => tag_dim(n * js_pow(u.scale, k), dr.clone(), display),
+                    Some(k) => tag_dim(n * libm::pow(u.scale, k), dr.clone(), display),
                 },
             }
         }

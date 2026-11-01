@@ -660,7 +660,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
             if x == 0.0 && y < 0.0 {
                 V::err(sol_error(ErrorCode::DivZero, "Zero to a negative power divides by zero"))
             } else {
-                fin(crate::excel_functions::js_pow(x, y))
+                fin(libm::pow(x, y))
             }
         }
         BinOp::Concat => {

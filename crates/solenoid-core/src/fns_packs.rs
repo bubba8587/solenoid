@@ -314,7 +314,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if !(-3.0..=40.0).contains(&n) {
                 return err(ErrorCode::Domain, "AWG runs 4/0 (enter -3) through 40");
             }
-            let d = 0.127 * crate::fdlibm::pow(92.0, (36.0 - n) / 39.0);
+            let d = 0.127 * libm::pow(92.0, (36.0 - n) / 39.0);
             let area = (std::f64::consts::PI / 4.0) * d * d;
             match p.as_str() {
                 "diameter" => V::Num(d),
@@ -435,7 +435,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             if tc <= -cc {
                 err(ErrorCode::Domain, "Below the equation's temperature range")
             } else {
-                V::Num(k::MMHG_TO_PA * crate::fdlibm::pow(10.0, ca - cb / (cc + tc)))
+                V::Num(k::MMHG_TO_PA * libm::pow(10.0, ca - cb / (cc + tc)))
             }
         }
         "ISIN" => {

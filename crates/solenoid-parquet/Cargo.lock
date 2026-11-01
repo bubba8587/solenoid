@@ -1012,6 +1012,7 @@ dependencies = [
  "fastrand",
  "jiff",
  "js-sys",
+ "libm",
  "md-5",
  "qrcodegen",
  "regress",

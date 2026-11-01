@@ -206,7 +206,7 @@ pub fn arithmetic_cell(op: ArithOp, a: &V, b: &V) -> V {
             if x == 0.0 && y < 0.0 {
                 return err(ErrorCode::DivZero, "Zero to a negative power divides by zero");
             }
-            tag(crate::fdlibm::pow(x, y), dim_pow(da, y), None)
+            tag(libm::pow(x, y), dim_pow(da, y), None)
         }),
         _ => V::Null,
     }
