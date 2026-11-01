@@ -200,13 +200,17 @@ fn bitwise(c: &mut Call) -> Answer {
     if matches!(a, V::Null) || matches!(b, V::Null) {
         return answer(c, V::Null);
     }
-    let result = match crate::formulajs::excel_bit(&op, js_num(&a), js_num(&b)) {
+    let (x, y) = (js_num(&a), js_num(&b));
+    let shift = op.ends_with("SHIFT");
+    let result = match crate::formulajs::excel_bit(&op, x, y) {
         Some(n) => V::Num(n),
-        None if op.ends_with("SHIFT") => err(
-            ErrorCode::Domain,
-            "Takes a whole number from 0 to 2^48 − 1, shifted at most 53 places, and the answer must fit in 48 bits.",
-        ),
-        None => err(ErrorCode::Domain, "Takes whole numbers from 0 to 2^48 − 1."),
+        None if x.fract() != 0.0 || (!shift && y.fract() != 0.0) => {
+            err(ErrorCode::Domain, "Takes whole numbers only: round the input first.")
+        }
+        None if x < 0.0 || (!shift && y < 0.0) => err(ErrorCode::Domain, "Takes no negative numbers."),
+        None if shift && y.abs() > 53.0 => err(ErrorCode::Domain, "Shifts at most 53 places either way."),
+        None if shift => err(ErrorCode::Domain, "The shifted answer is past 2^48 − 1, the largest this takes."),
+        None => err(ErrorCode::Domain, "Takes numbers up to 2^48 − 1."),
     };
     answer(c, result)
 }
