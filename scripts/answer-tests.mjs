@@ -4,9 +4,11 @@
 // --apply deletes them. A test counts when it calls a card's data() (or computeAlone/throughBoundary) and names
 // nothing else the app keeps in TypeScript: sockets, the engine, stores, saving, formulas, timers, mocks or a throw.
 //   node scripts/answer-tests.mjs <test files>            what would go
-//   node scripts/answer-tests.mjs --apply <test files>    delete it
+//   node scripts/answer-tests.mjs --apply <test files>    delete it, then what that leaves unused (scripts/fix-unused.mjs,
+//                                                         which needs `npm i --no-save typescript`)
 import fs from "node:fs";
 import { parseSync } from "rolldown/experimental";
+import { spawnSync } from "node:child_process";
 
 const apply = process.argv.includes("--apply");
 // Only cards whose data() is their body on the core: a JavaScript card's test tests JavaScript.
@@ -83,6 +85,10 @@ for (const f of files) {
       }
     }
   }
+}
+if (apply) {
+  const cut = rows.filter((r) => r[2] && fs.existsSync(r[0])).map((r) => r[0]);
+  if (cut.length) spawnSync("node", [new URL("./fix-unused.mjs", import.meta.url).pathname, ...cut], { stdio: "inherit" });
 }
 for (const [f, n, d, note] of rows.filter((r) => r[2] || r[3]).sort((x, y) => y[2] - x[2])) console.log(`${String(d).padStart(4)}/${String(n).padEnd(4)} ${f}${note ? " " + note : ""}`);
 console.log(`${apply ? "deleted" : "would delete"} ${gone} of ${total} tests in ${files.length} files`);

@@ -100,3 +100,4 @@ src/graph/engineWasm
 why: JSON can't carry a citation; the core's call table is frozen from the TypeScript by tests/graph/coreCallTable.test.ts, which cites [[D99]] rustIsSpec
 crates/solenoid-core/data
 scripts/check-rust.sh
+scripts/fix-unused.mjs
