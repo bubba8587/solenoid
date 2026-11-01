@@ -85,7 +85,7 @@ pub fn ported_names() -> Vec<&'static str> {
 
 /// Whether a body reads a matrix (an array of arrays); the rest read flat lists.
 pub fn reads_matrices(name: &str) -> bool {
-    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX")
+    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX" | "CHISQ.TEST")
         || crate::fns_random::NAMES.contains(&name)
         || crate::fns_matrix::NAMES.contains(&name)
         || crate::fns_lists::NAMES.contains(&name)
@@ -5668,7 +5668,7 @@ fn fx_edate(start: &V, months: &V) -> V {
     }
     let mut stored = zone::get_date(date);
     date = zone::set_date(date, 1.0);
-    let m = crate::js_radix::parse_int(&js_string_of(months), 10.0);
+    let m = to_f64_js(months).trunc();
     date = zone::set_month(date, zone::get_month(date) + m);
     let target = zone::get_month(date);
     if stored > 28.0 {
@@ -5685,6 +5685,9 @@ fn fx_edate(start: &V, months: &V) -> V {
         stored = crate::jsnum::math_min(stored, dim);
     }
     date = zone::set_date(date, stored);
+    if date.is_nan() {
+        return V::err(sol_error(ErrorCode::Domain, "These months move the date past the calendar's range"));
+    }
     V::Num(crate::jsnum::math_round(date / 86_400_000.0 + 25569.0))
 }
 

@@ -7,8 +7,7 @@
 
 use crate::error_value::FxError;
 use crate::excel_functions::{js_string_of, parse_number, truthy, Thrown, V};
-use crate::js_radix::{parse_int, to_radix_string};
-use crate::jsnum::{number_to_string, string_to_number};
+use crate::jsnum::number_to_string;
 use libm::exp;
 use std::ops::{BitAnd, BitOr, BitXor};
 
@@ -158,8 +157,23 @@ fn with_places(result: String, places: &V) -> Result<V, Thrown> {
     Ok(if p >= len { V::str(&(rept("0", p - len)? + &result)) } else { NUM })
 }
 
+/// A whole number from 0 up in `radix`, lowercase.
 fn radix_text(x: f64, radix: u32) -> String {
-    to_radix_string(x, f64::from(radix)).unwrap_or_default()
+    let (mut n, r) = (x as u64, u64::from(radix));
+    let mut digits = Vec::new();
+    loop {
+        digits.push(std::char::from_digit((n % r) as u32, radix).unwrap_or('0'));
+        n /= r;
+        if n == 0 {
+            break;
+        }
+    }
+    digits.iter().rev().collect()
+}
+
+/// The value of digits `matches_digits` passed.
+fn digits_value(s: &str, radix: u32) -> f64 {
+    u64::from_str_radix(s, radix).map_or(f64::NAN, |v| v as f64)
 }
 
 fn matches_digits(s: &str, radix: u32, max: usize) -> bool {
@@ -204,10 +218,10 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             }
             let negative = s.len() == 10 && s.starts_with('1');
             match name {
-                "BIN2DEC" => V::Num(if negative { parse_int(&s[1..], 2.0) - 512.0 } else { parse_int(&s, 2.0) }),
-                "BIN2HEX" if negative => V::str(&radix_text(1_099_511_627_264.0 + parse_int(&s[1..], 2.0), 16)),
-                "BIN2OCT" if negative => V::str(&radix_text(1_073_741_312.0 + parse_int(&s[1..], 2.0), 8)),
-                _ => with_places(radix_text(parse_int(&s, 2.0), if name == "BIN2HEX" { 16 } else { 8 }), places)?,
+                "BIN2DEC" => V::Num(if negative { digits_value(&s[1..], 2) - 512.0 } else { digits_value(&s, 2) }),
+                "BIN2HEX" if negative => V::str(&radix_text(1_099_511_627_264.0 + digits_value(&s[1..], 2), 16)),
+                "BIN2OCT" if negative => V::str(&radix_text(1_073_741_312.0 + digits_value(&s[1..], 2), 8)),
+                _ => with_places(radix_text(digits_value(&s, 2), if name == "BIN2HEX" { 16 } else { 8 }), places)?,
             }
         }
         "DEC2BIN" | "DEC2HEX" | "DEC2OCT" => {
@@ -227,13 +241,13 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             if n < 0.0 {
                 return Ok(if name == "DEC2BIN" { negative_binary(n)? } else { V::str(&radix_text(wrap + n, radix)) });
             }
-            with_places(radix_text(parse_int(&s, 10.0), radix), places)?
+            with_places(radix_text(n, radix), places)?
         }
         "HEX2BIN" | "HEX2DEC" | "HEX2OCT" => {
             if !matches_digits(&s, 16, 10) {
                 return Ok(NUM);
             }
-            let decimal = parse_int(&s, 16.0);
+            let decimal = digits_value(&s, 16);
             match name {
                 "HEX2DEC" => V::Num(if decimal >= 549_755_813_888.0 { decimal - 1_099_511_627_776.0 } else { decimal }),
                 "HEX2BIN" => {
@@ -264,7 +278,7 @@ fn base_convert(name: &str, number: &V, places: &V) -> Result<V, Thrown> {
             if !matches_digits(&s, 8, 10) {
                 return Ok(NUM);
             }
-            let decimal = parse_int(&s, 8.0);
+            let decimal = digits_value(&s, 8);
             match name {
                 "OCT2DEC" => V::Num(if decimal >= 536_870_912.0 { decimal - 1_073_741_824.0 } else { decimal }),
                 "OCT2BIN" => {
@@ -320,77 +334,82 @@ pub fn excel_bit(name: &str, x: f64, y: f64) -> Option<f64> {
     (out <= BIT_MAX as u128).then_some(out as f64)
 }
 
-/// `/^M*(?:D?C{0,3}|C[MD])(?:L?X{0,3}|X[CL])(?:V?I{0,3}|I[XV])$/`.
-fn is_roman(s: &str) -> bool {
-    let b = s.as_bytes();
-    // Each place: (five?)(one){0,3} or one followed by ten or five; every end it can reach.
-    let place = |starts: Vec<usize>, one: u8, five: u8, ten: u8| -> Vec<usize> {
-        let mut ends = Vec::new();
-        for from in starts {
-            let mut heads = vec![from];
-            if b.get(from) == Some(&five) {
-                heads.push(from + 1);
-            }
-            for h in heads {
-                let mut j = h;
-                ends.push(j);
-                while j < b.len() && b[j] == one && j - h < 3 {
-                    j += 1;
-                    ends.push(j);
+const ROMAN_CHARS: [char; 7] = ['M', 'D', 'C', 'L', 'X', 'V', 'I'];
+const ROMAN_VALUES: [u32; 7] = [1000, 500, 100, 50, 10, 5, 1];
+
+/// ROMAN's text for 0 to 3999 in `form` 0 (classic) to 4 (simplest): each higher form lets a numeral stand
+/// further before a larger one (499 is CDXCIX, LDVLIV, XDIX, VDIV, ID), as Excel and LibreOffice write them.
+fn roman_text(n: u32, form: u32) -> String {
+    let mut val = n;
+    let mut out = String::new();
+    for i in 0..4 {
+        let mut index = 2 * i;
+        let digit = val / ROMAN_VALUES[index];
+        if digit % 5 == 4 {
+            let index2 = if digit == 4 { index - 1 } else { index - 2 };
+            let mut steps = 0;
+            while steps < form && index < 6 {
+                steps += 1;
+                if ROMAN_VALUES[index2] - ROMAN_VALUES[index + 1] <= val {
+                    index += 1;
+                } else {
+                    steps = form;
                 }
             }
-            if b.get(from) == Some(&one) && matches!(b.get(from + 1), Some(&c) if c == ten || c == five) {
-                ends.push(from + 2);
+            out.push(ROMAN_CHARS[index]);
+            out.push(ROMAN_CHARS[index2]);
+            val = val + ROMAN_VALUES[index] - ROMAN_VALUES[index2];
+        } else {
+            if digit > 4 {
+                out.push(ROMAN_CHARS[index - 1]);
             }
+            for _ in 0..digit % 5 {
+                out.push(ROMAN_CHARS[index]);
+            }
+            val %= ROMAN_VALUES[index];
         }
-        ends
+    }
+    out
+}
+
+/// ARABIC's reading: any case, spaces around, a leading "-"; every form ROMAN writes reads back, and a numeral
+/// that repeats or subtracts past what a value up to 3999 allows is `None` (LibreOffice's check).
+fn arabic_value(text: &str) -> Option<f64> {
+    let t = text.trim();
+    let (negative, body) = match t.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, t),
     };
-    let ms = b.iter().take_while(|&&c| c == b'M').count();
-    let ends = place(place(place((0..=ms).collect(), b'C', b'D', b'M'), b'X', b'L', b'C'), b'I', b'V', b'X');
-    ends.contains(&b.len())
-}
-
-fn arabic(s: &str) -> f64 {
-    let b = s.as_bytes();
-    let mut r = 0.0;
-    let mut i = 0;
-    while i < b.len() {
-        let next = b.get(i + 1).copied();
-        let (v, w) = match (b[i], next) {
-            (b'M', _) => (1000.0, 1),
-            (b'D', _) => (500.0, 1),
-            (b'L', _) => (50.0, 1),
-            (b'V', _) => (5.0, 1),
-            (b'C', Some(b'M')) => (900.0, 2),
-            (b'C', Some(b'D')) => (400.0, 2),
-            (b'C', _) => (100.0, 1),
-            (b'X', Some(b'C')) => (90.0, 2),
-            (b'X', Some(b'L')) => (40.0, 2),
-            (b'X', _) => (10.0, 1),
-            (b'I', Some(b'X')) => (9.0, 2),
-            (b'I', Some(b'V')) => (4.0, 2),
-            _ => (1.0, 1),
-        };
-        r += v;
-        i += w;
+    let digits: Vec<(u32, bool)> = body
+        .chars()
+        .map(|c| {
+            let i = ROMAN_CHARS.iter().position(|&r| r == c.to_ascii_uppercase())?;
+            Some((ROMAN_VALUES[i], i % 2 == 0))
+        })
+        .collect::<Option<_>>()?;
+    let (mut value, mut rest, mut i) = (0u32, 3999u32, 0);
+    while i < digits.len() {
+        let (d1, tens) = digits[i];
+        let d2 = digits.get(i + 1).map_or(0, |d| d.0);
+        if d1 >= d2 {
+            value += d1;
+            rest %= d1 * if tens { 5 } else { 2 };
+            rest = rest.checked_sub(d1)?;
+            i += 1;
+        } else if d1 * 2 != d2 {
+            let diff = d2 - d1;
+            value += diff;
+            if rest < diff {
+                return None;
+            }
+            rest = d1 - 1;
+            i += 2;
+        } else {
+            return None;
+        }
     }
-    r
-}
-
-fn roman(n: f64) -> Result<V, Thrown> {
-    const KEY: [&str; 30] = [
-        "", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM", "", "X", "XX", "XXX", "XL", "L", "LX", "LXX",
-        "LXXX", "XC", "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX",
-    ];
-    let mut digits: Vec<char> = number_to_string(n).chars().collect();
-    let mut roman = String::new();
-    for i in (0..3).rev() {
-        let at = digits.pop().map_or(f64::NAN, |c| string_to_number(&c.to_string())) + f64::from(i) * 10.0;
-        let piece = if (0.0..30.0).contains(&at) && at.fract() == 0.0 { KEY[at as usize] } else { "" };
-        roman = format!("{piece}{roman}");
-    }
-    let rest: String = digits.into_iter().collect();
-    Ok(V::str(&(array_join(string_to_number(&rest) + 1.0, "M")? + &roman)))
+    let v = f64::from(value);
+    Some(if negative { -v } else { v })
 }
 
 // ─── Error function and CHISQ.TEST's table ─────────────────────────────────────
@@ -503,7 +522,8 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, Th
 pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
     Ok(match name {
         "PERMUTATIONA" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
-            (V::Num(n), V::Num(k)) => V::Num(libm::pow(n, k)),
+            (V::Num(n), V::Num(k)) if n >= 0.0 && k >= 0.0 => V::Num(libm::pow(n.trunc(), k.trunc())),
+            (V::Num(_), V::Num(_)) => NUM,
             _ => VALUE,
         },
         "SUMSQ" => match parse_number_array(&flatten_args(a)) {
@@ -611,56 +631,71 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             V::Num(result)
         }
         "BASE" => {
-            let (n, r, l) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)));
-            if let Some(e) = any_error(&[&n, &r, &l]) {
+            let length = if matches!(arg(a, 2), V::Undef) { V::Num(0.0) } else { parse_number(arg(a, 2)) };
+            let (n, r) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
+            if let Some(e) = any_error(&[&n, &r, &length]) {
                 return Ok(e);
             }
-            let (n, r, l) =
-                (num_of(&n).unwrap_or(f64::NAN), num_of(&r).unwrap_or(f64::NAN), num_of(&l).unwrap_or(f64::NAN));
-            if r == 0.0 {
+            let (Some(n), Some(r), Some(length)) = (num_of(&n), num_of(&r), num_of(&length)) else { return Ok(VALUE) };
+            let (n, r, length) = (n.trunc(), r.trunc(), length.trunc());
+            if !(0.0..9_007_199_254_740_992.0).contains(&n)
+                || !(2.0..=36.0).contains(&r)
+                || !(0.0..=255.0).contains(&length)
+            {
                 return Ok(NUM);
             }
-            let s = match to_radix_string(n, r) {
-                Ok(s) => s,
-                Err(m) => return Err(Thrown::value(m)),
-            };
-            let len = crate::jsnum::math_max(l + 1.0 - s.len() as f64, 0.0);
-            // The registration over BASE uppercases its text.
-            V::str(&(array_join(len, "0")? + &s).to_uppercase())
+            let digits = radix_text(n, r as u32).to_uppercase();
+            V::str(&format!("{digits:0>width$}", width = length as usize))
         }
         "DECIMAL" => {
             if a.len() < 2 {
                 return Ok(NA);
             }
-            let text = if truthy(&a[0]) { a[0].clone() } else { V::str("0") };
             let radix = parse_number(&a[1]);
-            if let Some(e) = any_error(&[&text, &radix]) {
+            if let Some(e) = any_error(&[&a[0], &radix]) {
                 return Ok(e);
             }
-            let r = num_of(&radix).unwrap_or(f64::NAN);
-            if r == 0.0 {
+            let Some(r) = num_of(&radix).map(f64::trunc) else { return Ok(VALUE) };
+            let text = if matches!(a[0], V::Null | V::Undef) { String::new() } else { js_string_of(&a[0]) };
+            if !(2.0..=36.0).contains(&r) || text.encode_utf16().count() > 255 {
                 return Ok(NUM);
             }
-            let v = parse_int(&js_string_of(&text), r);
-            if v.is_nan() {
-                NUM
-            } else {
-                V::Num(v)
+            let mut v = 0.0;
+            for c in text.chars() {
+                let Some(d) = c.to_digit(r as u32) else { return Ok(NUM) };
+                v = v * r + f64::from(d);
+            }
+            if v >= 9_007_199_254_740_992.0 {
+                return Ok(NUM);
+            }
+            V::Num(v)
+        }
+        "ROMAN" => {
+            let form = match arg(a, 1) {
+                V::Undef | V::Null | V::Bool(true) => 0.0,
+                V::Bool(false) => 4.0,
+                f => match parse_number(f) {
+                    V::Num(f) => f.trunc(),
+                    e => return Ok(e),
+                },
+            };
+            match parse_number(arg(a, 0)) {
+                V::Num(n) if (0.0..4000.0).contains(&n) && (0.0..=4.0).contains(&form) => {
+                    V::str(&roman_text(n.trunc() as u32, form as u32))
+                }
+                V::Num(_) => VALUE,
+                e => e,
             }
         }
-        "ROMAN" => match parse_number(arg(a, 0)) {
-            V::Num(n) => roman(n)?,
-            e => e,
-        },
         "ARABIC" => match arg(a, 0) {
             V::Undef | V::Null => V::Num(0.0),
             e @ V::Fx(_) => e.clone(),
             v => {
                 let s = js_string_of(v);
-                if is_roman(&s) {
-                    V::Num(arabic(&s))
-                } else {
+                if s.encode_utf16().count() > 255 {
                     VALUE
+                } else {
+                    arabic_value(&s).map_or(VALUE, V::Num)
                 }
             }
         },

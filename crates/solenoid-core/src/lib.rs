@@ -37,7 +37,6 @@ pub mod frame_fns;
 pub mod frame_ref;
 pub mod frame_verbs;
 pub mod hash_ops;
-pub mod js_radix;
 pub mod js_regex;
 pub mod js_sort;
 pub mod jsnum;

@@ -477,7 +477,11 @@ fn bessel_wrap(b0: fn(f64) -> f64, b1: fn(f64) -> f64, x: f64, n: f64, nonzero: 
     if n < 0.0 {
         return Some(f64::NAN);
     }
-    let n = f64::from(crate::js_radix::to_int32(n));
+    // The order is truncated; the recurrence steps once per order, so a huge one answers nothing.
+    let n = n.trunc();
+    if !(n < 2_147_483_648.0) {
+        return Some(f64::NAN);
+    }
     Some(bessel_iter(x, n, b0(x), b1(x), sign))
 }
 
