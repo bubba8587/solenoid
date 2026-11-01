@@ -48,6 +48,15 @@ describe("Expect over frames", () => {
     expect(run(n, good)).toEqual([]);
   });
 
+  it("a pattern that can't run is #VALUE! naming why, not a silent pass or fail", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkRegex: true });
+    n.stringLiterals.pattern = "(";
+    let thrown: { code?: string; message?: string } | undefined;
+    try { n.data({ in: [["ok"]] }); } catch (e) { thrown = e as typeof thrown; }
+    expect(thrown?.code).toBe("#VALUE!");
+    expect(thrown?.message).toMatch(/pattern isn't valid/);
+  });
+
   it("notNull flags a per-cell error (a #DIV/0! cell isn't valid present data)", () => {
     const n = new ExpectNode({ checkNotNull: true });
     const err = solError("#DIV/0!", "divide by zero") as unknown as FrameCell;

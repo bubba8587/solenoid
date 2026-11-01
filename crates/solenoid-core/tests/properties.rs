@@ -38,7 +38,8 @@ fn a_number_prints_and_parses_back_to_itself() {
     let mut r = rng();
     for _ in 0..cases() {
         let x = any_f64(&mut r);
-        if x.is_nan() {
+        // A non-finite number prints as JavaScript names it ("Infinity"), which typed text never reads as a number.
+        if !x.is_finite() {
             continue;
         }
         let back = decimal_from_text(&number_to_string(x));

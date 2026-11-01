@@ -495,10 +495,15 @@ fn expect(c: &mut Call) -> Answer {
             V::Null => {}
             V::Str(p) if trim_space(p).is_empty() => {}
             V::Str(p) => {
-                if let Ok(re) = crate::excel_regex::compile(p, false) {
-                    let fails = |s: &str| !crate::excel_regex::test(&re, s).unwrap_or(false);
-                    if values.iter().any(|v| matches!(v, V::Str(s) if fails(s))) {
+                // A pattern that can't run says why, as the Regex card does, rather than passing or failing every value.
+                let bad = |m: String| super::err(crate::error_value::ErrorCode::Value, m);
+                let re = crate::excel_regex::compile(p, false).map_err(bad)?;
+                for v in &values {
+                    if let V::Str(s) = v
+                        && !crate::excel_regex::test(&re, s).map_err(bad)?
+                    {
                         violations.push("regex");
+                        break;
                     }
                 }
             }

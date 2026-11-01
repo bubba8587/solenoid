@@ -2,6 +2,10 @@
 //! Excel's number format codes, as TEXT and Cast to Text read them (US English): sections, digit placeholders,
 //! grouping and scaling commas, percent, scientific, fractions, dates and times, elapsed time and literals.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use crate::date_serial::civil_from_days;
 
 const MONTHS: [&str; 12] = [
@@ -81,6 +85,28 @@ impl Section {
 /// Why a code can't be read: TEXT answers #VALUE!.
 pub type FormatError = &'static str;
 
+type Parsed = Result<Rc<Vec<Section>>, FormatError>;
+
+thread_local! {
+    static PARSED: RefCell<HashMap<String, Parsed>> = RefCell::new(HashMap::new());
+}
+
+/// A code's sections, read once per code: TEXT over a column reads the same code on every row ([[C120]] linearWork).
+fn sections_of(code: &str) -> Parsed {
+    PARSED.with(|m| {
+        if let Some(p) = m.borrow().get(code) {
+            return p.clone();
+        }
+        let p = split_sections(code).map(Rc::new);
+        let mut m = m.borrow_mut();
+        if m.len() > 256 {
+            m.clear();
+        }
+        m.insert(code.to_string(), p.clone());
+        p
+    })
+}
+
 fn split_sections(code: &str) -> Result<Vec<Section>, FormatError> {
     let mut sections = vec![Section::default()];
     let cs: Vec<char> = code.chars().collect();
@@ -92,8 +118,9 @@ fn split_sections(code: &str) -> Result<Vec<Section>, FormatError> {
     while i < cs.len() {
         let c = cs[i];
         let s = sections.last_mut().unwrap();
-        let rest: String = cs[i..].iter().collect();
-        let lower = rest.to_ascii_lowercase();
+        let ahead = |word: &str| {
+            word.len() <= cs.len() - i && word.chars().zip(&cs[i..]).all(|(w, c)| c.to_ascii_lowercase() == w)
+        };
         match c {
             ';' => {
                 sections.push(Section::default());
@@ -151,16 +178,16 @@ fn split_sections(code: &str) -> Result<Vec<Section>, FormatError> {
                 s.toks.push(Tok::Exp(cs[i + 1] == '+'));
                 i += 2;
             }
-            _ if lower.starts_with("general") => {
+            _ if ahead("general") => {
                 s.toks.push(Tok::General);
                 i += 7;
             }
-            _ if lower.starts_with("am/pm") => {
+            _ if ahead("am/pm") => {
                 // AM/PM shows in capitals whatever its case in the code; A/P keeps its own.
                 s.toks.push(Tok::AmPm("AM".into(), "PM".into()));
                 i += 5;
             }
-            _ if lower.starts_with("a/p") => {
+            _ if ahead("a/p") => {
                 s.toks.push(Tok::AmPm(cs[i].to_string(), cs[i + 2].to_string()));
                 i += 3;
             }
@@ -226,7 +253,7 @@ pub fn format_number(x: f64, code: &str) -> Result<String, FormatError> {
     if code.is_empty() {
         return Ok(String::new());
     }
-    let sections = split_sections(code)?;
+    let sections = sections_of(code)?;
     // Text-only sections don't take a number; the fourth section is text's.
     let numeric: Vec<&Section> = sections.iter().take(3).collect();
     let (section, signed) = pick(&numeric, x);
@@ -280,7 +307,7 @@ fn negative_section(sections: &[&Section]) -> bool {
 
 /// Text formatted by an Excel format code: the fourth section, or a lone section with `@`; otherwise the text as is.
 pub fn format_text(t: &str, code: &str) -> Result<String, FormatError> {
-    let sections = split_sections(code)?;
+    let sections = sections_of(code)?;
     let section = match sections.len() {
         4 => &sections[3],
         1 if sections[0].has_at() => &sections[0],
