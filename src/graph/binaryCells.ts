@@ -5,7 +5,7 @@ import type { BinaryCells } from "./engineWasm";
 import { errorRef, errorFromCore } from "./coreValues";
 import { isSolError, type SolError } from "./errorValue";
 
-const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5, TAG_ERR_AT = 6, TAG_ERR_AT_SLOT = 7;
+const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5, TAG_ERR_AT = 6, TAG_ERR_AT_SLOT = 7, TAG_ERR_SAME = 8;
 
 /** A frame's cells for the core, with each column's unit and format unless `meta` is false; any other object crosses as
  *  its text, or with `flatOnly` (the card wire, which carries anything else as JSON: undefined, an object) the frame
@@ -28,12 +28,16 @@ export function encodeBinary(frame: FrameValue, meta = true, flatOnly = false): 
   };
   let k = 0;
   for (const c of frame.columns) {
+    // A repeat of the column's last error crosses as a tag alone (`binary.rs` TAG_ERR_SAME).
+    let lastErr: unknown;
     for (const v of c.values) {
       if (typeof v === "number") { tags[k] = TAG_NUM; nums[k] = v; }
       else if (typeof v === "string") { tags[k] = TAG_STR; text(v); }
       else if (typeof v === "boolean") tags[k] = v ? TAG_TRUE : TAG_FALSE;
       else if (v === null) tags[k] = TAG_NULL;
+      else if (isSolError(v) && v === lastErr) { tags[k] = TAG_ERR_SAME; nums[k] = NaN; }
       else if (isSolError(v)) {
+        lastErr = v;
         nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message);
         const o = flatOnly ? v.origin : undefined;
         if (!o) tags[k] = TAG_ERR;
@@ -71,6 +75,7 @@ export function decodeBinary(b: BinaryCells): FrameColumn[] {
         case TAG_STR: values[i] = text(); break;
         case TAG_FALSE: values[i] = false; break;
         case TAG_TRUE: values[i] = true; break;
+        case TAG_ERR_SAME: values[i] = last!.e; break;
         case TAG_ERR: case TAG_ERR_AT: case TAG_ERR_AT_SLOT: {
           const tag = b.tags[k], code = text(), message = text(), ref = b.nums[k];
           const id = tag === TAG_ERR ? undefined : text(), name = tag === TAG_ERR ? undefined : text();

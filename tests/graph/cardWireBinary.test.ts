@@ -74,6 +74,7 @@ describe("the card wire's buffers", () => {
     const back = readBinary("list", undefined, l[2] as Uint8Array, l[3] as Float64Array, l[4] as string, l[5] as Uint32Array) as FrameCell[];
     expect(sameJson(enc(back), enc(list))).toBe(true);
     expect(back[51]).toBe(back[52]);
+    expect(l[2] as Uint8Array).toContain(8); // the repeats cross as a tag alone
   });
 
   it("answer as JSON does, into a card and back", () => {

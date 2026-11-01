@@ -25,6 +25,8 @@ pub const TAG_ERR: u8 = 5;
 pub const TAG_ERR_AT: u8 = 6;
 /// An error with its origin and the input slot it arrived on: node id, name and slot after the message.
 pub const TAG_ERR_AT_SLOT: u8 = 7;
+/// The same error as the last one written: nothing after it (a card's guard tags every bad cell alike).
+pub const TAG_ERR_SAME: u8 = 8;
 
 #[derive(Deserialize)]
 struct SchemaColumn {
@@ -136,6 +138,10 @@ impl<'a> Reader<'a> {
                 TAG_STR => FrameCell::Str(Rc::from(self.cut.next()?)),
                 TAG_FALSE => FrameCell::Bool(false),
                 TAG_TRUE => FrameCell::Bool(true),
+                TAG_ERR_SAME => match &last {
+                    Some(e) => FrameCell::Err(e.clone()),
+                    None => return Err(sol_error(ErrorCode::Error, "binary frame: a repeated error with none before it")),
+                },
                 tag @ (TAG_ERR | TAG_ERR_AT | TAG_ERR_AT_SLOT) => {
                     let code = ErrorCode::from_wire(self.cut.next()?);
                     let message = self.cut.next()?;
@@ -238,6 +244,7 @@ impl Columnar {
 
     /// The cells' tags, numbers and text, after those already pushed; the schema is the caller's.
     pub fn push_cells(&mut self, values: &[FrameCell]) {
+        let mut last: Option<&Rc<SolError>> = None;
         for v in values {
             match v {
                 FrameCell::Null => {
@@ -257,7 +264,12 @@ impl Columnar {
                     self.tags.push(if *b { TAG_TRUE } else { TAG_FALSE });
                     self.nums.push(0.0);
                 }
+                FrameCell::Err(e) if last.is_some_and(|l| Rc::ptr_eq(l, e) || (**l == **e && l.origin == e.origin)) => {
+                    self.tags.push(TAG_ERR_SAME);
+                    self.nums.push(f64::NAN);
+                }
                 FrameCell::Err(e) => {
+                    last = Some(e);
                     let o = e.origin.as_deref();
                     self.tags.push(match o {
                         None => TAG_ERR,
