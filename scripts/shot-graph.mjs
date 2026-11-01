@@ -83,8 +83,27 @@ try {
     if (light) localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: "light" }));
     if (settings) localStorage.setItem("solenoid.settings", JSON.stringify(settings));
   }, doc, opt.palette ?? null, !!opt.light, opt.settings ?? null);
-  await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
-  await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
+  const pageErrors = [];
+  page.on("pageerror", (e) => pageErrors.push(String(e?.message ?? e)));
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") pageErrors.push(m.text()); });
+  // The app swaps a document it can't load for a seed, and a cold dev server reloads the page once while it
+  // optimizes; so check every node of the file is on the canvas, reseed and reload once, then fail loudly.
+  // The app gives nodes ids of its own, so the check is the card count.
+  const onCanvas = () => page.evaluate(() => document.querySelectorAll(".react-flow__node").length);
+  for (let attempt = 0; ; attempt++) {
+    await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
+    await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
+    await new Promise((r) => setTimeout(r, 300));
+    const shown = await onCanvas();
+    if (shown === graph.nodes.length) break;
+    if (attempt >= 1) {
+      console.error(`shot-graph: the canvas is not this graph: it shows ${shown} cards, the file has ${graph.nodes.length} (an unknown type, a bad init or a bad cable makes the app load a seed instead)`);
+      for (const e of pageErrors.slice(-10)) console.error("  page:", e.slice(0, 300));
+      await browser.close();
+      process.exit(1);
+    }
+    await page.evaluate(() => sessionStorage.removeItem("shot-seeded"));
+  }
   await page.click(".solenoid-nav__btn--fit").catch(() => {});
   await new Promise((r) => setTimeout(r, opt.wait));
 
@@ -92,6 +111,7 @@ try {
     const texts = await page.evaluate(() => [...document.querySelectorAll(".react-flow__node")]
       .map((n) => (n.innerText ?? "").replace(/\s*\n\s*/g, " | ").slice(0, 600)));
     for (const t of texts) console.log(t);
+    if (texts.some((t) => t.includes("node type isn’t available here"))) console.error("shot-graph: a node's type is unknown (check its class name)");
   };
   await printTexts();
 

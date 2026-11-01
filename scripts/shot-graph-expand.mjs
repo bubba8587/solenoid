@@ -22,11 +22,17 @@ export function expand(raw) {
     if (lambdaKeys) init.lambdaKeys = lambdaKeys;
     return { ...rest, init };
   });
-  const connections = [...(g.connections ?? []), ...(g.cables ?? []).map((s) => {
+  // A cable is "src.output -> dst.input" under either key, or a full connection object.
+  const connections = [...(g.connections ?? []), ...(g.cables ?? [])].map((s) => {
+    if (typeof s !== "string") return s;
     const m = /^\s*([^.\s]+)\.(\S+)\s*->\s*([^.\s]+)\.(.+?)\s*$/.exec(s);
     if (!m) throw new Error(`bad cable "${s}", want "src.output -> dst.input"`);
     return { source: m[1], sourceOutput: m[2], target: m[3], targetInput: m[4] };
-  })];
+  });
+  const ids = new Set(nodes.map((n) => n.id));
+  for (const c of connections) {
+    for (const end of [c.source, c.target]) if (!ids.has(end)) throw new Error(`cable ${c.source}.${c.sourceOutput} -> ${c.target}.${c.targetInput} names no node "${end}"`);
+  }
   const depth = new Map(nodes.map((n) => [n.id, 0]));
   for (let pass = 0; pass < nodes.length; pass++) {
     for (const c of connections) depth.set(c.target, Math.max(depth.get(c.target) ?? 0, (depth.get(c.source) ?? 0) + 1));
