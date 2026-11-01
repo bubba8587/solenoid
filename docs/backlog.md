@@ -66,7 +66,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 **Regex:** - [ ] fancy-regex under Excel's PCRE2 reading; the Regex card's JS flags become Excel's case setting with inline `(?m)`/`(?s)`; `js_regex.rs` and `crates/vendor/regress` go (the REGEX functions, the Regex card and the template token are its last users).
 
 **No visible change (delete the JS framing):**
-- [ ] IANA zones from jiff's tzdb in wasm too, so the browser and desktop agree (`zone.rs` reads `Intl` in wasm). The local-time date copies went 2026-11-01; the host's local day for TODAY stays (a platform need).
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
 
 **Also:**

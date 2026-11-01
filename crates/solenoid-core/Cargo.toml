@@ -11,8 +11,8 @@ crate-type = ["rlib"]
 
 [dependencies]
 interim = { path = "../vendor/interim", default-features = false, features = ["jiff_0_2"] }
-# interim reads on jiff in UTC everywhere; natively the zone database comes too, below.
-jiff = { version = "0.2.38", default-features = false }
+# interim reads on jiff in UTC; the bundled zone database serves IANA zones in every build (zone.rs).
+jiff = { version = "0.2.38", default-features = false, features = ["tzdb-bundle-always"] }
 libm = "0.2.16"
 solenoid-schedule = { path = "../solenoid-schedule" }
 serde = { version = "1", features = ["derive"] }
@@ -37,7 +37,6 @@ flate2 = "1"
 rqrr = { version = "0.11", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-jiff = { version = "0.2.38", default-features = false, features = ["tzdb-bundle-always"] }
 fastrand = "2.5.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

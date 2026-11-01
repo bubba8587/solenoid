@@ -1,8 +1,7 @@
 // [[C130]] rustCore, [[C44]] dateSerials
-//! The time zones a JS `Date` reads: the local zone and IANA zones. The wasm reads both from the JavaScript engine it
-//! runs in. Natively (desktop, `cargo test`) the local zone is UTC and an IANA zone is read from
-//! jiff's bundled tzdb (`jiff-tzdb`), with the names ICU takes beside it; the tzdb release may be newer than the
-//! browser's, so a recent rule change can read differently in the two builds.
+//! The time zones a date reads: the host's local zone and IANA zones. An IANA zone is read from jiff's bundled tzdb
+//! (`jiff-tzdb`) in every build, with the names ICU takes beside it, so the browser and the desktop agree. The local
+//! zone is the host's: the JavaScript engine's in the wasm, UTC natively (desktop, `cargo test`).
 //!
 //! A date here is a JS time value: milliseconds since 1970 UTC, NaN for an Invalid Date. The local-time methods below
 //! follow V8's `Date.prototype` (LocalTime, then MakeDay / MakeTime, then UTC and TimeClip).
@@ -15,8 +14,6 @@ const MAX_TIME_BEFORE_UTC: f64 = 8.64e15 + 864e6;
 
 #[cfg(target_arch = "wasm32")]
 mod host {
-    use std::cell::RefCell;
-    use std::collections::HashMap;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -44,60 +41,6 @@ mod host {
         #[wasm_bindgen(method, js_name = getMilliseconds)]
         pub fn millis(this: &Date) -> f64;
 
-        #[wasm_bindgen(js_namespace = Intl)]
-        pub type DateTimeFormat;
-        #[wasm_bindgen(catch, constructor, js_namespace = Intl)]
-        pub fn new(locale: &str, options: &js_sys::Object) -> Result<DateTimeFormat, JsValue>;
-        #[wasm_bindgen(catch, method)]
-        pub fn format(this: &DateTimeFormat, date: &Date) -> Result<String, JsValue>;
-        #[wasm_bindgen(catch, method, js_name = formatToParts)]
-        pub fn format_to_parts(this: &DateTimeFormat, date: &Date) -> Result<js_sys::Array, JsValue>;
-    }
-
-    thread_local! {
-        static FORMATS: RefCell<HashMap<String, Option<DateTimeFormat>>> = RefCell::new(HashMap::new());
-    }
-
-    thread_local! {
-        static CLOCKS: RefCell<HashMap<String, Option<DateTimeFormat>>> = RefCell::new(HashMap::new());
-    }
-
-    /// World Clock's formatter for a zone: en-GB, short weekday, h23 hour and minute.
-    pub fn with_clock<R>(zone: &str, f: impl FnOnce(Option<&DateTimeFormat>) -> R) -> R {
-        CLOCKS.with(|m| {
-            let mut m = m.borrow_mut();
-            let dtf = m.entry(zone.to_string()).or_insert_with(|| {
-                let o = js_sys::Object::new();
-                let set = |k: &str, v: &str| js_sys::Reflect::set(&o, &k.into(), &v.into()).ok();
-                set("timeZone", zone);
-                set("weekday", "short");
-                set("hour", "2-digit");
-                set("minute", "2-digit");
-                set("hourCycle", "h23");
-                DateTimeFormat::new("en-GB", &o).ok()
-            });
-            f(dtf.as_ref())
-        })
-    }
-
-    /// The offset formatter for a zone, None where `Intl` refuses the zone.
-    pub fn with_format<R>(zone: &str, f: impl FnOnce(Option<&DateTimeFormat>) -> R) -> R {
-        FORMATS.with(|m| {
-            let mut m = m.borrow_mut();
-            let dtf = m.entry(zone.to_string()).or_insert_with(|| {
-                let o = js_sys::Object::new();
-                let set = |k: &str, v: &str| js_sys::Reflect::set(&o, &k.into(), &v.into()).ok();
-                set("timeZone", zone);
-                set("hourCycle", "h23");
-                set("year", "numeric");
-                set("era", "short");
-                for k in ["month", "day", "hour", "minute", "second"] {
-                    set(k, "2-digit");
-                }
-                DateTimeFormat::new("en-US", &o).ok()
-            });
-            f(dtf.as_ref())
-        })
     }
 }
 
@@ -197,56 +140,18 @@ fn wall_utc(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64) -> f64 {
 
 // ─── IANA zones ─────────────────────────────────────────────────────────────────
 
-/// Why a zone read failed: `Intl` refused the zone, or the instant is an Invalid Date.
+/// Why a zone read failed: the zone is unknown, or the instant is an Invalid Date.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ZoneError {
     UnknownZone,
     InvalidTime,
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn is_valid_zone(zone: &str) -> bool {
-    host::with_format(zone, |f| f.is_some())
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 pub fn is_valid_zone(zone: &str) -> bool {
     tzdb::find(zone).is_some()
 }
 
-/// The zone's wall clock at the instant, read through `formatToParts`, less the instant.
-#[cfg(target_arch = "wasm32")]
-pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
-    host::with_format(zone, |f| {
-        let f = f.ok_or(ZoneError::UnknownZone)?;
-        let parts = f.format_to_parts(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime)?;
-        let mut p = [f64::NAN; 6];
-        let mut bc = false;
-        for part in parts.iter() {
-            let get =
-                |k: &str| js_sys::Reflect::get(&part, &k.into()).ok().and_then(|v| v.as_string()).unwrap_or_default();
-            let slot = match get("type").as_str() {
-                "year" => 0,
-                "month" => 1,
-                "day" => 2,
-                "hour" => 3,
-                "minute" => 4,
-                "second" => 5,
-                "era" => {
-                    bc = get("value") == "BC";
-                    continue;
-                }
-                _ => continue,
-            };
-            p[slot] = crate::value_kinds::decimal_from_text(&get("value"));
-        }
-        let year = if bc { 1.0 - p[0] } else { p[0] };
-        Ok(wall_utc(year, p[1] - 1.0, p[2], p[3], p[4], p[5]) - utc_ms)
-    })
-}
-
-/// The clock to the whole second, as `formatToParts` shows it.
-#[cfg(not(target_arch = "wasm32"))]
+/// The zone's offset from UTC at the instant, to the whole second.
 pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
     let (days, secs) = tzdb::wall_clock(zone, utc_ms)?;
     let (y, m, d) = civil_from_days(days);
@@ -254,19 +159,7 @@ pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
     Ok(wall_utc(y as f64, f64::from(m - 1), f64::from(d), h as f64, mi as f64, s as f64) - utc_ms)
 }
 
-/// World Clock's "Thu 14:32": the zone's weekday and wall clock, as `Intl`'s en-GB short weekday and h23 hour and
-/// minute print them.
-#[cfg(target_arch = "wasm32")]
-pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
-    if !is_valid_zone(zone) {
-        return Err(ZoneError::UnknownZone);
-    }
-    host::with_clock(zone, |f| {
-        f.ok_or(ZoneError::UnknownZone)?.format(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime)
-    })
-}
-
-#[cfg(not(target_arch = "wasm32"))]
+/// World Clock's "Thu 14:32": the zone's short weekday and its 24-hour wall clock.
 pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
     const WEEKDAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     let (days, secs) = tzdb::wall_clock(zone, utc_ms)?;
@@ -275,7 +168,6 @@ pub fn clock_text(zone: &str, utc_ms: f64) -> Result<String, ZoneError> {
 
 /// A zone natively: an offset like "+05:30", which `Intl` reads without a name, or a name in jiff's bundled tzdb,
 /// matched as `Intl` matches it, without regard to ASCII case.
-#[cfg(not(target_arch = "wasm32"))]
 mod tzdb {
     use super::{time_clip, ZoneError};
     use crate::date_serial::civil_from_days;
