@@ -2,7 +2,7 @@
 // Timing, not a check: whole passes as the app runs them (`engine.pass`, then `landed` for the read a card's box makes),
 // over chains of cards at 800,000 items. This is the bench for "is the app fast": a card's `data()` or `nodeOnCore`
 // called from JS is a path the pass doesn't take between direct cards (graph-core.md § Direct calls).
-// `BENCH=1 npx vitest run tests/graph/passBench.test.ts` prints the table (BENCH_ITEMS for another size).
+// `BENCH=1 npx vitest run tests/graph/passBench.test.ts` prints the table, and BENCH_OUT=<file> writes it there (BENCH_ITEMS for another size).
 import { describe, it } from "vitest";
 import { GraphEditor } from "../../src/graph/graphEditor";
 import { GraphConnection, GraphNode } from "../../src/graph/graphModel";
@@ -60,6 +60,9 @@ describe.skipIf(!process.env.BENCH)("passes", () => {
       const key = Object.keys(last.outputs)[0];
       line(`${name}: pass + read last to JS`, await time(async () => { await engine.pass(undefined, undefined, true); const v = engine.landed(last.id, key) as unknown[]; if (!Array.isArray(v) || v.length !== N) throw new Error(`bad ${String(v).slice(0, 80)}`); }));
     }
-    console.log(`\n${N} items, best of 3\n` + rows.join("\n"));
+    const table = `\n${N} items, best of 3\n` + rows.join("\n") + "\n";
+    // Vitest holds a test's console output back; BENCH_OUT=<file> writes the table there too.
+    if (process.env.BENCH_OUT) (await import("node:fs")).appendFileSync(process.env.BENCH_OUT, table);
+    console.log(table);
   }, 600_000);
 });

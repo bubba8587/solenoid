@@ -51,8 +51,10 @@ function build() {
   const { crate, out } = MODULE;
   const lib = crate.replace(/-/g, "_");
   const target = `crates/${crate}/target`;
-  run("cargo", ["build", "--release", "--target", "wasm32-unknown-unknown", "--manifest-path", `crates/${crate}/Cargo.toml`, "--target-dir", target]);
-  run("wasm-bindgen", ["--target", "web", "--out-dir", out, "--out-name", lib, `${target}/wasm32-unknown-unknown/release/${lib}.wasm`]);
+  // A module that ships builds whole-program (the `ship` profile); every other build is incremental, seconds an edit.
+  const profile = OPTIMIZE ? "ship" : "release";
+  run("cargo", ["build", "--profile", profile, "--target", "wasm32-unknown-unknown", "--manifest-path", `crates/${crate}/Cargo.toml`, "--target-dir", target]);
+  run("wasm-bindgen", ["--target", "web", "--out-dir", out, "--out-name", lib, `${target}/wasm32-unknown-unknown/${profile}/${lib}.wasm`]);
   const wasm = `${out}/${lib}_bg.wasm`;
   // Optimizing is for a module that ships (`npm run build:wasm:opt`): it costs minutes and changes no answer.
   if (OPTIMIZE) {
