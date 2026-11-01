@@ -5,7 +5,8 @@ import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
-import { IS_COARSE, isMobile, deviceModeStore, prefersReducedMotion } from "./coarse";
+import { IS_COARSE, isMobile, deviceModeStore } from "./coarse";
+import { EdgeHandle, enteringClass, useTuckState, useTuckSwipe } from "./edgeTuck";
 import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
@@ -99,88 +100,12 @@ export async function fitAll() {
   await view.pan(ax - cx * k, ay - cy * k);
 }
 
-/** The phone's nav pill tucked into its edge handle, kept per viewer. */
-const TUCK_KEY = "solenoid.navTucked";
-function readTucked(): boolean {
-  try { return localStorage.getItem(TUCK_KEY) === "1"; } catch { return false; }
-}
-function writeTucked(on: boolean): void {
-  try { localStorage.setItem(TUCK_KEY, on ? "1" : "0"); } catch { /* a private window keeps it for the session only */ }
-}
-
-/** How far a swipe right must carry the pill to tuck it, and how far a finger moves before a press is a swipe. */
-const TUCK_AT = 40;
-const SWIPE_SLOP = 8;
-
-/** A sideways swipe on an element: `onMove` follows the finger once it is a swipe, `onEnd` gets the travel. A swipe
- *  swallows the click that would follow it, so a swipe that starts on a button never presses it. */
-function useSideSwipe(onMove: (dx: number) => void, onEnd: (dx: number) => void) {
-  const d = useRef<{ x: number; y: number; dx: number; swiping: boolean } | null>(null);
-  const swallow = useRef(false);
-  return {
-    onPointerDown(e: ReactPointerEvent<HTMLElement>) {
-      e.stopPropagation();
-      d.current = { x: e.clientX, y: e.clientY, dx: 0, swiping: false };
-      swallow.current = false;
-    },
-    onPointerMove(e: ReactPointerEvent<HTMLElement>) {
-      const s = d.current;
-      if (!s) return;
-      const dx = e.clientX - s.x;
-      if (!s.swiping) {
-        if (Math.abs(dx) < SWIPE_SLOP || Math.abs(dx) < Math.abs(e.clientY - s.y)) return;
-        s.swiping = true;
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }
-      s.dx = dx;
-      onMove(dx);
-    },
-    onPointerUp() {
-      const s = d.current;
-      d.current = null;
-      if (s?.swiping) {
-        swallow.current = true;
-        onEnd(s.dx);
-      }
-    },
-    onPointerCancel() {
-      const s = d.current;
-      d.current = null;
-      if (s?.swiping) onEnd(0);
-    },
-    onClickCapture(e: React.MouseEvent) {
-      if (!swallow.current) return;
-      swallow.current = false;
-      e.stopPropagation();
-      e.preventDefault();
-    },
-  };
-}
-
 export function NavMenu() {
   const mobile = useSyncExternalStore(deviceModeStore.subscribe, deviceModeStore.get);
-  const [tucked, setTucked] = useState(readTucked);
+  const [tucked, setTucked] = useTuckState("solenoid.navTucked");
+  const [entering, setEntering] = useState(false);
   const pill = useRef<HTMLDivElement>(null);
-  const tuck = (on: boolean) => { setTucked(on); writeTucked(on); };
-  const pillSwipe = useSideSwipe(
-    (dx) => {
-      const el = pill.current;
-      if (!el) return;
-      el.classList.remove("solenoid-nav--settling");
-      // Only rightward, toward the edge it tucks into.
-      el.style.transform = `translateX(${Math.max(0, dx)}px)`;
-    },
-    (dx) => {
-      const el = pill.current;
-      if (!el) return;
-      el.classList.add("solenoid-nav--settling");
-      if (dx < TUCK_AT) { el.style.transform = ""; return; }
-      if (prefersReducedMotion()) { el.style.transform = ""; tuck(true); return; }
-      el.style.transform = "translateX(calc(100% + 16px))";
-      window.setTimeout(() => { el.style.transform = ""; el.classList.remove("solenoid-nav--settling"); tuck(true); }, 140);
-    },
-  );
-  const handleSwipe = useSideSwipe(() => {}, (dx) => { if (dx < -SWIPE_SLOP) tuck(false); });
+  const pillSwipe = useTuckSwipe(pill, "right", () => setTucked(true));
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   // Shown on any touch-primary device (IS_COARSE; no F11 there), and hidden where the browser can't go fullscreen.
   const showFullscreen = IS_COARSE && fullscreenSupported();
@@ -194,21 +119,21 @@ export function NavMenu() {
   }, [showFullscreen]);
   if (mobile && tucked) {
     return (
-      <button
+      <EdgeHandle
+        edge="right"
         className="solenoid-nav-handle"
-        title="Show the canvas controls"
-        aria-label="Show the canvas controls"
-        onClick={() => tuck(false)}
-        {...handleSwipe}
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 3.5 L5.5 8 L10 12.5" />
-        </svg>
-      </button>
+        label="Show the canvas controls"
+        onOpen={() => { setEntering(true); setTucked(false); }}
+      />
     );
   }
   return (
-    <div ref={pill} className="solenoid-nav" {...(mobile ? pillSwipe : { onPointerDown: (e: ReactPointerEvent) => e.stopPropagation() })}>
+    <div
+      ref={pill}
+      className={`solenoid-nav${enteringClass("right", entering)}`}
+      onAnimationEnd={() => setEntering(false)}
+      {...(mobile ? pillSwipe : { onPointerDown: (e: ReactPointerEvent) => e.stopPropagation() })}
+    >
       <button className="solenoid-nav__btn solenoid-nav__btn--zoomin" title="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="7" cy="7" r="4.5" />
