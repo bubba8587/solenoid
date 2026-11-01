@@ -6,7 +6,7 @@
 use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;
 use crate::error_value::{ErrorCode, FxError};
-use crate::excel_functions::{js_number_of as js_number, parse_number, to_num, value_text, V};
+use crate::excel_functions::{num_blank_zero, parse_number, to_num, value_text, V};
 use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use std::rc::Rc;
@@ -107,7 +107,7 @@ fn rand_array_draw(roll: f64, lo: f64, hi: f64, whole: bool) -> f64 {
 }
 
 fn randarray(a: &[V]) -> V {
-    let count = |v: &V| if blank(v) { Ok(1.0) } else { array_count(js_number(v)) };
+    let count = |v: &V| if blank(v) { Ok(1.0) } else { array_count(num_blank_zero(v)) };
     let r = match count(arg(a, 0)) {
         Ok(r) => r,
         Err(e) => return e,
@@ -116,7 +116,7 @@ fn randarray(a: &[V]) -> V {
         Ok(c) => c,
         Err(e) => return e,
     };
-    let bound = |v: &V, d: f64| if blank(v) { d } else { js_number(v) };
+    let bound = |v: &V, d: f64| if blank(v) { d } else { num_blank_zero(v) };
     let (lo, hi) = (bound(arg(a, 2), 0.0), bound(arg(a, 3), 1.0));
     let whole = is_true(arg(a, 4));
     if let Some(bad) = rand_array_range(lo, hi, whole) {

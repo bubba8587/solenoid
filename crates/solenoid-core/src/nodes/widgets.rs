@@ -9,7 +9,7 @@ use super::values::{Column, CubeColumn, Frame};
 use super::Cv;
 use super::{err, list, Answer, Call};
 use crate::error_value::ErrorCode;
-use crate::excel_functions::{js_number_of, js_parse_float, value_text, V};
+use crate::excel_functions::{js_parse_float, num_blank_zero, value_text, V};
 use crate::frame::FrameColType;
 use crate::jsnum::{
     fixed_text, is_space_char, lower_text, nan_max, nan_min, number_to_string, round_half_up, string_to_number,
@@ -59,7 +59,7 @@ fn literal_or(c: &Call, key: &str, dflt: V) -> V {
 }
 
 fn literal_num(c: &Call, key: &str, dflt: f64) -> f64 {
-    js_number_of(&literal_or(c, key, V::Num(dflt)))
+    num_blank_zero(&literal_or(c, key, V::Num(dflt)))
 }
 
 /// NaN passes through.
@@ -176,7 +176,7 @@ fn slider(c: &mut Call) -> Answer {
     // `v != null && Number.isFinite(v) ? v : lit`.
     let finite = |v: V, lit: &V| match v {
         V::Num(n) if n.is_finite() => n,
-        _ => js_number_of(lit),
+        _ => num_blank_zero(lit),
     };
     let mut lo = finite(c.read_input("min", lit_min.clone()), &lit_min);
     let mut hi = finite(c.read_input("max", lit_max.clone()), &lit_max);
@@ -184,8 +184,8 @@ fn slider(c: &mut Call) -> Answer {
         std::mem::swap(&mut lo, &mut hi);
     }
     let step = finite(c.read_input("step", lit_step.clone()), &lit_step);
-    let step = if step > 0.0 { step } else { js_number_of(&lit_step) };
-    let value = nan_min(nan_max(js_number_of(&init_v(c, "value")), lo), hi);
+    let step = if step > 0.0 { step } else { num_blank_zero(&lit_step) };
+    let value = nan_min(nan_max(num_blank_zero(&init_v(c, "value")), lo), hi);
     c.show("effectiveMin", V::Num(lo));
     c.show("effectiveMax", V::Num(hi));
     c.show("effectiveStep", V::Num(step));

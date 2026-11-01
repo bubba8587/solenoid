@@ -842,8 +842,8 @@ impl Eval<'_> {
                     return V::err(sol_error(ErrorCode::Value, "Only a LAMBDA can be called like a function"));
                 };
                 let argv: Vec<V> = args.iter().map(|a| self.eta_or_eval(a, env)).collect();
-                if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
-                    return e.clone();
+                if let Some(e) = argv.iter().find_map(V::as_error) {
+                    return e;
                 }
                 let p = lam.params.len();
                 if p > 0 && argv.len() != p {
@@ -896,8 +896,8 @@ impl Eval<'_> {
         if let Some(V::Lambda(bound)) = env.get(raw) {
             let bound = bound.clone();
             let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).collect();
-            if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
-                return e.clone();
+            if let Some(e) = argv.iter().find_map(V::as_error) {
+                return e;
             }
             let p = bound.params.len();
             if p > 0 && argv.len() != p {
@@ -965,8 +965,10 @@ impl Eval<'_> {
             return crate::excel_functions::error_handler(name, &argv);
         }
         let selects = t.fast.selects;
-        if let Some(e) = argv.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
-            return e.1.clone();
+        if let Some(e) =
+            argv.iter().enumerate().find_map(|(i, v)| selects.is_none_or(|s| s(i)).then(|| v.as_error()).flatten())
+        {
+            return e;
         }
         let any_arr = argv.iter().any(is_arr);
         let lifted: Vec<usize> =
@@ -1160,8 +1162,8 @@ impl Eval<'_> {
             && let Some(list @ V::List(_)) = argv.get(w)
         {
             let V::List(items) = flat1(list) else { unreachable!() };
-            if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
-                return e.clone();
+            if let Some(e) = items.iter().find_map(V::as_error) {
+                return e;
             }
             let whole = V::List(Rc::new(items.iter().filter(|v| !matches!(v, V::Null | V::Undef)).cloned().collect()));
             let rest: Vec<V> = argv.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, v)| v.clone()).collect();
@@ -1211,8 +1213,10 @@ impl Eval<'_> {
             return V::List(Rc::new(Vec::new()));
         }
         map_cells(argv, &mut |ops| {
-            if let Some(e) = ops.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
-                return e.1.clone();
+            if let Some(e) =
+                ops.iter().enumerate().find_map(|(i, v)| selects.is_none_or(|s| s(i)).then(|| v.as_error()).flatten())
+            {
+                return e;
             }
             if !inspects_null && ops.iter().any(is_missing) {
                 return V::Null;
@@ -1542,8 +1546,8 @@ pub fn argument_error_by(t: Option<&Traits>, argv: &[V]) -> Option<V> {
     if t.as_ref().is_some_and(|t| t.kind == Kind::Handler) {
         return None;
     }
-    if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
-        return Some(e.clone());
+    if let Some(e) = argv.iter().find_map(V::as_error) {
+        return Some(e);
     }
     let t = t?;
     if t.kind != Kind::Range {

@@ -231,3 +231,22 @@ fn depreciation_npv_and_factorials_match_excel() {
     assert_eq!(num("FACTDOUBLE(6)"), 48.0);
     assert_eq!(num("FACTDOUBLE(7)"), 105.0);
 }
+
+#[test]
+fn seriessum_takes_one_coefficient_and_gestep_passes_errors() {
+    assert_eq!(num("SERIESSUM(2, 1, 1, 5)"), 10.0);
+    assert_eq!(num("SERIESSUM(2, 1, 1, SEQUENCE(3))"), 34.0);
+    assert!(is_error("SERIESSUM(2, 1, 1, \"a\")"));
+    assert_eq!(num("GESTEP(5, 4)"), 1.0);
+    assert_eq!(num("GESTEP(-1)"), 0.0);
+}
+
+#[test]
+fn an_error_from_any_function_is_the_answer() {
+    for src in ["CONCAT(NA(), \"a\")", "LEN(NA())", "UPPER(NA())", "EXACT(NA(), \"a\")", "ENCODEBASE64(NA())"] {
+        assert!(
+            matches!(eval(src), V::Err(e) if e.code == solenoid_core::error_value::ErrorCode::NotAvailable),
+            "{src}"
+        );
+    }
+}

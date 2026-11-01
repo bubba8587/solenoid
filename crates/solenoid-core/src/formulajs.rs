@@ -6,7 +6,7 @@
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::{sol_error, ErrorCode, FxError};
-use crate::excel_functions::{nums_of, parse_number, truthy, value_text, Thrown, V};
+use crate::excel_functions::{num_blank_zero, nums_of, parse_number, value_text, Thrown, V};
 use crate::jsnum::number_to_string;
 use libm::exp;
 use std::ops::{BitAnd, BitOr, BitXor};
@@ -63,16 +63,6 @@ pub const NAMES: &[&str] = &[
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
-}
-
-/// `Number(v)`, the coercion `isNaN`, `<` and arithmetic apply, which never reads text ([[C10]] socketLattice).
-fn js_number(v: &V) -> f64 {
-    crate::excel_functions::num_blank_zero(v)
-}
-
-/// The global `isNaN`.
-fn is_nan(v: &V) -> bool {
-    js_number(v).is_nan()
 }
 
 /// The first argument that is a Formula.js error.
@@ -141,10 +131,10 @@ fn with_places(result: String, places: &V) -> Result<V, Thrown> {
     if matches!(places, V::Undef) {
         return Ok(V::str(&result));
     }
-    if is_nan(places) {
+    if num_blank_zero(places).is_nan() {
         return Ok(VALUE);
     }
-    let p = js_number(places);
+    let p = num_blank_zero(places);
     if p < 0.0 {
         return Ok(NUM);
     }
@@ -494,26 +484,22 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
         }
         "SERIESSUM" => {
             let (x, n, m) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)));
+            // A single number is a one-term series; anything but numbers is #VALUE! ([[C10]] socketLattice).
             let coefficients = match arg(a, 3) {
-                V::List(items) => parse_number_array(items).map(Some),
-                // Coefficients are numbers ([[C10]] socketLattice).
-                V::Str(s) if !s.is_empty() => return Ok(VALUE),
-                // A truthy scalar has no length, so it parses as itself and reads `undefined` at [0].
-                v if truthy(v) => {
-                    if let V::Fx(_) = v {
-                        Err(VALUE)
-                    } else {
-                        Ok(None)
-                    }
-                }
+                V::List(items) => parse_number_array(items),
+                V::Num(c) => Ok(vec![*c]),
+                v @ V::Fx(_) => Err(v.clone()),
                 _ => Err(VALUE),
             };
-            let (Some(x), Some(n), Some(m), Ok(cs)) = (num_of(&x), num_of(&n), num_of(&m), coefficients) else {
+            let (Some(x), Some(n), Some(m)) = (num_of(&x), num_of(&n), num_of(&m)) else {
                 return Ok(VALUE);
             };
-            let Some(cs) = cs else { return Ok(V::Num(f64::NAN)) };
-            let mut result = cs[0] * libm::pow(x, n);
-            for (i, c) in cs.iter().enumerate().skip(1) {
+            let cs = match coefficients {
+                Ok(cs) => cs,
+                Err(e) => return Ok(e),
+            };
+            let mut result = 0.0;
+            for (i, c) in cs.iter().enumerate() {
                 result += c * libm::pow(x, n + i as f64 * m);
             }
             V::Num(result)
@@ -615,16 +601,15 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             }
         }
         "GESTEP" => {
-            let step = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(0.0) };
             let number = parse_number(arg(a, 0));
-            if let V::Fx(_) = step {
-                return Ok(step);
+            let step = if matches!(arg(a, 1), V::Undef | V::Null) { V::Num(0.0) } else { parse_number(arg(a, 1)) };
+            if let Some(e) = [&number, &step].into_iter().find(|v| matches!(v, V::Fx(_) | V::Err(_))) {
+                return Ok(e.clone());
             }
-            if matches!(step, V::Fx(_)) || matches!(number, V::Fx(_)) {
-                return Ok(number);
+            match (num_of(&number), num_of(&step)) {
+                (Some(n), Some(s)) => V::Num(if n >= s { 1.0 } else { 0.0 }),
+                _ => VALUE,
             }
-            let n = num_of(&number).unwrap_or(f64::NAN);
-            V::Num(if n >= js_number(&step) { 1.0 } else { 0.0 })
         }
         "TYPE" => crate::excel_functions::excel_type(arg(a, 0)),
         "ERF" | "ERF.PRECISE" | "ERFC" | "ERFC.PRECISE" if matches!(arg(a, 0), V::Undef) => VALUE,

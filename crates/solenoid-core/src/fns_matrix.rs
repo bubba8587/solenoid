@@ -6,9 +6,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{
-    hypot_all, js_number_of as js_number, logical_or_type_error, to_num, value_text, Thrown, V,
-};
+use crate::excel_functions::{hypot_all, logical_or_type_error, num_blank_zero, to_num, value_text, Thrown, V};
 use crate::jsnum::{lower_text, nan_max, number_to_string, round_half_up, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 
@@ -924,7 +922,7 @@ fn js_add(acc: Acc, v: &V) -> Acc {
         _ => None,
     };
     match (acc, text) {
-        (Acc::Num(a), None) => Acc::Num(a + js_number(v)),
+        (Acc::Num(a), None) => Acc::Num(a + num_blank_zero(v)),
         (Acc::Num(a), Some(t)) => Acc::Str(number_to_string(a) + &t),
         (Acc::Str(a), None) => Acc::Str(a + &value_text(v)),
         (Acc::Str(a), Some(t)) => Acc::Str(a + &t),
@@ -954,8 +952,8 @@ fn linear_fit(xs: &[V], ys: &[V], with_r2: bool) -> Option<(f64, f64, f64)> {
     let y_mean = acc_number(ya) / n as f64;
     let (mut sxy, mut sxx, mut syy) = (0.0, 0.0, 0.0);
     for i in 0..n {
-        let dx = js_number(&xs[i]) - x_mean;
-        let dy = js_number(&ys[i]) - y_mean;
+        let dx = num_blank_zero(&xs[i]) - x_mean;
+        let dy = num_blank_zero(&ys[i]) - y_mean;
         sxy += dx * dy;
         sxx += dx * dx;
         if with_r2 {
@@ -973,10 +971,10 @@ fn linear_fit(xs: &[V], ys: &[V], with_r2: bool) -> Option<(f64, f64, f64)> {
 /// (m, b).
 fn exp_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let n = xs.len().min(ys.len());
-    if !ys[..n].iter().all(|y| js_number(y) > 0.0) {
+    if !ys[..n].iter().all(|y| num_blank_zero(y) > 0.0) {
         return None;
     }
-    let logs: Vec<V> = ys[..n].iter().map(|y| V::Num(libm::log(js_number(y)))).collect();
+    let logs: Vec<V> = ys[..n].iter().map(|y| V::Num(libm::log(num_blank_zero(y)))).collect();
     let (slope, intercept, _) = linear_fit(&xs[..n], &logs, false)?;
     Some((libm::exp(slope), libm::exp(intercept)))
 }
@@ -1007,13 +1005,13 @@ fn regression_targets(target: &V) -> Result<Vec<f64>, V> {
         return Err(e);
     }
     no_text(&l, "New Xs")?;
-    Ok(l.iter().filter(|v| !matches!(v, V::Null)).map(js_number).collect())
+    Ok(l.iter().filter(|v| !matches!(v, V::Null)).map(num_blank_zero).collect())
 }
 
 fn slope_through_origin(xs: &[V], ys: &[f64]) -> Option<f64> {
     let (mut sxy, mut sxx) = (0.0, 0.0);
     for (x, y) in xs.iter().zip(ys) {
-        let x = js_number(x);
+        let x = num_blank_zero(x);
         sxy += x * y;
         sxx += x * x;
     }
@@ -1050,7 +1048,7 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
         Ok(p) => p,
         Err(e) => return e,
     };
-    if growth && py.iter().any(|y| !(js_number(y) > 0.0)) {
+    if growth && py.iter().any(|y| !(num_blank_zero(y) > 0.0)) {
         return nonpositive_y();
     }
     let target = if !nullish(new_xs) {
@@ -1069,13 +1067,13 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
     }
     if !nullish(konst) && !is_true(konst) {
         if growth {
-            let logs: Vec<f64> = py.iter().map(|y| libm::log(js_number(y))).collect();
+            let logs: Vec<f64> = py.iter().map(|y| libm::log(num_blank_zero(y))).collect();
             return match slope_through_origin(&px, &logs) {
                 Some(ln_m) => nums_v(targets.iter().map(|x| libm::exp(ln_m * x)).collect()),
                 None => list(vec![]),
             };
         }
-        let ys: Vec<f64> = py.iter().map(js_number).collect();
+        let ys: Vec<f64> = py.iter().map(num_blank_zero).collect();
         return match slope_through_origin(&px, &ys) {
             Some(m) => nums_v(targets.iter().map(|x| m * x).collect()),
             None => list(vec![]),
@@ -1249,13 +1247,13 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                     other => vec![other.clone()],
                 })
                 .filter(|v| !matches!(v, V::Undef))
-                .map(|v| js_number(&v))
+                .map(|v| num_blank_zero(&v))
                 .collect();
             choose_axis(&m, &idx, name == "CHOOSEROWS")
         }
         "EXPAND" => {
             let Some(m) = tri!(to_matrix(arg(a, 0))) else { return Ok(V::Null) };
-            let count = |v: &V| if nullish(v) { 0.0 } else { round_half_up(js_number(v)) };
+            let count = |v: &V| if nullish(v) { 0.0 } else { round_half_up(num_blank_zero(v)) };
             let fill = if nullish(arg(a, 3)) { V::Null } else { arg(a, 3).clone() };
             expand_mat(&m, count(arg(a, 1)), count(arg(a, 2)), fill)
         }
@@ -1272,7 +1270,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nullish(n) {
                 return Ok(V::Null);
             }
-            let k = round_half_up(js_number(n));
+            let k = round_half_up(num_blank_zero(n));
             if k < 1.0 || k.is_nan() {
                 return Ok(list(vec![]));
             }
@@ -1296,7 +1294,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if read.iter().any(crate::excel_functions::holds_text) {
                 return Ok(err(ErrorCode::Value, "DIAGONAL needs numbers"));
             }
-            let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(js_number(c)) };
+            let num_or_null = |c: &V| if nullish(c) { V::Null } else { V::Num(num_blank_zero(c)) };
             if let V::List(items) = v
                 && matches!(items.first(), Some(V::List(_)))
             {
@@ -1404,7 +1402,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nullish(l) || nullish(w) {
                 return Ok(V::Null);
             }
-            let width = tri!(wrap_count(js_number(w), name)) as usize;
+            let width = tri!(wrap_count(num_blank_zero(w), name)) as usize;
             let rows = name == "WRAPROWS";
             let what = if rows { "row" } else { "column" };
             let pad = || {
@@ -1426,12 +1424,12 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             if nullish(rows) {
                 return Ok(V::Null);
             }
-            let r = array_count(js_number(rows), "SEQUENCE");
-            let c = if nullish(cols) { Ok(1.0) } else { array_count(js_number(cols), "SEQUENCE") };
+            let r = array_count(num_blank_zero(rows), "SEQUENCE");
+            let c = if nullish(cols) { Ok(1.0) } else { array_count(num_blank_zero(cols), "SEQUENCE") };
             let r = tri!(r);
             let c = tri!(c);
-            let s0 = if nullish(start) { 1.0 } else { js_number(start) };
-            let st = if nullish(step) { 1.0 } else { js_number(step) };
+            let s0 = if nullish(start) { 1.0 } else { num_blank_zero(start) };
+            let st = if nullish(step) { 1.0 } else { num_blank_zero(step) };
             let total = r * c;
             if total > MAX_GENERATED {
                 return Ok(err(
@@ -1464,7 +1462,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             frequency_bins(&to_list(d), &to_list(b))
         }
         "CROSSPRODUCT" => cross_product(&to_list(arg(a, 0)), &to_list(arg(a, 1))),
-        "POLYFIT" => polyfit_eval(&to_list(arg(a, 0)), &to_list(arg(a, 1)), js_number(arg(a, 2)))?,
+        "POLYFIT" => polyfit_eval(&to_list(arg(a, 0)), &to_list(arg(a, 1)), num_blank_zero(arg(a, 2)))?,
         "POLYROOTS" => {
             let cs = present_numbers(&to_list(arg(a, 0)));
             match poly_roots(&cs) {
@@ -1473,7 +1471,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             }
         }
         "QUADRATICROOTS" => {
-            let (qa, qb, qc) = (js_number(arg(a, 0)), js_number(arg(a, 1)), js_number(arg(a, 2)));
+            let (qa, qb, qc) = (num_blank_zero(arg(a, 0)), num_blank_zero(arg(a, 1)), num_blank_zero(arg(a, 2)));
             if qa.is_nan() || qb.is_nan() || qc.is_nan() {
                 return Ok(err(ErrorCode::Value, "QUADRATICROOTS takes numeric coefficients a, b, c"));
             }
@@ -1506,7 +1504,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                     None => V::Null,
                 });
             }
-            if py.iter().any(|y| !(js_number(y) > 0.0)) {
+            if py.iter().any(|y| !(num_blank_zero(y) > 0.0)) {
                 return Ok(nonpositive_y());
             }
             match exp_fit(&px, &py) {

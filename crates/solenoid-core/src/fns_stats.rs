@@ -8,8 +8,7 @@ use crate::date_serial::civil;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::{sol_error, ErrorCode, FxError};
 use crate::excel_functions::{
-    average_ranks, holds_text, js_parse_float, mean_of, num_blank_zero, nums_of, parse_number, ssd, sum, to_num,
-    value_text, Thrown, V,
+    average_ranks, holds_text, mean_of, num_blank_zero, nums_of, parse_number, ssd, sum, to_num, Thrown, V,
 };
 use crate::jsnum::{nan_max, nan_min, number_to_string, round_half_up};
 use libm::{cos, exp, log, sin};
@@ -885,10 +884,10 @@ fn serial_to_date(serial: f64) -> f64 {
     civil::new_date(1970.0, 0.0, 1.0 + days, 0.0, 0.0, seconds, 0.0)
 }
 
-/// Formula.js `parseDate`, without its reading of date text: text is never a date ([[C10]] socketLattice).
+/// A serial as a date; text is never a date ([[C10]] socketLattice).
 pub(crate) fn parse_date(v: &V) -> FxDate {
-    if !num_blank_zero(v).is_nan() {
-        let d = js_parse_float(&value_text(v));
+    let d = num_blank_zero(v);
+    if !d.is_nan() {
         if d < 0.0 || d >= 2958466.0 {
             return FxDate::Err(FxError::Num);
         }

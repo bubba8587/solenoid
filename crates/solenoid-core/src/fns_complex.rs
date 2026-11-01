@@ -3,7 +3,7 @@
 //! similarity ones, the list padders and BIN, and TIMEZONECONVERT.
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{hypot_all, to_num, to_str, value_text, Thrown, V};
+use crate::excel_functions::{hypot_all, num_blank_zero, to_num, to_str, value_text, Thrown, V};
 use crate::jsnum::{is_space_char, lower_text, number_to_string, round_half_up, string_to_number, trim_space};
 use crate::value_kinds::MAX_GENERATED;
 use libm::{atan2, cos, cosh, exp, log, sin, sinh};
@@ -48,11 +48,6 @@ pub const NAMES: &[&str] = &[
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
-}
-
-/// `Number(v)`, which never reads text ([[C10]] socketLattice).
-fn js_number(v: &V) -> f64 {
-    crate::excel_functions::num_blank_zero(v)
 }
 
 fn is_nullish(v: &V) -> bool {
@@ -280,14 +275,14 @@ fn complex(name: &str, a: &[V]) -> V {
             if let V::Cx(..) = arg(a, 1) {
                 return V::err(sol_error(ErrorCode::Type, "IMPOWER's exponent is a real number"));
             }
-            let p = js_number(arg(a, 1));
+            let p = num_blank_zero(arg(a, 1));
             if p.is_nan() {
                 return V::err(sol_error(ErrorCode::Value, "IMPOWER's exponent must be a number"));
             }
             cx_v(cx_pow(z, p))
         }
         "COMPLEX" => {
-            let (r, i) = (js_number(arg(a, 0)), js_number(arg(a, 1)));
+            let (r, i) = (num_blank_zero(arg(a, 0)), num_blank_zero(arg(a, 1)));
             if r.is_nan() || i.is_nan() {
                 return V::err(sol_error(ErrorCode::Value, "COMPLEX takes real and imaginary NUMBERS"));
             }
@@ -491,7 +486,7 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
                 )));
             };
             let m = if m == Sim::Levenshtein { Sim::Ratio } else { m };
-            let threshold = if is_nullish(arg(a, 2)) { 0.6 } else { js_number(arg(a, 2)) };
+            let threshold = if is_nullish(arg(a, 2)) { 0.6 } else { num_blank_zero(arg(a, 2)) };
             let needle = to_str(arg(a, 0));
             let mut best: Option<(V, f64)> = None;
             for c in to_list(arg(a, 1)) {
@@ -508,12 +503,12 @@ pub fn call(name: &str, a: &[V]) -> Result<V, Thrown> {
             )
         }
         "PADLEFT" | "PADRIGHT" => {
-            let n = js_number(arg(a, 1));
+            let n = num_blank_zero(arg(a, 1));
             let fill = if is_nullish(arg(a, 2)) { V::Num(0.0) } else { arg(a, 2).clone() };
             capped(name, n, || pad_list(to_list(arg(a, 0)), n, fill, name == "PADLEFT"))
         }
         "REPEAT" => {
-            let n = js_number(arg(a, 1));
+            let n = num_blank_zero(arg(a, 1));
             capped(name, n, || vec![arg(a, 0).clone(); round_half_up(n).max(0.0) as usize])
         }
         "BIN" => V::List(std::rc::Rc::new(bin_index(&to_list(arg(a, 0)), &to_list(arg(a, 1))))),

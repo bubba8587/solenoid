@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::error_value::{sol_error, ErrorCode};
-use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
+use crate::excel_functions::{if_test, num_blank_zero, to_num, Cond, V};
 use crate::jsnum::{number_to_string, round_half_up};
 use crate::sort::stable_sort_by;
 use crate::string_order::compare_strings;
@@ -278,9 +278,9 @@ fn drop_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
     }
 }
 
-/// `Math.round(Number(v))`.
+/// A number rounded half up, a blank as 0.
 fn rounded(v: &V) -> f64 {
-    round_half_up(js_number_of(v))
+    round_half_up(num_blank_zero(v))
 }
 
 /// UNIQUE's row key: `JSON.stringify` of the row, an error as `\0err:<code>`; NaN and the infinities read as null.

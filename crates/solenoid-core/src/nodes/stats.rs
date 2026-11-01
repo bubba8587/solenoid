@@ -915,9 +915,9 @@ fn distributions(c: &mut Call) -> Answer {
             let head = |v: &V| match v {
                 V::List(items) => match items.first() {
                     None | Some(V::Null | V::Undef) => 0.0,
-                    Some(x) => crate::excel_functions::js_number_of(x),
+                    Some(x) => crate::excel_functions::num_blank_zero(x),
                 },
-                v => crate::excel_functions::js_number_of(v),
+                v => crate::excel_functions::num_blank_zero(v),
             };
             let n = crate::jsnum::nan_min(100_000.0, crate::jsnum::nan_max(0.0, round_half_up(head(&count))));
             let nums: Vec<f64> = ps.iter().map(head).collect();
@@ -947,8 +947,8 @@ fn distributions(c: &mut Call) -> Answer {
             let r = match dist_call(&op, &form, o[0], &ps) {
                 Some((name, args)) => core_call(name, &args),
                 None => {
-                    let nums: Vec<f64> = ps.iter().map(crate::excel_functions::js_number_of).collect();
-                    match crate::dists::compute(&op, f, crate::excel_functions::js_number_of(o[0]), &nums) {
+                    let nums: Vec<f64> = ps.iter().map(crate::excel_functions::num_blank_zero).collect();
+                    match crate::dists::compute(&op, f, crate::excel_functions::num_blank_zero(o[0]), &nums) {
                         Ok(Some(n)) => V::Num(n),
                         _ => V::Null,
                     }

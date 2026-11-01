@@ -50,6 +50,15 @@ impl V {
     pub fn is_sol_error(&self) -> bool {
         matches!(self, V::Err(_))
     }
+
+    /// The value as Solenoid's error when it is an error of either kind, a Formula.js one read as Solenoid's.
+    pub fn as_error(&self) -> Option<V> {
+        match self {
+            V::Err(_) => Some(self.clone()),
+            V::Fx(code) => Some(V::err(fx_error_to_sol(*code))),
+            _ => None,
+        }
+    }
 }
 
 /// A JS exception: it ends the evaluation, so the call answers it whatever encloses the body.
@@ -4999,7 +5008,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             V::Num(if arm == F::COUNTA { a.len() - blanks } else { blanks } as f64)
         }
         F::ISEVEN | F::ISODD => {
-            let odd = to_int32(js_number_of(arg(a, 0)).abs().floor()) & 1 == 1;
+            let odd = to_int32(num_blank_zero(arg(a, 0)).abs().floor()) & 1 == 1;
             V::Bool(if arm == F::ISODD { odd } else { !odd })
         }
         F::ISNONTEXT => V::Bool(!matches!(arg(a, 0), V::Str(_))),
@@ -5896,14 +5905,6 @@ fn dollar(value: &V, decimals: &V) -> Result<V, Thrown> {
     let text = usd_text(r.abs(), d.max(0.0) as usize);
     // The sign is the number's, so a negative that rounds to zero still reads ($0.00), as in Excel.
     Ok(V::str(&if n < 0.0 { format!("({text})") } else { text }))
-}
-
-/// `Number(v)` as `Math.abs` reads it.
-pub(crate) fn js_number_of(v: &V) -> f64 {
-    match v {
-        V::Null => 0.0,
-        other => num_blank_zero(other),
-    }
 }
 
 /// ECMAScript `ToInt32`.
