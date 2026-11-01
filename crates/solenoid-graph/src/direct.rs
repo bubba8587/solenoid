@@ -69,6 +69,8 @@ pub(crate) struct Direct {
     stamped: RefCell<FxHashMap<String, Stamped>>,
     /// A `nodes::keeps_answer` card's last answer, with the call and the inputs it answered (`call`).
     kept: RefCell<Option<Kept>>,
+    /// What its body drew, and the recalc generation the draws hold for ([[C23]] calcModes).
+    draws: RefCell<Option<(u64, nodes::Draws)>>,
 }
 
 /// A card's answer and the call and inputs it answered.
@@ -412,10 +414,19 @@ impl Run<'_> {
             Rc::make_mut(&mut c.init).extend(fields);
         }
         let watched = header.watch.as_deref().map(|f| self.field(f));
+        let generation = crate::wasm::recalc_gen();
+        let held = self.card.direct.draws.borrow_mut().take();
+        c.draws = Some(match held {
+            Some((g, d)) if g == generation => d,
+            _ => nodes::Draws::default(),
+        });
         let answer = {
             let _calc = solenoid_core::excel_functions::Calc::begin(boundary::clock());
             nodes::run(&header.kind, &mut c)
         };
+        if let Some(d) = c.draws.take().filter(|d| !d.is_empty()) {
+            *self.card.direct.draws.borrow_mut() = Some((generation, d));
+        }
         let units = std::mem::take(&mut c.matrix_units_out);
         let display = std::mem::take(&mut c.display);
         match answer {

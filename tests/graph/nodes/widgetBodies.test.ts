@@ -12,6 +12,7 @@ import { RandBetweenNode } from "../../../src/graph/nodes/display";
 import { ShuffleNode, RandArrayNode } from "../../../src/graph/nodes/list";
 import { UuidNode, PromoNode } from "../../../src/graph/nodes/text";
 import { DistributionsNode } from "../../../src/graph/nodes/distribution";
+import { inEditor, Src } from "../cardPasses";
 import { HeadersNode, SplitFrameNode, SettleNode, DescribeNode, CorrMatrixNode, PcaNode, DecisionSensitivityNode } from "../../../src/graph/nodes/frame";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { isSolError, solError } from "../../../src/graph/errorValue";
@@ -237,13 +238,30 @@ describe("Value Input outside dates", () => {
 });
 
 describe("the random draws' bodies", () => {
-  it("RAND scales its held roll to the bounds", () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it("RAND draws between the bounds, either way round", () => {
     const n = new RandBetweenNode();
-    (n as unknown as { rawRoll: number }).rawRoll = 0.25;
-    expect(n.body({})).toEqual({ result: 0.25 });
-    expect(n.body({ bound1: [10], bound2: [20] })).toEqual({ result: 12.5 });
-    expect(n.body({ bound1: [20], bound2: [10] })).toEqual({ result: 17.5 });
-    expect(n.body({ bound1: [null as unknown as number] })).toEqual({ result: null });
+    const r = n.data({}).result as number;
+    expect(r).toBeGreaterThanOrEqual(0);
+    expect(r).toBeLessThan(1);
+    const s = n.data({ bound1: [20], bound2: [10] }).result as number;
+    expect(s).toBeGreaterThan(10);
+    expect(s).toBeLessThanOrEqual(20);
+    expect(n.data({ bound1: [null as unknown as number] })).toEqual({ result: null });
+  });
+
+  it("RAND holds its roll through passes and rescales it live; a recalc rolls again", async () => {
+    const n = new RandBetweenNode();
+    const g = await inEditor(n);
+    const a = (await g.pass("result")) as number;
+    expect(await g.pass("result")).toBe(a);
+    n.literals = { bound1: 10, bound2: 20 };
+    n.edited();
+    expect(await g.pass("result")).toBeCloseTo(10 + a * 10, 12);
+    g.recalc();
+    expect(await g.pass("result")).not.toBe(10 + a * 10);
+    g.dispose();
   });
 
   it("RANDARRAY answers an error in Count, Min or Max, the first in that order", () => {
@@ -257,45 +275,77 @@ describe("the random draws' bodies", () => {
     expect(n.data({ count: [2], min: [3], max: [4] }).list).toHaveLength(2);
   });
 
-  it("Shuffle orders by its held keys, weighted or not", () => {
+  it("RANDARRAY holds its rolls: a longer count extends them, new bounds rescale them, a recalc rolls again", async () => {
+    const n = new RandArrayNode();
+    n.literals = { count: 3 };
+    const g = await inEditor(n);
+    const a = (await g.pass("list")) as number[];
+    expect(a).toHaveLength(3);
+    expect(await g.pass("list")).toEqual(a);
+    n.literals = { count: 5 };
+    n.edited();
+    const longer = (await g.pass("list")) as number[];
+    expect(longer.slice(0, 3)).toEqual(a);
+    n.literals = { count: 5, min: 0, max: 10 };
+    n.edited();
+    expect(((await g.pass("list")) as number[]).map((x) => x / 10)).toEqual(longer.map((x) => expect.closeTo(x, 12)));
+    g.recalc();
+    expect(((await g.pass("list")) as number[]).slice(0, 3)).not.toEqual(a.map((x) => x * 10));
+    g.dispose();
+  });
+
+  it("Shuffle answers a permutation, weighted or not", () => {
     const n = new ShuffleNode();
-    const keys = (k: number[]) => { (n as unknown as { keys: number[] }).keys = k; };
-    keys([0.5, 0.1, 0.9]);
-    expect(n.body({ list: [["a", "b", "c"]] }).result).toEqual(["b", "a", "c"]);
-    expect(n.body({ list: [["a", "b", "c"]], weights: [[1, 100, 1]] }).result).toEqual(["b", "c", "a"]);
-    expect(n.body({ list: [["a", "b", "c"]], weights: [[0, 1, 0]] }).result).toEqual(["b", "a", "c"]);
-    expect(isSolError(n.body({ list: [["a", "b", "c"]], weights: [[1]] }).result)).toBe(true);
-    expect(isSolError(n.body({ list: [["a", "b", "c"]], weights: [[0, 0, 0]] }).result)).toBe(true);
-    keys([]);
-    expect(n.body({ list: [[]] }).result).toEqual([]);
-    keys([0.3, 0.2]);
-    expect(n.body({ list: [[1, 2]], weights: [[2, "x", 5]] }).result).toEqual([1, 2]);
+    expect([...(n.data({ list: [["a", "b", "c"]] }).result as string[])].sort()).toEqual(["a", "b", "c"]);
+    expect((n.data({ list: [["a", "b", "c"]], weights: [[0, 1, 0]] }).result as string[])[0]).toBe("b");
+    expect(isSolError(n.data({ list: [["a", "b", "c"]], weights: [[1]] }).result)).toBe(true);
+    expect(isSolError(n.data({ list: [["a", "b", "c"]], weights: [[0, 0, 0]] }).result)).toBe(true);
+    expect(n.data({ list: [[]] }).result).toEqual([]);
+    expect([...(n.data({ list: [[1, 2]], weights: [[2, "x", 5]] }).result as number[])].sort()).toEqual([1, 2]);
   });
 
-  it("UUID and Promo hand on what their shell drew", () => {
+  it("Shuffle holds its order through passes while values change in place", async () => {
+    const letters = "abcdefghijklmnopqrstuvwxyz".split("");
+    const src = new Src(letters);
+    const n = new ShuffleNode();
+    const g = await inEditor(n);
+    await g.wire(src, "list");
+    const a = (await g.pass("result")) as string[];
+    expect(await g.pass("result")).toEqual(a);
+    src.out = letters.map((l) => l.toUpperCase());
+    expect(await g.pass("result")).toEqual(a.map((l) => l.toUpperCase()));
+    g.dispose();
+  });
+
+  it("UUID and Promo hold their draw through passes; a recalc draws again", async () => {
     const u = new UuidNode();
-    (u as unknown as { generated: string }).generated = "123e4567-e89b-42d3-a456-426614174000";
-    expect(u.body().result).toBe("123e4567-e89b-42d3-a456-426614174000");
+    expect(u.data().result).toMatch(UUID);
+    const g = await inEditor(u);
+    const id = await g.pass("result");
+    expect(id).toMatch(UUID);
+    expect(await g.pass("result")).toBe(id);
+    g.recalc();
+    expect(await g.pass("result")).not.toBe(id);
+    g.dispose();
     const p = new PromoNode();
-    for (const roll of [0, 0.2, 0.5, 0.75, 0.999]) {
-      (p as unknown as { roll: number }).roll = roll;
-      expect(typeof p.body().value).toBe("string");
-    }
+    expect(typeof p.data().value).toBe("string");
+    const h = await inEditor(p);
+    const line = await h.pass("value");
+    expect(typeof line).toBe("string");
+    expect(await h.pass("value")).toBe(line);
+    h.dispose();
   });
 
-  it("Distributions samples from its held seed", () => {
+  it("Distributions samples every family", () => {
     for (const op of ["normal", "binom", "poisson", "t", "expon", "hypgeom", "beta", "weibull", "negbinom", "chisq"] as const) {
       const n = new DistributionsNode({ op, form: "sample" });
-      (n as unknown as { sampleSeed: number }).sampleSeed = 12345;
       n.literals.count = 7;
-      const r = n.body({}).result;
-      expect(Array.isArray(r)).toBe(true);
+      expect(n.data({}).result).toHaveLength(7);
     }
     const n = new DistributionsNode({ op: "normal", form: "sample" });
-    (n as unknown as { sampleSeed: number }).sampleSeed = 99;
-    expect(n.body({ count: [[3, 9]], mean: [[5]] }).result).toHaveLength(3);
-    expect(n.body({ count: [null] }).result).toBeNull();
-    expect(n.body({ count: [-4] }).result).toEqual([]);
+    expect(n.data({ count: [[3, 9]], mean: [[5]] }).result).toHaveLength(3);
+    expect(n.data({ count: [null] }).result).toBeNull();
+    expect(n.data({ count: [-4] }).result).toEqual([]);
   });
 });
 

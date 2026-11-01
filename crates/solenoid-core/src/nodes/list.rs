@@ -1835,11 +1835,9 @@ fn shuffle(c: &mut Call) -> Answer {
         Some(V::Str(s)) => s.chars().map(|ch| V::str(&ch.to_string())).collect(),
         _ => Vec::new(),
     };
-    let held: Vec<f64> = c
-        .field("keys")
-        .and_then(serde_json::Value::as_array)
-        .map(|a| a.iter().map(|k| k.as_f64().unwrap_or(f64::NAN)).collect())
-        .unwrap_or_default();
+    // Per-slot uniforms, not a fixed permutation, so live values flow through while the order holds until the
+    // generation advances; a new length draws them all anew.
+    let held = c.rolls("keys", arr.len(), true);
     let weights = match c.wired("weights").and_then(|w| w.first()) {
         Some(V::List(w)) => Some(w.clone()),
         _ => None,
@@ -1895,9 +1893,8 @@ fn js_plus(lo: &V, x: f64) -> V {
     }
 }
 
-/// The RANDARRAY card: the rolls its shell drew this recalculation, scaled into Min and Max; where it holds fewer or
-/// more than the count, it asks for that many (`rollsNeeded`) and answers nothing until it has them. An error in
-/// Count, Min or Max is the answer, the first in that order.
+/// The RANDARRAY card: as many rolls as the count, held until the generation advances, scaled into Min and Max, so
+/// new bounds rescale the same draws. An error in Count, Min or Max is the answer, the first in that order.
 fn rand_array(c: &mut Call) -> Answer {
     // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
     let count_raw = or(read_role(c, "count", &Role::Setting(V::Undef)), V::Num(1.0));
@@ -1929,20 +1926,9 @@ fn rand_array(c: &mut Call) -> Answer {
     };
     if let Some(e) = bad {
         c.show("cachedList", e.clone());
-        c.show("rolls", list(Vec::new()));
-        c.show("rollsNeeded", V::Null);
         return Ok(vec![("list".into(), Cv::from(e))]);
     }
-    let rolls: Vec<f64> = c
-        .field("rolls")
-        .and_then(serde_json::Value::as_array)
-        .map(|a| a.iter().map(|r| r.as_f64().unwrap_or(f64::NAN)).collect())
-        .unwrap_or_default();
-    if rolls.len() as f64 != count {
-        c.show("rollsNeeded", V::Num(count));
-        return Ok(vec![("list".into(), Cv::from(V::Null))]);
-    }
-    c.show("rollsNeeded", V::Null);
+    let rolls = c.rolls("rolls", count as usize, false);
     let (a, b) = (js_number(&lo), js_number(&hi));
     let drawn = list(
         rolls

@@ -962,13 +962,10 @@ fn cast(c: &mut Call) -> Answer {
     Ok(vec![("result".into(), Cv::from(scalar))])
 }
 
-// ─── UUID and Promo, over what their shells drew ([[C23]] calcModes) ─
+// ─── UUID and Promo, each a draw held until the generation advances ([[C23]] calcModes) ─
 
 fn uuid(c: &mut Call) -> Answer {
-    let generated = match c.field("generated").map(super::decode) {
-        Some(V::Str(s)) => V::Str(s),
-        _ => V::Undef,
-    };
+    let generated = V::str(&c.drawn_text("generated", crate::fns_random::uuid_v4));
     c.show("cachedText", generated.clone());
     Ok(vec![("result".into(), Cv::from(generated))])
 }
@@ -984,7 +981,7 @@ const PROMO_LINES: [&str; 7] = [
 ];
 
 fn promo(c: &mut Call) -> Answer {
-    let roll = c.field("roll").and_then(serde_json::Value::as_f64).unwrap_or(f64::NAN);
+    let roll = c.rolls("roll", 1, false)[0];
     let at = (roll * PROMO_LINES.len() as f64).floor();
     let line = if at >= 0.0 && at < PROMO_LINES.len() as f64 { V::str(PROMO_LINES[at as usize]) } else { V::Undef };
     c.show("cachedText", line.clone());

@@ -7,7 +7,6 @@ import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { cardShapeOnCore, type Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
-import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
 import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
@@ -1293,9 +1292,6 @@ export class ShuffleNode extends GraphNode {
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 150;
-  // Per-slot uniforms, not a fixed permutation, so live values flow through while the order holds until a recalc.
-  private keys: number[] = [];
-  private lastGen = -1;
 
   constructor(init?: { label?: string }) {
     super("Shuffle");
@@ -1305,20 +1301,7 @@ export class ShuffleNode extends GraphNode {
     this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
-  static coreFields = ["keys"];
-
-  /** The keys are drawn here; `body` orders the list by them. */
-  data(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
-    const n = [...(inputs.list?.[0] ?? [])].length;
-    const gen = getRecalcGen();
-    if (this.lastGen !== gen || this.keys.length !== n) {
-      this.keys = Array.from({ length: n }, () => Math.random());
-      this.lastGen = gen;
-    }
-    return this.body(inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
+  data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { result: unknown[] | SolError };
   }
 }
@@ -1551,12 +1534,6 @@ export class RandArrayNode extends GraphNode {
   cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 };
   width = 180; height = 250;
-  // Raw [0,1) rolls hold until a recalc; min and max apply live, so new bounds rescale the same draws.
-  rolls: number[] = [];
-  private lastGen = -1;
-  /** How many rolls the body's last call needed and wasn't handed; the shell draws them and calls it again. */
-  rollsNeeded: number | null = null;
-  static coreFields = ["rolls"];
 
   constructor(init?: { label?: string; integer?: boolean }) {
     super("RandArray");
@@ -1568,20 +1545,7 @@ export class RandArrayNode extends GraphNode {
     this.addOutput("list", listOut("List"));
   }
 
-  /** The rolls are drawn here, once a recalculation, as many as `body` asks for; `body` reads the count and scales them. */
-  data(inputs: Record<string, unknown[] | undefined>): { list: number[] | SolError | null } {
-    const gen = getRecalcGen();
-    if (this.lastGen !== gen) {
-      this.rolls = [];
-      this.lastGen = gen;
-    }
-    const out = this.body(inputs);
-    if (this.rollsNeeded === null) return out;
-    this.rolls = Array.from({ length: this.rollsNeeded }, () => Math.random());
-    return this.body(inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>): { list: number[] | SolError | null } {
+  data(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { list: number[] | SolError | null };
   }
 }

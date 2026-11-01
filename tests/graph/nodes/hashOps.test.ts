@@ -1,6 +1,5 @@
 // [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import { uuidV4 } from "../../../src/graph/nodes/hashOps";
 import { coreFunction } from "../coreFunction";
 
 const hash = (algorithm: string) => (text: string) => coreFunction("HASH")!(text, algorithm) as string;
@@ -53,8 +52,9 @@ describe("base64 + uuid", () => {
     expect(base64Decode("not base64!")).toBe("not base64!"); // text that is not base64 passes through
     expect(base64Decode("")).toBe("");
   });
-  it("uuidV4 is RFC 4122 shaped and fresh each call", () => {
-    const a = uuidV4(), b = uuidV4();
+  it("UUID is RFC 4122 shaped and fresh each call", () => {
+    const uuid = coreFunction("UUID")!;
+    const a = uuid() as string, b = uuid() as string;
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(a).not.toBe(b);
   });

@@ -4,14 +4,33 @@ import { AlertNode } from "../../../src/graph/nodes/display";
 import { extractInit } from "../../../src/graph/nodeInit";
 import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
+import { beginGraphRebuild, endGraphRebuild } from "../../../src/graph/process";
+import { inEditor } from "../cardPasses";
 
-// The Alert node fires (logs a HUD event + raises a toast) on the RISING edge of
-// its trigger condition. Unlike a "no baseline yet" design, a freshly-created
-// node CAN fire on its first eval (so wiring in a triggering value works), while
-// a MODE CHANGE only re-baselines (switching mode never toasts).
+// The Alert node fires (logs a HUD event + raises a toast) when its status changes to one that alerts. Its body
+// shows the status (`alertKey`) and what it fires (`alertMessage`); the TS only raises it. A freshly-created node
+// CAN fire on its first eval (so wiring in a triggering value works), and switching mode into a met condition fires.
 
 describe("AlertNode", () => {
   beforeEach(() => alertStore.clear());
+
+  it("fires from the engine's direct call on a change of status, and not while the graph rebuilds", async () => {
+    const n = new AlertNode({ label: "Temp" });
+    n.literals = { value: 150, low: 0, high: 100, target: 0 };
+    const g = await inEditor(n);
+    expect(await g.pass("result")).toBe(2);
+    expect(alertStore.list().map((a) => a.message)).toEqual(["Temp: 150 above 100"]);
+    await g.pass("result");
+    expect(alertStore.list()).toHaveLength(1);
+    n.literals = { value: -5, low: 0, high: 100, target: 0 };
+    n.edited();
+    beginGraphRebuild();
+    try { expect(await g.pass("result")).toBe(1); } finally { endGraphRebuild(); }
+    expect(alertStore.list()).toHaveLength(1);
+    await g.pass("result");
+    expect(alertStore.list()).toHaveLength(1);
+    g.dispose();
+  });
 
   it("round-trips mode through extractInit", () => {
     const n = new AlertNode({ condition: "boolean" });

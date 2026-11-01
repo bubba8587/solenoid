@@ -163,6 +163,9 @@ pub fn reads_lists(name: &str) -> bool {
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 pub struct Clock {
     pub now: f64,
+    /// The same moment as an instant, milliseconds since 1970 UTC (`Date.now()`), where the host gave it.
+    #[serde(default)]
+    pub ms: Option<f64>,
 }
 
 thread_local! {
@@ -176,6 +179,16 @@ pub fn set_clock(c: Option<Clock>) {
 
 fn clock() -> Option<Clock> {
     CLOCK.with(|k| k.get())
+}
+
+/// The calc's moment as an instant (milliseconds since 1970 UTC), NaN without a clock: the host's own reading, else
+/// the wall clock's serial read back through the local zone.
+pub fn clock_instant() -> f64 {
+    match clock() {
+        None => f64::NAN,
+        Some(Clock { ms: Some(ms), .. }) => ms,
+        Some(Clock { now, .. }) => crate::zone::utc((now - 25569.0) * 86_400_000.0),
+    }
 }
 
 thread_local! {

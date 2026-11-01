@@ -791,10 +791,10 @@ fn cable_switch(c: &mut Call) -> Answer {
     Ok(vec![("out".into(), out)])
 }
 
-// ─── RAND over its drawn roll ───────────────────────────────────────────────────
+// ─── RAND: one roll held until the generation advances, the bounds applied live ─────
 
 fn rand_between(c: &mut Call) -> Answer {
-    let roll = init_num(c, "rawRoll", f64::NAN);
+    let roll = c.rolls("rawRoll", 1, false)[0];
     let (b1, b2) = (c.read_num("bound1", 0.0), c.read_num("bound2", 1.0));
     let out = match (&b1, &b2) {
         (V::Null, _) | (_, V::Null) => V::Null,

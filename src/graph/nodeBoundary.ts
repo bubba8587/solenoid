@@ -143,5 +143,5 @@ whenWasmEngineLoads(() => setBoundaryHost({
     return [value];
   },
   held: (v: object, id: number) => holdAs(v, id),
-  clock: () => engineClock().now,
+  clock: () => engineClock(),
 }));

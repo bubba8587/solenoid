@@ -421,8 +421,9 @@ describe("[[C23]] calcModes — a volatile data() freezes its roll on getRecalcG
   // Math.random() called bare in data() re-rolls on EVERY recompute pass — any
   // unrelated edit anywhere silently changes the value, F9 stops being the
   // thing that controls re-rolling, and a Monte Carlo built on it is
-  // non-reproducible. The convention (RandBetween/Shuffle/RandArray/random-line)
-  // caches the draw and re-rolls only when the recalc generation changes.
+  // non-reproducible. The random cards draw in their Rust bodies, which the
+  // engine holds for the recalc generation (graph-core.md § Direct calls); a
+  // TS draw caches against the generation the same way.
   const SANCTIONED: Record<string, string> = {
     "nodes/composite.ts": "generates port/scenario IDS at author time, not values in data()",
   };

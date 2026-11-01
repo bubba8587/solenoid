@@ -20,7 +20,7 @@ import type { Schemes } from "../../src/graph/schemes";
 // recompute that an AlertNode downstream still fires off, exactly as it would
 // off a manual edit. The one thing that could silently break this is
 // refreshConnection accidentally running inside a "graph rebuild" scope (the
-// ONLY gate AlertNode.detectAndFire checks — see nodes/display.ts) the way
+// ONLY gate raiseWatched checks — see nodes/display.ts) the way
 // loadGraph does; it must not.
 
 function mockCsvResponse(body: string) {

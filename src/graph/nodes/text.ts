@@ -5,8 +5,7 @@ import {
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
   readInput, type CellResult, type BroadcastResult,
 } from "./shared";
-import { getRecalcGen } from "../process";
-import { uuidV4, type HashAlgorithm } from "./hashOps";
+import { type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { type SolError } from "../errorValue";
@@ -36,9 +35,6 @@ function strScalar(
 export class PromoNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
-  static coreFields = ["roll"];
-  private lastRollGen = -1;
-  roll = Math.random();
   width = 220; height = 96;
 
   constructor(init?: { label?: string }) {
@@ -47,17 +43,7 @@ export class PromoNode extends GraphNode {
     this.addOutput("value", strOut("Text"));
   }
 
-  /** The roll is drawn here; `body` picks the line. */
-  data() {
-    const gen = getRecalcGen();
-    if (this.lastRollGen !== gen) {
-      this.roll = Math.random();
-      this.lastRollGen = gen;
-    }
-    return this.body();
-  }
-
-  body(inputs: Record<string, unknown[] | undefined> = {}) {
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
     return nodeOnCore(this, inputs) as { value: string };
   }
 }
@@ -660,8 +646,6 @@ export class HashNode extends GraphNode {
 export class UuidNode extends GraphNode {
   label: string;
   cachedText: string | null = null;
-  private lastGen = -1;
-  generated = "";
   width = 260; height = 104;
 
   constructor(init?: { label?: string }) {
@@ -670,16 +654,7 @@ export class UuidNode extends GraphNode {
     this.addOutput("result", strOut("UUID"));
   }
 
-  static coreFields = ["generated"];
-
-  /** The UUID is drawn here; `body` hands it on. */
-  data(): { result: string } {
-    const gen = getRecalcGen();
-    if (this.lastGen !== gen) { this.generated = uuidV4(); this.lastGen = gen; }
-    return this.body();
-  }
-
-  body(inputs: Record<string, unknown[] | undefined> = {}) {
+  data(inputs: Record<string, unknown[] | undefined> = {}) {
     return nodeOnCore(this, inputs) as { result: string };
   }
 }

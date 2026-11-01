@@ -187,22 +187,20 @@ pub fn take_lens() -> Vec<u32> {
 
 // ─── Display formatting ([[C118]] formatTravelsWithValue): the one copy the app's value boxes, popups and chips call ─────
 
-thread_local! {
-    static DISPLAY: std::cell::Cell<crate::card_helpers::NumberDisplay> =
-        std::cell::Cell::new(crate::card_helpers::NumberDisplay::default());
-}
-
 /// The "Decimal places" and "Scientific from" settings every unformatted number shows by; the app sets them on load
 /// and on each change.
 #[wasm_bindgen]
 pub fn display_settings(number_decimals: Option<f64>, sci_above: Option<String>) {
-    DISPLAY.with(|d| d.set(crate::card_helpers::NumberDisplay::from_settings(number_decimals, sci_above.as_deref())));
+    crate::card_helpers::set_number_display(crate::card_helpers::NumberDisplay::from_settings(
+        number_decimals,
+        sci_above.as_deref(),
+    ));
 }
 
 /// A number nobody formatted, as the Format Controller's General style shows it.
 #[wasm_bindgen]
 pub fn fmt_scalar(n: f64) -> String {
-    crate::card_helpers::format_scalar(n, DISPLAY.with(std::cell::Cell::get))
+    crate::card_helpers::format_shown(n)
 }
 
 /// A number as a format annotation (its JSON) shows it.
@@ -210,7 +208,7 @@ pub fn fmt_scalar(n: f64) -> String {
 pub fn fmt_annotated(n: f64, annotation: &str) -> String {
     let j: serde_json::Value = serde_json::from_str(annotation).unwrap_or(serde_json::Value::Null);
     let ann = crate::card_helpers::Annotation::from_json(&j);
-    crate::card_helpers::format_number_with_annotation(n, &ann, DISPLAY.with(std::cell::Cell::get))
+    crate::card_helpers::format_number_with_annotation(n, &ann, crate::card_helpers::number_display())
 }
 
 /// A date serial in a `YYYY-MM-DD`-style pattern.

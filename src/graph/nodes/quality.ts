@@ -3,9 +3,7 @@ import { GraphNode } from "../graphModel";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { nodeOnCore } from "../nodeOnCore";
-import { staysOffCore } from "./display";
-import { fireAlert } from "../alertStore";
-import { isGraphRebuilding } from "../process";
+import { staysOffCore, raiseWatched } from "./display";
 
 export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 
@@ -32,7 +30,9 @@ export class ExpectNode extends GraphNode {
   stringLiterals: Record<string, string> = { pattern: "", allowed: "" };
   width = 220;
   height = 258;
-  private lastStatusKey = "";
+  /** The checks the body last found failing, and what they fire (null when all pass). */
+  alertKey = "";
+  alertMessage: string | null = null;
 
   constructor(init?: {
     label?: string;
@@ -60,25 +60,20 @@ export class ExpectNode extends GraphNode {
 
   data(inputs: ExpectInputs) {
     const raw = inputs.in?.[0];
-    let out: { out: unknown };
     // No check reads a value the core can't take back.
     if (staysOffCore(raw)) {
       this.cachedValue = raw;
       this.violations = [];
-      out = { out: raw };
-    } else out = nodeOnCore(this, inputs) as { out: unknown };
-    const key = this.violations.join(",");
-    if (this.violations.length > 0 && key !== this.lastStatusKey && !isGraphRebuilding()) {
-      const name = (this.label ?? "").trim() || "Expect";
-      fireAlert({
-        nodeId: this.id,
-        label: name,
-        kind: "warning",
-        message: `${name}: failed ${this.violations.join(", ")}`,
-      });
+      this.alertKey = "";
+      this.alertMessage = null;
+      return { out: raw };
     }
-    this.lastStatusKey = key;
-    return out;
+    return nodeOnCore(this, inputs) as { out: unknown };
+  }
+
+  static coreWatch = "alertKey";
+  coreWatched(): void {
+    raiseWatched(this, "Expect");
   }
 }
 

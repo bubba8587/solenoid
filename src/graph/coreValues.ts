@@ -126,11 +126,11 @@ export function readReply(r: unknown): { value: unknown } | null {
 // ─── Running on the core ─────────────────────────────────────────────────────────
 
 /** The moment a row formula reads, lowered once per calc ([[C23]] calcModes): NOW as the TS reads it
- *  (TODAY is its day). The core reads the local zone itself. */
-export interface EngineClock { now: number }
+ *  (TODAY is its day), and the same moment as an instant (World Clock's). The core reads the local zone itself. */
+export interface EngineClock { now: number; ms: number }
 
 export function engineClock(at: Date = new Date()): EngineClock {
-  return { now: wallClockSerial(at) };
+  return { now: wallClockSerial(at), ms: at.getTime() };
 }
 
 /** What a call answers where the core trapped mid-call; a fresh instance is on its way ([[rust-core]] § Where it runs). */

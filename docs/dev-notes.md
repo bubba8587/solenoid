@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-11-01: the draws, World Clock, Alert and Expect run directly; cloud session)
+- **Nine more cards are direct** ([[graph-core]] § Direct calls): RAND, UUID, Promo, Shuffle, RANDARRAY and Distributions draw in their bodies, and the engine holds each card's draws for the recalc generation (`Call::rolls`, `drawn_text`; `Direct` in `direct.rs`; [[compute-pass]] § Volatile nodes and the recalc generation). World Clock reads the pass's clock, which now carries the instant (`engineClock().ms`, `clock_instant`). Alert and Expect show what fires (`alertKey`, `alertMessage`) and raise it in `coreWatched()` ([[alert-node-alerts-hud]] § When it fires). Their JS shells, the draw fields and `coreFields`, and the TS `uuidV4` are gone.
+- **Fixtures changed on purpose**: RANDARRAY's lost the calls where its body asked its shell for rolls (`rollsNeeded`); Alert's and Expect's gained the two fields their bodies now show.
+
 ### SESSION DIGEST (2026-10-31: rust-port merges into develop; DTE 0.2; Rust hygiene; cloud session)
 - **rust-port is merged into develop** (a fast-forward; develop had nothing new since `c7da52b`). The Rust core is the only evaluator on develop now ([[D99]] rustIsSpec); `../tree/specs/computation/rust-core.md` § Tracking develop is gone with the TS copies it tracked.
 - **DTE 0.2 vendored** plain, no local patches (`docs/dte.md`); the protocol is `dte-rules/PROTOCOL.md`. C80's two downward links dropped on the author's word.

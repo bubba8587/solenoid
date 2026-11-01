@@ -295,12 +295,13 @@ pub(crate) fn enter() {
         .ok()
         .and_then(|b| b.as_f64())
         .unwrap_or(0.0) as u32;
-    let clock = h
-        .clock
-        .call0(&JsValue::NULL)
-        .ok()
-        .and_then(|n| n.as_f64())
-        .map(|now| solenoid_core::excel_functions::Clock { now });
+    let clock = h.clock.call0(&JsValue::NULL).ok().and_then(|c| {
+        let read = |k: &str| Reflect::get(&c, &k.into()).ok().and_then(|n| n.as_f64());
+        Some(solenoid_core::excel_functions::Clock {
+            now: read("now")?,
+            ms: read("ms"),
+        })
+    });
     ENTRY.with(|e| {
         let mut e = e.borrow_mut();
         e.flags = flags;

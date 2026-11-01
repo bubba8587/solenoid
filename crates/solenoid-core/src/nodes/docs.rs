@@ -1,8 +1,8 @@
 //! The cards that watch, format and write up values: Display and Alert, Expect ([[D79]] effectsEdgeTriggered,
 //! [[C25]] firstClassUnits, [[C45]] excelComparisons), the Format Controller ([[C118]] formatTravelsWithValue
 //! formatTravelsWithValue), Template, Frame Input ([[B17]] typedValueModel, [[C25]] firstClassUnits) and
-//! Record ([[B11]] maximalMerge, [[C114]] cardsView). Raising an alert, a card's memo, its socket
-//! reconcile and a frame ref's read stay with the TS around these bodies.
+//! Record ([[B11]] maximalMerge, [[C114]] cardsView). Alert and Expect show what fired (`alertKey`, `alertMessage`);
+//! raising the toast, a card's memo, its socket reconcile and a frame ref's read stay with the TS around these bodies.
 
 use super::columns::{
     called_names, computed_column_type, frame_table, lambda_with_captures, named_lambda, plan_column_units, Definition,
@@ -175,10 +175,105 @@ fn alert_status(c: &Call) -> Result<V, V> {
     })
 }
 
+/// A cell of a status that alerts: a number but 0. A blank or an error is unknown, so it never alerts.
+fn alert_met(v: &V) -> bool {
+    matches!(v, V::Num(n) if *n != 0.0)
+}
+
+/// A status cell as its key spells it.
+fn status_text(v: &V) -> String {
+    match v {
+        V::Num(n) => number_to_string(*n),
+        V::Null | V::Undef => String::new(),
+        V::Err(e) => e.code.as_str().to_string(),
+        other => js_string_of(other),
+    }
+}
+
+/// The card's name in what it raises: its label, else `dflt`.
+fn alert_name(c: &Call, dflt: &str) -> String {
+    match js_trim(c.field_str("label", "")) {
+        "" => dflt.to_string(),
+        name => name.to_string(),
+    }
+}
+
+/// What the alert says when `result` fires it.
+fn alert_message(c: &Call, condition: &str, result: &V) -> String {
+    let name = alert_name(c, "Alert");
+    let num = |key: &str| match scalarish(c, key) {
+        V::Num(n) => crate::card_helpers::format_shown(n),
+        _ => "value".to_string(),
+    };
+    match condition {
+        "range" => {
+            let (lo, hi) = (num("low"), num("high"));
+            match result {
+                V::List(cells) => {
+                    let count = |k: f64| cells.iter().filter(|x| matches!(x, V::Num(n) if *n == k)).count();
+                    let mut parts = Vec::new();
+                    match count(1.0) {
+                        0 => {}
+                        n => parts.push(format!("{n} below {lo}")),
+                    }
+                    match count(2.0) {
+                        0 => {}
+                        n => parts.push(format!("{n} above {hi}")),
+                    }
+                    let said = if parts.is_empty() { "out of range".to_string() } else { parts.join(", ") };
+                    format!("{name}: {said}")
+                }
+                V::Num(n) if *n == 1.0 => format!("{name}: {} below {lo}", num("value")),
+                V::Num(n) if *n == 2.0 => format!("{name}: {} above {hi}", num("value")),
+                _ => format!("{name}: out of range"),
+            }
+        }
+        "equals" => format!("{name}: equals {}", num("target")),
+        "boolean" => format!("{name}: is true"),
+        _ => {
+            let m = match c.read_input("match", text_literal(c, "match", "")) {
+                V::Null | V::Undef => String::new(),
+                v => js_string_of(&v),
+            };
+            format!("{name}: contains \"{m}\"")
+        }
+    }
+}
+
+/// The status, with what it fires ([[D79]] effectsEdgeTriggered): `alertKey` names the condition and the status, so
+/// the TS raises `alertMessage` only when that changes; a blank status changes neither.
 fn alert(c: &mut Call) -> Answer {
     let result = alert_status(c)?;
     c.show("cachedResult", result.clone());
+    if !matches!(result, V::Null) {
+        let condition = c.field_str("condition", "range").to_string();
+        let key = match &result {
+            V::List(cells) => cells.iter().map(status_text).collect::<Vec<_>>().join(","),
+            v => status_text(v),
+        };
+        let fires = match &result {
+            V::List(cells) => cells.iter().any(alert_met),
+            v => alert_met(v),
+        };
+        let message = if fires { V::str(&alert_message(c, &condition, &result)) } else { V::Null };
+        c.show("alertKey", V::str(&format!("{condition}:{key}")));
+        c.show("alertMessage", message);
+    }
     Ok(vec![("result".into(), Cv::from(result))])
+}
+
+/// Expect's checks that failed, with what they fire: `alertKey` is the failed checks, so the TS raises
+/// `alertMessage` only when they change.
+fn expect_failed(c: &mut Call, violations: Vec<&str>) {
+    let key = violations.join(",");
+    let message = if violations.is_empty() {
+        V::Null
+    } else {
+        V::str(&format!("{}: failed {}", alert_name(c, "Expect"), violations.join(", ")))
+    };
+    c.show("violations", list(violations.into_iter().map(V::str).collect()));
+    c.show("alertKey", V::str(&key));
+    c.show("alertMessage", message);
 }
 
 // ─── Expect ─────────────────────────────────────────────────────────────────────
@@ -367,7 +462,7 @@ fn expect(c: &mut Call) -> Answer {
     let raw = card(c, "in");
     c.show("cachedValue", raw.clone());
     if raw.is_sol_error() {
-        c.show("violations", list(Vec::new()));
+        expect_failed(c, Vec::new());
         return Ok(vec![pass_on(c, "in", "out", raw)]);
     }
     let on = |k: &str| c.field(k).and_then(serde_json::Value::as_bool).unwrap_or(false);
@@ -431,7 +526,7 @@ fn expect(c: &mut Call) -> Answer {
             }
         }
     }
-    c.show("violations", list(violations.into_iter().map(V::str).collect()));
+    expect_failed(c, violations);
     Ok(vec![pass_on(c, "in", "out", raw)])
 }
 

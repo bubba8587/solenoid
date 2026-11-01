@@ -1,15 +1,14 @@
 import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
-import { getRecalcGen, isGraphRebuilding } from "../process";
+import { isGraphRebuilding } from "../process";
 import type { PassthroughSpec } from "./passthrough";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
-import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, readInput } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn } from "./shared";
 import { nodeWire } from "../nodeWire";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
-import { formatScalar } from "../components/format";
 
 export class DisplayNode extends GraphNode {
   label: string;
@@ -54,15 +53,6 @@ export const ALERT_MODE_KEYS: Record<AlertMode, string[]> = {
   text:    ["text", "match"],
 };
 
-type AlertInputs = {
-  value?: (number | number[])[];
-  low?: (number | number[])[];
-  high?: (number | number[])[];
-  target?: (number | number[])[];
-  text?: string[];
-  match?: string[];
-};
-
 export class AlertNode extends GraphNode {
   static socketDocs: Record<string, string> = {
     value: "A blank arriving on the cable makes the status unknown, and an unknown status never fires the alert.",
@@ -75,14 +65,14 @@ export class AlertNode extends GraphNode {
   stringLiterals: Record<string, string> = { text: "", match: "" };
   width = 190;
   height = 220;
-  private lastStatusKey = NO_STATUS;
-  private lastEvalOp: AlertMode;
+  /** The condition and status the body last read, and what that status fires (null when calm). */
+  alertKey: string | null = null;
+  alertMessage: string | null = null;
 
   constructor(init?: { label?: string; condition?: AlertMode }) {
     super("Alert");
     this.label = init?.label ?? "Alert";
     this.condition = init?.condition ?? "range";
-    this.lastEvalOp = this.condition;
     this.addInput("value",  numListIn("Value"));
     this.addInput("low",    numListIn("Low"));
     this.addInput("high",   numListIn("High"));
@@ -93,84 +83,26 @@ export class AlertNode extends GraphNode {
     this.addOutput("result", numListOut("Status"));
   }
 
-  data(inputs: AlertInputs) {
-    const out = nodeOnCore(this, inputs as Record<string, unknown[] | undefined>) as { result: number | number[] | null };
-    this.detectAndFire(out.result, inputs);
-    return out;
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | number[] | null };
   }
 
-  private detectAndFire(result: number | number[] | null, inputs: AlertInputs) {
-    if (result === null) return;
-    const key = statusKey(result);
-    const alerting = isAlerting(result);
-    const opChanged = this.lastEvalOp !== this.condition;
-    const prevKey = opChanged ? NO_STATUS : this.lastStatusKey;
-    this.lastEvalOp = this.condition;
-    this.lastStatusKey = key;
-    if (isGraphRebuilding()) return;
-    if (alerting && key !== prevKey) {
-      fireAlert({
-        nodeId: this.id,
-        label: (this.label ?? "").trim() || "Alert",
-        kind: "warning",
-        message: this.buildMessage(result, inputs),
-      });
-    }
-  }
-
-  private buildMessage(result: number | number[], inputs: AlertInputs): string {
-    const name = (this.label ?? "").trim() || "Alert";
-    const fmt = formatScalar;
-    const num = (got: (number | number[])[] | undefined, lit: number) => {
-      const v = scalarish(got, lit);
-      return typeof v === "number" ? fmt(v) : "value";
-    };
-    switch (this.condition) {
-      case "range": {
-        const lo = num(inputs.low, this.literals.low);
-        const hi = num(inputs.high, this.literals.high);
-        if (Array.isArray(result)) {
-          const below = result.filter((x) => x === 1).length;
-          const above = result.filter((x) => x === 2).length;
-          const parts: string[] = [];
-          if (below) parts.push(`${below} below ${lo}`);
-          if (above) parts.push(`${above} above ${hi}`);
-          return `${name}: ${parts.join(", ") || "out of range"}`;
-        }
-        const v = num(inputs.value, this.literals.value);
-        if (result === 1) return `${name}: ${v} below ${lo}`;
-        if (result === 2) return `${name}: ${v} above ${hi}`;
-        return `${name}: out of range`;
-      }
-      case "equals":
-        return `${name}: equals ${num(inputs.target, this.literals.target)}`;
-      case "boolean":
-        return `${name}: is true`;
-      case "text": {
-        const m = readInput(inputs.match, this.stringLiterals.match ?? "") ?? "";
-        return `${name}: contains "${m}"`;
-      }
-    }
+  static coreWatch = "alertKey";
+  coreWatched(): void {
+    raiseWatched(this, "Alert");
   }
 }
 
-function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
-  return readInput(got, lit ?? null);
-}
-
-const NO_STATUS = "\u0000";
-
-function statusKey(result: number | number[]): string {
-  return Array.isArray(result) ? result.join(",") : String(result);
+/** The body's status changed ([[D79]] effectsEdgeTriggered): raise what it fires (`alertMessage`), unless the graph
+ *  is rebuilding. */
+export function raiseWatched(node: GraphNode & { alertMessage: string | null }, fallback: string): void {
+  if (!node.alertMessage || isGraphRebuilding()) return;
+  fireAlert({ nodeId: node.id, label: (node.label ?? "").trim() || fallback, kind: "warning", message: node.alertMessage });
 }
 
 // A blank or error cell in a list status is unknown, so it never alerts.
 export function isAlertMet(cell: unknown): boolean {
   return typeof cell === "number" && cell !== 0;
-}
-
-function isAlerting(result: number | number[]): boolean {
-  return Array.isArray(result) ? result.some(isAlertMet) : isAlertMet(result);
 }
 
 export class RandBetweenNode extends GraphNode {
@@ -180,9 +112,6 @@ export class RandBetweenNode extends GraphNode {
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { bound1: 0, bound2: 1 };
-  // The raw roll re-rolls only when the recalc generation advances; the bounds apply live on every call.
-  rawRoll = Math.random();
-  private lastRollGen = -1;
   width = 180;
   height = 200;
 
@@ -194,19 +123,7 @@ export class RandBetweenNode extends GraphNode {
     this.addOutput("result", numOut("Result"));
   }
 
-  static coreFields = ["rawRoll"];
-
-  /** The roll is drawn here; `body` scales it to the bounds. */
   data(inputs: Record<string, unknown[] | undefined>) {
-    const gen = getRecalcGen();
-    if (this.lastRollGen !== gen) {
-      this.rawRoll = Math.random();
-      this.lastRollGen = gen;
-    }
-    return this.body(inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { result: number | null };
   }
 }

@@ -493,7 +493,7 @@ are `../tree/specs/computation/graph-core.md`.
 | `lib.rs`, `wasm.rs` | The crate root and the WebAssembly entry: one `GraphCore` per editor, the pipes `graphEditor.ts` adds and the engine `dataflowEngine.ts` drives; it links `solenoid-core` into the one module |
 | `model.rs` | The graph model on Ruggine: classic nodes (ports, socket types) beside the host's node object, cables, signals, the attached engine |
 | `pass.rs`, `session.rs` | The pass's walks (loops, the downstream cone, invalidation, the pull in editor order) and its state between passes (calc mode, dirty flag, generation, rebuild depth, single flight) |
-| `direct.rs`, `value.rs` | A card the engine calls in Rust (its call and shown fields), and the value on a cable (one shared cell, core and JavaScript forms) |
+| `direct.rs`, `value.rs` | A card the engine calls in Rust (its call, shown fields and draws for the recalc generation), and the value on a cable (one shared cell, core and JavaScript forms) |
 | `boundary.rs`, `boundary_core.rs` | The input boundary (error guard, arrival coercion, unit boundary, list literals) over JavaScript values and over core values |
 | `lattice.rs`, `settle.rs`, `conduit.rs`, `fc.rs`, `annotate.rs` | The socket lattice tables, the Type Settle, the walks through Conduits, the FC reconcile, the format-annotation walk |
 | `text_form.rs` | The text form a save passes through |

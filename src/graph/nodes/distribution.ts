@@ -3,7 +3,6 @@ import { GraphNode } from "../graphModel";
 import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numListIn, numListOut, type BroadcastResult } from "./shared";
 import { DIST_SPECS, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
-import { getRecalcGen } from "../process";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
 function firstKeyFor(op: DistKey, form: DistForm): string {
@@ -99,23 +98,7 @@ export class DistributionsNode extends GraphNode {
     this.seedLiterals();
   }
 
-  static coreFields = ["sampleSeed"];
-  private lastSampleGen = -1;
-  sampleSeed = 0;
-
-  /** The sample form's seed is drawn here, once per recalc and card; `body` samples from it. */
   data(inputs: Record<string, unknown[] | undefined>) {
-    const gen = getRecalcGen();
-    if (this.form === "sample" && this.lastSampleGen !== gen) {
-      this.lastSampleGen = gen;
-      let h = 2166136261 ^ gen;
-      for (const ch of this.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-      this.sampleSeed = h >>> 0;
-    }
-    return this.body(inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }

@@ -8,7 +8,7 @@ tags: [spec, computation]
 
 Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves.
 
-The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The Alert node lives in `nodes/display.ts` (`AlertNode`, which fires) and `components/AlertNode.tsx`, and its status in `alert_status` ( `crates/solenoid-core/src/nodes/docs.rs`, [[node-bodies]]); the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
+The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The Alert node lives in `nodes/display.ts` (`AlertNode`, which raises what its body says fires) and `components/AlertNode.tsx`, and its status, what fires and the message in its body (`alert` in `crates/solenoid-core/src/nodes/docs.rs`, [[node-bodies]]); the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
 
 ## Modes
 
@@ -40,29 +40,26 @@ The card's value box shows a neutral dot and word, never a pass or fail mark, be
 
 ## When it fires
 
-An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered):
+An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered). The body decides what fires; the TypeScript only raises it:
 
-1. A null status is unknown. It neither fires nor changes the remembered status.
-2. Otherwise the card builds a status key (`statusKey`: the number, or the list joined with commas) and compares it with the key it remembered from the last run (`lastStatusKey`).
-3. If the mode changed since the last run, the comparison is against `NO_STATUS` instead, since the old mode's status means nothing in the new one.
-4. The new key becomes the remembered one.
-5. While the graph is rebuilding (`isGraphRebuilding()`), nothing fires, so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope.
-6. Otherwise the card fires when the status is alerting (any nonzero cell) and its key differs from the previous one.
+1. A null status is unknown. The body shows nothing new, so nothing fires and the remembered status stands.
+2. Otherwise the body shows the status key (`alertKey`: the mode and the status, the number or the list joined with commas) and, when the status is alerting (any nonzero cell), the message it fires (`alertMessage`, else null).
+3. The class names `alertKey` in `static coreWatch`, so the engine calls `coreWatched()` when a run changed it ([[graph-core]] § Direct calls). The mode is part of the key, so a mode change compares fresh: the old mode's status means nothing in the new one.
+4. `coreWatched()` raises `alertMessage` unless it is null or the graph is rebuilding (`isGraphRebuilding()`), so loading a document or a seed does not replay old alerts. The recompute that follows a rebuild still runs inside the rebuild scope, and still remembers its key.
 
 ```mermaid
 flowchart TD
     s["this run's status"] --> nul{"null (unknown)?"}
-    nul -->|yes| skip["nothing fires,<br>nothing remembered"]
-    nul -->|no| prev["compare with the remembered key<br>(NO_STATUS after a mode change)"]
-    prev --> rem["remember the new key"]
-    rem --> rb{"the graph rebuilding?"}
+    nul -->|yes| skip["nothing shown:<br>nothing fires, nothing remembered"]
+    nul -->|no| show["the body shows alertKey (mode and status)<br>and alertMessage (null when calm)"]
+    show --> chg{"alertKey changed?"}
+    chg -->|no| calm["silent"]
+    chg -->|yes| rb{"the graph rebuilding,<br>or no message?"}
     rb -->|yes| quiet["nothing fires"]
-    rb -->|no| fire{"alerting, and the<br>key changed?"}
-    fire -->|yes| f["fireAlert: a HUD event<br>and a toast"]
-    fire -->|no| calm["silent"]
+    rb -->|no| f["fireAlert: a HUD event<br>and a toast"]
 ```
 
-So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. `lastStatusKey` starts at `NO_STATUS`, a sentinel that matches no real key, so a card born alerting, or switched into a condition that is already met, fires once.
+So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all fire; LOW to LOW and HIGH to HIGH do not; returning to calm is silent. A new card holds no key, so a card born alerting, or switched into a condition that is already met, fires once. Expect fires the same way, its key the set of failed checks (`nodes/quality.ts`, `expect` in `docs.rs`).
 
 ## Firing
 
@@ -71,7 +68,7 @@ So in `range` mode, calm to LOW, calm to HIGH and LOW to HIGH (either way) all f
 - it logs an event (`id`, `nodeId`, `label`, `kind`, `message`, `time`) to `alertStore`, newest first, capped at 50 events. The log is transient and never saved.
 - it raises a toast through `pushNotice` (`noticeStore`), with the tone mapped from the kind: `info` to info, `warning` to warn, `critical` to error. The Alert card always fires `warning`.
 
-The message is a neutral observation prefixed with the card's label (or "Alert" when the label is blank):
+The message, which the body writes, is a neutral observation prefixed with the card's label (or "Alert" when the label is blank):
 
 - range, one value: "Tank: 150 above 100" or "Tank: 3 below 10"; a list: "Tank: 2 below 10, 1 above 100";
 - equals: "Tank: equals 7";

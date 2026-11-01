@@ -5,6 +5,7 @@ import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
 import type { FrameValue, FrameCell, FrameColType } from "../../../src/graph/frame";
+import { inEditor, Src } from "../cardPasses";
 
 // Expect checks over FRAMES (the audit-found blind spot: a FrameValue fell into
 // the scalar arm and every check silently no-opped) + the pre-existing
@@ -155,6 +156,21 @@ describe("Expect alert edge-detect (fires on a NEW failure signature, not per ba
     n.data({ in: [[99, "ok"]] });
     expect(n.violations).toEqual(["range"]);
     expect(alertsFor(n.id)).toBe(3);
+  });
+
+  it("fires from the engine's direct call, once per signature", async () => {
+    alertStore.clear();
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true, label: "Q" });
+    n.literals.max = 10;
+    const src = new Src([99, 1], "any");
+    const g = await inEditor(n);
+    await g.wire(src, "in");
+    await g.pass("out");
+    expect(alertStore.list().map((a) => a.message)).toEqual(["Q: failed range"]);
+    src.out = [20];
+    await g.pass("out");
+    expect(alertsFor(n.id)).toBe(1);
+    g.dispose();
   });
 });
 

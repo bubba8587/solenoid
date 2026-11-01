@@ -77,6 +77,22 @@ pub struct Call {
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
     pub matrix_units_out: Vec<(String, Json)>,
+    /// The draws the engine keeps for the card through one recalc generation (graph-core.md § Direct calls); `None`
+    /// outside the engine, where every ask draws afresh.
+    pub draws: Option<Draws>,
+}
+
+/// A card's draws in one recalc generation: its uniform rolls, and the text it drew (UUID).
+#[derive(Clone, Debug, Default)]
+pub struct Draws {
+    pub rolls: Vec<f64>,
+    pub text: Option<String>,
+}
+
+impl Draws {
+    pub fn is_empty(&self) -> bool {
+        self.rolls.is_empty() && self.text.is_none()
+    }
 }
 
 /// An input socket: its key, its declared type (`declaredTypeOf`) and its label.
@@ -170,6 +186,7 @@ impl Call {
             adopted_out: adopted_out.into(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
+            draws: None,
         }
     }
 
@@ -188,6 +205,50 @@ impl Call {
             adopted_out: self.adopted_out.clone(),
             matrix_units_in,
             matrix_units_out: Vec::new(),
+            draws: None,
+        }
+    }
+
+    /// `n` uniform rolls in [0, 1): the ones the engine holds for this generation, extended where it holds fewer, or
+    /// with `redraw` all of them anew where it holds a different count. The roll a call's `init` carries under `given`
+    /// (a frozen call: a number, or a list of them) comes first, padded with fresh rolls to `n`.
+    pub fn rolls(&mut self, given: &str, n: usize, redraw: bool) -> Vec<f64> {
+        let fresh = |k: usize| (0..k).map(|_| crate::fns_random::random()).collect::<Vec<f64>>();
+        if let Some(g) = self.init.get(given) {
+            let mut held: Vec<f64> = match g {
+                Json::Array(a) => a.iter().map(|x| x.as_f64().unwrap_or(f64::NAN)).collect(),
+                x => vec![x.as_f64().unwrap_or(f64::NAN)],
+            };
+            if held.len() < n {
+                held.extend(fresh(n - held.len()));
+            }
+            held.truncate(n);
+            return held;
+        }
+        match &mut self.draws {
+            None => fresh(n),
+            Some(d) => {
+                if redraw && d.rolls.len() != n {
+                    d.rolls.clear();
+                }
+                if d.rolls.len() < n {
+                    let more = fresh(n - d.rolls.len());
+                    d.rolls.extend(more);
+                }
+                d.rolls[..n].to_vec()
+            }
+        }
+    }
+
+    /// Drawn text: the one the engine holds for this generation, else `draw`'s, which it then holds. The text a
+    /// frozen call's `init` carries under `given` comes first.
+    pub fn drawn_text(&mut self, given: &str, draw: impl FnOnce() -> String) -> String {
+        if let Some(Json::String(s)) = self.init.get(given) {
+            return s.clone();
+        }
+        match &mut self.draws {
+            None => draw(),
+            Some(d) => d.text.get_or_insert_with(draw).clone(),
         }
     }
 
@@ -343,6 +404,7 @@ pub const DIRECT: &[&str] = &[
     "AccruedInterestNode",
     "AddColumnNode",
     "AggregateNode",
+    "AlertNode",
     "AllocatorNode",
     "AmortizationNode",
     "AngleDialNode",
@@ -414,6 +476,7 @@ pub const DIRECT: &[&str] = &[
     "DiffNode",
     "DiscountSecurityNode",
     "DisplayNode",
+    "DistributionsNode",
     "DollarNode",
     "DurationNode",
     "ESeriesNode",
@@ -426,6 +489,7 @@ pub const DIRECT: &[&str] = &[
     "EwmaNode",
     "ExactNode",
     "ExpandNode",
+    "ExpectNode",
     "ExpressionNode",
     "FillNode",
     "FindPeaksNode",
@@ -505,10 +569,13 @@ pub const DIRECT: &[&str] = &[
     "PolyRootsNode",
     "PolyfitNode",
     "ProbNode",
+    "PromoNode",
     "ProportionNode",
     "QrCodeNode",
     "QuadraticRootsNode",
     "QuiverNode",
+    "RandArrayNode",
+    "RandBetweenNode",
     "RankPercentileNode",
     "ReconcileNode",
     "ReduceLambdaNode",
@@ -532,6 +599,7 @@ pub const DIRECT: &[&str] = &[
     "SetsNode",
     "SettleNode",
     "ShiftNode",
+    "ShuffleNode",
     "SliceNode",
     "SliderInputNode",
     "SmoothNode",
@@ -580,10 +648,12 @@ pub const DIRECT: &[&str] = &[
     "UniqueNode",
     "UnnestNode",
     "UrlEncodeNode",
+    "UuidNode",
     "WaterfallNode",
     "WeekInfoNode",
     "WeightedNode",
     "WorkdaysNode",
+    "WorldClockNode",
     "WrapTextNode",
     "XLookupNode",
     "XMatchNode",
@@ -605,7 +675,7 @@ pub fn keeps_answer(kind: &str) -> bool {
 
 /// Direct classes that hand on in TypeScript a value the core can't hold (a LAMBDA, an object the card wire doesn't
 /// carry): their `data()` runs instead of the body when this input holds one.
-pub const OFF_CORE: &[(&str, &str)] = &[("DisplayNode", "in"), ("FormatControllerNode", "in")];
+pub const OFF_CORE: &[(&str, &str)] = &[("DisplayNode", "in"), ("ExpectNode", "in"), ("FormatControllerNode", "in")];
 
 pub fn off_core_input(kind: &str) -> Option<&'static str> {
     OFF_CORE.iter().find(|(k, _)| *k == kind).map(|(_, input)| *input)

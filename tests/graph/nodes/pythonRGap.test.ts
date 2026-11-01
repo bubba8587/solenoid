@@ -16,7 +16,7 @@ import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes
 import { SpectrumNode } from "../../../src/graph/nodes/list";
 import { TextSimilarityNode, FuzzyMatchNode, TextTransformNode, PadTextNode, TruncateTextNode, HashNode, UuidNode, UrlEncodeNode, TemplateNode } from "../../../src/graph/nodes/text";
 import { templatePlaceholders } from "../../../src/graph/nodes/textOps";
-import { requestRecalc } from "../../../src/graph/process";
+import { inEditor } from "../cardPasses";
 import { ArgMinMaxNode, SmoothNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { numListOut, numOut, listIn, logicalListIn } from "../../../src/graph/nodes/shared";
 import { EtsForecastNode, FitDistributionNode, DecomposeNode } from "../../../src/graph/nodes/stats";
@@ -716,12 +716,13 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect((ev('HASH("abc", "Constructor")') as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("UUID is stable within a recalculation and fresh after one; the formula is volatile", async () => {
-    const n = new UuidNode();
-    const a = n.data().result;
+    const g = await inEditor(new UuidNode());
+    const a = await g.pass("result");
     expect(a).toMatch(/^[0-9a-f-]{36}$/);
-    expect(n.data().result).toBe(a);
-    await requestRecalc();
-    expect(n.data().result).not.toBe(a);
+    expect(await g.pass("result")).toBe(a);
+    g.recalc();
+    expect(await g.pass("result")).not.toBe(a);
+    g.dispose();
     expect(ev("UUID()")).not.toBe(ev("UUID()"));
   });
   it("UUID's save holds no UUID, so a recompute is never an edit for undo", async () => {

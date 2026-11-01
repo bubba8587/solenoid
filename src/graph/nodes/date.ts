@@ -452,8 +452,6 @@ export class WorldClockNode extends GraphNode {
   label: string;
   stringLiterals: Record<string, string> = { zones: "" };
   cachedResult: FrameValue | null = null;
-  static coreFields = ["nowMs"];
-  nowMs = Date.now();
   width = 220; height = 210;
 
   constructor(init?: { label?: string }) {
@@ -467,13 +465,7 @@ export class WorldClockNode extends GraphNode {
     return cardShapeOnCore(this, "clock", {});
   }
 
-  /** The clock is read here; `body` shows each zone's wall clock at that instant. */
   data(inputs: Record<string, unknown[] | undefined>) {
-    this.nowMs = Date.now();
-    return this.body(inputs);
-  }
-
-  body(inputs: Record<string, unknown[] | undefined>) {
     return nodeOnCore(this, inputs) as { clock: FrameValue };
   }
 }

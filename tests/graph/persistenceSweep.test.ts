@@ -196,7 +196,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
-    generated: "UUID's value for this recalculation; a load is a new one, and a saved value would make every compute an edit to undo",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     varNames: "extracted from expr",
@@ -227,11 +226,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
-    // ── [[C23]] calcModes volatile roll state (freezes per recalc generation, never saved) ──
-    rolls: "calcModes frozen rolls", rollsNeeded: "RANDARRAY: the rolls its body asked the shell to draw, per call", rawRoll: "calcModes frozen roll", keys: "calcModes frozen shuffle keys",
-    lastGen: "calcModes generation marker", lastRollGen: "calcModes generation marker",
-    roll: "promo rotation draw (session flavor)",
-    nowMs: "World Clock's instant, read from the clock on every compute; a load is a new now",
     // ── [[B18]] safeToShare: sinks always load disarmed ──
     enabled: "safeToShare arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
@@ -248,8 +242,6 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     aroundSolving: "solve context from the composite around (during a pass)", aroundMultiRun: "multi-run context from the composite around (during a pass)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
     lastRelative: "relative Date Input shift-alert edge-detect state: phrase and day (session)",
-    lastSampleGen: "Distribution sample form's per-recalc re-roll marker (session)",
-    sampleSeed: "Distribution sample form's per-recalc seed (derived from id + gen)",
     stale: "recomputed staleness", internalEditor: "the live internal editor and engine",
     internalEngine: "the live internal editor and engine", internalPositions: "runtime mirror; positions persist via snapshotInternal",
     internalEditSeq: "edit counter (session)",
@@ -265,7 +257,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
     textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",
     // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
-    lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
+    alertKey: "effectsEdgeTriggered: the status the body last read, which raises an alert on a change",
+    alertMessage: "effectsEdgeTriggered: what that status fires, shown by the body",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",
   };

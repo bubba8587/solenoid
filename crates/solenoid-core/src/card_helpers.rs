@@ -158,6 +158,24 @@ impl Default for NumberDisplay {
     }
 }
 
+thread_local! {
+    static DISPLAY: std::cell::Cell<NumberDisplay> = std::cell::Cell::new(NumberDisplay::default());
+}
+
+/// The settings every unformatted number shows by; the app sets them on load and on each change.
+pub fn set_number_display(d: NumberDisplay) {
+    DISPLAY.with(|x| x.set(d));
+}
+
+pub fn number_display() -> NumberDisplay {
+    DISPLAY.with(std::cell::Cell::get)
+}
+
+/// A number nobody formatted, as the app's settings show it.
+pub fn format_shown(n: f64) -> String {
+    format_scalar(n, number_display())
+}
+
 impl NumberDisplay {
     pub fn from_settings(number_decimals: Option<f64>, sci_above: Option<&str>) -> NumberDisplay {
         let d = number_decimals.unwrap_or(f64::NAN);

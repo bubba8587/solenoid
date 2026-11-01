@@ -330,7 +330,7 @@ fn random_bytes(b: &mut [u8]) {
     fastrand::fill(b);
 }
 
-fn uuid_v4() -> String {
+pub fn uuid_v4() -> String {
     let mut b = [0u8; 16];
     random_bytes(&mut b);
     uuid::Builder::from_random_bytes(b).into_uuid().hyphenated().to_string()

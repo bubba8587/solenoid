@@ -186,22 +186,22 @@ stateDiagram-v2
 
 `getRecalcGen()` returns the session's generation, which starts at 0 and only `requestRecalc()` increments. It is global so every "roll everything" entry point (F9, the menu, the status bar, the midnight rollover, the Save Times card) shares one clock.
 
-A node whose `data()` draws random numbers keeps its raw draw and a `lastGen` field initialized to `-1`. In `data()` it reads `getRecalcGen()`; when that differs from `lastGen` (or the stored draws no longer match the input's length) it draws fresh raw values (uniforms in [0, 1)) and stores the generation. It then derives the output from the stored raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[C23]] calcModes).
+A card that draws random numbers draws in its body on the core and asks the call for its raw draws (uniforms in [0, 1), `Call::rolls`; UUID's text, `Call::drawn_text`). The engine holds each card's draws for the recalc generation they were drawn in (`Direct`, [[graph-core]] § Direct calls): within it the body gets the same ones, extended where it asks for more (RANDARRAY's longer count), or all drawn anew where it asks for a different count with `redraw` (Shuffle's keys, one per slot of its list); a new generation starts empty. The body derives the output from the raws and the current inputs, so changing a bound rescales the same draw instead of rolling a new one ([[C23]] calcModes). Outside the engine (a test calling `data()`, `nodeOnCore`) no one holds them: a body takes the draw a frozen call's `init` carries, else draws afresh.
 
 Every volatile node shows a Recalculate button (`RecalcButton`) that draws again without a full F9. A Script node counts as volatile when its code draws random numbers or reads the clock (`scriptIsVolatile`): it shows the button, and holds its result between recalculations like the rest ([[C23]] calcModes). Not built yet: a volatile Script runs again on every recalculation.
 
 ```mermaid
 flowchart LR
-    data["data() runs"] --> gen{"recalc generation<br>= lastGen, and the draws<br>fit the input?"}
-    gen -->|yes| keep["keep the stored raw draws"]
-    gen -->|no| draw["draw fresh raws in [0, 1),<br>store the generation"]
-    keep --> derive["the output from the raws<br>and the current inputs"]
+    body["the body asks for n draws"] --> gen{"the engine holds draws<br>for this generation?"}
+    gen -->|yes| keep["the held ones, extended to n<br>(or drawn anew on redraw)"]
+    gen -->|no| draw["n fresh draws in [0, 1),<br>held for this generation"]
+    keep --> derive["the output from the draws<br>and the current inputs"]
     draw --> derive
 ```
 
-Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form. Draws are not saved; a reload or a new instance rolls on its first pass.
+Examples: RAND (`RandBetweenNode`), Shuffle, RANDARRAY, Promo, UUID and the Distribution node's sample form (its seed one draw). Draws are not saved; a reload, a new instance or a restarted module rolls on its first pass.
 
-`sourceInvariants.test.ts` fails when a file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
+`sourceInvariants.test.ts` fails when a TypeScript file under `nodes/` or `packs/` calls `Math.random()` without referencing `getRecalcGen`, apart from a sanctioned list with reasons (`nodes/composite.ts`, which mints ids, not values).
 
 Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the other draws in the core's `fns_random.rs`: RANDBETWEEN, RANDDIST, UUID) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
 

@@ -1297,6 +1297,11 @@ fn session<T>(f: impl FnOnce(&mut Session) -> T) -> T {
     SESSION.with(|s| f(&mut s.borrow_mut()))
 }
 
+/// The recalc generation the volatile cards' draws hold for.
+pub(crate) fn recalc_gen() -> u64 {
+    session(|s| s.recalc_gen)
+}
+
 /// The pass's state as the host caches it: `{ mode, dirty, forceExact, gen, rebuilding, topoDirty, passActive }`.
 #[wasm_bindgen(js_name = sessionSnapshot)]
 pub fn session_snapshot() -> Object {

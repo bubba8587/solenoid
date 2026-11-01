@@ -951,7 +951,11 @@ fn distributions(c: &mut Call) -> Answer {
             };
             let n = crate::jsnum::math_min(100_000.0, crate::jsnum::math_max(0.0, math_round(head(&count))));
             let nums: Vec<f64> = ps.iter().map(head).collect();
-            let seed = c.field("sampleSeed").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as u32;
+            // A frozen call's seed, else one drawn and held until the generation advances.
+            let seed = match c.field("sampleSeed").and_then(serde_json::Value::as_f64) {
+                Some(s) => s as u32,
+                None => (c.rolls("", 1, false)[0] * 4_294_967_296.0) as u32,
+            };
             let mut rng = crate::planners::mulberry32(seed);
             let us: Vec<f64> = (0..if n.is_nan() { 0 } else { n as usize }).map(|_| rng()).collect();
             let &(_, continuous, inverse, _) =

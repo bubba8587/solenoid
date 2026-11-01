@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { DistributionsNode } from "../../src/graph/nodes/distribution";
-import { requestRecalc } from "../../src/graph/process";
+import { inEditor } from "./cardPasses";
 const dist = (op: string, form: string) =>
   new DistributionsNode({ op: op as never, form: form as never });
 describe("registered gap distributions match the NODES", () => {
@@ -115,15 +115,15 @@ describe("the `sample` form — N draws by inverse CDF, seeded per recalculation
     const n = dist("normal", "sample");
     expect(n.inputs.count).toBeDefined(); expect(n.inputs.x).toBeUndefined();
     n.literals.count = 4000; n.literals.mean = 50; n.literals.stdev = 5;
-    const a = n.data({}).result as number[];
+    const g = await inEditor(n);
+    const a = (await g.pass("result")) as number[];
     expect(a).toHaveLength(4000);
     expect(mean(a)).toBeCloseTo(50, 0);
     expect(Math.sqrt(mean(a.map((v) => (v - 50) ** 2)))).toBeCloseTo(5, 0);
-    const b = n.data({}).result as number[];
-    expect(b).toEqual(a);                      // same recalculation → the same draws
-    await requestRecalc();
-    const c = n.data({}).result as number[];
-    expect(c).not.toEqual(a);                  // F9 → a fresh stream
+    expect(await g.pass("result")).toEqual(a); // same recalculation → the same draws
+    g.recalc();
+    expect(await g.pass("result")).not.toEqual(a); // F9 → a fresh stream
+    g.dispose();
     // switching form back swaps the first socket to x again
     n.setForm("cdf");
     expect(n.inputs.x).toBeDefined(); expect(n.inputs.count).toBeUndefined();
