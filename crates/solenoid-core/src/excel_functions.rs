@@ -388,8 +388,18 @@ fn upper_text(s: &str) -> std::borrow::Cow<'_, str> {
     }
 }
 
-/// `str::to_uppercase`, the first 2,048 code points (Latin, Greek, Cyrillic, …) mapped from a table of std's own
-/// answers, built once: std's lookup is a search per char, slow in wasm ([[C120]] linearWork).
+/// A character's uppercase when it is one character; one whose uppercase is several (`ß`, `ŉ`) stays as it is, as
+/// Excel's UPPER keeps it, so the text keeps its length.
+fn one_upper(c: char) -> char {
+    let mut up = c.to_uppercase();
+    match (up.next(), up.next()) {
+        (Some(u), None) => u,
+        _ => c,
+    }
+}
+
+/// Each character's uppercase by `one_upper`, the first 2,048 code points (Latin, Greek, Cyrillic, …) from a table of
+/// std's own answers, built once: std's lookup is a search per char, slow in wasm ([[C120]] linearWork).
 fn upper_chars(s: &str) -> String {
     const SPAN: usize = 0x800;
     thread_local! {
@@ -410,9 +420,9 @@ fn upper_chars(s: &str) -> String {
             if c.is_ascii() {
                 out.push(c.to_ascii_uppercase());
             } else if let Some((cs, n)) = t.get(c as usize) {
-                cs[..*n as usize].iter().for_each(|&c| out.push(c));
+                out.push(if *n == 1 { cs[0] } else { c });
             } else {
-                out.extend(c.to_uppercase());
+                out.push(one_upper(c));
             }
         }
         out
@@ -638,6 +648,17 @@ fn utf16(s: &str) -> Vec<u16> {
 /// reads the half as U+FFFD (`rust-core.md`).
 fn from_utf16(units: &[u16]) -> String {
     String::from_utf16_lossy(units)
+}
+
+/// A cut `start..end` over UTF-16 units widened so it never halves a character: a start between a surrogate pair's
+/// halves moves back to take the whole character, an end between them moves on. Positions still count units, as
+/// Excel's LEN does (`LEN("😀")` is 2), but `LEFT("😀x", 1)` is the whole smiley, as Excel answers it.
+fn whole_chars(t: &[u16], start: usize, end: usize) -> (usize, usize) {
+    let inside =
+        |i: usize| i > 0 && i < t.len() && (0xd800..0xdc00).contains(&t[i - 1]) && (0xdc00..0xe000).contains(&t[i]);
+    let start = if inside(start) { start - 1 } else { start };
+    let end = if inside(end) { end + 1 } else { end };
+    (start, end.max(start))
 }
 
 /// `ToIntegerOrInfinity`, clamped to `0..=len` (`substring`'s reading of an index).
@@ -3919,7 +3940,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 return V::err(sol_error(ErrorCode::Value, "MID starts at 1 or later and takes 0 or more characters"));
             }
             let start = clamp_index(s - 1.0, t.len());
-            let end = clamp_index(s - 1.0 + n, t.len()).max(start);
+            let (start, end) = whole_chars(&t, start, clamp_index(s - 1.0 + n, t.len()).max(start));
             V::str(&from_utf16(&t[start..end]))
         }
         F::LEFT | F::RIGHT => {
@@ -3939,11 +3960,12 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 V::Num(n) => n,
                 e => return if arm == F::LEFT { V::Fx(FxError::Value) } else { e },
             };
-            if arm == F::LEFT {
-                V::str(&from_utf16(&text[..clamp_index(n, text.len())]))
+            let (start, end) = if arm == F::LEFT {
+                whole_chars(&text, 0, clamp_index(n, text.len()))
             } else {
-                V::str(&from_utf16(&text[clamp_index(text.len() as f64 - n, text.len())..]))
-            }
+                whole_chars(&text, clamp_index(text.len() as f64 - n, text.len()), text.len())
+            };
+            V::str(&from_utf16(&text[start..end]))
         }
         F::UPPER | F::LOWER | F::TRIM => {
             if arm == F::LOWER && a.len() != 1 {
@@ -4263,7 +4285,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             }
             let old = utf16(&old);
             let from = (at as usize - 1).min(old.len());
-            let to = (from as f64 + len).min(old.len() as f64) as usize;
+            let (from, to) = whole_chars(&old, from, (from as f64 + len).min(old.len() as f64) as usize);
             let mut out = old[..from].to_vec();
             out.extend(utf16(&new));
             out.extend_from_slice(&old[to..]);
@@ -6539,11 +6561,11 @@ mod matcher_tests {
 mod case_table {
     /// The table answers what std does for every code point, the ones past it and the specials (ß, ŉ, ΐ) included.
     #[test]
-    fn upper_chars_is_std_to_uppercase() {
+    fn upper_chars_maps_each_character_to_one() {
         let all: String = (0..0x3000u32).filter_map(char::from_u32).collect();
-        assert_eq!(super::upper_chars(&all), all.to_uppercase());
-        for s in ["straße", "ŉ ΐ ǆ", "aé😀ß", "ǅ"] {
-            assert_eq!(super::upper_chars(s), s.to_uppercase());
-        }
+        let want: String = all.chars().map(super::one_upper).collect();
+        assert_eq!(super::upper_chars(&all), want);
+        assert_eq!(super::upper_chars("straße"), "STRAßE");
+        assert_eq!(super::upper_chars("ǆemal"), "ǄEMAL");
     }
 }

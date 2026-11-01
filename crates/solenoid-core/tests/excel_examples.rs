@@ -265,3 +265,13 @@ fn toolpak_dates_refuse_logicals() {
         assert!(matches!(eval(src), V::Err(e) if e.code == solenoid_core::error_value::ErrorCode::Value), "{src}");
     }
 }
+
+/// The author's Excel, 2026-11-01: UPPER keeps ß, and a cut never halves a character.
+#[test]
+fn upper_keeps_eszett_and_cuts_keep_characters_whole() {
+    assert_eq!(text("UPPER(\"straße\")"), "STRAßE");
+    assert_eq!(text("LEFT(\"😀x\", 1)"), "😀");
+    assert_eq!(text("RIGHT(\"x😀\", 1)"), "😀");
+    assert_eq!(text("MID(\"a😀b\", 3, 2)"), "😀b");
+    assert_eq!(num("LEN(\"😀\")"), 2.0);
+}

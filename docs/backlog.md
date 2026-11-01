@@ -67,7 +67,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
 
 **Also:**
-- [ ] Text positions count UTF-16 units, as Excel's do, so LEFT, MID and RIGHT can split an emoji into a lone half (`LEFT("😀x", 1)` shows �). Counting by code point is the correct reading and departs from Excel's LEN; the author's call.
 - [ ] A single text wired into the Regex card comes back as a one-item list (`[1× List]`): its Text socket takes lists, so the scalar arrives wrapped. Seen 2026-11-01, present before the fancy-regex move; check the other list-socket text cards.
 
 ## VaultBridge

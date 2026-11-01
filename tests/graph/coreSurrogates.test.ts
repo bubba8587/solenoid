@@ -1,5 +1,5 @@
-// [[D99]] rustIsSpec: text stays well formed, so a slice that halves a surrogate pair answers U+FFFD for the half, and
-// text holding a lone surrogate reads with U+FFFD for it as it crosses into the core.
+// [[D99]] rustIsSpec: text stays well formed, so a cut that would halve a surrogate pair takes the whole character, as
+// Excel's LEFT does, and text holding a lone surrogate reads with U+FFFD for it as it crosses into the core.
 import { it, expect } from "vitest";
 import { evaluateOnCore } from "../../src/graph/coreValues";
 import { coreStore } from "./coreStore";
@@ -7,10 +7,10 @@ import { wasmInvokeSync } from "../../src/graph/engineWasm";
 import type { FrameValue } from "../../src/graph/frame";
 import type { FrameOp } from "../../src/graph/frameOps";
 
-it("a slice that halves an emoji answers U+FFFD for the half, and whole slices keep it", () => {
+it("a cut that would halve an emoji takes it whole, and whole cuts keep it", () => {
   const t = "a😀b";
-  expect(evaluateOnCore("LEFT(t,2)&RIGHT(t,2)", { t })).toBe("a��b");
-  expect(evaluateOnCore("UNICODE(MID(t,3,1))", { t })).toBe(65533);
+  expect(evaluateOnCore("LEFT(t,2)&RIGHT(t,2)", { t })).toBe("a😀😀b");
+  expect(evaluateOnCore("UNICODE(MID(t,3,1))", { t })).toBe(128512);
   expect(evaluateOnCore("LEFT(t,3)&MID(t,4,1)", { t })).toBe("a😀b");
 });
 
