@@ -4,16 +4,35 @@
 
 use super::list;
 use crate::error_value::ErrorCode;
-use crate::excel_functions::V;
+use crate::eval::Traits;
+use crate::excel_functions::{Resolved, V};
 use crate::value_kinds::guard_finite as guard_cells;
+use std::rc::Rc;
+
+/// A name's traits and its route, looked up once.
+type Lookups = (Option<Rc<Traits>>, Resolved);
 
 /// The function body by name, an error argument read first as the formula's call reads it,
 /// and a Formula.js error answered as its SolError.
 pub fn core_call(name: &str, args: &[V]) -> V {
-    let upper = name.to_uppercase();
-    let v = match crate::eval::argument_error(&upper, args) {
+    // A card calls one name for every item of a list: its lookups are kept while the name stays the same.
+    thread_local! {
+        static LAST: std::cell::RefCell<Option<(Box<str>, Rc<Lookups>)>> = const { std::cell::RefCell::new(None) };
+    }
+    let found = LAST.with(|l| match &*l.borrow() {
+        Some((n, r)) if **n == *name => Some(r.clone()),
+        _ => None,
+    });
+    let found = found.unwrap_or_else(|| {
+        let upper = name.to_uppercase();
+        let r = Rc::new((crate::eval::traits(&upper), crate::excel_functions::resolve(name)));
+        LAST.with(|l| *l.borrow_mut() = Some((name.into(), r.clone())));
+        r
+    });
+    let (traits, resolved) = &*found;
+    let v = match crate::eval::argument_error_by(traits.as_deref(), args) {
         Some(e) => e,
-        None => match crate::excel_functions::call_function(name, args) {
+        None => match crate::excel_functions::call_resolved(name, resolved, args) {
             Ok(v) => v,
             Err(_) => return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments")),
         },

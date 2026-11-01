@@ -119,7 +119,14 @@ fn nums(v: &V) -> Vec<f64> {
 fn sort_unique_and_sum_keep_their_laws() {
     let mut r = rng();
     for _ in 0..cases() / 20 {
-        let xs: Vec<f64> = (0..r.usize(1..40)).map(|_| f64::from(r.i32(-50..50))).collect();
+        // Quarters and both zeros too: UNIQUE keys a number by its bits (-0 as 0), SORT compares them as pairs.
+        let xs: Vec<f64> = (0..r.usize(1..40))
+            .map(|_| match r.u32(0..4) {
+                0 => -0.0,
+                1 => f64::from(r.i32(-20..20)) / 4.0,
+                _ => f64::from(r.i32(-50..50)),
+            })
+            .collect();
         // A list is one row (D85 columnsStayColumns), so SORT and UNIQUE work across it with by_col.
         let sorted = nums(&run("SORT(l, 1, 1, TRUE)", &xs));
         let mut want = xs.clone();

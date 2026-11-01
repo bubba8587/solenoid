@@ -104,6 +104,16 @@ fn compare_list_cells(a: &V, b: &V) -> Option<Ordering> {
 
 /// A stable order of `n` positions, earliest key first, blanks, errors and NaN last either way.
 fn sorted_index_by_keys(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
+    if let [(vals, desc)] = keys
+        && let Some(order) = numeric_order(vals, n, *desc)
+    {
+        return order;
+    }
+    compared_order(keys, n)
+}
+
+/// `sorted_index_by_keys` comparing the cells themselves.
+fn compared_order(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..n).collect();
     js_sort_by(&mut idx, |&i, &j| {
         for (vals, desc) in keys {
@@ -124,6 +134,25 @@ fn sorted_index_by_keys(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
         i.cmp(&j)
     });
     idx
+}
+
+/// `sorted_index_by_keys` for one key of numbers (and what sorts last), the order it gives, sorting plain pairs: each
+/// position's (sorts last, number, position) under a total order, -0 read as 0 as `a - b` reads it, ties by position
+/// as a stable sort keeps them ([[C120]] linearWork). `None` where a key isn't a number.
+fn numeric_order(vals: &[V], n: usize, desc: bool) -> Option<Vec<usize>> {
+    let mut keyed = Vec::with_capacity(n);
+    for i in 0..n {
+        let v = vals.get(i).unwrap_or(&V::Null);
+        keyed.push(match v {
+            _ if sorts_last(v) => (true, 0.0, i),
+            V::Num(x) => (false, if *x == 0.0 { 0.0 } else { *x }, i),
+            _ => return None,
+        });
+    }
+    keyed.sort_unstable_by(|a, b| {
+        a.0.cmp(&b.0).then_with(|| if desc { b.1.total_cmp(&a.1) } else { a.1.total_cmp(&b.1) }).then(a.2.cmp(&b.2))
+    });
+    Some(keyed.into_iter().map(|k| k.2).collect())
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -258,22 +287,21 @@ fn rounded(v: &V) -> f64 {
 #[derive(PartialEq, Eq, Hash, Clone)]
 enum KeyPart {
     Null,
-    Num(String),
+    /// A number's bits, -0 as 0: two numbers print alike exactly when they're the same double (shortest round trip).
+    Num(u64),
     Str(Rc<str>),
     Bool(bool),
 }
 
-fn key_of(row: &[V]) -> Vec<KeyPart> {
-    row.iter()
-        .map(|v| match v {
-            V::Err(e) => KeyPart::Str(Rc::from(format!("\u{0}err:{}", e.code))),
-            V::Num(n) if n.is_finite() => KeyPart::Num(number_to_string(*n)),
-            V::Str(s) => KeyPart::Str(s.clone()),
-            V::Bool(b) => KeyPart::Bool(*b),
-            V::Unit(u) => KeyPart::Str(Rc::from(crate::unit_lists::unit_set_key(u))),
-            _ => KeyPart::Null,
-        })
-        .collect()
+fn key_part(v: &V) -> KeyPart {
+    match v {
+        V::Err(e) => KeyPart::Str(Rc::from(format!("\u{0}err:{}", e.code))),
+        V::Num(n) if n.is_finite() => KeyPart::Num(if *n == 0.0 { 0 } else { n.to_bits() }),
+        V::Str(s) => KeyPart::Str(s.clone()),
+        V::Bool(b) => KeyPart::Bool(*b),
+        V::Unit(u) => KeyPart::Str(Rc::from(crate::unit_lists::unit_set_key(u))),
+        _ => KeyPart::Null,
+    }
 }
 
 fn filter(a: &[V]) -> V {
@@ -318,23 +346,46 @@ fn unique(a: &[V]) -> V {
     }
     let (m, list) = as_rows_of(v);
     let by_col = truthy(arg(a, 1));
-    let g = if by_col { transpose(&m) } else { m };
-    let keys: Vec<Vec<KeyPart>> = g.iter().map(|r| key_of(r)).collect();
+    // Every row's key parts (or every column's, across the rows) in one run, `starts` marking where each begins: no
+    // row of its own per column of a list ([[C120]] linearWork). A column reads a cell a short row lacks as blank,
+    // and stops at the first row's width, as `transpose` does.
+    let width = m.first().map_or(0, Vec::len);
+    let n = if by_col { width } else { m.len() };
+    let mut parts = Vec::new();
+    let mut starts = Vec::with_capacity(n + 1);
+    for i in 0..n {
+        starts.push(parts.len());
+        if by_col {
+            parts.extend(m.iter().map(|r| r.get(i).map_or(KeyPart::Null, key_part)));
+        } else {
+            parts.extend(m[i].iter().map(key_part));
+        }
+    }
+    starts.push(parts.len());
+    let key = |i: usize| &parts[starts[i]..starts[i + 1]];
     let mut counts: FxHashMap<&[KeyPart], usize> = FxHashMap::default();
-    for k in &keys {
-        *counts.entry(k.as_slice()).or_insert(0) += 1;
+    for i in 0..n {
+        *counts.entry(key(i)).or_insert(0) += 1;
     }
     let once = truthy(arg(a, 2));
     let mut seen: FxHashSet<&[KeyPart]> = FxHashSet::default();
-    let mut out = Grid::new();
-    for (r, k) in g.iter().zip(&keys) {
-        if seen.contains(k.as_slice()) || (once && counts[k.as_slice()] > 1) {
+    let mut kept = Vec::new();
+    for i in 0..n {
+        let k = key(i);
+        if seen.contains(k) || (once && counts[k] > 1) {
             continue;
         }
-        seen.insert(k.as_slice());
-        out.push(r.clone());
+        seen.insert(k);
+        kept.push(i);
     }
-    back_to_list(if by_col { transpose(&out) } else { out }, list)
+    let out: Grid = if !by_col {
+        kept.into_iter().map(|i| m[i].clone()).collect()
+    } else if kept.is_empty() {
+        Grid::new()
+    } else {
+        m.iter().map(|r| kept.iter().map(|&j| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
+    };
+    back_to_list(out, list)
 }
 
 fn sort(a: &[V]) -> V {
@@ -349,6 +400,19 @@ fn sort(a: &[V]) -> V {
     let (m, list) = as_rows_of(v);
     let index = if absent(arg(a, 1)) { 1.0 } else { to_num(arg(a, 1)) };
     let by_col = truthy(arg(a, 3));
+    if by_col && m.iter().all(|r| r.len() == m[0].len()) && !m[0].is_empty() {
+        // Across columns of an even grid (a list is one row): the columns move as row `k` orders them, each row
+        // permuted in place of building one small row per column ([[C120]] linearWork).
+        if !(index.fract() == 0.0 && index >= 1.0 && index <= m.len() as f64) {
+            return V::err(sol_error(
+                ErrorCode::Value,
+                format!("SORT: sort_index {} is outside the {} rows", number_to_string(index), m.len()),
+            ));
+        }
+        let order = sorted_index_by_keys(&[(m[index as usize - 1].clone(), desc)], m[0].len());
+        let out: Grid = m.iter().map(|r| order.iter().map(|&i| r[i].clone()).collect()).collect();
+        return back_to_list(out, list);
+    }
     let g = if by_col { transpose(&m) } else { m.clone() };
     let width = g.first().map_or_default(Vec::len);
     if g.is_empty() || width == 0 {
@@ -450,5 +514,40 @@ pub fn call(name: &str, a: &[V]) -> V {
         "SORTBY" => sort_by(a),
         "TAKE" => take(a),
         _ => drop(a),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The pairs sort gives the order comparing the cells gives, over the numbers a sort finds hardest: both zeros,
+    /// both infinities, NaN, blanks and errors, many ties, both ways.
+    #[test]
+    fn numeric_order_is_the_compared_order() {
+        let pick = [
+            V::Num(0.0),
+            V::Num(-0.0),
+            V::Num(1.5),
+            V::Num(-2.0),
+            V::Num(f64::INFINITY),
+            V::Num(f64::NEG_INFINITY),
+            V::Num(f64::NAN),
+            V::Num(1e-320),
+            V::Null,
+            V::Undef,
+            V::err(sol_error(ErrorCode::NotAvailable, "x")),
+        ];
+        let mut r = fastrand::Rng::with_seed(3);
+        for _ in 0..2000 {
+            let n = r.usize(0..40);
+            let vals: Vec<V> = (0..n).map(|_| pick[r.usize(..pick.len())].clone()).collect();
+            // A key shorter than the rows reads its missing cells as blanks.
+            let rows = n + r.usize(0..3);
+            for desc in [false, true] {
+                let keys = [(vals.clone(), desc)];
+                assert_eq!(numeric_order(&vals, rows, desc), Some(compared_order(&keys, rows)), "{vals:?} desc {desc}");
+            }
+        }
     }
 }

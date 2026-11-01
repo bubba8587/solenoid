@@ -1521,7 +1521,11 @@ fn as_column(r: V) -> V {
 /// or for a range function an error among a list's cells. None for the error
 /// handlers, which read errors.
 pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
-    let t = traits(name);
+    argument_error_by(traits(name).as_deref(), argv)
+}
+
+/// `argument_error` with the name's traits looked up already.
+pub fn argument_error_by(t: Option<&Traits>, argv: &[V]) -> Option<V> {
     if t.as_ref().is_some_and(|t| t.kind == Kind::Handler) {
         return None;
     }

@@ -332,6 +332,110 @@ pub fn number_to_text(x: f64) -> String {
     number_to_string(v)
 }
 
+/// `to_str` borrowing a text value's own string.
+pub(crate) fn text_of(v: &V) -> std::borrow::Cow<'_, str> {
+    match v {
+        V::Str(s) => std::borrow::Cow::Borrowed(s),
+        other => std::borrow::Cow::Owned(to_str(other)),
+    }
+}
+
+/// The text's length in UTF-16 units, JS's `length`.
+pub(crate) fn utf16_len(s: &str) -> usize {
+    if s.is_ascii() {
+        s.len()
+    } else {
+        s.encode_utf16().count()
+    }
+}
+
+/// A string answer, `v` itself where the text didn't change.
+fn same_or(v: &V, t: std::borrow::Cow<'_, str>) -> V {
+    match t {
+        std::borrow::Cow::Borrowed(_) if matches!(v, V::Str(_)) => v.clone(),
+        t => V::str(&t),
+    }
+}
+
+/// JS `toUpperCase`, borrowing when nothing changes.
+fn js_upper(s: &str) -> std::borrow::Cow<'_, str> {
+    if s.bytes().all(|b| b.is_ascii() && !b.is_ascii_lowercase()) {
+        std::borrow::Cow::Borrowed(s)
+    } else if s.is_ascii() {
+        std::borrow::Cow::Owned(s.to_ascii_uppercase())
+    } else {
+        std::borrow::Cow::Owned(upper_chars(s))
+    }
+}
+
+/// `str::to_uppercase`, the first 2,048 code points (Latin, Greek, Cyrillic, …) mapped from a table of std's own
+/// answers, built once: std's lookup is a search per char, slow in wasm ([[C120]] linearWork).
+fn upper_chars(s: &str) -> String {
+    const SPAN: usize = 0x800;
+    thread_local! {
+        static TABLE: Box<[([char; 3], u8)]> = (0..SPAN as u32)
+            .map(|u| {
+                let mut out = (['\0'; 3], 0u8);
+                for c in char::from_u32(u).map(char::to_uppercase).into_iter().flatten() {
+                    out.0[out.1 as usize] = c;
+                    out.1 += 1;
+                }
+                out
+            })
+            .collect();
+    }
+    TABLE.with(|t| {
+        let mut out = String::with_capacity(s.len() + 2);
+        for c in s.chars() {
+            if c.is_ascii() {
+                out.push(c.to_ascii_uppercase());
+            } else if let Some((cs, n)) = t.get(c as usize) {
+                cs[..*n as usize].iter().for_each(|&c| out.push(c));
+            } else {
+                out.extend(c.to_uppercase());
+            }
+        }
+        out
+    })
+}
+
+/// TRIM: each run of spaces inside one space, the ends trimmed; borrowing when nothing changes.
+fn js_trim_inner(t: &str) -> std::borrow::Cow<'_, str> {
+    let tidy = {
+        let mut prev_space = true;
+        let mut ok = true;
+        for c in t.chars() {
+            let sp = is_js_space(c);
+            if sp && (prev_space || c != ' ') {
+                ok = false;
+                break;
+            }
+            prev_space = sp;
+        }
+        ok && !prev_space || t.is_empty()
+    };
+    if tidy {
+        return std::borrow::Cow::Borrowed(t);
+    }
+    let mut out = String::with_capacity(t.len());
+    let mut space = false;
+    for c in t.chars() {
+        if is_js_space(c) {
+            space = true;
+        } else {
+            if space {
+                out.push(' ');
+                space = false;
+            }
+            out.push(c);
+        }
+    }
+    if space {
+        out.push(' ');
+    }
+    std::borrow::Cow::Owned(js_trim(&out).to_string())
+}
+
 pub(crate) fn to_str(v: &V) -> String {
     match v {
         V::Str(s) => String::from(&**s),
@@ -3389,11 +3493,15 @@ const REFUSED: &[(&str, Refused)] = &[
 ];
 
 /// The `#VALUE!` a call answers for text where `REFUSED` names a number or a logical, before its body runs.
-fn text_refused(name: &str, a: &[V]) -> Option<V> {
+fn refused(name: &str) -> Option<&'static Refused> {
     thread_local! {
         static TABLE: rustc_hash::FxHashMap<&'static str, &'static Refused> = REFUSED.iter().map(|(n, r)| (*n, r)).collect();
     }
-    let r = TABLE.with(|t| t.get(name).copied())?;
+    TABLE.with(|t| t.get(name).copied())
+}
+
+fn text_refused(name: &str, r: Option<&Refused>, a: &[V]) -> Option<V> {
+    let r = r?;
     let text_at = |i: &usize| a.get(*i).is_some_and(holds_text);
     if r.numbers.iter().any(text_at) || r.from.is_some_and(|k| (k..a.len()).any(|i| text_at(&i))) {
         return Some(value_err(name));
@@ -3436,14 +3544,35 @@ pub fn route(name: &str) -> Route {
 }
 
 /// The body `name` answers over `a`, or the exception its JavaScript throws, which each caller answers its own way.
+/// What `call_function` looks up by a name, looked up once: a caller making many calls to one function (a card over
+/// a list's items) keeps it ([[C120]] linearWork).
+#[derive(Clone)]
+pub struct Resolved {
+    refused: Option<&'static Refused>,
+    flat_range: bool,
+    route: Route,
+}
+
+pub fn resolve(name: &str) -> Resolved {
+    Resolved {
+        refused: refused(name),
+        flat_range: crate::eval::traits(name)
+            .is_some_and(|t| t.kind == crate::eval::Kind::Range && !t.fast.reads_lists),
+        route: route(name),
+    }
+}
+
 pub fn call_function(name: &str, a: &[V]) -> Result<V, Thrown> {
-    if let Some(e) = text_refused(name, a) {
+    call_resolved(name, &resolve(name), a)
+}
+
+/// `call_function` with the name's lookups done (`resolve(name)`).
+pub fn call_resolved(name: &str, r: &Resolved, a: &[V]) -> Result<V, Thrown> {
+    if let Some(e) = text_refused(name, r.refused, a) {
         return Ok(e);
     }
     // A range body written for flat arguments reads a list or a table among them as its items.
-    if a.iter().any(|v| matches!(v, V::List(_)))
-        && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range && !t.fast.reads_lists)
-    {
+    if r.flat_range && a.iter().any(|v| matches!(v, V::List(_))) {
         let mut flat = Vec::with_capacity(a.len());
         for v in a {
             match v {
@@ -3465,9 +3594,9 @@ pub fn call_function(name: &str, a: &[V]) -> Result<V, Thrown> {
                 other => flat.push(other.clone()),
             }
         }
-        return call_function(name, &flat);
+        return call_resolved(name, r, &flat);
     }
-    let arm = match route(name) {
+    let arm = match r.route {
         Route::Arm(f) => f,
         Route::Mod_formulajs => return crate::formulajs::call(name, a),
         Route::Mod_fns_matrix => return crate::fns_matrix::call(name, a),
@@ -3877,7 +4006,7 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
                 aggregate(Stat::Product, &n)
             }
         }
-        F::LEN => V::Num(utf16(&to_str(arg(a, 0))).len() as f64),
+        F::LEN => V::Num(utf16_len(&text_of(arg(a, 0))) as f64),
         F::CONCAT | F::CONCATENATE => V::str(&a.iter().map(to_str).collect::<String>()),
         F::MID => {
             let t = utf16(&to_str(arg(a, 0)));
@@ -3919,30 +4048,17 @@ fn arm_value(arm: F, name: &str, a: &[V]) -> V {
             if arm == F::LOWER && a.len() != 1 {
                 return V::Fx(FxError::Value);
             }
-            let t = to_str(arg(a, 0));
-            V::str(&match arm {
-                F::UPPER => t.to_uppercase(),
-                F::LOWER => t.to_lowercase(),
-                _ => {
-                    let mut out = String::with_capacity(t.len());
-                    let mut space = false;
-                    for c in t.chars() {
-                        if is_js_space(c) {
-                            space = true;
-                        } else {
-                            if space {
-                                out.push(' ');
-                                space = false;
-                            }
-                            out.push(c);
-                        }
-                    }
-                    if space {
-                        out.push(' ');
-                    }
-                    js_trim(&out).to_string()
-                }
-            })
+            let v = arg(a, 0);
+            let t = text_of(v);
+            let out = match arm {
+                F::UPPER => js_upper(&t),
+                F::LOWER => js_lower(&t),
+                _ => js_trim_inner(&t),
+            };
+            match out {
+                std::borrow::Cow::Borrowed(_) => same_or(v, t),
+                std::borrow::Cow::Owned(o) => V::str(&o),
+            }
         }
         F::SUBSTITUTE => {
             let (t, o, n) = (to_str(arg(a, 0)), to_str(arg(a, 1)), to_str(arg(a, 2)));
@@ -6552,6 +6668,19 @@ mod matcher_tests {
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod case_table {
+    /// The table answers what std does for every code point, the ones past it and the specials (ß, ŉ, ΐ) included.
+    #[test]
+    fn upper_chars_is_std_to_uppercase() {
+        let all: String = (0..0x3000u32).filter_map(char::from_u32).collect();
+        assert_eq!(super::upper_chars(&all), all.to_uppercase());
+        for s in ["straße", "ŉ ΐ ǆ", "aé😀ß", "ǅ"] {
+            assert_eq!(super::upper_chars(s), s.to_uppercase());
         }
     }
 }

@@ -186,8 +186,14 @@ pub fn frame_in(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32
 
 /// `list_out`'s list back.
 pub fn list_in(tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<Cv, SolError> {
-    let cells = Reader::new(tags, nums, strs, lens).cells(tags.len())?;
-    Ok(Cv::V(super::list(cells.iter().map(cell_to_v).collect())))
+    let cells = Reader::new(tags, nums, strs, lens).read(tags.len(), |c| match c {
+        FrameCell::Null => V::Null,
+        FrameCell::Num(n) => V::Num(n),
+        FrameCell::Str(s) => V::Str(s),
+        FrameCell::Bool(b) => V::Bool(b),
+        FrameCell::Err(e) => V::Err(e),
+    })?;
+    Ok(Cv::V(super::list(cells)))
 }
 
 #[cfg(test)]

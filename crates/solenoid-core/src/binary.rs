@@ -58,14 +58,19 @@ impl<'a> Cutter<'a> {
             self.rest = rest;
             return Ok(piece);
         }
-        let mut units = 0;
-        let mut end = 0;
-        for c in self.rest.chars() {
-            if units >= want {
-                break;
-            }
-            units += c.len_utf16();
-            end += c.len_utf8();
+        // A char's lead byte says its UTF-8 width and its UTF-16 units (two from four bytes), so no char is decoded.
+        let bytes = self.rest.as_bytes();
+        let (mut units, mut end) = (0, 0);
+        while units < want && end < bytes.len() {
+            let lead = bytes[end];
+            let (w, u) = match lead {
+                0..0x80 => (1, 1),
+                0x80..0xE0 => (2, 1),
+                0xE0..0xF0 => (3, 1),
+                _ => (4, 2),
+            };
+            units += u;
+            end += w;
         }
         if units != want {
             return Err(sol_error(ErrorCode::Error, "binary frame: text shorter than its lengths"));
@@ -107,13 +112,18 @@ impl<'a> Reader<'a> {
 
     /// The next `n` cells.
     pub fn cells(&mut self, n: usize) -> Result<Vec<FrameCell>, SolError> {
+        self.read(n, |c| c)
+    }
+
+    /// The next `n` cells, each as `f` makes it while it is read.
+    pub fn read<T>(&mut self, n: usize, f: impl Fn(FrameCell) -> T) -> Result<Vec<T>, SolError> {
         let end = self.at + n;
         if end > self.tags.len() || end > self.nums.len() {
             return Err(sol_error(ErrorCode::Error, "binary frame: buffers shorter than the schema"));
         }
         let mut values = Vec::with_capacity(n);
         for i in self.at..end {
-            values.push(match self.tags[i] {
+            values.push(f(match self.tags[i] {
                 TAG_NUM => FrameCell::Num(self.nums[i]),
                 TAG_STR => FrameCell::Str(Rc::from(self.cut.next()?)),
                 TAG_FALSE => FrameCell::Bool(false),
@@ -125,7 +135,7 @@ impl<'a> Reader<'a> {
                     FrameCell::Err(Rc::new(SolError { code, message, reference, origin: None }))
                 }
                 _ => FrameCell::Null,
-            });
+            }));
         }
         self.at = end;
         Ok(values)
