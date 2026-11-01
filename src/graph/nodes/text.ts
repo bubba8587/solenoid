@@ -1,7 +1,7 @@
 import { GraphInput, GraphNode } from "../graphModel";
 import { stringSocket } from "../sockets";
 import {
-  strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
+  strIn, strOut, strListIn, strListOut, anyComboIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
   type CellResult, type BroadcastResult,
 } from "./shared";
@@ -749,7 +749,7 @@ export class RegexNode extends GraphNode {
     this.op    = init?.op    ?? "test";
     this.label = init?.label ?? "";
     this.matchCase = init?.matchCase ?? true;
-    this.addInput("text",        anyListIn("Text"));
+    this.addInput("text",        anyComboIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
     this.addInput("occurrence",  numListIn("Occurrence"));

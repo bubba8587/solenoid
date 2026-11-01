@@ -66,9 +66,6 @@ Audit 2026-11-01. Each fixture an item touches is rewritten in that commit ([[D9
 **No visible change (delete the JS framing):**
 - [ ] `V::Undef` (an omitted argument, [[C80]] blankArgIsExcelBlank) loses its leftover JavaScript readings (`undefined` in a few bodies' coercions).
 
-**Also:**
-- [ ] A single text wired into the Regex card comes back as a one-item list (`[1× List]`): its Text socket takes lists, so the scalar arrives wrapped. Seen 2026-11-01, present before the fancy-regex move; check the other list-socket text cards.
-
 ## VaultBridge
 - [ ] Spec the Vault Read (Vault Folder's Cube: columns, tags, daily-note dates, types), the TaskNotes card and Write Tasks; `tree/specs/integrations/vault-bridge.md` marks them "no spec yet".
 

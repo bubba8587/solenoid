@@ -40,3 +40,29 @@ describe("the Regex card", () => {
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
   });
 });
+
+describe("the Regex card wired", () => {
+  // A wired single text stays single: the Text socket takes one text or a list, never wrapping one into a list.
+  it("answers one text for one text, and a list for a list", async () => {
+    const { GraphEditor } = await import("../../src/graph/graphEditor");
+    const { GraphConnection, GraphNode, GraphOutput, GraphSocket } = await import("../../src/graph/graphModel");
+    const { DataflowEngine } = await import("../../src/graph/dataflowEngine");
+    class Src extends GraphNode {
+      constructor(public out: unknown) { super("src"); this.addOutput("out", new GraphOutput(new GraphSocket("string"))); }
+      data() { return { out: this.out }; }
+    }
+    const through = async (text: unknown) => {
+      const editor = new GraphEditor<never>();
+      editor.use(new DataflowEngine<never>());
+      const src = new Src(text), re = new RegexNode({ op: "replace" });
+      re.stringLiterals = { pattern: "a", replacement: "x" };
+      for (const n of [src, re]) await editor.addNode(n as never);
+      await editor.addConnection(new GraphConnection(src, "out", re, "text") as never);
+      await editor.engine!.pass(undefined, undefined, false);
+      editor.dispose();
+      return re.cachedResult;
+    };
+    expect(await through("banana")).toBe("bxnxnx");
+    expect(await through(["ab", "ba"])).toEqual(["xb", "bx"]);
+  });
+});
